@@ -22,7 +22,6 @@ import sys
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
 from bzrlib.branchbuilder import BranchBuilder
-from bzrlib.symbol_versioning import one_zero
 
 
 class TestAncestry(TestCaseWithMemoryTransport):
@@ -41,6 +40,5 @@ class TestAncestry(TestCaseWithMemoryTransport):
         self.assertAncestryEqual([None, rev_id_one, rev_id_two],
             rev_id_two, branch)
         self.assertAncestryEqual([None, rev_id_one], rev_id_one, branch)
-
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

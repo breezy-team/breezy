@@ -104,7 +104,10 @@ class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
         # the default or a parameterized class, but rather use the
         # TestCaseWithTransport infrastructure to set up a smart server and
         # transport.
-        self.transport_server = smart.server.SmartTCPServer_for_testing
+        self.transport_server = self.make_transport_server
+
+    def make_transport_server(self):
+        return smart.server.SmartTCPServer_for_testing('-' + self.id())
 
     def get_smart_medium(self):
         """Get a smart medium to use in tests."""

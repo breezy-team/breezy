@@ -94,7 +94,6 @@ class CommitBuilder(object):
         if committer is None:
             self._committer = self._config.username()
         else:
-            assert isinstance(committer, basestring), type(committer)
             self._committer = committer
 
         self.new_inventory = Inventory(None)
@@ -327,8 +326,8 @@ class CommitBuilder(object):
             if kind != parent_entry.kind:
                 store = True
         if kind == 'file':
-            assert content_summary[2] is not None, \
-                "Files must not have executable = None"
+            if content_summary[2] is None:
+                raise ValueError("Files must not have executable = None")
             if not store:
                 if (# if the file length changed we have to store:
                     parent_entry.text_size != content_summary[1] or
@@ -500,12 +499,16 @@ class Repository(object):
         :returns: The validator(which is a sha1 digest, though what is sha'd is
             repository format specific) of the serialized inventory.
         """
-        assert self.is_in_write_group()
+        if not self.is_in_write_group():
+            raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(revision_id)
-        assert inv.revision_id is None or inv.revision_id == revision_id, \
-            "Mismatch between inventory revision" \
-            " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
-        assert inv.root is not None
+        if not (inv.revision_id is None or inv.revision_id == revision_id):
+            raise AssertionError(
+                "Mismatch between inventory revision"
+                " id and insertion revid (%r, %r)"
+                % (inv.revision_id, revision_id))
+        if inv.root is None:
+            raise AssertionError()
         inv_lines = self._serialise_inventory_to_lines(inv)
         inv_vf = self.get_inventory_weave()
         return self._inventory_add_lines(inv_vf, revision_id, parents,
@@ -541,14 +544,17 @@ class Repository(object):
             plaintext = Testament(rev, inv).as_short_text()
             self.store_revision_signature(
                 gpg.GPGStrategy(config), plaintext, revision_id)
-        if not revision_id in self.get_inventory_weave():
+        inventory_vf = self.get_inventory_weave()
+        if not revision_id in inventory_vf:
             if inv is None:
                 raise errors.WeaveRevisionNotPresent(revision_id,
-                                                     self.get_inventory_weave())
+                                                     inventory_vf)
             else:
                 # yes, this is not suitable for adding with ghosts.
-                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv,
                                                         rev.parent_ids)
+        else:
+            rev.inventory_sha1 = inventory_vf.get_sha1s([revision_id])[0]
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -1091,10 +1097,6 @@ class Repository(object):
                 raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         revs = self._revision_store.get_revisions(revision_ids,
                                                   self.get_transaction())
-        for rev in revs:
-            assert not isinstance(rev.revision_id, unicode)
-            for parent_id in rev.parent_ids:
-                assert not isinstance(parent_id, unicode)
         return revs
 
     @needs_read_lock
@@ -1497,8 +1499,9 @@ class Repository(object):
 
         :return: An iterator of inventories.
         """
-        assert None not in revision_ids
-        assert _mod_revision.NULL_REVISION not in revision_ids
+        if ((None in revision_ids)
+            or (_mod_revision.NULL_REVISION in revision_ids)):
+            raise ValueError('cannot get null revision inventory')
         return self._iter_inventories(revision_ids)
 
     def _iter_inventories(self, revision_ids):
@@ -1532,7 +1535,6 @@ class Repository(object):
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
         try:
-            assert isinstance(revision_id, str), type(revision_id)
             iw = self.get_inventory_weave()
             return iw.get_text(revision_id)
         except IndexError:
@@ -1679,6 +1681,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
+    @deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
@@ -2322,12 +2325,14 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        graph = self.source.get_graph()
         target_graph = self.target.get_graph()
-        missing_revs = set()
-        # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
-        searcher = graph._make_breadth_first_searcher(revision_ids)
+        if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
+            return graph.SearchResult(revision_ids, set(), 0, set())
+        missing_revs = set()
+        source_graph = self.source.get_graph()
+        # ensure we don't pay silly lookup costs.
+        searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         while True:
             try:
@@ -2382,7 +2387,8 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -2549,7 +2555,8 @@ class InterWeaveRepo(InterSameDataRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
@@ -2618,7 +2625,8 @@ class InterKnitRepo(InterSameDataRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -2705,6 +2713,8 @@ class InterPackRepo(InterSameDataRepository):
                     find_ghosts=find_ghosts).get_keys()
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
+            if len(revision_ids) == 0:
+                return (0, [])
         packs = self.source._pack_collection.all_packs()
         pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()
@@ -2729,7 +2739,8 @@ class InterPackRepo(InterSameDataRepository):
             return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -2896,8 +2907,9 @@ class InterRemoteToOther(InterRepository):
         # Is source's model compatible with target's model?
         source._ensure_real()
         real_source = source._real_repository
-        assert not isinstance(real_source, remote.RemoteRepository), (
-            "We don't support remote repos backed by remote repos yet.")
+        if isinstance(real_source, remote.RemoteRepository):
+            raise NotImplementedError(
+                "We don't support remote repos backed by remote repos yet.")
         return InterRepository._same_model(real_source, target)
 
     @needs_write_lock

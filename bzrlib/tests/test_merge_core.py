@@ -64,7 +64,8 @@ class MergeBuilder(object):
 
     def get_cset_path(self, parent, name):
         if name is None:
-            assert (parent is None)
+            if parent is not None:
+                raise AssertionError()
             return None
         return pathjoin(self.cset.entries[parent].path, name)
 
@@ -90,7 +91,8 @@ class MergeBuilder(object):
             tt.apply()
             wt.commit('branch commit')
             wt.flush()
-            assert len(wt.branch.revision_history()) == 2
+            if len(wt.branch.revision_history()) != 2:
+                raise AssertionError()
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 

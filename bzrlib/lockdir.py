@@ -167,8 +167,6 @@ class LockDir(object):
         :param path: Path to the lock within the base directory of the 
             transport.
         """
-        assert isinstance(transport, Transport), \
-            ("not a transport: %r" % transport)
         self.transport = transport
         self.path = path
         self._lock_held = False
@@ -417,8 +415,6 @@ class LockDir(object):
         try:
             info = self._read_info_file(self._held_info_path)
             self._trace("peek -> held")
-            assert isinstance(info, dict), \
-                    "bad parse result %r" % info
             return info
         except NoSuchFile, e:
             self._trace("peek -> not held")

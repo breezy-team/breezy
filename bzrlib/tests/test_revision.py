@@ -27,7 +27,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.deprecated_graph import Graph
 from bzrlib.revision import (find_present_ancestors,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import one_zero, one_three
+from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
