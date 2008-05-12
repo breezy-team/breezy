@@ -1520,7 +1520,8 @@ class BzrDirFormat(object):
         control_files.lock_write()
         try:
             for (filename, content) in utf8_files:
-                bzrdir_transport.put_bytes(filename, content)
+                bzrdir_transport.put_bytes(filename, content,
+                    mode=file_mode)
         finally:
             control_files.unlock()
         return self.open(transport, _found=True)
