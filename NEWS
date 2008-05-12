@@ -30,6 +30,9 @@ IN DEVELOPMENT
     * Diff now handles revision specs like "branch:" and "submit:" more
       efficiently.  (Aaron Bentley)
 
+    * More friendly error given when attempt to start the smart server
+      on an address already in use. (Andrea Corbellini, #200575)
+
     * Pull completes much faster when there is nothing to pull.
       (Aaron Bentley)
 
@@ -65,6 +68,10 @@ IN DEVELOPMENT
       RemoteRepository.get_parent_map() fallback code.
       (John Arbash Meinel, #214894)
 
+    * Remove leftover code in ``bzr_branch`` that inappropriately creates 
+      a ``branch-name`` file in the branch control directory.
+      (Martin Pool)
+
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
       (John Arbash Meinel, Martin Pool, #164288)
@@ -83,11 +90,18 @@ IN DEVELOPMENT
 
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
 
+    * Improved the documentation on hooks. (Ian Clatworthy)
+
   TESTING:
 
     * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
       make it easy to identify which test spawned a thread with an unhandled
       exception. (Andrew Bennetts)
+
+    * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
+      options for debugging tests, these are complementary to the the -D
+      options.  The ``-Dselftest_debug`` global option has been replaced by the
+      ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
 
     * Parameterised test ids are preserved correctly to aid diagnosis of test
       failures. (Robert Collins, Andrew Bennetts)
@@ -106,6 +120,9 @@ IN DEVELOPMENT
     * ``Repository.revision_parents`` is now deprecated in favour of 
       ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
 
+    * The Python ``assert`` statement is no longer used in Bazaar source, and 
+      a test checks this.  (Martin Pool)
+
   API BREAKS:
 
     * ``bzrlib.status.show_pending_merges`` requires the repository to be
@@ -119,6 +136,9 @@ IN DEVELOPMENT
 
     * ``LockableFiles.get_utf8`` and ``.get`` are deprecated, as a start
       towards removing LockableFiles and ``.control_files`` entirely.
+      (Martin Pool)
+
+    * Methods deprecated prior to 1.1 have been removed.
       (Martin Pool)
 
 

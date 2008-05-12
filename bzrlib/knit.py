@@ -301,7 +301,6 @@ class _KnitFactory(object):
         """
         method, noeol = record_details
         if method == 'line-delta':
-            assert base_content is not None
             if copy_base_content:
                 content = base_content.copy()
             else:
@@ -693,8 +692,8 @@ class KnitVersionedFile(VersionedFile):
                 # put them in anywhere, but we hope that sending them soon
                 # after the fulltext will give good locality in the receiver
                 ready_to_send[:0] = deferred.pop(version_id)
-        assert len(deferred) == 0, \
-            "Still have compressed child versions waiting to be sent"
+        if not (len(deferred) == 0):
+            raise AssertionError("Still have compressed child versions waiting to be sent")
         # XXX: The stream format is such that we cannot stream it - we have to
         # know the length of all the data a-priori.
         raw_datum = []
@@ -703,8 +702,8 @@ class KnitVersionedFile(VersionedFile):
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
                  temp_version_list):
-            assert version_id == version_id2, \
-                'logic error, inconsistent results'
+            if not (version_id == version_id2):
+                raise AssertionError('logic error, inconsistent results')
             raw_datum.append(raw_data)
             result_version_list.append(
                 (version_id, options, len(raw_data), parents))
@@ -1067,7 +1066,6 @@ class KnitVersionedFile(VersionedFile):
             # I/O and the time spend applying deltas.
             delta = self._check_should_delta(present_parents)
 
-        assert isinstance(version_id, str)
         content = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if needed.
@@ -1233,12 +1231,12 @@ class KnitVersionedFile(VersionedFile):
             enumerate(self._data.read_records_iter(version_id_records)):
             pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
-
-            assert method in ('fulltext', 'line-delta')
             if method == 'fulltext':
                 line_iterator = self.factory.get_fulltext_content(data)
-            else:
+            elif method == 'line-delta':
                 line_iterator = self.factory.get_linedelta_content(data)
+            else:
+                raise ValueError('invalid method %r' % (method,))
             # XXX: It might be more efficient to yield (version_id,
             # line_iterator) in the future. However for now, this is a simpler
             # change to integrate into the rest of the codebase. RBC 20071110
@@ -1555,8 +1553,6 @@ class _KnitIndex(_KnitComponentFile):
                                                pos,
                                                size,
                                                self._version_list_to_index(parents))
-                assert isinstance(line, str), \
-                    'content must be utf-8 encoded: %r' % (line,)
                 lines.append(line)
                 self._cache_version(version_id, options, pos, size, tuple(parents))
             if not self._need_to_create:
@@ -1822,7 +1818,6 @@ class KnitGraphIndex(object):
         compression_parents = an_entry[3][1]
         if not compression_parents:
             return None
-        assert len(compression_parents) == 1
         return compression_parents[0]
 
     def _get_method(self, node):
@@ -2009,8 +2004,6 @@ class _KnitAccess(object):
             tuple - (index, pos, length), where the index field is always None
             for the .knit access method.
         """
-        assert type(raw_data) == str, \
-            'data must be plain bytes was %s' % type(raw_data)
         if not self._need_to_create:
             base = self._transport.append_bytes(self._filename, raw_data)
         else:
@@ -2093,8 +2086,6 @@ class _PackAccess(object):
             tuple - (index, pos, length), where the index field is the 
             write_index object supplied to the PackAccess object.
         """
-        assert type(raw_data) == str, \
-            'data must be plain bytes was %s' % type(raw_data)
         result = []
         offset = 0
         for size in sizes:
@@ -2193,7 +2184,8 @@ class _StreamAccess(object):
         # use a generator for memory friendliness
         for from_backing_knit, version_id, start, end in memos_for_retrieval:
             if not from_backing_knit:
-                assert version_id is self.stream_index
+                if version_id is not self.stream_index:
+                    raise AssertionError()
                 yield self.data[start:end]
                 continue
             # we have been asked to thunk. This thunking only occurs when
@@ -2420,7 +2412,6 @@ class _KnitData(object):
                                      digest)],
             dense_lines or lines,
             ["end %s\n" % version_id]))
-        assert bytes.__class__ == str
         compressed_bytes = bytes_to_gzip(bytes)
         return len(compressed_bytes), compressed_bytes
 
@@ -2608,9 +2599,6 @@ class InterKnit(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
-        assert isinstance(self.source, KnitVersionedFile)
-        assert isinstance(self.target, KnitVersionedFile)
-
         # If the source and target are mismatched w.r.t. annotations vs
         # plain, the data needs to be converted accordingly
         if self.source.factory.annotated == self.target.factory.annotated:
@@ -2662,9 +2650,12 @@ class InterKnit(InterVersionedFile):
                     # * already have it or
                     # * have it scheduled already
                     # otherwise we don't care
-                    assert (self.target.has_version(parent) or
+                    if not (self.target.has_version(parent) or
                             parent in copy_set or
-                            not self.source.has_version(parent))
+                            not self.source.has_version(parent)):
+                        raise AssertionError("problem joining parent %r "
+                            "from %r to %r"
+                            % (parent, self.source, self.target))
                 index_memo = self.source._index.get_position(version_id)
                 copy_queue_records.append((version_id, index_memo))
                 copy_queue.append((version_id, options, parents))
@@ -2679,7 +2670,8 @@ class InterKnit(InterVersionedFile):
                 (version_id2, options, parents) in \
                 izip(self.source._data.read_records_iter_raw(copy_queue_records),
                      copy_queue):
-                assert version_id == version_id2, 'logic error, inconsistent results'
+                if not (version_id == version_id2):
+                    raise AssertionError('logic error, inconsistent results')
                 count = count + 1
                 pb.update("Joining knit", count, total)
                 if converter:
@@ -2728,9 +2720,6 @@ class WeaveToKnit(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
-        assert isinstance(self.source, bzrlib.weave.Weave)
-        assert isinstance(self.target, KnitVersionedFile)
-
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
 
         if not version_ids:
@@ -2762,7 +2751,9 @@ class WeaveToKnit(InterVersionedFile):
                 # check that its will be a consistent copy:
                 for parent in parents:
                     # if source has the parent, we must already have it
-                    assert (self.target.has_version(parent))
+                    if not self.target.has_version(parent):
+                        raise AssertionError("%r does not have parent %r"
+                            % (self.target, parent))
                 self.target.add_lines(
                     version_id, parents, self.source.get_lines(version_id))
                 count = count + 1
@@ -2938,10 +2929,12 @@ class _KnitAnnotator(object):
                 # add a key, no parents
                 self._revision_id_graph[missing_version] = ()
                 pending.discard(missing_version) # don't look for it
-        # XXX: This should probably be a real exception, as it is a data
-        #      inconsistency
-        assert not self._ghosts.intersection(self._compression_children), \
-            "We cannot have nodes which have a compression parent of a ghost."
+        if self._ghosts.intersection(self._compression_children):
+            raise KnitCorrupt(
+                "We cannot have nodes which have a ghost compression parent:\n"
+                "ghosts: %r\n"
+                "compression children: %r"
+                % (self._ghosts, self._compression_children))
         # Cleanout anything that depends on a ghost so that we don't wait for
         # the ghost to show up
         for node in self._ghosts:
@@ -2975,7 +2968,6 @@ class _KnitAnnotator(object):
             if len(parent_ids) == 0:
                 # There are no parents for this node, so just add it
                 # TODO: This probably needs to be decoupled
-                assert compression_parent is None
                 fulltext_content, delta = self._knit.factory.parse_record(
                     rev_id, record, record_details, None)
                 fulltext = self._add_fulltext_content(rev_id, fulltext_content)
@@ -2992,7 +2984,9 @@ class _KnitAnnotator(object):
                  record_details) = self._all_build_details[rev_id]
                 if compression_parent is not None:
                     comp_children = self._compression_children[compression_parent]
-                    assert rev_id in comp_children
+                    if rev_id not in comp_children:
+                        raise AssertionError("%r not in compression children %r"
+                            % (rev_id, comp_children))
                     # If there is only 1 child, it is safe to reuse this
                     # content
                     reuse_content = (len(comp_children) == 1

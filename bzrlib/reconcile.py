@@ -246,7 +246,9 @@ class RepoReconciler(object):
             parents = self._rev_graph[rev_id]
             # double check this really is in topological order.
             unavailable = [p for p in parents if p not in new_inventory_vf]
-            assert len(unavailable) == 0
+            if unavailable:
+                raise AssertionError('unavailable parents: %r'
+                    % unavailable)
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
@@ -265,7 +267,8 @@ class RepoReconciler(object):
             new_inventory_vf._save()
         # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory_vf.versions()) == self.pending
+        if not (set(new_inventory_vf.versions()) == self.pending):
+            raise AssertionError()
         self.pb.update('Writing weave')
         self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.repo.get_transaction())
         self.repo.control_weaves.delete('inventory.new', self.repo.get_transaction())
@@ -283,7 +286,6 @@ class RepoReconciler(object):
         # analyse revision id rev_id and put it in the stack.
         self._reweave_step('loading revisions')
         rev = self.repo.get_revision_reconcile(rev_id)
-        assert rev.revision_id == rev_id
         parents = []
         for parent in rev.parent_ids:
             if self._parent_is_available(parent):
@@ -402,7 +404,9 @@ class KnitReconciler(RepoReconciler):
             # double check this really is in topological order, ignoring existing ghosts.
             unavailable = [p for p in parents if p not in new_inventory_vf and
                 p in self.revisions]
-            assert len(unavailable) == 0
+            if unavailable:
+                raise AssertionError(
+                    'unavailable parents: %r' % (unavailable,))
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
@@ -412,7 +416,8 @@ class KnitReconciler(RepoReconciler):
 
         # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory_vf.versions()) == set(self.revisions.versions())
+        if not(set(new_inventory_vf.versions()) == set(self.revisions.versions())):
+            raise AssertionError()
         self.pb.update('Writing weave')
         self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.transaction)
         self.repo.control_weaves.delete('inventory.new', self.transaction)

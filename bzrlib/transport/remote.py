@@ -457,7 +457,6 @@ class RemoteTCPTransport(RemoteTransport):
     """
 
     def _build_medium(self):
-        assert self.base.startswith('bzr://')
         return medium.SmartTCPClientMedium(self._host, self._port), None
 
 
@@ -469,7 +468,6 @@ class RemoteSSHTransport(RemoteTransport):
     """
 
     def _build_medium(self):
-        assert self.base.startswith('bzr+ssh://')
         # ssh will prompt the user for a password if needed and if none is
         # provided but it will not give it back, so no credentials can be
         # stored.
@@ -491,8 +489,6 @@ class RemoteHTTPTransport(RemoteTransport):
     """
 
     def __init__(self, base, _from_transport=None, http_transport=None):
-        assert ( base.startswith('bzr+http://') or base.startswith('bzr+https://') )
-
         if http_transport is None:
             # FIXME: the password may be lost here because it appears in the
             # url only for an intial construction (when the url came from the

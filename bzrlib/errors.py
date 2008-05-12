@@ -894,17 +894,6 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
-class ReadOnlyLockError(LockError):
-
-    _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
-
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninetytwo)
-    def __init__(self, fname, msg):
-        LockError.__init__(self, '')
-        self.fname = fname
-        self.msg = msg
-
-
 class LockFailed(LockError):
 
     internal_error = False
@@ -1064,18 +1053,6 @@ class NoSuchRevision(InternalBzrError):
     def __init__(self, branch, revision):
         # 'branch' may sometimes be an internal object like a KnitRevisionStore
         BzrError.__init__(self, branch=branch, revision=revision)
-
-
-# zero_ninetyone: this exception is no longer raised and should be removed
-class NotLeftParentDescendant(InternalBzrError):
-
-    _fmt = ("Revision %(old_revision)s is not the left parent of"
-            " %(new_revision)s, but branch %(branch_location)s expects this")
-
-    def __init__(self, branch, old_revision, new_revision):
-        BzrError.__init__(self, branch_location=branch.base,
-                          old_revision=old_revision,
-                          new_revision=new_revision)
 
 
 class RangeInChangeOption(BzrError):
@@ -2690,3 +2667,12 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class CannotBindAddress(BzrError):
+
+    _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
+
+    def __init__(self, host, port, orig_error):
+        BzrError.__init__(self, host=host, port=port,
+            orig_error=orig_error[1])

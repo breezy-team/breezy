@@ -309,7 +309,8 @@ class _ConnectRequest(Request):
         # confused
         Request.__init__(self, 'CONNECT', request.get_full_url(),
                          connection=request.connection)
-        assert request.proxied_host is not None
+        if request.proxied_host is None:
+            raise AssertionError()
         self.proxied_host = request.proxied_host
 
     def get_selector(self):
@@ -502,8 +503,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         The request will be retried once if it fails.
         """
         connection = request.connection
-        assert connection is not None, \
-            'Cannot process a request without a connection'
+        if connection is None:
+            raise AssertionError(
+                'Cannot process a request without a connection')
 
         # Get all the headers
         headers = {}
@@ -595,7 +597,6 @@ class HTTPSHandler(AbstractHTTPHandler):
 
     def https_open(self, request):
         connection = request.connection
-        assert isinstance(connection, HTTPSConnection)
         if connection.sock is None and \
                 connection.proxied_host is not None and \
                 request.get_method() != 'CONNECT' : # Don't loop

@@ -48,9 +48,6 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
 
 
 class TestBranch(TestCaseWithBranch):

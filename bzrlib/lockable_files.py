@@ -269,8 +269,8 @@ class LockableFiles(object):
     def lock_read(self):
         # mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
-            assert self._lock_mode in ('r', 'w'), \
-                   "invalid lock mode %r" % self._lock_mode
+            if self._lock_mode not in ('r', 'w'):
+                raise ValueError("invalid lock mode %r" % (self._lock_mode,))
             self._lock_count += 1
         else:
             self._lock.lock_read()
