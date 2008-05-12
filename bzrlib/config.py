@@ -645,7 +645,7 @@ class BranchConfig(Config):
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files._transport.get_bytes("email")
+            return (self.branch._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -898,8 +898,7 @@ class TreeConfig(IniBasedConfig):
         # XXX: Really this should be asking the branch for its configuration
         # data, rather than relying on a Transport, so that it can work 
         # more cleanly with a RemoteBranch that has no transport.
-        self._config = TransportConfig(branch.control_files._transport,
-            'branch.conf')
+        self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
