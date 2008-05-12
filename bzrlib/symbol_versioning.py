@@ -26,7 +26,9 @@ __all__ = ['deprecated_function',
            'deprecated_method',
            'DEPRECATED_PARAMETER',
            'deprecated_passed',
-           'warn', 'set_warning_method', 'zero_seven',
+           'set_warning_method',
+           'warn',
+           'zero_seven',
            'zero_eight',
            'zero_nine',
            'zero_ten',
@@ -48,6 +50,7 @@ __all__ = ['deprecated_function',
            'one_three',
            'one_four',
            'one_five',
+           'one_six',
            ]
 
 from warnings import warn
@@ -78,6 +81,7 @@ one_two = "%s was deprecated in version 1.2."
 one_three = "%s was deprecated in version 1.3."
 one_four = "%s was deprecated in version 1.4."
 one_five = "%s was deprecated in version 1.5."
+one_six = "%s was deprecated in version 1.6."
 
 
 def deprecated_in(version_tuple):
@@ -186,7 +190,7 @@ def deprecated_passed(parameter_value):
     # we cannot just forward to a new method name.I.e. in the following
     # examples we would want to have callers that pass any value to 'bad' be
     # given a warning - because we have applied:
-    # @deprecated_parameter('bad', zero_seven)
+    # @deprecated_parameter('bad', deprecated_in((1, 5, 0))
     #
     # def __init__(self, bad=None)
     # def __init__(self, bad, other)
@@ -254,7 +258,8 @@ class DeprecatedDict(dict):
         ):
         """Create a dict that warns when read or modified.
 
-        :param deprecation_version: something like zero_nine
+        :param deprecation_version: string for the warning format to raise,
+            typically from deprecated_in()
         :param initial_value: The contents of the dict
         :param variable_name: This allows better warnings to be printed
         :param advice: String of advice on what callers should do instead 
@@ -279,7 +284,8 @@ def deprecated_list(deprecation_version, variable_name,
                     initial_value, extra=None):
     """Create a list that warns when modified
 
-    :param deprecation_version: something like zero_nine
+    :param deprecation_version: string for the warning format to raise,
+        typically from deprecated_in()
     :param initial_value: The contents of the list
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
