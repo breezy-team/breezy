@@ -6,7 +6,8 @@ Bazaar Release Notes
 
   API BREAKS:
 
-    * ``LockableFiles.put_utf8`` is now deprecated.
+    * ``LockableFiles.put_utf8`` and ``put_bytes`` are now deprecated in
+      favor of using Transport operations.
       (Martin Pool)
 
 

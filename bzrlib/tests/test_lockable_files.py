@@ -58,9 +58,15 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
-                              StringIO(unicode_string))
-            self.lockable.put('foo', StringIO(byte_string))
+            self.assertRaises(UnicodeEncodeError,
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put, 'foo',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put,
+                'foo', StringIO(byte_string))
             byte_stream = self.applyDeprecated(
                 deprecated_in((1, 5, 0)),
                 self.lockable.get,
@@ -94,7 +100,10 @@ class _TestLockableFiles_mixin(object):
                 self.lockable.get,
                 'bar')
             self.assertEqual(byte_string, byte_stream.read())
-            self.lockable.put_bytes('raw', 'raw\xffbytes')
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_bytes,
+                'raw', 'raw\xffbytes')
             byte_stream = self.applyDeprecated(
                 deprecated_in((1, 5, 0)),
                 self.lockable.get,
@@ -106,7 +115,7 @@ class _TestLockableFiles_mixin(object):
     def test_locks(self):
         self.lockable.lock_read()
         try:
-            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
+            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo',
                               StringIO('bar\u1234'))
         finally:
             self.lockable.unlock()

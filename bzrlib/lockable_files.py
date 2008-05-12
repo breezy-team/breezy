@@ -171,21 +171,27 @@ class LockableFiles(object):
         return codecs.getreader('utf-8')(self._transport.get(relpath))
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put(self, path, file):
         """Write a file.
         
         :param path: The path to put the file, relative to the .bzr control
                      directory
-        :param f: A file-like or string object whose contents should be copied.
+        :param file: A file-like or string object whose contents should be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_bytes(self, path, a_string):
         """Write a string of bytes.
 
         :param path: The path to put the bytes, relative to the transport root.
-        :param string: A string object, whose exact bytes are to be copied.
+        :param a_string: A string object, whose exact bytes are to be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         self._transport.put_bytes(self._escape(path), a_string,
                                   mode=self._file_mode)
@@ -197,6 +203,8 @@ class LockableFiles(object):
 
         :param path: The path to put the string, relative to the transport root.
         :param string: A string or unicode object whose contents should be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25

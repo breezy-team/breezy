@@ -1406,8 +1406,9 @@ class BzrBranch(Branch):
 
         This performs the actual writing to disk.
         It is intended to be called by BzrBranch5.set_revision_history."""
-        self.control_files.put_bytes(
-            'revision-history', '\n'.join(history))
+        self._transport.put_bytes(
+            'revision-history', '\n'.join(history),
+            mode=self.control_files._file_mode)
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -1899,7 +1900,8 @@ class BzrBranch6(BzrBranch5):
         """
         assert revision_id is not None, "Use NULL_REVISION, not None"
         out_string = '%d %s\n' % (revno, revision_id)
-        self.control_files.put_bytes('last-revision', out_string)
+        self._transport.put_bytes('last-revision', out_string,
+            mode=self.control_files._file_mode)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
