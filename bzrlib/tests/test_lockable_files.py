@@ -73,11 +73,16 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(unicode_string,
                 unicode_stream.read())
             self.assertRaises(BzrBadParameterNotString,
-                              self.lockable.put_utf8,
-                              'bar',
-                              StringIO(unicode_string)
-                              )
-            self.lockable.put_utf8('bar', unicode_string)
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                unicode_string)
             unicode_stream = self.applyDeprecated(
                 deprecated_in((1, 5, 0)),
                 self.lockable.get_utf8,

@@ -77,12 +77,12 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         open('a', 'wb').write('a\n')
         t.add('a')
         t.commit('a', rev_id='r1')
-        t._control_files.put_utf8('basis-inventory-cache', 'booga')
+        t._transport.put_bytes('basis-inventory-cache', 'booga')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', '<xml/>')
+        t._transport.put_bytes('basis-inventory-cache', '<xml/>')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', '<inventory />')
+        t._transport.put_bytes('basis-inventory-cache', '<inventory />')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', 
-                                  '<inventory format="pi"/>')
+        t._transport.put_bytes('basis-inventory-cache',
+            '<inventory format="pi"/>')
         t.basis_tree()

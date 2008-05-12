@@ -2891,7 +2891,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        control_files.put_utf8('format', self.get_format_string())
+        transport.put_bytes('format', self.get_format_string(),
+            mode=control_files._file_mode)
         if from_branch is not None:
             branch = from_branch
         else:

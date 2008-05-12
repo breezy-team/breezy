@@ -191,6 +191,7 @@ class LockableFiles(object):
                                   mode=self._file_mode)
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_utf8(self, path, a_string):
         """Write a string, encoding as utf-8.
 

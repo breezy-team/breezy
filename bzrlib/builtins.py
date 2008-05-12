@@ -964,7 +964,8 @@ class cmd_branch(Command):
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise errors.BzrCommandError(msg)
             if name:
-                branch.control_files.put_utf8('branch-name', name)
+                branch._transport.put_bytes('branch-name', name,
+                    mode=branch.control_files._file_mode)
             _merge_tags_if_possible(br_from, branch)
             note('Branched %d revision(s).' % branch.revno())
         finally:

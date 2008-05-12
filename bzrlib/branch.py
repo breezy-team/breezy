@@ -917,10 +917,12 @@ class BranchFormat(object):
         control_files.create_lock()
         control_files.lock_write()
         if set_format:
-            control_files.put_utf8('format', self.get_format_string())
+            utf8_files += [('format', self.get_format_string())]
         try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
+            for (filename, content) in utf8_files:
+                branch_transport.put_bytes(
+                    filename, content,
+                    mode=control_files._file_mode)
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
@@ -965,20 +967,6 @@ class BranchFormat(object):
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
         return False  # by default
-
-    # XXX: Probably doesn't really belong here -- mbp 20070212
-    def _initialize_control_files(self, a_bzrdir, utf8_files, lock_filename,
-            lock_class):
-        branch_transport = a_bzrdir.get_branch_transport(self)
-        control_files = lockable_files.LockableFiles(branch_transport,
-            lock_filename, lock_class)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            for filename, content in utf8_files:
-                control_files.put_utf8(filename, content)
-        finally:
-            control_files.unlock()
 
 
 class BranchHooks(Hooks):
@@ -1814,7 +1802,7 @@ class BzrBranch5(BzrBranch):
         :param location: URL to the target branch
         """
         if location:
-            self.control_files.put_utf8('bound', location+'\n')
+            self._transport.put_bytes('bound', location+'\n')
         else:
             try:
                 self._transport.delete('bound')
@@ -2222,8 +2210,9 @@ class Converter5to6(object):
         new_branch.tags._set_tag_dict({})
 
         # Copying done; now update target format
-        new_branch.control_files.put_utf8('format',
-            format.get_format_string())
+        new_branch._transport.put_bytes('format',
+            format.get_format_string(),
+            mode=new_branch.control_files._file_mode)
 
         # Clean up old files
         new_branch.control_files._transport.delete('revision-history')

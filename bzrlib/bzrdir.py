@@ -1532,22 +1532,21 @@ class BzrDirFormat(object):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
-        mutter('created control directory in ' + transport.base)
-        control = transport.clone('.bzr')
-        utf8_files = [('README', 
+        bzrdir_transport = transport.clone('.bzr')
+        utf8_files = [('README',
                        "This is a Bazaar control directory.\n"
                        "Do not change any files in this directory.\n"
                        "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control_files = lockable_files.LockableFiles(control,
-                            self._lock_file_name, self._lock_class)
+        control_files = lockable_files.LockableFiles(bzrdir_transport,
+            self._lock_file_name, self._lock_class)
         control_files.create_lock()
         control_files.lock_write()
         try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
+            for (filename, content) in utf8_files:
+                bzrdir_transport.put_bytes(filename, content)
         finally:
             control_files.unlock()
         return self.open(transport, _found=True)
@@ -1999,7 +1998,10 @@ class ConvertBzrDir4To5(Converter):
         self.pb.note('  %6d revisions not present', len(self.absent_revisions))
         self.pb.note('  %6d texts', self.text_count)
         self._cleanup_spare_files_after_format4()
-        self.branch.control_files.put_utf8('branch-format', BzrDirFormat5().get_format_string())
+        self.branch.control_files._transport.put_bytes(
+            'branch-format',
+            BzrDirFormat5().get_format_string(),
+            mode=self.branch.control_files._file_mode)
 
     def _cleanup_spare_files_after_format4(self):
         # FIXME working tree upgrade foo.
@@ -2250,7 +2252,10 @@ class ConvertBzrDir5To6(Converter):
                 except errors.NoSuchFile: # catches missing dirs strangely enough
                     store_transport.mkdir(prefix_dir)
                     store_transport.move(filename, prefix_dir + '/' + filename)
-        self.bzrdir._control_files.put_utf8('branch-format', BzrDirFormat6().get_format_string())
+        self.bzrdir.transport.put_bytes(
+            'branch-format',
+            BzrDirFormat6().get_format_string(),
+            mode=self.bzrdir._control_files._file_mode)
 
 
 class ConvertBzrDir6ToMeta(Converter):
@@ -2267,7 +2272,12 @@ class ConvertBzrDir6ToMeta(Converter):
         self.garbage_inventories = []
 
         self.pb.note('starting upgrade from format 6 to metadir')
-        self.bzrdir._control_files.put_utf8('branch-format', "Converting to format 6")
+        self.dir_mode = self.bzrdir._control_files._dir_mode
+        self.file_mode = self.bzrdir._control_files._file_mode
+        self.bzrdir.transport.put_bytes(
+                'branch-format',
+                "Converting to format 6",
+                mode=self.file_mode)
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
         try:
@@ -2283,8 +2293,6 @@ class ConvertBzrDir6ToMeta(Converter):
             if name.startswith('basis-inventory.'):
                 self.garbage_inventories.append(name)
         # create new directories for repository, working tree and branch
-        self.dir_mode = self.bzrdir._control_files._dir_mode
-        self.file_mode = self.bzrdir._control_files._file_mode
         repository_names = [('inventory.weave', True),
                             ('revision-store', True),
                             ('weaves', True)]
@@ -2338,10 +2346,12 @@ class ConvertBzrDir6ToMeta(Converter):
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:
-                self.bzrdir._control_files.put_utf8(
+                self.bzrdir.transport.put_bytes(
                     'checkout/last-revision', last_revision)
-        self.bzrdir._control_files.put_utf8(
-            'branch-format', BzrDirMetaFormat1().get_format_string())
+        self.bzrdir.transport.put_bytes(
+            'branch-format',
+            BzrDirMetaFormat1().get_format_string(),
+            mode=self.file_mode)
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def make_lock(self, name):
@@ -2365,7 +2375,9 @@ class ConvertBzrDir6ToMeta(Converter):
                 raise
 
     def put_format(self, dirname, format):
-        self.bzrdir._control_files.put_utf8('%s/format' % dirname, format.get_format_string())
+        self.bzrdir.transport.put_bytes('%s/format' % dirname,
+            format.get_format_string(),
+            self.file_mode)
 
 
 class ConvertMetaToMeta(Converter):
