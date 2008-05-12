@@ -9,7 +9,8 @@ good to try the procedures covered already for a while,
 coming back to this manual once you have mastered them.
 
 This chapter briefly introduces some of the more popular plugins
-and explains why you may wish to use them. Remaining chapters
+and explains why you may wish to use them. (For a full list of available
+plugins, see http://bazaar-vcs.org/BzrPlugins.) Remaining chapters
 covers various topics to guide you in further optimizing how you
 use Bazaar. Unless stated otherwise, the topics in this and
 remaining chapters are independent of each other and can therefore

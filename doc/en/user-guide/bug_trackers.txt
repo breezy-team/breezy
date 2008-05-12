@@ -17,8 +17,8 @@ When you make a commit, you can associate it with a bug by using the
 This records metadata in Bazaar linking the commit with bug 12345 in
 Launchpad. If you use a different bug tracker, it can be given its own
 tracker code (instead of ``lp``) and used instead. For details on how
-to configure this, refer to `Bug Tracker Settings`_ in the Bazaar
-User Reference.
+to configure this for Bugzilla, Trac, Roundup and other bug/issue trackers,
+refer to `Bug Tracker Settings`_ in the Bazaar User Reference.
 
 .. _Bug Tracker Settings: ../user-reference/bzr_man.html#bug-tracker-settings
 

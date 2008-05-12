@@ -19,6 +19,9 @@ tool integration hooks currently built on top of Subversion. Indeed,
 this is a common interim step for teams looking to adopt Bazaar but
 who are unable to do so yet for timing or non-technical reasons.
 
+For installation instructions, see the bzr-svn home page:
+http://bazaar-vcs.org/BzrForeignBranches/Subversion.
+
 
 A simple example
 ----------------
