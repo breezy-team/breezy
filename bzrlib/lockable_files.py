@@ -23,6 +23,7 @@ import bzrlib
 from bzrlib.decorators import (needs_read_lock,
         needs_write_lock)
 import bzrlib.errors as errors
+from bzrlib.counted_lock import CountedLock
 from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import (
@@ -63,6 +64,10 @@ class LockableFiles(object):
     This class is now deprecated; code should move to using the Transport 
     directly for file operations and using the lock or CountedLock for 
     locking.
+    
+    :ivar _lock: The real underlying lock (e.g. a LockDir)
+    :ivar _counted_lock: A lock decorated with a semaphore, so that it 
+        can be re-entered.
     """
 
     # _lock_mode: None, or 'r' or 'w'
@@ -94,6 +99,7 @@ class LockableFiles(object):
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)
+        self._counted_lock = CountedLock(self._lock)
 
     def create_lock(self):
         """Create the lock.
@@ -134,6 +140,9 @@ class LockableFiles(object):
         
         :deprecated: Replaced by BzrDir._find_modes.
         """
+        # XXX: The properties created by this can be removed or deprecated
+        # once all the _get_text_store methods etc no longer use them.
+        # -- mbp 20080512
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:

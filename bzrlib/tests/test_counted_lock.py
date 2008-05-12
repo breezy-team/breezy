@@ -43,6 +43,7 @@ class DummyLock(object):
         self._assert_not_locked()
         self._lock_mode = 'w'
         self._calls.append('lock_write')
+        return 'token'
 
     def unlock(self):
         self._assert_locked()
@@ -89,7 +90,8 @@ class TestDummyLock(TestCase):
         real_lock.unlock()
         self.assertFalse(real_lock.is_locked())
         # lock write and unlock
-        real_lock.lock_write()
+        result = real_lock.lock_write()
+        self.assertEqual('token', result)
         self.assertTrue(real_lock.is_locked())
         real_lock.unlock()
         self.assertFalse(real_lock.is_locked())
@@ -110,7 +112,7 @@ class TestDummyLock(TestCase):
 
 class TestCountedLock(TestCase):
 
-    def test_lock_unlock(self):
+    def test_read_lock(self):
         # Lock and unlock a counted lock
         real_lock = DummyLock()
         l = CountedLock(real_lock)
@@ -138,7 +140,7 @@ class TestCountedLock(TestCase):
         l = CountedLock(real_lock)
         l.lock_write()
         l.lock_read()
-        l.lock_write()
+        self.assertEquals('token', l.lock_write())
         l.unlock()
         l.unlock()
         l.unlock()
@@ -158,6 +160,14 @@ class TestCountedLock(TestCase):
         self.assertEquals(
             ['lock_read', 'unlock'],
             real_lock._calls)
+
+    def test_write_lock_reentrant(self):
+        real_lock = DummyLock()
+        l = CountedLock(real_lock)
+        self.assertEqual('token', l.lock_write())
+        self.assertEqual('token', l.lock_write())
+        l.unlock()
+        l.unlock()
 
     def test_break_lock(self):
         real_lock = DummyLock()
