@@ -144,11 +144,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_record_stream)
 
-    @deprecated_method(one_four)
-    def has_ghost(self, version_id):
-        """Returns whether version is present as a ghost."""
-        raise NotImplementedError(self.has_ghost)
-
     def has_version(self, version_id):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
@@ -243,35 +238,6 @@ class VersionedFile(object):
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
-    @deprecated_method(one_four)
-    def enable_cache(self):
-        """Tell this versioned file that it should cache any data it reads.
-        
-        This is advisory, implementations do not have to support caching.
-        """
-        pass
-    
-    @deprecated_method(one_four)
-    def clear_cache(self):
-        """Remove any data cached in the versioned file object.
-
-        This only needs to be supported if caches are supported
-        """
-        pass
-
-    @deprecated_method(one_four)
-    def clone_text(self, new_version_id, old_version_id, parents):
-        """Add an identical text to old_version_id as new_version_id.
-
-        Must raise RevisionNotPresent if the old version or any of the
-        parents are not present in file history.
-
-        Must raise RevisionAlreadyPresent if the new version is
-        already present in file history."""
-        self._check_write_ok()
-        return self.add_lines(new_version_id, parents,
-            self.get_lines(old_version_id))
-
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
         
@@ -357,14 +323,6 @@ class VersionedFile(object):
             if expected_sha1 != sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
 
-    @deprecated_method(one_four)
-    def get_sha1(self, version_id):
-        """Get the stored sha1 sum for the given revision.
-        
-        :param version_id: The name of the version to lookup
-        """
-        return self.get_sha1s([version_id])[0]
-
     def get_sha1s(self, version_ids):
         """Get the stored sha1 sums for the given revisions.
 
@@ -426,48 +384,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
     
-    @deprecated_method(one_four)
-    def get_graph(self, version_ids=None):
-        """Return a graph from the versioned file. 
-        
-        Ghosts are not listed or referenced in the graph.
-        :param version_ids: Versions to select.
-                            None means retrieve all versions.
-        """
-        if version_ids is None:
-            result = self.get_parent_map(self.versions())
-        else:
-            result = {}
-            pending = set(version_ids)
-            while pending:
-                this_iteration = pending
-                pending = set()
-                parents = self.get_parent_map(this_iteration)
-                for version, parents in parents.iteritems():
-                    result[version] = parents
-                    for parent in parents:
-                        if parent in result:
-                            continue
-                        pending.add(parent)
-        references = set()
-        for parents in result.itervalues():
-            references.update(parents)
-        existing_parents = self.get_parent_map(references)
-        for key, parents in result.iteritems():
-            present_parents = [parent for parent in parents if parent in
-                existing_parents]
-            result[key] = tuple(present_parents)
-        return result
-
-    @deprecated_method(one_four)
-    def get_graph_with_ghosts(self):
-        """Return a graph for the entire versioned file.
-        
-        Ghosts are referenced in parents list but are not
-        explicitly listed.
-        """
-        raise NotImplementedError(self.get_graph_with_ghosts)
-
     def get_parent_map(self, version_ids):
         """Get a map of the parents of version_ids.
 
@@ -475,24 +391,6 @@ class VersionedFile(object):
         :return: A mapping from version id to parents.
         """
         raise NotImplementedError(self.get_parent_map)
-
-    @deprecated_method(one_four)
-    def get_parents(self, version_id):
-        """Return version names for parents of a version.
-
-        Must raise RevisionNotPresent if version is not present in
-        file history.
-        """
-        try:
-            all = self.get_parent_map([version_id])[version_id]
-        except KeyError:
-            raise errors.RevisionNotPresent(version_id, self)
-        result = []
-        parent_parents = self.get_parent_map(all)
-        for version_id in all:
-            if version_id in parent_parents:
-                result.append(version_id)
-        return result
 
     def get_parents_with_ghosts(self, version_id):
         """Return version names for parents of version_id.
@@ -507,16 +405,6 @@ class VersionedFile(object):
             return list(self.get_parent_map([version_id])[version_id])
         except KeyError:
             raise errors.RevisionNotPresent(version_id, self)
-
-    @deprecated_method(one_four)
-    def annotate_iter(self, version_id):
-        """Yield list of (version-id, line) pairs for the specified
-        version.
-
-        Must raise RevisionNotPresent if the given version is
-        not present in file history.
-        """
-        return iter(self.annotate(version_id))
 
     def annotate(self, version_id):
         """Return a list of (version-id, line) tuples for version_id.
@@ -566,18 +454,6 @@ class VersionedFile(object):
         :return: An iterator over (line, version_id).
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
-
-    @deprecated_method(one_four)
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
-
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        return self.get_parent_map(version_ids).iteritems()
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
