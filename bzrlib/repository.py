@@ -628,6 +628,7 @@ class Repository(object):
         self.bzrdir = a_bzrdir
         self.control_files = control_files
         self._transport = control_files._transport
+        self.base = self._transport.base
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
@@ -643,7 +644,6 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
-        self.base = control_files._transport.base
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -2574,7 +2574,7 @@ class InterWeaveRepo(InterSameDataRepository):
         except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
-        if self.source.control_files._transport.listable():
+        if self.source._transport.listable():
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 self.target.weave_store.copy_all_ids(

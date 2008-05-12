@@ -641,7 +641,7 @@ class BranchConfig(Config):
     def _get_user_id(self):
         """Return the full user id for the branch.
     
-        e.g. "John Hacker <jhacker@foo.org>"
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:

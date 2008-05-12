@@ -43,7 +43,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('a')
         t.commit('a', rev_id='r1')
 
-        self.assertTrue(t._control_files._transport.has('basis-inventory-cache'))
+        self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv = t.basis_tree().inventory
         self.assertEquals('r1', basis_inv.revision_id)
@@ -55,7 +55,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('b')
         t.commit('b', rev_id='r2')
 
-        self.assertTrue(t._control_files._transport.has('basis-inventory-cache'))
+        self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)

@@ -486,7 +486,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._control_files._transport.get('pending-merges')
+            merges_file = self._transport.get('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
@@ -870,7 +870,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         still in the working inventory and have that text hash.
         """
         try:
-            hashfile = self._control_files._transport.get('merge-hashes')
+            hashfile = self._transport.get('merge-hashes')
         except errors.NoSuchFile:
             return {}
         merge_hashes = {}
@@ -1787,7 +1787,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._control_files._transport.get_bytes(path)
+        return self._transport.get_bytes(path)
         
     @needs_read_lock
     def read_working_inventory(self):
@@ -1802,7 +1802,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # binary.
         if self._inventory_is_modified:
             raise errors.InventoryModified(self)
-        result = self._deserialize(self._control_files._transport.get('inventory'))
+        result = self._deserialize(self._transport.get('inventory'))
         self._set_inventory(result, dirty=False)
         return result
 
@@ -2513,7 +2513,7 @@ class WorkingTree3(WorkingTree):
         """See WorkingTree._change_last_revision."""
         if revision_id is None or revision_id == NULL_REVISION:
             try:
-                self._control_files._transport.delete('last-revision')
+                self._transport.delete('last-revision')
             except errors.NoSuchFile:
                 pass
             return False

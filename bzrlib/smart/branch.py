@@ -86,7 +86,7 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         # allow the client to get the configuration without needing vfs
         # access.
         try:
-            content = branch.control_files._transport.get_bytes('branch.conf')
+            content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
