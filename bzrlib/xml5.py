@@ -32,7 +32,6 @@ class Serializer_v5(xml6.Serializer_v6):
     def _unpack_inventory(self, elt, revision_id):
         """Construct from XML Element
         """
-        assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or inventory.ROOT_ID
         root_id = xml8._get_utf8_or_ascii(root_id)
 

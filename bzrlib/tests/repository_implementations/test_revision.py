@@ -75,7 +75,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
                                'unicode':'\xb5',
                                'multiline':'foo\nbar\n\n'
                               })
-        assert len(tree1.branch.revision_history()) > 0
+        self.assertTrue(len(tree1.branch.revision_history()) > 0)
         rev_a = tree1.branch.repository.get_revision(
                             tree1.branch.last_revision())
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,6 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
-    deprecated_graph,
     errors,
     knit,
     lockable_files,
@@ -61,12 +60,18 @@ from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
+    RepositoryFormat,
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import (
+    mutter,
+    mutter_callsite,
+    note,
+    warning,
+    )
 
 
 class PackCommitBuilder(CommitBuilder):
@@ -198,8 +203,9 @@ class ExistingPack(Pack):
             signature_index)
         self.name = name
         self.pack_transport = pack_transport
-        assert None not in (revision_index, inventory_index, text_index,
-            signature_index, name, pack_transport)
+        if None in (revision_index, inventory_index, text_index,
+                signature_index, name, pack_transport):
+            raise AssertionError()
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -322,11 +328,12 @@ class NewPack(Pack):
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
-        assert self._state in ('open', 'finished')
         if self._state == 'finished':
             return Pack.access_tuple(self)
-        else:
+        elif self._state == 'open':
             return self.upload_transport, self.random_name
+        else:
+            raise AssertionError(self._state)
 
     def data_inserted(self):
         """True if data has been added to this pack."""
@@ -495,9 +502,10 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
         """
-        assert self.add_callback is None, \
-            "%s already has a writable index through %s" % \
-            (self, self.add_callback)
+        if self.add_callback is not None:
+            raise AssertionError(
+                "%s already has a writable index through %s" % \
+                (self, self.add_callback))
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -1093,7 +1101,7 @@ class ReconcilePacker(Packer):
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
-                % (refs - keys,))
+                % (missing_text_keys,))
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
@@ -1149,7 +1157,8 @@ class RepositoryPackCollection(object):
         
         :param pack: A Pack object.
         """
-        assert pack.name not in self._packs_by_name
+        if pack.name in self._packs_by_name:
+            raise AssertionError()
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -1918,61 +1927,6 @@ class KnitPackRepository(KnitRepository):
             found_parents[key[0]] = parents
         return found_parents
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        if revision_id is None:
-            revision_vf = self._get_revision_vf()
-            return revision_vf.get_graph()
-        g = self.get_graph()
-        first = g.get_parent_map([revision_id])
-        if revision_id not in first:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            ancestry = {}
-            children = {}
-            NULL_REVISION = _mod_revision.NULL_REVISION
-            ghosts = set([NULL_REVISION])
-            for rev_id, parent_ids in g.iter_ancestry([revision_id]):
-                if parent_ids is None: # This is a ghost
-                    ghosts.add(rev_id)
-                    continue
-                ancestry[rev_id] = parent_ids
-                for p in parent_ids:
-                    if p in children:
-                        children[p].append(rev_id)
-                    else:
-                        children[p] = [rev_id]
-
-            if NULL_REVISION in ancestry:
-                del ancestry[NULL_REVISION]
-
-            # Find all nodes that reference a ghost, and filter the ghosts out
-            # of their parent lists. To preserve the order of parents, and
-            # avoid double filtering nodes, we just find all children first,
-            # and then filter.
-            children_of_ghosts = set()
-            for ghost in ghosts:
-                children_of_ghosts.update(children[ghost])
-
-            for child in children_of_ghosts:
-                ancestry[child] = tuple(p for p in ancestry[child]
-                                           if p not in ghosts)
-            return ancestry
-
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
         revision_ids = set(revision_ids)
@@ -2169,7 +2123,6 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

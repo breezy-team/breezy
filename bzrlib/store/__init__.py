@@ -74,10 +74,6 @@ class Store(object):
         """DEPRECATED. Please use .get(fileid) instead."""
         raise NotImplementedError
 
-    #def __contains__(self, fileid):
-    #    """Deprecated, please use has_id"""
-    #    raise NotImplementedError
-
     def __iter__(self):
         raise NotImplementedError
 
@@ -146,7 +142,6 @@ class Store(object):
                     failed.add(fileid)
                 else:
                     raise
-        assert count == len(ids)
         if pb:
             pb.clear()
         return count, failed
@@ -246,7 +241,6 @@ class TransportStore(Store):
     def __init__(self, a_transport, prefixed=False, compressed=False,
                  dir_mode=None, file_mode=None,
                  escaped=False):
-        assert isinstance(a_transport, Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed

@@ -189,7 +189,6 @@ class _BaseProgressBar(object):
     def finished(self):
         """Return this bar to its progress stack."""
         self.clear()
-        assert self._stack is not None
         self._stack.return_pb(self)
 
     def note(self, fmt_string, *args, **kwargs):
@@ -531,8 +530,6 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     
     total_duration = float(elapsed) * float(total) / float(current)
 
-    assert total_duration >= elapsed
-
     if last_updates and len(last_updates) >= n_recent:
         avg = sum(last_updates) / float(len(last_updates))
         time_left = avg * (total - current)
@@ -559,5 +556,4 @@ class ProgressPhase(object):
             self.cur_phase = 0
         else:
             self.cur_phase += 1
-        assert self.cur_phase < self.total
         self.pb.update(self.message, self.cur_phase, self.total)
