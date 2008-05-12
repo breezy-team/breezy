@@ -145,8 +145,12 @@ class LockableFiles(object):
         if not self._set_file_mode:
             self._file_mode = None
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def controlfilename(self, file_or_path):
-        """Return location relative to branch."""
+        """Return location relative to branch.
+        
+        :deprecated: Use Transport methods instead.
+        """
         return self._transport.abspath(self._escape(file_or_path))
 
     @needs_read_lock
