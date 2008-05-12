@@ -37,7 +37,7 @@ import format
 from mapping import (escape_svn_path, unescape_svn_path, 
                      SVN_PROP_BZR_REVISION_ID)
 from mapping3 import (SVN_PROP_BZR_BRANCHING_SCHEME, set_branching_scheme,
-                      set_property_scheme)
+                      set_property_scheme, BzrSvnMappingv3)
 from mapping3.scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme, SingleBranchingScheme)
 from transport import SvnRaTransport
@@ -96,6 +96,19 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.get_physical_lock_status())
+
+    def test_iter_changes_parent_rename(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo/bar': None})
+        self.client_add('dc/foo')
+        self.client_commit('dc', 'a')
+        self.client_update('dc')
+        self.client_copy('dc/foo', 'dc/bla')
+        self.client_commit('dc', 'b')
+        repos = Repository.open(repos_url)
+        ret = list(repos.iter_changes('bla/bar', 2, BzrSvnMappingv3(SingleBranchingScheme('bla/bar'))))
+        self.assertEquals(1, len(ret))
+        self.assertEquals("bla/bar", ret[0][0])
 
     def test_set_make_working_trees(self):
         repos_url = self.make_client("a", "dc")

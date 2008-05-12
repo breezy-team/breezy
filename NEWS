@@ -1,5 +1,10 @@
 bzr-svn 0.4.11	UNRELEASED
 
+  BUG FIXES
+
+   * Deal with parent branch changing name in Repository.iter_changes().
+     (#229410)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES

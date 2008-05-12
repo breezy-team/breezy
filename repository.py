@@ -593,11 +593,11 @@ class SvnRepository(Repository):
             assert revnum > 0 or bp == ""
             assert mapping is None or mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
 
-            if (paths.has_key(bp) and paths[bp][1] is not None and 
-                not (mapping is None or mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
+            if (next is not None and 
+                not (mapping is None or mapping.is_branch(next[0]) or mapping.is_tag(next[0]))):
                 # Make it look like the branch started here if the mapping 
                 # doesn't support weird paths as branches
-                lazypaths = logwalker.lazy_dict(paths, full_paths, self._log.find_children, paths, bp, paths[bp][1], paths[bp][2])
+                lazypaths = logwalker.lazy_dict(paths, full_paths, self._log.find_children, paths, bp, next[0], next[1])
                 paths[bp] = ('A', None, -1)
 
                 yield (bp, lazypaths, revnum, revprops)
