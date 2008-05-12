@@ -88,6 +88,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings, split_lines
 import bzrlib.patiencediff
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
@@ -398,7 +399,6 @@ class Weave(VersionedFile):
 
         :param nostore_sha: See VersionedFile.add_lines.
         """
-        assert isinstance(version_id, basestring)
         self._check_lines_not_unicode(lines)
         self._check_lines_are_lines(lines)
         if not sha1:
@@ -479,14 +479,8 @@ class Weave(VersionedFile):
             #print 'raw match', tag, i1, i2, j1, j2
             if tag == 'equal':
                 continue
-
             i1 = basis_lineno[i1]
             i2 = basis_lineno[i2]
-
-            assert 0 <= j1 <= j2 <= len(lines)
-
-            #print tag, i1, i2, j1, j2
-
             # the deletion and insertion are handled separately.
             # first delete the region.
             if i1 != i2:
@@ -593,15 +587,12 @@ class Weave(VersionedFile):
                 elif c == '}':
                     istack.pop()
                 elif c == '[':
-                    assert self._names[v] not in dset
                     dset.add(self._names[v])
                 elif c == ']':
                     dset.remove(self._names[v])
                 else:
                     raise WeaveFormatError('unexpected instruction %r' % v)
             else:
-                assert l.__class__ in (str, unicode)
-                assert istack
                 yield lineno, istack[-1], frozenset(dset), l
             lineno += 1
 
@@ -717,22 +708,19 @@ class Weave(VersionedFile):
                 c, v = l
                 isactive = None
                 if c == '{':
-                    assert v not in iset
                     istack.append(v)
                     iset.add(v)
                 elif c == '}':
                     iset.remove(istack.pop())
                 elif c == '[':
                     if v in included:
-                        assert v not in dset
                         dset.add(v)
-                else:
-                    assert c == ']'
+                elif c == ']':
                     if v in included:
-                        assert v in dset
                         dset.remove(v)
+                else:
+                    raise AssertionError()
             else:
-                assert l.__class__ in (str, unicode)
                 if isactive is None:
                     isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
@@ -776,7 +764,6 @@ class Weave(VersionedFile):
     def num_versions(self):
         """How many versions are in this weave?"""
         l = len(self._parents)
-        assert l == len(self._sha1s)
         return l
 
     __len__ = num_versions
@@ -808,8 +795,10 @@ class Weave(VersionedFile):
             for p in self._parents[i]:
                 new_inc.update(inclusions[self._idx_to_name(p)])
 
-            assert set(new_inc) == set(self.get_ancestry(name)), \
-                'failed %s != %s' % (set(new_inc), set(self.get_ancestry(name)))
+            if set(new_inc) != set(self.get_ancestry(name)):
+                raise AssertionError(
+                    'failed %s != %s' 
+                    % (set(new_inc), set(self.get_ancestry(name))))
             inclusions[name] = new_inc
 
         nlines = len(self._weave)
@@ -1009,6 +998,11 @@ class WeaveFile(Weave):
         """See VersionedFile.get_suffixes()."""
         return [WeaveFile.WEAVE_SUFFIX]
 
+    def insert_record_stream(self, stream):
+        super(WeaveFile, self).insert_record_stream(stream)
+        self._save()
+
+    @deprecated_method(one_five)
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
         """Join other into self and save."""

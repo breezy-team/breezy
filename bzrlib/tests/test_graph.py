@@ -165,7 +165,7 @@ double_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
 # Complex shortcut
 # This has a failure mode in that a shortcut will find some nodes in common,
 # but the common searcher won't have time to find that one branch is actually
-# in common. The extra nodes at the top are because we want to avoid
+# in common. The extra nodes at the beginning are because we want to avoid
 # walking off the graph. Specifically, node G should be considered common, but
 # is likely to be seen by M long before the common searcher finds it.
 #
@@ -181,25 +181,169 @@ double_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
 #     |\
 #     e f
 #     | |\
-#     i | h
-#     |\| |
-#     | g |
-#     | | |
-#     | j |
+#     | g h
+#     |/| |
+#     i j |
 #     | | |
 #     | k |
 #     | | |
 #     | l |
 #     |/|/
 #     m n
-complex_shortcut = {'d':[NULL_REVISION],
-                    'x':['d'], 'y':['x'],
-                    'e':['y'], 'f':['d'], 'g':['f', 'i'], 'h':['f'],
-                    'i':['e'], 'j':['g'], 'k':['j'],
-                    'l':['k'], 'm':['i', 's'], 'n':['s', 'h'],
-                    'o':['l'], 'p':['o'], 'q':['p'],
-                    'r':['q'], 's':['r'],
+complex_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+                    'e':['d'], 'f':['d'], 'g':['f'], 'h':['f'],
+                    'i':['e', 'g'], 'j':['g'], 'k':['j'],
+                    'l':['k'], 'm':['i', 'l'], 'n':['l', 'h']}
+
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e |
+#     | |
+#     f |
+#     | |
+#     g h
+#     | |\
+#     i | j
+#     |\| |
+#     | k |
+#     | | |
+#     | l |
+#     | | |
+#     | m |
+#     | | |
+#     | n |
+#     | | |
+#     | o |
+#     | | |
+#     | p |
+#     | | |
+#     | q |
+#     | | |
+#     | r |
+#     | | |
+#     | s |
+#     | | |
+#     |/|/
+#     t u
+complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+                    'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
+                    'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
+                    'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
+                    't':['i', 's'], 'u':['s', 'j'], 
                     }
+
+# Graph where different walkers will race to find the common and uncommon
+# nodes.
+#
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e k
+#     | |
+#     f-+-p
+#     | | |
+#     | l |
+#     | | |
+#     | m |
+#     | |\|
+#     g n q
+#     |\| |
+#     h o |
+#     |/| |
+#     i r |
+#     | | |
+#     | s |
+#     | | |
+#     | t |
+#     | | |
+#     | u |
+#     | | |
+#     | v |
+#     | | |
+#     | w |
+#     | | |
+#     | x |
+#     | |\|
+#     | y z
+#     |/
+#     j
+#
+# y is found to be common right away, but is the start of a long series of
+# common commits.
+# o is actually common, but the i-j shortcut makes it look like it is actually
+# unique to j at first, you have to traverse all of y->o to find it.
+# q,n give the walker from j a common point to stop searching, as does p,f.
+# k-n exists so that the second pass still has nodes that are worth searching,
+# rather than instantly cancelling the extra walker.
+
+racing_shortcuts = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+    'e':['d'], 'f':['e'], 'g':['f'], 'h':['g'], 'i':['h', 'o'], 'j':['i', 'y'],
+    'k':['d'], 'l':['k'], 'm':['l'], 'n':['m'], 'o':['n', 'g'], 'p':['f'],
+    'q':['p', 'm'], 'r':['o'], 's':['r'], 't':['s'], 'u':['t'], 'v':['u'],
+    'w':['v'], 'x':['w'], 'y':['x'], 'z':['x', 'q']}
+
+
+# A graph with multiple nodes unique to one side.
+#
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e f
+#     |\ \
+#     g h i
+#     |\ \ \
+#     j k l m
+#     | |/ x|
+#     | n o p
+#     | |/  |
+#     | q   |
+#     | |   |
+#     | r   |
+#     | |   |
+#     | s   |
+#     | |   |
+#     | t   |
+#     | |   |
+#     | u   |
+#     | |   |
+#     | v   |
+#     | |   |
+#     | w   |
+#     | |   |
+#     | x   |
+#     |/ \ /
+#     y   z
+#
+
+multiple_interesting_unique = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
+    'd':['c'], 'e':['d'], 'f':['d'], 'g':['e'], 'h':['e'], 'i':['f'],
+    'j':['g'], 'k':['g'], 'l':['h'], 'm':['i'], 'n':['k', 'l'],
+    'o':['m'], 'p':['m', 'l'], 'q':['n', 'o'], 'r':['q'], 's':['r'],
+    't':['s'], 'u':['t'], 'v':['u'], 'w':['v'], 'x':['w'],
+    'y':['j', 'x'], 'z':['x', 'p']}
+
 
 # Shortcut with extra root
 # We have a long history shortcut, and an extra root, which is why we can't
@@ -357,6 +501,31 @@ class TestGraph(TestCaseWithMemoryTransport):
                          graph.find_unique_lca('rev2a', 'rev2b',
                          count_steps=True))
 
+    def assertRemoveDescendants(self, expected, graph, revisions):
+        parents = graph.get_parent_map(revisions)
+        self.assertEqual(expected,
+                         graph._remove_simple_descendants(revisions, parents))
+
+    def test__remove_simple_descendants(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev1']), graph,
+            set(['rev1', 'rev2a', 'rev2b', 'rev3', 'rev4']))
+
+    def test__remove_simple_descendants_disjoint(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev1', 'rev3']), graph,
+            set(['rev1', 'rev3']))
+
+    def test__remove_simple_descendants_chain(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev1']), graph,
+            set(['rev1', 'rev2a', 'rev3']))
+
+    def test__remove_simple_descendants_siblings(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev2a', 'rev2b']), graph,
+            set(['rev2a', 'rev2b', 'rev3']))
+
     def test_unique_lca_criss_cross(self):
         """Ensure we don't pick non-unique lcas in a criss-cross"""
         graph = self.make_graph(criss_cross)
@@ -427,9 +596,6 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_extended_history(self):
         graph = self.make_graph(extended_history_shortcut)
-        self.expectFailure('find_difference cannot handle shortcuts',
-            self.assertEqual, (set(['e']), set(['f'])),
-                graph.find_difference('e', 'f'))
         self.assertEqual((set(['e']), set(['f'])),
                          graph.find_difference('e', 'f'))
         self.assertEqual((set(['f']), set(['e'])),
@@ -442,17 +608,16 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_complex_shortcut(self):
         graph = self.make_graph(complex_shortcut)
-        self.expectFailure('find_difference cannot handle shortcuts',
-            self.assertEqual, (set(['m']), set(['h', 'n'])),
-                graph.find_difference('m', 'n'))
-        self.assertEqual((set(['m']), set(['h', 'n'])),
+        self.assertEqual((set(['m', 'i', 'e']), set(['n', 'h'])),
                          graph.find_difference('m', 'n'))
+
+    def test_graph_difference_complex_shortcut2(self):
+        graph = self.make_graph(complex_shortcut2)
+        self.assertEqual((set(['t']), set(['j', 'u'])),
+                         graph.find_difference('t', 'u'))
 
     def test_graph_difference_shortcut_extra_root(self):
         graph = self.make_graph(shortcut_extra_root)
-        self.expectFailure('find_difference cannot handle shortcuts',
-            self.assertEqual, (set(['e']), set(['f', 'g'])),
-                graph.find_difference('e', 'f'))
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
@@ -971,6 +1136,96 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
             result.get_recipe())
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+
+
+class TestFindUniqueAncestors(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+
+    def make_breaking_graph(self, ancestors, break_on):
+        """Make a Graph that raises an exception if we hit a node."""
+        g = self.make_graph(ancestors)
+        orig_parent_map = g.get_parent_map
+        def get_parent_map(keys):
+            bad_keys = set(keys).intersection(break_on)
+            if bad_keys:
+                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
+            return orig_parent_map(keys)
+        g.get_parent_map = get_parent_map
+        return g
+
+    def assertFindUniqueAncestors(self, graph, expected, node, common):
+        actual = graph.find_unique_ancestors(node, common)
+        self.assertEqual(expected, sorted(actual))
+
+    def test_empty_set(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev1'])
+        self.assertFindUniqueAncestors(graph, [], 'rev2b', ['rev2b'])
+        self.assertFindUniqueAncestors(graph, [], 'rev3', ['rev1', 'rev3'])
+
+    def test_single_node(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, ['rev2a'], 'rev2a', ['rev1'])
+        self.assertFindUniqueAncestors(graph, ['rev2b'], 'rev2b', ['rev1'])
+        self.assertFindUniqueAncestors(graph, ['rev3'], 'rev3', ['rev2a'])
+
+    def test_minimal_ancestry(self):
+        graph = self.make_breaking_graph(extended_history_shortcut,
+                                         [NULL_REVISION, 'a', 'b'])
+        self.assertFindUniqueAncestors(graph, ['e'], 'e', ['d'])
+
+        graph = self.make_breaking_graph(extended_history_shortcut,
+                                         ['b'])
+        self.assertFindUniqueAncestors(graph, ['f'], 'f', ['a', 'd'])
+
+        graph = self.make_breaking_graph(complex_shortcut,
+                                         ['a', 'b'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['i'])
+        self.assertFindUniqueAncestors(graph, ['e', 'g', 'i'], 'i', ['h'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['g'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['j'])
+
+    def test_in_ancestry(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev3'])
+        self.assertFindUniqueAncestors(graph, [], 'rev2b', ['rev4'])
+
+    def test_multiple_revisions(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph,
+            ['rev4'], 'rev4', ['rev3', 'rev2b'])
+        self.assertFindUniqueAncestors(graph,
+            ['rev2a', 'rev3', 'rev4'], 'rev4', ['rev2b'])
+
+    def test_complex_shortcut(self):
+        graph = self.make_graph(complex_shortcut)
+        self.assertFindUniqueAncestors(graph,
+            ['h', 'n'], 'n', ['m'])
+        self.assertFindUniqueAncestors(graph,
+            ['e', 'i', 'm'], 'm', ['n'])
+
+    def test_complex_shortcut2(self):
+        graph = self.make_graph(complex_shortcut2)
+        self.assertFindUniqueAncestors(graph,
+            ['j', 'u'], 'u', ['t'])
+        self.assertFindUniqueAncestors(graph,
+            ['t'], 't', ['u'])
+
+    def test_multiple_interesting_unique(self):
+        graph = self.make_graph(multiple_interesting_unique)
+        self.assertFindUniqueAncestors(graph,
+            ['j', 'y'], 'y', ['z'])
+        self.assertFindUniqueAncestors(graph,
+            ['p', 'z'], 'z', ['y'])
+
+    def test_racing_shortcuts(self):
+        graph = self.make_graph(racing_shortcuts)
+        self.assertFindUniqueAncestors(graph,
+            ['p', 'q', 'z'], 'z', ['y'])
+        self.assertFindUniqueAncestors(graph,
+            ['h', 'i', 'j', 'y'], 'j', ['z'])
 
 
 class TestCachingParentsProvider(tests.TestCase):

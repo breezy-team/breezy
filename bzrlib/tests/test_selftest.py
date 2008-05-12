@@ -65,7 +65,6 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           preserve_input,
                           randomize_suite,
-                          sort_suite_by_re,
                           split_suite_by_condition,
                           split_suite_by_re,
                           test_lsprof,
@@ -503,7 +502,9 @@ class TestTreeProviderAdapter(TestCase):
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
-        self.assertEqual(4, len(tests))
+        # XXX We should not have tests fail as we add more scenarios
+        # abentley 20080412
+        self.assertEqual(5, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = WorkingTreeFormat3
@@ -1823,14 +1824,6 @@ class TestSelftestFiltering(TestCase):
         # necessarily.)
         self.assertEqual(len(self.all_names), len(_test_ids(randomized_suite)))
 
-    def test_sort_suite_by_re(self):
-        sorted_suite = self.applyDeprecated(one_zero,
-            sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
-        sorted_names = _test_ids(sorted_suite)
-        self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
-            'TestSelftestFiltering.test_filter_suite_by_re')
-        self.assertEquals(sorted(self.all_names), sorted(sorted_names))
-
     def test_split_suit_by_condition(self):
         self.all_names = _test_ids(self.suite)
         condition = condition_id_re('test_filter_suite_by_r')
@@ -2000,13 +1993,12 @@ class TestTestIdList(tests.TestCase):
         # category
         test_list = [
             # testmod_names
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
             # transport implementations
             'bzrlib.tests.test_transport_implementations.TransportTests'
             '.test_abspath(LocalURLServer)',
-            # packages_to_test()
-            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
-            # MODULES_TO_DOCTEST
+            # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins

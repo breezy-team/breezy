@@ -136,7 +136,9 @@ class VersionedFile(object):
             sorted stream has compression parents strictly before their
             children.
         :param include_delta_closure: If True then the closure across any
-            compression parents will be included (in the opaque data).
+            compression parents will be included (in the data content of the
+            stream, not in the emitted records). This guarantees that
+            'fulltext' can be used successfully on every record.
         :return: An iterator of ContentFactory objects, each of which is only
             valid until the iterator is advanced.
         """
@@ -695,8 +697,9 @@ class PlanWeaveMerge(TextMerge):
                 ch_b = ch_a = True
                 lines_b.append(line)
             else:
-                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
-                                 'killed-base', 'killed-both'), state
+                if state not in ('irrelevant', 'ghost-a', 'ghost-b',
+                        'killed-base', 'killed-both'):
+                    raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
 

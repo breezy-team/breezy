@@ -179,7 +179,8 @@ class Option(object):
         self.type = type
         self._short_name = short_name
         if type is None:
-            assert argname is None
+            if argname:
+                raise ValueError('argname not valid for booleans')
         elif argname is None:
             argname = 'ARG'
         self.argname = argname

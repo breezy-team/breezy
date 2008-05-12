@@ -45,7 +45,6 @@ class ChrootServer(Server):
         self.backing_transport = backing_transport
 
     def _factory(self, url):
-        assert url.startswith(self.scheme)
         return ChrootTransport(self, url)
 
     def get_url(self):
@@ -79,7 +78,8 @@ class ChrootTransport(Transport):
 
     def _safe_relpath(self, relpath):
         safe_relpath = self._combine_paths(self.base_path, relpath)
-        assert safe_relpath.startswith('/')
+        if not safe_relpath.startswith('/'):
+            raise ValueError(safe_relpath)
         return safe_relpath[1:]
 
     # Transport methods

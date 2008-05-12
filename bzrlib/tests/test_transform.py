@@ -51,8 +51,8 @@ from bzrlib.tests import (
     )
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              find_interesting, build_tree, get_backup_name,
-                              change_entry, _FileMover, resolve_checkout,
+                              build_tree, get_backup_name,
+                              _FileMover, resolve_checkout,
                               TransformPreview)
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -747,16 +747,6 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         rename.set_executability(True, myfile)
         rename.apply()
 
-    def test_find_interesting(self):
-        create, root = self.get_transform()
-        wt = create._tree
-        create.new_file('vfile', root, 'myfile-text', 'myfile-id')
-        create.new_file('uvfile', root, 'othertext')
-        create.apply()
-        result = self.applyDeprecated(symbol_versioning.zero_fifteen,
-            find_interesting, wt, wt, ['vfile'])
-        self.assertEqual(result, set(['myfile-id']))
-
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
         
@@ -1171,11 +1161,6 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.cancel_creation(child)
         transform.cancel_creation(parent)
         transform.finalize()
-
-    def test_change_entry(self):
-        txt = 'bzrlib.transform.change_entry was deprecated in version 0.90.'
-        self.callDeprecated([txt], change_entry, None, None, None, None, None,
-            None, None, None)
 
     def test_case_insensitive_clash(self):
         self.requireFeature(CaseInsensitiveFilesystemFeature)
