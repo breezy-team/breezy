@@ -21,6 +21,7 @@ client and server.
 import collections
 from cStringIO import StringIO
 import struct
+import sys
 import time
 
 import bzrlib
@@ -809,8 +810,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         else:
             self.state_accept = self._state_accept_expecting_headers
             self._number_needed_bytes = 4
-        self.errored = False
-
+        self.decoding_failed = False
         self.request_handler = self.message_handler = message_handler
 
     def accept_bytes(self, bytes):
@@ -819,7 +819,18 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             _StatefulDecoder.accept_bytes(self, bytes)
         except KeyboardInterrupt:
             raise
+        except errors.SmartMessageHandlerError, exception:
+            # We do *not* set self.decoding_failed here.  The message handler
+            # has raised an error, but the decoder is still able to parse bytes
+            # and determine when this message ends.
+            log_exception_quietly()
+            self.message_handler.protocol_error(exception.exc_value)
+            # The state machine is ready to continue decoding, but the
+            # exception has interrupted the loop that runs the state machine.
+            # So we call accept_bytes again to restart it.
+            self.accept_bytes('')
         except Exception, exception:
+            self.decoding_failed = True
             if isinstance(exception, errors.UnexpectedProtocolVersionMarker):
                 # This happens during normal operation when the client tries a
                 # protocol version the server doesn't understand, so no need to
@@ -828,7 +839,6 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             else:
                 log_exception_quietly()
             self.message_handler.protocol_error(exception)
-            self.errored = True
 
     def _extract_length_prefixed_bytes(self):
         if len(self._in_buffer) < 4:
@@ -890,8 +900,11 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         if type(decoded) is not dict:
             raise errors.SmartProtocolError(
                 'Header object %r is not a dict' % (decoded,))
-        self.message_handler.headers_received(decoded)
         self.state_accept = self._state_accept_expecting_message_part
+        try:
+            self.message_handler.headers_received(decoded)
+        except:
+            raise errors.SmartMessageHandlerError(sys.exc_info())
     
     def _state_accept_expecting_message_part(self, bytes):
         self._in_buffer += bytes
@@ -911,28 +924,40 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _state_accept_expecting_one_byte(self, bytes):
         self._in_buffer += bytes
         byte = self._extract_single_byte()
-        self.message_handler.byte_part_received(byte)
         self.state_accept = self._state_accept_expecting_message_part
+        try:
+            self.message_handler.byte_part_received(byte)
+        except:
+            raise errors.SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_bytes(self, bytes):
         # XXX: this should not buffer whole message part, but instead deliver
         # the bytes as they arrive.
         self._in_buffer += bytes
         prefixed_bytes = self._extract_length_prefixed_bytes()
-        self.message_handler.bytes_part_received(prefixed_bytes)
         self.state_accept = self._state_accept_expecting_message_part
+        try:
+            self.message_handler.bytes_part_received(prefixed_bytes)
+        except:
+            raise errors.SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_structure(self, bytes):
         self._in_buffer += bytes
         structure = self._extract_prefixed_bencoded_data()
-        self.message_handler.structure_part_received(structure)
         self.state_accept = self._state_accept_expecting_message_part
+        try:
+            self.message_handler.structure_part_received(structure)
+        except:
+            raise errors.SmartMessageHandlerError(sys.exc_info())
 
     def done(self):
         self.unused_data = self._in_buffer
         self._in_buffer = None
         self.state_accept = self._state_accept_reading_unused
-        self.message_handler.end_received()
+        try:
+            self.message_handler.end_received()
+        except:
+            raise errors.SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_reading_unused(self, bytes):
         self.unused_data += bytes
@@ -940,7 +965,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def next_read_size(self):
         if self.state_accept == self._state_accept_reading_unused:
             return 0
-        elif self.errored:
+        elif self.decoding_failed:
             # An exception occured while processing this message, probably from
             # self.message_handler.  We're not sure that this state machine is
             # in a consistent state, so just signal that we're done (i.e. give

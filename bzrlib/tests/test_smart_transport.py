@@ -2322,6 +2322,49 @@ class TestConventionalResponseHandler(tests.TestCase):
         self.assertEqual(('error', 'abc'), exc.error_tuple)
 
 
+class TestMessageHandlerErrors(tests.TestCase):
+    """Tests for v3 that unrecognised (but well-formed) requests/responses are
+    still fully read off the wire, so that subsequent requests/responses on the
+    same medium can be decoded.
+    """
+
+    def test_non_conventional_request(self):
+        """ConventionalRequestHandler (the default message handler on the
+        server side) will reject an unconventional message, but still consume
+        all the bytes of that message and signal when it has done so.
+
+        This is what allows a server to continue to accept requests after the
+        client sends a completely unrecognised request.
+        """
+        # Define an invalid request (but one that is a well-formed message).
+        # This particular invalid request not only lacks the mandatory
+        # verb+args tuple, it has a single-byte part, which is forbidden.  In
+        # fact it has that part twice, to trigger multiple errors.
+        invalid_request = (
+            protocol.MESSAGE_VERSION_THREE +  # protocol version marker
+            '\0\0\0\x02de' + # empty headers
+            'oX' + # a single byte part: 'X'.  ConventionalRequestHandler will
+                   # error at this part.
+            'oX' + # and again.
+            'e' # end of message
+            )
+
+        to_server = StringIO(invalid_request)
+        from_server = StringIO()
+        transport = memory.MemoryTransport('memory:///')
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, transport)
+        proto = server._build_protocol()
+        message_handler = proto.message_handler
+        server._serve_one_request(proto)
+        # All the bytes have been read from the medium...
+        self.assertEqual('', to_server.read())
+        # ...and the protocol decoder has consumed all the bytes, and has
+        # finished reading.
+        self.assertEqual('', proto.unused_data)
+        self.assertEqual(0, proto.next_read_size())
+
+
 class InstrumentedRequestHandler(object):
     """Test Double of SmartServerRequestHandler."""
 

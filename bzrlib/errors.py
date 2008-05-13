@@ -1492,6 +1492,14 @@ class UnknownSmartMethod(InternalBzrError):
         self.verb = verb
 
 
+class SmartMessageHandlerError(InternalBzrError):
+
+    _fmt = "The message handler raised an exception: %(exc_value)s."
+
+    def __init__(self, exc_info):
+        self.exc_type, self.exc_value, self.tb = exc_info
+        
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
 
