@@ -797,7 +797,10 @@ class GenericCommitHandler(processor.CommitHandler):
             ie.text_size = sum(map(len, lines))
             self.lines_for_commit[file_id] = lines
         elif isinstance(ie, inventory.InventoryLink):
-            ie.symlink_target = data
+            ie.symlink_target = data.encode('utf8')
+            # There are no lines stored for a symlink so
+            # make sure the cache used by get_lines knows that
+            self.lines_for_commit[file_id] = []
         else:
             raise errors.BzrError("Cannot import items of kind '%s' yet" %
                 (kind,))

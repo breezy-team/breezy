@@ -151,3 +151,30 @@ class TestRename(tests.TestCaseWithTransport):
         changes = revtree2.changes_from(revtree1)
         self.check_changes(changes, expected_renamed=[(old_path, new_path)],
             expected_added=[('b',)])
+
+
+class TestFileKinds(tests.TestCaseWithTransport):
+
+    def get_handler(self):
+        branch = self.make_branch('.')
+        handler = generic_processor.GenericProcessor(branch.bzrdir)
+        return (handler, branch)
+
+    def get_command_iter(self, path, kind, content):
+        def command_list():
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path, kind, False,
+                        None, content)
+            yield commands.CommitCommand('head', '1', None,
+                committer, "commit 1", None, [], files_one)
+        return command_list
+
+    def test_import_plainfile(self):
+        (handler, branch) = self.get_handler()
+        command_list = self.get_command_iter('foo', 'file', 'aaa')
+
+    def test_import_symlink(self):
+        (handler, branch) = self.get_handler()
+        command_list = self.get_command_iter('foo', 'symlink', 'bar')
+        handler.process(command_list)
