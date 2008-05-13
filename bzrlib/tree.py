@@ -305,7 +305,7 @@ class Tree(object):
         """
         provider = self._get_attributes_provider()
         for path in path_names:
-            yield provider.get_properties(path, attr_names)
+            yield provider.get_attributes(path, attr_names)
 
     def _get_attributes_provider(self):
         """Get the source to get attributes from.
@@ -314,7 +314,7 @@ class Tree(object):
         """
         # Note: In the future, attributes may be found by looking in
         # the tree as well, not just in the user configuration
-        return properties._user_properties_provider
+        return attributes._user_attributes_provider
 
     def get_symlink_target(self, file_id):
         """Get the target for a given file_id.

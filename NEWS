@@ -27,7 +27,7 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * Added plumbing for per-user file properties using globs like those
+    * Added plumbing for per-user file attributes using globs like those
       supported in .bzrignore files. (Ian Clatworthy)
 
   API BREAKS:

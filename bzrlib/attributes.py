@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Properties to associate with files based on file glob patterns.
+"""Attributes to associate with files based on file glob patterns.
 
-Patterns and the properties for each are defined in ini file format in
-BZR_HOME/fileproperties. For example::
+Patterns and the attributes for each are defined in ini file format in
+BZR_HOME/attributes. For example::
 
     [*.txt]
     text = True
@@ -44,28 +44,35 @@ from bzrlib import (
 from bzrlib.util.configobj import configobj
 
 
-class _PropertiesProvider(object):
-    """An object that provides properties for a file."""
+class _AttributesProvider(object):
+    """An object that provides attributes for a file."""
+
+    def get_attributes(self, path, names=None):
+        """Return the dictionary of attributes for a path.
+
+        :param path: tree relative path
+        :param names: the list of attributes to lookup - None for all
+        :return: a dictionary where:
+          the keys are the requested attribute names and
+          the values are the attribute values or None if undefined
+        """
+        raise NotImplementedError(self.get_attributes)
+
+
+class _FileBasedAttributesProvider(_AttributesProvider):
 
     def __init__(self, filename):
-        """Create a provider of properties.
+        """Create a provider of attributes.
 
         :param filename: the ini file holding the patterns and the
-          properties that apply to each.
+          attributes that apply to each.
         """
         self._cfg = configobj.ConfigObj(filename)
         patterns = self._cfg.keys()
         self._globster = globbing._OrderedGlobster(patterns)
 
-    def get_properties(self, path, names=None):
-        """Return the dictionary of properties for a path.
-
-        :param path: tree relative path
-        :param names: the list of properties to lookup - None for all
-        :return: a dictionary where:
-          the keys are the requested property names and
-          the values are the property values or None if undefined
-        """
+    def get_attributes(self, path, names=None):
+        """See _AttributesProvider.get_attributes."""
         pat = self._globster.match(path)
         if pat is None:
             all = {}
@@ -77,10 +84,10 @@ class _PropertiesProvider(object):
             return dict((k, all.get(k)) for k in names)
 
 
-def properties_filename():
-    """Return per-user properties file filename."""
-    return osutils.pathjoin(config.config_dir(), 'fileproperties')
+def attributes_filename():
+    """Return per-user attributes file filename."""
+    return osutils.pathjoin(config.config_dir(), 'attributes')
 
 
-# The object providing per-user properties
-_user_properties_provider = _PropertiesProvider(properties_filename())
+# The object providing per-user attributes
+_user_attributes_provider = _FileBasedAttributesProvider(attributes_filename())
