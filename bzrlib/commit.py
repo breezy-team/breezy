@@ -365,7 +365,6 @@ class Commit(object):
 
                 # Prompt the user for a commit message if none provided
                 message = message_callback(self)
-                assert isinstance(message, unicode), type(message)
                 self.message = message
                 self._escape_commit_message()
 

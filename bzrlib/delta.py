@@ -226,7 +226,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             if fully_present[1] is True:
                 delta.added.append((path[1], file_id, kind[1]))
             else:
-                assert fully_present[0] is True
                 delta.removed.append((path[0], file_id, kind[0]))
         elif fully_present[0] is False:
             continue

@@ -223,7 +223,6 @@ class HashCache(object):
             outf.write(CACHE_HEADER)
 
             for path, c  in self._cache.iteritems():
-                assert '//' not in path, path
                 line_info = [path.encode('utf-8'), '// ', c[0], ' ']
                 line_info.append(' '.join([str(fld) for fld in c[1]]))
                 line_info.append('\n')

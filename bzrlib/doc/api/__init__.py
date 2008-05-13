@@ -29,7 +29,9 @@ import os
 
 from bzrlib import tests
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
+    """This module creates its own test suite with DocFileSuite."""
+
     dir_ = os.path.dirname(__file__)
     if os.path.isdir(dir_):
         candidates = os.listdir(dir_)
@@ -37,6 +39,7 @@ def test_suite():
         candidates = []
     scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
+    # since this module doesn't define tests, we ignore basic_tests
     suite = doctest.DocFileSuite(*scripts)
     # DocFileCase reduces the test id to the base name of the tested file, we
     # want the module to appears there.

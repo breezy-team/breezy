@@ -40,8 +40,6 @@ from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_fifteen,
-        zero_ninety,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
@@ -447,7 +445,8 @@ class TreeTransformBase(object):
 
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
-        assert file_id is not None
+        if file_id is None:
+            raise ValueError()
         unique_add(self._new_id, trans_id, file_id)
         unique_add(self._r_new_id, file_id, trans_id)
 
@@ -517,8 +516,6 @@ class TreeTransformBase(object):
         applied.
         """
         try:
-            # there is a new id for this file
-            assert self._new_id[trans_id] is not None
             return self._new_id[trans_id]
         except KeyError:
             if trans_id in self._removed_id:
@@ -1249,7 +1246,6 @@ class TreeTransform(TreeTransformBase):
                         file_id = self._tree.get_root_id()
                     else:
                         file_id = self.tree_file_id(trans_id)
-                    assert file_id is not None
                     # File-id isn't really being deleted, just moved
                     if file_id in self._r_new_id:
                         continue
@@ -1776,7 +1772,8 @@ def resolve_checkout(tt, conflicts, divert):
     new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         # Anything but a 'duplicate' would indicate programmer error
-        assert c_type == 'duplicate', c_type
+        if c_type != 'duplicate':
+            raise AssertionError(c_type)
         # Now figure out which is new and which is old
         if tt.new_contents(conflict[1]):
             new_file = conflict[1]
@@ -1838,67 +1835,6 @@ def create_entry_executability(tt, entry, trans_id):
     """Set the executability of a trans_id according to an inventory entry"""
     if entry.kind == "file":
         tt.set_executability(entry.executable, trans_id)
-
-
-@deprecated_function(zero_fifteen)
-def find_interesting(working_tree, target_tree, filenames):
-    """Find the ids corresponding to specified filenames.
-    
-    Deprecated: Please use tree1.paths2ids(filenames, [tree2]).
-    """
-    working_tree.lock_read()
-    try:
-        target_tree.lock_read()
-        try:
-            return working_tree.paths2ids(filenames, [target_tree])
-        finally:
-            target_tree.unlock()
-    finally:
-        working_tree.unlock()
-
-
-@deprecated_function(zero_ninety)
-def change_entry(tt, file_id, working_tree, target_tree, 
-                 trans_id_file_id, backups, trans_id, by_parent):
-    """Replace a file_id's contents with those from a target tree."""
-    if file_id is None and target_tree is None:
-        # skip the logic altogether in the deprecation test
-        return
-    e_trans_id = trans_id_file_id(file_id)
-    entry = target_tree.inventory[file_id]
-    has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
-                                                           working_tree)
-    if contents_mod:
-        mode_id = e_trans_id
-        if has_contents:
-            if not backups:
-                tt.delete_contents(e_trans_id)
-            else:
-                parent_trans_id = trans_id_file_id(entry.parent_id)
-                backup_name = get_backup_name(entry, by_parent,
-                                              parent_trans_id, tt)
-                tt.adjust_path(backup_name, parent_trans_id, e_trans_id)
-                tt.unversion_file(e_trans_id)
-                e_trans_id = tt.create_path(entry.name, parent_trans_id)
-                tt.version_file(file_id, e_trans_id)
-                trans_id[file_id] = e_trans_id
-        create_by_entry(tt, entry, target_tree, e_trans_id, mode_id=mode_id)
-        create_entry_executability(tt, entry, e_trans_id)
-
-    elif meta_mod:
-        tt.set_executability(entry.executable, e_trans_id)
-    if tt.final_name(e_trans_id) != entry.name:
-        adjust_path  = True
-    else:
-        parent_id = tt.final_parent(e_trans_id)
-        parent_file_id = tt.final_file_id(parent_id)
-        if parent_file_id != entry.parent_id:
-            adjust_path = True
-        else:
-            adjust_path = False
-    if adjust_path:
-        parent_trans_id = trans_id_file_id(entry.parent_id)
-        tt.adjust_path(entry.name, parent_trans_id, e_trans_id)
 
 
 def get_backup_name(entry, by_parent, parent_trans_id, tt):
@@ -2054,8 +1990,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     # preserve the execute bit when backing up
                     if keep_content and executable[0] == executable[1]:
                         tt.set_executability(executable[1], trans_id)
-                else:
-                    assert kind[1] is None
+                elif kind[1] is not None:
+                    raise AssertionError(kind[1])
             if versioned == (False, True):
                 tt.version_file(file_id, trans_id)
             if versioned == (True, False):

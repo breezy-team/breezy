@@ -570,9 +570,11 @@ class LocationConfig(IniBasedConfig):
 
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
-        assert store in [STORE_LOCATION,
+        if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
-                         STORE_LOCATION_APPENDPATH], 'bad storage policy'
+                         STORE_LOCATION_APPENDPATH]:
+            raise ValueError('bad storage policy %r for %r' %
+                (store, option))
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
@@ -643,8 +645,7 @@ class BranchConfig(Config):
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email") 
-                    .read()
+            return (self.branch.control_files._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -891,6 +892,8 @@ def extract_email_address(e):
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+
     def __init__(self, branch):
         transport = branch.control_files._transport
         self._config = TransportConfig(transport, 'branch.conf')
@@ -991,6 +994,9 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
+            if type(auth_def) is not configobj.Section:
+                raise ValueError("%s defined outside a section" % auth_def_name)
+
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ['scheme', 'host', 'user', 'path'])
 
@@ -1028,7 +1034,8 @@ class AuthenticationConfig(object):
                 # Can't find a user
                 continue
             credentials = dict(name=auth_def_name,
-                               user=a_user, password=auth_def['password'],
+                               user=a_user,
+                               password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))

@@ -25,8 +25,8 @@ import time
 import urllib2
 import urlparse
 
-
 from bzrlib import (
+    errors,
     tests,
     transport,
     )
@@ -70,8 +70,9 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # feeding the bytes in the http request to the smart_protocol_request,
         # but for now it's simpler to just feed the bytes directly.
         smart_protocol_request.accept_bytes(self.rfile.read(data_length))
-        assert smart_protocol_request.next_read_size() == 0, (
-            "not finished reading, but all data sent to protocol.")
+        if not (smart_protocol_request.next_read_size() == 0):
+            raise errors.SmartProtocolError(
+                "not finished reading, but all data sent to protocol.")
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
         self.end_headers()
         self.wfile.write(out_buffer.getvalue())

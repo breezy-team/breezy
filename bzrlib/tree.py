@@ -545,7 +545,6 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        assert self._inventory[file_id].kind == "directory"
         return "directory"
 
     def list_files(self, include_root=False):
@@ -594,7 +593,6 @@ def file_status(filename, old_tree, new_tree):
         # what happened to the file that used to have
         # this name.  There are two possibilities: either it was
         # deleted entirely, or renamed.
-        assert old_id
         if new_inv.has_id(old_id):
             return 'X', old_inv.id2path(old_id), new_inv.id2path(old_id)
         else:
@@ -917,17 +915,3 @@ class InterTree(InterObject):
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
-
-
-# This was deprecated before 0.12, but did not have an official warning
-@symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
-def RevisionTree(*args, **kwargs):
-    """RevisionTree has moved to bzrlib.revisiontree.RevisionTree()
-
-    Accessing it as bzrlib.tree.RevisionTree has been deprecated as of
-    bzr 0.12.
-    """
-    from bzrlib.revisiontree import RevisionTree as _RevisionTree
-    return _RevisionTree(*args, **kwargs)
- 
-
