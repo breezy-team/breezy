@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import time
+
 from bzrlib import (
     debug,
     errors,
@@ -23,6 +25,8 @@ from bzrlib import (
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
+
+STEP_UNIQUE_SEARCHER_EVERY = 10
 
 # DIAGRAM of terminology
 #       A
@@ -260,6 +264,10 @@ class Graph(object):
             unique_are_common_nodes.update(
                 next_common_nodes.intersection(unique_searcher.seen))
             if unique_are_common_nodes:
+                # TODO: This is a bit overboard, we only really care about
+                #       the ancestors of the tips because the rest we
+                #       already know. This is *correct* but causes us to
+                #       search far too much ancestry.
                 ancestors = unique_searcher.find_seen_ancestors(
                                 unique_are_common_nodes)
                 ancestors.update(common_searcher.find_seen_ancestors(ancestors))
@@ -315,6 +323,8 @@ class Graph(object):
                     len(ancestor_all_unique), len(stopped_common))
             del ancestor_all_unique, stopped_common
 
+        # We step the ancestor_all_unique searcher only every other step
+        step_all_unique = 0
         # While we still have common nodes to search
         while common_searcher._next_query:
             newly_seen_common = set(common_searcher.step())
@@ -338,11 +348,20 @@ class Graph(object):
                     unique_are_common_nodes.intersection_update(searcher.seen)
                 unique_are_common_nodes.intersection_update(
                                             all_unique_searcher.seen)
-                # TODO: lsprof reports this as the most expensive portion of
-                #       this function. Taking 4.4s out of 6.2s spent in
-                #       find_unique_ancestors
-                unique_are_common_nodes.update(all_unique_searcher.step())
+                # Step the all-unique less frequently than the other searchers.
+                # In the common case, we don't need to spider out far here, so
+                # avoid doing extra work.
+                if not step_all_unique:
+                    tstart = time.clock()
+                    nodes = all_unique_searcher.step()
+                    unique_are_common_nodes.update(nodes)
+                    tdelta = time.clock() - tstart
+                    _mutter('all_unique_searcher step() took %.3fs for %d nodes'
+                            ' (%d total), iteration: %s', tdelta, 
+                            len(nodes), len(all_unique_searcher.seen),
+                            all_unique_searcher._iterations)
             intersect_searchers()
+            step_all_unique = (step_all_unique + 1) % STEP_UNIQUE_SEARCHER_EVERY
 
             if newly_seen_common:
                 # If a 'common' node is an ancestor of all unique searchers, we
@@ -403,7 +422,10 @@ class Graph(object):
                         len(unique_searchers), len(next_unique_searchers),
                         all_unique_searcher._iterations)
             unique_searchers = next_unique_searchers
-        return unique_nodes.difference(common_searcher.seen)
+        true_unique_nodes = unique_nodes.difference(common_searcher.seen)
+        _mutter('Found %s truly unique nodes out of %s',
+                len(true_unique_nodes), len(unique_nodes))
+        return true_unique_nodes
 
     @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revisions):
