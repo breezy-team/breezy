@@ -17,7 +17,7 @@
 """Properties to associate with files based on file glob patterns.
 
 Patterns and the properties for each are defined in ini file format in
-BZR_HOME/.bzrproperties. For example::
+BZR_HOME/fileproperties. For example::
 
     [*.txt]
     text = True
@@ -25,7 +25,7 @@ BZR_HOME/.bzrproperties. For example::
     [*.pdf]
     text = False
 
-Patterns use the same conventions as .bzrignore, namely:
+Patterns use the same conventions as BZR_HOME/ignore, namely:
 
  * *.xyz match any file ending in .xyz
  * foo/ matches all files in foo directories
@@ -72,7 +72,7 @@ class _PropertiesProvider(object):
 
 def properties_filename():
     """Return per-user properties file filename."""
-    return osutils.pathjoin(config.config_dir(), '.bzrproperties')
+    return osutils.pathjoin(config.config_dir(), 'fileproperties')
 
 
 # The object providing per-user properties

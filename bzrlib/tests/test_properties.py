@@ -42,7 +42,7 @@ class TestPropertiesPath(tests.TestCase):
 
     def test_properties_filename(self):
         self.assertEqual(properties.properties_filename(),
-                         self.bzr_home + '/.bzrproperties')
+                         self.bzr_home + '/fileproperties')
 
 
 class TestPropertiesProvider(tests.TestCase):
