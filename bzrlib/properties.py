@@ -57,17 +57,24 @@ class _PropertiesProvider(object):
         patterns = self._cfg.keys()
         self._globster = globbing._OrderedGlobster(patterns)
 
-    def get_properties(self, path):
+    def get_properties(self, path, names=None):
         """Return the dictionary of properties for a path.
 
         :param path: tree relative path
-        :return: the properties or {} if none
+        :param names: the list of properties to lookup - None for all
+        :return: a dictionary where:
+          the keys are the requested property names and
+          the values are the property values or None if undefined
         """
         pat = self._globster.match(path)
         if pat is None:
-            return {}
+            all = {}
         else:
-            return self._cfg[pat]
+            all = self._cfg[pat]
+        if names is None:
+            return all
+        else:
+            return dict((k, all.get(k)) for k in names)
 
 
 def properties_filename():

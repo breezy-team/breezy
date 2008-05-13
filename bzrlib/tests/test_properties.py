@@ -55,10 +55,12 @@ class TestPropertiesProvider(tests.TestCase):
     def test_get_properties_file_missing(self):
         pp = self.make_provider(None)
         self.assertEquals({}, pp.get_properties('a.txt'))
+        self.assertEquals({'foo': None}, pp.get_properties('a.txt', ['foo']))
 
     def test_get_properties_file_empty(self):
         pp = self.make_provider([])
         self.assertEquals({}, pp.get_properties('a.txt'))
+        self.assertEquals({'foo': None}, pp.get_properties('a.txt', ['foo']))
 
     def test_get_properties_from_extension_match(self):
         pp = self.make_provider(["[*.txt]", "foo=bar", "a=True"])
@@ -67,6 +69,8 @@ class TestPropertiesProvider(tests.TestCase):
             pp.get_properties('a.txt'))
         self.assertEquals({'foo':'bar', 'a': 'True'},
             pp.get_properties('dir/a.txt'))
+        self.assertEquals({'foo':'bar'},
+            pp.get_properties('a.txt', ['foo']))
 
     def test_get_properties_pathname_match(self):
         pp = self.make_provider(["[./a.txt]", "foo=baz"])

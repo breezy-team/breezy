@@ -292,6 +292,29 @@ class Tree(object):
             cur_file = (self.get_file_text(file_id),)
             yield identifier, cur_file
 
+    def get_attributes(self, path_names, attr_names=None):
+        """Get the attributes associated with entries in the tree.
+
+        :param path_names: an iterable of paths to find attributes for;
+          path are given relative to the root of the tree
+        :param attr_names: the list of attributes to lookup - None for all
+        :return: an iterator of dictionaries, one per path-name, where:
+          the keys are the requested attribute names and
+          the values are the attribute values or None if undefined
+        """
+        provider = self._get_attributes_provider()
+        for path in path_names:
+            yield provider.get_properties(path, names)
+
+    def _get_attributes_provider(self):
+        """Get the source to get attributes from.
+
+        Subclasses may wish to customise this.
+        """
+        # Note: In the future, attributes may be found by looking in
+        # the tree as well, not just in the user configuration
+        return properties._get_user_properties_provider
+
     def get_symlink_target(self, file_id):
         """Get the target for a given file_id.
 
