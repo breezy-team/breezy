@@ -348,6 +348,7 @@ def load_tests(basic_tests, module, loader):
 
     test_tree_implementations = [
         'bzrlib.tests.tree_implementations.test_annotate_iter',
+        'bzrlib.tests.tree_implementations.test_get_attributes',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
         'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',

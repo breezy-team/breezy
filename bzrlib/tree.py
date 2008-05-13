@@ -23,10 +23,11 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    conflicts as _mod_conflicts,
     delta,
     osutils,
+    properties,
     revision as _mod_revision,
-    conflicts as _mod_conflicts,
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
@@ -304,7 +305,7 @@ class Tree(object):
         """
         provider = self._get_attributes_provider()
         for path in path_names:
-            yield provider.get_properties(path, names)
+            yield provider.get_properties(path, attr_names)
 
     def _get_attributes_provider(self):
         """Get the source to get attributes from.
@@ -313,7 +314,7 @@ class Tree(object):
         """
         # Note: In the future, attributes may be found by looking in
         # the tree as well, not just in the user configuration
-        return properties._get_user_properties_provider
+        return properties._user_properties_provider
 
     def get_symlink_target(self, file_id):
         """Get the target for a given file_id.
