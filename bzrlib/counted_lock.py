@@ -56,11 +56,8 @@ class CountedLock(object):
         it is taken in read mode.
         """
         if self._lock_mode:
-            assert self._lock_mode in ('r', 'w'), \
-                   "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            assert self._lock_count == 0
             self._real_lock.lock_read()
             self._lock_count = 1
             self._lock_mode = 'r'
@@ -71,7 +68,6 @@ class CountedLock(object):
         If the lock was originally acquired in read mode this will fail.
         """
         if self._lock_count == 0:
-            assert self._lock_mode is None
             self._real_lock.lock_write()
             self._lock_mode = 'w'
         elif self._lock_mode != 'w':

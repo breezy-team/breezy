@@ -474,12 +474,13 @@ class Graph(object):
             if len(unique_search_sets) == 1:
                 nodes = unique_search_sets.pop()
                 uncommon_nodes = nodes.difference(common_ancestors)
-                assert not uncommon_nodes, ("Somehow we ended up converging"
-                                            " without actually marking them as"
-                                            " in common."
-                                            "\nStart_nodes: %s"
-                                            "\nuncommon_nodes: %s"
-                                            % (revisions, uncommon_nodes))
+                if uncommon_nodes:
+                    raise AssertionError("Somehow we ended up converging"
+                                         " without actually marking them as"
+                                         " in common."
+                                         "\nStart_nodes: %s"
+                                         "\nuncommon_nodes: %s"
+                                         % (revisions, uncommon_nodes))
                 break
         return border_ancestors, common_ancestors, searchers
 
@@ -679,8 +680,9 @@ class Graph(object):
 
         # TODO: We need a way to remove unique_searchers when they overlap with
         #       other unique searchers.
-        assert len(searchers) == 2, (
-            "Algorithm not yet implemented for > 2 searchers")
+        if len(searchers) != 2:
+            raise NotImplementedError(
+                "Algorithm not yet implemented for > 2 searchers")
         common_searchers = searchers
         left_searcher = searchers[0]
         right_searcher = searchers[1]

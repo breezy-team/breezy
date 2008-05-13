@@ -40,9 +40,7 @@ from bzrlib.repository import (
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
-                          TestLoader,
                           TestScenarioApplier,
-                          TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
@@ -163,8 +161,11 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
         return self.repository_format_to.initialize(made_control)
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_interrepository_implementations = [
         'bzrlib.tests.interrepository_implementations.test_fetch',
         'bzrlib.tests.interrepository_implementations.test_interrepository',
@@ -176,6 +177,6 @@ def test_suite():
         None,
         InterRepositoryTestProviderAdapter.default_test_list()
         )
-    loader = TestLoader()
+    # add the tests for the sub modules
     adapt_modules(test_interrepository_implementations, adapter, loader, result)
     return result
