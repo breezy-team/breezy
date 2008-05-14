@@ -196,16 +196,21 @@ class CachingFileIdMap(object):
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r' % revid)
-                
+
+        for path, (id, created_revid)  in _map.items():
+            assert isinstance(path, unicode)
+            assert isinstance(id, str)
+            assert isinstance(created_revid, str)
+
         self.idmap_knit.add_lines_with_ghosts(revid, parent_revids, 
-                ["%s\t%s\t%s\n" % (urllib.quote(filename), urllib.quote(_map[filename][0]), 
+                ["%s\t%s\t%s\n" % (urllib.quote(filename.encode("utf-8")), urllib.quote(_map[filename][0]), 
                                         urllib.quote(_map[filename][1])) for filename in sorted(_map.keys())])
 
     def load(self, revid):
         map = {}
         for line in self.idmap_knit.get_lines(revid):
             (filename, id, create_revid) = line.rstrip("\n").split("\t", 3)
-            map[urllib.unquote(filename)] = (urllib.unquote(id), urllib.unquote(create_revid))
+            map[urllib.unquote(filename).decode("utf-8")] = (urllib.unquote(id), urllib.unquote(create_revid))
             assert isinstance(map[urllib.unquote(filename)][0], str)
 
         return map
