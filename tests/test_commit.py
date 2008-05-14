@@ -79,6 +79,13 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
                             wt.branch.last_revision())
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
 
+    def test_commit_unicode_filename(self):
+        self.make_client('d', 'dc')
+        self.build_tree({'dc/I²C': "data"})
+        self.client_add("dc/I²C")
+        wt = self.open_checkout("dc")
+        wt.commit(message="data")
+
     def test_commit_local(self):
         self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
