@@ -830,6 +830,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # So we call accept_bytes again to restart it.
             self.accept_bytes('')
         except Exception, exception:
+            # The decoder itself has raised an exception.  We cannot continue
+            # decoding.
             self.decoding_failed = True
             if isinstance(exception, errors.UnexpectedProtocolVersionMarker):
                 # This happens during normal operation when the client tries a

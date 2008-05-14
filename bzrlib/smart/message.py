@@ -93,8 +93,11 @@ class ConventionalRequestHandler(MessageHandler):
         self.args_received = False
 
     def protocol_error(self, exception):
-        if not self.responder.response_sent:
-            self.responder.send_error(exception)
+        if self.responder.response_sent:
+            # We can only send one response to a request, no matter how many
+            # errors happen while processing it.
+            return
+        self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
         raise errors.SmartProtocolError(
