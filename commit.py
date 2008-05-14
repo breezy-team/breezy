@@ -236,13 +236,14 @@ class SvnCommitBuilder(RootCommitBuilder):
             if not (child_ie.kind in ('file', 'symlink')):
                 continue
 
-            new_child_path = self.new_inventory.id2path(child_ie.file_id)
+            new_child_path = self.new_inventory.id2path(child_ie.file_id).encode("utf-8")
+            full_new_child_path = urlutils.join(self.branch.get_branch_path(), 
+                                  new_child_path)
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding %s %r' % (child_ie.kind, new_child_path))
                 child_baton = self.editor.add_file(
-                    urlutils.join(self.branch.get_branch_path(), 
-                                  new_child_path), baton, None, -1, self.pool)
+                    full_new_child_path, baton, None, -1, self.pool)
 
 
             # copy if they existed at different location
@@ -252,7 +253,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                   self.old_inv.id2path(child_ie.file_id), 
                                   new_child_path))
                 child_baton = self.editor.add_file(
-                    urlutils.join(self.branch.get_branch_path(), new_child_path), baton, 
+                        full_new_child_path,
                     urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                     self.base_revnum, self.pool)
 
@@ -261,9 +262,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter('open %s %r' % (child_ie.kind, new_child_path))
 
                 child_baton = self.editor.open_file(
-                    urlutils.join(self.branch.get_branch_path(), 
-                        new_child_path), 
-                    baton, self.base_revnum, self.pool)
+                        full_new_child_path, baton, self.base_revnum, self.pool)
 
             else:
                 # Old copy of the file was retained. No need to send changes

@@ -81,10 +81,11 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
 
     def test_commit_unicode_filename(self):
         self.make_client('d', 'dc')
-        self.build_tree({'dc/I²C': "data"})
-        self.client_add("dc/I²C")
+        self.build_tree({u'dc/I²C': "data"})
+        self.client_add(u"dc/I²C".encode("utf-8"))
         wt = self.open_checkout("dc")
         wt.commit(message="data")
+
 
     def test_commit_local(self):
         self.make_client('d', 'dc')
@@ -310,6 +311,14 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertRaises(DivergedBranches, 
                           olddir.open_branch().pull,
                           self.newdir.open_branch())
+
+    def test_unicode_filename(self):
+        self.build_tree({u'dc/I²C': 'other data'})
+        wt = self.newdir.open_workingtree()
+        wt.add(u'I²C')
+        wt.commit(message="Commit from Bzr")
+        self.assertEqual(1, int(self.olddir.open_branch().pull(
+                                self.newdir.open_branch())))
 
     def test_change(self):
         self.build_tree({'dc/foo/bla': 'other data'})

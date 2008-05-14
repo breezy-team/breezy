@@ -440,7 +440,7 @@ def parse_fileid_property(text):
 
 def generate_fileid_property(fileids):
     """Marshall a dictionary with file ids."""
-    return "".join(["%s\t%s\n" % (urllib.quote(path), fileids[path]) for path in sorted(fileids.keys())])
+    return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), fileids[path]) for path in sorted(fileids.keys())])
 
 
 class BzrSvnMappingFileProps(object):

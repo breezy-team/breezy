@@ -7,7 +7,9 @@ bzr-svn 0.4.11	UNRELEASED
 
    * Fix ability to use bzr-svn with disabling cache.
 
-   * Fix use of unicode characters in files in working trees.
+   * Fix use of unicode characters in filenames in working trees.
+
+   * Fix use of unicode characters in filenames when committing. (#230090)
 
 bzr-svn 0.4.10  2008-05-12
 
