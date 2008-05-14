@@ -75,6 +75,7 @@ class SvnWorkingTree(WorkingTree):
     def __init__(self, bzrdir, local_path, branch):
         self._format = SvnWorkingTreeFormat()
         self.basedir = local_path
+        assert isinstance(self.basedir, unicode)
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0

@@ -277,7 +277,7 @@ class SvnBasisTree(RevisionTree):
         self._repository = workingtree.branch.repository
 
         def add_file_to_inv(relpath, id, revid, wc):
-            props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath), wc)
+            props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"), wc)
             if isinstance(props, list): # Subversion 1.5
                 props = props[1]
             if props.has_key(svn.core.SVN_PROP_SPECIAL):
@@ -301,7 +301,7 @@ class SvnBasisTree(RevisionTree):
             if entry.schedule in (svn.wc.schedule_normal, 
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):
-                return self.id_map[workingtree.branch.unprefix(relpath)]
+                return self.id_map[workingtree.branch.unprefix(relpath.decode("utf-8"))]
             return (None, None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
@@ -314,16 +314,19 @@ class SvnBasisTree(RevisionTree):
             # First handle directory itself
             ie = self._inventory.add_path(relpath, 'directory', id)
             ie.revision = revid
-            if relpath == "":
+            if relpath == u"":
                 self._inventory.revision_id = revid
 
-            for name in entries:
-                if name == "":
+            for name, entry in entries.items():
+                name = name.decode("utf-8")
+                if name == u"":
                     continue
+
+                assert isinstance(relpath, unicode)
+                assert isinstance(name, unicode)
 
                 subrelpath = os.path.join(relpath, name)
 
-                entry = entries[name]
                 assert entry
                 
                 if entry.kind == svn.core.svn_node_dir:
@@ -341,12 +344,12 @@ class SvnBasisTree(RevisionTree):
 
         wc = workingtree._get_wc() 
         try:
-            add_dir_to_inv("", wc, None)
+            add_dir_to_inv(u"", wc, None)
         finally:
             svn.wc.adm_close(wc)
 
     def _abspath(self, relpath):
-        return svn.wc.get_pristine_copy_path(self.workingtree.abspath(relpath))
+        return svn.wc.get_pristine_copy_path(self.workingtree.abspath(relpath).encode("utf-8"))
 
     def get_file_lines(self, file_id):
         base_copy = self._abspath(self.id2path(file_id))
