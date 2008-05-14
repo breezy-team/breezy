@@ -837,6 +837,9 @@ class ProtocolThreeDecoder(_StatefulDecoder):
                 # This happens during normal operation when the client tries a
                 # protocol version the server doesn't understand, so no need to
                 # log a traceback every time.
+                # Note that this can only happen when
+                # expect_version_marker=True, which is only the case on the
+                # client side.
                 pass
             else:
                 log_exception_quietly()
