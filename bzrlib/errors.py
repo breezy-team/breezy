@@ -2454,7 +2454,10 @@ class ErrorFromSmartServer(BzrError):
 
     def __init__(self, error_tuple):
         self.error_tuple = error_tuple
-        self.error_verb = error_tuple[0]
+        try:
+            self.error_verb = error_tuple[0]
+        except IndexError:
+            self.error_verb = None
         self.error_args = error_tuple[1:]
 
 

@@ -380,6 +380,7 @@ class RemoteRepository(object):
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'nosuchrevision':
                 raise NoSuchRevision(self, revision_id)
+            raise
         if response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response[0])
         coded = response[1].read_body_bytes()
@@ -1537,6 +1538,7 @@ class RemoteBranch(branch.Branch):
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'NoSuchRevision':
                 raise NoSuchRevision(self, err.error_args[0])
+            raise
         if response == ('ok',):
             self._clear_cached_state()
         else:

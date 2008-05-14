@@ -616,6 +616,34 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
             [('set_last_revision_info', 1234, 'a-revision-id')],
             real_branch.calls)
 
+    def test_unexpected_error(self):
+        # A response of 'NoSuchRevision' is translated into an exception.
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient(transport.base)
+        # lock_write
+        client.add_success_response('ok', 'branch token', 'repo token')
+        # set_last_revision
+        client.add_error_response('UnexpectedError')
+        # unlock
+        client.add_success_response('ok')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+
+        err = self.assertRaises(
+            errors.ErrorFromSmartServer,
+            branch.set_last_revision_info, 123, 'revid')
+        self.assertEqual(('UnexpectedError',), err.error_tuple)
+        branch.unlock()
+
 
 class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
     """Test branch.control_files api munging...
@@ -956,6 +984,15 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', revid))],
             client._calls)
+
+    def test_unexpected_error(self):
+        revid = '123'
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_error_response('AnUnexpectedError')
+        e = self.assertRaises(errors.ErrorFromSmartServer,
+            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
+        self.assertEqual(('AnUnexpectedError',), e.error_tuple)
 
         
 class TestRepositoryIsShared(TestRemoteRepository):
