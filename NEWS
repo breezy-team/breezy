@@ -11,6 +11,8 @@ bzr-svn 0.4.11	UNRELEASED
 
    * Fix use of unicode characters in filenames when committing. (#230090)
 
+   * Fix modifying branching scheme from the command-line. (#230529)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES

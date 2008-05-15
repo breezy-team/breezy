@@ -375,6 +375,7 @@ class cmd_svn_branching_scheme(Command):
         from bzrlib.trace import info
         from repository import SvnRepository
         from mapping3.scheme import scheme_from_branch_list
+        from mapping3 import config_set_scheme, get_property_scheme, set_property_scheme
         def scheme_str(scheme):
             if scheme is None:
                 return ""
@@ -384,7 +385,7 @@ class cmd_svn_branching_scheme(Command):
         if not isinstance(repos, SvnRepository):
             raise BzrCommandError("Not a Subversion repository: %s" % location)
         if repository_wide:
-            scheme = repos._get_property_scheme()
+            scheme = get_property_scheme(repos)
         else:
             scheme = repos.get_mapping().scheme
         if set:
@@ -395,7 +396,7 @@ class cmd_svn_branching_scheme(Command):
             if repository_wide:
                 set_property_scheme(repos, scheme)
             else:
-                set_config_scheme(repos, scheme, mandatory=True)
+                config_set_scheme(repos, scheme, mandatory=True)
         elif scheme is not None:
             info(scheme_str(scheme))
 
