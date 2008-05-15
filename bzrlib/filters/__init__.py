@@ -37,8 +37,9 @@ import cStringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-        osutils,
-        )
+    errors,
+    osutils,
+    )
 """)
 
 
@@ -121,3 +122,78 @@ def sha_file_by_name(name, filters):
         return osutils.sha_strings(filtered_input_file(f, filters))
     else:
         return osutils.sha_file_by_name(name)
+
+
+# The registry of filter stacks indexed by name.
+# (This variable should be treated as private to this module as its
+# implementation may well change in the future.)
+_filter_stacks_registry = {}
+
+
+# Cache of preferences -> stack
+_stack_cache = {}
+
+
+def register_filter_stack_map(name, stack_map):
+    """Register the filter stacks to use for various preference values.
+
+    :param name: the preference/filter-stack name
+    :param stack_map: a dictionary where
+      the keys are preference values to match and
+      the values are the matching stack of filters for each
+    """
+    if _filter_stacks_registry.has_key(name):
+        raise errors.BzrError(
+            "filter stack for %s already installed" % name)
+    _filter_stacks_registry[name] = stack_map
+
+
+def _get_registered_names():
+    """Get the list of names with filters registered."""
+    # Note: We may want to intelligently order these later.
+    # If so, the register_ fn will need to support an optional priority.
+    return _filter_stacks_registry.keys()
+
+
+def _get_filter_stack_for(preferences):
+    """Get the filter stack given a sequence of preferences.
+    
+    :param preferences: a sequence of (name,value) tuples where
+      name is the preference name and
+      value is the key into the filter stack map regsitered
+      for that preference.
+    """
+    stack = _stack_cache.get(preferences)
+    if stack is not None:
+        return stack
+    stack = []
+    for k, v in preferences:
+        stacks_by_values = _filter_stacks_registry.get(k)
+        if stacks_by_values is not None:
+            items = stacks_by_values.get(v)
+            if items:
+                stack.extend(items)
+    _stack_cache[preferences] = stack
+    return stack
+
+
+def _reset_registry(value=None):
+    """Reset the filter stack registry.
+
+    This function is provided to aid testing. The expected usage is::
+
+      old = _reset_registry()
+      # run tests
+      _reset_registry(old)
+
+    :param value: the value to set the registry to or None for an empty one.
+    :return: the existing value before it reset.
+    """
+    global _filter_stacks_registry
+    original = _filter_stacks_registry.copy()
+    if value is None:
+        _filter_stacks_registry.clear()
+    else:
+        _filter_stacks_registry = value
+    _stack_cache.clear()
+    return original
