@@ -1,6 +1,15 @@
 bzr-builddeb (0.94) unstable; urgency=low
 
+  [ Jelmer Vernooij ]
   * Support building against snapshots from Subversion branches.
+
+  [ Sebastian Bober ]
+  * Disable the testsuite during build as we can't be sure that
+    /etc/apt/sources.list has a deb-src line. "check" or "test"
+    in DEB_BUILD_OPTIONS will turn it back on again. (Closes: #472543)
+  * Build-Depend and Depend on python-apt, as it is used directly
+    now.
+  * Tweaks to stamp handling in debian/rules.
 
  -- Jelmer Vernooij <jelmer@samba.org>  Thu, 15 May 2008 15:03:57 +0200
 

@@ -21,17 +21,15 @@ build: $(PYVERS:%=build-python%) docs
 
 build-python%:
 	python$* setup.py build
-ifeq (,$(findstring nocheck,$(DEBBUILDOPTS)))
-ifeq (,$(findstring notest,$(DEBBUILDOPTS)))
+ifneq (,$(filter test check,$(DEBBUILDOPTS)))
 	BZR_PLUGIN_PATH="$(CURDIR)/build/lib/bzrlib/plugins/" python$* /usr/bin/bzr test-builddeb
 endif
-endif
-	touch $@
+	touch $@-stamp
 
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp install-all-stamp
+	rm -f build-stamp install-all-stamp build-python*-stamp
 	rm -f $(html_docs)
 	rm -f README.html
 
