@@ -321,17 +321,14 @@ def disable_test_log(memento):
     return pop_log_file(memento)
 
 
-def log_exception_quietly(allow_debug=True):
+def log_exception_quietly():
     """Log the last exception to the trace file only.
 
     Used for exceptions that occur internally and that may be 
     interesting to developers but not to users.  For example, 
     errors loading plugins.
     """
-    exception_message = traceback.format_exc()
-    mutter(exception_message)
-    if 'error' in debug.debug_flags and allow_debug:
-        sys.stderr.write(exception_message)
+    mutter(traceback.format_exc())
 
 
 def set_verbosity_level(level):
@@ -396,7 +393,7 @@ def report_exception(exc_info, err_file):
     """
     exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
-    log_exception_quietly(allow_debug=False)
+    log_exception_quietly()
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         err_file.write("bzr: broken pipe\n")
@@ -417,6 +414,14 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_INTERNAL_ERROR
 
 
+def print_exception(exc_info, err_file):
+    exc_type, exc_object, exc_tb = exc_info
+    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
+        exc_type.__module__, exc_type.__name__, exc_object))
+    err_file.write('\n')
+    traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
+
+
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
     """Report to err_file an error that's not an internal error.
@@ -424,18 +429,14 @@ def report_user_error(exc_info, err_file):
     These don't get a traceback unless -Derror was given.
     """
     if 'error' in debug.debug_flags:
-        report_bug(exc_info, err_file)
+        print_exception(exc_info, err_file)
         return
     err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
 
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    exc_type, exc_object, exc_tb = exc_info
-    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
-        exc_type.__module__, exc_type.__name__, exc_object))
-    err_file.write('\n')
-    traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
+    print_exception(exc_info, err_file)
     err_file.write('\n')
     err_file.write('bzr %s on python %s (%s)\n' % \
                        (bzrlib.__version__,
