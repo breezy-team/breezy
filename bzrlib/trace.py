@@ -321,14 +321,17 @@ def disable_test_log(memento):
     return pop_log_file(memento)
 
 
-def log_exception_quietly():
+def log_exception_quietly(allow_debug=True):
     """Log the last exception to the trace file only.
 
     Used for exceptions that occur internally and that may be 
     interesting to developers but not to users.  For example, 
     errors loading plugins.
     """
-    mutter(traceback.format_exc())
+    exception_message = traceback.format_exc()
+    mutter(exception_message)
+    if 'error' in debug.debug_flags and allow_debug:
+        sys.stderr.write(exception_message)
 
 
 def set_verbosity_level(level):
@@ -393,7 +396,7 @@ def report_exception(exc_info, err_file):
     """
     exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
-    log_exception_quietly()
+    log_exception_quietly(allow_debug=False)
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         err_file.write("bzr: broken pipe\n")
