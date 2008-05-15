@@ -21,7 +21,7 @@ build: $(PYVERS:%=build-python%) docs
 
 build-python%:
 	python$* setup.py build
-ifneq (,$(filter test check,$(DEBBUILDOPTS)))
+ifneq (,$(filter test check,$(DEB_BUILD_OPTIONS)))
 	BZR_PLUGIN_PATH="$(CURDIR)/build/lib/bzrlib/plugins/" python$* /usr/bin/bzr test-builddeb
 endif
 	touch $@-stamp
