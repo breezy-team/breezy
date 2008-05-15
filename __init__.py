@@ -176,7 +176,7 @@ class cmd_builddeb(Command):
     else:
         config_files = [(local_conf, True), (global_conf, True),
                              (default_conf, False)]
-    config = DebBuildConfig(config_files)
+    config = DebBuildConfig(config_files, branch=tree.branch)
 
     if reuse:
       info("Reusing existing build dir")
