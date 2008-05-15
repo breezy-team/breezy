@@ -295,13 +295,28 @@ class _NeedMoreBytes(Exception):
     """
 
     def __init__(self, count=None):
+        """Constructor.
+
+        :param count: the total number of bytes needed by the current state.
+            May be None if the number of bytes needed is unknown.
+        """
         self.count = count
 
 
 class _StatefulDecoder(object):
+    """Base class for writing state machines to decode byte streams.
+
+    Subclasses should provide a self.state_accept attribute that accepts bytes
+    and, if appropriate, updates self.state_accept to a different function.
+    accept_bytes will call state_accept as often as necessary to make sure the
+    state machine has progressed as far as possible before it returns.
+
+    See ProtocolThreeDecoder for an example subclass.
+    """
 
     def __init__(self):
         self.finished_reading = False
+        self._in_buffer = ''
         self.unused_data = ''
         self.bytes_left = None
         self._number_needed_bytes = None
@@ -318,11 +333,18 @@ class _StatefulDecoder(object):
         # accept_bytes is allowed to change the state
         current_state = self.state_accept
         self._number_needed_bytes = None
+        self._in_buffer += bytes
         try:
-            self.state_accept(bytes)
+            # Run the function for the current state.
+            self.state_accept()
             while current_state != self.state_accept:
+                # The current state has changed.  Run the function for the new
+                # current state, so that it can:
+                #   - decode any unconsumed bytes left in a buffer, and
+                #   - signal how many more bytes are expected (via raising
+                #     _NeedMoreBytes).
                 current_state = self.state_accept
-                self.state_accept('')
+                self.state_accept()
         except _NeedMoreBytes, e:
             self._number_needed_bytes = e.count
 
@@ -337,7 +359,6 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def __init__(self):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_header
-        self._in_buffer = ''
         self.chunk_in_progress = None
         self.chunks = collections.deque()
         self.error = False
@@ -375,7 +396,8 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def _extract_line(self):
         pos = self._in_buffer.find('\n')
         if pos == -1:
-            # We haven't read a complete line yet, so there's nothing to do.
+            # We haven't read a complete line yet, so request more bytes before
+            # we continue.
             raise _NeedMoreBytes(1)
         line = self._in_buffer[:pos]
         # Trim the prefix (including '\n' delimiter) from the _in_buffer.
@@ -384,7 +406,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
     def _finished(self):
         self.unused_data = self._in_buffer
-        self._in_buffer = None
+        self._in_buffer = ''
         self.state_accept = self._state_accept_reading_unused
         if self.error:
             error_args = tuple(self.error_in_progress)
@@ -392,8 +414,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.error_in_progress = None
         self.finished_reading = True
 
-    def _state_accept_expecting_header(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_header(self):
         prefix = self._extract_line()
         if prefix == 'chunked':
             self.state_accept = self._state_accept_expecting_length
@@ -401,13 +422,12 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             raise errors.SmartProtocolError(
                 'Bad chunked body header: "%s"' % (prefix,))
 
-    def _state_accept_expecting_length(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_length(self):
         prefix = self._extract_line()
         if prefix == 'ERR':
             self.error = True
             self.error_in_progress = []
-            self._state_accept_expecting_length('')
+            self._state_accept_expecting_length()
             return
         elif prefix == 'END':
             # We've read the end-of-body marker.
@@ -420,8 +440,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.chunk_in_progress = ''
             self.state_accept = self._state_accept_reading_chunk
 
-    def _state_accept_reading_chunk(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_reading_chunk(self):
         in_buffer_len = len(self._in_buffer)
         self.chunk_in_progress += self._in_buffer[:self.bytes_left]
         self._in_buffer = self._in_buffer[self.bytes_left:]
@@ -436,8 +455,9 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.chunk_in_progress = None
             self.state_accept = self._state_accept_expecting_length
         
-    def _state_accept_reading_unused(self, bytes):
-        self.unused_data += bytes
+    def _state_accept_reading_unused(self):
+        self.unused_data += self._in_buffer
+        self._in_buffer = ''
 
 
 class LengthPrefixedBodyDecoder(_StatefulDecoder):
@@ -447,7 +467,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_length
         self.state_read = self._state_read_no_data
-        self._in_buffer = ''
+        self._body = ''
         self._trailer_buffer = ''
     
     def next_read_size(self):
@@ -470,30 +490,30 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         """Return any pending data that has been decoded."""
         return self.state_read()
 
-    def _state_accept_expecting_length(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_length(self):
         pos = self._in_buffer.find('\n')
         if pos == -1:
             return
         self.bytes_left = int(self._in_buffer[:pos])
         self._in_buffer = self._in_buffer[pos+1:]
-        self.bytes_left -= len(self._in_buffer)
         self.state_accept = self._state_accept_reading_body
-        self.state_read = self._state_read_in_buffer
+        self.state_read = self._state_read_body_buffer
 
-    def _state_accept_reading_body(self, bytes):
-        self._in_buffer += bytes
-        self.bytes_left -= len(bytes)
+    def _state_accept_reading_body(self):
+        self._body += self._in_buffer
+        self.bytes_left -= len(self._in_buffer)
+        self._in_buffer = ''
         if self.bytes_left <= 0:
             # Finished with body
             if self.bytes_left != 0:
-                self._trailer_buffer = self._in_buffer[self.bytes_left:]
-                self._in_buffer = self._in_buffer[:self.bytes_left]
+                self._trailer_buffer = self._body[self.bytes_left:]
+                self._body = self._body[:self.bytes_left]
             self.bytes_left = None
             self.state_accept = self._state_accept_reading_trailer
         
-    def _state_accept_reading_trailer(self, bytes):
-        self._trailer_buffer += bytes
+    def _state_accept_reading_trailer(self):
+        self._trailer_buffer += self._in_buffer
+        self._in_buffer = ''
         # TODO: what if the trailer does not match "done\n"?  Should this raise
         # a ProtocolViolation exception?
         if self._trailer_buffer.startswith('done\n'):
@@ -501,20 +521,21 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
             self.state_accept = self._state_accept_reading_unused
             self.finished_reading = True
     
-    def _state_accept_reading_unused(self, bytes):
-        self.unused_data += bytes
+    def _state_accept_reading_unused(self):
+        self.unused_data += self._in_buffer
+        self._in_buffer = ''
 
     def _state_read_no_data(self):
         return ''
 
-    def _state_read_in_buffer(self):
-        result = self._in_buffer
-        self._in_buffer = ''
+    def _state_read_body_buffer(self):
+        result = self._body
+        self._body = ''
         return result
 
 
 class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
-        message.ResponseHandler):
+                                    message.ResponseHandler):
     """The client-side protocol for smart version 1."""
 
     def __init__(self, request):
@@ -615,6 +636,11 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         return result
 
     def _raise_args_if_error(self, result_tuple):
+        # Later protocol versions have an explicit flag in the protocol to say
+        # if an error response is "failed" or not.  In version 1 we don't have
+        # that luxury.  So here is a complete list of errors that can be
+        # returned in response to existing version 1 smart requests.  Responses
+        # starting with these codes are always "failed" responses.
         v1_error_codes = [
             'norepository',
             'NoSuchFile',
@@ -801,7 +827,6 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         _StatefulDecoder.__init__(self)
         self.has_dispatched = False
         # Initial state
-        self._in_buffer = ''
         if expect_version_marker:
             self.state_accept = self._state_accept_expecting_protocol_version
             # We're expecting at least the protocol version marker + some
@@ -878,8 +903,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self._in_buffer = self._in_buffer[1:]
         return one_byte
 
-    def _state_accept_expecting_protocol_version(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_protocol_version(self):
         needed_bytes = len(MESSAGE_VERSION_THREE) - len(self._in_buffer)
         if needed_bytes > 0:
             # We don't have enough bytes to check if the protocol version
@@ -899,8 +923,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self._in_buffer = self._in_buffer[len(MESSAGE_VERSION_THREE):]
         self.state_accept = self._state_accept_expecting_headers
 
-    def _state_accept_expecting_headers(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_headers(self):
         decoded = self._extract_prefixed_bencoded_data()
         if type(decoded) is not dict:
             raise errors.SmartProtocolError(
@@ -911,8 +934,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         except:
             raise errors.SmartMessageHandlerError(sys.exc_info())
     
-    def _state_accept_expecting_message_part(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
         if message_part_kind == 'o':
             self.state_accept = self._state_accept_expecting_one_byte
@@ -926,8 +948,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             raise errors.SmartProtocolError(
                 'Bad message kind byte: %r' % (message_part_kind,))
 
-    def _state_accept_expecting_one_byte(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_one_byte(self):
         byte = self._extract_single_byte()
         self.state_accept = self._state_accept_expecting_message_part
         try:
@@ -935,10 +956,9 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         except:
             raise errors.SmartMessageHandlerError(sys.exc_info())
 
-    def _state_accept_expecting_bytes(self, bytes):
+    def _state_accept_expecting_bytes(self):
         # XXX: this should not buffer whole message part, but instead deliver
         # the bytes as they arrive.
-        self._in_buffer += bytes
         prefixed_bytes = self._extract_length_prefixed_bytes()
         self.state_accept = self._state_accept_expecting_message_part
         try:
@@ -946,8 +966,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         except:
             raise errors.SmartMessageHandlerError(sys.exc_info())
 
-    def _state_accept_expecting_structure(self, bytes):
-        self._in_buffer += bytes
+    def _state_accept_expecting_structure(self):
         structure = self._extract_prefixed_bencoded_data()
         self.state_accept = self._state_accept_expecting_message_part
         try:
@@ -957,15 +976,16 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
     def done(self):
         self.unused_data = self._in_buffer
-        self._in_buffer = None
+        self._in_buffer = ''
         self.state_accept = self._state_accept_reading_unused
         try:
             self.message_handler.end_received()
         except:
             raise errors.SmartMessageHandlerError(sys.exc_info())
 
-    def _state_accept_reading_unused(self, bytes):
-        self.unused_data += bytes
+    def _state_accept_reading_unused(self):
+        self.unused_data += self._in_buffer
+        self._in_buffer = ''
 
     def next_read_size(self):
         if self.state_accept == self._state_accept_reading_unused:
@@ -1041,7 +1061,10 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._headers = {'Software version': bzrlib.__version__}
 
     def send_error(self, exception):
-        assert not self.response_sent
+        if self.response_sent:
+            raise AssertionError(
+                "send_error(%s) called, but response already sent."
+                % (exception,))
         if isinstance(exception, errors.UnknownSmartMethod):
             failure = request.FailedSmartServerResponse(
                 ('UnknownMethod', exception.verb))
@@ -1055,7 +1078,10 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_end()
 
     def send_response(self, response):
-        assert not self.response_sent
+        if self.response_sent:
+            raise AssertionError(
+                "send_response(%r) called, but response already sent."
+                % (response,))
         self.response_sent = True
         self._write_protocol_version()
         self._write_headers(self._headers)
