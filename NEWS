@@ -13,6 +13,8 @@ bzr-svn 0.4.11	UNRELEASED
 
    * Fix modifying branching scheme from the command-line. (#230529)
 
+   * Cope with kind changes better. (#191576)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES

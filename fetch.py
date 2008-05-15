@@ -354,26 +354,29 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         self._store_file(self.file_id, lines, self.file_parents)
 
+        assert self.is_symlink in (True, False)
+
         if self.file_id in self.inventory:
-            ie = self.inventory[self.file_id]
-        elif self.is_symlink:
-            ie = self.inventory.add_path(path, 'symlink', self.file_id)
-        else:
-            ie = self.inventory.add_path(path, 'file', self.file_id)
-        ie.revision = self.revid
+            del self.inventory[self.file_id]
 
         if self.is_symlink:
-            ie.kind = 'symlink'
+            ie = self.inventory.add_path(path, 'symlink', self.file_id)
             ie.symlink_target = lines[0][len("link "):]
             ie.text_sha1 = None
             ie.text_size = None
-            ie.text_id = None
+            ie.executable = False
+            ie.revision = self.revid
         else:
+            ie = self.inventory.add_path(path, 'file', self.file_id)
+            ie.revision = self.revid
             ie.kind = 'file'
+            ie.symlink_target = None
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
+            assert ie.text_size is not None
             if self.is_executable is not None:
                 ie.executable = self.is_executable
+
 
         self.file_stream = None
 
