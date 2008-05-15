@@ -74,10 +74,15 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         """
         self._cfg = configobj.ConfigObj(inifile)
         patterns = self._cfg.keys()
-        self._globster = globbing._OrderedGlobster(patterns)
+        if patterns:
+            self._globster = globbing._OrderedGlobster(patterns)
+        else:
+            self._globster = None
 
     def get_items(self, path, names=None):
         """See _RulesSearcher.get_items."""
+        if self._globster is None:
+            return None
         pat = self._globster.match(path)
         if pat is None:
             return None
@@ -120,19 +125,21 @@ _per_user_searcher = _IniBasedRulesSearcher(rules_filename())
 _branch_searchers = {}
 
 
-def iter_search_rules(branch, path_names, pref_names=None):
+def iter_search_rules(branch, path_names, pref_names=None,
+    _default_searcher=_per_user_searcher):
     """Find the preferences for filenames in a branch.
 
     :param branch: the branch, or None to only search the per user preferences
     :param path_names: an iterable of paths to find attributes for.
       Paths are given relative to the root of the tree.
     :param pref_names: the list of preferences to lookup - None for all
+    :param _default_searcher: private parameter to assist testing - don't use
     :return: an iterator of tuple sequences, one per path-name.
       See _RulesSearcher.get_items for details on the tuple sequence.
     """
     # Get the searcher
     if branch is None:
-        searcher = _per_user_searcher
+        searcher = _default_searcher
     else:
         branch_searcher = _branch_searchers.get(branch)
         if branch_searcher is None:
@@ -141,7 +148,12 @@ def iter_search_rules(branch, path_names, pref_names=None):
             branch_inifile = TransportConfig(transport, 'branch.rules')
             branch_searcher = _IniBasedRulesSearcher(branch_inifile)
             _branch_searchers[branch] = branch_searcher
-        searcher = _StackedRulesSearcher([branch_searcher, _per_user_searcher])
+        # If branch.rules is missing or empty, skip searching it
+        if branch_searcher._globster is None:
+            searcher = _default_searcher
+        else:
+            searcher = _StackedRulesSearcher(
+                [branch_searcher, _default_searcher])
 
     # Do the searching
     for path in path_names:
