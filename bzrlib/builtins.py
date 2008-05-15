@@ -2655,6 +2655,11 @@ class cmd_selftest(Command):
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
 
+        # We should always get deprecation warnings when running selftest.
+        # For 'final' releases, this happens too late to catch plugin load-time
+        # warnings, but at least we get test-time warnings.
+        symbol_versioning.activate_deprecation_warnings()
+
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if not list_only:
