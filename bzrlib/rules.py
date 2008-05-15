@@ -105,7 +105,7 @@ class _StackedRulesSearcher(_RulesSearcher):
 
     def get_items(self, path, names=None):
         """See _RulesSearcher.get_items."""
-        for searcher in searchers:
+        for searcher in self.searchers:
             result = searcher.get_items(path, names)
             if result is not None:
                 return result

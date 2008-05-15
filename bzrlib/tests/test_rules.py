@@ -69,6 +69,27 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             rs.get_items('dir/a.txt'))
 
 
+class TestStackedRulesSearcher(tests.TestCase):
+
+    def make_searcher(self, lines1=None, lines2=None):
+        """Make a _StackedRulesSearcher with 0, 1 or 2 items"""
+        searchers = []
+        if lines1 is not None:
+            searchers.append(rules._IniBasedRulesSearcher(lines1))
+        if lines2 is not None:
+            searchers.append(rules._IniBasedRulesSearcher(lines2))
+        return rules._StackedRulesSearcher(searchers)
+
+    def test_stack_searching(self):
+        rs = self.make_searcher(
+            ["[./a.txt]", "foo=baz"],
+            ["[*.txt]", "foo=bar", "a=True"])
+        self.assertEquals((('foo', 'baz'),),
+            rs.get_items('a.txt'))
+        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+            rs.get_items('dir/a.txt'))
+
+
 class TestRulesPath(tests.TestCase):
 
     def setUp(self):
