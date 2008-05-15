@@ -172,4 +172,7 @@ class GetRevisionSnapshotTests(TestCase):
   def test_non_numeric_snapshot(self):
     self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
 
+  def test_with_svn_snapshot(self):
+    self.assertEquals("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
+
 # vim: ts=2 sts=2 sw=2

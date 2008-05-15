@@ -1,3 +1,9 @@
+bzr-builddeb (0.94) unstable; urgency=low
+
+  * Support building against snapshots from Subversion branches.
+
+ -- Jelmer Vernooij <jelmer@samba.org>  Thu, 15 May 2008 15:03:57 +0200
+
 bzr-builddeb (0.93) unstable; urgency=low
 
   [ Arnaud Fontaine ]
