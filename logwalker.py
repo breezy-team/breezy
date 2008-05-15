@@ -355,7 +355,7 @@ class LogWalker(object):
                 if revnum == 0 and changed_paths is None:
                     revpaths = {"": ('A', None, -1)}
                 else:
-                    assert isinstance(changed_paths, dict), "invalid paths in %r:%r" % (revnum, path)
+                    assert isinstance(changed_paths, dict), "invalid paths in %r" % revnum
                     revpaths = struct_revpaths_to_tuples(changed_paths)
                 revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
                 yield (revpaths, revnum, revprops)
