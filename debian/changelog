@@ -11,7 +11,11 @@ bzr-builddeb (0.94) unstable; urgency=low
     now.
   * Tweaks to stamp handling in debian/rules.
 
- -- Jelmer Vernooij <jelmer@samba.org>  Thu, 15 May 2008 15:03:57 +0200
+  [ James Westby ]
+  * Make the tarball dir before trying to download from the archive in
+    to it. (LP: #223948)
+
+ -- James Westby <james.westby@canonical.com>  Thu, 15 May 2008 16:59:00 +0100
 
 bzr-builddeb (0.93) unstable; urgency=low
 
