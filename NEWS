@@ -18,6 +18,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Issue a warning and ignore passwords declared in authentication.conf when
+      used for an ssh scheme (sftp or bzr+ssh).
+      (Vincent Ladeuil, #203186)
+
+
   DOCUMENTATION:
 
   TESTING:
