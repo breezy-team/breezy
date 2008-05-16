@@ -202,7 +202,7 @@ class TestUploadMixin(object):
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = 'branch'
         kwargs['full'] = True
-        kwargs['verbose'] = False
+        kwargs['quiet'] = True
         upload.run(up_url, *args, **kwargs)
 
     def do_incremental_upload(self, *args, **kwargs):
@@ -210,7 +210,7 @@ class TestUploadMixin(object):
         up_url = self.get_transport(self.upload_dir).external_url()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = 'branch'
-        kwargs['verbose'] = False
+        kwargs['quiet'] = True
         upload.run(up_url, *args, **kwargs)
 
     def test_create_file(self):

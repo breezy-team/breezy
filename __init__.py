@@ -66,6 +66,8 @@ class cmd_upload(commands.Command):
         'remember',
         'verbose',
         option.Option('full', 'Upload the full working tree.'),
+        option.Option('quiet', 'Do not output what is being done', 
+                       short_name='q'),
         option.Option('directory',
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
@@ -75,7 +77,7 @@ class cmd_upload(commands.Command):
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None, verbose=True,
+            directory=None, verbose=True, quiet=False,
             ):
         if directory is None:
             directory = u'.'
@@ -113,6 +115,7 @@ class cmd_upload(commands.Command):
         self._pending_renames = []
         self._pending_deletions = []
         self.verbose = verbose
+        self.quiet = quiet
 
         if full:
             self.upload_full_tree()
@@ -139,8 +142,8 @@ class cmd_upload(commands.Command):
         return self.to_transport.get_bytes(self.bzr_upload_revid_file_name)
 
     def upload_file(self, relpath, id):
-        if self.verbose:
-            self.outf.write('Uploadind %s\n' % relpath)
+        if not self.quiet:
+            self.outf.write('Uploading %s\n' % relpath)
         self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
     def make_remote_dir(self, relpath):
@@ -148,12 +151,12 @@ class cmd_upload(commands.Command):
         self.to_transport.mkdir(relpath)
 
     def delete_remote_file(self, relpath):
-        if self.verbose:
+        if not self.quiet:
             self.outf.write('Deleting %s\n' % relpath)
         self.to_transport.delete(relpath)
 
     def delete_remote_dir(self, relpath):
-        if self.verbose:
+        if not self.quiet:
             self.outf.write('Deleting %s\n' % relpath)
         self.to_transport.rmdir(relpath)
 
@@ -193,7 +196,7 @@ class cmd_upload(commands.Command):
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
                                      random.randint(0,0x7FFFFFFF))
-        if self.verbose:
+        if not self.quiet:
             self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
         self.to_transport.rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
@@ -239,9 +242,9 @@ class cmd_upload(commands.Command):
         try:
             rev_id = self.get_uploaded_revid()
         except errors.NoSuchFile:
-            if self.verbose:
+            if not self.quiet:
                 self.outf.write('No uploaded revision id found,'
-                                ' switching to full upload')
+                                ' switching to full upload\n')
             self.upload_full_tree()
             # We're done
             return
