@@ -8,6 +8,10 @@ Bazaar Release Notes
 bzr 1.5 2008-05-16
 ------------------
 
+This release of Bazaar includes several updates to the documentation, and fixes
+to prepare for making rich root support the default format. Many bugs have been
+squashed, including fixes to log, bzr+ssh inter-operation with older servers.
+
   CHANGES:
 
     * Suppress deprecation warnings when bzrlib is a 'final' release. This way
