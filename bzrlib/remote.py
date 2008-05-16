@@ -386,9 +386,10 @@ class RemoteRepository(object):
             if err.error_verb == 'nosuchrevision':
                 raise NoSuchRevision(self, revision_id)
             raise
-        if response[0][0] != 'ok':
-            raise errors.UnexpectedSmartServerResponse(response[0])
-        coded = response[1].read_body_bytes()
+        response_tuple, response_handler = response
+        if response_tuple[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        coded = response_handler.read_body_bytes()
         if coded == '':
             # no revisions in this repository!
             return {}
@@ -406,9 +407,10 @@ class RemoteRepository(object):
             # The null revision is always present.
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Repository.has_revision', path, revision_id)
+        response = self._client.call(
+            'Repository.has_revision', path, revision_id)
         if response[0] not in ('yes', 'no'):
-            raise SmartProtocolError('unexpected response code %s' % (response,))
+            raise errors.UnexpectedSmartServerResponse(response)
         return response[0] == 'yes'
 
     def has_revisions(self, revision_ids):
@@ -445,13 +447,12 @@ class RemoteRepository(object):
             fmt_committers = 'no'
         else:
             fmt_committers = 'yes'
-        response = self._client.call_expecting_body(
+        response_tuple, response_handler = self._client.call_expecting_body(
             'Repository.gather_stats', path, fmt_revid, fmt_committers)
-        if response[0][0] != 'ok':
-            raise SmartProtocolError('unexpected response code %s'
-                % (response[0],))
+        if response_tuple[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
 
-        body = response[1].read_body_bytes()
+        body = response_handler.read_body_bytes()
         result = {}
         for line in body.split('\n'):
             if not line:
@@ -913,11 +914,12 @@ class RemoteRepository(object):
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remote_is_at_least_1_2 = False
             return self.get_revision_graph(None)
-        if response[0][0] not in ['ok']:
-            response[1].cancel_read_body()
-            raise errors.UnexpectedSmartServerResponse(response[0])
-        if response[0][0] == 'ok':
-            coded = bz2.decompress(response[1].read_body_bytes())
+        response_tuple, response_handler = response
+        if response_tuple[0] not in ['ok']:
+            response_handler.cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        if response_tuple[0] == 'ok':
+            coded = bz2.decompress(response_handler.read_body_bytes())
             if coded == '':
                 # no revisions found
                 return {}
@@ -1441,11 +1443,11 @@ class RemoteBranch(branch.Branch):
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call_expecting_body(
+        response_tuple, response_handler = self._client.call_expecting_body(
             'Branch.revision_history', path)
-        if response[0][0] != 'ok':
-            raise SmartProtocolError('unexpected response code %s' % (response,))
-        result = response[1].read_body_bytes().split('\x00')
+        if response_tuple[0] != 'ok':
+            raise UnexpectedSmartServerResponse(response_tuple)
+        result = response_handler.read_body_bytes().split('\x00')
         if result == ['']:
             return []
         return result
