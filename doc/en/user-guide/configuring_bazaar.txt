@@ -46,3 +46,28 @@ the ``whoami`` command::
 For further details on the syntax and configuration settings supported, see
 `Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
 in the Bazaar User Reference.
+
+
+Rule-based preferences
+----------------------
+
+Some commands and plugins provide custom processing on files matching
+certain patterns. For example, the ``eol`` plugin needs to know which
+files in which branches to perform end-of-line conversion on.
+
+Branch-specific and per-user rule-based preferences are defined in
+``.bzr/branch/branch.rules`` and ``BZR_HOME/bazaar.rules`` respectively.
+
+Here is an example of a ``branch.rules`` file that developers can use with
+the ``eol`` plugin to work naturally on their preferred platforms,
+while storing newlines the right way for different file types::
+
+  [*.bat]
+  eol = dos
+
+  [*.sh]
+  eol = native
+
+For further information on how rules are searched and the detailed syntax of
+the relevant files, see `Rules <../user-reference/bzr_man.html#rules>`_
+in the Bazaar User Reference.
