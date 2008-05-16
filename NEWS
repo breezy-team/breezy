@@ -14,6 +14,15 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * There is a new version of the network protocol used for bzr://, bzr+ssh://
+      and bzr+http:// connections.  This will allow more efficient requests and
+      responses, and more graceful fallback when a server is too old to
+      recognise a request from a more recent client.  Bazaar 1.6 will
+      interoperate with 0.16 and later versions, but servers should be upgraded
+      when possible.  Bazaar 1.6 no longer interoperates with 0.15 and early via
+      these protocols.  Use alternatives like SFTP or upgrade those servers.
+      (Andrew Bennetts, #83935)
+
   IMPROVEMENTS:
 
   BUGFIXES:
