@@ -22,6 +22,7 @@ import os
 import socket
 import threading
 
+import bzrlib
 from bzrlib import (
         bzrdir,
         errors,
@@ -1438,8 +1439,8 @@ class TestSmartProtocol(tests.TestCase):
             client_protocol = self.client_protocol_class(request)
             return client_protocol, client_protocol, output
         else:
-            assert self.request_encoder is not None
-            assert self.response_decoder is not None
+            self.assertNotEqual(None, self.request_encoder)
+            self.assertNotEqual(None, self.response_decoder)
             requester = self.request_encoder(request)
             response_handler = message.ConventionalResponseHandler()
             response_protocol = self.response_decoder(
@@ -2143,6 +2144,27 @@ class TestSmartProtocolTwoSpecificsMixin(object):
         smart_protocol.read_response_tuple(False)
         self.assertEqual(True, smart_protocol.response_status)
 
+    def test_client_read_response_tuple_raises_UnknownSmartMethod(self):
+        """read_response_tuple raises UnknownSmartMethod if the response says
+        the server did not recognise the request.
+        """
+        server_bytes = (
+            protocol.RESPONSE_VERSION_TWO +
+            "failed\n" +
+            "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol.call('foo')
+        self.assertRaises(
+            errors.UnknownSmartMethod, smart_protocol.read_response_tuple)
+        # The request has been finished.  There is no body to read, and
+        # attempts to read one will fail.
+        self.assertRaises(
+            errors.ReadingCompleted, smart_protocol.read_body_bytes)
+
 
 class TestSmartProtocolTwoSpecifics(
         TestSmartProtocol, TestSmartProtocolTwoSpecificsMixin):
@@ -2393,7 +2415,7 @@ class StubRequest(object):
 class TestClientDecodingProtocolThree(TestSmartProtocol):
     """Tests for v3 of the client-side protocol decoding."""
 
-    def make_response_decoder(self):
+    def make_logging_response_decoder(self):
         """Make v3 response decoder using a test response handler."""
         response_handler = LoggingMessageHandler()
         decoder = protocol.ProtocolThreeDecoder(response_handler)
@@ -2415,7 +2437,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         args = 's\0\0\0\x02le' # length-prefixed, bencoded empty list
         end = 'e' # end marker
         message_bytes = headers + response_status + args + end
-        decoder, response_handler = self.make_response_decoder()
+        decoder, response_handler = self.make_logging_response_decoder()
         decoder.accept_bytes(message_bytes)
         # The protocol decoder has finished, and consumed all bytes
         self.assertEqual(0, decoder.next_read_size())
@@ -2426,8 +2448,30 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
             [('headers', {}), ('byte', 'S'), ('structure', []), ('end',)],
             response_handler.event_log)
 
-    def test_read_response_tuple_unknown_request(self):
-        """If the response has an error, it is raised as an exception."""
+    def test_incomplete_message(self):
+        """A decoder will keep signalling that it needs more bytes via
+        next_read_size() != 0 until it has seen a complete message, regardless
+        which state it is in.
+        """
+        # Define a simple response that uses all possible message parts.
+        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
+        response_status = 'oS' # success
+        args = 's\0\0\0\x02le' # length-prefixed, bencoded empty list
+        body = 'b\0\0\0\x04BODY' # a body: 'BODY'
+        end = 'e' # end marker
+        simple_response = headers + response_status + args + body + end
+        # Feed the request to the decoder one byte at a time.
+        decoder, response_handler = self.make_logging_response_decoder()
+        for byte in simple_response:
+            self.assertNotEqual(0, decoder.next_read_size())
+            decoder.accept_bytes(byte)
+        # Now the response is complete
+        self.assertEqual(0, decoder.next_read_size())
+
+    def test_read_response_tuple_raises_UnknownSmartMethod(self):
+        """read_response_tuple raises UnknownSmartMethod if the server replied
+        with 'UnknownMethod'.
+        """
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
         response_status = 'oE' # error flag
         # args: ('UnknownMethod', 'method-name')
@@ -2784,7 +2828,8 @@ class Test_SmartClient(tests.TestCase):
         version' header.
         """
         smart_client = client._SmartClient(medium, 'base')
-        self.assertTrue('Software version' in smart_client._headers)
+        self.assertEqual(
+            bzrlib.__version__, smart_client._headers['Software version'])
         # XXX: need a test that smart_client._headers is passed to the request
         # encoder.
 

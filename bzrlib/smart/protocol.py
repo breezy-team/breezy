@@ -769,6 +769,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
             raise errors.UnexpectedProtocolVersionMarker(version)
         response_status = self._recv_line()
         result = SmartClientRequestProtocolOne._read_response_tuple(self)
+        self._response_is_unknown_method(result)
         if response_status == 'success\n':
             self.response_status = True
             if not expect_body:
