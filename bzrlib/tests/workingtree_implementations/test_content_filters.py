@@ -95,24 +95,3 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             filtered=False).read())
         self.assertEqual('Foo Bin', t.get_file('file2-id',
             filtered=False).read())
-
-    def test_writeonly_content_filtering(self):
-        # test handling with a write filter but no read filter
-        t = self.create_cf_tree(txt_read_filter=None,
-            txt_write_filter=_uppercase)
-        # Check that the basis tree has the original content
-        bt = t.basis_tree()
-        bt.lock_read()
-        try:
-            self.assertEqual('Foo Txt', bt.get_file('file1-id').read())
-            self.assertEqual('Foo Bin', bt.get_file('file2-id').read())
-        finally:
-            bt.unlock()
-        # Check for transformed text content in the working tree
-        # THIS DOESN'T CURRENTLY WORK ...
-        #t.lock_read()
-        #self.addCleanup(t.unlock)
-        #self.assertEqual('FOO TXT', t.get_file('file1-id',
-        #    filtered=False).read())
-        #self.assertEqual('Foo Bin', t.get_file('file2-id',
-        #    filtered=False).read())
