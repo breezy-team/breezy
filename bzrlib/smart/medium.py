@@ -34,12 +34,46 @@ from bzrlib import (
     symbol_versioning,
     )
 from bzrlib.smart.protocol import (
+    MESSAGE_VERSION_THREE,
     REQUEST_VERSION_TWO,
     SmartClientRequestProtocolOne,
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
+    build_server_protocol_three
     )
 from bzrlib.transport import ssh
+
+
+def _get_protocol_factory_for_bytes(bytes):
+    """Determine the right protocol factory for 'bytes'.
+
+    This will return an appropriate protocol factory depending on the version
+    of the protocol being used, as determined by inspecting the given bytes.
+    The bytes should have at least one newline byte (i.e. be a whole line),
+    otherwise it's possible that a request will be incorrectly identified as
+    version 1.
+
+    Typical use would be::
+
+         factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
+         server_protocol = factory(transport, write_func, root_client_path)
+         server_protocol.accept_bytes(unused_bytes)
+
+    :param bytes: a str of bytes of the start of the request.
+    :returns: 2-tuple of (protocol_factory, unused_bytes).  protocol_factory is
+        a callable that takes three args: transport, write_func,
+        root_client_path.  unused_bytes are any bytes that were not part of a
+        protocol version marker.
+    """
+    if bytes.startswith(MESSAGE_VERSION_THREE):
+        protocol_factory = build_server_protocol_three
+        bytes = bytes[len(MESSAGE_VERSION_THREE):]
+    elif bytes.startswith(REQUEST_VERSION_TWO):
+        protocol_factory = SmartServerRequestProtocolTwo
+        bytes = bytes[len(REQUEST_VERSION_TWO):]
+    else:
+        protocol_factory = SmartServerRequestProtocolOne
+    return protocol_factory, bytes
 
 
 class SmartServerStreamMedium(object):
@@ -116,16 +150,11 @@ class SmartServerStreamMedium(object):
 
         :returns: a SmartServerRequestProtocol.
         """
-        # Identify the protocol version.
         bytes = self._get_line()
-        if bytes.startswith(REQUEST_VERSION_TWO):
-            protocol_class = SmartServerRequestProtocolTwo
-            bytes = bytes[len(REQUEST_VERSION_TWO):]
-        else:
-            protocol_class = SmartServerRequestProtocolOne
-        protocol = protocol_class(
+        protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
+        protocol = protocol_factory(
             self.backing_transport, self._write_out, self.root_client_path)
-        protocol.accept_bytes(bytes)
+        protocol.accept_bytes(unused_bytes)
         return protocol
 
     def _serve_one_request(self, protocol):
@@ -194,7 +223,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                 return
             protocol.accept_bytes(bytes)
         
-        self._push_back(protocol.excess_buffer)
+        self._push_back(protocol.unused_data)
 
     def _get_bytes(self, desired_count):
         if self._push_back_buffer is not None:
@@ -204,7 +233,6 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
-        """Called when an unhandled exception from the protocol occurs."""
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
         self.socket.close()
@@ -407,24 +435,42 @@ class SmartClientMedium(object):
         super(SmartClientMedium, self).__init__()
         self._protocol_version_error = None
         self._protocol_version = None
+        self._done_hello = False
 
     def protocol_version(self):
-        """Find out the best protocol version to use."""
+        """Find out if 'hello' smart request works."""
         if self._protocol_version_error is not None:
             raise self._protocol_version_error
-        if self._protocol_version is None:
+        if not self._done_hello:
             try:
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
                 client_protocol = SmartClientRequestProtocolOne(medium_request)
-                self._protocol_version = client_protocol.query_version()
+                client_protocol.query_version()
+                self._done_hello = True
             except errors.SmartProtocolError, e:
                 # Cache the error, just like we would cache a successful
                 # result.
                 self._protocol_version_error = e
                 raise
-        return self._protocol_version
+        return '2'
+
+    def should_probe(self):
+        """Should RemoteBzrDirFormat.probe_transport send a smart request on
+        this medium?
+
+        Some transports are unambiguously smart-only; there's no need to check
+        if the transport is able to carry smart requests, because that's all
+        it is for.  In those cases, this method should return False.
+
+        But some HTTP transports can sometimes fail to carry smart requests,
+        but still be usuable for accessing remote bzrdirs via plain file
+        accesses.  So for those transports, their media should return True here
+        so that RemoteBzrDirFormat can determine if it is appropriate for that
+        transport.
+        """
+        return False
 
     def disconnect(self):
         """If this medium maintains a persistent connection, close it.

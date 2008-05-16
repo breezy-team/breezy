@@ -524,6 +524,9 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 
+    def should_probe(self):
+        return True
+
 
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
