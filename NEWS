@@ -20,6 +20,10 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
+      on the plugin and integration chapters of the User Guide.
+      (Ian Clatworthy)
+
   TESTING:
 
     * New helper function for splitting test suites
