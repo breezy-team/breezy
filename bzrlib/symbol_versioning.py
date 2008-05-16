@@ -328,3 +328,29 @@ def deprecated_list(deprecation_version, variable_name,
                 return self._warn_deprecated(list.pop)
 
     return _DeprecatedList(initial_value)
+
+
+def suppress_deprecation_warnings():
+    """Call this function to suppress all deprecation warnings.
+
+    When this is a final release version, we don't want to annoy users with
+    lots of deprecation warnings. We only want the deprecation warnings when
+    running a dev or release candidate.
+    """
+    import warnings
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+
+def activate_deprecation_warnings():
+    """Call this function to activate deprecation warnings.
+
+    When running in a 'final' release we suppress deprecation warnings.
+    However, the test suite wants to see them. So when running selftest, we
+    re-enable the deprecation warnings.
+
+    Note: warnings that have already been issued under 'ignore' will not be
+    reported after this point. The 'warnings' module has already marked them as
+    handled, so they don't get issued again.
+    """
+    import warnings
+    warnings.filterwarnings('default', category=DeprecationWarning)
