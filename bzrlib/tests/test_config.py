@@ -1451,8 +1451,8 @@ user=jim
         # the user is prompted
         self.assertEquals(entered_password,
                           conf.get_password('ssh', 'bar.org', user='jim'))
-        # Not warning shoud be emitted since there is no password, we just
-        # provide the user.
+        # No warning shoud be emitted since there is no password. We are only
+        # providing "user".
         self.assertNotContainsRe(
             self._get_log(keep_log_file=True),
             'password ignored in section \[ssh with password\]')
