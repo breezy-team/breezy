@@ -1,0 +1,87 @@
+Content Filters
+===============
+
+Content formats
+---------------
+
+At times, it is useful to have files formatted in the working tree
+differently to how they are stored when committed. For example,
+a cross-platform project needs to select their preferred newline
+convention for text files, yet developers working on that project 
+may have tools that expect or prefer the other convention. Bazaar
+overcomes this dilemma by supporting two content formats:
+
+ * a canonical format - how files are stored internally
+ * a convenience format - how files are created in a working tree.
+
+
+Format conversion
+-----------------
+
+The conversion between these formats is done by content filters.
+A content filter has two parts:
+
+* a read converter - converts from convenience to canonical format
+* a write converter - converts from canonical to convenience format.
+
+In many cases, these converters *round-trip* files, i.e. applying the
+read converter followed by the write converter gives back the original
+content. This is not strictly required though. For example, a read
+converter might strip trailing whitespace off lines in source code
+while the matching write converter might pass content through unchanged.
+
+
+Enabling content filters
+------------------------
+
+Content filters are typically provided by plugins so the first step
+in using them is to install the relevant plugins and read their
+documentation. In some cases, the plugin might be very specific
+about which files it filters, e.g. only files ending in ``.java``.
+In other cases, the plugin may leave it in the user's hands to
+define which files are to be filtered. This is typically done
+using rule-based preferences. See ``bzr help rules`` for general
+information about defining these.
+
+
+Impact on commands
+------------------
+
+Read converters are only applied to commands that read content from
+a working tree, e.g. status, diff and commit. By default, write
+converters are only applied by the ``cat`` command and by commands
+that **create** files in a working tree, e.g. branch, checkout, update.
+In particular, note that ``bzr commit`` does not implicitly apply
+write converters after comitting files. (If this makes sense for
+a given plugin providing a content filter, the plugin can always
+reigster a ``post_commit`` hook to achieve this effect.)
+
+Note: In the future, it is likely that additional options will be
+added to commands like ``export`` so that content filtering can
+optionally be enabled for them. If you have a particular need like
+this, please raise it in community formums (e.g. the mailing list or
+bug tracker) so these enhancements can be correctly prioritized.
+
+
+Refreshing your working tree
+----------------------------
+
+For performance reasons, Bazaar caches the timestamps of files in
+a working tree, and assumes files are unchanged if their timestamps
+match the cached values. As a consequence, there are times when
+you may need to explicitly ask for content filtering to be reapplied
+in one or both directions, e.g. after installing or reconfiguring
+plugins providing it.
+
+Here are some general guidelines for doing this:
+
+ * To reapply read converters, ``touch`` files, i.e. update their
+   timestamp. Operations like ``bzr status`` should then reapply the
+   relevant read converters and compare the end result with the
+   canonical format.
+
+ * To reapply write converters, ensure there are no local changes,
+   delete the relevant files and run ``bzr update``.
+
+Note: In the future, it is likely that additional options will be added
+to commands to make this refreshing process faster and safer.

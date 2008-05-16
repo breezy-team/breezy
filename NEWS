@@ -14,6 +14,12 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Content filters can now be used to provide custom conversion
+      between the canonical format of content (i.e. as stored) and
+      the convenience format of content (i.e. as created in working
+      trees). See ``bzr help content-filters`` for further details.
+      (Ian Clatworthy, Alexander Belchenko)
+
   IMPROVEMENTS:
 
   BUGFIXES:
@@ -26,9 +32,6 @@ IN DEVELOPMENT
       ``split_suite_by_condition``. (Robert Collins)
 
   INTERNALS:
-
-    * Added plumbing for working tree content filtering.
-      (Alexander Belchenko, Ian Clatworthy)
 
   API BREAKS:
 
