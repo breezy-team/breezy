@@ -144,9 +144,12 @@ def iter_search_rules(branch, path_names, pref_names=None,
         branch_searcher = _branch_searchers.get(branch)
         if branch_searcher is None:
             # Create and cache the branch searcher
-            transport = branch.control_files._transport
-            branch_inifile = TransportConfig(transport, 'branch.rules')
-            branch_searcher = _IniBasedRulesSearcher(branch_inifile)
+            branch.lock_read()
+            try:
+                ini_file = branch.control_files.get('branch.rules')
+            finally:
+                branch.unlock()
+            branch_searcher = _IniBasedRulesSearcher(ini_file)
             _branch_searchers[branch] = branch_searcher
         # If branch.rules is missing or empty, skip searching it
         if branch_searcher._globster is None:

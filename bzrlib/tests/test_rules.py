@@ -106,3 +106,54 @@ class TestRulesPath(tests.TestCase):
     def test_rules_filename(self):
         self.assertEqual(rules.rules_filename(),
                          self.bzr_home + '/bazaar.rules')
+
+
+class TestIterSearchRules(tests.TestCaseInTempDir):
+
+    def make_per_user_searcher(self, lines):
+        """Make a _RulesSearcher from a list of strings"""
+        return rules._IniBasedRulesSearcher(lines)
+
+    def make_branch_with_rules(self, text):
+        b = self.make_branch('.')
+        control_files = b.control_files
+        control_files.lock_write()
+        try:
+            control_files.put_utf8('branch.rules', text)
+        finally:
+            control_files.unlock()
+        return b
+
+    def test_iter_search_rules_no_branch(self):
+        per_user = self.make_per_user_searcher([
+            "[./a.txt]", "foo=baz",
+            "[*.txt]", "foo=bar", "a=True"])
+        result = list(rules.iter_search_rules(None, ['a.txt', 'dir/a.txt'],
+            _default_searcher=per_user))
+        self.assertEquals((('foo', 'baz'),), result[0])
+        self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
+
+    def test_iter_search_rules_just_branch(self):
+        per_user = self.make_per_user_searcher([])
+        b = self.make_branch_with_rules(
+            "[./a.txt]\n"
+            "foo=baz\n"
+            "[*.txt]\n"
+            "foo=bar\n"
+            "a=True\n")
+        result = list(rules.iter_search_rules(b, ['a.txt', 'dir/a.txt'],
+            _default_searcher=per_user))
+        self.assertEquals((('foo', 'baz'),), result[0])
+        self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
+
+    def test_iter_search_rules_branch_and_per_user(self):
+        per_user = self.make_per_user_searcher([
+            "[./a.txt]", "foo=baz",
+            "[*.txt]", "foo=bar", "a=True"])
+        b = self.make_branch_with_rules(
+            "[./a.txt]\n"
+            "foo=qwerty\n")
+        result = list(rules.iter_search_rules(b, ['a.txt', 'dir/a.txt'],
+            _default_searcher=per_user))
+        self.assertEquals((('foo', 'qwerty'),), result[0])
+        self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
