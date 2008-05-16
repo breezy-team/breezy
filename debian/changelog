@@ -1,3 +1,9 @@
+bzr-builddeb (0.95) UNRELEASED; urgency=low
+
+  * 
+
+ -- James Westby <james.westby@canonical.com>  Fri, 16 May 2008 12:29:08 +0100
+
 bzr-builddeb (0.94) unstable; urgency=low
 
   [ Jelmer Vernooij ]
