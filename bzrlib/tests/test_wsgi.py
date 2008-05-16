@@ -220,7 +220,7 @@ class TestWSGI(tests.TestCase):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # Expect a version 1-encoded response.
-        self.assertEqual('ok\x013\n', response)
+        self.assertEqual('ok\x012\n', response)
 
     def test_protocol_version_detection_two(self):
         # SmartWSGIApp detects requests that start with REQUEST_VERSION_TWO
@@ -239,7 +239,7 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('200 OK', self.status)
         # Expect a version 2-encoded response.
         self.assertEqual(
-            protocol.RESPONSE_VERSION_TWO + 'success\nok\x013\n', response)
+            protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n', response)
 
 
 class FakeRequest(object):
