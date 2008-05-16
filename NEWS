@@ -44,6 +44,26 @@ IN DEVELOPMENT
       (Robert Collins)
 
 
+bzr 1.5 2008-05-16
+------------------
+
+This release of Bazaar includes several updates to the documentation, and fixes
+to prepare for making rich root support the default format. Many bugs have been
+squashed, including fixes to log, bzr+ssh inter-operation with older servers.
+
+  CHANGES:
+
+    * Suppress deprecation warnings when bzrlib is a 'final' release. This way
+      users of packaged software won't be bothered with DeprecationWarnings,
+      but developers and testers will still see them. (John Arbash Meinel)
+
+  DOCUMENTATION:
+
+    * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
+      on the plugin and integration chapters of the User Guide.
+      (Ian Clatworthy)
+
+
 bzr 1.5rc1 2008-05-09
 ---------------------
 
