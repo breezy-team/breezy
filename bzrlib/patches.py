@@ -220,7 +220,6 @@ class Hunk:
             return self.shift_to_mod_lines(pos)
 
     def shift_to_mod_lines(self, pos):
-        assert (pos >= self.orig_pos-1 and pos <= self.orig_pos+self.orig_range)
         position = self.orig_pos-1
         shift = 0
         for line in self.lines:
@@ -355,7 +354,8 @@ def iter_lines_handle_nl(iter_lines):
     last_line = None
     for line in iter_lines:
         if line == NO_NL:
-            assert last_line.endswith('\n')
+            if not last_line.endswith('\n'):
+                raise AssertionError()
             last_line = last_line[:-1]
             line = None
         if last_line is not None:
@@ -415,7 +415,8 @@ def iter_patched(orig_lines, patch_lines):
                 if isinstance(hunk_line, ContextLine):
                     yield orig_line
                 else:
-                    assert isinstance(hunk_line, RemoveLine)
+                    if not isinstance(hunk_line, RemoveLine):
+                        raise AssertionError(hunk_line)
                 line_no += 1
     if orig_lines is not None:
         for line in orig_lines:

@@ -116,8 +116,8 @@ class Stanza(object):
 
     def add(self, tag, value):
         """Append a name and value to the stanza."""
-        assert valid_tag(tag), \
-            ("invalid tag %r" % tag)
+        if not valid_tag(tag):
+            raise ValueError("invalid tag %r" % (tag,))
         if isinstance(value, str):
             value = unicode(value)
         elif isinstance(value, unicode):
@@ -165,8 +165,6 @@ class Stanza(object):
             return []
         result = []
         for tag, value in self.items:
-            assert isinstance(tag, str), type(tag)
-            assert isinstance(value, unicode)
             if value == '':
                 result.append(tag + ': \n')
             elif '\n' in value:
@@ -235,7 +233,6 @@ class Stanza(object):
         """
         d = {}
         for tag, value in self.items:
-            assert tag not in d
             d[tag] = value
         return d
          
@@ -291,7 +288,6 @@ def read_stanza_unicode(unicode_iter):
             break       # end of file
         if line == '\n':
             break       # end of stanza
-        assert line.endswith('\n')
         real_l = line
         if line[0] == '\t': # continues previous value
             if tag is None:
@@ -306,8 +302,8 @@ def read_stanza_unicode(unicode_iter):
                 raise ValueError('tag/value separator not found in line %r'
                                  % real_l)
             tag = str(line[:colon_index])
-            assert valid_tag(tag), \
-                    "invalid rio tag %r" % tag
+            if not valid_tag(tag):
+                raise ValueError("invalid rio tag %r" % (tag,))
             accum_value = line[colon_index+2:-1]
 
     if tag is not None: # add last tag-value
@@ -327,7 +323,8 @@ def to_patch_lines(stanza, max_width=72):
     :param max_width: The maximum number of characters per physical line.
     :return: a list of lines
     """
-    assert max_width > 6
+    if max_width <= 6:
+        raise ValueError(max_width)
     max_rio_width = max_width - 4
     lines = []
     for pline in stanza.to_lines():
@@ -373,9 +370,10 @@ def _patch_stanza_iter(line_iter):
     for line in line_iter:
         if line.startswith('# '):
             line = line[2:]
-        else:
-            assert line.startswith('#')
+        elif line.startswith('#'):
             line = line[1:]
+        else:
+            raise ValueError("bad line %r" % (line,))
         if last_line is not None and len(line) > 2:
             line = line[2:]
         line = re.sub('\r', '', line)

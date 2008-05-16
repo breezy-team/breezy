@@ -93,23 +93,23 @@ class TestInterRepository(TestCaseWithInterRepository):
         finally:
             to_repo.unlock()
 
-        # Implementations can either copy the missing basis text, or raise an
-        # exception
+        # Implementations can either ensure that the target of the delta is
+        # reconstructable, or raise an exception (which stream based copies
+        # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
         except errors.RevisionNotPresent, e:
             # If an exception is raised, the revision should not be in the
             # target.
-            self.assertRaises(
-                (errors.NoSuchRevision, errors.RevisionNotPresent),
-                 to_repo.revision_tree, 'rev-two')
+            self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
+                              to_repo.revision_tree, 'rev-two')
         else:
-            # If not exception is raised, then the basis text should be
+            # If not exception is raised, then the text should be
             # available.
             to_repo.lock_read()
             try:
-                rt = to_repo.revision_tree('rev-one')
-                self.assertEqual('contents of tree/a\n',
+                rt = to_repo.revision_tree('rev-two')
+                self.assertEqual('new contents\n',
                                  rt.get_file_text('a-id'))
             finally:
                 to_repo.unlock()
@@ -118,8 +118,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
         try:
-            self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a,
-                              revision_id='XXX')
+            self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
         except errors.LockError, e:
             check_old_format_lock_error(self.repository_format)
 
@@ -173,8 +172,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
-        to_repo.fetch(from_tree.branch.repository,
-                      from_tree.get_parent_ids()[0])
+        to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
 
     def test_fetch_revision_hash(self):
         """Ensure that inventory hashes are updated by fetch"""

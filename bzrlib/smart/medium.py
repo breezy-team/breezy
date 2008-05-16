@@ -111,17 +111,19 @@ class SmartServerStreamMedium(object):
 
         This sets the _push_back_buffer to the given bytes.
         """
-        assert self._push_back_buffer is None, (
-            "_push_back called when self._push_back_buffer is %r"
-            % (self._push_back_buffer,))
+        if self._push_back_buffer is not None:
+            raise AssertionError(
+                "_push_back called when self._push_back_buffer is %r"
+                % (self._push_back_buffer,))
         if bytes == '':
             return
         self._push_back_buffer = bytes
 
     def _get_push_back_buffer(self):
-        assert self._push_back_buffer != '', (
-            '%s._push_back_buffer should never be the empty string, '
-            'which can be confused with EOF' % (self,))
+        if self._push_back_buffer == '':
+            raise AssertionError(
+                '%s._push_back_buffer should never be the empty string, '
+                'which can be confused with EOF' % (self,))
         bytes = self._push_back_buffer
         self._push_back_buffer = None
         return bytes
@@ -689,7 +691,8 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         This clears the _current_request on self._medium to allow a new 
         request to be created.
         """
-        assert self._medium._current_request is self
+        if self._medium._current_request is not self:
+            raise AssertionError()
         self._medium._current_request = None
         
     def _finished_writing(self):
