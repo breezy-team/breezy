@@ -120,7 +120,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self.unused_data = ''
         self._finished = False
         self.in_buffer = ''
-        self.has_dispatched = False
+        self._has_dispatched = False
         self.request = None
         self._body_decoder = None
         self._write_func = write_func
@@ -133,11 +133,11 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         if not isinstance(bytes, str):
             raise ValueError(bytes)
         self.in_buffer += bytes
-        if not self.has_dispatched:
+        if not self._has_dispatched:
             if '\n' not in self.in_buffer:
                 # no command line yet
                 return
-            self.has_dispatched = True
+            self._has_dispatched = True
             try:
                 first_line, self.in_buffer = self.in_buffer.split('\n', 1)
                 first_line += '\n'
@@ -167,7 +167,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     ('error', str(exception))))
                 return
 
-        if self.has_dispatched:
+        if self._has_dispatched:
             if self._finished:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
@@ -739,8 +739,6 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             return 1
         elif resp == ('ok', '2'):
             return 2
-        elif resp == ('ok', '3'):
-            return 3
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
@@ -833,7 +831,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
     def __init__(self, message_handler, expect_version_marker=False):
         _StatefulDecoder.__init__(self)
-        self.has_dispatched = False
+        self._has_dispatched = False
         # Initial state
         if expect_version_marker:
             self.state_accept = self._state_accept_expecting_protocol_version

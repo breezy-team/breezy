@@ -233,6 +233,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
+        # TODO: This should log to a server log file, but no such thing
+        # exists yet.  Andrew Bennetts 2006-09-29.
         self.socket.close()
         self.finished = True
 

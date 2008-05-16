@@ -18,6 +18,7 @@ import urllib
 
 import bzrlib
 from bzrlib.smart import message, protocol
+from bzrlib.trace import warning
 from bzrlib import urlutils, errors
 
 
@@ -73,6 +74,9 @@ class _SmartClient(object):
                 except errors.UnexpectedProtocolVersionMarker, err:
                     # TODO: We could recover from this without disconnecting if
                     # we recognise the protocol version.
+                    warning(
+                        'Server does not understand Bazaar network protocol %d,'
+                        ' reconnecting.  (Upgrade the server to avoid this.)')
                     self._medium.disconnect()
                     continue
                 else:

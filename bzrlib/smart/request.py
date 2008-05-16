@@ -340,7 +340,7 @@ class HelloRequest(SmartServerRequest):
     """
 
     def do(self):
-        return SuccessfulSmartServerResponse(('ok', '3'))
+        return SuccessfulSmartServerResponse(('ok', '2'))
 
 
 class GetBundleRequest(SmartServerRequest):
