@@ -19,7 +19,7 @@ IN DEVELOPMENT
       responses, and more graceful fallback when a server is too old to
       recognise a request from a more recent client.  Bazaar 1.6 will
       interoperate with 0.16 and later versions, but servers should be upgraded
-      when possible.  Bazaar 1.6 no longer interoperates with 0.15 and early via
+      when possible.  Bazaar 1.6 no longer interoperates with 0.15 and earlier via
       these protocols.  Use alternatives like SFTP or upgrade those servers.
       (Andrew Bennetts, #83935)
 
