@@ -76,7 +76,8 @@ class _SmartClient(object):
                     # we recognise the protocol version.
                     warning(
                         'Server does not understand Bazaar network protocol %d,'
-                        ' reconnecting.  (Upgrade the server to avoid this.)')
+                        ' reconnecting.  (Upgrade the server to avoid this.)'
+                        % (protocol_version,))
                     self._medium.disconnect()
                     continue
                 else:
