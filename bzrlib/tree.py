@@ -24,6 +24,7 @@ from cStringIO import StringIO
 import bzrlib
 from bzrlib import (
     delta,
+    filters,
     osutils,
     revision as _mod_revision,
     conflicts as _mod_conflicts,
@@ -31,7 +32,6 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.filters import filtered_output_lines
 from bzrlib import errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
@@ -436,7 +436,7 @@ class Tree(object):
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys
-        sys.stdout.writelines(filtered_output_lines(
+        sys.stdout.writelines(filters.filtered_output_lines(
             self.get_file_lines(file_id),
             self._content_filter_stack(file_id=file_id)))
 
@@ -524,7 +524,17 @@ class Tree(object):
         :param file_id: file_id or None if unknown
         :return: the list of filters - [] if there are none
         """
-        return []
+        filter_pref_names = filters._get_registered_names()
+        if len(filter_pref_names) == 0:
+            return []
+        if path is None:
+            path = self.id2path(file_id)
+        prefs = None
+        # TODO: Replace the line above with the line below
+        # (when the rule-based preferences branch is merged)
+        #prefs = rules.iter_search_rules(self.branch, [path],
+        #    filter_pref_names).next()
+        return filters._get_filter_stack_for(prefs)
 
 
 class EmptyTree(Tree):

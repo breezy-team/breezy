@@ -163,6 +163,8 @@ def _get_filter_stack_for(preferences):
       value is the key into the filter stack map regsitered
       for that preference.
     """
+    if preferences is None:
+        return []
     stack = _stack_cache.get(preferences)
     if stack is not None:
         return stack
