@@ -19,8 +19,8 @@
 The only bzr-related info uploaded with the working tree is the corresponding
 revision id. The uploaded working tree is not linked to any other bzr data.
 
-The intended use is for web developers with no shell access on their web site
-forced to used FTP or SFTP to upload thei site content.
+The intended use is for web developers which keep their web sites versioned
+with bzr, can can use either FTP or SFTP to upload their site.
 
 Known limitations:
 - Symlinks are ignored,
@@ -66,7 +66,7 @@ class cmd_upload(commands.Command):
         'remember',
         'verbose',
         option.Option('full', 'Upload the full working tree.'),
-        option.Option('quiet', 'Do not output what is being done', 
+        option.Option('quiet', 'Do not output what is being done.', 
                        short_name='q'),
         option.Option('directory',
                       help='Branch to upload from, '
@@ -248,6 +248,11 @@ class cmd_upload(commands.Command):
             self.upload_full_tree()
             # We're done
             return
+
+        # Check if the revision hasn't already been uploaded
+        if rev_id == self.rev_id:
+            if not self.quiet:
+                self.outf.write('Remote location already up to date\n')
 
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).
