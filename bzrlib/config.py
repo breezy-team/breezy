@@ -1090,7 +1090,7 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
-            if scheme is 'ssh':
+            if password is not None and scheme is 'ssh':
                 trace.warning('password ignored in section [%s],'
                               ' use an ssh agent instead'
                               % credentials['name'])
