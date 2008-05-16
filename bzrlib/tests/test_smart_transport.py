@@ -952,7 +952,7 @@ class TestGetProtocolFactoryForBytes(tests.TestCase):
 
     def test_version_three(self):
         result = medium._get_protocol_factory_for_bytes(
-            'bzr message 3 (bzr 1.3)\nextra bytes')
+            'bzr message 3 (bzr 1.6)\nextra bytes')
         protocol_factory, remainder = result
         self.assertEqual(
             protocol.build_server_protocol_three, protocol_factory)
@@ -2519,7 +2519,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester.set_headers({'header name': 'header value'})
         requester.call('one arg')
         self.assertEquals(
-            'bzr message 3 (bzr 1.3)\n' # protocol version
+            'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
             'e', # end
@@ -2535,7 +2535,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester.set_headers({'header name': 'header value'})
         requester.call_with_body_bytes(('one arg',), 'body bytes')
         self.assertEquals(
-            'bzr message 3 (bzr 1.3)\n' # protocol version
+            'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
             'b' # there is a prefixed body
@@ -2773,7 +2773,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         # First the client should send a v3 request, but the server will reply
         # with a v2 error.
         medium.expect_request(
-            'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+            'bzr message 3 (bzr 1.6)\n\x00\x00\x00\x02de' +
             's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
             'bzr response 2\nfailed\n\n')
         # So then the client should disconnect to reset the connection, because
@@ -2807,7 +2807,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         unknown_protocol_bytes = 'Unknown protocol!'
         # The client will try v3 and v2 before eventually giving up.
         medium.expect_request(
-            'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+            'bzr message 3 (bzr 1.6)\n\x00\x00\x00\x02de' +
             's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
             unknown_protocol_bytes)
         medium.expect_disconnect()

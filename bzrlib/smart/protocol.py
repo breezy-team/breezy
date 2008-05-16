@@ -38,7 +38,7 @@ from bzrlib.util.bencode import bdecode, bencode
 REQUEST_VERSION_TWO = 'bzr request 2\n'
 RESPONSE_VERSION_TWO = 'bzr response 2\n'
 
-MESSAGE_VERSION_THREE = 'bzr message 3 (bzr 1.3)\n'
+MESSAGE_VERSION_THREE = 'bzr message 3 (bzr 1.6)\n'
 RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
 
 
