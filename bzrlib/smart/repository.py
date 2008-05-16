@@ -389,7 +389,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             dirname = dirname.encode(sys.getfilesystemencoding())
             # python's tarball module includes the whole path by default so
             # override it
-            assert dirname.endswith('.bzr')
+            if not dirname.endswith('.bzr'):
+                raise ValueError(dirname)
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()

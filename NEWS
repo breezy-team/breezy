@@ -12,6 +12,41 @@ IN DEVELOPMENT
 
   CHANGES:
 
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  DOCUMENTATION:
+
+  TESTING:
+
+    * New helper function for splitting test suites
+      ``split_suite_by_condition``. (Robert Collins)
+
+  INTERNALS:
+
+  API BREAKS:
+
+    * Many methods on ``VersionedFile``, ``Repository`` and in
+      ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
+      (Robert Collins)
+
+    * ``VersionedFile.join`` is deprecated. This method required local
+      instances of both versioned file objects and was thus hostile to being
+      used for streaming from a smart server. The new get_record_stream and
+      insert_record_stream are meant to efficiently replace this method.
+      (Robert Collins)
+
+
+bzr 1.5rc1 2008-05-09
+---------------------
+
+  NOTES WHEN UPGRADING:
+
+  CHANGES:
+
     * Broader support of GNU Emacs mail clients. Set
       ``mail_client=emacsclient`` in your bazaar.conf and ``send`` will pop the
       bundle in a mail buffer according to the value of ``mail-user-agent``
@@ -24,10 +59,16 @@ IN DEVELOPMENT
     * Diff now handles revision specs like "branch:" and "submit:" more
       efficiently.  (Aaron Bentley)
 
+    * More friendly error given when attempt to start the smart server
+      on an address already in use. (Andrea Corbellini, #200575)
+
     * Pull completes much faster when there is nothing to pull.
       (Aaron Bentley)
 
   BUGFIXES:
+
+    * Authentication.conf can define sections without password.
+      (Vincent Ladeuil, #199440)
 
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
@@ -39,6 +80,9 @@ IN DEVELOPMENT
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 
+    * Catch definitions outside sections in authentication.conf.
+      (Vincent Ladeuil, #217650)
+
     * Conversion from non-rich-root to rich-root(-pack) updates inventory
       sha1s, even when bundles are used.  (Aaron Bentley, #181391)
 
@@ -47,6 +91,10 @@ IN DEVELOPMENT
 
     * Conversion from non-rich-root to rich-root(-pack) works even when a
       parent revision has a different root id.  (Aaron Bentley, #177874)
+
+    * Disable strace testing until strace is fixed (see bug #103133) and emit a
+      warning when selftest ends to remind us of leaking tests.
+      (Vincent Ladeuil, #226769)
 
     * Fetching all revisions from a repository does not cause pack collisions.
       (Robert Collins, Aaron Bentley, #212908)
@@ -58,6 +106,10 @@ IN DEVELOPMENT
       if the remote server was < version 1.2. This was due to a bug in the
       RemoteRepository.get_parent_map() fallback code.
       (John Arbash Meinel, #214894)
+
+    * Remove leftover code in ``bzr_branch`` that inappropriately creates 
+      a ``branch-name`` file in the branch control directory.
+      (Martin Pool)
 
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
@@ -75,7 +127,17 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Expanded the User Guide to include new chapters on popular plugins and
+      integrating Bazaar into your environment. The *Best practices* chapter
+      was renamed to *Miscellaneous topics* as suggested by community
+      feedback as well. (Ian Clatworthy)
+
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
+
+    * Improved the documentation on hooks. (Ian Clatworthy)
+
+    * Update authentication docs regarding ssh agents.
+      (Vincent Ladeuil, #183705)
 
   TESTING:
 
@@ -83,8 +145,23 @@ IN DEVELOPMENT
       make it easy to identify which test spawned a thread with an unhandled
       exception. (Andrew Bennetts)
 
+    * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
+      options for debugging tests, these are complementary to the the -D
+      options.  The ``-Dselftest_debug`` global option has been replaced by the
+      ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
+
     * Parameterised test ids are preserved correctly to aid diagnosis of test
       failures. (Robert Collins, Andrew Bennetts)
+
+    * selftest now accepts --starting-with <id> to load only the tests whose id
+      starts with the one specified. This greatly speeds up running the test
+      suite on a limited set of tests and can be used to run the tests for a
+      single module, a single class or even a single test.  (Vincent Ladeuil)
+
+    * The test suite modules have been modified to define load_tests() instead
+      of test_suite(). That speeds up selective loading (via --load-list)
+      significantly and provides many examples on how to migrate (grep for
+      load_tests).  (Vincent Ladeuil)
 
   INTERNALS:
 
@@ -100,7 +177,14 @@ IN DEVELOPMENT
     * ``Repository.revision_parents`` is now deprecated in favour of 
       ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
 
+    * The Python ``assert`` statement is no longer used in Bazaar source, and 
+      a test checks this.  (Martin Pool)
+
   API BREAKS:
+
+    * ``bzrlib.status.show_pending_merges`` requires the repository to be
+      locked by the caller. Callers should have been doing it anyway, but it
+      will now raise an exception if they do not. (John Arbash Meinel)
 
     * Repository.get_data_stream, Repository.get_data_stream_for_search(),
       Repository.get_deltas_for_revsions(), Repository.revision_trees(),
@@ -109,6 +193,9 @@ IN DEVELOPMENT
 
     * ``LockableFiles.get_utf8`` is deprecated, as a start towards 
       removing LockableFiles and ``.control_files`` entirely.
+      (Martin Pool)
+
+    * Methods deprecated prior to 1.1 have been removed.
       (Martin Pool)
 
 

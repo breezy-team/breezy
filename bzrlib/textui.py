@@ -25,11 +25,13 @@ def show_status(state, kind, name, to_file=None):
         kind_ch = '/'
     elif kind == 'symlink':
         kind_ch = '->'
-    else:
-        assert kind == 'file', ("can't handle file of type %r" % kind)
+    elif kind == 'file':
         kind_ch = ''
+    else:
+        raise ValueError(kind)
 
-    assert len(state) == 1
+    if len(state) != 1:
+        raise ValueError(state)
         
     if to_file is None:
         to_file = sys.stdout

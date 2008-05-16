@@ -41,7 +41,7 @@ class TestRegistry(TestCase):
 
         self.failUnless(a_registry.default_key is None)
 
-        # test get() (self.default_key == None)
+        # test get() (self.default_key is None)
         self.assertRaises(KeyError, a_registry.get)
         self.assertRaises(KeyError, a_registry.get, None)
         self.assertEqual(2, a_registry.get('two'))

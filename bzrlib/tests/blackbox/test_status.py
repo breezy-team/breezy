@@ -95,13 +95,13 @@ class BranchStatus(TestCaseWithTransport):
                 '  bye.c\n',
                 '  hello.c\n',
                 'pending merges:\n',
-                '  pending@pending-0-0\n',
+                '  (ghost) pending@pending-0-0\n',
             ],
             wt)
         self.assertStatus([
                 '?   bye.c\n',
                 '?   hello.c\n',
-                'P   pending@pending-0-0\n',
+                'P   (ghost) pending@pending-0-0\n',
             ],
             wt, short=True)
         self.assertStatus([

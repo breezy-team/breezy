@@ -23,7 +23,6 @@ import os
 from bzrlib.diff import internal_diff
 from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import has_symlinks
-from bzrlib.symbol_versioning import zero_ninetyone, one_zero
 from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.transform import _PreviewTree
@@ -32,128 +31,6 @@ from bzrlib.uncommit import uncommit
 
 def get_entry(tree, file_id):
     return tree.iter_entries_by_dir([file_id]).next()[1]
-
-
-class TestEntryDiffing(TestCaseWithTree):
-
-    def setUp(self):
-        super(TestEntryDiffing, self).setUp()
-        self.wt = self.make_branch_and_tree('.')
-        self.branch = self.wt.branch
-        open('file', 'wb').write('foo\n')
-        open('binfile', 'wb').write('foo\n')
-        self.wt.add(['file'], ['fileid'])
-        self.wt.add(['binfile'], ['binfileid'])
-        if has_symlinks():
-            os.symlink('target1', 'symlink')
-            self.wt.add(['symlink'], ['linkid'])
-        self.wt.commit('message_1', rev_id = '1')
-        open('file', 'wb').write('bar\n')
-        open('binfile', 'wb').write('x' * 1023 + '\x00\n')
-        if has_symlinks():
-            os.unlink('symlink')
-            os.symlink('target2', 'symlink')
-        self.tree_1 = self.branch.repository.revision_tree('1')
-        self.inv_1 = self.branch.repository.get_inventory('1')
-        self.file_1 = self.inv_1['fileid']
-        self.file_1b = self.inv_1['binfileid']
-        self.tree_2 = self.workingtree_to_test_tree(self.wt)
-        self.tree_2.lock_read()
-        self.addCleanup(self.tree_2.unlock)
-        self.file_2 = get_entry(self.tree_2, 'fileid')
-        self.file_2b = get_entry(self.tree_2, 'binfileid')
-        if has_symlinks():
-            self.link_1 = self.inv_1['linkid']
-            self.link_2 = get_entry(self.tree_2, 'linkid')
-
-    def test_file_diff_deleted(self):
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.file_1.diff,
-                             internal_diff,
-                             "old_label", self.tree_1,
-                             "/dev/null", None, None,
-                             output)
-        self.assertEqual(output.getvalue(), "--- old_label\n"
-                                            "+++ /dev/null\n"
-                                            "@@ -1,1 +0,0 @@\n"
-                                            "-foo\n"
-                                            "\n")
-
-    def test_file_diff_added(self):
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.file_1.diff,
-                             internal_diff,
-                             "new_label", self.tree_1,
-                             "/dev/null", None, None,
-                             output, reverse=True)
-        self.assertEqual(output.getvalue(), "--- /dev/null\n"
-                                            "+++ new_label\n"
-                                            "@@ -0,0 +1,1 @@\n"
-                                            "+foo\n"
-                                            "\n")
-
-    def test_file_diff_changed(self):
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.file_1.diff,
-                             internal_diff,
-                             "/dev/null", self.tree_1,
-                             "new_label", self.file_2, self.tree_2,
-                             output)
-        self.assertEqual(output.getvalue(), "--- /dev/null\n"
-                                            "+++ new_label\n"
-                                            "@@ -1,1 +1,1 @@\n"
-                                            "-foo\n"
-                                            "+bar\n"
-                                            "\n")
-
-    def test_file_diff_binary(self):
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.file_1.diff,
-                             internal_diff,
-                             "/dev/null", self.tree_1,
-                             "new_label", self.file_2b, self.tree_2,
-                             output)
-        self.assertEqual(output.getvalue(),
-                         "Binary files /dev/null and new_label differ\n")
-
-    def test_link_diff_deleted(self):
-        self.requireFeature(SymlinkFeature)
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.link_1.diff,
-                             internal_diff, "old_label",
-                             self.tree_1, "/dev/null", None, None,
-                             output)
-        self.assertEqual(output.getvalue(),
-                         "=== target was 'target1'\n")
-
-    def test_link_diff_added(self):
-        self.requireFeature(SymlinkFeature)
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.link_1.diff,
-                             internal_diff,
-                             "new_label", self.tree_1,
-                             "/dev/null", None, None,
-                             output, reverse=True)
-        self.assertEqual(output.getvalue(),
-                         "=== target is 'target1'\n")
-
-    def test_link_diff_changed(self):
-        self.requireFeature(SymlinkFeature)
-        output = StringIO()
-        self.applyDeprecated(one_zero,
-                             self.link_1.diff,
-                             internal_diff,
-                             "/dev/null", self.tree_1,
-                             "new_label", self.link_2, self.tree_2,
-                             output)
-        self.assertEqual(output.getvalue(),
-                         "=== target changed 'target1' => 'target2'\n")
 
 
 class TestPreviousHeads(TestCaseWithTree):
@@ -189,38 +66,6 @@ class TestPreviousHeads(TestCaseWithTree):
         self.file_active = get_entry(self.tree, 'fileid')
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
             self.branch.repository.get_transaction())
-
-    def get_previous_heads(self, inventories):
-        return self.applyDeprecated(zero_ninetyone,
-            self.file_active.find_previous_heads,
-            inventories,
-            self.branch.repository.weave_store,
-            self.branch.repository.get_transaction())
-
-    def test_fileid_in_no_inventory(self):
-        self.assertEqual({}, self.get_previous_heads([self.inv_A]))
-
-    def test_fileid_in_one_inventory(self):
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_B]))
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_A, self.inv_B]))
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_B, self.inv_A]))
-
-    def test_fileid_in_two_inventories_gives_both_entries(self):
-        self.assertEqual({'B':self.inv_B['fileid'],
-                          'C':self.inv_C['fileid']},
-                          self.get_previous_heads([self.inv_B, self.inv_C]))
-        self.assertEqual({'B':self.inv_B['fileid'],
-                          'C':self.inv_C['fileid']},
-                          self.get_previous_heads([self.inv_C, self.inv_B]))
-
-    def test_fileid_in_two_inventories_already_merged_gives_head(self):
-        self.assertEqual({'D':self.inv_D['fileid']},
-                         self.get_previous_heads([self.inv_B, self.inv_D]))
-        self.assertEqual({'D':self.inv_D['fileid']},
-                         self.get_previous_heads([self.inv_D, self.inv_B]))
 
     # TODO: test two inventories with the same file revision
 
