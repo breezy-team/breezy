@@ -5,6 +5,14 @@ Bazaar Release Notes
 .. contents::
 
 
+bzr 1.5 2008-05-16
+------------------
+
+    * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
+      on the plugin and integration chapters of the User Guide.
+      (Ian Clatworthy)
+
+
 bzr 1.5rc1 2008-05-09
 ---------------------
 
