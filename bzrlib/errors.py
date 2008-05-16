@@ -1478,7 +1478,7 @@ class SmartProtocolError(TransportError):
 
 class UnexpectedProtocolVersionMarker(TransportError):
 
-    _fmt = "Unexpected protocol version marker: %(marker)r"
+    _fmt = "Received bad protocol version marker: %(marker)r"
 
     def __init__(self, marker):
         self.marker = marker
