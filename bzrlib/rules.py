@@ -16,29 +16,7 @@
 
 """Rule-based definition of preferences for selected files in selected branches.
 
-Rules are defined in ini file format where the sections are file glob
-patterns and the contents of each section are the preferences for files
-matching that pattern. For example::
-
-    [*.txt]
-    text = True
-
-    [*.pdf]
-    text = False
-
-Patterns use the same conventions as used for ignores, namely:
-
- * *.xyz match any file ending in .xyz
- * foo/ matches all files in foo directories
- * to specify the top level, start a pattern with ./
-
-Patterns are ordered and searching stops as soon as one matches.
-As a consequence, more explicit patterns should be placed towards
-the top of the file.
-
-Default rules for all branches are defined in ``BZR_HOME/bazaar.rules``.
-Branch-specific rules are defined in ``branch.rules``.
-If a rule is matched in the branch level file, searching stops.
+See ``bzr help rules`` for details.
 """
 
 from bzrlib import (

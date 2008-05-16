@@ -17,7 +17,9 @@ IN DEVELOPMENT
     * Rule-based preferences can now be defined for selected files in
       selected branches, allowing commands and plugins to provide
       custom behaviour for files matching defined patterns.
-      See ``bzr help rules`` for details. (Ian Clatworthy)
+      See ``Rule-based preferences`` (part of ``Configuring Bazaar``)
+      in the User Guide and ``bzr help rules`` for more information.
+      (Ian Clatworthy)
 
   IMPROVEMENTS:
 
