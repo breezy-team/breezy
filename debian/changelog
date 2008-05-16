@@ -2,6 +2,10 @@ bzr-builddeb (0.94) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Support building against snapshots from Subversion branches.
+  * Suggest bzr-svn to hint that you can work with svn. The version
+    is the one that exports the svn-buildpackage mergeWithUpstream
+    property as "merge = True", so that bzr-builddeb will seamlessly
+    build these branches.
 
   [ Sebastian Bober ]
   * Disable the testsuite during build as we can't be sure that
