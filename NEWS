@@ -14,6 +14,11 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Rule-based preferences can now be defined for selected files in
+      selected branches, allowing commands and plugins to provide
+      custom behaviour for files matching defined patterns.
+      See ``bzr help rules`` for details. (Ian Clatworthy)
+
   IMPROVEMENTS:
 
   BUGFIXES:
@@ -26,9 +31,6 @@ IN DEVELOPMENT
       ``split_suite_by_condition``. (Robert Collins)
 
   INTERNALS:
-
-    * Added plumbing for per-user file attributes using globs like those
-      supported in .bzrignore files. (Ian Clatworthy)
 
   API BREAKS:
 

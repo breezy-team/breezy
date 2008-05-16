@@ -674,6 +674,9 @@ topic_registry.register('checkouts', _checkouts,
 topic_registry.register('repositories', _repositories,
                         'Basic information on shared repositories.',
                         SECT_CONCEPT)
+topic_registry.register('rules', _load_from_file,
+                        'Information on defining rule-based preferences',
+                        SECT_CONCEPT)
 topic_registry.register('standalone-trees', _standalone_trees,
                         'Information on what a standalone tree is',
                         SECT_CONCEPT)

@@ -1,0 +1,71 @@
+Rules
+=====
+
+Introduction
+------------
+
+Rules are defined in ini file format where the sections are file glob
+patterns and the contents of each section are the preferences for files
+matching that pattern. For example::
+
+    [*.bat]
+    eol = dos
+
+    [*.html]
+    keywords = escape
+
+Preferences like these are useful for commands and plugins wishing to
+provide custom behaviour for selected files in selected branches.
+
+
+Files
+-----
+
+Branch-specific rules are defined in ``.bzr/branch/branch.rules``.
+Default rules for all branches are defined in ``BZR_HOME/bazaar.rules``.
+Either or both files may be missing. If a rule is matched by a pattern
+in the branch level file, searching stops.
+
+
+Patterns
+--------
+
+Patterns are ordered and searching stops as soon as one matches.
+As a consequence, more explicit patterns should be placed towards
+the top of the file. Otherwise, rule patterns use exactly the
+same conventions as ignore patterns as explained below.
+
+Trailing slashes on patterns are ignored. If the pattern contains a
+slash or is a regular expression, it is compared to the whole path
+from the branch root. Otherwise, it is compared to only the last
+component of the path. To match a file only in the root directory,
+prepend './'. Patterns specifying absolute paths are not allowed.
+
+Patterns may include globbing wildcards such as::
+
+  ? - Matches any single character except '/'
+  * - Matches 0 or more characters except '/'
+  /**/ - Matches 0 or more directories in a path
+  [a-z] - Matches a single character from within a group of characters
+
+Patterns may also be Python regular expressions. Regular expression
+patterns are identified by a 'RE:' prefix followed by the regular
+expression.  Regular expression patterns may not include named or
+numbered groups.
+
+Note: Patterns containing square brackets should be surrounded in
+quotes to ensure they are corrected parsed.
+
+
+Preferences
+-----------
+
+The basic syntax is::
+
+  keyword = value  # inline comment
+
+The trailing comment is optional. If a keyword or value starts or ends
+with whitespace, or contains a quote mark, comma or # character, then
+it needs to be surrounded by quotes. Quotes may be either single (')
+or double (") quotes. For an extended specification of the format, see
+http://www.voidspace.org.uk/python/configobj.html#the-config-file-format.
