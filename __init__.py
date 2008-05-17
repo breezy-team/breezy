@@ -294,7 +294,7 @@ class cmd_builddeb(Command):
 
     build.prepare(use_existing)
 
-    run_hook('pre-export', config)
+    run_hook(tree, 'pre-export', config)
 
     try:
       build.export(use_existing)
@@ -303,9 +303,9 @@ class cmd_builddeb(Command):
       return
 
     if not export_only:
-      run_hook('pre-build', config, wd=properties.source_dir())
+      run_hook(tree, 'pre-build', config, wd=properties.source_dir())
       build.build(builder)
-      run_hook('post-build', config, wd=properties.source_dir())
+      run_hook(tree, 'post-build', config, wd=properties.source_dir())
       if not dont_purge:
         build.clean()
       if result is not None:

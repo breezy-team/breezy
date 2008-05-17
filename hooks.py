@@ -25,15 +25,13 @@ from bzrlib.trace import info
 from bzrlib.plugins.builddeb.errors import HookFailedError
 
 
-def run_hook(hook_name, config, wd=None):
+def run_hook(tree, hook_name, config, wd="."):
   hook = config.get_hook(hook_name)
   if hook is None:
     return
   info("Running %s as %s hook" % (hook, hook_name))
-  kwargs = {}
-  if wd is not None:
-    kwargs['cwd'] = wd
-  proc = subprocess.Popen(hook, shell=True, **kwargs)
+  proc = subprocess.Popen(hook, shell=True, 
+                          cwd=tree.local_abspath(wd))
   proc.wait()
   if proc.returncode != 0:
     raise HookFailedError(hook_name)
