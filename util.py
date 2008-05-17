@@ -69,7 +69,8 @@ def find_changelog(t, merge):
           raise MissingChangelogError("debian/changelog")
       else:
         if merge and t.has_filename('changelog'):
-          if os.path.islink('debian') and os.readlink('debian') == '.':
+          if (t.kind(t.path2id('debian')) == 'symlink' and 
+              t.get_symlink_target(t.path2id('debian')) == '.'):
             changelog_file = 'changelog'
             larstiq = True
       mutter("Using '%s' to get package information", changelog_file)
@@ -84,7 +85,7 @@ def find_changelog(t, merge):
     return changelog, larstiq
 
 def tarball_name(package, version):
-  """Return the name of the .orig.tar.gz for the given pakcage and version."""
+  """Return the name of the .orig.tar.gz for the given package and version."""
 
   return "%s_%s.orig.tar.gz" % (package, str(version))
 
