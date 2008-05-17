@@ -47,12 +47,6 @@ def recursive_copy(fromdir, todir):
       shutil.copy(path, todir)
 
 
-def goto_branch(branch):
-  """Changes to the specified branch dir if it is not None"""
-  if branch is not None:
-    info("Building using branch at %s", branch)
-    os.chdir(branch)
-
 def find_changelog(t, merge):
     changelog_file = 'debian/changelog'
     larstiq = False
