@@ -30,6 +30,10 @@ connection even for requests that urllib2 doesn't expect to contain body data.
 
 And a custom Request class that lets us track redirections, and
 handle authentication schemes.
+
+For coherency with python libraries, we use capitalized header names throughout
+the code, even if the header names will be titled just before sending the
+request (see AbstractHTTPHandler.do_open).
 """
 
 DEBUG = 0
@@ -407,10 +411,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        # FIXME: Spell it User-*A*gent once we
-                        # know how to properly avoid bogus
-                        # urllib2 using capitalize() for headers
-                        # instead of title(sp?).
                         'User-agent': 'bzr/%s (urllib)' % bzrlib_version,
                         'Accept': '*/*',
                         }
@@ -511,6 +511,13 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         headers = {}
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
+        # Some servers or proxies will choke on headers not properly
+        # cased. httplib/urllib/urllib2 all use capitalize to get canonical
+        # header names, but only python2.5 urllib2 use title() to fix them just
+        # before sending the request. And not all versions of python 2.5 do
+        # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
+        # ourself below.
+        headers = dict((name.title(), val) for name, val in headers.items())
 
         try:
             method = request.get_method()

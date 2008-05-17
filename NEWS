@@ -31,6 +31,9 @@ IN DEVELOPMENT
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
 
+    * Properly *title* header names in http requests instead of capitalizing
+      them.
+      (Vincent Ladeuil, #229076)
 
   DOCUMENTATION:
 
