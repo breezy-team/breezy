@@ -25,6 +25,7 @@
 import os
 import subprocess
 
+from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
@@ -49,7 +50,7 @@ from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.properties import BuildProperties
-from bzrlib.plugins.builddeb.util import goto_branch, find_changelog, tarball_name
+from bzrlib.plugins.builddeb.util import find_changelog, tarball_name
 from bzrlib.plugins.builddeb.version import version_info
 
 
@@ -167,9 +168,15 @@ class cmd_builddeb(Command):
           export_upstream=None, export_upstream_revision=None,
           source=False, revision=None, no_user_config=False):
 
-    goto_branch(branch)
+    if branch is None:
+      branch = "."
 
-    tree, relpath = WorkingTree.open_containing('.')
+    try:
+      tree, _ = WorkingTree.open_containing(branch)
+      branch = tree.branch
+    except NoWorkingTree:
+      tree = None
+      branch, _ = Branch.open_containing(branch)
     
     if no_user_config:
         config_files = [(local_conf, True), (default_conf, False)]
@@ -221,21 +228,22 @@ class cmd_builddeb(Command):
           if builder is None:
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
-    if revision is None:
+    if revision is None and tree is not None:
       info("Building using working tree")
-      t = tree
       working_tree = True
     else:
-      if len(revision) != 1:
+      if revision is None:
+        revid = branch.last_revision()
+      elif len(revision) == 1:
+        revid = revision[0].in_history(branch).rev_id
+      else:
         raise BzrCommandError('bzr builddeb --revision takes exactly one '
                               'revision specifier.')
-      b = tree.branch
-      rev = revision[0].in_history(b)
-      info("Building branch from revision %s", rev.rev_id)
-      t = b.repository.revision_tree(rev.rev_id)
+      info("Building branch from revision %s", revid)
+      tree = branch.repository.revision_tree(revid)
       working_tree = False
 
-    (changelog, larstiq) = find_changelog(t, merge)
+    (changelog, larstiq) = find_changelog(tree, merge)
 
     config.set_version(changelog.version)
 
@@ -259,26 +267,26 @@ class cmd_builddeb(Command):
 
     if merge:
       if export_upstream is None:
-        build = DebMergeBuild(properties, t, _is_working_tree=working_tree)
+        build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
       else:
         prepull_upstream = config.prepull_upstream
         stop_on_no_change = config.prepull_upstream_stop
-        build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
+        build = DebMergeExportUpstreamBuild(properties, tree, export_upstream,
                                             export_upstream_revision,
                                             prepull_upstream,
                                             stop_on_no_change,
                                             _is_working_tree=working_tree)
     elif native:
-      build = DebNativeBuild(properties, t, _is_working_tree=working_tree)
+      build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
     elif split:
-      build = DebSplitBuild(properties, t, _is_working_tree=working_tree)
+      build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
     else:
       if export_upstream is None:
-        build = DebBuild(properties, t, _is_working_tree=working_tree)
+        build = DebBuild(properties, tree, _is_working_tree=working_tree)
       else:
         prepull_upstream = config.prepull_upstream
         stop_on_no_change = config.prepull_upstream_stop
-        build = DebExportUpstreamBuild(properties, t, export_upstream,
+        build = DebExportUpstreamBuild(properties, tree, export_upstream,
                                        export_upstream_revision,
                                        prepull_upstream,
                                        stop_on_no_change,
@@ -343,7 +351,7 @@ class cmd_merge_upstream(Command):
     if version is None:
       raise BzrCommandError("You must supply the --version argument.")
 
-    tree, relpath = WorkingTree.open_containing('.')
+    tree, _ = WorkingTree.open_containing('.')
 
     config = DebBuildConfig([(local_conf, True), (global_conf, True),
                              (default_conf, False)])
