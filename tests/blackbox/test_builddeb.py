@@ -138,6 +138,7 @@ class TestBuilddeb(BuilddebTestCase):
       f.write('pre-build = touch pre-build\npost-build = touch post-build\n')
     finally:
       f.close()
+    self.run_bzr('add .bzr-builddeb/default.conf')
     self.run_bzr('bd --no-user-conf --dont-purge --builder true')
     self.failUnlessExists('pre-export')
     self.assertInBuildDir(['pre-build', 'post-build'])
@@ -160,6 +161,7 @@ class TestBuilddeb(BuilddebTestCase):
       f.write('export-upstream-revision = tag:test-$UPSTREAM_VERSION\n')
     finally:
       f.close()
+    self.run_bzr('add .bzr-builddeb/default.conf')
     self.run_bzr('bd --no-user-conf --dont-purge --builder true')
     self.assertInBuildDir(['a'])
     self.assertNotInBuildDir(['b'])
