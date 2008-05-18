@@ -90,16 +90,16 @@ Ask bzr-svn related questions on the `Bazaar mailing list`_ or in the
 .. _Bazaar mailing list: http://lists.canonical.com/listinfo/bazaar/
 .. _Freenode: http://www.freenode.net/
 
-Missing Features
-----------------
+Limitations
+-----------
 
-Subversion File Properties
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Unsupported Subversion File Properties
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some Subversion properties can currently not be represented in Bazaar and are 
 therefore ignored for the time being:
 
-- 'svn:ignore' is not imported. There should be a `Repository.get_ignores(revid)` call in 
+- 'svn:ignore'. There should be a `Repository.get_ignores(revid)` call in 
   Bazaar rather than a magic '.bzrignore' file. 
   Spec at https://launchpad.net/products/bzr/+spec/new-ignore-rules
 
@@ -113,8 +113,6 @@ therefore ignored for the time being:
   nested branches and the other way around. This can't be implemented 
   this until Bazaars nested branch support lands. AaronBentley's work 
   in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
-  This has been delayed until after 0.9 because of required repository
-  format changes.
 
 
 Future Enhancements
@@ -138,7 +136,6 @@ In the future, I also hope to support:
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
 
-   
 Other features currently held back by Bazaars feature set:
 
 - Tracking copies. 
@@ -194,7 +191,7 @@ Bugs
 Please file bug reports in launchpad. The product URL for bzr-svn is
 https://launchpad.net/bzr-svn/. 
 
-The wiki for this plugin is at http://bazaar-vcs.org/BzrSvn.
+The wiki for this plugin is at http://bazaar-vcs.org/BzrForeignBranches/Subversion.
 
 Installation
 ------------

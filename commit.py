@@ -674,7 +674,8 @@ def push_new(target_repository, target_branch_path, source,
     push(ImaginaryBranch(target_repository), source, start_revid)
 
 
-def push_revision_tree(target, config, source_repo, base_revid, revision_id, rev):
+def push_revision_tree(target, config, source_repo, base_revid, revision_id, 
+                       rev):
     old_tree = source_repo.revision_tree(revision_id)
     base_tree = source_repo.revision_tree(base_revid)
 
