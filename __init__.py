@@ -373,6 +373,72 @@ class cmd_svn_push(Command):
 
 register_command(cmd_svn_push)
 
+class cmd_svn_dpush(Command):
+    """Push revisions to Subversion without setting any magic Bazaar-specific 
+    properties.
+
+    This will afterwards rebase the local Bazaar branch on the Subversion 
+    branch. 
+    """
+    takes_args = ['location?']
+    takes_options = ['revision', 'remember', Option('directory',
+            help='Branch to push from, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+            Option('no-rebase', help="Don't rebase after push")]
+
+    def run(self, location=None, revision=None, remember=False, 
+            directory=None, no_rebase=False):
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.branch import Branch
+        from bzrlib.errors import NotBranchError, BzrCommandError
+        from bzrlib import urlutils
+
+        if directory is None:
+            directory = "."
+        source_branch = Branch.open_containing(directory)[0]
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
+        if revision is not None:
+            if len(revision) > 1:
+                raise BzrCommandError(
+                    'bzr svn-dpush --revision takes exactly one revision' 
+                    ' identifier')
+            revision_id = revision[0].as_revision_id(source_branch)
+        else:
+            revision_id = None
+        target_branch = bzrdir.open_branch()
+        target_branch.lock_write()
+        revid_map = {}
+        # FIXME: figure out what revisions to push
+        todo = []
+        try:
+            for revid in todo:
+                revid_map[revid] = push(target_branch, source_branch, revid, 
+                     push_metadata=False)
+        finally:
+            target_branch.unlock()
+        # We successfully created the target, remember it
+        if source_branch.get_push_location() is None or remember:
+            source_branch.set_push_location(target_branch.base)
+        if not no_rebase:
+            check_rebase_version((0, 2))
+            from bzrlib.plugins.rebase import rebase
+            # FIXME
+
+register_command(cmd_svn_dpush)
+
 
 class cmd_svn_branching_scheme(Command):
     """Show or change the branching scheme for a Subversion repository.
