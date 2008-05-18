@@ -103,8 +103,8 @@ specify --trees to svn-import.
 
 bzr-svn did a replace operation on the branch I pushed to when I tried to push a merge commit to Subversion
 -----------------------------------------------------------------------------------------------------------
-Yes, this is because bzr-svn has to preserve the mainline history of your 
-branch. 
+Yes, this is because bzr-svn has to preserve the mainline history of your Bazaar
+branch in Subversion. 
 
 If you would like to avoid this, use a checkout and merge into that ("bzr co") 
 or rebase on trunk rather than merge it. 
