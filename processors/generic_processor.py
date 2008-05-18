@@ -278,16 +278,23 @@ class GenericProcessor(processor.ImportProcessor):
         self.dump_stats()
 
         # Finish up by telling the user what to do next.
-        # (These messages are explicitly not timestamped.)
         if self._original_max_pack_count:
             # We earlier disabled autopacking, creating one pack every
-            # checkpoint instead. If we checkpointed more than 10 times,
-            # Bazaar would have auto-packed. For massive repositories,
-            # this can take a *very* long time so we suggest it to the user
-            # instead of doing it implicitly.
-            if self._revision_count >= self.checkpoint_every * 10:
-                note("To further optimize how data is stored, use 'bzr pack'.")
+            # checkpoint instead. We now pack the repository to optimise
+            # how data is stored.
+            if self._revision_count > self.checkpoint_every:
+                self.note("Packing repository ...")
+                self.repo.pack()
+                # To be conservative, packing puts the old packs and
+                # indices in obsolete_packs. We err on the side of
+                # optimism and clear out that directory to save space.
+                self.note("Removing obsolete packs ...")
+                # TODO: Use a public API for this once one exists
+                repo_transport = self.repo._pack_collection.transport
+                repo_transport.clone('obsolete_packs').delete_multi(
+                    repo_transport.list_dir('obsolete_packs'))
         if remind_about_update:
+            # This message is explicitly not timestamped.
             note("To refresh the working tree for a branch, "
                 "use 'bzr update'.")
 
