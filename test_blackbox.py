@@ -42,6 +42,22 @@ class TestRebaseSimple(ExternalBase):
         os.chdir('../feature')
         self.check_output('No revisions to rebase.\n', 'rebase ../main')
 
+    def test_no_pending_merges(self):
+        self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'], 'rebase --pending-merges')
+
+    def test_pending_merges(self):
+        os.chdir('../main')
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hoi', "my data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m this')
+        self.check_output('', 'merge ../main')
+        self.check_output(' M  hello\nAll changes applied successfully.\n', 
+                          'rebase --pending-merges')
+        self.check_output('3\n', 'revno')
+
     def test_simple_success(self):
         self.make_file('hello', '42')
         self.run_bzr('commit -m that')

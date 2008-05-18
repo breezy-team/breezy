@@ -110,13 +110,15 @@ class cmd_rebase(Command):
             help="Show what would be done, but don't actually do anything."),
         Option('always-rebase-merges',
             help="Don't skip revisions that merge already present revisions."),
+        Option('pending-merges', 
+            help="Rebase pending merges onto local branch"),
         Option('onto', help='Different revision to replay onto.',
             type=str)]
     
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None, 
             merge_type=None, verbose=False, dry_run=False, 
-            always_rebase_merges=False):
+            always_rebase_merges=False, pending_merges=False):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
@@ -125,13 +127,19 @@ class cmd_rebase(Command):
                             workingtree_replay, write_rebase_plan,
                             regenerate_default_revid,
                             rebase_todo)
+        if revision is not None and pending_merges:
+            raise BzrCommandError("--revision and --pending-merges are mutually exclusive")
+
         wt = WorkingTree.open_containing(".")[0]
         wt.lock_write()
         if upstream_location is None:
-            upstream_location = wt.branch.get_push_location()
-            if upstream_location is None:
-                upstream_location = wt.branch.get_parent()
-            info("Rebasing on %s" % upstream_location)
+            if pending_merges:
+                upstream_location = "."
+            else:
+                upstream_location = wt.branch.get_push_location()
+                if upstream_location is None:
+                    upstream_location = wt.branch.get_parent()
+                info("Rebasing on %s" % upstream_location)
         upstream = Branch.open_containing(upstream_location)[0]
         upstream_repository = upstream.repository
         upstream_revision = upstream.last_revision()
@@ -155,6 +163,15 @@ class cmd_rebase(Command):
                     raise BzrCommandError(
                         "--revision takes only one or two arguments")
 
+            if pending_merges:
+                wt_parents = wt.get_parent_ids()
+                if len(wt_parents) in (0, 1):
+                    raise BzrCommandError("No pending merges present.")
+                elif len(wt_parents) > 2:
+                    raise BzrCommandError("Rebasing more than one pending merge not supported")
+                stop_revid = wt_parents[1]
+                assert stop_revid is not None, "stop revid invalid"
+
             # Pull required revisions
             wt.branch.repository.fetch(upstream_repository, upstream_revision)
             if onto is None:
@@ -166,8 +183,10 @@ class cmd_rebase(Command):
             wt.branch.repository.fetch(upstream_repository, onto)
 
             if stop_revid is not None:
-                wt.branch.generate_revision_history(stop_revid)
-            revhistory = wt.branch.revision_history()
+                revhistory = list(wt.branch.repository.iter_reverse_revision_history(stop_revid))
+                revhistory.reverse()
+            else:
+                revhistory = wt.branch.revision_history()
 
             if start_revid is None:
                 common_revid = find_last_common_revid(revhistory, 
@@ -176,8 +195,7 @@ class cmd_rebase(Command):
                     self.outf.write("No revisions to rebase.\n")
                     return
                 try:
-                    start_revid = wt.branch.get_rev_id(
-                            wt.branch.revision_id_to_revno(common_revid)+1)
+                    start_revid = revhistory[revhistory.index(common_revid)+1]
                 except NoSuchRevision:
                     raise BzrCommandError("No common revision, please specify --revision")
 
@@ -197,7 +215,8 @@ class cmd_rebase(Command):
                     info("%s" % revid)
 
             # Check for changes in the working tree.
-            if wt.basis_tree().changes_from(wt).has_changed():
+            if (not pending_merges and 
+                wt.basis_tree().changes_from(wt).has_changed()):
                 raise UncommittedChanges(wt)
 
             if not dry_run:

@@ -9,6 +9,9 @@
   * Set author property to preserve committer and original author of the 
     commit.  (Lukáš Lalinský)
 
+  * Add new option --pending-merges for rebasing pending merges after 
+    "bzr up". (#162622)
+
 0.3		2007-12-06
 
  ENHANCEMENTS
