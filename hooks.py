@@ -31,7 +31,7 @@ def run_hook(tree, hook_name, config, wd="."):
     return
   info("Running %s as %s hook" % (hook, hook_name))
   proc = subprocess.Popen(hook, shell=True, 
-                          cwd=tree.local_abspath(wd))
+                          cwd=tree.abspath(wd))
   proc.wait()
   if proc.returncode != 0:
     raise HookFailedError(hook_name)

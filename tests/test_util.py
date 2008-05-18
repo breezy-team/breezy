@@ -136,6 +136,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
     self.write_changelog('changelog')
     tree.add(['changelog'])
     os.symlink('.', 'debian')
+    tree.add(['debian'])
     (cl, lq) = find_changelog(tree, True)
     self.assertEqual(str(cl), cl_block1)
     self.assertEqual(lq, True)
