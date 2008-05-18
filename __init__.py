@@ -82,6 +82,25 @@ def check_subversion_version():
     import svn.core
     mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % (svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__))
 
+
+def check_rebase_version(min_version):
+    """Check what version of bzr-rebase is installed.
+
+    Raises an exception when the version installed is older than 
+    min_version.
+
+    :raises RebaseNotPresent: Raised if bzr-rebase is not installed or too old.
+    """
+    from bzrlib.plugins.svn.errors import RebaseNotPresent
+    try:
+        from bzrlib.plugins.rebase import version_info as rebase_version_info
+        if rebase_version_info[:2] < min_version:
+            raise RebaseNotPresent("Version %r present, at least %r required" 
+                                   % (rebase_version_info, min_version))
+    except ImportError, e:
+        raise RebaseNotPresent(e)
+
+
 check_subversion_version()
 
 register_transport_proto('svn+ssh://', 

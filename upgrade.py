@@ -19,7 +19,6 @@ from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
-from errors import RebaseNotPresent
 import itertools
 from bzrlib.plugins.svn.mapping import parse_revision_id
 
@@ -111,23 +110,6 @@ def generate_upgrade_map(new_mapping, revs):
     return rename_map
 
 MIN_REBASE_VERSION = (0, 2)
-
-def check_rebase_version(min_version):
-    """Check what version of bzr-rebase is installed.
-
-    Raises an exception when the version installed is older than 
-    min_version.
-
-    :raises RebaseNotPresent: Raised if bzr-rebase is not installed or too old.
-    """
-    try:
-        from bzrlib.plugins.rebase import version_info as rebase_version_info
-        if rebase_version_info[:2] < min_version:
-            raise RebaseNotPresent("Version %r present, at least %r required" 
-                                   % (rebase_version_info, min_version))
-    except ImportError, e:
-        raise RebaseNotPresent(e)
-
 
 def create_upgrade_plan(repository, svn_repository, new_mapping,
                         revision_id=None, allow_changes=False):
