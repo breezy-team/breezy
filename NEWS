@@ -31,6 +31,9 @@ IN DEVELOPMENT
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
 
+    * Make both http implementations raise appropriate exceptions on 403
+      Forbidden.
+      (Vincent Ladeuil, #230223)
 
   DOCUMENTATION:
 
