@@ -153,12 +153,12 @@ class cmd_rebase(Command):
             if revision is not None:
                 if len(revision) == 1:
                     if revision[0] is not None:
-                        stop_revid = revision[0].in_history(wt.branch).rev_id
+                        stop_revid = revision[0].as_revision_id(wt.branch)
                 elif len(revision) == 2:
                     if revision[0] is not None:
-                        start_revid = revision[0].in_history(wt.branch).rev_id
+                        start_revid = revision[0].as_revision_id(wt.branch)
                     if revision[1] is not None:
-                        stop_revid = revision[1].in_history(wt.branch).rev_id
+                        stop_revid = revision[1].as_revision_id(wt.branch)
                 else:
                     raise BzrCommandError(
                         "--revision takes only one or two arguments")
@@ -178,7 +178,7 @@ class cmd_rebase(Command):
                 onto = upstream.last_revision()
             else:
                 rev_spec = RevisionSpec.from_string(onto)
-                onto = rev_spec.in_history(upstream).rev_id
+                onto = rev_spec.as_revision_id(upstream)
 
             wt.branch.repository.fetch(upstream_repository, onto)
 
@@ -344,7 +344,7 @@ class cmd_replay(Command):
         if revision is not None:
             if len(revision) == 1:
                 if revision[0] is not None:
-                    todo = [revision[0].in_history(from_branch).rev_id]
+                    todo = [revision[0].as_revision_id(from_branch)]
             elif len(revision) == 2:
                 from_revno, from_revid = revision[0].in_history(from_branch)
                 to_revno, to_revid = revision[1].in_history(from_branch)
