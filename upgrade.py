@@ -112,19 +112,19 @@ def generate_upgrade_map(new_mapping, revs):
 
 MIN_REBASE_VERSION = (0, 2)
 
-def check_rebase_version():
+def check_rebase_version(min_version):
     """Check what version of bzr-rebase is installed.
 
     Raises an exception when the version installed is older than 
-    MIN_REBASE_VERSION.
+    min_version.
 
     :raises RebaseNotPresent: Raised if bzr-rebase is not installed or too old.
     """
     try:
         from bzrlib.plugins.rebase import version_info as rebase_version_info
-        if rebase_version_info[:2] < MIN_REBASE_VERSION:
+        if rebase_version_info[:2] < min_version:
             raise RebaseNotPresent("Version %r present, at least %r required" 
-                                   % (rebase_version_info, MIN_REBASE_VERSION))
+                                   % (rebase_version_info, min_version))
     except ImportError, e:
         raise RebaseNotPresent(e)
 
@@ -143,7 +143,7 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
     from bzrlib.plugins.rebase.rebase import generate_transpose_plan
-    check_rebase_version()
+    check_rebase_version(MIN_REBASE_VERSION)
 
     graph = repository.get_graph()
     if revision_id is None:
@@ -187,7 +187,7 @@ def upgrade_repository(repository, svn_repository, new_mapping=None,
     :param verbose: Whether to print list of rewrites
     :return: Dictionary of mapped revisions
     """
-    check_rebase_version()
+    check_rebase_version(MIN_REBASE_VERSION)
     from bzrlib.plugins.rebase.rebase import (
         replay_snapshot, rebase, rebase_todo)
 
