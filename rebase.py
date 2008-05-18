@@ -17,7 +17,8 @@
 
 from bzrlib.config import Config
 from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError, 
-                           NoCommonAncestor, UnrelatedBranches)
+                           NoCommonAncestor, UnrelatedBranches, 
+                           UncommittedChanges)
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.merge import Merger
 from bzrlib import osutils
@@ -438,7 +439,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     # Make sure there are no conflicts or pending merges/changes 
     # in the working tree
     if wt.changes_from(wt.basis_tree()).has_changed():
-        raise BzrError("Working tree has uncommitted changes.")
+        raise UncommittedChanges(wt)
     complete_revert(wt, [newparents[0]])
     assert not wt.changes_from(wt.basis_tree()).has_changed()
 
