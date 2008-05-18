@@ -517,7 +517,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         # before sending the request. And not all versions of python 2.5 do
         # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
         # ourself below.
-        headers = dict((name.title(), val) for name, val in headers.items())
+        headers = dict((name.title(), val) for name, val in headers.iteritems())
 
         try:
             method = request.get_method()
