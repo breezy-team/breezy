@@ -355,7 +355,7 @@ class cmd_svn_push(Command):
                 raise BzrCommandError(
                     'bzr svn-push --revision takes exactly one revision' 
                     ' identifier')
-            revision_id = revision[0].in_history(source_branch).rev_id
+            revision_id = revision[0].as_revision_id(source_branch)
         else:
             revision_id = None
         try:
