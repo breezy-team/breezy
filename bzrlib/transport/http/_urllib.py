@@ -133,8 +133,13 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def _post(self, body_bytes):
         abspath = self._remote_path('.bzr/smart')
-        response = self._perform(Request('POST', abspath, body_bytes))
+        response = self._perform(Request('POST', abspath, body_bytes,
+                                         accepted_errors=[200, 403]))
         code = response.code
+        if code == 403:
+            raise errors.SmartProtocolError(
+                'Server refuses to fulfill the request (403 Forbidden)'
+                ' for %s' % abspath)
         data = handle_response(abspath, code, response.info(), response)
         return code, data
 

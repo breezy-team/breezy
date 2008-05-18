@@ -1334,7 +1334,9 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
 
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
-            raise errors.TransportError('Server refuses to fullfil the request')
+            raise errors.TransportError(
+                'Server refuses to fulfill the request (403 Forbidden)'
+                ' for %s' % req.get_full_url())
         else:
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'
