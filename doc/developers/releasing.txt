@@ -249,13 +249,13 @@ future:
 #. Copy the original tarball into your per-disto directory, then untar it 
    and if necessary rename it::
 
-     cp -l ~/bzr/Releases/bzr-1.3.tar.gz bzrtools_1.3.orig.tar.gz
-     tar xfvz bzrtools_1.3.orig.tar.gz
-     mv bzrtools bzrtools-1.3
+     cp -l ~/bzr/Releases/bzr-1.3.tar.gz bzr_1.3.orig.tar.gz
+     tar xfvz bzr_1.3.orig.tar.gz
+     mv bzr bzr-1.3
 
 #. Change into that directory and check out the packaging branch::
 
-     cd bzrtools
+     cd bzr
      bzr checkout \
        bzr+ssh://bazaar.launchpad.net/~bzr/bzr/packaging-hardy \
        debian
