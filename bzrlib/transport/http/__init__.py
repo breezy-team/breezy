@@ -100,7 +100,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         if impl_name:
             impl_name = impl_name[1:]
         self._impl_name = impl_name
-        medium.SmartClientMedium.__init__(self)
         super(HttpTransportBase, self).__init__(base,
                                                 _from_transport=_from_transport)
         # range hint is handled dynamically throughout the life

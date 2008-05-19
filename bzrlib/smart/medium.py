@@ -431,12 +431,12 @@ class SmartClientMediumRequest(object):
 class SmartClientMedium(object):
     """Smart client is a medium for sending smart protocol requests over."""
 
-    def __init__(self):
+    def __init__(self, base):
         super(SmartClientMedium, self).__init__()
+        self.base = base
         self._protocol_version_error = None
         self._protocol_version = None
         self._done_hello = False
-        self.base = None
 
     def protocol_version(self):
         """Find out if 'hello' smart request works."""
@@ -489,8 +489,8 @@ class SmartClientStreamMedium(SmartClientMedium):
     receive bytes.
     """
 
-    def __init__(self):
-        SmartClientMedium.__init__(self)
+    def __init__(self, base):
+        SmartClientMedium.__init__(self, base)
         self._current_request = None
         # Be optimistic: we assume the remote end can accept new remote
         # requests until we get an error saying otherwise.  (1.2 adds some
@@ -533,10 +533,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """
 
     def __init__(self, readable_pipe, writeable_pipe, base):
-        SmartClientStreamMedium.__init__(self)
+        SmartClientStreamMedium.__init__(self, base)
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
-        self.base = base
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
@@ -561,7 +560,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self)
+        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
@@ -569,7 +568,6 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._username = username
         self._read_from = None
         self._ssh_connection = None
-        self.base = base
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
@@ -630,11 +628,10 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     
     def __init__(self, host, port, base):
         """Creates a client that will connect on the first use."""
-        SmartClientStreamMedium.__init__(self)
+        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._port = port
-        self.base = base
         self._socket = None
 
     def _accept_bytes(self, bytes):
