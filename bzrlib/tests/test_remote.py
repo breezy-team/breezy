@@ -48,7 +48,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.transport.remote import RemoteTransport
+from bzrlib.transport.remote import RemoteTransport, RemoteTCPTransport
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -144,7 +144,7 @@ class FakeClient(_SmartClient):
         self.responses = []
         self._calls = []
         self.expecting_body = False
-        _SmartClient.__init__(self, FakeMedium(self._calls), fake_medium_base)
+        _SmartClient.__init__(self, FakeMedium(self._calls, fake_medium_base), fake_medium_base)
 
     def add_success_response(self, *args):
         self.responses.append(('success', args, None))
@@ -186,9 +186,10 @@ class FakeClient(_SmartClient):
 
 class FakeMedium(object):
 
-    def __init__(self, client_calls):
+    def __init__(self, client_calls, base):
         self._remote_is_at_least_1_2 = True
         self._client_calls = client_calls
+        self.base = base
 
     def disconnect(self):
         self._client_calls.append(('disconnect medium',))
@@ -215,8 +216,9 @@ class Test_SmartClient_remote_path_from_transport(tests.TestCase):
         """Assert that the result of _SmartClient.remote_path_from_transport
         is the expected value for a given client_base and transport_base.
         """
-        dummy_medium = 'dummy medium'
-        client = _SmartClient(dummy_medium, client_base)
+        class DummyMedium(object):
+            base = client_base
+        client = _SmartClient(DummyMedium(), client_base)
         transport = get_transport(transport_base)
         result = client.remote_path_from_transport(transport)
         self.assertEqual(expected, result)
@@ -291,7 +293,7 @@ class TestBzrDirOpenBranch(tests.TestCase):
     def test_url_quoting_of_path(self):
         # Relpaths on the wire should not be URL-escaped.  So "~" should be
         # transmitted as "~", not "%7E".
-        transport = RemoteTransport('bzr://localhost/~hello/')
+        transport = RemoteTCPTransport('bzr://localhost/~hello/')
         client = FakeClient(transport.base)
         client.add_success_response('ok', '')
         client.add_success_response('ok', '', 'no', 'no', 'no')

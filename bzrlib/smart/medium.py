@@ -436,6 +436,7 @@ class SmartClientMedium(object):
         self._protocol_version_error = None
         self._protocol_version = None
         self._done_hello = False
+        self.base = None
 
     def protocol_version(self):
         """Find out if 'hello' smart request works."""
@@ -531,10 +532,11 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     This client does not manage the pipes: it assumes they will always be open.
     """
 
-    def __init__(self, readable_pipe, writeable_pipe):
+    def __init__(self, readable_pipe, writeable_pipe, base):
         SmartClientStreamMedium.__init__(self)
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
+        self.base = base
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
@@ -553,7 +555,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     """A client medium using SSH."""
     
     def __init__(self, host, port=None, username=None, password=None,
-            vendor=None, bzr_remote_path=None):
+            base=None, vendor=None, bzr_remote_path=None):
         """Creates a client that will connect on the first use.
         
         :param vendor: An optional override for the ssh vendor to use. See
@@ -567,6 +569,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._username = username
         self._read_from = None
         self._ssh_connection = None
+        self.base = base
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
@@ -625,12 +628,13 @@ BZR_DEFAULT_PORT = 4155
 class SmartTCPClientMedium(SmartClientStreamMedium):
     """A client medium using TCP."""
     
-    def __init__(self, host, port):
+    def __init__(self, host, port, base):
         """Creates a client that will connect on the first use."""
         SmartClientStreamMedium.__init__(self)
         self._connected = False
         self._host = host
         self._port = port
+        self.base = base
         self._socket = None
 
     def _accept_bytes(self, bytes):

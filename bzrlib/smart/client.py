@@ -31,7 +31,8 @@ class _SmartClient(object):
         :param base: a URL
         """
         self._medium = medium
-        self._base = base
+        assert medium.base is not None, 'but base is %r' % base
+        self._base = medium.base
         if headers is None:
             self._headers = {'Software version': bzrlib.__version__}
         else:
@@ -158,12 +159,18 @@ class _SmartClient(object):
         the medium from the matching transport.
         """
         base = self._base
-        if (base.startswith('bzr+http://') or base.startswith('bzr+https://')
-            or base.startswith('http://') or base.startswith('https://')):
-            medium_base = self._base
+        if base.startswith('bzr+'):
+            base = base[4:]
+        if (base.startswith('http://') or base.startswith('https://')):
+            # XXX: what about http+urllib:// ?
+            medium_base = base
         else:
             medium_base = urlutils.join(self._base, '/')
+
+        transport_base = transport.base
+        if transport_base.startswith('bzr+'):
+            transport_base = transport_base[4:]
             
-        rel_url = urlutils.relative_url(medium_base, transport.base)
+        rel_url = urlutils.relative_url(medium_base, transport_base)
         return urllib.unquote(rel_url)
 

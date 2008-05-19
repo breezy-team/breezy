@@ -84,6 +84,7 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
+#        print 'RemoteTransport.__init__', url, _from_transport, medium, _client
         super(RemoteTransport, self).__init__(url,
                                               _from_transport=_from_transport)
 
@@ -110,6 +111,9 @@ class RemoteTransport(transport.ConnectedTransport):
                 medium = self._shared_connection.connection
 
         if _client is None:
+#            print '**', medium, self.base
+#            if self.base != 'bzr+' + medium.base:
+#                import pdb; pdb.set_trace()
             self._client = client._SmartClient(medium, self.base)
         else:
             self._client = _client
@@ -464,7 +468,9 @@ class RemoteTCPTransport(RemoteTransport):
     """
 
     def _build_medium(self):
-        return medium.SmartTCPClientMedium(self._host, self._port), None
+        client_medium = medium.SmartTCPClientMedium(
+            self._host, self._port, self.base)
+        return client_medium, None
 
 
 class RemoteSSHTransport(RemoteTransport):
@@ -480,8 +486,10 @@ class RemoteSSHTransport(RemoteTransport):
         # stored.
         location_config = config.LocationConfig(self.base)
         bzr_remote_path = location_config.get_bzr_remote_path()
-        return medium.SmartSSHClientMedium(self._host, self._port,
-            self._user, self._password, bzr_remote_path=bzr_remote_path), None
+        client_medium = medium.SmartSSHClientMedium(self._host, self._port,
+            self._user, self._password, self.base,
+            bzr_remote_path=bzr_remote_path)
+        return client_medium, None
 
 
 class RemoteHTTPTransport(RemoteTransport):
