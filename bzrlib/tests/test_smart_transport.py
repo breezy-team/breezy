@@ -133,17 +133,6 @@ class SmartClientMediumTests(tests.TestCase):
         t.start()
         return t
     
-    def test_construct_smart_stream_medium_client(self):
-        # make a new instance of the common base for Stream-like Mediums.
-        # this just ensures that the constructor stays parameter-free which
-        # is important for reuse : some subclasses will dynamically connect,
-        # others are always on, etc.
-        client_medium = medium.SmartClientStreamMedium()
-
-    def test_construct_smart_client_medium(self):
-        # the base client medium takes no parameters
-        client_medium = medium.SmartClientMedium()
-    
     def test_construct_smart_simple_pipes_client_medium(self):
         # the SimplePipes client medium takes two pipes:
         # readable pipe, writeable pipe.
