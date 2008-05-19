@@ -2862,9 +2862,7 @@ class Test_SmartClient(tests.TestCase):
         """ProtocolThreeRequester.call by default sends a 'Software
         version' header.
         """
-        class DummyMedium(object):
-            base = 'base'
-        smart_client = client._SmartClient(DummyMedium())
+        smart_client = client._SmartClient('dummy medium')
         self.assertEqual(
             bzrlib.__version__, smart_client._headers['Software version'])
         # XXX: need a test that smart_client._headers is passed to the request
