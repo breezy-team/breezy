@@ -18,6 +18,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr missing`` uses the new ``Graph.find_unique_ancestors`` and
+      ``Graph.find_differences`` to determine missing revisions without having
+      to search the whole ancestry. (John Arbash Meinel, #174625)
+
   DOCUMENTATION:
 
   TESTING:
