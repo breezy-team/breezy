@@ -301,7 +301,7 @@ future:
 
 #. Build a source package::
 
-     debuild -S -sa -i
+     debuild -S -sa -i -D
 
    This will create a ``.changes`` file in the per-distro directory,
    and should invoke gpg to sign it with your key.
@@ -323,5 +323,3 @@ future:
    means that your package is waiting to be built.  You can then track its
    progress in <https://launchpad.net/~bzr/+archive> and
    <https://launchpad.net/~bzr/+archive/+builds>.
-
-
