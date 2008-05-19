@@ -32,7 +32,7 @@ IN DEVELOPMENT
       (Vincent Ladeuil, #203186)
 
     * Make both http implementations raise appropriate exceptions on 403
-      Forbidden.
+      Forbidden when POSTing smart requests.
       (Vincent Ladeuil, #230223)
 
   DOCUMENTATION:
