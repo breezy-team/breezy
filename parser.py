@@ -337,7 +337,7 @@ class ImportParser(LineBasedParser):
         mark = self._get_mark_if_any()
         author = self._get_user_info('commit', 'author', False)
         committer = self._get_user_info('commit', 'committer')
-        message = self._get_data('commit', 'message')
+        message = self._get_data('commit', 'message').decode('utf_8')
         from_ = self._get_from()
         merges = []
         while True:
@@ -380,7 +380,7 @@ class ImportParser(LineBasedParser):
         """Parse a tag command."""
         from_ = self._get_from('tag')
         tagger = self._get_user_info('tag', 'tagger')
-        message = self._get_data('tag', 'message')
+        message = self._get_data('tag', 'message').decode('utf_8')
         return commands.TagCommand(name, from_, tagger, message)
 
     def _get_mark_if_any(self):
@@ -464,7 +464,7 @@ class ImportParser(LineBasedParser):
             name = match.group(1)
             if len(name) > 0:
                 if name[-1] == " ":
-                    name = name[:-1]
+                    name = name[:-1].decode('utf_8')
             return (name,match.group(2),when[0],when[1])
         else:
             self.abort(errors.BadFormat, cmd, section, s)
@@ -476,7 +476,7 @@ class ImportParser(LineBasedParser):
                 self.abort(errors.BadFormat, cmd, section, s)
             else:
                 return _unquote_c_string(s[1:-1])
-        return s
+        return s.decode('utf_8')
 
     def _path_pair(self, s):
         """Parse two paths separated by a space."""
