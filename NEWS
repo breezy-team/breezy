@@ -8,6 +8,9 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+This release adds a translation of some of the user documentation into Spanish.
+(Contributions of other translations would be very welcome.)
+
   NOTES WHEN UPGRADING:
 
   CHANGES:
@@ -36,6 +39,9 @@ IN DEVELOPMENT
       (Vincent Ladeuil, #229076)
 
   DOCUMENTATION:
+
+    * Added directory structure and started translation of docs in spanish.
+      (Martin Albisetti, Lucio Albenga)
 
     * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
       on the plugin and integration chapters of the User Guide.

@@ -83,17 +83,24 @@ derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
-doc_dir := doc/en/tutorials
-txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
+txt_files := $(wildcard doc/en/tutorials/*.txt) \
+	$(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
-	doc/index.txt
+	$(wildcard doc/es/guia-usario/*.txt) \
+	doc/es/mini-tutorial/index.txt \
+	doc/index.txt \
+	doc/index.es.txt
 non_txt_files := \
        doc/default.css \
        doc/en/quick-reference/quick-start-summary.svg \
        doc/en/quick-reference/quick-start-summary.png \
        doc/en/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/en/user-guide/images/*.png)
+       $(wildcard doc/en/user-guide/images/*.png) \
+       doc/es/referencia-rapida/referencia-rapida.svg \
+       doc/es/referencia-rapida/referencia-rapida.png \
+       doc/es/referencia-rapida/referencia-rapida.pdf \
+       $(wildcard doc/es/guia-usuario/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
