@@ -3308,9 +3308,17 @@ class cmd_missing(Command):
         from bzrlib.missing import find_unmerged, iter_log_revisions
 
         if this:
-          mine_only = this
+            mine_only = this
         if other:
-          theirs_only = other
+            theirs_only = other
+        # TODO: We should probably check that we don't have mine-only and
+        #       theirs-only set, but it gets complicated because we also have
+        #       this and other which could be used.
+        restrict = 'all'
+        if mine_only:
+            restrict = 'local'
+        elif theirs_only:
+            restrict = 'remote'
 
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
@@ -3330,24 +3338,8 @@ class cmd_missing(Command):
         try:
             remote_branch.lock_read()
             try:
-                graph = local_branch.repository.get_graph(
-                            remote_branch.repository)
-                local_revision_id = local_branch.last_revision()
-                remote_revision_id = remote_branch.last_revision()
-                if theirs_only:
-                    local_extra = None
-                    remote_extra = graph.find_unique_ancestors(
-                        remote_revision_id, [local_revision_id])
-                elif mine_only:
-                    remote_extra = None
-                    local_extra = graph.find_unique_ancestors(
-                        local_revision_id, [remote_revision_id])
-                else:
-                    local_extra, remote_extra = graph.find_difference(
-                        local_revision_id, remote_revision_id)
-                # We now have the set of local and remote revisions, but they
-                # are not sorted. They also include all merged revisions, while
-                # missing only shows the mainline revisions.
+                local_extra, remote_extra = find_unmerged(
+                    local_branch, remote_branch, restrict)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
