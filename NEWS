@@ -59,6 +59,9 @@ IN DEVELOPMENT
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
       (Robert Collins)
 
+    * The constructors of ``SmartClientMedium`` and its subclasses now require a
+      ``base`` parameter.  (Andrew Bennetts)
+      
     * ``VersionedFile.join`` is deprecated. This method required local
       instances of both versioned file objects and was thus hostile to being
       used for streaming from a smart server. The new get_record_stream and
