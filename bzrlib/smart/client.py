@@ -24,15 +24,12 @@ from bzrlib import urlutils, errors
 
 class _SmartClient(object):
 
-    def __init__(self, medium, base, headers=None):
+    def __init__(self, medium, headers=None):
         """Constructor.
 
         :param medium: a SmartClientMedium
-        :param base: a URL
         """
         self._medium = medium
-        assert medium.base is not None, 'but base is %r' % base
-        self._base = medium.base
         if headers is None:
             self._headers = {'Software version': bzrlib.__version__}
         else:
@@ -158,14 +155,16 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        base = self._base
+        base = self._medium.base
         if base.startswith('bzr+'):
             base = base[4:]
         if (base.startswith('http://') or base.startswith('https://')):
-            # XXX: what about http+urllib:// ?
+            # XXX: There seems to be a bug here: http+urllib:// and
+            # http+pycurl:// ought to be treated the same as http://, I think.
+            #   - Andrew Bennetts, 2008-05-19.
             medium_base = base
         else:
-            medium_base = urlutils.join(self._base, '/')
+            medium_base = urlutils.join(base, '/')
 
         transport_base = transport.base
         if transport_base.startswith('bzr+'):

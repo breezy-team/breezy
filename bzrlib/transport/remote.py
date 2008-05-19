@@ -84,7 +84,6 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-#        print 'RemoteTransport.__init__', url, _from_transport, medium, _client
         super(RemoteTransport, self).__init__(url,
                                               _from_transport=_from_transport)
 
@@ -111,10 +110,7 @@ class RemoteTransport(transport.ConnectedTransport):
                 medium = self._shared_connection.connection
 
         if _client is None:
-#            print '**', medium, self.base
-#            if self.base != 'bzr+' + medium.base:
-#                import pdb; pdb.set_trace()
-            self._client = client._SmartClient(medium, self.base)
+            self._client = client._SmartClient(medium)
         else:
             self._client = _client
 

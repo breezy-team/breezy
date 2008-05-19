@@ -2621,7 +2621,7 @@ class TestSmartClientUnicode(tests.TestCase):
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(
             input, output, 'ignored base')
-        smart_client = client._SmartClient(client_medium, 'ignored base')
+        smart_client = client._SmartClient(client_medium)
         self.assertRaises(TypeError,
             smart_client.call_with_body_bytes, method, args, body)
         self.assertEqual("", output.getvalue())
@@ -2784,7 +2784,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
     def test_version_three_server(self):
         """With a protocol 3 server, only one request is needed."""
         medium = MockMedium()
-        smart_client = client._SmartClient(medium, 'base', headers={})
+        smart_client = client._SmartClient(medium, headers={})
         message_start = protocol.MESSAGE_VERSION_THREE + '\x00\x00\x00\x02de'
         medium.expect_request(
             message_start +
@@ -2804,7 +2804,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         use protocol 2 immediately.
         """
         medium = MockMedium()
-        smart_client = client._SmartClient(medium, 'base', headers={})
+        smart_client = client._SmartClient(medium, headers={})
         # First the client should send a v3 request, but the server will reply
         # with a v2 error.
         medium.expect_request(
@@ -2838,7 +2838,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         protocol version, a SmartProtocolError is raised.
         """
         medium = MockMedium()
-        smart_client = client._SmartClient(medium, 'base', headers={})
+        smart_client = client._SmartClient(medium, headers={})
         unknown_protocol_bytes = 'Unknown protocol!'
         # The client will try v3 and v2 before eventually giving up.
         medium.expect_request(
@@ -2864,7 +2864,7 @@ class Test_SmartClient(tests.TestCase):
         """
         class DummyMedium(object):
             base = 'base'
-        smart_client = client._SmartClient(DummyMedium(), 'base')
+        smart_client = client._SmartClient(DummyMedium())
         self.assertEqual(
             bzrlib.__version__, smart_client._headers['Software version'])
         # XXX: need a test that smart_client._headers is passed to the request

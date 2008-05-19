@@ -62,9 +62,7 @@ class RemoteBzrDir(BzrDir):
 
         if _client is None:
             medium = transport.get_smart_medium()
-#            if transport.base != 'bzr+' + medium.base:
-#                import pdb; pdb.set_trace()
-            self._client = client._SmartClient(medium, transport.base)
+            self._client = client._SmartClient(medium)
         else:
             self._client = _client
             return
@@ -152,7 +150,6 @@ class RemoteBzrDir(BzrDir):
             return format.open(self, _found=True, location=reference_url)
                 
     def open_repository(self):
-        #import pdb; pdb.set_trace()
         path = self._path_for_remote_call(self._client)
         verb = 'BzrDir.find_repositoryV2'
         try:

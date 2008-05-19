@@ -144,7 +144,7 @@ class FakeClient(_SmartClient):
         self.responses = []
         self._calls = []
         self.expecting_body = False
-        _SmartClient.__init__(self, FakeMedium(self._calls, fake_medium_base), fake_medium_base)
+        _SmartClient.__init__(self, FakeMedium(self._calls, fake_medium_base))
 
     def add_success_response(self, *args):
         self.responses.append(('success', args, None))
@@ -218,7 +218,7 @@ class Test_SmartClient_remote_path_from_transport(tests.TestCase):
         """
         class DummyMedium(object):
             base = client_base
-        client = _SmartClient(DummyMedium(), client_base)
+        client = _SmartClient(DummyMedium())
         transport = get_transport(transport_base)
         result = client.remote_path_from_transport(transport)
         self.assertEqual(expected, result)
