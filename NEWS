@@ -8,17 +8,48 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+This release adds a translation of some of the user documentation into Spanish.
+(Contributions of other translations would be very welcome.)
+
   NOTES WHEN UPGRADING:
 
   CHANGES:
 
   FEATURES:
 
+    * There is a new version of the network protocol used for bzr://, bzr+ssh://
+      and bzr+http:// connections.  This will allow more efficient requests and
+      responses, and more graceful fallback when a server is too old to
+      recognise a request from a more recent client.  Bazaar 1.6 will
+      interoperate with 0.16 and later versions, but servers should be upgraded
+      when possible.  Bazaar 1.6 no longer interoperates with 0.15 and earlier via
+      these protocols.  Use alternatives like SFTP or upgrade those servers.
+      (Andrew Bennetts, #83935)
+
   IMPROVEMENTS:
 
   BUGFIXES:
 
+    * Issue a warning and ignore passwords declared in authentication.conf when
+      used for an ssh scheme (sftp or bzr+ssh).
+      (Vincent Ladeuil, #203186)
+
+    * Make both http implementations raise appropriate exceptions on 403
+      Forbidden when POSTing smart requests.
+      (Vincent Ladeuil, #230223)
+
+    * Properly *title* header names in http requests instead of capitalizing
+      them.
+      (Vincent Ladeuil, #229076)
+
   DOCUMENTATION:
+
+    * Added directory structure and started translation of docs in spanish.
+      (Martin Albisetti, Lucio Albenga)
+
+    * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
+      on the plugin and integration chapters of the User Guide.
+      (Ian Clatworthy)
 
   TESTING:
 
@@ -38,6 +69,26 @@ IN DEVELOPMENT
       used for streaming from a smart server. The new get_record_stream and
       insert_record_stream are meant to efficiently replace this method.
       (Robert Collins)
+
+
+bzr 1.5 2008-05-16
+------------------
+
+This release of Bazaar includes several updates to the documentation, and fixes
+to prepare for making rich root support the default format. Many bugs have been
+squashed, including fixes to log, bzr+ssh inter-operation with older servers.
+
+  CHANGES:
+
+    * Suppress deprecation warnings when bzrlib is a 'final' release. This way
+      users of packaged software won't be bothered with DeprecationWarnings,
+      but developers and testers will still see them. (John Arbash Meinel)
+
+  DOCUMENTATION:
+
+    * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
+      on the plugin and integration chapters of the User Guide.
+      (Ian Clatworthy)
 
 
 bzr 1.5rc1 2008-05-09
