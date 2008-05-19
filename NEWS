@@ -34,6 +34,10 @@ This release adds a translation of some of the user documentation into Spanish.
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
 
+    * Make both http implementations raise appropriate exceptions on 403
+      Forbidden when POSTing smart requests.
+      (Vincent Ladeuil, #230223)
+
     * Properly *title* header names in http requests instead of capitalizing
       them.
       (Vincent Ladeuil, #229076)
