@@ -128,6 +128,10 @@ bzr 1.5rc1 2008-05-09
       to fix when a Branch has a non-canonical mainline history. ``bzr check``
       also detects this condition. (John Arbash Meinel, #177855)
 
+    * ``bzr log -r ..X bzr://`` was failing, because it was getting a request
+      for ``revision_id=None`` which was not a string.
+      (John Arbash Meinel, #211661)
+
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 

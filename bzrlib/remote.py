@@ -860,6 +860,8 @@ class RemoteRepository(object):
             return rg
 
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if NULL_REVISION in keys:
             keys.discard(NULL_REVISION)
             found_parents = {NULL_REVISION:()}
