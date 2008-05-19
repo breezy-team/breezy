@@ -17,6 +17,9 @@ This release adds a translation of some of the user documentation into Spanish.
 
   FEATURES:
 
+    * Adding ``-Derror`` will now display a traceback when a plugin fails to
+      load. (James Westby)
+
     * There is a new version of the network protocol used for bzr://, bzr+ssh://
       and bzr+http:// connections.  This will allow more efficient requests and
       responses, and more graceful fallback when a server is too old to
