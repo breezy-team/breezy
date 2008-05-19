@@ -277,8 +277,8 @@ future:
    against the version number (which is just our conversion), so make sure 
    to specify it.
 
-   **Caution:** Release candidates must insert a tilde to make them sort befor
-   the final release, like this: ``bzr-1.4~rc2-1~bazaar1``.
+   **Caution:** Release candidates must insert a tilde to make them sort 
+   before the final release, like this: ``bzr-1.4~rc2-1~bazaar1``.
 
    Make sure you have the correct email address for yourself, version
    number, and distribution.  It should look something like this::
