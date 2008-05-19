@@ -77,8 +77,10 @@ class RemoteTransport(transport.ConnectedTransport):
             one is being cloned from.  Attributes such as the medium will
             be reused.
 
-        :param medium: The medium to use for this RemoteTransport. This must be
-            supplied if _from_transport is None.
+        :param medium: The medium to use for this RemoteTransport.  If None,
+            the medium from the _from_transport is shared.  If both this
+            and _from_transport are None, a new medium will be built.
+            _from_transport and medium cannot both be specified.
 
         :param _client: Override the _SmartClient used by this transport.  This
             should only be used for testing purposes; normally this is
@@ -103,11 +105,15 @@ class RemoteTransport(transport.ConnectedTransport):
             self._shared_connection = transport._SharedConnection(medium,
                                                                   credentials,
                                                                   self.base)
+        elif medium is None:
+            # No medium was specified, so share the medium from the
+            # _from_transport.
+            medium = self._shared_connection.connection
         else:
-            if medium is None:
-                # No medium was specified, so share the medium from the
-                # _from_transport.
-                medium = self._shared_connection.connection
+            raise AssertionError(
+                "Both _from_transport (%r) and medium (%r) passed to "
+                "RemoteTransport.__init__, but these parameters are mutally "
+                "exclusive." % (_from_transport, medium))
 
         if _client is None:
             self._client = client._SmartClient(medium)
