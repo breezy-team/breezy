@@ -3348,8 +3348,10 @@ class cmd_missing(Command):
                                 show_ids=show_ids,
                                 show_timezone='original')
                 if reverse is False:
-                    local_extra.reverse()
-                    remote_extra.reverse()
+                    if local_extra is not None:
+                        local_extra.reverse()
+                    if remote_extra is not None:
+                        remote_extra.reverse()
                 if local_extra and not theirs_only:
                     self.outf.write("You have %d extra revision(s):\n" %
                                     len(local_extra))
