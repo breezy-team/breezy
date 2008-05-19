@@ -3182,6 +3182,9 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertEqual(base_transport._http_transport,
                          new_transport._http_transport)
         self.assertEqual('child_dir/foo', new_transport._remote_path('foo'))
+        self.assertEqual(
+            'child_dir/',
+            new_transport._client.remote_path_from_transport(new_transport))
 
     def test_remote_path_unnormal_base(self):
         # If the transport's base isn't normalised, the _remote_path should
@@ -3195,6 +3198,9 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
         self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
+        self.assertEqual(
+            'c/',
+            new_transport._client.remote_path_from_transport(new_transport))
 
         
 # TODO: Client feature that does get_bundle and then installs that into a
