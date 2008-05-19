@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Added directory structure and started translation of docs in spanish.
+      (Martin Albisetti, Lucio Albenga)
+
     * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
       on the plugin and integration chapters of the User Guide.
       (Ian Clatworthy)
