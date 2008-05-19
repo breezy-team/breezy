@@ -3330,8 +3330,25 @@ class cmd_missing(Command):
         try:
             remote_branch.lock_read()
             try:
-                local_extra, remote_extra = find_unmerged(local_branch,
-                                                          remote_branch)
+                graph = local_branch.repository.get_graph(
+                            remote_branch.repository)
+                local_revision_id = local_branch.last_revision()
+                remote_revision_id = remote_branch.last_revision()
+                if theirs_only:
+                    local_extra = None
+                    remote_extra = graph.find_unique_ancestors(
+                        remote_revision_id, [local_revision_id])
+                elif mine_only:
+                    remote_extra = None
+                    local_extra = graph.find_unique_ancestors(
+                        local_revision_id, [remote_revision_id])
+                else:
+                    local_extra, remote_extra = graph.find_difference(
+                        local_revision_id, remote_revision_id)
+                # We now have the set of local and remote revisions, but they
+                # are not sorted. They also include all merged revisions, while
+                # missing only shows the mainline revisions.
+
                 if log_format is None:
                     registry = log.log_formatter_registry
                     log_format = registry.get_default(local_branch)

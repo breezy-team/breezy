@@ -85,6 +85,86 @@ def find_unmerged(local_branch, remote_branch):
         progress.finished()
     return (local_extra, remote_extra)
 
+
+def _enumerate_mainline(ancestry, graph, tip_revno, tip):
+    """Enumerate the mainline revisions for these revisions.
+
+    :param ancestry: A set of revisions that we care about
+    :param graph: A Graph which lets us find the parents for a revision
+    :param tip_revno: The revision number for the tip revision
+    :param tip: The tip of mailine
+    :return: [(revno, revision_id)] for all revisions in ancestry that
+        left-hand parents from tip
+    """
+    if ancestry is None:
+        return None
+    if not ancestry: #Empty ancestry, no need to do any work
+        return []
+
+    # Optionally we could make 1 call to graph.get_parent_map with all
+    # ancestors. However that will often check many more parents than we
+    # actually need, and the Graph is likely to already have the parents cached
+    # anyway.
+    mainline = []
+    cur = tip
+    cur_revno = tip_revno
+    while cur in ancestry:
+        parent_map = graph.get_parent_map([cur])
+        if cur not in parent_map:
+            break # Ghost, we are done
+        mainline.append((cur_revno, cur))
+        cur = parent_map[cur]
+        cur_revno -= 1
+    mainline.reverse()
+    return mainline
+
+
+def find_unmerged_mainline_revisions(local_branch, remote_branch, restrict):
+    """Find revisions from each side that have not been merged.
+
+    Both branches should already be locked.
+
+    :param local_branch: Compare the history of local_branch
+    :param remote_branch: versus the history of remote_branch, and determine
+        mainline revisions which have not been merged.
+    :param restrict: ('all', 'local', 'remote') If 'all', we will return the
+        unique revisions from both sides. If 'local', we will return None
+        for the remote revisions, similarly if 'remote' we will return None for
+        the local revisions.
+
+    :return: A list of [(revno, revision_id)] for the mainline revisions on
+        each side.
+    """
+    graph = local_branch.repository.get_graph(
+                remote_branch.repository)
+    local_revno, local_revision_id = local_branch.last_revision_info()
+    remote_revno, remote_revision_id = remote_branch.last_revision_info()
+    if local_revno == remote_revno and local_revision_id == remote_revision_id:
+        # A simple shortcut when the tips are at the same point
+        return [], []
+    if restrict == 'remote':
+        local_extra = None
+        remote_extra = graph.find_unique_ancestors(
+            remote_revision_id, [local_revision_id])
+    elif restrict == 'local':
+        remote_extra = None
+        local_extra = graph.find_unique_ancestors(
+            local_revision_id, [remote_revision_id])
+    else:
+        if restrict != 'all':
+            raise ValueError('param restrict not one of "all", "local",'
+                             ' "remote": %r' % (restrict,))
+        local_extra, remote_extra = graph.find_difference(
+            local_revision_id, remote_revision_id)
+    # Now that we have unique ancestors, compute just the mainline, and
+    # generate revnos for them.
+    local_mainline = _enumerate_mainline(local_extra, graph, local_revno,
+                                         local_revision_id)
+    remote_mainline = _enumerate_mainline(remote_extra, graph, remote_revno,
+                                          remote_revision_id)
+    return local_mainline, remote_mainline
+
+
 def _shortcut(local_rev_history, remote_rev_history):
     local_history = set(local_rev_history)
     remote_history = set(remote_rev_history)
