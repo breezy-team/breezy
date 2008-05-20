@@ -3352,6 +3352,8 @@ class cmd_missing(Command):
                         local_extra.reverse()
                     if remote_extra is not None:
                         remote_extra.reverse()
+
+                status_code = 0
                 if local_extra and not theirs_only:
                     self.outf.write("You have %d extra revision(s):\n" %
                                     len(local_extra))
@@ -3360,8 +3362,10 @@ class cmd_missing(Command):
                                         verbose):
                         lf.log_revision(revision)
                     printed_local = True
+                    status_code = 1
                 else:
                     printed_local = False
+
                 if remote_extra and not mine_only:
                     if printed_local is True:
                         self.outf.write("\n\n\n")
@@ -3371,11 +3375,19 @@ class cmd_missing(Command):
                                         remote_branch.repository,
                                         verbose):
                         lf.log_revision(revision)
-                if not remote_extra and not local_extra:
-                    status_code = 0
-                    self.outf.write("Branches are up to date.\n")
-                else:
                     status_code = 1
+
+                if mine_only and not local_extra:
+                    # We checked local, and found nothing extra
+                    self.outf.write('Local branch is up to date.\n')
+                elif theirs_only and not remote_extra:
+                    # We checked remote, and found nothing extra
+                    self.outf.write('Remote branch is up to date.\n')
+                elif not (mine_only or theirs_only or local_extra or
+                          remote_extra):
+                    # We checked both branches, and neither one had extra
+                    # revisions
+                    self.outf.write("Branches are up to date.\n")
             finally:
                 remote_branch.unlock()
         finally:
