@@ -1643,7 +1643,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if subf not in dir_entry.children:
                     try:
                         (subf_norm,
-                         can_access = osutils.normalized_filename(subf)
+                         can_access) = osutils.normalized_filename(subf)
                     except UnicodeDecodeError:
                         path_os_enc = path.encode(osutils._fs_enc)
                         relpath = path_os_enc + '/' + subf
