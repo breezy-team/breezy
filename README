@@ -1,0 +1,64 @@
+Bazaar Upload
+=============
+
+Overview
+--------
+
+bzr-upload is a plugin for Bazaar which lets you upload your working tree to
+a remote location using ftp/sftp.
+
+The main target audience is web developers who keep their web pages version
+controlled with bzr.
+
+Please report any bugs to: http://bugs.launchpad.net/bzr-upload/
+
+Our home page is located at: https://launchpad.net/bzr-upload/
+
+The original authors are:
+
+Vincent Ladeuil <v.ladeuil+lp@free.fr>
+Martin Albisetti <argentina@gmail.com>
+
+
+Quickstart
+----------
+
+To get started, it's as simple as running::
+
+    bzr upload sftp://user@host/location/on/webserver
+
+This will initially upload the whole working tree, and leave a file on the
+remote location indicating the last revision that was uploaded, in order to 
+avoid uploading unnecessary information the next time.
+
+If you would like to upload a specific revision, you just do:
+
+    bzr upload -r X  sftp://user@host/location/on/webserver
+
+bzr-upload, just as bzr does, will remember the location where you upload the 
+first time, so you don't need to specify it every time.
+
+If you need to re-upload the whole working tree for some reason, you can:
+
+    bzr upload --full sftp://user@host/location/on/webserver
+
+
+
+Collaborating
+-------------
+
+While we don't have any platform setup, you can branch from trunk:
+
+    bzr branch lp:bzr-upload
+
+And change anything you'd like, and get in touch with any of the authors to 
+review and add the changes.
+
+
+Known Issues
+------------
+
+ * Symlinks are not supported
+ * Execution bits aren't currently handled
+
+
