@@ -23,6 +23,7 @@ To start a new release cycle:
 #. Add a new "series" in Launchpad at <https://launchpad.net/bzr/+addseries>.  There is one 
    series for every *x.y* release.
 
+
 Weekly Status Updates
 ---------------------
 
@@ -61,7 +62,8 @@ This is the procedure for making a new bzr release:
 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``
 
-#. Add the date and release number to ``./NEWS``.
+#. Add the date and release number to ``./NEWS``, and a one-paragraph
+   summary of changes in this release.
 
 #. Commit these changes to the release branch, using a command like::
     
@@ -100,12 +102,14 @@ This is the procedure for making a new bzr release:
 Making the source tarball
 -------------------------
 
-#. Change into the source directory and run
+#. Change into the source directory and run ::
   
      make dist
 
-#. Unpack the tarball into a temporary directory and run ``make check`` in
-   that directory, to check for packaging problems.
+#. Now we'll try expanding this tarball and running the test suite
+   to check for packaging problems::
+ 
+     make check-dist-tarball
 
 
 Publishing the release
@@ -187,6 +191,10 @@ Now that the release is publicly available, tell people about it.
        python setup.py register
 
    Remember to check the results afterwards.
+
+   To be able to register the release you must create an account on
+   <http://pypi.python.org/pypi> and have one of the existing owners of
+   the project add you to the group.
 
 
 Merging the released code back to trunk
@@ -323,3 +331,8 @@ future:
    means that your package is waiting to be built.  You can then track its
    progress in <https://launchpad.net/~bzr/+archive> and
    <https://launchpad.net/~bzr/+archive/+builds>.
+
+If you add all the bzr PPAs to your ``sources.list`` then you can see a
+summary of current package versions with::
+
+  apt-cache madison bzr
