@@ -27,11 +27,13 @@ bzrlib/transport/smart/__init__.py.
 import os
 import socket
 import sys
+import urllib
 
 from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
+    urlutils,
     )
 from bzrlib.smart.protocol import (
     MESSAGE_VERSION_THREE,
@@ -431,8 +433,9 @@ class SmartClientMediumRequest(object):
 class SmartClientMedium(object):
     """Smart client is a medium for sending smart protocol requests over."""
 
-    def __init__(self):
+    def __init__(self, base):
         super(SmartClientMedium, self).__init__()
+        self.base = base
         self._protocol_version_error = None
         self._protocol_version = None
         self._done_hello = False
@@ -478,6 +481,17 @@ class SmartClientMedium(object):
         The default implementation does nothing.
         """
         
+    def remote_path_from_transport(self, transport):
+        """Convert transport into a path suitable for using in a request.
+        
+        Note that the resulting remote path doesn't encode the host name or
+        anything but path, so it is only safe to use it in requests sent over
+        the medium from the matching transport.
+        """
+        medium_base = urlutils.join(self.base, '/')
+        rel_url = urlutils.relative_url(medium_base, transport.base)
+        return urllib.unquote(rel_url)
+
 
 class SmartClientStreamMedium(SmartClientMedium):
     """Stream based medium common class.
@@ -488,8 +502,8 @@ class SmartClientStreamMedium(SmartClientMedium):
     receive bytes.
     """
 
-    def __init__(self):
-        SmartClientMedium.__init__(self)
+    def __init__(self, base):
+        SmartClientMedium.__init__(self, base)
         self._current_request = None
         # Be optimistic: we assume the remote end can accept new remote
         # requests until we get an error saying otherwise.  (1.2 adds some
@@ -531,8 +545,8 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     This client does not manage the pipes: it assumes they will always be open.
     """
 
-    def __init__(self, readable_pipe, writeable_pipe):
-        SmartClientStreamMedium.__init__(self)
+    def __init__(self, readable_pipe, writeable_pipe, base):
+        SmartClientStreamMedium.__init__(self, base)
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
 
@@ -553,13 +567,13 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     """A client medium using SSH."""
     
     def __init__(self, host, port=None, username=None, password=None,
-            vendor=None, bzr_remote_path=None):
+            base=None, vendor=None, bzr_remote_path=None):
         """Creates a client that will connect on the first use.
         
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self)
+        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
@@ -625,9 +639,9 @@ BZR_DEFAULT_PORT = 4155
 class SmartTCPClientMedium(SmartClientStreamMedium):
     """A client medium using TCP."""
     
-    def __init__(self, host, port):
+    def __init__(self, host, port, base):
         """Creates a client that will connect on the first use."""
-        SmartClientStreamMedium.__init__(self)
+        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._port = port

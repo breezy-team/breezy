@@ -527,6 +527,15 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     def should_probe(self):
         return True
 
+    def remote_path_from_transport(self, transport):
+        # Strip the optional 'bzr+' prefix from transport so it will have the
+        # same scheme as self.
+        transport_base = transport.base
+        if transport_base.startswith('bzr+'):
+            transport_base = transport_base[4:]
+        rel_url = urlutils.relative_url(self.base, transport_base)
+        return urllib.unquote(rel_url)
+
 
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""

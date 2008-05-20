@@ -33,6 +33,11 @@ This release adds a translation of some of the user documentation into Spanish.
 
   BUGFIXES:
 
+    * Correctly track the base URL of a smart medium when using bzr+http://
+      URLs, which was causing spurious "No repository present" errors with
+      branches in shared repositories accessed over bzr+http.
+      (Andrew Bennetts, #230550)
+
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
@@ -67,6 +72,10 @@ This release adds a translation of some of the user documentation into Spanish.
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
       (Robert Collins)
 
+    * The constructors of ``SmartClientMedium`` and its subclasses now require a
+      ``base`` parameter.  ``SmartClientMedium`` implementations now also need
+      to provide a ``remote_path_from_transport`` method.  (Andrew Bennetts)
+      
     * ``VersionedFile.join`` is deprecated. This method required local
       instances of both versioned file objects and was thus hostile to being
       used for streaming from a smart server. The new get_record_stream and

@@ -14,24 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import urllib
-
 import bzrlib
 from bzrlib.smart import message, protocol
 from bzrlib.trace import warning
-from bzrlib import urlutils, errors
+from bzrlib import errors
 
 
 class _SmartClient(object):
 
-    def __init__(self, medium, base, headers=None):
+    def __init__(self, medium, headers=None):
         """Constructor.
 
         :param medium: a SmartClientMedium
-        :param base: a URL
         """
         self._medium = medium
-        self._base = base
         if headers is None:
             self._headers = {'Software version': bzrlib.__version__}
         else:
@@ -157,13 +153,5 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        base = self._base
-        if (base.startswith('bzr+http://') or base.startswith('bzr+https://')
-            or base.startswith('http://') or base.startswith('https://')):
-            medium_base = self._base
-        else:
-            medium_base = urlutils.join(self._base, '/')
-            
-        rel_url = urlutils.relative_url(medium_base, transport.base)
-        return urllib.unquote(rel_url)
+        return self._medium.remote_path_from_transport(transport)
 
