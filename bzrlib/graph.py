@@ -306,7 +306,6 @@ class Graph(object):
 
         return unique_searcher, common_searcher
 
-
     def _make_unique_searchers(self, unique_nodes, unique_searcher,
                                common_searcher):
         """Create a searcher for all the unique search tips (step 4).
@@ -370,6 +369,7 @@ class Graph(object):
     def _step_unique_and_common_searchers(self, common_searcher,
                                           unique_tip_searchers,
                                           unique_searcher):
+        """Step all the searchers"""
         newly_seen_common = set(common_searcher.step())
         newly_seen_unique = set()
         for searcher in unique_tip_searchers:
@@ -494,9 +494,15 @@ class Graph(object):
                     all_unique_searcher.seen.intersection(newly_seen_common))
             if unique_are_common_nodes:
                 unique_are_common_nodes.update(
-                    common_searcher.find_seen_ancestors(unique_are_common_nodes))
+                    common_searcher.find_seen_ancestors(
+                        unique_are_common_nodes))
                 # The all_unique searcher can start searching the common nodes
                 # but everyone else can stop.
+                # This is the sort of thing where we would like to not have it
+                # start_searching all of the nodes, but only mark all of them
+                # as seen, and have it search only the actual tips. Otherwise
+                # it is another get_parent_map() traversal for it to figure out
+                # what we already should know.
                 all_unique_searcher.start_searching(unique_are_common_nodes)
                 common_searcher.stop_searching_any(unique_are_common_nodes)
 
