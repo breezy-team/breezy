@@ -1,3 +1,9 @@
+bzr (1.5-1) unstable; urgency=low
+
+  * Final 1.5 release.
+
+ -- Jelmer Vernooij <jelmer@samba.org>  Sat, 17 May 2008 14:42:51 +0200
+
 bzr (1.5~rc1-1) unstable; urgency=low
 
   * New upstream release.
