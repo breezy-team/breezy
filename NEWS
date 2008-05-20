@@ -31,6 +31,10 @@ This release adds a translation of some of the user documentation into Spanish.
 
   IMPROVEMENTS:
 
+    * ``bzr missing`` uses the new ``Graph.find_unique_ancestors`` and
+      ``Graph.find_differences`` to determine missing revisions without having
+      to search the whole ancestry. (John Arbash Meinel, #174625)
+
   BUGFIXES:
 
     * Correctly track the base URL of a smart medium when using bzr+http://
@@ -67,6 +71,13 @@ This release adds a translation of some of the user documentation into Spanish.
   INTERNALS:
 
   API BREAKS:
+
+    * ``bzr missing --mine-only`` will return status code 0 if you have no
+      new revisions, but the remote does. Similarly for ``--theirs-only``.
+      The new code only checks one side, so it doesn't know if the other
+      side has changes. This seems more accurate with the request anyway.
+      It also changes the output to print '[This|Other] branch is up to
+      date.' rather than displaying nothing.  (John Arbash Meinel)
 
     * Many methods on ``VersionedFile``, ``Repository`` and in
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
