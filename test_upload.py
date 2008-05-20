@@ -410,6 +410,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_upload()
         self.assertUpFileEqual('bar', 'hello')
 
+
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
 
     def test_get_upload_location_unset(self):
