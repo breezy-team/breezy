@@ -3379,10 +3379,10 @@ class cmd_missing(Command):
 
                 if mine_only and not local_extra:
                     # We checked local, and found nothing extra
-                    self.outf.write('Local branch is up to date.\n')
+                    self.outf.write('This branch is up to date.\n')
                 elif theirs_only and not remote_extra:
                     # We checked remote, and found nothing extra
-                    self.outf.write('Remote branch is up to date.\n')
+                    self.outf.write('Other branch is up to date.\n')
                 elif not (mine_only or theirs_only or local_extra or
                           remote_extra):
                     # We checked both branches, and neither one had extra

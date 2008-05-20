@@ -33,11 +33,12 @@ IN DEVELOPMENT
 
   API BREAKS:
 
-    * ``bzr missing --mine-only`` will return status code 0 if you have no new
-      revisions, but the remote does. Similarly for ``--theirs-only``. The new
-      code only checks one side, so it doesn't know if the other side has
-      changes. This seems more accurate with the request anyway.
-      (John Arbash Meinel)
+    * ``bzr missing --mine-only`` will return status code 0 if you have no
+      new revisions, but the remote does. Similarly for ``--theirs-only``.
+      The new code only checks one side, so it doesn't know if the other
+      side has changes. This seems more accurate with the request anyway.
+      It also changes the output to print '[This|Other] branch is up to
+      date.' rather than displaying nothing.  (John Arbash Meinel)
 
     * Many methods on ``VersionedFile``, ``Repository`` and in
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
