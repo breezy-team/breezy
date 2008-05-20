@@ -43,6 +43,19 @@ def iter_log_revisions(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all'):
+    """Find revisions from each side that have not been merged.
+
+    :param local_branch: Compare the history of local_branch
+    :param remote_branch: versus the history of remote_branch, and determine
+        mainline revisions which have not been merged.
+    :param restrict: ('all', 'local', 'remote') If 'all', we will return the
+        unique revisions from both sides. If 'local', we will return None
+        for the remote revisions, similarly if 'remote' we will return None for
+        the local revisions.
+
+    :return: A list of [(revno, revision_id)] for the mainline revisions on
+        each side.
+    """
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
@@ -61,9 +74,9 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip):
     :param ancestry: A set of revisions that we care about
     :param graph: A Graph which lets us find the parents for a revision
     :param tip_revno: The revision number for the tip revision
-    :param tip: The tip of mailine
+    :param tip: The tip of mainline
     :return: [(revno, revision_id)] for all revisions in ancestry that
-        left-hand parents from tip
+        are left-hand parents from tip, or None if ancestry is None.
     """
     if ancestry is None:
         return None
@@ -90,28 +103,17 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip):
 
 
 def _find_unmerged(local_branch, remote_branch, restrict):
-    """Find revisions from each side that have not been merged.
+    """See find_unmerged.
 
-    Both branches should already be locked.
-
-    :param local_branch: Compare the history of local_branch
-    :param remote_branch: versus the history of remote_branch, and determine
-        mainline revisions which have not been merged.
-    :param restrict: ('all', 'local', 'remote') If 'all', we will return the
-        unique revisions from both sides. If 'local', we will return None
-        for the remote revisions, similarly if 'remote' we will return None for
-        the local revisions.
-
-    :return: A list of [(revno, revision_id)] for the mainline revisions on
-        each side.
+    The branches should already be locked before entering.
     """
-    graph = local_branch.repository.get_graph(
-                remote_branch.repository)
     local_revno, local_revision_id = local_branch.last_revision_info()
     remote_revno, remote_revision_id = remote_branch.last_revision_info()
     if local_revno == remote_revno and local_revision_id == remote_revision_id:
         # A simple shortcut when the tips are at the same point
         return [], []
+    graph = local_branch.repository.get_graph(
+                remote_branch.repository)
     if restrict == 'remote':
         local_extra = None
         remote_extra = graph.find_unique_ancestors(
