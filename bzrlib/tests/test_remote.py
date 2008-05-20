@@ -46,7 +46,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
-from bzrlib.transport import get_transport
+from bzrlib.transport import get_transport, http
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import RemoteTransport, RemoteTCPTransport
 
@@ -184,7 +184,7 @@ class FakeClient(_SmartClient):
         return result[1], FakeProtocol(result[2], self)
 
 
-class FakeMedium(object):
+class FakeMedium(medium.SmartClientMedium):
 
     def __init__(self, client_calls, base):
         self._remote_is_at_least_1_2 = True
@@ -209,38 +209,49 @@ class TestVfsHas(tests.TestCase):
         self.assertTrue(result)
 
 
-class Test_SmartClient_remote_path_from_transport(tests.TestCase):
-    """Tests for the behaviour of _SmartClient.remote_path_from_transport."""
+class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
+    """Tests for the behaviour of client_medium.remote_path_from_transport."""
 
     def assertRemotePath(self, expected, client_base, transport_base):
-        """Assert that the result of _SmartClient.remote_path_from_transport
-        is the expected value for a given client_base and transport_base.
+        """Assert that the result of
+        SmartClientMedium.remote_path_from_transport is the expected value for
+        a given client_base and transport_base.
         """
-        class DummyMedium(object):
-            base = client_base
-        client = _SmartClient(DummyMedium())
+        client_medium = medium.SmartClientMedium(client_base)
         transport = get_transport(transport_base)
-        result = client.remote_path_from_transport(transport)
+        result = client_medium.remote_path_from_transport(transport)
         self.assertEqual(expected, result)
-        
+
     def test_remote_path_from_transport(self):
-        """_SmartClient.remote_path_from_transport calculates a URL for the
-        given transport relative to the root of the client base URL.
+        """SmartClientMedium.remote_path_from_transport calculates a URL for
+        the given transport relative to the root of the client base URL.
         """
         self.assertRemotePath('xyz/', 'bzr://host/path', 'bzr://host/xyz')
         self.assertRemotePath(
             'path/xyz/', 'bzr://host/path', 'bzr://host/path/xyz')
 
+    def assertRemotePathHTTP(self, expected, transport_base, relpath):
+        """Assert that the result of
+        HttpTransportBase.remote_path_from_transport is the expected value for
+        a given transport_base and relpath of that transport.  (Note that
+        HttpTransportBase is a subclass of SmartClientMedium)
+        """
+        base_transport = get_transport(transport_base)
+        client_medium = base_transport.get_smart_medium()
+        cloned_transport = base_transport.clone(relpath)
+        result = client_medium.remote_path_from_transport(cloned_transport)
+        self.assertEqual(expected, result)
+        
     def test_remote_path_from_transport_http(self):
         """Remote paths for HTTP transports are calculated differently to other
         transports.  They are just relative to the client base, not the root
         directory of the host.
         """
         for scheme in ['http:', 'https:', 'bzr+http:', 'bzr+https:']:
-            self.assertRemotePath(
-                '../xyz/', scheme + '//host/path', scheme + '//host/xyz')
-            self.assertRemotePath(
-                'xyz/', scheme + '//host/path', scheme + '//host/path/xyz')
+            self.assertRemotePathHTTP(
+                '../xyz/', scheme + '//host/path', '../xyz/')
+            self.assertRemotePathHTTP(
+                'xyz/', scheme + '//host/path', 'xyz/')
 
 
 class TestBzrDirOpenBranch(tests.TestCase):

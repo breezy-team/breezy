@@ -14,12 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import urllib
-
 import bzrlib
 from bzrlib.smart import message, protocol
 from bzrlib.trace import warning
-from bzrlib import urlutils, errors
+from bzrlib import errors
 
 
 class _SmartClient(object):
@@ -155,21 +153,5 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        base = self._medium.base
-        if base.startswith('bzr+'):
-            base = base[4:]
-        if (base.startswith('http://') or base.startswith('https://')):
-            # XXX: There seems to be a bug here: http+urllib:// and
-            # http+pycurl:// ought to be treated the same as http://, I think.
-            #   - Andrew Bennetts, 2008-05-19.
-            medium_base = base
-        else:
-            medium_base = urlutils.join(base, '/')
-
-        transport_base = transport.base
-        if transport_base.startswith('bzr+'):
-            transport_base = transport_base[4:]
-            
-        rel_url = urlutils.relative_url(medium_base, transport_base)
-        return urllib.unquote(rel_url)
+        return self._medium.remote_path_from_transport(transport)
 

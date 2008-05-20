@@ -60,7 +60,8 @@ IN DEVELOPMENT
       (Robert Collins)
 
     * The constructors of ``SmartClientMedium`` and its subclasses now require a
-      ``base`` parameter.  (Andrew Bennetts)
+      ``base`` parameter.  ``SmartClientMedium`` implementations now also need
+      to provide a ``remote_path_from_transport`` method.  (Andrew Bennetts)
       
     * ``VersionedFile.join`` is deprecated. This method required local
       instances of both versioned file objects and was thus hostile to being

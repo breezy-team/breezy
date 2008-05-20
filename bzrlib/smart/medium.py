@@ -27,11 +27,13 @@ bzrlib/transport/smart/__init__.py.
 import os
 import socket
 import sys
+import urllib
 
 from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
+    urlutils,
     )
 from bzrlib.smart.protocol import (
     MESSAGE_VERSION_THREE,
@@ -479,6 +481,17 @@ class SmartClientMedium(object):
         The default implementation does nothing.
         """
         
+    def remote_path_from_transport(self, transport):
+        """Convert transport into a path suitable for using in a request.
+        
+        Note that the resulting remote path doesn't encode the host name or
+        anything but path, so it is only safe to use it in requests sent over
+        the medium from the matching transport.
+        """
+        medium_base = urlutils.join(self.base, '/')
+        rel_url = urlutils.relative_url(medium_base, transport.base)
+        return urllib.unquote(rel_url)
+
 
 class SmartClientStreamMedium(SmartClientMedium):
     """Stream based medium common class.
