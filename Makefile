@@ -217,7 +217,7 @@ clean-win32: clean-docs
 dist: 
 	version=`./bzr version --short` && \
 	echo Building distribution of bzr $$version && \
-	expbasedir=`mktemp -d` && \
+	expbasedir=`mktemp -t -d tmp_bzr_dist.XXXXXXXXXX` && \
 	expdir=$$expbasedir/bzr-$$version && \
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
 	$(MAKE) clean && \
@@ -226,15 +226,17 @@ dist:
 	cp bzrlib/*.c $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
 	gpg --detach-sign $$tarball && \
-	echo $$tarball done.
+	echo $$tarball done. && \
+	rm -rf $$expbasedir
 
 # run all tests in a previously built tarball
 check-dist-tarball:
-	tmpdir=`mktemp -d` && \
+	tmpdir=`mktemp -t -d tmp_bzr_check_dist.XXXXXXXXXX` && \
 	version=`./bzr version --short` && \
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
 	tar Cxz $$tmpdir -f $$tarball && \
-	$(MAKE) -C $$tmpdir/bzr-$$version check 
+	$(MAKE) -C $$tmpdir/bzr-$$version check && \
+	rm -rf $$tmpdir
 
 
 # upload previously built tarball to the download directory on bazaar-vcs.org,
