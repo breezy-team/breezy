@@ -80,10 +80,10 @@ class TestBzrServe(TestCaseWithTransport):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
+        url = 'bzr://localhost/'
         client_medium = medium.SmartSimplePipesClientMedium(
-            process.stdout, process.stdin)
-        transport = remote.RemoteTransport(
-            'bzr://localhost/', medium=client_medium)
+            process.stdout, process.stdin, url)
+        transport = remote.RemoteTransport(url, medium=client_medium)
         return process, transport
 
     def start_server_port(self, extra_options=()):

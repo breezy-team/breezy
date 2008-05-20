@@ -2414,7 +2414,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(client_medium, transport.base)
+        client = _SmartClient(client_medium)
         path = client.remote_path_from_transport(transport)
         response = client.call('BzrDirFormat.initialize', path)
         if response[0] != 'ok':

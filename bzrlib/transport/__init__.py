@@ -293,7 +293,7 @@ class Transport(object):
     _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
-        super(Transport, self).__init__()
+        super(Transport, self).__init__(base=base)
         self.base = base
 
     def _translate_error(self, e, path, raise_generic=True):

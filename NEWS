@@ -31,7 +31,16 @@ This release adds a translation of some of the user documentation into Spanish.
 
   IMPROVEMENTS:
 
+    * ``bzr missing`` uses the new ``Graph.find_unique_ancestors`` and
+      ``Graph.find_differences`` to determine missing revisions without having
+      to search the whole ancestry. (John Arbash Meinel, #174625)
+
   BUGFIXES:
+
+    * Correctly track the base URL of a smart medium when using bzr+http://
+      URLs, which was causing spurious "No repository present" errors with
+      branches in shared repositories accessed over bzr+http.
+      (Andrew Bennetts, #230550)
 
     * Define ``_remote_is_at_least_1_2`` on ``SmartClientMedium`` so that all
       implementations have the attribute.  Fixes 'PyCurlTransport' object has no
@@ -68,10 +77,21 @@ This release adds a translation of some of the user documentation into Spanish.
 
   API BREAKS:
 
+    * ``bzr missing --mine-only`` will return status code 0 if you have no
+      new revisions, but the remote does. Similarly for ``--theirs-only``.
+      The new code only checks one side, so it doesn't know if the other
+      side has changes. This seems more accurate with the request anyway.
+      It also changes the output to print '[This|Other] branch is up to
+      date.' rather than displaying nothing.  (John Arbash Meinel)
+
     * Many methods on ``VersionedFile``, ``Repository`` and in
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
       (Robert Collins)
 
+    * The constructors of ``SmartClientMedium`` and its subclasses now require a
+      ``base`` parameter.  ``SmartClientMedium`` implementations now also need
+      to provide a ``remote_path_from_transport`` method.  (Andrew Bennetts)
+      
     * ``VersionedFile.join`` is deprecated. This method required local
       instances of both versioned file objects and was thus hostile to being
       used for streaming from a smart server. The new get_record_stream and
@@ -187,6 +207,11 @@ bzr 1.5rc1 2008-05-09
 
     * When logging the changes to a particular file, there was a bug if there
       were ghosts in the revision ancestry. (John Arbash Meinel, #209948)
+
+    * xs4all's ftp server returns a temporary error when trying to list an
+      empty directory, rather than returning an empty list. Adding a
+      workaround so that we don't get spurious failures.
+      (John Arbash Meinel, #215522)
 
   DOCUMENTATION:
 

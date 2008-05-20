@@ -88,10 +88,10 @@ def deprecated_in(version_tuple):
     """Generate a message that something was deprecated in a release.
 
     >>> deprecated_in((1, 4, 0))
-    '%s was deprecated in version 1.4'
+    '%s was deprecated in version 1.4.'
     """
-    return ("%s was deprecated in version "
-            + bzrlib._format_version_tuple(version_tuple))
+    return ("%%s was deprecated in version %s."
+            % bzrlib._format_version_tuple(version_tuple))
 
 
 def set_warning_method(method):
