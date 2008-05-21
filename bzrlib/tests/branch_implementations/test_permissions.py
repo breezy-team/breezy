@@ -74,8 +74,8 @@ class TestPermissions(TestCaseWithTransport):
         os.chmod('c', 02750)
         b = self.make_branch('c')
         self.assertEqualMode(02750, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(02750, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(00640, b.control_files._file_mode)
+        self.assertEqualMode(00640, b.bzrdir._get_file_mode())
+        self.assertEqualMode(02750, b.control_files._dir_mode)
         self.assertEqualMode(00640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
 
