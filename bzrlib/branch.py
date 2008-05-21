@@ -41,6 +41,7 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
@@ -420,6 +421,7 @@ class Branch(object):
         else:
             return (0, _mod_revision.NULL_REVISION)
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
         
