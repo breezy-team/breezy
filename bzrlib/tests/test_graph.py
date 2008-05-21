@@ -396,6 +396,28 @@ boundary = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e'], 'e': ['f'],
 with_ghost = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e', 'g'],
               'e': ['f'], 'f':[NULL_REVISION], NULL_REVISION:()}
 
+# A graph that shows we can shortcut finding revnos when reaching them from the
+# side.
+#  NULL_REVISION
+#       |
+#       a
+#       |
+#       b
+#       |
+#       c
+#       |
+#       d
+#       |
+#       e
+#      / \
+#     f   g
+#     |
+#     h
+#     |
+#     i
+
+with_tail = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'], 'e':['d'],
+             'f':['e'], 'g':['e'], 'h':['f'], 'i':['h']}
 
 
 class InstrumentedParentsProvider(object):
@@ -1268,8 +1290,26 @@ class TestGraphFindRevno(TestGraphBase):
         self.assertFindRevno(3, graph, 'rev3', [('rev2a', 2)])
 
     def test_known_in_ancestry_limits(self):
-        graph = self.make_breaking_graph(ancestry_1, 'rev1')
+        graph = self.make_breaking_graph(ancestry_1, ['rev1'])
         self.assertFindRevno(4, graph, 'rev4', [('rev3', 3)])
+
+    def test_target_is_ancestor(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindRevno(2, graph, 'rev2a', [('rev3', 3)])
+
+    def test_target_is_ancestor_limits(self):
+        """We shouldn't search all history if we run into ourselves"""
+        graph = self.make_breaking_graph(ancestry_1, ['rev1'])
+        self.assertFindRevno(3, graph, 'rev3', [('rev4', 4)])
+
+    def test_target_parallel_to_known_limits(self):
+        # Even though the known revision isn't part of the other ancestry, the
+        # eventually converge
+        graph = self.make_breaking_graph(with_tail, ['a'])
+        self.assertFindRevno(6, graph, 'f', [('g', 6)])
+        self.assertFindRevno(7, graph, 'h', [('g', 6)])
+        self.assertFindRevno(8, graph, 'i', [('g', 6)])
+        self.assertFindRevno(6, graph, 'g', [('i', 8)])
 
 
 class TestCachingParentsProvider(tests.TestCase):
