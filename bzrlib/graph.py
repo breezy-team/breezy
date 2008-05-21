@@ -26,7 +26,7 @@ from bzrlib import (
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
-STEP_UNIQUE_SEARCHER_EVERY = 10
+STEP_UNIQUE_SEARCHER_EVERY = 5
 
 # DIAGRAM of terminology
 #       A
