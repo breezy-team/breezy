@@ -263,7 +263,7 @@ class Graph(object):
                                   unique_tip_searchers, common_searcher)
         true_unique_nodes = unique_nodes.difference(common_searcher.seen)
         if 'graph' in debug.debug_flags:
-            trace.mutter('Found %s truly unique nodes out of %s',
+            trace.mutter('Found %d truly unique nodes out of %d',
                          len(true_unique_nodes), len(unique_nodes))
         return true_unique_nodes
 
@@ -358,9 +358,9 @@ class Graph(object):
                 total_stopped += len(searcher.stop_searching_any(
                     searcher.find_seen_ancestors(ancestor_all_unique)))
         if 'graph' in debug.debug_flags:
-            trace.mutter('For %s unique nodes, created %s + 1 unique searchers'
-                         ' (%s stopped search tips, %s common ancestors'
-                         ' (%s stopped common)',
+            trace.mutter('For %d unique nodes, created %d + 1 unique searchers'
+                         ' (%d stopped search tips, %d common ancestors'
+                         ' (%d stopped common)',
                          len(unique_nodes), len(unique_tip_searchers),
                          total_stopped, len(ancestor_all_unique),
                          len(stopped_common))
@@ -382,7 +382,7 @@ class Graph(object):
                 next.update(alt_searcher.find_seen_ancestors(next))
             searcher.start_searching(next)
             newly_seen_unique.update(next)
-        return newly_seen_common, newly_seen_unique,
+        return newly_seen_common, newly_seen_unique
 
     def _find_nodes_common_to_all_unique(self, unique_tip_searchers,
                                          all_unique_searcher,
@@ -392,28 +392,28 @@ class Graph(object):
         If it is time, step the all_unique_searcher, and add its nodes to the
         result.
         """
-        unique_are_common_nodes = newly_seen_unique.copy()
+        common_to_all_unique_nodes = newly_seen_unique.copy()
         for searcher in unique_tip_searchers:
-            unique_are_common_nodes.intersection_update(searcher.seen)
-        unique_are_common_nodes.intersection_update(
+            common_to_all_unique_nodes.intersection_update(searcher.seen)
+        common_to_all_unique_nodes.intersection_update(
                                     all_unique_searcher.seen)
         # Step all-unique less frequently than the other searchers.
         # In the common case, we don't need to spider out far here, so
         # avoid doing extra work.
-        if not step_all_unique:
+        if step_all_unique:
             tstart = time.clock()
             nodes = all_unique_searcher.step()
-            unique_are_common_nodes.update(nodes)
-            tdelta = time.clock() - tstart
+            common_to_all_unique_nodes.update(nodes)
             if 'graph' in debug.debug_flags:
+                tdelta = time.clock() - tstart
                 trace.mutter('all_unique_searcher step() took %.3fs'
                              'for %d nodes (%d total), iteration: %s',
                              tdelta, len(nodes), len(all_unique_searcher.seen),
                              all_unique_searcher._iterations)
-        return unique_are_common_nodes
+        return common_to_all_unique_nodes
 
     def _collapse_unique_searchers(self, unique_tip_searchers,
-                                   unique_are_common_nodes):
+                                   common_to_all_unique_nodes):
         """Combine searchers that are searching the same tips.
 
         When two searchers are searching the same tips, we can stop one of the
@@ -426,7 +426,7 @@ class Graph(object):
         # nodes. We already have the ancestry intersection for them
         unique_search_tips = {}
         for searcher in unique_tip_searchers:
-            stopped = searcher.stop_searching_any(unique_are_common_nodes)
+            stopped = searcher.stop_searching_any(common_to_all_unique_nodes)
             will_search_set = frozenset(searcher._next_query)
             if not will_search_set:
                 if 'graph' in debug.debug_flags:
@@ -456,9 +456,9 @@ class Graph(object):
                 for searcher in searchers[1:]:
                     next_searcher.seen.intersection_update(searcher.seen)
                 if 'graph' in debug.debug_flags:
-                    trace.mutter('Combining %s searchers into a single'
-                                 ' searcher searching %s nodes with'
-                                 ' %s ancestry',
+                    trace.mutter('Combining %d searchers into a single'
+                                 ' searcher searching %d nodes with'
+                                 ' %d ancestry',
                                  len(searchers),
                                  len(next_searcher._next_query),
                                  len(next_searcher.seen))
@@ -481,7 +481,7 @@ class Graph(object):
              newly_seen_unique) = self._step_unique_and_common_searchers(
                 common_searcher, unique_tip_searchers, unique_searcher)
             # These nodes are common ancestors of all unique nodes
-            unique_are_common_nodes = self._find_nodes_common_to_all_unique(
+            common_to_all_unique_nodes = self._find_nodes_common_to_all_unique(
                 unique_tip_searchers, all_unique_searcher, newly_seen_unique,
                 step_all_unique_counter==0)
             step_all_unique_counter = ((step_all_unique_counter + 1)
@@ -492,10 +492,10 @@ class Graph(object):
                 # can stop searching it.
                 common_searcher.stop_searching_any(
                     all_unique_searcher.seen.intersection(newly_seen_common))
-            if unique_are_common_nodes:
-                unique_are_common_nodes.update(
+            if common_to_all_unique_nodes:
+                common_to_all_unique_nodes.update(
                     common_searcher.find_seen_ancestors(
-                        unique_are_common_nodes))
+                        common_to_all_unique_nodes))
                 # The all_unique searcher can start searching the common nodes
                 # but everyone else can stop.
                 # This is the sort of thing where we would like to not have it
@@ -503,14 +503,14 @@ class Graph(object):
                 # as seen, and have it search only the actual tips. Otherwise
                 # it is another get_parent_map() traversal for it to figure out
                 # what we already should know.
-                all_unique_searcher.start_searching(unique_are_common_nodes)
-                common_searcher.stop_searching_any(unique_are_common_nodes)
+                all_unique_searcher.start_searching(common_to_all_unique_nodes)
+                common_searcher.stop_searching_any(common_to_all_unique_nodes)
 
             next_unique_searchers = self._collapse_unique_searchers(
-                unique_tip_searchers, unique_are_common_nodes)
+                unique_tip_searchers, common_to_all_unique_nodes)
             if len(unique_tip_searchers) != len(next_unique_searchers):
                 if 'graph' in debug.debug_flags:
-                    trace.mutter('Collapsed %s unique searchers => %s'
+                    trace.mutter('Collapsed %d unique searchers => %d'
                                  ' at %s iterations',
                                  len(unique_tip_searchers),
                                  len(next_unique_searchers),
