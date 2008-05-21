@@ -173,7 +173,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         ret = self._get_id_map().get(new_path)
         if ret is not None:
             return ret
-        return self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, new_path)
+        return self.mapping.generate_file_id(self.source.uuid, self.revnum, 
+                                             self.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, path):
         assert isinstance(path, unicode)
@@ -194,7 +195,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                 if p.startswith("%s/" % path):
                     self._premature_deletes.remove(p)
         else:
-            self.inventory.remove_recursive_id(self._get_old_id(new_parent_id, path))
+            self.inventory.remove_recursive_id(self._get_old_id(old_parent_id, path))
 
     def close_directory(self, (old_id, new_id)):
         self.inventory[new_id].revision = self.revid
