@@ -1657,12 +1657,6 @@ class RemoteBranch(branch.Branch):
                 self._set_last_revision(stop_revision)
         finally:
             other.unlock()
-        
-        return
-        # XXX
-        self._ensure_real()
-        return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision, overwrite=overwrite)
 
 
 def _extract_tar(tar, to_dir):
