@@ -562,6 +562,18 @@ class InvalidURLJoin(PathError):
         PathError.__init__(self, base, reason)
 
 
+class UnavailableRepresentation(InternalBzrError):
+
+    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
+        "is encoded as '%(native)s'.")
+
+    def __init__(self, key, wanted, native):
+        InternalBzrError.__init__(self)
+        self.wanted = wanted
+        self.native = native
+        self.key = key
+
+
 class UnknownHook(BzrError):
 
     _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of bzrlib."
@@ -1453,6 +1465,14 @@ class SmartProtocolError(TransportError):
         self.details = details
 
 
+class UnexpectedProtocolVersionMarker(TransportError):
+
+    _fmt = "Received bad protocol version marker: %(marker)r"
+
+    def __init__(self, marker):
+        self.marker = marker
+
+
 class UnknownSmartMethod(InternalBzrError):
 
     _fmt = "The server does not recognise the '%(verb)s' request."
@@ -1460,6 +1480,14 @@ class UnknownSmartMethod(InternalBzrError):
     def __init__(self, verb):
         self.verb = verb
 
+
+class SmartMessageHandlerError(InternalBzrError):
+
+    _fmt = "The message handler raised an exception: %(exc_value)s."
+
+    def __init__(self, exc_info):
+        self.exc_type, self.exc_value, self.tb = exc_info
+        
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
@@ -2405,6 +2433,21 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class ErrorFromSmartServer(BzrError):
+
+    _fmt = "Error received from smart server: %(error_tuple)r"
+
+    internal_error = True
+
+    def __init__(self, error_tuple):
+        self.error_tuple = error_tuple
+        try:
+            self.error_verb = error_tuple[0]
+        except IndexError:
+            self.error_verb = None
+        self.error_args = error_tuple[1:]
 
 
 class ContainerError(BzrError):

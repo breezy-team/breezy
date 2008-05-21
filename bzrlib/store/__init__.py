@@ -73,10 +73,6 @@ class Store(object):
         """DEPRECATED. Please use .get(fileid) instead."""
         raise NotImplementedError
 
-    #def __contains__(self, fileid):
-    #    """Deprecated, please use has_id"""
-    #    raise NotImplementedError
-
     def __iter__(self):
         raise NotImplementedError
 

@@ -24,7 +24,6 @@ from bzrlib.store.revision.knit import KnitRevisionStore
 """)
 from bzrlib import (
     bzrdir,
-    deprecated_graph,
     errors,
     knit,
     lockable_files,
@@ -69,6 +68,8 @@ class _KnitParentsProvider(object):
         """See graph._StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
+            if revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
             else:
@@ -195,76 +196,6 @@ class KnitRepository(MetaDirRepository):
         """Return the Revision object for a named revision"""
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision_reconcile(revision_id)
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self._get_revision_vf()
-        if revision_id is None:
-            return a_weave.get_graph()
-        if revision_id not in a_weave:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            return a_weave.get_graph([revision_id])
-
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        """Return a graph of the revisions with ghosts marked as applicable.
-
-        :param revision_ids: an iterable of revisions to graph or None for all.
-        :return: a Graph object with the graph reachable from revision_ids.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph_with_ghosts scales with size of history.")
-        result = deprecated_graph.Graph()
-        vf = self._get_revision_vf()
-        versions = set(vf.versions())
-        if not revision_ids:
-            pending = set(self.all_revision_ids())
-            required = set([])
-        else:
-            pending = set(revision_ids)
-            # special case NULL_REVISION
-            if _mod_revision.NULL_REVISION in pending:
-                pending.remove(_mod_revision.NULL_REVISION)
-            required = set(pending)
-        done = set([])
-        while len(pending):
-            revision_id = pending.pop()
-            if not revision_id in versions:
-                if revision_id in required:
-                    raise errors.NoSuchRevision(self, revision_id)
-                # a ghost
-                result.add_ghost(revision_id)
-                # mark it as done so we don't try for it again.
-                done.add(revision_id)
-                continue
-            parent_ids = vf.get_parents_with_ghosts(revision_id)
-            for parent_id in parent_ids:
-                # is this queued or done ?
-                if (parent_id not in pending and
-                    parent_id not in done):
-                    # no, queue it.
-                    pending.add(parent_id)
-            result.add_node(revision_id, parent_ids)
-            done.add(revision_id)
-        return result
 
     def _get_revision_vf(self):
         """:return: a versioned file containing the revisions."""

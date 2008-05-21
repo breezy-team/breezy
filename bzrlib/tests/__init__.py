@@ -42,6 +42,7 @@ import stat
 from subprocess import Popen, PIPE
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import warnings
@@ -73,7 +74,6 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
-from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -105,44 +105,6 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 __unittest = 1
 
 default_transport = LocalURLServer
-
-
-def packages_to_test():
-    """Return a list of packages to test.
-
-    The packages are not globally imported so that import failures are
-    triggered when running selftest, not when importing the command.
-    """
-    import bzrlib.doc
-    import bzrlib.tests.blackbox
-    import bzrlib.tests.branch_implementations
-    import bzrlib.tests.bzrdir_implementations
-    import bzrlib.tests.commands
-    import bzrlib.tests.interrepository_implementations
-    import bzrlib.tests.interversionedfile_implementations
-    import bzrlib.tests.intertree_implementations
-    import bzrlib.tests.inventory_implementations
-    import bzrlib.tests.per_lock
-    import bzrlib.tests.repository_implementations
-    import bzrlib.tests.revisionstore_implementations
-    import bzrlib.tests.tree_implementations
-    import bzrlib.tests.workingtree_implementations
-    return [
-            bzrlib.doc,
-            bzrlib.tests.blackbox,
-            bzrlib.tests.branch_implementations,
-            bzrlib.tests.bzrdir_implementations,
-            bzrlib.tests.commands,
-            bzrlib.tests.interrepository_implementations,
-            bzrlib.tests.interversionedfile_implementations,
-            bzrlib.tests.intertree_implementations,
-            bzrlib.tests.inventory_implementations,
-            bzrlib.tests.per_lock,
-            bzrlib.tests.repository_implementations,
-            bzrlib.tests.revisionstore_implementations,
-            bzrlib.tests.tree_implementations,
-            bzrlib.tests.workingtree_implementations,
-            ]
 
 
 class ExtendedTestResult(unittest._TextTestResult):
@@ -755,6 +717,12 @@ class TestUIFactory(ui.CLIUIFactory):
         return password
 
 
+def _report_leaked_threads():
+    bzrlib.trace.warning('%s is leaking threads among %d leaking tests',
+                         TestCase._first_thread_leaker_id,
+                         TestCase._leaking_threads_tests)
+
+
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
     
@@ -776,6 +744,9 @@ class TestCase(unittest.TestCase):
     accidentally overlooked.
     """
 
+    _active_threads = None
+    _leaking_threads_tests = 0
+    _first_thread_leaker_id = None
     _log_file_name = None
     _log_contents = ''
     _keep_log_file = False
@@ -798,6 +769,21 @@ class TestCase(unittest.TestCase):
         self._benchtime = None
         self._clear_hooks()
         self._clear_debug_flags()
+        TestCase._active_threads = threading.activeCount()
+        self.addCleanup(self._check_leaked_threads)
+
+    def _check_leaked_threads(self):
+        active = threading.activeCount()
+        leaked_threads = active - TestCase._active_threads
+        TestCase._active_threads = active
+        if leaked_threads:
+            TestCase._leaking_threads_tests += 1
+            if TestCase._first_thread_leaker_id is None:
+                TestCase._first_thread_leaker_id = self.id()
+                # we're not specifically told when all tests are finished.
+                # This will do. We use a function to avoid keeping a reference
+                # to a TestCase object.
+                atexit.register(_report_leaked_threads)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -2282,6 +2268,18 @@ def condition_id_in_list(id_list):
     return condition
 
 
+def condition_id_startswith(start):
+    """Create a condition filter verifying that test's id starts with a string.
+    
+    :param start: A string.
+    :return: A callable that returns True if the test's id starts with the
+        given string.
+    """
+    def condition(test):
+        return test.id().startswith(start)
+    return condition
+
+
 def exclude_tests_by_condition(suite, condition):
     """Create a test suite which excludes some tests from suite.
 
@@ -2338,6 +2336,18 @@ def filter_suite_by_id_list(suite, test_id_list):
     return result_suite
 
 
+def filter_suite_by_id_startswith(suite, start):
+    """Create a test suite by filtering another one.
+
+    :param suite: The source suite.
+    :param start: A string the test id must start with.
+    :returns: the newly created suite
+    """
+    condition = condition_id_startswith(start)
+    result_suite = filter_suite_by_condition(suite, condition)
+    return result_suite
+
+
 def exclude_tests_by_re(suite, pattern):
     """Create a test suite which excludes some tests from suite.
 
@@ -2372,6 +2382,28 @@ def randomize_suite(suite):
     return TestUtil.TestSuite(tests)
 
 
+def split_suite_by_condition(suite, condition):
+    """Split a test suite into two by a condition.
+    
+    :param suite: The suite to split.
+    :param condition: The condition to match on. Tests that match this
+        condition are returned in the first test suite, ones that do not match
+        are in the second suite.
+    :return: A tuple of two test suites, where the first contains tests from
+        suite matching the condition, and the second contains the remainder
+        from suite. The order within each output suite is the same as it was in
+        suite.
+    """ 
+    matched = []
+    did_not_match = []
+    for test in iter_suite_tests(suite):
+        if condition(test):
+            matched.append(test)
+        else:
+            did_not_match.append(test)
+    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
+
+
 def split_suite_by_re(suite, pattern):
     """Split a test suite into two by a regular expression.
     
@@ -2384,16 +2416,7 @@ def split_suite_by_re(suite, pattern):
         suite. The order within each output suite is the same as it was in
         suite.
     """ 
-    matched = []
-    did_not_match = []
-    filter_re = re.compile(pattern)
-    for test in iter_suite_tests(suite):
-        test_id = test.id()
-        if filter_re.search(test_id):
-            matched.append(test)
-        else:
-            did_not_match.append(test)
-    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
+    return split_suite_by_condition(suite, condition_id_re(pattern))
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
@@ -2470,6 +2493,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              strict=False,
              load_list=None,
              debug_flags=None,
+             starting_with=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2493,7 +2517,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
-            suite = test_suite(keep_only)
+            suite = test_suite(keep_only, starting_with)
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
@@ -2613,16 +2637,31 @@ class TestIdList(object):
         return self.tests.has_key(test_id)
 
 
-def test_suite(keep_only=None):
+def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
     :param keep_only: A list of test ids limiting the suite returned.
+
+    :param starting_with: An id limiting the suite returned to the tests
+         starting with it.
 
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
     testmod_names = [
+                   'bzrlib.doc',
                    'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.blackbox',
+                   'bzrlib.tests.branch_implementations',
+                   'bzrlib.tests.bzrdir_implementations',
+                   'bzrlib.tests.commands',
+                   'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.interrepository_implementations',
+                   'bzrlib.tests.intertree_implementations',
+                   'bzrlib.tests.interversionedfile_implementations',
+                   'bzrlib.tests.per_lock',
+                   'bzrlib.tests.repository_implementations',
+                   'bzrlib.tests.revisionstore_implementations',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -2699,6 +2738,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
+                   'bzrlib.tests.test_read_bundle',
                    'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
@@ -2734,6 +2774,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_transport_implementations',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
@@ -2752,34 +2793,40 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
+                   'bzrlib.tests.tree_implementations',
+                   'bzrlib.tests.workingtree_implementations',
                    ]
-    test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations',
-        'bzrlib.tests.test_read_bundle',
-        ]
+
     loader = TestUtil.TestLoader()
 
-    if keep_only is None:
-        loader = TestUtil.TestLoader()
-    else:
+    if starting_with is not None:
+        # We take precedence over keep_only because *at loading time* using
+        # both options means we will load less tests for the same final result.
+        def interesting_module(name):
+            return (
+                # Either the module name starts with the specified string
+                name.startswith(starting_with)
+                # or it may contain tests starting with the specified string
+                or starting_with.startswith(name)
+                )
+        loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
+
+    elif keep_only is not None:
         id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+        def interesting_module(name):
+            return id_filter.refers_to(name)
+
+    else:
+        loader = TestUtil.TestLoader()
+        def interesting_module(name):
+            # No filtering, all modules are interesting
+            return True
+
     suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-
-    # modules adapted for transport implementations
-    from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
-    adapter = TransportTestProviderAdapter()
-    adapt_modules(test_transport_implementations, adapter, loader, suite)
-
-    # modules defining their own test_suite()
-    for package in [p for p in packages_to_test()
-                    if (keep_only is None
-                        or id_filter.refers_to(p.__name__))]:
-        pack_suite = package.test_suite()
-        suite.addTest(pack_suite)
 
     modules_to_doctest = [
         'bzrlib',
@@ -2798,7 +2845,7 @@ def test_suite(keep_only=None):
         ]
 
     for mod in modules_to_doctest:
-        if not (keep_only is None or id_filter.refers_to(mod)):
+        if not interesting_module(mod):
             # No tests to keep here, move along
             continue
         try:
@@ -2810,9 +2857,8 @@ def test_suite(keep_only=None):
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in bzrlib.plugin.plugins().items():
-        if keep_only is not None:
-            if not id_filter.refers_to(plugin.module.__name__):
-                continue
+        if not interesting_module(plugin.module.__name__):
+            continue
         plugin_suite = plugin.test_suite()
         # We used to catch ImportError here and turn it into just a warning,
         # but really if you don't have --no-plugins this should be a failure.
@@ -2828,14 +2874,25 @@ def test_suite(keep_only=None):
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
+    if starting_with is not None:
+        suite = filter_suite_by_id_startswith(suite, starting_with)
+
     if keep_only is not None:
         # Now that the referred modules have loaded their tests, keep only the
         # requested ones.
         suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
-        for id in not_found:
-            bzrlib.trace.warning('"%s" not found in the test suite', id)
+        if starting_with is not None:
+            # The tester has used both keep_only and starting_with, so he is
+            # already aware that some tests are excluded from the list, there
+            # is no need to tell him which.
+            pass
+        else:
+            # Some tests mentioned in the list are not in the test suite. The
+            # list may be out of date, report to the tester.
+            for id in not_found:
+                bzrlib.trace.warning('"%s" not found in the test suite', id)
         for id in duplicates:
             bzrlib.trace.warning('"%s" is used as an id by several tests', id)
 

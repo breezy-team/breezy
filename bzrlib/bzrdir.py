@@ -2429,20 +2429,22 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         try:
             medium = transport.get_smart_medium()
         except (NotImplementedError, AttributeError,
-                errors.TransportNotPossible, errors.NoSmartMedium):
+                errors.TransportNotPossible, errors.NoSmartMedium,
+                errors.SmartProtocolError):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
             # Decline to open it if the server doesn't support our required
-            # version (2) so that the VFS-based transport will do it.
-            try:
-                server_version = medium.protocol_version()
-            except errors.SmartProtocolError:
-                # Apparently there's no usable smart server there, even though
-                # the medium supports the smart protocol.
-                raise errors.NotBranchError(path=transport.base)
-            if server_version != 2:
-                raise errors.NotBranchError(path=transport.base)
+            # version (3) so that the VFS-based transport will do it.
+            if medium.should_probe():
+                try:
+                    server_version = medium.protocol_version()
+                except errors.SmartProtocolError:
+                    # Apparently there's no usable smart server there, even though
+                    # the medium supports the smart protocol.
+                    raise errors.NotBranchError(path=transport.base)
+                if server_version != '2':
+                    raise errors.NotBranchError(path=transport.base)
             return klass()
 
     def initialize_on_transport(self, transport):
@@ -2453,7 +2455,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(client_medium, transport.base)
+        client = _SmartClient(client_medium)
         path = client.remote_path_from_transport(transport)
         response = client.call('BzrDirFormat.initialize', path)
         if response[0] != 'ok':

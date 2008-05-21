@@ -221,7 +221,7 @@ implements no verbs.
 
 The underlying message format is::
 
-  MESSAGE := "bzr message 3" NEWLINE HEADERS MESSAGE_PARTS
+  MESSAGE := "bzr message 3 (bzr 1.6)" NEWLINE HEADERS MESSAGE_PARTS
   HEADERS := LENGTH_PREFIX bencoded_dict
   MESSAGE_PARTS := MESSAGE_PART [MORE_MESSAGE_PARTS]
   MORE_MESSAGE_PARTS := END_MESSAGE_PARTS | MESSAGE_PARTS

@@ -994,6 +994,9 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
+            if type(auth_def) is not configobj.Section:
+                raise ValueError("%s defined outside a section" % auth_def_name)
+
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ['scheme', 'host', 'user', 'path'])
 
@@ -1031,7 +1034,8 @@ class AuthenticationConfig(object):
                 # Can't find a user
                 continue
             credentials = dict(name=auth_def_name,
-                               user=a_user, password=auth_def['password'],
+                               user=a_user,
+                               password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
@@ -1086,12 +1090,17 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
+            if password is not None and scheme is 'ssh':
+                trace.warning('password ignored in section [%s],'
+                              ' use an ssh agent instead'
+                              % credentials['name'])
+                password = None
         else:
             password = None
         # Prompt user only if we could't find a password
         if password is None:
             if prompt is None:
-                # Create a default prompt suitable for most of the cases
+                # Create a default prompt suitable for most cases
                 prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
