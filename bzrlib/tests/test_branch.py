@@ -50,7 +50,6 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
@@ -129,38 +128,6 @@ class TestBranchFormat5(TestCaseWithTransport):
 
     # TODO RBC 20051029 test getting a push location from a branch in a
     # recursive section - that is, it appends the branch name.
-
-    def test_missing_revisions(self):
-        t1 = self.make_branch_and_tree('b1', format='knit')
-        rev1 = t1.commit('one')
-        t2 = t1.bzrdir.sprout('b2').open_workingtree()
-        rev2 = t1.commit('two')
-        rev3 = t1.commit('three')
-
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch))
-
-        self.assertEqual([],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=1))
-        self.assertEqual([rev2],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=2))
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=3))
-
-        self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=4)
-
-        rev4 = t2.commit('four')
-        self.assertRaises(errors.DivergedBranches,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch)
-
-            
 
 
 class SampleBranchFormat(BranchFormat):
