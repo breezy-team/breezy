@@ -31,6 +31,9 @@ This release adds a translation of some of the user documentation into Spanish.
 
   IMPROVEMENTS:
 
+    * ``bzr ls`` now accepts ``-V`` as an alias for ``--versioned``. 
+      (Jerad Cramp, #165086)
+
     * ``bzr missing`` uses the new ``Graph.find_unique_ancestors`` and
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
