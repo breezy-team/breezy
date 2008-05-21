@@ -1014,27 +1014,16 @@ class _ProtocolThreeEncoder(object):
     response_marker = request_marker = MESSAGE_VERSION_THREE
 
     def __init__(self, write_func):
-        self.start_buffering()
+        self._buf = ''
         self._real_write_func = write_func
 
     def _write_func(self, bytes):
-        if self.buffering:
-            self._buf += bytes
-        else:
-            self._real_write_func(bytes)
+        self._buf += bytes
 
     def flush(self):
         if self._buf:
             self._real_write_func(self._buf)
             self._buf = ''
-
-    def start_buffering(self):
-        self.buffering = True
-        self._buf = ''
-
-    def stop_buffering(self):
-        self.flush()
-        self.buffering = False
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
@@ -1066,7 +1055,7 @@ class _ProtocolThreeEncoder(object):
 
     def _write_end(self):
         self._write_func('e')
-        self.stop_buffering()
+        self.flush()
 
     def _write_prefixed_body(self, bytes):
         self._write_func('b')
