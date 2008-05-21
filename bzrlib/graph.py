@@ -212,6 +212,32 @@ class Graph(object):
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
 
+    def find_revno(self, target_revision_id, known_revision_ids):
+        """Determine the revno for target_revision_id.
+
+        :param target_revision_id: A revision_id which we would like to know
+            the revno for.
+        :param known_revision_ids: [(revision_id, revno)] A list of known
+            revno, revision_id tuples. We'll use this to seed the search.
+        """
+        # Map from revision_ids to a known value for their revno
+        known_revnos = dict(known_revision_ids)
+        cur_tip = target_revision_id
+        num_steps = 0
+        NULL_REVISION = revision.NULL_REVISION
+
+        while cur_tip != NULL_REVISION:
+            parent_map = self.get_parent_map([cur_tip])
+            parents = parent_map.get(cur_tip, None)
+            if not parents: # An empty list, or None is still a ghost
+                raise errors.GhostRevisionsHaveNoRevno(target_revision_id,
+                                                       cur_tip)
+            num_steps += 1
+            cur_tip = parents[0]
+
+        # We reached NULL_REVISION, so the total distance is num_steps + 1
+        return num_steps
+
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
 

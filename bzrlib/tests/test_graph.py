@@ -1228,6 +1228,40 @@ class TestFindUniqueAncestors(tests.TestCase):
             ['h', 'i', 'j', 'y'], 'j', ['z'])
 
 
+class TestGraphFindRevno(tests.TestCase):
+    """Test an api that should be able to compute a revno"""
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+
+    def assertFindRevno(self, revno, graph, target_id, known_ids):
+        """Assert the output of Graph.find_revno()"""
+        actual = graph.find_revno(target_id, known_ids)
+        self.assertEqual(revno, actual)
+
+    def test_nothing_known(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindRevno(1, graph, 'rev1', [])
+        self.assertFindRevno(2, graph, 'rev2a', [])
+        self.assertFindRevno(2, graph, 'rev2b', [])
+        self.assertFindRevno(3, graph, 'rev3', [])
+        self.assertFindRevno(4, graph, 'rev4', [])
+
+    def test_rev_is_ghost(self):
+        graph = self.make_graph(ancestry_1)
+        e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                              graph.find_revno, 'rev_missing', [])
+        self.assertEqual('rev_missing', e.revision_id)
+        self.assertEqual('rev_missing', e.ghost_revision_id)
+
+    def test_ancestor_is_ghost(self):
+        graph = self.make_graph({'rev':['parent']})
+        e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                              graph.find_revno, 'rev', [])
+        self.assertEqual('rev', e.revision_id)
+        self.assertEqual('parent', e.ghost_revision_id)
+
+
 class TestCachingParentsProvider(tests.TestCase):
 
     def setUp(self):
