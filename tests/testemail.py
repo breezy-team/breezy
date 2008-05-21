@@ -94,19 +94,19 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_should_send(self):
         sender = self.get_sender()
-        self.assertEqual(True, sender.should_send())
+        self.assertTrue(sender.should_send())
 
     def test_should_not_send(self):
         sender = self.get_sender(unconfigured_config)
-        self.assertEqual(False, sender.should_send())
+        self.assertFalse(sender.should_send())
 
     def test_should_not_send_sender_configured(self):
         sender = self.get_sender(sender_configured_config)
-        self.assertEqual(False, sender.should_send())
+        self.assertFalse(sender.should_send())
 
     def test_should_not_send_to_configured(self):
         sender = self.get_sender(to_configured_config)
-        self.assertEqual(True, sender.should_send())
+        self.assertTrue(sender.should_send())
 
     def test_send_to_multiple(self):
         sender = self.get_sender(multiple_to_configured_config)
