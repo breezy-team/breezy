@@ -222,7 +222,7 @@ class EmailSender(object):
                                             self.diff_filename())
 
     def should_send(self):
-        return self.to() and self.from_address()
+        return bool(self.to() and self.from_address())
 
     def send_maybe(self):
         if self.should_send():
