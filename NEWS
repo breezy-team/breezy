@@ -89,7 +89,9 @@ This release adds a translation of some of the user documentation into Spanish.
       
     * The default permissions for creating new files and directories 
       should now be obtained from ``BzrDir._get_file_mode()`` and 
-      ``_get_dir_mode()``, rather than from LockableFiles.
+      ``_get_dir_mode()``, rather than from LockableFiles.  The ``_set_file_mode``
+      and ``_set_dir_mode`` variables on LockableFiles which were advertised
+      as a way for plugins to control this are no longer consulted.
       (Martin Pool)
 
     * ``VersionedFile.join`` is deprecated. This method required local

@@ -158,45 +158,6 @@ class TestPermissions(TestCaseWithTransport):
         t.commit('new d')
         check_mode_r(self, '.bzr', 0664, 02775)
 
-    def test_disable_set_mode(self):
-        # TODO: jam 20051215 Ultimately, this test should probably test that
-        #                    extra chmod calls aren't being made
-        # TODO: Should also check that this has effect when accessing through
-        # a BzrDir, if in fact we want to keep this feature. -- mbp 20080512
-        try:
-            transport = get_transport(self.get_url())
-            transport.put_bytes('my-lock', '')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-        finally:
-            LockableFiles._set_dir_mode = True
-            LockableFiles._set_file_mode = True
-
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
 
