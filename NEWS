@@ -42,6 +42,11 @@ This release adds a translation of some of the user documentation into Spanish.
       branches in shared repositories accessed over bzr+http.
       (Andrew Bennetts, #230550)
 
+    * Define ``_remote_is_at_least_1_2`` on ``SmartClientMedium`` so that all
+      implementations have the attribute.  Fixes 'PyCurlTransport' object has no
+      attribute '_remote_is_at_least_1_2' attribute errors.
+      (Andrew Bennetts, #220806)
+      
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
