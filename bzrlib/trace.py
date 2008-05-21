@@ -168,7 +168,11 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param args: A list of substitution variables.
     """
     outf = StringIO()
-    traceback.print_stack(limit=stacklevel + 1, file=outf)
+    if stacklevel is None:
+        limit = None
+    else:
+        limit = stacklevel + 1
+    traceback.print_stack(limit=limit, file=outf)
     formatted_lines = outf.getvalue().splitlines()
     formatted_stack = '\n'.join(formatted_lines[:-2])
     mutter(fmt + "\nCalled from:\n%s", *(args + (formatted_stack,)))

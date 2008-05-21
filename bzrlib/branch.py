@@ -1668,17 +1668,22 @@ class BzrBranch(Branch):
         result = PushResult()
         result.source_branch = self
         result.target_branch = target
-        result.old_revno, result.old_revid = target.last_revision_info()
+        #import pdb; pdb.set_trace()
+        target.lock_write()
         try:
-            target.update_revisions(self, stop_revision)
-        except errors.DivergedBranches:
-            if not overwrite:
-                raise
-        if overwrite:
-            target.set_revision_history(self.revision_history())
-        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
-        result.new_revno, result.new_revid = target.last_revision_info()
-        return result
+            result.old_revno, result.old_revid = target.last_revision_info()
+            try:
+                target.update_revisions(self, stop_revision)
+            except errors.DivergedBranches:
+                if not overwrite:
+                    raise
+            if overwrite:
+                target.set_revision_history(self.revision_history())
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+            result.new_revno, result.new_revid = target.last_revision_info()
+            return result
+        finally:
+            target.unlock()
 
     def get_parent(self):
         """See Branch.get_parent."""

@@ -42,7 +42,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, mutter_callsite, note, warning
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -258,6 +258,52 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
                 'Does not support nested trees', target_format)
 
 
+class RemoteGraph(object):
+
+    def __init__(self, real_graph, remote_repo):
+        self._real_graph = real_graph
+        self._remote_repo = remote_repo
+
+    def heads(self, keys):
+        client = self._remote_repo._client
+        path = self._remote_repo.bzrdir._path_for_remote_call(client)
+        return set(client.call('Repository.graph_heads', path, *keys))
+
+    def find_lca(self, *revisions):
+        return self._real_graph.find_lca(*revisions)
+
+    def find_difference(self, left_revision, right_revision):
+        return self._real_graph.find_difference(left_revision, right_revision)
+
+    def find_unique_ancestors(self, unique_revision, common_revisions):
+        return self._real_graph.find_unique_ancestors(
+            unique_revision, common_revisions)
+
+    def find_unique_lca(self, left_revision, right_revision,
+                        count_steps=False):
+        return self._real_graph.find_unique_lca(
+            left_revision, right_revision, count_steps=count_steps)
+        
+    def get_parents(self, revisions):
+        return self._real_graph.get_parents(revisions)
+
+    def get_parent_map(self, revisions):
+        return self._real_graph.get_parent_map(revisions)
+
+    def is_ancestor(self, candidate_ancestor, candidate_descendant):
+        return self._real_graph.is_ancestor(
+            candidate_ancestor, candidate_descendant)
+
+    def iter_ancestry(self, revision_ids):
+        return self._real_graph.iter_ancestry(revision_ids)
+
+    def iter_topo_order(self, revisions):
+        return self._real_graph.iter_topo_order(revisions)
+
+    def _make_breadth_first_searcher(self, revisions):
+        return self._real_graph._make_breadth_first_searcher(revisions)
+
+
 class RemoteRepository(object):
     """Repository accessed over rpc.
 
@@ -433,7 +479,8 @@ class RemoteRepository(object):
             self.bzrdir.transport.base):
             parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
-        return graph.Graph(parents_provider)
+        real_graph = graph.Graph(parents_provider)
+        return RemoteGraph(real_graph, self)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -809,6 +856,8 @@ class RemoteRepository(object):
 
     def get_parent_map(self, keys):
         """See bzrlib.Graph.get_parent_map()."""
+#        mutter_callsite(None, "get_parent_map called with %d keys", len(keys))
+#        import pdb;pdb.set_trace()
         # Hack to build up the caching logic.
         ancestry = self._parents_map
         if ancestry is None:
@@ -825,7 +874,7 @@ class RemoteRepository(object):
                         len(parent_map))
             ancestry.update(parent_map)
         present_keys = [k for k in keys if k in ancestry]
-        if 'hpss' in debug.debug_flags:
+        if 'hpss' in debug.debug_flags and False:
             if self._requested_parents is not None and len(ancestry) != 0:
                 self._requested_parents.update(present_keys)
                 mutter('Current RemoteRepository graph hit rate: %d%%',
@@ -1225,6 +1274,7 @@ class RemoteBranch(branch.Branch):
         # And the parent's __init__ doesn't do much anyway.
         self._revision_id_to_revno_cache = None
         self._revision_history_cache = None
+        self._last_revision_info_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
@@ -1281,6 +1331,10 @@ class RemoteBranch(branch.Branch):
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
 
+    def _clear_cached_state(self):
+        super(RemoteBranch, self)._clear_cached_state()
+        self._last_revision_info_cache = None
+        
     @property
     def control_files(self):
         # Defer actually creating RemoteBranchLockableFiles until its needed,
@@ -1434,6 +1488,11 @@ class RemoteBranch(branch.Branch):
 
     def last_revision_info(self):
         """See Branch.last_revision_info()."""
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+    
+    def _last_revision_info(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.last_revision_info', path)
         if response[0] != 'ok':
@@ -1454,26 +1513,29 @@ class RemoteBranch(branch.Branch):
             return []
         return result
 
+    def _set_last_revision(self, revision_id):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        self._clear_cached_state()
+        try:
+            response = self._client.call('Branch.set_last_revision',
+                path, self._lock_token, self._repo_lock_token, revision_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, revision_id)
+            raise
+        if response != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response)
+
     @needs_write_lock
     def set_revision_history(self, rev_history):
         # Send just the tip revision of the history; the server will generate
         # the full history from that.  If the revision doesn't exist in this
         # branch, NoSuchRevision will be raised.
-        path = self.bzrdir._path_for_remote_call(self._client)
         if rev_history == []:
             rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
-        self._clear_cached_state()
-        try:
-            response = self._client.call('Branch.set_last_revision',
-                path, self._lock_token, self._repo_lock_token, rev_id)
-        except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'NoSuchRevision':
-                raise NoSuchRevision(self, rev_id)
-            raise
-        if response != ('ok',):
-            raise errors.UnexpectedSmartServerResponse(response)
+        self._set_last_revision(rev_id)
         self._cache_revision_history(rev_history)
 
     def get_parent(self):
@@ -1528,21 +1590,32 @@ class RemoteBranch(branch.Branch):
         except errors.UnknownSmartMethod:
             self._ensure_real()
             self._clear_cached_state()
-            return self._real_branch.set_last_revision_info(revno, revision_id)
+            self._real_branch.set_last_revision_info(revno, revision_id)
+            self._last_revision_info_cache = revno, revision_id
+            return
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'NoSuchRevision':
                 raise NoSuchRevision(self, err.error_args[0])
             raise
         if response == ('ok',):
             self._clear_cached_state()
+            self._last_revision_info_cache = revno, revision_id
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
-        self._ensure_real()
-        return self._real_branch.generate_revision_history(
-            revision_id, last_rev=last_rev, other_branch=other_branch)
+#        self._ensure_real()
+#        return self._real_branch.generate_revision_history(
+#            revision_id, last_rev=last_rev, other_branch=other_branch)
+        self._set_last_revision(revision_id)
+        return # XXX
+        if last_rev is None and other_branch is None:
+            self._set_last_revision(revision_id)
+        else:
+            self._ensure_real()
+            return self._real_branch.generate_revision_history(
+                revision_id, last_rev=last_rev, other_branch=other_branch)
 
     @property
     def tags(self):
@@ -1554,6 +1627,56 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.set_push_location(location)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False):
+        mutter('RemoteBranch.update_revisions(%r, %s, %r)', 
+               other, stop_revision, overwrite)
+        if overwrite:
+            self._ensure_real()
+            return self._real_branch.update_revisions(
+                other, stop_revision=stop_revision, overwrite=True)
+        from bzrlib import revision as _mod_revision
+        other.lock_read()
+        try:
+            other_last_revno, other_last_revision = other.last_revision_info()
+            if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+            # whats the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = _mod_revision.ensure_null(self.last_revision())
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for 
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
+            mutter('about to fetch %s from %r', stop_revision, other)
+            self.fetch(other, stop_revision)
+            # Check to see if one is an ancestor of the other
+            heads = self.repository.get_graph().heads([stop_revision,
+                                                       last_rev])
+            if heads == set([last_rev]):
+                # The current revision is a decendent of the target,
+                # nothing to do
+                return
+            elif heads == set([stop_revision, last_rev]):
+                # These branches have diverged
+                raise errors.DivergedBranches(self, other)
+            elif heads != set([stop_revision]):
+                raise AssertionError("invalid heads: %r" % heads)
+            if other_last_revision == stop_revision:
+                self.set_last_revision_info(other_last_revno,
+                                            other_last_revision)
+            else:
+                self._set_last_revision(stop_revision)
+#                # TODO: jam 2007-11-29 Is there a way to determine the
+#                #       revno without searching all of history??
+#                self.generate_revision_history(stop_revision,
+#                    last_rev=last_rev, other_branch=other)
+        finally:
+            other.unlock()
+        
+        return
+        # XXX
         self._ensure_real()
         return self._real_branch.update_revisions(
             other, stop_revision=stop_revision, overwrite=overwrite)

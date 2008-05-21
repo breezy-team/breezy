@@ -227,6 +227,18 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
+class SmartServerRepositoryGraphHeads(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, *keys):
+        repository.lock_read()
+        try:
+            graph = repository.get_graph()
+            heads = tuple(graph.heads(keys))
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(heads)
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):
