@@ -64,7 +64,6 @@ class cmd_upload(commands.Command):
     takes_options = [
         'revision',
         'remember',
-        'verbose',
         option.Option('full', 'Upload the full working tree.'),
         option.Option('quiet', 'Do not output what is being done.', 
                        short_name='q'),
@@ -77,7 +76,7 @@ class cmd_upload(commands.Command):
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None, verbose=True, quiet=False,
+            directory=None, quiet=False,
             ):
         if directory is None:
             directory = u'.'
@@ -114,7 +113,6 @@ class cmd_upload(commands.Command):
         self.rev_id = rev_id
         self._pending_renames = []
         self._pending_deletions = []
-        self.verbose = verbose
         self.quiet = quiet
 
         if full:
@@ -318,13 +316,15 @@ commands.register_command(cmd_upload)
 def load_tests(basic_tests, module, loader):
     result = loader.suiteClass()
     # add the tests for this module
-    # XXX: this module should define no tests !
+
+    # This module shouldn't define any tests but I don't know how to report
+    # that. I prefer to keep the add Tests to detect unwanted tests and I think
+    # that's sufficient.
     result.addTests(basic_tests)
 
     testmod_names = [
         'test_upload',
         ]
-
     result.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return result
