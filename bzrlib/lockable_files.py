@@ -66,11 +66,6 @@ class LockableFiles(object):
     # _lock_count: If _lock_mode is true, a positive count of the number of
     # times the lock has been taken *by this process*.   
     
-    # If set to False (by a plugin, etc) BzrBranch will not set the
-    # mode on created files or directories
-    _set_file_mode = True
-    _set_dir_mode = True
-
     def __init__(self, transport, lock_name, lock_class):
         """Create a LockableFiles group
 
@@ -126,7 +121,10 @@ class LockableFiles(object):
         return urlutils.escape(safe_unicode(file_or_path))
 
     def _find_modes(self):
-        """Determine the appropriate modes for files and directories."""
+        """Determine the appropriate modes for files and directories.
+        
+        :deprecated: Replaced by BzrDir._find_modes.
+        """
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:
@@ -140,10 +138,6 @@ class LockableFiles(object):
             self._dir_mode = (st.st_mode & 07777) | 00700
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~07111
-        if not self._set_dir_mode:
-            self._dir_mode = None
-        if not self._set_file_mode:
-            self._file_mode = None
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""

@@ -52,9 +52,8 @@ class AllInOneRepository(Repository):
     _serializer = xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
-        # we reuse one control files instance.
-        dir_mode = a_bzrdir._control_files._dir_mode
-        file_mode = a_bzrdir._control_files._file_mode
+        dir_mode = a_bzrdir._get_dir_mode()
+        file_mode = a_bzrdir._get_file_mode()
 
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
@@ -298,8 +297,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
                                 'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
+        a_bzrdir.transport.mkdir_multi(dirs,
+            mode=a_bzrdir._get_dir_mode())
         try:
             for file, content in files:
                 control_files.put(file, content)
