@@ -5,6 +5,8 @@ Overview
 --------
 
 BzrTools is a collection of useful enhancements to Bazaar.
+For installation instructions, see the BzrTools home page:
+http://bazaar-vcs.org/BzrTools.
 Here is a sample of the frequently used commands it provides.
 
 

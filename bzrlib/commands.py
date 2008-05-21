@@ -824,6 +824,11 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
+     
+    # Is this a final release version? If so, we should suppress warnings
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib import symbol_versioning
+        symbol_versioning.suppress_deprecation_warnings()
     try:
         argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
