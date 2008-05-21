@@ -1668,7 +1668,6 @@ class BzrBranch(Branch):
         result = PushResult()
         result.source_branch = self
         result.target_branch = target
-        #import pdb; pdb.set_trace()
         target.lock_write()
         try:
             result.old_revno, result.old_revid = target.last_revision_info()

@@ -856,8 +856,6 @@ class RemoteRepository(object):
 
     def get_parent_map(self, keys):
         """See bzrlib.Graph.get_parent_map()."""
-#        mutter_callsite(None, "get_parent_map called with %d keys", len(keys))
-#        import pdb;pdb.set_trace()
         # Hack to build up the caching logic.
         ancestry = self._parents_map
         if ancestry is None:
@@ -874,7 +872,7 @@ class RemoteRepository(object):
                         len(parent_map))
             ancestry.update(parent_map)
         present_keys = [k for k in keys if k in ancestry]
-        if 'hpss' in debug.debug_flags and False:
+        if 'hpss' in debug.debug_flags:
             if self._requested_parents is not None and len(ancestry) != 0:
                 self._requested_parents.update(present_keys)
                 mutter('Current RemoteRepository graph hit rate: %d%%',
@@ -1605,17 +1603,9 @@ class RemoteBranch(branch.Branch):
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
-#        self._ensure_real()
-#        return self._real_branch.generate_revision_history(
-#            revision_id, last_rev=last_rev, other_branch=other_branch)
-        self._set_last_revision(revision_id)
-        return # XXX
-        if last_rev is None and other_branch is None:
-            self._set_last_revision(revision_id)
-        else:
-            self._ensure_real()
-            return self._real_branch.generate_revision_history(
-                revision_id, last_rev=last_rev, other_branch=other_branch)
+        self._ensure_real()
+        return self._real_branch.generate_revision_history(
+            revision_id, last_rev=last_rev, other_branch=other_branch)
 
     @property
     def tags(self):
@@ -1627,8 +1617,6 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.set_push_location(location)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False):
-        mutter('RemoteBranch.update_revisions(%r, %s, %r)', 
-               other, stop_revision, overwrite)
         if overwrite:
             self._ensure_real()
             return self._real_branch.update_revisions(
@@ -1649,7 +1637,6 @@ class RemoteBranch(branch.Branch):
             # case of having something to pull, and so that the check for 
             # already merged can operate on the just fetched graph, which will
             # be cached in memory.
-            mutter('about to fetch %s from %r', stop_revision, other)
             self.fetch(other, stop_revision)
             # Check to see if one is an ancestor of the other
             heads = self.repository.get_graph().heads([stop_revision,
@@ -1668,10 +1655,6 @@ class RemoteBranch(branch.Branch):
                                             other_last_revision)
             else:
                 self._set_last_revision(stop_revision)
-#                # TODO: jam 2007-11-29 Is there a way to determine the
-#                #       revno without searching all of history??
-#                self.generate_revision_history(stop_revision,
-#                    last_rev=last_rev, other_branch=other)
         finally:
             other.unlock()
         
