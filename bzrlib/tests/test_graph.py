@@ -409,6 +409,24 @@ class InstrumentedParentsProvider(object):
         return self._real_parents_provider.get_parent_map(nodes)
 
 
+class TestGraphBase(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+
+    def make_breaking_graph(self, ancestors, break_on):
+        """Make a Graph that raises an exception if we hit a node."""
+        g = self.make_graph(ancestors)
+        orig_parent_map = g.get_parent_map
+        def get_parent_map(keys):
+            bad_keys = set(keys).intersection(break_on)
+            if bad_keys:
+                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
+            return orig_parent_map(keys)
+        g.get_parent_map = get_parent_map
+        return g
+
+
 class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
@@ -1138,22 +1156,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
 
 
-class TestFindUniqueAncestors(tests.TestCase):
-
-    def make_graph(self, ancestors):
-        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
-
-    def make_breaking_graph(self, ancestors, break_on):
-        """Make a Graph that raises an exception if we hit a node."""
-        g = self.make_graph(ancestors)
-        orig_parent_map = g.get_parent_map
-        def get_parent_map(keys):
-            bad_keys = set(keys).intersection(break_on)
-            if bad_keys:
-                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
-            return orig_parent_map(keys)
-        g.get_parent_map = get_parent_map
-        return g
+class TestFindUniqueAncestors(TestGraphBase):
 
     def assertFindUniqueAncestors(self, graph, expected, node, common):
         actual = graph.find_unique_ancestors(node, common)
@@ -1228,11 +1231,8 @@ class TestFindUniqueAncestors(tests.TestCase):
             ['h', 'i', 'j', 'y'], 'j', ['z'])
 
 
-class TestGraphFindRevno(tests.TestCase):
+class TestGraphFindRevno(TestGraphBase):
     """Test an api that should be able to compute a revno"""
-
-    def make_graph(self, ancestors):
-        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
 
     def assertFindRevno(self, revno, graph, target_id, known_ids):
         """Assert the output of Graph.find_revno()"""
@@ -1241,6 +1241,7 @@ class TestGraphFindRevno(tests.TestCase):
 
     def test_nothing_known(self):
         graph = self.make_graph(ancestry_1)
+        self.assertFindRevno(0, graph, NULL_REVISION, [])
         self.assertFindRevno(1, graph, 'rev1', [])
         self.assertFindRevno(2, graph, 'rev2a', [])
         self.assertFindRevno(2, graph, 'rev2b', [])
@@ -1260,6 +1261,15 @@ class TestGraphFindRevno(tests.TestCase):
                               graph.find_revno, 'rev', [])
         self.assertEqual('rev', e.revision_id)
         self.assertEqual('parent', e.ghost_revision_id)
+
+    def test_known_in_ancestry(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindRevno(2, graph, 'rev2a', [('rev1', 1)])
+        self.assertFindRevno(3, graph, 'rev3', [('rev2a', 2)])
+
+    def test_known_in_ancestry_limits(self):
+        graph = self.make_breaking_graph(ancestry_1, 'rev1')
+        self.assertFindRevno(4, graph, 'rev4', [('rev3', 3)])
 
 
 class TestCachingParentsProvider(tests.TestCase):

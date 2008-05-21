@@ -225,9 +225,11 @@ class Graph(object):
         cur_tip = target_revision_id
         num_steps = 0
         NULL_REVISION = revision.NULL_REVISION
+        known_revnos[NULL_REVISION] = 0
 
-        while cur_tip != NULL_REVISION:
-            parent_map = self.get_parent_map([cur_tip])
+        while cur_tip not in known_revnos:
+            to_search = set([cur_tip])
+            parent_map = self.get_parent_map(to_search)
             parents = parent_map.get(cur_tip, None)
             if not parents: # An empty list, or None is still a ghost
                 raise errors.GhostRevisionsHaveNoRevno(target_revision_id,
@@ -235,8 +237,9 @@ class Graph(object):
             num_steps += 1
             cur_tip = parents[0]
 
-        # We reached NULL_REVISION, so the total distance is num_steps + 1
-        return num_steps
+        # We reached a known revision, so just add in how many steps it took to
+        # get there.
+        return known_revnos[cur_tip] + num_steps
 
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
