@@ -314,17 +314,13 @@ commands.register_command(cmd_upload)
 
 
 def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-
     # This module shouldn't define any tests but I don't know how to report
-    # that. I prefer to keep the add Tests to detect unwanted tests and I think
-    # that's sufficient.
-    result.addTests(basic_tests)
+    # that. I prefer to update basic_tests with the other tests to detect
+    # unwanted tests and I think that's sufficient.
 
     testmod_names = [
-        'test_upload',
+        'tests',
         ]
-    result.addTest(loader.loadTestsFromModuleNames(
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return result
+    return basic_tests
