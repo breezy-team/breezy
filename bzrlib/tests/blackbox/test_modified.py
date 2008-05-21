@@ -22,19 +22,18 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib import osutils
 
 class TestModified(ExternalBase):
 
     def test_modified(self):
         """Test that 'modified' command reports modified files"""
-        self._test_modified('a')
+        self._test_modified('a', 'a')
 
     def test_modified_with_spaces(self):
         """Test that 'modified' command reports modified files with spaces in their names quoted"""
-        self._test_modified('a filename with spaces')
+        self._test_modified('a filename with spaces', '"a filename with spaces"')
 
-    def _test_modified(self, name):
+    def _test_modified(self, name, output):
 
         def check_modified(expected, null=False):
             command = 'modified'
@@ -57,14 +56,14 @@ class TestModified(ExternalBase):
         check_modified('')
 
         # after commit, not modified
-        tree.commit(message='add %s' % (osutils.quotefn(name)))
+        tree.commit(message='add %s' % output)
         check_modified('')
 
         # modify the file
         self.build_tree_contents([(name, 'changed\n')]) 
-        check_modified(osutils.quotefn(name) + '\n')
+        check_modified(output + '\n')
         
-        # check null seps
+        # check null seps - use the unquoted raw name here
         check_modified(name + '\0', null=True)
 
         # now commit the file and it's no longer modified

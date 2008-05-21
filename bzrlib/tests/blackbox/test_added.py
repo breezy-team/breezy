@@ -22,23 +22,22 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib import osutils
 
 class TestAdded(ExternalBase):
 
     def test_added(self):
         """Test that 'added' command reports added files"""
-        self._test_added('a')
+        self._test_added('a', 'a\n')
 
     def test_added_with_spaces(self):
         """Test that 'added' command reports added files with spaces in their names quoted"""
-        self._test_added('a filename with spaces')
+        self._test_added('a filename with spaces', '"a filename with spaces"\n')
     
     def test_added_null_seperator(self):
         """Test that added uses it's null operator properly"""
-        self._test_added('a', null=True)
+        self._test_added('a', 'a\0', null=True)
 
-    def _test_added(self, name, null=False):
+    def _test_added(self, name, output, null=False):
 
         def check_added(expected, null=False):
             command = 'added'
@@ -62,10 +61,7 @@ class TestAdded(ExternalBase):
         # bug report 20060119 by Nathan McCallum -- 'bzr added' causes
         # NameError
         tree.add(name)
-        if null:
-            check_added(name + '\0', null)
-        else:
-            check_added(osutils.quotefn(name) + '\n')
+        check_added(output, null) 
 
         # after commit, now no longer listed
         tree.commit(message='add "%s"' % (name))

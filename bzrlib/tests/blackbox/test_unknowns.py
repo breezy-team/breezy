@@ -19,7 +19,6 @@
 """Black-box tests for 'bzr unknowns', which shows unknown files."""
 
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib import osutils
 
 class TestUnknowns(ExternalBase):
 
@@ -36,7 +35,7 @@ class TestUnknowns(ExternalBase):
 
         # multiple unknown files, including one with a space in it's name
         self.build_tree(['b', 'c', 'd e'])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\n%s\n' % (osutils.quotefn('d e')))
+        self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\n"d e"\n')
 
         # after add, file no longer shown
         tree.add(['a', 'd e'])
