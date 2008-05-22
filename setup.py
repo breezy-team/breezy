@@ -20,7 +20,7 @@ from distutils.core import setup
 setup(name='bzr-upload',
       description='Incrementally uploads changes to a dumb server',
       keywords='plugin bzr upload dumb protocol',
-      version='0.0.1',
+      version='0.1.0',
       url='http://launchpad.net/bzr-upload',
       download_url='http://launchpad.net/bzr-upload',
       license='GPL',
