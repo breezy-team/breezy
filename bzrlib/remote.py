@@ -269,6 +269,8 @@ class RemoteGraph(object):
         path = self._remote_repo.bzrdir._path_for_remote_call(client)
         return set(client.call('Repository.graph_heads', path, *keys))
 
+    # All other Graph methods delegate to _real_graph
+
     def find_lca(self, *revisions):
         return self._real_graph.find_lca(*revisions)
 
@@ -288,7 +290,7 @@ class RemoteGraph(object):
         return self._real_graph.get_parents(revisions)
 
     def get_parent_map(self, revisions):
-        return self._real_graph.get_parent_map(revisions)
+        return self._remote_repo.get_parent_map(revisions)
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
         return self._real_graph.is_ancestor(
@@ -1558,6 +1560,7 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
+        self._clear_cached_state()
         # FIXME: This asks the real branch to run the hooks, which means
         # they're called with the wrong target branch parameter. 
         # The test suite specifically allows this at present but it should be

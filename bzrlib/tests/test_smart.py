@@ -697,7 +697,7 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
             request.execute, 'subdir')
 
 
-class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
     def test_trivial_bzipped(self):
         # This tests that the wire encoding is actually bzipped
@@ -850,6 +850,48 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'yes'))
+
+
+class TestSmartServerRepositoryGraphHeads(tests.TestCaseWithMemoryTransport):
+
+    def test_null_revision(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGraphHeads(backing)
+        repo = self.make_repository('.')
+
+        response = request.execute('', 'null:')
+        self.assertEqual(SuccessfulSmartServerResponse(('null:', )), response)
+
+    def test_single_head_result(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGraphHeads(backing)
+        # Make a branch with two revisions in it.
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        tree.commit('1st commit', rev_id='rev-1')
+        tree.commit('2nd commit', rev_id='rev-2')
+        tree.unlock()
+
+        response = request.execute('', 'rev-1', 'rev-2')
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('rev-2',)), response)
+
+    def test_multiple_head_result(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGraphHeads(backing)
+        # Make a repository with two unrelated revisions in it.
+        self.make_repository('.', shared=True)
+        for tree_num in [1, 2]:
+            tree = self.make_branch_and_memory_tree('tree-%d' % tree_num)
+            tree.lock_write()
+            tree.add('')
+            tree.commit('1st commit', rev_id='tree-%d-rev' % tree_num)
+            tree.unlock()
+
+        response = request.execute('', 'tree-1-rev', 'tree-2-rev')
+        args = response.args
+        self.assertEqual(set(args), set(['tree-1-rev', 'tree-2-rev']))
 
 
 class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
