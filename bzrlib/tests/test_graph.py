@@ -1253,63 +1253,63 @@ class TestFindUniqueAncestors(TestGraphBase):
             ['h', 'i', 'j', 'y'], 'j', ['z'])
 
 
-class TestGraphFindRevno(TestGraphBase):
+class TestGraphFindDistanceToNull(TestGraphBase):
     """Test an api that should be able to compute a revno"""
 
-    def assertFindRevno(self, revno, graph, target_id, known_ids):
-        """Assert the output of Graph.find_revno()"""
-        actual = graph.find_revno(target_id, known_ids)
+    def assertFindDistance(self, revno, graph, target_id, known_ids):
+        """Assert the output of Graph.find_distance_to_null()"""
+        actual = graph.find_distance_to_null(target_id, known_ids)
         self.assertEqual(revno, actual)
 
     def test_nothing_known(self):
         graph = self.make_graph(ancestry_1)
-        self.assertFindRevno(0, graph, NULL_REVISION, [])
-        self.assertFindRevno(1, graph, 'rev1', [])
-        self.assertFindRevno(2, graph, 'rev2a', [])
-        self.assertFindRevno(2, graph, 'rev2b', [])
-        self.assertFindRevno(3, graph, 'rev3', [])
-        self.assertFindRevno(4, graph, 'rev4', [])
+        self.assertFindDistance(0, graph, NULL_REVISION, [])
+        self.assertFindDistance(1, graph, 'rev1', [])
+        self.assertFindDistance(2, graph, 'rev2a', [])
+        self.assertFindDistance(2, graph, 'rev2b', [])
+        self.assertFindDistance(3, graph, 'rev3', [])
+        self.assertFindDistance(4, graph, 'rev4', [])
 
     def test_rev_is_ghost(self):
         graph = self.make_graph(ancestry_1)
         e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
-                              graph.find_revno, 'rev_missing', [])
+                              graph.find_distance_to_null, 'rev_missing', [])
         self.assertEqual('rev_missing', e.revision_id)
         self.assertEqual('rev_missing', e.ghost_revision_id)
 
     def test_ancestor_is_ghost(self):
         graph = self.make_graph({'rev':['parent']})
         e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
-                              graph.find_revno, 'rev', [])
+                              graph.find_distance_to_null, 'rev', [])
         self.assertEqual('rev', e.revision_id)
         self.assertEqual('parent', e.ghost_revision_id)
 
     def test_known_in_ancestry(self):
         graph = self.make_graph(ancestry_1)
-        self.assertFindRevno(2, graph, 'rev2a', [('rev1', 1)])
-        self.assertFindRevno(3, graph, 'rev3', [('rev2a', 2)])
+        self.assertFindDistance(2, graph, 'rev2a', [('rev1', 1)])
+        self.assertFindDistance(3, graph, 'rev3', [('rev2a', 2)])
 
     def test_known_in_ancestry_limits(self):
         graph = self.make_breaking_graph(ancestry_1, ['rev1'])
-        self.assertFindRevno(4, graph, 'rev4', [('rev3', 3)])
+        self.assertFindDistance(4, graph, 'rev4', [('rev3', 3)])
 
     def test_target_is_ancestor(self):
         graph = self.make_graph(ancestry_1)
-        self.assertFindRevno(2, graph, 'rev2a', [('rev3', 3)])
+        self.assertFindDistance(2, graph, 'rev2a', [('rev3', 3)])
 
     def test_target_is_ancestor_limits(self):
         """We shouldn't search all history if we run into ourselves"""
         graph = self.make_breaking_graph(ancestry_1, ['rev1'])
-        self.assertFindRevno(3, graph, 'rev3', [('rev4', 4)])
+        self.assertFindDistance(3, graph, 'rev3', [('rev4', 4)])
 
     def test_target_parallel_to_known_limits(self):
         # Even though the known revision isn't part of the other ancestry, the
         # eventually converge
         graph = self.make_breaking_graph(with_tail, ['a'])
-        self.assertFindRevno(6, graph, 'f', [('g', 6)])
-        self.assertFindRevno(7, graph, 'h', [('g', 6)])
-        self.assertFindRevno(8, graph, 'i', [('g', 6)])
-        self.assertFindRevno(6, graph, 'g', [('i', 8)])
+        self.assertFindDistance(6, graph, 'f', [('g', 6)])
+        self.assertFindDistance(7, graph, 'h', [('g', 6)])
+        self.assertFindDistance(8, graph, 'i', [('g', 6)])
+        self.assertFindDistance(6, graph, 'g', [('i', 8)])
 
 
 class TestCachingParentsProvider(tests.TestCase):

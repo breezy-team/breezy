@@ -212,8 +212,11 @@ class Graph(object):
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
 
-    def find_revno(self, target_revision_id, known_revision_ids):
-        """Determine the revno for target_revision_id.
+    def find_distance_to_null(self, target_revision_id, known_revision_ids):
+        """Find the left-hand distance to the NULL_REVISION.
+
+        (This can also be considered the revno of a branch at
+        target_revision_id.)
 
         :param target_revision_id: A revision_id which we would like to know
             the revno for.
