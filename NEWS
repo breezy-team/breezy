@@ -49,6 +49,11 @@ This release adds a translation of some of the user documentation into Spanish.
       attribute '_remote_is_at_least_1_2' attribute errors.
       (Andrew Bennetts, #220806)
       
+    * Fix MemoryError during large fetches over HTTP by limiting the amount of
+      data we try to read per ``recv`` call.  The problem was observed with
+      Windows and a proxy, but might affect other environments as well.
+      (Eric Holmberg, #215426)
+
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
