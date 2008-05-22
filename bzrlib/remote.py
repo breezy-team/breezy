@@ -42,7 +42,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
-from bzrlib.trace import mutter, mutter_callsite, note, warning
+from bzrlib.trace import mutter, note, warning
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -1334,6 +1334,8 @@ class RemoteBranch(branch.Branch):
     def _clear_cached_state(self):
         super(RemoteBranch, self)._clear_cached_state()
         self._last_revision_info_cache = None
+        if self._real_branch is not None:
+            self._real_branch._clear_cached_state()
         
     @property
     def control_files(self):
@@ -1606,6 +1608,7 @@ class RemoteBranch(branch.Branch):
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
+        self._clear_cached_state()
         self._ensure_real()
         return self._real_branch.generate_revision_history(
             revision_id, last_rev=last_rev, other_branch=other_branch)
@@ -1621,21 +1624,25 @@ class RemoteBranch(branch.Branch):
 
     def update_revisions(self, other, stop_revision=None, overwrite=False):
         if overwrite:
+            self._clear_cached_state()
             self._ensure_real()
             return self._real_branch.update_revisions(
                 other, stop_revision=stop_revision, overwrite=True)
-        from bzrlib import revision as _mod_revision
+        # XXX: this code is substantially copy-and-pasted from
+        # Branch.update_revisions.  This is however much faster than calling
+        # the same code on _real_branch, because it will use RPCs and cache
+        # results.
         other.lock_read()
         try:
             other_last_revno, other_last_revision = other.last_revision_info()
             if stop_revision is None:
                 stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
+                if revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
             # whats the current last revision, before we fetch [and change it
             # possibly]
-            last_rev = _mod_revision.ensure_null(self.last_revision())
+            last_rev = revision.ensure_null(self.last_revision())
             # we fetch here so that we don't process data twice in the common
             # case of having something to pull, and so that the check for 
             # already merged can operate on the just fetched graph, which will
@@ -1657,6 +1664,9 @@ class RemoteBranch(branch.Branch):
                 self.set_last_revision_info(other_last_revno,
                                             other_last_revision)
             else:
+                # XXX: In Branch.update_revisions this code is more
+                # complicated.  Here we just allow the remote side to generate
+                # the new history for us.
                 self._set_last_revision(stop_revision)
         finally:
             other.unlock()

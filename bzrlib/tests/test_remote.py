@@ -614,6 +614,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
             def set_last_revision_info(self, revno, revision_id):
                 self.calls.append(
                     ('set_last_revision_info', revno, revision_id))
+            def _clear_cached_state(self):
+                pass
         real_branch = StubRealBranch()
         branch._real_branch = real_branch
         self.lock_remote_branch(branch)
