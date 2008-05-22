@@ -1667,7 +1667,7 @@ class RemoteBranch(branch.Branch):
                     try:
                         self._set_last_revision_descendant(stop_revision, other)
                         return
-                    except UnknownSmartMethod:
+                    except errors.UnknownSmartMethod:
                         medium._remote_is_at_least_1_6 = False
                 last_rev = revision.ensure_null(self.last_revision())
                 self.generate_revision_history(
