@@ -96,8 +96,12 @@ class MutableTree(tree.Tree):
         TODO: Perhaps callback with the ids and paths as they're added.
         """
         if isinstance(files, basestring):
-            assert(ids is None or isinstance(ids, basestring))
-            assert(kinds is None or isinstance(kinds, basestring))
+            # XXX: Passing a single string is inconsistent and should be
+            # deprecated.
+            if not (ids is None or isinstance(ids, basestring)):
+                raise AssertionError()
+            if not (kinds is None or isinstance(kinds, basestring)):
+                raise AssertionError()
             files = [files]
             if ids is not None:
                 ids = [ids]
@@ -109,11 +113,12 @@ class MutableTree(tree.Tree):
         if ids is None:
             ids = [None] * len(files)
         else:
-            assert(len(ids) == len(files))
+            if not (len(ids) == len(files)):
+                raise AssertionError()
         if kinds is None:
             kinds = [None] * len(files)
-        else:
-            assert(len(kinds) == len(files))
+        elif not len(kinds) == len(files):
+            raise AssertionError()
         for f in files:
             # generic constraint checks:
             if self.is_control_filename(f):
@@ -180,7 +185,9 @@ class MutableTree(tree.Tree):
             revprops['branch-nick'] = self.branch.nick
         author = kwargs.pop('author', None)
         if author is not None:
-            assert 'author' not in revprops
+            if 'author' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
             revprops['author'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
@@ -289,7 +296,6 @@ class MutableTree(tree.Tree):
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
-        assert isinstance(recurse, bool)
         if action is None:
             action = add.AddAction()
         

@@ -283,11 +283,11 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
 #     |/
 #     j
 #
-# y is found to be common right away, but is the start of a long series of
+# x is found to be common right away, but is the start of a long series of
 # common commits.
 # o is actually common, but the i-j shortcut makes it look like it is actually
-# unique to j at first, you have to traverse all of y->o to find it.
-# q,n give the walker from j a common point to stop searching, as does p,f.
+# unique to j at first, you have to traverse all of x->o to find it.
+# q,m gives the walker from j a common point to stop searching, as does p,f.
 # k-n exists so that the second pass still has nodes that are worth searching,
 # rather than instantly cancelling the extra walker.
 

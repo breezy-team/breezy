@@ -57,7 +57,6 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    one_zero,
     )
 from bzrlib.trace import mutter
 
@@ -578,8 +577,10 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if getattr(f, 'tell', None) is not None:
-        assert f.tell() == 0
+    """Calculate the hexdigest of an open file.
+
+    The file cursor should be already at the start.
+    """
     s = sha.new()
     BUFSIZE = 128<<10
     while True:
@@ -773,8 +774,6 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
-    assert isinstance(p, basestring)
-
     # split on either delimiter because people might use either on
     # Windows
     ps = re.split(r'[\\/]', p)
@@ -790,7 +789,6 @@ def splitpath(p):
     return rps
 
 def joinpath(p):
-    assert isinstance(p, (list, tuple))
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
@@ -890,9 +888,10 @@ def relpath(base, path):
     avoids that problem.
     """
 
-    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
-        ' exceed the platform minimum length (which is %d)' % 
-        MIN_ABS_PATHLENGTH)
+    if len(base) < MIN_ABS_PATHLENGTH:
+        # must have space for e.g. a drive letter
+        raise ValueError('%r is too short to calculate a relative path'
+            % (base,))
 
     rp = abspath(path)
 

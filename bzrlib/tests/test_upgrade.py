@@ -155,7 +155,7 @@ class TestUpgrade(TestCaseWithTransport):
         upgrade('.', bzrdir.BzrDirFormat6())
         transport = get_transport('.')
         transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
-        assert not transport.has('.bzr/stat-cache')
+        self.assertFalse(transport.has('.bzr/stat-cache'))
         # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
         transport.delete_tree('backup.bzr')

@@ -22,7 +22,7 @@ an example::
         print "The new revno is %d" % push_result.new_revno
 
 
-    branch.Branch.hooks.install_hook('post_push', post_push_hook,
+    branch.Branch.hooks.install_named_hook('post_push', post_push_hook,
                                      'My post_push hook')
 
 To use this example, create a file named ``push_hook.py``, and stick it in

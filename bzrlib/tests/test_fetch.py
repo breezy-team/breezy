@@ -28,9 +28,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
