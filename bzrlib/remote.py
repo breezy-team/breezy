@@ -1515,6 +1515,23 @@ class RemoteBranch(branch.Branch):
             return []
         return result
 
+    def _set_last_revision_descendant(self, revision_id, other_branch):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('Branch.set_last_revision_descendant',
+                path, self._lock_token, self._repo_lock_token, revision_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, revision_id)
+            elif err.error_verb == 'NotDescendant':
+                raise errors.DivergedBranches(self, other_branch)
+            raise
+        self._clear_cached_state()
+        if len(response) != 2 and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        new_revno = response[1]
+        self._last_revision_info_cache = new_revno, revision_id
+
     def _set_last_revision(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
         self._clear_cached_state()
@@ -1608,9 +1625,16 @@ class RemoteBranch(branch.Branch):
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
+        medium = self._client._medium
+        if medium._remote_is_at_least_1_6:
+            try:
+                self._set_last_revision_descendant(revision_id, other_branch)
+                return
+            except UnknownSmartMethod:
+                medium._remote_is_at_least_1_6 = False
         self._clear_cached_state()
         self._ensure_real()
-        return self._real_branch.generate_revision_history(
+        self._real_branch.generate_revision_history(
             revision_id, last_rev=last_rev, other_branch=other_branch)
 
     @property
@@ -1622,52 +1646,32 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
+    @needs_write_lock
     def update_revisions(self, other, stop_revision=None, overwrite=False):
-        if overwrite:
-            self._clear_cached_state()
-            self._ensure_real()
-            return self._real_branch.update_revisions(
-                other, stop_revision=stop_revision, overwrite=True)
-        # XXX: this code is substantially copy-and-pasted from
-        # Branch.update_revisions.  This is however much faster than calling
-        # the same code on _real_branch, because it will use RPCs and cache
-        # results.
         other.lock_read()
         try:
-            other_last_revno, other_last_revision = other.last_revision_info()
             if stop_revision is None:
-                stop_revision = other_last_revision
+                stop_revision = other.last_revision()
                 if revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
             # whats the current last revision, before we fetch [and change it
             # possibly]
-            last_rev = revision.ensure_null(self.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for 
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
             self.fetch(other, stop_revision)
-            # Check to see if one is an ancestor of the other
-            heads = self.repository.get_graph().heads([stop_revision,
-                                                       last_rev])
-            if heads == set([last_rev]):
-                # The current revision is a decendent of the target,
-                # nothing to do
-                return
-            elif heads == set([stop_revision, last_rev]):
-                # These branches have diverged
-                raise errors.DivergedBranches(self, other)
-            elif heads != set([stop_revision]):
-                raise AssertionError("invalid heads: %r" % heads)
-            if other_last_revision == stop_revision:
-                self.set_last_revision_info(other_last_revno,
-                                            other_last_revision)
-            else:
-                # XXX: In Branch.update_revisions this code is more
-                # complicated.  Here we just allow the remote side to generate
-                # the new history for us.
+
+            if overwrite:
                 self._set_last_revision(stop_revision)
+            else:
+                medium = self._client._medium
+                if medium._remote_is_at_least_1_6:
+                    try:
+                        self._set_last_revision_descendant(stop_revision, other)
+                        return
+                    except UnknownSmartMethod:
+                        medium._remote_is_at_least_1_6 = False
+                last_rev = revision.ensure_null(self.last_revision())
+                self.generate_revision_history(
+                    stop_revision, last_rev=last_rev, other_branch=other)
         finally:
             other.unlock()
 

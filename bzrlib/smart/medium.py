@@ -509,6 +509,7 @@ class SmartClientStreamMedium(SmartClientMedium):
         # requests until we get an error saying otherwise.  (1.2 adds some
         # requests that send bodies, which confuses older servers.)
         self._remote_is_at_least_1_2 = True
+        self._remote_is_at_least_1_6 = True
 
     def accept_bytes(self, bytes):
         self._accept_bytes(bytes)

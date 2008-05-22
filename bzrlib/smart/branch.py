@@ -128,6 +128,21 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerBranchRequestSetLastRevisionDescendant(SmartServerLockedBranchRequest):
+    """New in 1.6."""
+    
+    def do_with_locked_branch(self, branch, new_last_revision_id):
+        try:
+            last_rev = branch.last_revision()
+            branch.generate_revision_history(new_last_revision_id, last_rev)
+        except errors.DivergedBranches:
+            return FailedSmartServerResponse(('NotDescendant',))
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', new_last_revision_id))
+        return SuccessfulSmartServerResponse(('ok', branch.revno()))
+
+
 class SmartServerBranchRequestSetLastRevisionInfo(
     SmartServerLockedBranchRequest):
     """Branch.set_last_revision_info.  Sets the revno and the revision ID of
