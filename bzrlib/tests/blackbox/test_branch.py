@@ -45,7 +45,7 @@ class TestBranch(ExternalBase):
         b = branch.Branch.open('b')
         self.run_bzr('branch a c -r 1')
         # previously was erroneously created by branching
-        self.assertFalse(b.control_files._transport.has('branch-name'))
+        self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
     def test_branch_only_copies_history(self):

@@ -392,7 +392,7 @@ class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithMemoryTranspor
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchGetConfigFile(backing)
         branch = self.make_branch('.')
-        branch.control_files.put_utf8('branch.conf', 'foo bar baz')
+        branch._transport.put_bytes('branch.conf', 'foo bar baz')
         self.assertEqual(SmartServerResponse(('ok', ), 'foo bar baz'),
             request.execute(''))
 
