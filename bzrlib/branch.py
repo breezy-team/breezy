@@ -1671,12 +1671,8 @@ class BzrBranch(Branch):
         target.lock_write()
         try:
             result.old_revno, result.old_revid = target.last_revision_info()
-            try:
-                target.update_revisions(self, stop_revision,
-                        overwrite=overwrite)
-            except errors.DivergedBranches:
-                if not overwrite:
-                    raise
+            target.update_revisions(self, stop_revision,
+                    overwrite=overwrite)
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
             result.new_revno, result.new_revid = target.last_revision_info()
             return result
