@@ -38,6 +38,11 @@ This release adds a translation of some of the user documentation into Spanish.
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
 
+    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
+      the revno of the new revision (``Graph.find_distance_to_null``). This
+      should make something like ``bzr branch -r -100`` in a shared, no-trees
+      repository much snappier. (John Arbash Meinel)
+
   BUGFIXES:
 
     * Correctly track the base URL of a smart medium when using bzr+http://
@@ -79,6 +84,11 @@ This release adds a translation of some of the user documentation into Spanish.
   INTERNALS:
 
   API CHANGES:
+
+    * ``Branch.update_revisions`` now takes an optional ``Graph``
+      object. This can be used by ``update_revisions`` when it is
+      checking ancestry, and allows callers to prefer request to go to a
+      local branch.  (John Arbash Meinel)
 
     * ``bzr missing --mine-only`` will return status code 0 if you have no
       new revisions, but the remote does. Similarly for ``--theirs-only``.

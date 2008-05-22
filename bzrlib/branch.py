@@ -1500,16 +1500,20 @@ class BzrBranch(Branch):
             last_rev, other_branch))
 
     @needs_write_lock
-    def update_revisions(self, other, stop_revision=None, overwrite=False):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
         """See Branch.update_revisions."""
         other.lock_read()
         try:
-            other_last_revno, other_last_revision = other.last_revision_info()
+            other_revno, other_last_revision = other.last_revision_info()
+            stop_revno = None # unknown
             if stop_revision is None:
                 stop_revision = other_last_revision
                 if _mod_revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
+                stop_revno = other_revno
+
             # whats the current last revision, before we fetch [and change it
             # possibly]
             last_rev = _mod_revision.ensure_null(self.last_revision())
@@ -1520,8 +1524,9 @@ class BzrBranch(Branch):
             self.fetch(other, stop_revision)
             # Check to see if one is an ancestor of the other
             if not overwrite:
-                heads = self.repository.get_graph().heads([stop_revision,
-                                                           last_rev])
+                if graph is None:
+                    graph = self.repository.get_graph()
+                heads = graph.heads([stop_revision, last_rev])
                 if heads == set([last_rev]):
                     # The current revision is a decendent of the target,
                     # nothing to do
@@ -1531,17 +1536,14 @@ class BzrBranch(Branch):
                     raise errors.DivergedBranches(self, other)
                 elif heads != set([stop_revision]):
                     raise AssertionError("invalid heads: %r" % heads)
-            if other_last_revision == stop_revision:
-                self.set_last_revision_info(other_last_revno,
-                                            other_last_revision)
-            else:
-                # TODO: jam 2007-11-29 Is there a way to determine the
-                #       revno without searching all of history??
-                if overwrite:
-                    self.generate_revision_history(stop_revision)
-                else:
-                    self.generate_revision_history(stop_revision,
-                        last_rev=last_rev, other_branch=other)
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.repository.get_graph()
+                this_revno, this_last_revision = self.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.set_last_revision_info(stop_revno, stop_revision)
         finally:
             other.unlock()
 
