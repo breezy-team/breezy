@@ -1145,16 +1145,15 @@ class TreeTransform(TreeTransformBase):
         tree.lock_tree_write()
 
         try:
-            control_files = tree._control_files
             limbodir = urlutils.local_path_from_url(
-                control_files.controlfilename('limbo'))
+                tree._transport.abspath('limbo'))
             try:
                 os.mkdir(limbodir)
             except OSError, e:
                 if e.errno == errno.EEXIST:
                     raise ExistingLimbo(limbodir)
             deletiondir = urlutils.local_path_from_url(
-                control_files.controlfilename('pending-deletion'))
+                tree._transport.abspath('pending-deletion'))
             try:
                 os.mkdir(deletiondir)
             except OSError, e:
