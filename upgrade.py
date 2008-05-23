@@ -124,6 +124,7 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
+    from bzrlib.plugins.svn import check_rebase_version
     from bzrlib.plugins.rebase.rebase import generate_transpose_plan
     check_rebase_version(MIN_REBASE_VERSION)
 
@@ -169,6 +170,7 @@ def upgrade_repository(repository, svn_repository, new_mapping=None,
     :param verbose: Whether to print list of rewrites
     :return: Dictionary of mapped revisions
     """
+    from bzrlib.plugins.svn import check_rebase_version
     check_rebase_version(MIN_REBASE_VERSION)
     from bzrlib.plugins.rebase.rebase import (
         replay_snapshot, rebase, rebase_todo)
