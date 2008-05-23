@@ -382,8 +382,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     for revision_id in branch.repository.iter_reverse_revision_history(
                         branch_last_revision):
         if cur_revno < start_revno:
-            # We have gone far enough
-            # import pdb; pdb.set_trace()
+            # We have gone far enough, but we always add 1 more revision
             rev_nos[revision_id] = cur_revno
             mainline_revs.append(revision_id)
             break
@@ -391,6 +390,9 @@ def _get_mainline_revs(branch, start_revision, end_revision):
             rev_nos[revision_id] = cur_revno
             mainline_revs.append(revision_id)
         cur_revno -= 1
+    else:
+        # We walked off the edge of all revisions, so we add a 'None' marker
+        mainline_revs.append(None)
 
     mainline_revs.reverse()
 
