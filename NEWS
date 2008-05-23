@@ -39,6 +39,9 @@ This release adds a translation of some of the user documentation into Spanish.
 
   BUGFIXES:
 
+    * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
+      fails.  (Andrew Bennetts, #234229)
+      
     * Correctly track the base URL of a smart medium when using bzr+http://
       URLs, which was causing spurious "No repository present" errors with
       branches in shared repositories accessed over bzr+http.
