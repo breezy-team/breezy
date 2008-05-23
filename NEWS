@@ -37,6 +37,12 @@ This release adds a translation of some of the user documentation into Spanish.
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
 
+    * ``bzr uncommit`` now uses partial history access, rather than always
+      extracting the full revision history for a branch. This makes it
+      resolve the appropriate revisions much faster. It also means ``bzr
+      log --short`` is one step closer to not using full revision history.
+      (John Arbash Meinel, #172649)
+
   BUGFIXES:
 
     * Correctly track the base URL of a smart medium when using bzr+http://

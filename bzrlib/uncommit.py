@@ -58,35 +58,36 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
             if master is not None:
                 master.lock_write()
                 unlockable.append(master)
-        rh = branch.revision_history()
-        if master is not None and rh[-1] != master.last_revision():
+        old_revno, old_tip = branch.last_revision_info()
+        if master is not None and old_tip != master.last_revision():
             raise BoundBranchOutOfDate(branch, master)
         if revno is None:
-            revno = len(rh)
-        old_revno, old_tip = branch.last_revision_info()
-        new_revno = revno -1
+            revno = old_revno
+        new_revno = revno - 1
 
-        files_to_remove = []
-        for r in range(revno-1, len(rh)):
-            rev_id = rh.pop()
-            # NB: performance would be better using the revision graph rather
-            # than the whole revision.
-            rev = branch.repository.get_revision(rev_id)
+        revid_iterator = branch.repository.iter_reverse_revision_history(
+                            old_tip)
+        cur_revno = old_revno
+        new_revision_id = old_tip
+        graph = branch.repository.get_graph()
+        for rev_id in revid_iterator:
+            if cur_revno == new_revno:
+                new_revision_id = rev_id
+                break
+            cur_revno -= 1
+            parents = graph.get_parent_map([rev_id]).get(rev_id, None)
+            if not parents:
+                continue
             # When we finish popping off the pending merges, we want
             # them to stay in the order that they used to be.
             # but we pop from the end, so reverse the order, and
             # then get the order right at the end
-            pending_merges.extend(reversed(rev.parent_ids[1:]))
-            if verbose:
-                print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
+            pending_merges.extend(reversed(parents[1:]))
 
-        # Committing before we start removing files, because
-        # once we have removed at least one, all the rest are invalid.
         if not dry_run:
             if master is not None:
-                master.set_revision_history(rh)
-            branch.set_revision_history(rh)
-            new_tip = _mod_revision.ensure_null(branch.last_revision())
+                master.set_last_revision_info(new_revno, new_revision_id)
+            branch.set_last_revision_info(new_revno, new_revision_id)
             if master is None:
                 hook_local = None
                 hook_master = branch
@@ -94,14 +95,14 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
                 hook_local = branch
                 hook_master = master
             for hook in Branch.hooks['post_uncommit']:
-                hook_new_tip = new_tip
+                hook_new_tip = new_revision_id
                 if hook_new_tip == _mod_revision.NULL_REVISION:
                     hook_new_tip = None
                 hook(hook_local, hook_master, old_revno, old_tip, new_revno,
                      hook_new_tip)
             if tree is not None:
-                if not _mod_revision.is_null(new_tip):
-                    parents = [new_tip]
+                if not _mod_revision.is_null(new_revision_id):
+                    parents = [new_revision_id]
                 else:
                     parents = []
                 parents.extend(reversed(pending_merges))
