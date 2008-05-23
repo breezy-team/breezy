@@ -2587,10 +2587,13 @@ class StubMediumRequest(object):
     """A stub medium request that tracks the number of times accept_bytes is
     called.
     """
+
     def __init__(self):
         self.calls = []
+
     def accept_bytes(self, bytes):
         self.calls.append('accept_bytes')
+
     def finished_writing(self):
         self.calls.append('finished_writing')
 
