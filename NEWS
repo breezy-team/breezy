@@ -66,6 +66,9 @@ This release adds a translation of some of the user documentation into Spanish.
       them.
       (Vincent Ladeuil, #229076)
 
+    * Sanitize branch nick before using it as an attachment filename in
+      ``bzr send``. (Lukáš Lalinský, #210218)
+
     * Treat an encoding of '' as ascii; this can happen when bzr is run
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
