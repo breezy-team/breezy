@@ -451,7 +451,7 @@ class TestSetPluginsPath(TestCase):
                 bzrlib.plugins.__path__[:len(expected_path)])
         finally:
             bzrlib.plugins.__path__ = old_path
-            if old_env != None:
+            if old_env is not None:
                 os.environ['BZR_PLUGIN_PATH'] = old_env
             else:
                 del os.environ['BZR_PLUGIN_PATH']

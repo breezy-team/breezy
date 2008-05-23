@@ -25,7 +25,6 @@ from bzrlib import (
     bzrdir,
     check,
     debug,
-    deprecated_graph,
     errors,
     generate_ids,
     gpg,
@@ -95,7 +94,6 @@ class CommitBuilder(object):
         if committer is None:
             self._committer = self._config.username()
         else:
-            assert isinstance(committer, basestring), type(committer)
             self._committer = committer
 
         self.new_inventory = Inventory(None)
@@ -328,8 +326,8 @@ class CommitBuilder(object):
             if kind != parent_entry.kind:
                 store = True
         if kind == 'file':
-            assert content_summary[2] is not None, \
-                "Files must not have executable = None"
+            if content_summary[2] is None:
+                raise ValueError("Files must not have executable = None")
             if not store:
                 if (# if the file length changed we have to store:
                     parent_entry.text_size != content_summary[1] or
@@ -455,6 +453,9 @@ class Repository(object):
     The Repository builds on top of Stores and a Transport, which respectively 
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
+
+    :ivar _transport: Transport for file access to repository, typically
+        pointing to .bzr/repository.
     """
 
     # What class to use for a CommitBuilder. Often its simpler to change this
@@ -501,12 +502,16 @@ class Repository(object):
         :returns: The validator(which is a sha1 digest, though what is sha'd is
             repository format specific) of the serialized inventory.
         """
-        assert self.is_in_write_group()
+        if not self.is_in_write_group():
+            raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(revision_id)
-        assert inv.revision_id is None or inv.revision_id == revision_id, \
-            "Mismatch between inventory revision" \
-            " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
-        assert inv.root is not None
+        if not (inv.revision_id is None or inv.revision_id == revision_id):
+            raise AssertionError(
+                "Mismatch between inventory revision"
+                " id and insertion revid (%r, %r)"
+                % (inv.revision_id, revision_id))
+        if inv.root is None:
+            raise AssertionError()
         inv_lines = self._serialise_inventory_to_lines(inv)
         inv_vf = self.get_inventory_weave()
         return self._inventory_add_lines(inv_vf, revision_id, parents,
@@ -542,14 +547,17 @@ class Repository(object):
             plaintext = Testament(rev, inv).as_short_text()
             self.store_revision_signature(
                 gpg.GPGStrategy(config), plaintext, revision_id)
-        if not revision_id in self.get_inventory_weave():
+        inventory_vf = self.get_inventory_weave()
+        if not revision_id in inventory_vf:
             if inv is None:
                 raise errors.WeaveRevisionNotPresent(revision_id,
-                                                     self.get_inventory_weave())
+                                                     inventory_vf)
             else:
                 # yes, this is not suitable for adding with ghosts.
-                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv,
                                                         rev.parent_ids)
+        else:
+            rev.inventory_sha1 = inventory_vf.get_sha1s([revision_id])[0]
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -602,7 +610,8 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+    def __init__(self, _format, a_bzrdir, control_files,
+                 _revision_store, control_store, text_store):
         """instantiate a Repository.
 
         :param _format: The format of the repository on disk.
@@ -617,6 +626,8 @@ class Repository(object):
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
         self.control_files = control_files
+        self._transport = control_files._transport
+        self.base = self._transport.base
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
@@ -632,7 +643,6 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
-        self.base = control_files._transport.base
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -647,8 +657,7 @@ class Repository(object):
         """
         if self.__class__ is not other.__class__:
             return False
-        return (self.control_files._transport.base ==
-                other.control_files._transport.base)
+        return (self._transport.base == other._transport.base)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -1092,10 +1101,6 @@ class Repository(object):
                 raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         revs = self._revision_store.get_revisions(revision_ids,
                                                   self.get_transaction())
-        for rev in revs:
-            assert not isinstance(rev.revision_id, unicode)
-            for parent_id in rev.parent_ids:
-                assert not isinstance(parent_id, unicode)
         return revs
 
     @needs_read_lock
@@ -1498,8 +1503,9 @@ class Repository(object):
 
         :return: An iterator of inventories.
         """
-        assert None not in revision_ids
-        assert _mod_revision.NULL_REVISION not in revision_ids
+        if ((None in revision_ids)
+            or (_mod_revision.NULL_REVISION in revision_ids)):
+            raise ValueError('cannot get null revision inventory')
         return self._iter_inventories(revision_ids)
 
     def _iter_inventories(self, revision_ids):
@@ -1533,7 +1539,6 @@ class Repository(object):
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
         try:
-            assert isinstance(revision_id, str), type(revision_id)
             iw = self.get_inventory_weave()
             return iw.get_text(revision_id)
         except IndexError:
@@ -1544,63 +1549,6 @@ class Repository(object):
         """Return the sha1 hash of the inventory entry
         """
         return self.get_revision(revision_id).inventory_sha1
-
-    @needs_read_lock
-    @deprecated_method(symbol_versioning.one_four)
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        NB: This method should not be used as it accesses the entire graph all
-        at once, which is much more data than most operations should require.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        raise NotImplementedError(self.get_revision_graph)
-
-    @needs_read_lock
-    @deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        """Return a graph of the revisions with ghosts marked as applicable.
-
-        :param revision_ids: an iterable of revisions to graph or None for all.
-        :return: a Graph object with the graph reachable from revision_ids.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph_with_ghosts scales with size of history.")
-        result = deprecated_graph.Graph()
-        if not revision_ids:
-            pending = set(self.all_revision_ids())
-            required = set([])
-        else:
-            pending = set(revision_ids)
-            # special case NULL_REVISION
-            if _mod_revision.NULL_REVISION in pending:
-                pending.remove(_mod_revision.NULL_REVISION)
-            required = set(pending)
-        done = set([])
-        while len(pending):
-            revision_id = pending.pop()
-            try:
-                rev = self.get_revision(revision_id)
-            except errors.NoSuchRevision:
-                if revision_id in required:
-                    raise
-                # a ghost
-                result.add_ghost(revision_id)
-                continue
-            for parent_id in rev.parent_ids:
-                # is this queued or done ?
-                if (parent_id not in pending and
-                    parent_id not in done):
-                    # no, queue it.
-                    pending.add(parent_id)
-            result.add_node(revision_id, rev.parent_ids)
-            done.add(revision_id)
-        return result
 
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
@@ -1737,6 +1685,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
+    @deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
@@ -1750,6 +1699,8 @@ class Repository(object):
         """See graph._StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
+            if revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
             else:
@@ -1991,7 +1942,11 @@ def _install_revision(repository, rev, revision_tree, signature):
 
 
 class MetaDirRepository(Repository):
-    """Repositories in the new meta-dir layout."""
+    """Repositories in the new meta-dir layout.
+    
+    :ivar _transport: Transport for access to repository control files,
+        typically pointing to .bzr/repository.
+    """
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
         super(MetaDirRepository, self).__init__(_format,
@@ -2000,13 +1955,12 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-        dir_mode = self.control_files._dir_mode
-        file_mode = self.control_files._file_mode
+        self._transport = control_files._transport
 
     @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
-        return self.control_files._transport.has('shared-storage')
+        return self._transport.has('shared-storage')
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2020,15 +1974,16 @@ class MetaDirRepository(Repository):
         """
         if new_value:
             try:
-                self.control_files._transport.delete('no-working-trees')
+                self._transport.delete('no-working-trees')
             except errors.NoSuchFile:
                 pass
         else:
-            self.control_files.put_utf8('no-working-trees', '')
+            self._transport.put_bytes('no-working-trees', '',
+                mode=self.control_files._file_mode)
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
-        return not self.control_files._transport.has('no-working-trees')
+        return not self._transport.has('no-working-trees')
 
 
 class MetaDirVersionedFileRepository(MetaDirRepository):
@@ -2263,15 +2218,17 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         """Upload the initial blank content."""
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
+        transport = control_files._transport
+        if shared == True:
+            utf8_files += [('shared-storage', '')]
         try:
-            control_files._transport.mkdir_multi(dirs,
-                    mode=control_files._dir_mode)
-            for file, content in files:
-                control_files.put(file, content)
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-            if shared == True:
-                control_files.put_utf8('shared-storage', '')
+            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            for (filename, content_stream) in files:
+                transport.put_file(filename, content_stream,
+                    mode=a_bzrdir._get_file_mode())
+            for (filename, content_bytes) in utf8_files:
+                transport.put_bytes_non_atomic(filename, content_bytes,
+                    mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
 
@@ -2442,7 +2399,8 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -2560,7 +2518,7 @@ class InterWeaveRepo(InterSameDataRepository):
         except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
-        if self.source.control_files._transport.listable():
+        if self.source._transport.listable():
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 self.target.weave_store.copy_all_ids(
@@ -2609,7 +2567,8 @@ class InterWeaveRepo(InterSameDataRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
@@ -2678,7 +2637,8 @@ class InterKnitRepo(InterSameDataRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -2791,7 +2751,8 @@ class InterPackRepo(InterSameDataRepository):
             return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
+            if source_ids[0] is not None:
+                raise AssertionError()
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -2958,8 +2919,9 @@ class InterRemoteToOther(InterRepository):
         # Is source's model compatible with target's model?
         source._ensure_real()
         real_source = source._real_repository
-        assert not isinstance(real_source, remote.RemoteRepository), (
-            "We don't support remote repos backed by remote repos yet.")
+        if isinstance(real_source, remote.RemoteRepository):
+            raise NotImplementedError(
+                "We don't support remote repos backed by remote repos yet.")
         return InterRepository._same_model(real_source, target)
 
     @needs_write_lock

@@ -496,10 +496,11 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        assert backing_transport_server is None or \
-            isinstance(backing_transport_server, local.LocalURLServer), \
-            "HTTPServer currently assumes local transport, got %s" % \
-            backing_transport_server
+        if not (backing_transport_server is None or \
+                isinstance(backing_transport_server, local.LocalURLServer)):
+            raise AssertionError(
+                "HTTPServer currently assumes local transport, got %s" % \
+                backing_transport_server)
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_base_url = None

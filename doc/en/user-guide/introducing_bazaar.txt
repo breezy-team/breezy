@@ -118,9 +118,10 @@ this chapter as it:
 
 Chapters 2-6 provide a closer look at how to use Bazaar to complete
 various tasks. It is recommended that most users read these in first-to-last
-order shortly after starting to use Bazaar. Chapters 7 and beyond provide
-additional information including some recommended best practices.
-This material can be read when required and in any order.
+order shortly after starting to use Bazaar. Chapter 7 and beyond provide
+additional information that helps you make the most of Bazaar once the core
+functionality is understood. This material can be read when required and in
+any order.
 
 If you are already familar with other version control tools,
 you may wish to get started quickly by reading the following documents:

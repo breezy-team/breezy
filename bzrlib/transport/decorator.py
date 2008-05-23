@@ -45,9 +45,10 @@ class TransportDecorator(Transport):
             need to share state across clones.
         """
         prefix = self._get_url_prefix()
-        assert url.startswith(prefix), \
+        if not url.startswith(prefix):
+            raise ValueError(
                 "url %r doesn't start with decorator prefix %r" % \
-                (url, prefix)
+                (url, prefix))
         decorated_url = url[len(prefix):]
         if _decorated is None:
             self._decorated = get_transport(decorated_url)
