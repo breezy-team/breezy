@@ -253,7 +253,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                   self.old_inv.id2path(child_ie.file_id), 
                                   new_child_path))
                 child_baton = self.editor.add_file(
-                        full_new_child_path,
+                        full_new_child_path, baton,
                     urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                     self.base_revnum, self.pool)
 
