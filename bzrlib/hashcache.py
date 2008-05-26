@@ -32,7 +32,7 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.filters import sha_file_by_name
+from bzrlib.filters import internal_size_sha_file_byname
 from bzrlib.osutils import pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
@@ -87,7 +87,7 @@ class HashCache(object):
 
         :param content_filter_stack_provider: a function that takes a
             path (relative to the top of the tree) and a file-id as
-            parameters and returns a stack of ContentFilter's.
+            parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
         self.root = safe_unicode(root)
@@ -214,7 +214,7 @@ class HashCache(object):
 
     def _really_sha1_file(self, abspath, filters):
         """Calculate the SHA1 of a file by reading the full text"""
-        return sha_file_by_name(abspath, filters)
+        return internal_size_sha_file_byname(abspath, filters)[1]
         
     def write(self):
         """Write contents of cache to file."""

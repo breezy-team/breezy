@@ -20,10 +20,10 @@ from bzrlib.filters import (
     ContentFilter,
     ContentFilterContext,
     filtered_input_file,
-    filtered_output_lines,
+    filtered_output_bytes,
     _get_filter_stack_for,
     _get_registered_names,
-    sha_file_by_name,
+    internal_size_sha_file_byname,
     register_filter_stack_map,
     )
 from bzrlib.osutils import sha_string
@@ -52,7 +52,7 @@ class TestContentFilterContext(TestCase):
 
     def test_empty_filter_context(self):
         ctx = ContentFilterContext()
-        self.assertRaises(NotImplementedError, ctx.relpath)
+        self.assertEqual(None, ctx.relpath())
 
     def test_filter_context_with_path(self):
         ctx = ContentFilterContext('foo/bar')
@@ -78,28 +78,31 @@ class TestFilteredInput(TestCase):
 
 class TestFilteredOutput(TestCase):
 
-    def test_filtered_output_lines(self):
+    def test_filtered_output_bytes(self):
         # test an empty stack returns the same result
-        self.assertEqual(_sample_external, list(filtered_output_lines(
+        self.assertEqual(_sample_external, list(filtered_output_bytes(
             _sample_external, None)))
         # test a single item filter stack
-        self.assertEqual(_sample_external, list(filtered_output_lines(
+        self.assertEqual(_sample_external, list(filtered_output_bytes(
             _internal_1, _stack_1)))
         # test a multi item filter stack
-        self.assertEqual(_sample_external, list(filtered_output_lines(
+        self.assertEqual(_sample_external, list(filtered_output_bytes(
             _internal_2, _stack_2)))
 
 
 class TestFilteredSha(TestCaseInTempDir):
 
-    def test_filtered_sha_byname(self):
-        # check that the sha matches what's expected
+    def test_filtered_size_sha(self):
+        # check that the size and sha matches what's expected
         text = 'Foo Bar Baz\n'
         a = open('a', 'wb')
         a.write(text)
         a.close()
-        expected_sha = sha_string(''.join(_swapcase([text], None)))
-        self.assertEqual(expected_sha, sha_file_by_name('a',
+        post_filtered_content = ''.join(_swapcase([text], None))
+        expected_len = len(post_filtered_content)
+        expected_sha = sha_string(post_filtered_content)
+        self.assertEqual((expected_len,expected_sha),
+            internal_size_sha_file_byname('a',
             [ContentFilter(_swapcase, _swapcase)]))
 
 
@@ -111,38 +114,43 @@ class TestFilterStackMaps(TestCase):
     def test_filter_stack_maps(self):
         # Save the current registry
         original_registry = filters._reset_registry()
-        # Test registration
-        a_stack = [ContentFilter('b', 'c')]
-        z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
-        self._register_map('foo', a_stack, z_stack)
-        self.assertEqual(['foo'], _get_registered_names())
-        self._register_map('bar', z_stack, a_stack)
-        self.assertEqual(['foo', 'bar'], _get_registered_names())
-        # Test re-registration raises an error
-        self.assertRaises(errors.BzrError, self._register_map, 'foo', [], [])
-        # Restore the real registry
-        filters._reset_registry(original_registry)
+        try:
+            # Test registration
+            a_stack = [ContentFilter('b', 'c')]
+            z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
+            self._register_map('foo', a_stack, z_stack)
+            self.assertEqual(['foo'], _get_registered_names())
+            self._register_map('bar', z_stack, a_stack)
+            self.assertEqual(['bar', 'foo'], _get_registered_names())
+            # Test re-registration raises an error
+            self.assertRaises(errors.BzrError, self._register_map,
+                'foo', [], [])
+        finally:
+            # Restore the real registry
+            filters._reset_registry(original_registry)
 
     def test_get_filter_stack_for(self):
         # Save the current registry
         original_registry = filters._reset_registry()
-        # Test filter stack lookup
-        a_stack = [ContentFilter('b', 'c')]
-        d_stack = [ContentFilter('d', 'D')]
-        z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
-        self._register_map('foo', a_stack, z_stack)
-        self._register_map('bar', d_stack, z_stack)
-        prefs = (('foo','v1'),)
-        self.assertEqual(a_stack, _get_filter_stack_for(prefs))
-        prefs = (('foo','v2'),)
-        self.assertEqual(z_stack, _get_filter_stack_for(prefs))
-        prefs = (('foo','v1'),('bar','v1'))
-        self.assertEqual(a_stack + d_stack, _get_filter_stack_for(prefs))
-        # Test an unknown preference
-        prefs = (('baz','v1'),)
-        self.assertEqual([], _get_filter_stack_for(prefs))
-        # Test an unknown value
-        prefs = (('foo','v3'),)
-        self.assertEqual([], _get_filter_stack_for(prefs))
-        # Restore the real registry
-        filters._reset_registry(original_registry)
+        try:
+            # Test filter stack lookup
+            a_stack = [ContentFilter('b', 'c')]
+            d_stack = [ContentFilter('d', 'D')]
+            z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
+            self._register_map('foo', a_stack, z_stack)
+            self._register_map('bar', d_stack, z_stack)
+            prefs = (('foo','v1'),)
+            self.assertEqual(a_stack, _get_filter_stack_for(prefs))
+            prefs = (('foo','v2'),)
+            self.assertEqual(z_stack, _get_filter_stack_for(prefs))
+            prefs = (('foo','v1'),('bar','v1'))
+            self.assertEqual(a_stack + d_stack, _get_filter_stack_for(prefs))
+            # Test an unknown preference
+            prefs = (('baz','v1'),)
+            self.assertEqual([], _get_filter_stack_for(prefs))
+            # Test an unknown value
+            prefs = (('foo','v3'),)
+            self.assertEqual([], _get_filter_stack_for(prefs))
+        finally:
+            # Restore the real registry
+            filters._reset_registry(original_registry)

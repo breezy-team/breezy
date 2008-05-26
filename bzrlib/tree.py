@@ -436,9 +436,7 @@ class Tree(object):
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys
-        sys.stdout.writelines(filters.filtered_output_lines(
-            self.get_file_lines(file_id),
-            self._content_filter_stack(file_id=file_id)))
+        sys.stdout.write(self.get_file_text(file_id))
 
     def lock_read(self):
         pass

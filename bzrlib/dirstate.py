@@ -310,7 +310,7 @@ class DirState(object):
         :param path: The path at which the dirstate file on disk should live.
         :param content_filter_stack_provider: a function that takes a
             path (relative to the top of the tree) and a file-id as
-            parameters and returns a stack of ContentFilter's.
+            parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
         # _header_state and _dirblock_state represent the current state
@@ -344,9 +344,9 @@ class DirState(object):
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
         if 'hashcache' in debug.debug_flags:
-            self._sha1_file = self._sha1_file_and_mutter
+            self._size_sha1_file = self._sha1_file_and_mutter
         else:
-            self._sha1_file = filters.sha_file_by_name
+            self._size_sha1_file = filters.internal_size_sha_file_byname
         # These two attributes provide a simple cache for lookups into the
         # dirstate in-memory vectors. By probing respectively for the last
         # block, and for the next entry, we save nearly 2 bisections per path
@@ -354,7 +354,7 @@ class DirState(object):
         self._last_block_index = None
         self._last_entry_index = None
         # Content filtering setup
-        self._cfs_provider = content_filter_stack_provider
+        self._filter_provider = content_filter_stack_provider
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1499,13 +1499,13 @@ class DirState(object):
         # process this entry.
         link_or_sha1 = None
         if minikind == 'f':
-            if self._cfs_provider is None:
+            if self._filter_provider is None:
                 filter_list = []
             else:
                 relpath = osutils.pathjoin(entry[0][0], entry[0][1])
-                file_id=entry[0][2]
-                filter_list = self._cfs_provider(relpath, file_id)
-            link_or_sha1 = self._sha1_file(abspath, filter_list)
+                file_id = entry[0][2]
+                filter_list = self._filter_provider(relpath, file_id)
+            link_or_sha1 = self._size_sha1_file(abspath, filter_list)[1]
             executable = self._is_executable(stat_value.st_mode,
                                              saved_executable)
             if self._cutoff_time is None:
@@ -1563,7 +1563,7 @@ class DirState(object):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)
-        return filters.sha_file_by_name(abspath, filter_list)
+        return filters.internal_size_sha_file_byname(abspath, filter_list)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
@@ -1961,7 +1961,7 @@ class DirState(object):
 
         :param content_filter_stack_provider: a function that takes a
             path (relative to the top of the tree) and a file-id as
-            parameters and returns a stack of ContentFilter's.
+            parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         :return: An unlocked DirState object, associated with the given path.
         """

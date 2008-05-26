@@ -33,12 +33,13 @@ Note that context is currently only supported for write filters.
 """
 
 
-import cStringIO
+import cStringIO, sha
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
     osutils,
+    registry,
     )
 """)
 
@@ -72,10 +73,7 @@ class ContentFilterContext(object):
 
     def relpath(self):
         """Relative path of file to tree-root."""
-        if self._relpath is None:
-            raise NotImplementedError(self.relpath)
-        else:
-            return self._relpath
+        return self._relpath
 
 
 def filtered_input_file(f, filters):
@@ -95,8 +93,8 @@ def filtered_input_file(f, filters):
         return f
 
 
-def filtered_output_lines(chunks, filters, context=None):
-    """Convert output lines from internal to external format.
+def filtered_output_bytes(chunks, filters, context=None):
+    """Convert byte chunks from internal to external format.
     
     :param chunks: an iterator containing the original content
     :param filters: the stack of filters to apply
@@ -111,23 +109,32 @@ def filtered_output_lines(chunks, filters, context=None):
     return chunks
 
 
-def sha_file_by_name(name, filters):
-    """Get sha of internal content given external content.
+def internal_size_sha_file_byname(name, filters):
+    """Get size and sha of internal content given external content.
     
     :param name: path to file
     :param filters: the stack of filters to apply
     """
-    if filters:
-        f = open(name, 'rb', 65000)
-        return osutils.sha_strings(filtered_input_file(f, filters))
-    else:
-        return osutils.sha_file_by_name(name)
+    f = open(name, 'rb', 65000)
+    try:
+        if filters:
+            f = filtered_input_file(f, filters)
+        size = 0
+        s = sha.new()
+        BUFSIZE = 128<<10
+        while True:
+            b = f.read(BUFSIZE)
+            if not b:
+                break
+            size += len(b)
+            s.update(b)
+        return size, s.hexdigest()
+    finally:
+        f.close()
 
 
 # The registry of filter stacks indexed by name.
-# (This variable should be treated as private to this module as its
-# implementation may well change in the future.)
-_filter_stacks_registry = {}
+_filter_stacks_registry = registry.Registry()
 
 
 # Cache of preferences -> stack
@@ -142,10 +149,10 @@ def register_filter_stack_map(name, stack_map):
       the keys are preference values to match and
       the values are the matching stack of filters for each
     """
-    if _filter_stacks_registry.has_key(name):
+    if name in _filter_stacks_registry:
         raise errors.BzrError(
             "filter stack for %s already installed" % name)
-    _filter_stacks_registry[name] = stack_map
+    _filter_stacks_registry.register(name, stack_map)
 
 
 def _get_registered_names():
@@ -170,11 +177,13 @@ def _get_filter_stack_for(preferences):
         return stack
     stack = []
     for k, v in preferences:
-        stacks_by_values = _filter_stacks_registry.get(k)
-        if stacks_by_values is not None:
-            items = stacks_by_values.get(v)
-            if items:
-                stack.extend(items)
+        try:
+            stacks_by_values = _filter_stacks_registry.get(k)
+        except KeyError:
+            continue
+        items = stacks_by_values.get(v)
+        if items:
+            stack.extend(items)
     _stack_cache[preferences] = stack
     return stack
 
@@ -192,9 +201,9 @@ def _reset_registry(value=None):
     :return: the existing value before it reset.
     """
     global _filter_stacks_registry
-    original = _filter_stacks_registry.copy()
+    original = _filter_stacks_registry
     if value is None:
-        _filter_stacks_registry.clear()
+        _filter_stacks_registry = registry.Registry()
     else:
         _filter_stacks_registry = value
     _stack_cache.clear()
