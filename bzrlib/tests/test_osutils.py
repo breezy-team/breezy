@@ -318,6 +318,9 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
 
+    def test_host_os_dereferences_symlinks(self):
+        osutils.host_os_dereferences_symlinks()
+
 
 class TestSafeUnicode(TestCase):
 

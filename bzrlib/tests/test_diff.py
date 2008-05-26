@@ -1312,7 +1312,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
         proc.wait()
-        result=proc.stdout.read()
+        result = proc.stdout.read()
         self.assertContainsRe(result, regex)
 
     def test_prepare_files(self):
