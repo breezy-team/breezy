@@ -76,6 +76,9 @@ This release adds a translation of some of the user documentation into Spanish.
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
 
+    * Compare file revisions in Windows diff programs from Cygwin Bazaar.
+      (Matt McClure, #209281)
+
   DOCUMENTATION:
 
     * Added directory structure and started translation of docs in spanish.
