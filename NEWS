@@ -49,6 +49,11 @@ This release adds a translation of some of the user documentation into Spanish.
       implementations have the attribute.  Fixes 'PyCurlTransport' object has no
       attribute '_remote_is_at_least_1_2' attribute errors.
       (Andrew Bennetts, #220806)
+
+    * Failure to delete an obsolete pack file should just give a warning
+      message, not a fatal error.  It may for example fail if the file is still
+      in use by another process.
+      (Martin Pool)
       
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
