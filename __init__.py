@@ -47,6 +47,7 @@ from bzrlib import (
     errors,
     revisionspec,
     transport,
+    urlutils,
     workingtree,
     )
 """)
