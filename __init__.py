@@ -96,6 +96,7 @@ class cmd_upload(commands.Command):
                 raise errors.BzrCommandError('No upload location'
                                              ' known or specified.')
             else:
+                # FIXME: Not currently tested
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
