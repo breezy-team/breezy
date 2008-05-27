@@ -309,12 +309,6 @@ class RemoteRepository(object):
 
     __repr__ = __str__
 
-    @property
-    def _pack_collection(self):
-        # XXX: this seems a bit evil...
-        self._ensure_real()
-        return self._real_repository._pack_collection
-
     def abort_write_group(self):
         """Complete a write group on the decorated repository.
         

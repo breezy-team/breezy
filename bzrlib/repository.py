@@ -2704,7 +2704,7 @@ class InterPackRepo(InterSameDataRepository):
             # till then:
             revision_ids = self.source.all_revision_ids()
             revision_keys = [(revid,) for revid in revision_ids]
-            index = self.target._pack_collection.revision_index.combined_index
+            index = self._get_target_revision_index()
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -2742,6 +2742,9 @@ class InterPackRepo(InterSameDataRepository):
             return (pack.get_revision_count(), [])
         else:
             return (0, [])
+
+    def _get_target_revision_index(self):
+        return self.target._pack_collection.revision_index.combined_index
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3015,7 +3018,7 @@ class InterPackToRemotePack(InterPackRepo):
             revision_ids)
         pack = remote_packer.pack()
         if pack is not None:
-            target._pack_collection._save_pack_names()
+            target._real_repository._pack_collection._save_pack_names()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
@@ -3023,20 +3026,14 @@ class InterPackToRemotePack(InterPackRepo):
             return (pack.get_revision_count(), [])
         else:
             return (0, [])
-
-#    def _pack(self, source, target, revision_ids):
-#        return InterPackRepo._pack(
-#            self, source, target._real_repository, revision_ids)
+    
+    def _get_target_revision_index(self):
+        return self.target._real_repository._pack_collection.revision_index.combined_index
 
     @classmethod
     def _get_repo_format_to_test(self):
         return None
 
-#    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-#    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-#        import pdb; pdb.set_trace()
-#        return InterOtherToRemote.search_missing_revision_ids(self,
-#                revision_id, find_ghosts)
 
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
