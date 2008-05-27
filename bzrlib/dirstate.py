@@ -344,7 +344,7 @@ class DirState(object):
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
         if 'hashcache' in debug.debug_flags:
-            self._size_sha1_file = self._sha1_file_and_mutter
+            self._size_sha1_file = self._size_sha1_file_and_mutter
         else:
             self._size_sha1_file = filters.internal_size_sha_file_byname
         # These two attributes provide a simple cache for lookups into the
@@ -1559,7 +1559,7 @@ class DirState(object):
         """Return the os.lstat value for this path."""
         return os.lstat(abspath)
 
-    def _sha1_file_and_mutter(self, abspath, filter_list):
+    def _size_sha1_file_and_mutter(self, abspath, filter_list):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)

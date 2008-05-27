@@ -101,7 +101,7 @@ class HashCache(object):
         self._cache = {}
         self._mode = mode
         self._cache_file_name = safe_unicode(cache_file_name)
-        self._cfs_provider = content_filter_stack_provider
+        self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
         return self._cache_file_name
@@ -171,10 +171,10 @@ class HashCache(object):
 
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
-            if self._cfs_provider is None:
+            if self._filter_provider is None:
                 filters = []
             else:
-                filters = self._cfs_provider(path=path, file_id=None)
+                filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             digest = sha.new(os.readlink(abspath)).hexdigest()
