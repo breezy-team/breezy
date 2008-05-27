@@ -979,13 +979,17 @@ Deprecation decorators
 
 ``bzrlib.symbol_versioning`` provides decorators that can be attached to
 methods, functions, and other interfaces to indicate that they should no
-longer be used.
+longer be used.  For example::
+
+   @deprecated_method(deprecated_in((0, 1, 4)))
+   def foo(self):
+        return self._new_foo()
 
 To deprecate a static method you must call ``deprecated_function``
 (**not** method), after the staticmethod call::
 
     @staticmethod
-    @deprecated_function(zero_ninetyone)
+    @deprecated_function(deprecated_in((0, 1, 4)))
     def create_repository(base, shared=False, format=None):
 
 When you deprecate an API, you should not just delete its tests, because
