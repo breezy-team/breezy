@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib import (
     config,
     errors,
+    lock,
     osutils,
     tests,
     transport,

@@ -110,7 +110,6 @@ from cStringIO import StringIO
 from bzrlib import (
     debug,
     errors,
-    hooks,
     lock,
     )
 import bzrlib.config
@@ -128,6 +127,7 @@ from bzrlib.errors import (
         TransportError,
         UnlockableTransport,
         )
+from bzrlib.hooks import Hooks
 from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars, format_delta
