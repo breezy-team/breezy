@@ -2693,7 +2693,6 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         self.count_copied = 0
@@ -2727,15 +2726,19 @@ class InterPackRepo(InterSameDataRepository):
                 raise errors.InstallFailed([revision_id])
             if len(revision_ids) == 0:
                 return (0, [])
-        packs = self.source._pack_collection.all_packs()
-        pack = Packer(self.target._pack_collection, packs, '.fetch',
+        self._pack(self.source, self.target, revision_ids)
+
+    def _pack(self, source, target, revision_ids):
+        from bzrlib.repofmt.pack_repo import Packer
+        packs = source._pack_collection.all_packs()
+        pack = Packer(target._pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            self.target._pack_collection._save_pack_names()
+            target._pack_collection._save_pack_names()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self.target._pack_collection.autopack()
+            target._pack_collection.autopack()
             return (pack.get_revision_count(), [])
         else:
             return (0, [])
@@ -2944,6 +2947,9 @@ class InterRemoteToOther(InterRepository):
 
 
 class InterOtherToRemote(InterRepository):
+    """An InterRepository that simply delegates to the 'real' InterRepository
+    calculated for (source, target._real_repository).
+    """
 
     def __init__(self, source, target):
         InterRepository.__init__(self, source, target)
@@ -2975,6 +2981,40 @@ class InterOtherToRemote(InterRepository):
         return None
 
 
+class InterPackToRemotePack(InterPackRepo):
+    """A specialisation of InterPackRepo for a target that is a
+    RemoteRepository.
+
+    The only difference at the moment is that it will use the get_parent_map
+    RPC rather than plain readvs.
+    """
+
+    @staticmethod
+    def is_compatible(source, target):
+        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        if isinstance(source._format, RepositoryFormatPack):
+            if isinstance(target, remote.RemoteRepository):
+                target._ensure_real()
+                if isinstance(target._real_repository._format,
+                              RepositoryFormatPack):
+                    if InterRepository._same_model(source, target):
+                        return True
+        return False
+
+    def _pack(self, source, target, revision_ids):
+        return InterPackRepo._pack(
+            self, source, target._real_repository, revision_ids)
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+#    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+#    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+#        import pdb; pdb.set_trace()
+#        return InterOtherToRemote.search_missing_revision_ids(self,
+#                revision_id, find_ghosts)
+
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
@@ -2984,6 +3024,7 @@ InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterRemoteToOther)
 InterRepository.register_optimiser(InterOtherToRemote)
+InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):
