@@ -464,8 +464,10 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
+    # mainline_revisions always includes an extra revision at the beginning, so
+    # don't request it.
     parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revisions) if value is not None))
+        graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
     sorted_rev_list = topo_sort(parent_map.items())
     ancestry = {}
     for rev in sorted_rev_list:
@@ -479,6 +481,11 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
             if rev in weave_modifed_revisions:
                 rev_ancestry.add(rev)
             for parent in parents:
+                if parent not in ancestry:
+                    # parent is a Ghost, which won't be present in
+                    # sorted_rev_list, but we may access it later, so create an
+                    # empty node for it
+                    ancestry[parent] = set()
                 rev_ancestry = rev_ancestry.union(ancestry[parent])
         ancestry[rev] = rev_ancestry
 
@@ -515,8 +522,10 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
+    # mainline_revisions always includes an extra revision at the beginning, so
+    # don't request it.
     parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revs) if value is not None))
+        graph.iter_ancestry(mainline_revs[1:]) if value is not None))
     # filter out ghosts; merge_sort errors on ghosts.
     rev_graph = _strip_NULL_ghosts(parent_map)
     merge_sorted_revisions = merge_sort(
@@ -547,7 +556,6 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
         if val[2] == _depth:
             zd_revisions.append([val])
         else:
-            assert val[2] > _depth
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:

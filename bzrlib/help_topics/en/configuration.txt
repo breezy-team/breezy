@@ -122,9 +122,9 @@ of a line.  A typical section header looks like this::
 
     [DEFAULT]
 
-The only valid section header for bazaar.conf is [DEFAULT], which is
-case sensitive. The default section provides for setting variables
-which can be overridden with the branch config file.
+The only valid section headers for bazaar.conf currently are [DEFAULT] and
+[ALIASES].  Section headers are case sensitive. The default section provides for
+setting variables which can be overridden with the branch config file.
 
 For ``locations.conf``, the variables from the section with the
 longest matching section header are used to the exclusion of other

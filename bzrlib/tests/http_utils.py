@@ -25,12 +25,12 @@ import time
 import urllib2
 import urlparse
 
-
 from bzrlib import (
+    errors,
     tests,
     transport,
     )
-from bzrlib.smart import protocol
+from bzrlib.smart import medium, protocol
 from bzrlib.tests import http_server
 
 
@@ -53,6 +53,9 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
         t = transport.get_transport(self.server.test_case_server._home_dir)
+        # if this fails, we should return 400 bad request, but failure is
+        # failure for now - RBC 20060919
+        data_length = int(self.headers['Content-Length'])
         # TODO: We might like to support streaming responses.  1.0 allows no
         # Content-length in this case, so for integrity we should perform our
         # own chunking within the stream.
@@ -60,18 +63,18 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # the HTTP chunking as this will allow HTTP persistence safely, even if
         # we have to stop early due to error, but we would also have to use the
         # HTTP trailer facility which may not be widely available.
+        request_bytes = self.rfile.read(data_length)
+        protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
+            request_bytes)
         out_buffer = StringIO()
-        smart_protocol_request = protocol.SmartServerRequestProtocolOne(
-                t, out_buffer.write)
-        # if this fails, we should return 400 bad request, but failure is
-        # failure for now - RBC 20060919
-        data_length = int(self.headers['Content-Length'])
+        smart_protocol_request = protocol_factory(t, out_buffer.write, '/')
         # Perhaps there should be a SmartServerHTTPMedium that takes care of
         # feeding the bytes in the http request to the smart_protocol_request,
         # but for now it's simpler to just feed the bytes directly.
-        smart_protocol_request.accept_bytes(self.rfile.read(data_length))
-        assert smart_protocol_request.next_read_size() == 0, (
-            "not finished reading, but all data sent to protocol.")
+        smart_protocol_request.accept_bytes(unused_bytes)
+        if not (smart_protocol_request.next_read_size() == 0):
+            raise errors.SmartProtocolError(
+                "not finished reading, but all data sent to protocol.")
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
         self.end_headers()
         self.wfile.write(out_buffer.getvalue())

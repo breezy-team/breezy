@@ -54,8 +54,8 @@ class PhysicalLock(object):
     """
 
     hooks = Hooks()
-    hooks['acquired'] = []
-    hooks['released'] = []
+    hooks['lock_acquired'] = []
+    hooks['lock_released'] = []
 
 
 class LockResult(object):
@@ -213,7 +213,9 @@ if have_fcntl:
 
             :return: A token which can be used to switch back to a read lock.
             """
-            assert self.filename not in _fcntl_WriteLock._open_locks
+            if self.filename in _fcntl_WriteLock._open_locks:
+                raise AssertionError('file already locked: %r'
+                    % (self.filename,))
             try:
                 wlock = _fcntl_TemporaryWriteLock(self)
             except errors.LockError:
@@ -239,7 +241,9 @@ if have_fcntl:
                 # write lock.
                 raise errors.LockContention(self.filename)
 
-            assert self.filename not in _fcntl_WriteLock._open_locks
+            if self.filename in _fcntl_WriteLock._open_locks:
+                raise AssertionError('file already locked: %r'
+                    % (self.filename,))
 
             # See if we can open the file for writing. Another process might
             # have a read lock. We don't use self._open() because we don't want

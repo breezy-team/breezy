@@ -295,7 +295,6 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     This flushes, but does not close the trace file.
     
     Takes the memento returned from _push_log_file."""
-    assert magic == 'log_memento'
     global _trace_file
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
@@ -415,6 +414,14 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_INTERNAL_ERROR
 
 
+def print_exception(exc_info, err_file):
+    exc_type, exc_object, exc_tb = exc_info
+    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
+        exc_type.__module__, exc_type.__name__, exc_object))
+    err_file.write('\n')
+    traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
+
+
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
     """Report to err_file an error that's not an internal error.
@@ -422,18 +429,14 @@ def report_user_error(exc_info, err_file):
     These don't get a traceback unless -Derror was given.
     """
     if 'error' in debug.debug_flags:
-        report_bug(exc_info, err_file)
+        print_exception(exc_info, err_file)
         return
     err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
 
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    exc_type, exc_object, exc_tb = exc_info
-    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
-        exc_type.__module__, exc_type.__name__, exc_object))
-    err_file.write('\n')
-    traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
+    print_exception(exc_info, err_file)
     err_file.write('\n')
     err_file.write('bzr %s on python %s (%s)\n' % \
                        (bzrlib.__version__,

@@ -107,17 +107,20 @@ class BundleWriter(object):
     @staticmethod
     def encode_name(content_kind, revision_id, file_id=None):
         """Encode semantic ids as a container name"""
-        assert content_kind in ('revision', 'file', 'inventory', 'signature',
-                                'info')
-
+        if content_kind not in ('revision', 'file', 'inventory', 'signature',
+                'info'):
+            raise ValueError(content_kind)
         if content_kind == 'file':
-            assert file_id is not None
+            if file_id is None:
+                raise AssertionError()
         else:
-            assert file_id is None
+            if file_id is not None:
+                raise AssertionError()
         if content_kind == 'info':
-            assert revision_id is None
-        else:
-            assert revision_id is not None
+            if revision_id is not None:
+                raise AssertionError()
+        elif revision_id is None:
+            raise AssertionError()
         names = [n.replace('/', '//') for n in
                  (content_kind, revision_id, file_id) if n is not None]
         return '/'.join(names)
@@ -494,7 +497,8 @@ class RevisionInstaller(object):
         for bytes, metadata, repo_kind, revision_id, file_id in\
             self._container.iter_records():
             if repo_kind == 'info':
-                assert self._info is None
+                if self._info is not None:
+                    raise AssertionError()
                 self._handle_info(metadata)
             if (repo_kind, file_id) != ('file', current_file):
                 if len(pending_file_records) > 0:
@@ -588,7 +592,11 @@ class RevisionInstaller(object):
     def _install_revision(self, revision_id, metadata, text):
         if self._repository.has_revision(revision_id):
             return
-        self._repository._add_revision_text(revision_id, text)
+        if self._info['serializer'] == self._repository._serializer.format_num:
+            self._repository._add_revision_text(revision_id, text)
+        else:
+            revision = self._source_serializer.read_revision_from_string(text)
+            self._repository.add_revision(revision.revision_id, revision)
 
     def _install_signature(self, revision_id, metadata, text):
         transaction = self._repository.get_transaction()

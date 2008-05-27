@@ -169,8 +169,6 @@ class LockDir(lock.PhysicalLock):
         :param path: Path to the lock within the base directory of the 
             transport.
         """
-        assert isinstance(transport, Transport), \
-            ("not a transport: %r" % transport)
         self.transport = transport
         self.path = path
         self._lock_held = False
@@ -328,7 +326,7 @@ class LockDir(lock.PhysicalLock):
                     (time.time() - start_time) * 1000)
             result = lock.LockResult(self.transport.abspath(self.path),
                 old_nonce)
-            for hook in self.hooks['released']:
+            for hook in self.hooks['lock_released']:
                 hook(result)
 
     def break_lock(self):
@@ -424,8 +422,6 @@ class LockDir(lock.PhysicalLock):
         try:
             info = self._read_info_file(self._held_info_path)
             self._trace("peek -> held")
-            assert isinstance(info, dict), \
-                    "bad parse result %r" % info
             return info
         except NoSuchFile, e:
             self._trace("peek -> not held")
@@ -465,7 +461,7 @@ class LockDir(lock.PhysicalLock):
         result = self._attempt_lock()
         hook_result = lock.LockResult(self.transport.abspath(self.path),
                 self.nonce)
-        for hook in self.hooks['acquired']:
+        for hook in self.hooks['lock_acquired']:
             hook(hook_result)
         return result
 

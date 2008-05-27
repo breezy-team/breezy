@@ -200,7 +200,9 @@ def _read_dirblocks_py(state):
     fields = text.split('\0')
     # Remove the last blank entry
     trailing = fields.pop()
-    assert trailing == ''
+    if trailing != '':
+        raise AssertionError("dirstate line %r has trailing garbage: %r" 
+            % (trailing,))
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.
@@ -217,11 +219,12 @@ def _read_dirblocks_py(state):
     expected_field_count = entry_size * state._num_entries
     field_count = len(fields)
     # this checks our adjustment, and also catches file too short.
-    assert field_count - cur == expected_field_count, \
-        'field count incorrect %s != %s, entry_size=%s, '\
-        'num_entries=%s fields=%r' % (
+    if field_count - cur != expected_field_count:
+        raise AssertionError(
+            'field count incorrect %s != %s, entry_size=%s, '\
+            'num_entries=%s fields=%r' % (
             field_count - cur, expected_field_count, entry_size,
-            state._num_entries, fields)
+            state._num_entries, fields))
 
     if num_present_parents == 1:
         # Bind external functions to local names
@@ -269,7 +272,8 @@ def _read_dirblocks_py(state):
                      ),
                      ])
             trailing = next()
-            assert trailing == '\n'
+            if trailing != '\n':
+                raise ValueError("trailing garbage in dirstate: %r" % trailing)
             # append the entry to the current block
             append_entry(entry)
         state._split_root_dirblock_into_contents()

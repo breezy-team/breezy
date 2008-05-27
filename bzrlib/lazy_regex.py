@@ -101,6 +101,7 @@ def reset_compile():
 
 
 _real_re_compile = re.compile
-assert _real_re_compile is not lazy_compile, \
-    "re.compile has already been overridden as lazy_compile, but this would" \
-    " cause infinite recursion"
+if _real_re_compile is lazy_compile:
+    raise AssertionError(
+        "re.compile has already been overridden as lazy_compile, but this would" \
+        " cause infinite recursion")
