@@ -327,12 +327,7 @@ class TreeTransformBase(object):
                 os.unlink(name)
                 raise
 
-            # Is this the best way to get the relative path?
-            # (The +1 adjusts for the path separator.)
-            relpath = name[len(self._limbodir) + 1:]
-            filters = self._tree._content_filter_stack(relpath)
-            f.writelines(filtered_output_bytes(contents, filters,
-                ContentFilterContext(relpath)))
+            f.writelines(contents)
         finally:
             f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)
@@ -1679,7 +1674,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink):
                     executable = tree.is_executable(entry.file_id, tree_path)
                     if executable is not None:
                         tt.set_executability(executable, trans_id)
-                    deferred_contents.append((entry.file_id, trans_id))
+                    trans_data = (trans_id, tree_path)
+                    deferred_contents.append((entry.file_id, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                           tree)
@@ -1721,10 +1717,10 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                          in iter if not (c or e[0] != e[1]))
         new_desired_files = []
         count = 0
-        for file_id, trans_id in desired_files:
+        for file_id, (trans_id, tree_path) in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, trans_id))
+                new_desired_files.append((file_id, (trans_id, tree_path)))
                 continue
             pb.update('Adding file contents', count + offset, total)
             if hardlink:
@@ -1738,8 +1734,11 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                     contents.close()
             count += 1
         offset += count
-    for count, (trans_id, contents) in enumerate(tree.iter_files_bytes(
-                                                 new_desired_files)):
+    for count, ((trans_id, tree_path), contents) in enumerate(
+            tree.iter_files_bytes(new_desired_files)):
+        filters = tree._content_filter_stack(tree_path)
+        contents = filtered_output_bytes(contents, filters,
+            ContentFilterContext(tree_path))
         tt.create_file(contents, trans_id)
         pb.update('Adding file contents', count + offset, total)
 
