@@ -1728,6 +1728,9 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                                    trans_id)
             else:
                 contents = accelerator_tree.get_file(file_id, accelerator_path)
+                filters = tree._content_filter_stack(tree_path)
+                contents = filtered_output_bytes(contents, filters,
+                    ContentFilterContext(tree_path))
                 try:
                     tt.create_file(contents, trans_id)
                 finally:
