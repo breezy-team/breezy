@@ -154,7 +154,7 @@ _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 1.0
 
 
-class LockDir(lock.PhysicalLock):
+class LockDir(object):
     """Write-lock guarding access to data.
 
     :cvar hooks: Hook dictionary for operations on locks.
