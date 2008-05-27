@@ -17,19 +17,21 @@
 
 """Working tree content filtering support.
 
-Filters have the following signatures::
+A filter consists of a read converter, write converter pair.
+Converters have the following signatures::
 
-    read_filter(chunks) -> chunks
-    write_filter(chunks, context) -> chunks
+    read_converter(chunks) -> chunks
+    write_converter(chunks, context) -> chunks
 
 where:
 
- * chunks is an iterator over a sequence of 8-bit utf-8 strings
+ * chunks is an iterator over a sequence of byte strings
 
- * context is an optional object (possibly None) providing filters access
-   to interesting information, e.g. the relative path of the file.
+ * context is an optional ContentFilterContent object (possibly None)
+   providing converters access to interesting information, e.g. the
+   relative path of the file.
 
-Note that context is currently only supported for write filters.
+Note that context is currently only supported for write converters.
 """
 
 

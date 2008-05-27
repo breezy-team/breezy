@@ -20,78 +20,79 @@ from bzrlib.filters import ContentFilter
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
-def _swapcase(chunks, context=None):
-    """A filter that swaps the case of text."""
+def _converter_helper(chunks, fn):
     result = []
     for chunk in chunks:
-        result.append(chunk.swapcase())
+        result.append(getattr(chunk, fn)())
     return iter(result)
+
+
+def _swapcase(chunks, context=None):
+    """A converter that swaps the case of text."""
+    return _converter_helper(chunks, 'swapcase')
 
 
 def _uppercase(chunks, context=None):
-    """A filter that converts text to uppercase."""
-    result = []
-    for chunk in chunks:
-        result.append(chunk.upper())
-    return iter(result)
+    """A converter that converts text to uppercase."""
+    return _converter_helper(chunks, 'upper')
+
 
 def _lowercase(chunks, context=None):
-    """A filter that converts text to lowercase."""
-    result = []
-    for chunk in chunks:
-        result.append(chunk.lower())
-    return iter(result)
+    """A converter that converts text to lowercase."""
+    return _converter_helper(chunks, 'lower')
 
 
 class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
-    def create_cf_tree(self, txt_read_filter, txt_write_filter):
-        t = self.make_branch_and_tree('t')
+    def create_cf_tree(self, txt_reader, txt_writer):
+        tree = self.make_branch_and_tree('.')
         def _content_filter_stack(path=None, file_id=None):
             if path.endswith('.txt'):
-                return [ContentFilter(txt_read_filter, txt_write_filter)]
+                return [ContentFilter(txt_reader, txt_writer)]
             else:
                 return []
-        t._content_filter_stack = _content_filter_stack
-        t.add(['file1.txt'], ids=['file1-id'], kinds=['file'])
-        t.put_file_bytes_non_atomic('file1-id', 'Foo Txt')
-        t.add(['file2.bin'], ids=['file2-id'], kinds=['file'])
-        t.put_file_bytes_non_atomic('file2-id', 'Foo Bin')
-        t.commit('commit raw content')
-        return t
+        tree._content_filter_stack = _content_filter_stack
+        self.build_tree_contents([
+            ('file1.txt', 'Foo Txt'),
+            ('file2.bin', 'Foo Bin')])
+        tree.add(['file1.txt', 'file2.bin'])
+        tree.commit('commit raw content')
+        txt_fileid = tree.path2id('file1.txt')
+        bin_fileid = tree.path2id('file2.bin')
+        return tree, txt_fileid, bin_fileid
 
     def test_symmetric_content_filtering(self):
         # test handling when read then write gives back the initial content
-        t = self.create_cf_tree(txt_read_filter=_swapcase,
-            txt_write_filter=_swapcase)
+        tree, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_swapcase, txt_writer=_swapcase)
         # Check that the basis tree has the transformed content
-        basis = t.basis_tree()
+        basis = tree.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertEqual('fOO tXT', basis.get_file('file1-id').read())
-        self.assertEqual('Foo Bin', basis.get_file('file2-id').read())
+        self.assertEqual('fOO tXT', basis.get_file_text(txt_fileid))
+        self.assertEqual('Foo Bin', basis.get_file_text(bin_fileid))
         # Check that the working tree has the original content
-        t.lock_read()
-        self.addCleanup(t.unlock)
-        self.assertEqual('Foo Txt', t.get_file('file1-id',
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('Foo Txt', tree.get_file(txt_fileid,
             filtered=False).read())
-        self.assertEqual('Foo Bin', t.get_file('file2-id',
+        self.assertEqual('Foo Bin', tree.get_file(bin_fileid,
             filtered=False).read())
 
     def test_readonly_content_filtering(self):
         # test handling with a read filter but no write filter
-        t = self.create_cf_tree(txt_read_filter=_uppercase,
-            txt_write_filter=None)
+        tree, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_uppercase, txt_writer=None)
         # Check that the basis tree has the transformed content
-        basis = t.basis_tree()
+        basis = tree.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertEqual('FOO TXT', basis.get_file('file1-id').read())
-        self.assertEqual('Foo Bin', basis.get_file('file2-id').read())
+        self.assertEqual('FOO TXT', basis.get_file_text(txt_fileid))
+        self.assertEqual('Foo Bin', basis.get_file_text(bin_fileid))
         # We expect the workingtree content to be unchanged (for now at least)
-        t.lock_read()
-        self.addCleanup(t.unlock)
-        self.assertEqual('Foo Txt', t.get_file('file1-id',
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('Foo Txt', tree.get_file(txt_fileid,
             filtered=False).read())
-        self.assertEqual('Foo Bin', t.get_file('file2-id',
+        self.assertEqual('Foo Bin', tree.get_file(bin_fileid,
             filtered=False).read())

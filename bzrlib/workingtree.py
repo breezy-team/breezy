@@ -425,8 +425,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             path = self.id2path(file_id)
         return self.get_file_byname(path, filtered=filtered)
 
-    def get_file_text(self, file_id):
-        return self.get_file(file_id).read()
+    def get_file_text(self, file_id, filtered=True):
+        return self.get_file(file_id, filtered=filtered).read()
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
