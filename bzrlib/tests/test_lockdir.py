@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -651,18 +651,18 @@ class TestLockDir(TestCaseWithTransport):
         self._calls.append(result)
 
     def reset_hooks(self):
-        self._old_hooks = lock.hooks
+        self._old_hooks = lock.PhysicalLock.hooks.clone()
         self.addCleanup(self.restore_hooks)
-        lock.hooks = lock.PhysicalLockHooks()
+        lock.PhysicalLock.hooks.clear_hooks()
 
     def restore_hooks(self):
-        lock.hooks = self._old_hooks
+        lock.PhysicalLock.hooks = self._old_hooks
 
     def test_PhysicalLock_dot_acquired_success(self):
         # the PhysicalLock.acquired hook fires when a lock is acquired.
         self._calls = []
         self.reset_hooks()
-        lock.hooks.install_hook('acquired', self.record_hook)
+        lock.PhysicalLock.hooks.install_hook('acquired', self.record_hook)
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -681,7 +681,7 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld2.attempt_lock()
         # install a lock hook now, when the disk lock is locked
-        lock.hooks.install_hook('acquired', self.record_hook)
+        lock.PhysicalLock.hooks.install_hook('acquired', self.record_hook)
         self.assertRaises(errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
         ld2.unlock()
@@ -691,7 +691,7 @@ class TestLockDir(TestCaseWithTransport):
         # the PhysicalLock.released hook fires when a lock is acquired.
         self._calls = []
         self.reset_hooks()
-        lock.hooks.install_hook('released', self.record_hook)
+        lock.PhysicalLock.hooks.install_hook('released', self.record_hook)
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -710,6 +710,6 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld.attempt_lock()
         ld2.force_break(ld2.peek())
-        lock.hooks.install_hook('released', self.record_hook)
+        lock.PhysicalLock.hooks.install_hook('released', self.record_hook)
         self.assertRaises(LockBroken, ld.unlock)
         self.assertEqual([], self._calls)

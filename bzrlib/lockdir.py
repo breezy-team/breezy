@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -153,8 +153,9 @@ _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 1.0
 
 
-class LockDir(object):
-    """Write-lock guarding access to data."""
+class LockDir(lock.PhysicalLock):
+    """Write-lock guarding access to data.
+    """
 
     __INFO_NAME = '/info'
 
@@ -327,7 +328,7 @@ class LockDir(object):
                     (time.time() - start_time) * 1000)
             result = lock.LockResult(self.transport.abspath(self.path),
                 old_nonce)
-            for hook in lock.hooks['released']:
+            for hook in self.hooks['released']:
                 hook(result)
 
     def break_lock(self):
@@ -464,7 +465,7 @@ class LockDir(object):
         result = self._attempt_lock()
         hook_result = lock.LockResult(self.transport.abspath(self.path),
                 self.nonce)
-        for hook in lock.hooks['acquired']:
+        for hook in self.hooks['acquired']:
             hook(hook_result)
         return result
 

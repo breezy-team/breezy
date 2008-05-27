@@ -45,29 +45,21 @@ from bzrlib import (
 from bzrlib.hooks import Hooks
 
 
-class PhysicalLockHooks(Hooks):
-    """hooks for physical lock activity."""
+class PhysicalLock(object):
+    """Base class for external on-disk physical locks.
 
-    def __init__(self):
-        """Create the default hooks.
+    At present only LockDir descends from this, but all locks should.
 
-        There are no default hooks present.
-        """
-        Hooks.__init__(self)
-        # Introduced in 1.4:
-        # invoked when a physical lock has been successfully acquired.
-        self['acquired'] = []
-        # Introduced in 1.5:
-        # invoked when a physical lock has been successfully released.
-        self['released'] = []
+    :cvar hooks: Hook dictionary for operations on locks.
+    """
 
-
-# The hooks instance clients should register against. Do *NOT* import this
-# symbol, always reference it through lock.hooks.
-hooks = PhysicalLockHooks()
+    hooks = Hooks()
+    hooks['acquired'] = []
+    hooks['released'] = []
 
 
 class LockResult(object):
+    """Result of an operation on a lock; passed to a hook"""
 
     def __init__(self, lock_url, details=None):
         """Create a lock result for lock with optional details about the lock."""

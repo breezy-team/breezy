@@ -44,8 +44,8 @@ IN DEVELOPMENT
       by forcing it to recv 64k at a time when reading lines in HTTP headers,
       rather than just 1 byte at a time.  (Andrew Bennetts)
 
-    * ``LockDir`` lock acquisition and release now trigger hooks allowing
-      introspection of locking activity. (Robert Collins)
+    * New hooks ``PhysicalLock.hooks`` when LockDirs are acquired and released. 
+      (Robert Collins, MartinPool)
 
     * Log --short and --line are much faster when -r is not specified.
       (Aaron Bentley)

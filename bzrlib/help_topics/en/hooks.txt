@@ -89,7 +89,7 @@ write-locked.
 PhysicalLock hooks
 ==================
 
-These are hooked into via bzrlib.lock.hooks.
+These are in ``bzrlib.lock.PhysicalLock.hooks``
 
 acquired
 --------
