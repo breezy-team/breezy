@@ -2310,6 +2310,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
+    _walk_to_common_revisions_batch_size = 1
     _optimisers = []
     """The available optimised InterRepository types."""
 
@@ -2339,6 +2340,11 @@ class InterRepository(InterObject):
         """
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
+        # Fast path for the case where all the revisions are already in the
+        # target repo.
+        # (Although this does incur an extra round trip for the
+        # fairly common case where the target doesn't already have the revision
+        # we're pushing.)
         if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
             return graph.SearchResult(revision_ids, set(), 0, set())
         missing_revs = set()
@@ -2346,18 +2352,27 @@ class InterRepository(InterObject):
         # ensure we don't pay silly lookup costs.
         searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
+        run_out_of_next_revs = False
         while True:
-            try:
-                next_revs, ghosts = searcher.next_with_ghosts()
-            except StopIteration:
+            next_revs = set()
+            while len(next_revs) < self._walk_to_common_revisions_batch_size:
+                try:
+                    next_revs_part, ghosts = searcher.next_with_ghosts()
+                    next_revs.update(next_revs_part)
+                except StopIteration:
+                    run_out_of_next_revs = True
+                    break
+                if revision_ids.intersection(ghosts):
+                    absent_ids = set(revision_ids.intersection(ghosts))
+                    # If all absent_ids are present in target, no error is
+                    # needed.
+                    absent_ids.difference_update(
+                        set(target_graph.get_parent_map(absent_ids)))
+                    if absent_ids:
+                        raise errors.NoSuchRevision(
+                            self.source, absent_ids.pop())
+            if run_out_of_next_revs:
                 break
-            if revision_ids.intersection(ghosts):
-                absent_ids = set(revision_ids.intersection(ghosts))
-                # If all absent_ids are present in target, no error is needed.
-                absent_ids.difference_update(
-                    set(target_graph.get_parent_map(absent_ids)))
-                if absent_ids:
-                    raise errors.NoSuchRevision(self.source, absent_ids.pop())
             # we don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
             next_revs = set(next_revs)
@@ -2991,6 +3006,8 @@ class InterPackToRemotePack(InterPackRepo):
     The only difference at the moment is that it will use the get_parent_map
     RPC rather than plain readvs.
     """
+
+    _walk_to_common_revisions_batch_size = 50
 
     @staticmethod
     def is_compatible(source, target):

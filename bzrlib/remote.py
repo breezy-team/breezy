@@ -1181,8 +1181,11 @@ class RemotePacker(Packer):
         external_refs = self.new_pack._external_compression_parents_of_texts()
         if external_refs:
             try:
+                # XXX: external_refs can be pretty long.  It's probably still
+                # more time- and bandwidth-efficient to send this list rather
+                # than doing lots of readvs, but maybe there's a better way.
                 self.client.call(
-                    'PackRepository.check_references', self.path, 
+                    'PackRepository.check_references', self.path,
                     *external_refs)
             except errors.ErrorFromSmartServer, err:
                 if err.error_verb == 'RevisionNotPresent':
