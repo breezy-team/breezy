@@ -205,8 +205,8 @@ class TestRegisteredTopic(tests.TestCase):
         # Pick a known topic stored in an external file
         topic = help_topics.RegisteredTopic('hooks')
         self.assertStartsWith(topic.get_help_text(),
-            'Branch Hooks\n'
-            '============\n'
+            'Hooks\n'
+            '=====\n'
             '\n')
 
     def test_get_help_topic(self):
