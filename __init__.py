@@ -84,9 +84,9 @@ class cmd_upload(commands.Command):
 
         wt = workingtree.WorkingTree.open(directory)
         changes = wt.changes_from(wt.basis_tree())
-
-        if changes.has_changed():
-            raise errors.UncommittedChanges(wt)
+        
+        if revision is None and  changes.has_changed():
+                raise errors.UncommittedChanges(wt)
 
         self.branch = wt.branch
 
