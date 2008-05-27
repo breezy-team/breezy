@@ -3005,11 +3005,7 @@ class InterPackToRemotePack(InterPackRepo):
         return False
 
     def _pack(self, source, target, revision_ids):
-        from bzrlib.repofmt.pack_repo import Packer
         packs = source._pack_collection.all_packs()
-        #packer = Packer(
-        #    target._real_repository._pack_collection, packs, '.fetch',
-        #    revision_ids)
         remote_client = target._client
         remote_path = target.bzrdir._path_for_remote_call(remote_client)
         remote_packer = remote.RemotePacker(
