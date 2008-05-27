@@ -1618,15 +1618,15 @@ class InstrumentedDirState(dirstate.DirState):
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace
-        self._sha1_file = self._sha1_file_and_log
+        self._size_sha1_file = self._size_sha1_file_and_log
 
     def _sha_cutoff_time(self):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
-    def _sha1_file_and_log(self, abspath, filter_list):
+    def _size_sha1_file_and_log(self, abspath, filter_list):
         self._log.append(('sha1', abspath))
-        return filters.sha_file_by_name(abspath, filter_list)
+        return filters.internal_size_sha_file_byname(abspath, filter_list)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
