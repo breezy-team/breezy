@@ -8,7 +8,7 @@ Bazaar user documentation is in the
 Overall developer documentation
 ===============================
 
-* `Developer Guide <en/developer-guide/HACKING.html>`_
+* `Developer Guide <../en/developer-guide/HACKING.html>`_
 * `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
 
 Process
