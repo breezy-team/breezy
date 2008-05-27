@@ -18,7 +18,6 @@
 # across to run on the server.
 
 import bz2
-from cStringIO import StringIO
 
 from bzrlib import (
     branch,
@@ -32,7 +31,6 @@ from bzrlib import (
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
-from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (
     NoSuchRevision,
@@ -41,6 +39,7 @@ from bzrlib.errors import (
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
+from bzrlib.repofmt.pack_repo import Packer
 from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
@@ -309,6 +308,12 @@ class RemoteRepository(object):
         return "%s(%s)" % (self.__class__.__name__, self.base)
 
     __repr__ = __str__
+
+    @property
+    def _pack_collection(self):
+        # XXX: this seems a bit evil...
+        self._ensure_real()
+        return self._real_repository._pack_collection
 
     def abort_write_group(self):
         """Complete a write group on the decorated repository.
@@ -830,7 +835,7 @@ class RemoteRepository(object):
                         len(parent_map))
             ancestry.update(parent_map)
         present_keys = [k for k in keys if k in ancestry]
-        if 'hpss' in debug.debug_flags:
+        if 'hpss' in debug.debug_flags and False:
             if self._requested_parents is not None and len(ancestry) != 0:
                 self._requested_parents.update(present_keys)
                 mutter('Current RemoteRepository graph hit rate: %d%%',
@@ -1166,6 +1171,40 @@ class RemoteRepository(object):
         count = str(recipe[2])
         return '\n'.join((start_keys, stop_keys, count))
 
+    def autopack(self):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        self._client.call('PackRepository.autopack', path)
+
+
+class RemotePacker(Packer):
+
+    def __init__(self, path, client, pack_collection, packs, suffix, revision_ids=None):
+        self.path = path
+        self.client = client
+        #self._real_packer = real_packer
+        Packer.__init__(self, pack_collection, packs, suffix, revision_ids)
+
+    def _check_references(self):
+        external_refs = self.new_pack._external_compression_parents_of_texts()
+        if external_refs:
+            try:
+                self.client.call(
+                    'PackRepository.check_references', self.path, 
+                    *external_refs)
+            except errors.ErrorFromSmartServer, err:
+                #import pdb; pdb.set_trace()
+                if err.error_verb == 'RevisionNotPresent':
+                    missing_revision_id, missing_file_id = err.error_args
+                    raise errors.RevisionNotPresent(
+                        missing_revision_id, missing_file_id)
+                raise
+
+#    def __getattr__(self, name):
+#        return getattr(self._real_packer, name)
+
+#    def _save_pack_names(self):
+#        XXX
+
 
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
@@ -1460,7 +1499,7 @@ class RemoteBranch(branch.Branch):
         response_tuple, response_handler = self._client.call_expecting_body(
             'Branch.revision_history', path)
         if response_tuple[0] != 'ok':
-            raise UnexpectedSmartServerResponse(response_tuple)
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
         result = response_handler.read_body_bytes().split('\x00')
         if result == ['']:
             return []

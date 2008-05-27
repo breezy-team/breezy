@@ -698,14 +698,15 @@ class Packer(object):
         """Make sure our external refereneces are present."""
         external_refs = self.new_pack._external_compression_parents_of_texts()
         if external_refs:
-            index = self._pack_collection.text_index.combined_index
-            found_items = list(index.iter_entries(external_refs))
-            if len(found_items) != len(external_refs):
-                found_keys = set(k for idx, k, refs, value in found_items)
-                missing_items = external_refs - found_keys
-                missing_file_id, missing_revision_id = missing_items.pop()
-                raise errors.RevisionNotPresent(missing_revision_id,
-                                                missing_file_id)
+            self._pack_collection._check_references_present(external_refs)
+#            index = self._pack_collection.text_index.combined_index
+#            found_items = list(index.iter_entries(external_refs))
+#            if len(found_items) != len(external_refs):
+#                found_keys = set(k for idx, k, refs, value in found_items)
+#                missing_items = external_refs - found_keys
+#                missing_file_id, missing_revision_id = missing_items.pop()
+#                raise errors.RevisionNotPresent(missing_revision_id,
+#                                                missing_file_id)
 
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
@@ -1679,6 +1680,16 @@ class RepositoryPackCollection(object):
             self._new_pack.abort()
             self._new_pack = None
         self.repo._text_knit = None
+
+    def _check_references_present(self, external_refs):
+        index = self.text_index.combined_index
+        found_items = list(index.iter_entries(external_refs))
+        if len(found_items) != len(external_refs):
+            found_keys = set(k for idx, k, refs, value in found_items)
+            missing_items = external_refs - found_keys
+            missing_file_id, missing_revision_id = missing_items.pop()
+            raise errors.RevisionNotPresent(missing_revision_id,
+                                            missing_file_id)
 
 
 class KnitPackRevisionStore(KnitRevisionStore):

@@ -2726,7 +2726,7 @@ class InterPackRepo(InterSameDataRepository):
                 raise errors.InstallFailed([revision_id])
             if len(revision_ids) == 0:
                 return (0, [])
-        self._pack(self.source, self.target, revision_ids)
+        return self._pack(self.source, self.target, revision_ids)
 
     def _pack(self, source, target, revision_ids):
         from bzrlib.repofmt.pack_repo import Packer
@@ -2973,7 +2973,7 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts)
 
     @classmethod
@@ -3002,8 +3002,31 @@ class InterPackToRemotePack(InterPackRepo):
         return False
 
     def _pack(self, source, target, revision_ids):
-        return InterPackRepo._pack(
-            self, source, target._real_repository, revision_ids)
+        from bzrlib.repofmt.pack_repo import Packer
+        packs = source._pack_collection.all_packs()
+        #packer = Packer(
+        #    target._real_repository._pack_collection, packs, '.fetch',
+        #    revision_ids)
+        remote_client = target._client
+        remote_path = target.bzrdir._path_for_remote_call(remote_client)
+        remote_packer = remote.RemotePacker(
+            remote_path, remote_client,
+            target._real_repository._pack_collection, packs, '.fetch',
+            revision_ids)
+        pack = remote_packer.pack()
+        if pack is not None:
+            target._pack_collection._save_pack_names()
+            # Trigger an autopack. This may duplicate effort as we've just done
+            # a pack creation, but for now it is simpler to think about as
+            # 'upload data, then repack if needed'.
+            target.autopack()
+            return (pack.get_revision_count(), [])
+        else:
+            return (0, [])
+
+#    def _pack(self, source, target, revision_ids):
+#        return InterPackRepo._pack(
+#            self, source, target._real_repository, revision_ids)
 
     @classmethod
     def _get_repo_format_to_test(self):
