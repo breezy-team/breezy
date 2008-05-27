@@ -59,6 +59,10 @@ class LockableFiles(object):
     the object is constructed.  In older formats OSLocks are used everywhere.
     in newer formats a LockDir is used for Repositories and Branches, and 
     OSLocks for the local filesystem.
+
+    This class is now deprecated; code should move to using the Transport 
+    directly for file operations and using the lock or CountedLock for 
+    locking.
     """
 
     # _lock_mode: None, or 'r' or 'w'
@@ -139,50 +143,70 @@ class LockableFiles(object):
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~07111
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def controlfilename(self, file_or_path):
-        """Return location relative to branch."""
+        """Return location relative to branch.
+        
+        :deprecated: Use Transport methods instead.
+        """
         return self._transport.abspath(self._escape(file_or_path))
 
     @needs_read_lock
+    @deprecated_method(deprecated_in((1, 5, 0)))
     def get(self, relpath):
-        """Get a file as a bytestream."""
+        """Get a file as a bytestream.
+        
+        :deprecated: Use a Transport instead of LockableFiles.
+        """
         relpath = self._escape(relpath)
         return self._transport.get(relpath)
 
     @needs_read_lock
     @deprecated_method(deprecated_in((1, 5, 0)))
     def get_utf8(self, relpath):
-        """Get a file as a unicode stream."""
+        """Get a file as a unicode stream.
+        
+        :deprecated: Use a Transport instead of LockableFiles.
+        """
         relpath = self._escape(relpath)
         # DO NOT introduce an errors=replace here.
         return codecs.getreader('utf-8')(self._transport.get(relpath))
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put(self, path, file):
         """Write a file.
         
         :param path: The path to put the file, relative to the .bzr control
                      directory
-        :param f: A file-like or string object whose contents should be copied.
+        :param file: A file-like or string object whose contents should be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_bytes(self, path, a_string):
         """Write a string of bytes.
 
         :param path: The path to put the bytes, relative to the transport root.
-        :param string: A string object, whose exact bytes are to be copied.
+        :param a_string: A string object, whose exact bytes are to be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         self._transport.put_bytes(self._escape(path), a_string,
                                   mode=self._file_mode)
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_utf8(self, path, a_string):
         """Write a string, encoding as utf-8.
 
         :param path: The path to put the string, relative to the transport root.
         :param string: A string or unicode object whose contents should be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25

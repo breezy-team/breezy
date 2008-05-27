@@ -1835,18 +1835,19 @@ class InventoryKnitThunk(object):
 
 
 class KnitPackRepository(KnitRepository):
-    """Experimental graph-knit using repository."""
+    """Repository with knit objects stored inside pack containers."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
         control_store, text_store, _commit_builder_class, _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
             _revision_store, control_store, text_store, _commit_builder_class,
             _serializer)
-        index_transport = control_files._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self,
+            self._transport,
             index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
+            self._transport.clone('upload'),
+            self._transport.clone('packs'))
         self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -2138,7 +2139,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+            'lock', lockdir.LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)

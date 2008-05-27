@@ -41,6 +41,10 @@ from bzrlib.errors import (
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
@@ -1253,6 +1257,13 @@ class RemoteBranch(branch.Branch):
         self._lock_count = 0
         self._leave_lock = False
 
+    def _ensure_real_transport(self):
+        # if we try vfs access, return the real branch's vfs transport
+        self._ensure_real()
+        return self._real_branch._transport
+
+    _transport = property(_ensure_real_transport)
+
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
 
@@ -1263,7 +1274,7 @@ class RemoteBranch(branch.Branch):
 
         Used before calls to self._real_branch.
         """
-        if not self._real_branch:
+        if self._real_branch is None:
             if not vfs.vfs_enabled():
                 raise AssertionError('smart server vfs must be enabled '
                     'to use vfs implementation')

@@ -89,9 +89,9 @@ class BzrDir(object):
     BzrDir instances let you create or open any of the things that can be
     found within .bzr - checkouts, branches and repositories.
     
-    transport
+    :ivar transport:
         the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
-    root_transport
+    :ivar root_transport:
         a transport connected to the directory this bzr was opened from
         (i.e. the parent directory holding the .bzr directory).
 
@@ -1086,7 +1086,7 @@ class BzrDirPreSplitOut(BzrDir):
             except errors.NotLocalUrl:
                 # but we cannot do it for remote trees.
                 to_branch = result.open_branch()
-                WorkingTreeFormat2().stub_initialize_remote(to_branch.control_files)
+                WorkingTreeFormat2()._stub_initialize_remote(to_branch)
         return result
 
     def create_branch(self):
@@ -1547,22 +1547,22 @@ class BzrDirFormat(object):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
-        mutter('created control directory in ' + transport.base)
-        control = transport.clone('.bzr')
-        utf8_files = [('README', 
+        bzrdir_transport = transport.clone('.bzr')
+        utf8_files = [('README',
                        "This is a Bazaar control directory.\n"
                        "Do not change any files in this directory.\n"
                        "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control_files = lockable_files.LockableFiles(control,
-                            self._lock_file_name, self._lock_class)
+        control_files = lockable_files.LockableFiles(bzrdir_transport,
+            self._lock_file_name, self._lock_class)
         control_files.create_lock()
         control_files.lock_write()
         try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
+            for (filename, content) in utf8_files:
+                bzrdir_transport.put_bytes(filename, content,
+                    mode=file_mode)
         finally:
             control_files.unlock()
         return self.open(transport, _found=True)
@@ -1762,7 +1762,7 @@ class BzrDirFormat5(BzrDirFormat):
             except errors.NotLocalUrl:
                 # Even though we can't access the working tree, we need to
                 # create its control files.
-                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
+                WorkingTreeFormat2()._stub_initialize_remote(branch)
         return result
 
     def _open(self, transport):
@@ -1821,7 +1821,7 @@ class BzrDirFormat6(BzrDirFormat):
             except errors.NotLocalUrl:
                 # Even though we can't access the working tree, we need to
                 # create its control files.
-                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
+                WorkingTreeFormat2()._stub_initialize_remote(branch)
         return result
 
     def _open(self, transport):
@@ -2008,7 +2008,10 @@ class ConvertBzrDir4To5(Converter):
         self.pb.note('  %6d revisions not present', len(self.absent_revisions))
         self.pb.note('  %6d texts', self.text_count)
         self._cleanup_spare_files_after_format4()
-        self.branch.control_files.put_utf8('branch-format', BzrDirFormat5().get_format_string())
+        self.branch._transport.put_bytes(
+            'branch-format',
+            BzrDirFormat5().get_format_string(),
+            mode=self.bzrdir._get_file_mode())
 
     def _cleanup_spare_files_after_format4(self):
         # FIXME working tree upgrade foo.
@@ -2023,10 +2026,10 @@ class ConvertBzrDir4To5(Converter):
 
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
-                    self.branch.control_files.get('inventory'))
+                self.branch._transport.get('inventory'))
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
-        # FIXME inventory is a working tree change.
-        self.branch.control_files.put('inventory', StringIO(new_inv_xml))
+        self.branch._transport.put_bytes('inventory', new_inv_xml,
+            mode=self.bzrdir._get_file_mode())
 
     def _write_all_weaves(self):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
@@ -2239,7 +2242,10 @@ class ConvertBzrDir5To6(Converter):
                 except errors.NoSuchFile: # catches missing dirs strangely enough
                     store_transport.mkdir(prefix_dir)
                     store_transport.move(filename, prefix_dir + '/' + filename)
-        self.bzrdir._control_files.put_utf8('branch-format', BzrDirFormat6().get_format_string())
+        self.bzrdir.transport.put_bytes(
+            'branch-format',
+            BzrDirFormat6().get_format_string(),
+            mode=self.bzrdir._get_file_mode())
 
 
 class ConvertBzrDir6ToMeta(Converter):
@@ -2254,9 +2260,14 @@ class ConvertBzrDir6ToMeta(Converter):
         self.count = 0
         self.total = 20 # the steps we know about
         self.garbage_inventories = []
+        self.dir_mode = self.bzrdir._get_dir_mode()
+        self.file_mode = self.bzrdir._get_file_mode()
 
         self.pb.note('starting upgrade from format 6 to metadir')
-        self.bzrdir._control_files.put_utf8('branch-format', "Converting to format 6")
+        self.bzrdir.transport.put_bytes(
+                'branch-format',
+                "Converting to format 6",
+                mode=self.file_mode)
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
         try:
@@ -2272,8 +2283,6 @@ class ConvertBzrDir6ToMeta(Converter):
             if name.startswith('basis-inventory.'):
                 self.garbage_inventories.append(name)
         # create new directories for repository, working tree and branch
-        self.dir_mode = self.bzrdir._get_dir_mode()
-        self.file_mode = self.bzrdir._get_file_mode()
         repository_names = [('inventory.weave', True),
                             ('revision-store', True),
                             ('weaves', True)]
@@ -2327,10 +2336,12 @@ class ConvertBzrDir6ToMeta(Converter):
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:
-                self.bzrdir._control_files.put_utf8(
+                self.bzrdir.transport.put_bytes(
                     'checkout/last-revision', last_revision)
-        self.bzrdir._control_files.put_utf8(
-            'branch-format', BzrDirMetaFormat1().get_format_string())
+        self.bzrdir.transport.put_bytes(
+            'branch-format',
+            BzrDirMetaFormat1().get_format_string(),
+            mode=self.file_mode)
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def make_lock(self, name):
@@ -2354,7 +2365,9 @@ class ConvertBzrDir6ToMeta(Converter):
                 raise
 
     def put_format(self, dirname, format):
-        self.bzrdir._control_files.put_utf8('%s/format' % dirname, format.get_format_string())
+        self.bzrdir.transport.put_bytes('%s/format' % dirname,
+            format.get_format_string(),
+            self.file_mode)
 
 
 class ConvertMetaToMeta(Converter):
