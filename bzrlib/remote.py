@@ -1183,7 +1183,8 @@ class RemotePacker(Packer):
             try:
                 # XXX: external_refs can be pretty long.  It's probably still
                 # more time- and bandwidth-efficient to send this list rather
-                # than doing lots of readvs, but maybe there's a better way.
+                # than doing lots of readvs, but ideally we wouldn't duplicate
+                # the data that's in the pack we're about to transfer.
                 self.client.call(
                     'PackRepository.check_references', self.path,
                     *external_refs)
