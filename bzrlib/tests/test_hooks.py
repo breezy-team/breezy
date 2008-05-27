@@ -54,7 +54,7 @@ class TestHooks(TestCase):
         hooks.install_hook('set_rh', None)
         self.assertEqual("No hook name", hooks.get_hook_name(None))
 
-    def test_clone(self):
+    def test_clone_and_clear(self):
         hooks = Hooks()
         hooks['some_hook'] = []
         myhook = lambda: None
@@ -63,3 +63,8 @@ class TestHooks(TestCase):
         hooks2 = hooks.clone()
         self.assertEqual([myhook], hooks2['some_hook'])
         self.assertEqual('myhook', hooks2.get_hook_name(myhook))
+        hooks.clear_hooks()
+        # should see the hook name but no hooks
+        self.assertEqual([], hooks['some_hook'])
+        # clone should be unaffected
+        self.assertEqual([myhook], hooks2['some_hook'])

@@ -64,7 +64,14 @@ class Hooks(dict):
         self._callable_names[a_callable] = name
 
     def clone(self):
+        """Return a new Hooks with the same state."""
         result = self.__class__()
         result.update(self)
         result._callable_names.update(self._callable_names)
         return result
+
+    def clear_hooks(self):
+        """Clear all hook settings, but not the list of available hooks"""
+        for hookname in self:
+            self[hookname] = []
+        self._callable_names.clear()
