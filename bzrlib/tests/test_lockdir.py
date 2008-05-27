@@ -662,7 +662,8 @@ class TestLockDir(TestCaseWithTransport):
         # the PhysicalLock.lock_acquired hook fires when a lock is acquired.
         self._calls = []
         self.reset_hooks()
-        lock.PhysicalLock.hooks.install_hook('lock_acquired', self.record_hook)
+        lock.PhysicalLock.hooks.install_named_hook('lock_acquired',
+            self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
