@@ -160,14 +160,13 @@ Invoked whenever the server stops serving a directory.
 The hook signature is the same as ``server_started``.
 
 
-lock_acquired (PhysicalLock)
+lock_acquired (LockDir)
 ----------------------------
 
 Called with a LockResult object when a lock has been successfully acquired.
-*Note* At present this is only fired for LockDir locks.
 
-lock_released (PhysicalLock)
+
+lock_released (LockDir)
 ----------------------------
 
 Called with a LockResult object when a lock has been successfully released.
-*Note* At present this is only fired for LockDir locks.

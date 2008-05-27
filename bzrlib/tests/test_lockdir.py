@@ -25,7 +25,6 @@ import bzrlib
 from bzrlib import (
     config,
     errors,
-    lock,
     osutils,
     tests,
     transport,
@@ -651,18 +650,18 @@ class TestLockDir(TestCaseWithTransport):
         self._calls.append(result)
 
     def reset_hooks(self):
-        self._old_hooks = lock.PhysicalLock.hooks.clone()
+        self._old_hooks = LockDir.hooks.clone()
         self.addCleanup(self.restore_hooks)
-        lock.PhysicalLock.hooks.clear_hooks()
+        LockDir.hooks.clear_hooks()
 
     def restore_hooks(self):
-        lock.PhysicalLock.hooks = self._old_hooks
+        LockDir.hooks = self._old_hooks
 
     def test_PhysicalLock_acquired_success(self):
         # the PhysicalLock.lock_acquired hook fires when a lock is acquired.
         self._calls = []
         self.reset_hooks()
-        lock.PhysicalLock.hooks.install_named_hook('lock_acquired',
+        LockDir.hooks.install_named_hook('lock_acquired',
             self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
@@ -682,7 +681,7 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld2.attempt_lock()
         # install a lock hook now, when the disk lock is locked
-        lock.PhysicalLock.hooks.install_named_hook('lock_acquired',
+        LockDir.hooks.install_named_hook('lock_acquired',
             self.record_hook, 'record_hook')
         self.assertRaises(errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
@@ -693,7 +692,7 @@ class TestLockDir(TestCaseWithTransport):
         # the PhysicalLock.lock_released hook fires when a lock is acquired.
         self._calls = []
         self.reset_hooks()
-        lock.PhysicalLock.hooks.install_named_hook('lock_released',
+        LockDir.hooks.install_named_hook('lock_released',
             self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
@@ -713,7 +712,7 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld.attempt_lock()
         ld2.force_break(ld2.peek())
-        lock.PhysicalLock.hooks.install_named_hook('lock_released',
+        LockDir.hooks.install_named_hook('lock_released',
             self.record_hook, 'record_hook')
         self.assertRaises(LockBroken, ld.unlock)
         self.assertEqual([], self._calls)

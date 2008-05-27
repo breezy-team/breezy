@@ -110,6 +110,7 @@ from cStringIO import StringIO
 from bzrlib import (
     debug,
     errors,
+    hooks,
     lock,
     )
 import bzrlib.config
@@ -155,9 +156,15 @@ _DEFAULT_POLL_SECONDS = 1.0
 
 class LockDir(lock.PhysicalLock):
     """Write-lock guarding access to data.
+
+    :cvar hooks: Hook dictionary for operations on locks.
     """
 
     __INFO_NAME = '/info'
+
+    hooks = Hooks()
+    hooks['lock_acquired'] = []
+    hooks['lock_released'] = []
 
     def __init__(self, transport, path, file_modebits=0644, dir_modebits=0755):
         """Create a new LockDir object.

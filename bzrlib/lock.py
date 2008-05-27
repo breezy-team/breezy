@@ -45,19 +45,6 @@ from bzrlib import (
 from bzrlib.hooks import Hooks
 
 
-class PhysicalLock(object):
-    """Base class for external on-disk physical locks.
-
-    At present only LockDir descends from this, but all locks should.
-
-    :cvar hooks: Hook dictionary for operations on locks.
-    """
-
-    hooks = Hooks()
-    hooks['lock_acquired'] = []
-    hooks['lock_released'] = []
-
-
 class LockResult(object):
     """Result of an operation on a lock; passed to a hook"""
 
