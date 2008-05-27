@@ -62,3 +62,9 @@ class Hooks(dict):
     def name_hook(self, a_callable, name):
         """Associate name with a_callable to show users what is running."""
         self._callable_names[a_callable] = name
+
+    def clone(self):
+        result = self.__class__()
+        result.update(self)
+        result._callable_names.update(self._callable_names)
+        return result
