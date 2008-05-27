@@ -350,7 +350,6 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, compression):
         from bzrlib import osutils
-        repo_transport = repository.control_files._transport
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
             controldir_name = tmp_dirname + '/.bzr'
@@ -389,7 +388,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             dirname = dirname.encode(sys.getfilesystemencoding())
             # python's tarball module includes the whole path by default so
             # override it
-            assert dirname.endswith('.bzr')
+            if not dirname.endswith('.bzr'):
+                raise ValueError(dirname)
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()

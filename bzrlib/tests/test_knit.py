@@ -370,7 +370,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual({'rev-id-1':(['foo\n', 'bar\n'], sha1sum)}, contents)
 
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_not_enough_lines(self):
         sha1sum = sha.new('foo\n').hexdigest()
@@ -387,7 +387,7 @@ class LowLevelKnitDataTests(TestCase):
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
         sha1sum = sha.new('foo\nbar\n').hexdigest()
@@ -405,7 +405,7 @@ class LowLevelKnitDataTests(TestCase):
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
         sha1sum = sha.new('foo\nbar\n').hexdigest()
@@ -1056,7 +1056,7 @@ class KnitTests(TestCaseWithTransport):
         """
         index_memo = knit._index.get_position(version_id)
         record = (version_id, index_memo)
-        [(_, expected_content)] = list(knit._data.read_records_iter_raw([record]))
+        [(_, expected_content, _)] = list(knit._data.read_records_iter_raw([record]))
         self.assertEqual(expected_content, candidate_content)
 
 
@@ -1293,39 +1293,6 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[1], ('text-1', 'b\n'))
         self.assertEquals(origins[2], ('text-1', 'c\n'))
 
-    def _test_join_with_factories(self, k1_factory, k2_factory):
-        k1 = make_file_knit('test1', get_transport('.'), factory=k1_factory, create=True)
-        k1.add_lines('text-a', [], ['a1\n', 'a2\n', 'a3\n'])
-        k1.add_lines('text-b', ['text-a'], ['a1\n', 'b2\n', 'a3\n'])
-        k1.add_lines('text-c', [], ['c1\n', 'c2\n', 'c3\n'])
-        k1.add_lines('text-d', ['text-c'], ['c1\n', 'd2\n', 'd3\n'])
-        k1.add_lines('text-m', ['text-b', 'text-d'], ['a1\n', 'b2\n', 'd3\n'])
-        k2 = make_file_knit('test2', get_transport('.'), factory=k2_factory, create=True)
-        count = k2.join(k1, version_ids=['text-m'])
-        self.assertEquals(count, 5)
-        self.assertTrue(k2.has_version('text-a'))
-        self.assertTrue(k2.has_version('text-c'))
-        origins = k2.annotate('text-m')
-        self.assertEquals(origins[0], ('text-a', 'a1\n'))
-        self.assertEquals(origins[1], ('text-b', 'b2\n'))
-        self.assertEquals(origins[2], ('text-d', 'd3\n'))
-
-    def test_knit_join_plain_to_plain(self):
-        """Test joining a plain knit with a plain knit."""
-        self._test_join_with_factories(KnitPlainFactory(), KnitPlainFactory())
-
-    def test_knit_join_anno_to_anno(self):
-        """Test joining an annotated knit with an annotated knit."""
-        self._test_join_with_factories(None, None)
-
-    def test_knit_join_anno_to_plain(self):
-        """Test joining an annotated knit with a plain knit."""
-        self._test_join_with_factories(None, KnitPlainFactory())
-
-    def test_knit_join_plain_to_anno(self):
-        """Test joining a plain knit with an annotated knit."""
-        self._test_join_with_factories(KnitPlainFactory(), None)
-
     def test_reannotate(self):
         k1 = make_file_knit('knit1', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
@@ -1336,7 +1303,8 @@ class BasicKnitTests(KnitTests):
 
         k2 = make_file_knit('test2', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
-        k2.join(k1, version_ids=['text-b'])
+        k2.insert_record_stream(k1.get_record_stream(k1.versions(),
+            'unordered', False))
 
         # 2
         k1.add_lines('text-X', ['text-b'], ['a\n', 'b\n'])
@@ -1346,7 +1314,8 @@ class BasicKnitTests(KnitTests):
         k2.add_lines('text-Y', ['text-b'], ['b\n', 'c\n'])
 
         # test-c will have index 3
-        k1.join(k2, version_ids=['text-c'])
+        k1.insert_record_stream(k2.get_record_stream(['text-c'],
+            'unordered', False))
 
         lines = k1.get_lines('text-c')
         self.assertEquals(lines, ['z\n', 'c\n'])
@@ -2817,7 +2786,8 @@ class Test_StreamAccess(KnitTests):
         target_knit = self.make_test_knit(name='annotated', annotate=True)
         source_knit.add_lines("A", [], ["Foo\n"])
         # Give the target A, so we can try to thunk across to it.
-        target_knit.join(source_knit)
+        target_knit.insert_record_stream(source_knit.get_record_stream(['A'],
+            'unordered', False))
         index, access = self.get_index_access(target_knit,
             source_knit.get_data_stream([]))
         raw_data = list(access.get_raw_records([(True, "A", None, None)]))[0]

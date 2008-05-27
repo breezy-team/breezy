@@ -65,11 +65,6 @@ def help_commands(outfile=None):
     outfile.write(_help_commands_to_text('commands'))
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.zero_sixteen)
-def command_usage(cmd):
-    return cmd._usage()
-
-
 def _help_commands_to_text(topic):
     """Generate the help text for the list of commands"""
     out = []

@@ -250,7 +250,7 @@ by community members. Equally importantly, we can be surer that changes
 down the track do not break new features or bug fixes that you are
 contributing today.
 
-As of May 2007, Bazaar ships with a test suite containing over 6000 tests
+As of May 2008, Bazaar ships with a test suite containing over 12000 tests
 and growing. We are proud of it and want to remain so. As community
 members, we all benefit from it. Would you trust version control on
 your project to a product *without* a test suite like Bazaar has?
@@ -282,6 +282,39 @@ To list tests without running them, use the --list-only option like so::
 
 This option can be combined with other selftest options (like -x) and
 filter patterns to understand their effect.
+
+Once you understand how to create a list of tests, you can use the --load-list
+option to run only a restricted set of tests that you kept in a file, one test
+id by line. Keep in mind that this will never be sufficient to validate your
+modifications, you still need to run the full test suite for that, but using it
+can help in some cases (like running only the failed tests for some time)::
+
+  ./bzr selftest -- load-list my_failing_tests
+
+This option can also be combined with other selftest options, including
+patterns. It has some drawbacks though, the list can become out of date pretty
+quick when doing Test Driven Development.
+
+To address this concern, there is another way to run a restricted set of tests:
+the --starting-with option will run only the tests whose name starts with the
+specified string. It will also avoid loading the other tests and as a
+consequence starts running your tests quicker::
+
+  ./bzr selftest --starting-with bzrlib.blackbox
+
+This option can be combined with all the other selftest options including
+--load-list. The later is rarely used but allows to run a subset of a list of
+failing tests for example.
+
+Test suite debug flags
+----------------------
+
+Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
+``-E=foo`` debug flags.  These flags are:
+
+:allow_debug: do *not* clear the global debug flags when running a test.
+  This can provide useful logging to help debug test failures when used
+  with e.g. ``bzr -Dhpss selftest -E=allow_debug``
 
 
 Writing Tests
@@ -620,8 +653,8 @@ the form of URL components.
 Coding Style Guidelines
 #######################
 
-General Python rules
-====================
+hasattr and getattr
+===================
 
 ``hasattr`` should not be used because it swallows exceptions including
 ``KeyboardInterrupt``.  Instead, say something like ::
@@ -1203,6 +1236,36 @@ format string.
 
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
+
+
+Assertions
+==========
+
+Do not use the Python ``assert`` statement, either in tests or elsewhere.
+A source test checks that it is not used.  It is ok to explicitly raise
+AssertionError.
+
+Rationale:
+
+ * It makes the behaviour vary depending on whether bzr is run with -O
+   or not, therefore giving a chance for bugs that occur in one case or
+   the other, several of which have already occurred: assertions with
+   side effects, code which can't continue unless the assertion passes,
+   cases where we should give the user a proper message rather than an
+   assertion failure.
+ * It's not that much shorter than an explicit if/raise.
+ * It tends to lead to fuzzy thinking about whether the check is
+   actually needed or not, and whether it's an internal error or not
+ * It tends to cause look-before-you-leap patterns.
+ * It's unsafe if the check is needed to protect the integrity of the
+   user's data.
+ * It tends to give poor messages since the developer can get by with
+   no explanatory text at all.
+ * We can't rely on people always running with -O in normal use, so we
+   can't use it for tests that are actually expensive.
+ * Expensive checks that help developers are better turned on from the
+   test suite or a -D flag.
+ * If used instead of ``self.assert*()`` in tests it makes them falsely pass with -O.
 
 
 Documenting Changes

@@ -76,12 +76,17 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
     
     def do_with_branch(self, branch):
-        """Return the content of branch.control_files.get('branch.conf').
+        """Return the content of branch.conf
         
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
+        # This was at one time called by RemoteBranchLockableFiles
+        # intercepting access to this file; as of 1.5 it is not called by the
+        # client but retained for compatibility.  It may be called again to
+        # allow the client to get the configuration without needing vfs
+        # access.
         try:
-            content = branch.control_files.get('branch.conf').read()
+            content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
