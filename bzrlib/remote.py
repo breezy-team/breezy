@@ -1181,7 +1181,6 @@ class RemotePacker(Packer):
     def __init__(self, path, client, pack_collection, packs, suffix, revision_ids=None):
         self.path = path
         self.client = client
-        #self._real_packer = real_packer
         Packer.__init__(self, pack_collection, packs, suffix, revision_ids)
 
     def _check_references(self):
@@ -1192,18 +1191,11 @@ class RemotePacker(Packer):
                     'PackRepository.check_references', self.path, 
                     *external_refs)
             except errors.ErrorFromSmartServer, err:
-                #import pdb; pdb.set_trace()
                 if err.error_verb == 'RevisionNotPresent':
                     missing_revision_id, missing_file_id = err.error_args
                     raise errors.RevisionNotPresent(
                         missing_revision_id, missing_file_id)
                 raise
-
-#    def __getattr__(self, name):
-#        return getattr(self._real_packer, name)
-
-#    def _save_pack_names(self):
-#        XXX
 
 
 class RemoteBranchLockableFiles(LockableFiles):
