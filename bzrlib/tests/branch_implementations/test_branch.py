@@ -323,10 +323,8 @@ class TestBranch(TestCaseWithBranch):
         # Set the branch nick explicitly.  This will ensure there's a branch
         # config file in the branch.
         branch.nick = "Aaron's branch"
-        branch.nick = "Aaron's branch"
         if not isinstance(branch, remote.RemoteBranch):
-            controlfilename = branch.control_files.controlfilename
-            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(branch._transport.has("branch.conf"))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")

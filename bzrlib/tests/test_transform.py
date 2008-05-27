@@ -85,7 +85,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_existing_pending_deletion(self):
         transform, root = self.get_transform()
         deletion_path = self._limbodir = urlutils.local_path_from_url(
-            transform._tree._control_files.controlfilename('pending-deletion'))
+            transform._tree._transport.abspath('pending-deletion'))
         os.mkdir(pathjoin(deletion_path, 'blocking-directory'))
         self.assertRaises(ImmortalPendingDeletion, transform.apply)
         self.assertRaises(LockError, self.wt.unlock)

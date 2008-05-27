@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,6 +41,10 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
@@ -218,6 +222,7 @@ class Branch(object):
         """
         self.control_files.dont_leave_in_place()
 
+    @deprecated_method(deprecated_in((0, 16, 0)))
     def abspath(self, name):
         """Return absolute filename for something in the branch
         
@@ -903,10 +908,12 @@ class BranchFormat(object):
         control_files.create_lock()
         control_files.lock_write()
         if set_format:
-            control_files.put_utf8('format', self.get_format_string())
+            utf8_files += [('format', self.get_format_string())]
         try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
+            for (filename, content) in utf8_files:
+                branch_transport.put_bytes(
+                    filename, content,
+                    mode=control_files._file_mode)
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
@@ -950,20 +957,6 @@ class BranchFormat(object):
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
         return False  # by default
-
-    # XXX: Probably doesn't really belong here -- mbp 20070212
-    def _initialize_control_files(self, a_bzrdir, utf8_files, lock_filename,
-            lock_class):
-        branch_transport = a_bzrdir.get_branch_transport(self)
-        control_files = lockable_files.LockableFiles(branch_transport,
-            lock_filename, lock_class)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            for filename, content in utf8_files:
-                control_files.put_utf8(filename, content)
-        finally:
-            control_files.unlock()
 
 
 class BranchHooks(Hooks):
@@ -1320,6 +1313,12 @@ class BzrBranch(Branch):
     Note that it's "local" in the context of the filesystem; it doesn't
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
+
+    :ivar _transport: Transport for file operations on this branch's 
+        control files, typically pointing to the .bzr/branch directory.
+    :ivar repository: Repository for this branch.
+    :ivar base: The url of the base directory for this branch; the one 
+        containing the .bzr directory.
     """
     
     def __init__(self, _format=None,
@@ -1330,10 +1329,10 @@ class BzrBranch(Branch):
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
-        # self._transport used to point to the directory containing the
-        # control directory, but was not used - now it's just the transport
-        # for the branch control files.  mbp 20070212
         self._base = self.bzrdir.transport.clone('..').base
+        # XXX: We should be able to just do
+        #   self.base = self.bzrdir.root_transport.base
+        # but this does not quite work yet -- mbp 20080522
         self._format = _format
         if _control_files is None:
             raise ValueError('BzrBranch _control_files is None')
@@ -1352,9 +1351,10 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
+    @deprecated_method(deprecated_in((0, 16, 0)))
     def abspath(self, name):
         """See Branch.abspath."""
-        return self.control_files._transport.abspath(name)
+        return self._transport.abspath(name)
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -1405,8 +1405,9 @@ class BzrBranch(Branch):
 
         This performs the actual writing to disk.
         It is intended to be called by BzrBranch5.set_revision_history."""
-        self.control_files.put_bytes(
-            'revision-history', '\n'.join(history))
+        self._transport.put_bytes(
+            'revision-history', '\n'.join(history),
+            mode=self.control_files._file_mode)
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -1454,7 +1455,7 @@ class BzrBranch(Branch):
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
-        history = self.control_files.get('revision-history').read().split('\n')
+        history = self._transport.get_bytes('revision-history').split('\n')
         if history[-1:] == ['']:
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
@@ -1586,7 +1587,7 @@ class BzrBranch(Branch):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self.control_files.get(l).read().strip('\n')
+                return self._transport.get_bytes(l).strip('\n')
             except errors.NoSuchFile:
                 pass
         return None
@@ -1671,8 +1672,7 @@ class BzrBranch(Branch):
         target.lock_write()
         try:
             result.old_revno, result.old_revid = target.last_revision_info()
-            target.update_revisions(self, stop_revision,
-                    overwrite=overwrite)
+            target.update_revisions(self, stop_revision, overwrite)
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
             result.new_revno, result.new_revid = target.last_revision_info()
             return result
@@ -1708,7 +1708,7 @@ class BzrBranch(Branch):
         # read and rewrite the file. RBC 20060125
         if url is not None:
             if isinstance(url, unicode):
-                try: 
+                try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
                     raise errors.InvalidURL(url,
@@ -1719,9 +1719,10 @@ class BzrBranch(Branch):
 
     def _set_parent_location(self, url):
         if url is None:
-            self.control_files._transport.delete('parent')
+            self._transport.delete('parent')
         else:
-            self.control_files.put_bytes('parent', url + '\n')
+            self._transport.put_bytes('parent', url + '\n',
+                mode=self.control_files._file_mode)
 
 
 class BzrBranch5(BzrBranch):
@@ -1801,10 +1802,11 @@ class BzrBranch5(BzrBranch):
         :param location: URL to the target branch
         """
         if location:
-            self.control_files.put_utf8('bound', location+'\n')
+            self._transport.put_bytes('bound', location+'\n',
+                mode=self.bzrdir._get_file_mode())
         else:
             try:
-                self.control_files._transport.delete('bound')
+                self._transport.delete('bound')
             except errors.NoSuchFile:
                 return False
             return True
@@ -1881,7 +1883,7 @@ class BzrBranch6(BzrBranch5):
         return self._last_revision_info_cache
 
     def _last_revision_info(self):
-        revision_string = self.control_files.get('last-revision').read()
+        revision_string = self._transport.get_bytes('last-revision')
         revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
@@ -1898,7 +1900,8 @@ class BzrBranch6(BzrBranch5):
         """
         revision_id = _mod_revision.ensure_null(revision_id)
         out_string = '%d %s\n' % (revno, revision_id)
-        self.control_files.put_bytes('last-revision', out_string)
+        self._transport.put_bytes('last-revision', out_string,
+            mode=self.control_files._file_mode)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
@@ -2207,11 +2210,12 @@ class Converter5to6(object):
         new_branch.tags._set_tag_dict({})
 
         # Copying done; now update target format
-        new_branch.control_files.put_utf8('format',
-            format.get_format_string())
+        new_branch._transport.put_bytes('format',
+            format.get_format_string(),
+            mode=new_branch.control_files._file_mode)
 
         # Clean up old files
-        new_branch.control_files._transport.delete('revision-history')
+        new_branch._transport.delete('revision-history')
         try:
             branch.set_parent(None)
         except errors.NoSuchFile:

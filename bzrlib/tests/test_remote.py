@@ -666,25 +666,24 @@ class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
 
     def test_get_branch_conf(self):
         raise tests.KnownFailure('branch.conf is not retrieved by get_config_file')
-        # We should see that branch.get_config() does a single rpc to get the
-        # remote configuration file, abstracting away where that is stored on
-        # the server.  However at the moment it always falls back to using the
-        # vfs, and this would need some changes in config.py.
+        ## # We should see that branch.get_config() does a single rpc to get the
+        ## # remote configuration file, abstracting away where that is stored on
+        ## # the server.  However at the moment it always falls back to using the
+        ## # vfs, and this would need some changes in config.py.
 
-        # in an empty branch we decode the response properly
-        client = FakeClient(self.get_url())
-        client.add_success_response_with_body('# config file body', 'ok')
-        # we need to make a real branch because the remote_branch.control_files
-        # will trigger _ensure_real.
-        branch = self.make_branch('quack')
-        transport = branch.bzrdir.root_transport
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
-        config = branch.get_config()
-        self.assertEqual(
-            [('call_expecting_body', 'Branch.get_config_file', ('quack/',))],
-            client._calls)
+        ## # in an empty branch we decode the response properly
+        ## client = FakeClient([(('ok', ), '# config file body')], self.get_url())
+        ## # we need to make a real branch because the remote_branch.control_files
+        ## # will trigger _ensure_real.
+        ## branch = self.make_branch('quack')
+        ## transport = branch.bzrdir.root_transport
+        ## # we do not want bzrdir to make any remote calls
+        ## bzrdir = RemoteBzrDir(transport, _client=False)
+        ## branch = RemoteBranch(bzrdir, None, _client=client)
+        ## config = branch.get_config()
+        ## self.assertEqual(
+        ##     [('call_expecting_body', 'Branch.get_config_file', ('quack/',))],
+        ##     client._calls)
 
 
 class TestBranchLockWrite(tests.TestCase):

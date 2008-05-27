@@ -453,6 +453,9 @@ class Repository(object):
     The Repository builds on top of Stores and a Transport, which respectively 
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
+
+    :ivar _transport: Transport for file access to repository, typically
+        pointing to .bzr/repository.
     """
 
     # What class to use for a CommitBuilder. Often its simpler to change this
@@ -607,7 +610,8 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+    def __init__(self, _format, a_bzrdir, control_files,
+                 _revision_store, control_store, text_store):
         """instantiate a Repository.
 
         :param _format: The format of the repository on disk.
@@ -622,6 +626,8 @@ class Repository(object):
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
         self.control_files = control_files
+        self._transport = control_files._transport
+        self.base = self._transport.base
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
@@ -637,7 +643,6 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
-        self.base = control_files._transport.base
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -652,8 +657,7 @@ class Repository(object):
         """
         if self.__class__ is not other.__class__:
             return False
-        return (self.control_files._transport.base ==
-                other.control_files._transport.base)
+        return (self._transport.base == other._transport.base)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -1938,7 +1942,11 @@ def _install_revision(repository, rev, revision_tree, signature):
 
 
 class MetaDirRepository(Repository):
-    """Repositories in the new meta-dir layout."""
+    """Repositories in the new meta-dir layout.
+    
+    :ivar _transport: Transport for access to repository control files,
+        typically pointing to .bzr/repository.
+    """
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
         super(MetaDirRepository, self).__init__(_format,
@@ -1947,13 +1955,12 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-        dir_mode = self.control_files._dir_mode
-        file_mode = self.control_files._file_mode
+        self._transport = control_files._transport
 
     @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
-        return self.control_files._transport.has('shared-storage')
+        return self._transport.has('shared-storage')
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -1967,15 +1974,16 @@ class MetaDirRepository(Repository):
         """
         if new_value:
             try:
-                self.control_files._transport.delete('no-working-trees')
+                self._transport.delete('no-working-trees')
             except errors.NoSuchFile:
                 pass
         else:
-            self.control_files.put_utf8('no-working-trees', '')
+            self._transport.put_bytes('no-working-trees', '',
+                mode=self.control_files._file_mode)
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
-        return not self.control_files._transport.has('no-working-trees')
+        return not self._transport.has('no-working-trees')
 
 
 class MetaDirVersionedFileRepository(MetaDirRepository):
@@ -2210,15 +2218,17 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         """Upload the initial blank content."""
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
+        transport = control_files._transport
+        if shared == True:
+            utf8_files += [('shared-storage', '')]
         try:
-            control_files._transport.mkdir_multi(dirs,
-                    mode=control_files._dir_mode)
-            for file, content in files:
-                control_files.put(file, content)
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-            if shared == True:
-                control_files.put_utf8('shared-storage', '')
+            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            for (filename, content_stream) in files:
+                transport.put_file(filename, content_stream,
+                    mode=a_bzrdir._get_file_mode())
+            for (filename, content_bytes) in utf8_files:
+                transport.put_bytes_non_atomic(filename, content_bytes,
+                    mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
 
@@ -2508,7 +2518,7 @@ class InterWeaveRepo(InterSameDataRepository):
         except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
-        if self.source.control_files._transport.listable():
+        if self.source._transport.listable():
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 self.target.weave_store.copy_all_ids(

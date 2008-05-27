@@ -641,11 +641,11 @@ class BranchConfig(Config):
     def _get_user_id(self):
         """Return the full user id for the branch.
     
-        e.g. "John Hacker <jhacker@foo.org>"
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files._transport.get_bytes("email")
+            return (self.branch._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -895,8 +895,10 @@ class TreeConfig(IniBasedConfig):
     # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
-        transport = branch.control_files._transport
-        self._config = TransportConfig(transport, 'branch.conf')
+        # XXX: Really this should be asking the branch for its configuration
+        # data, rather than relying on a Transport, so that it can work 
+        # more cleanly with a RemoteBranch that has no transport.
+        self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
