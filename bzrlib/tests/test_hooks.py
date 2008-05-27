@@ -77,8 +77,7 @@ class TestHooks(TestCase):
         hooks = Hooks()
         hooks['some_hook'] = []
         myhook = lambda: None
-        hooks.install_hook('some_hook', myhook)
-        hooks.name_hook(myhook, 'myhook')
+        hooks.install_named_hook('some_hook', myhook, 'myhook')
         hooks2 = hooks.clone()
         self.assertEqual([myhook], hooks2['some_hook'])
         self.assertEqual('myhook', hooks2.get_hook_name(myhook))

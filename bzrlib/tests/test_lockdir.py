@@ -681,7 +681,8 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld2.attempt_lock()
         # install a lock hook now, when the disk lock is locked
-        lock.PhysicalLock.hooks.install_hook('lock_acquired', self.record_hook)
+        lock.PhysicalLock.hooks.install_named_hook('lock_acquired',
+            self.record_hook, 'record_hook')
         self.assertRaises(errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
         ld2.unlock()
@@ -691,7 +692,8 @@ class TestLockDir(TestCaseWithTransport):
         # the PhysicalLock.lock_released hook fires when a lock is acquired.
         self._calls = []
         self.reset_hooks()
-        lock.PhysicalLock.hooks.install_hook('lock_released', self.record_hook)
+        lock.PhysicalLock.hooks.install_named_hook('lock_released',
+            self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -710,6 +712,7 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld.attempt_lock()
         ld2.force_break(ld2.peek())
-        lock.PhysicalLock.hooks.install_hook('lock_released', self.record_hook)
+        lock.PhysicalLock.hooks.install_named_hook('lock_released',
+            self.record_hook, 'record_hook')
         self.assertRaises(LockBroken, ld.unlock)
         self.assertEqual([], self._calls)
