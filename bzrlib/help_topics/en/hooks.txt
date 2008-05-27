@@ -164,8 +164,10 @@ lock_acquired (PhysicalLock)
 ----------------------------
 
 Called with a LockResult object when a lock has been successfully acquired.
+*Note* At present this is only fired for LockDir locks.
 
 lock_released (PhysicalLock)
 ----------------------------
 
 Called with a LockResult object when a lock has been successfully released.
+*Note* At present this is only fired for LockDir locks.
