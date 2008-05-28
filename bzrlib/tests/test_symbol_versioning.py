@@ -218,6 +218,8 @@ class TestSuppressAndActivate(TestCase):
         def restore():
             warnings.filters[:] = existing_filters
         self.addCleanup(restore)
+        # Clean out the filters so we have a clean slate.
+        warnings.resetwarnings()
 
     def assertFirstWarning(self, action, category):
         """Test the first warning in the filters is correct"""
@@ -229,19 +231,35 @@ class TestSuppressAndActivate(TestCase):
         symbol_versioning.suppress_deprecation_warnings()
         self.assertFirstWarning('ignore', DeprecationWarning)
 
+    def test_suppress_deprecation_with_warning_filter(self):
+        """don't suppress if we already have a filter"""
+        warnings.filterwarnings('ignore', category=Warning)
+        self.assertFirstWarning('ignore', Warning)
+        self.assertEqual(1, len(warnings.filters))
+        symbol_versioning.suppress_deprecation_warnings()
+        self.assertFirstWarning('ignore', Warning)
+        self.assertEqual(1, len(warnings.filters))
+
+    def test_suppress_deprecation_with_filter(self):
+        """don't suppress if we already have a filter"""
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        self.assertFirstWarning('ignore', DeprecationWarning)
+        self.assertEqual(1, len(warnings.filters))
+        symbol_versioning.suppress_deprecation_warnings()
+        self.assertFirstWarning('ignore', DeprecationWarning)
+        self.assertEqual(1, len(warnings.filters))
+
     def test_activate_deprecation_warnings(self):
         symbol_versioning.activate_deprecation_warnings(always=True)
         self.assertFirstWarning('default', DeprecationWarning)
 
     def test_activate_deprecation_no_error(self):
         # First nuke the filters, so we know it is clean
-        warnings.resetwarnings()
         symbol_versioning.activate_deprecation_warnings(always=False)
         self.assertFirstWarning('default', DeprecationWarning)
 
     def test_activate_deprecation_with_error(self):
         # First nuke the filters, so we know it is clean
-        warnings.resetwarnings()
         # Add a warning == error rule
         warnings.filterwarnings('error', category=Warning)
         self.assertFirstWarning('error', Warning)
@@ -253,7 +271,6 @@ class TestSuppressAndActivate(TestCase):
 
     def test_activate_deprecation_with_DW_error(self):
         # First nuke the filters, so we know it is clean
-        warnings.resetwarnings()
         # Add a warning == error rule
         warnings.filterwarnings('error', category=DeprecationWarning)
         self.assertFirstWarning('error', DeprecationWarning)

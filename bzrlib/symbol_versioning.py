@@ -333,6 +333,21 @@ def deprecated_list(deprecation_version, variable_name,
     return _DeprecatedList(initial_value)
 
 
+def _check_for_filter(error_only):
+    """Check if there is already a filter for deprecation warnings.
+    
+    :param error_only: Only match an 'error' filter
+    :return: True if a filter is found, False otherwise
+    """
+    import warnings
+    for filter in warnings.filters:
+        if issubclass(DeprecationWarning, filter[2]):
+            # This filter will effect DeprecationWarning
+            if not error_only or filter[0] == 'error':
+                return True
+    return False
+
+
 def suppress_deprecation_warnings():
     """Call this function to suppress all deprecation warnings.
 
@@ -341,6 +356,10 @@ def suppress_deprecation_warnings():
     running a dev or release candidate.
     """
     import warnings
+    if _check_for_filter(False):
+        # If there is already a filter effecting suppress_deprecation_warnings,
+        # then skip it.
+        return
     warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 
@@ -359,11 +378,8 @@ def activate_deprecation_warnings(always=True):
         to be turned into errors. If True, then do not override with 'default'.
     """
     import warnings
-    if not always:
-        for filter in warnings.filters:
-            if (filter[0] == 'error'
-                and issubclass(DeprecationWarning, filter[2])):
-                # DeprecationWarnings are already turned into errors, don't
-                # downgrade them to 'default'.
-                return
+    if not always and _check_for_filter(True):
+        # DeprecationWarnings are already turned into errors, don't downgrade
+        # them to 'default'.
+        return
     warnings.filterwarnings('default', category=DeprecationWarning)
