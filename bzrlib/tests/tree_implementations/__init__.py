@@ -352,6 +352,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
+        'bzrlib.tests.tree_implementations.test_iter_search_rules',
         'bzrlib.tests.tree_implementations.test_list_files',
         'bzrlib.tests.tree_implementations.test_path_content_summary',
         'bzrlib.tests.tree_implementations.test_revision_tree',

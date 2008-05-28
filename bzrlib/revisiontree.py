@@ -42,6 +42,7 @@ class RevisionTree(Tree):
         self._weave_store = branch.weave_store
         self._inventory = inv
         self._revision_id = revision_id
+        self._rules_searcher = None
 
     def supports_tree_reference(self):
         return True
@@ -203,3 +204,10 @@ class RevisionTree(Tree):
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
                     pending.append(dir)
+
+    def _get_rules_searcher(self, default_searcher):
+        """See Tree._get_rules_searcher."""
+        if self._rules_searcher is None:
+            self._rules_searcher = super(RevisionTree,
+                self)._get_rules_searcher(default_searcher)
+        return self._rules_searcher
