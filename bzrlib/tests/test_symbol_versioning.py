@@ -233,21 +233,24 @@ class TestSuppressAndActivate(TestCase):
 
     def test_suppress_deprecation_with_warning_filter(self):
         """don't suppress if we already have a filter"""
-        warnings.filterwarnings('ignore', category=Warning)
-        self.assertFirstWarning('ignore', Warning)
+        warnings.filterwarnings('error', category=Warning)
+        self.assertFirstWarning('error', Warning)
         self.assertEqual(1, len(warnings.filters))
-        symbol_versioning.suppress_deprecation_warnings()
-        self.assertFirstWarning('ignore', Warning)
+        symbol_versioning.suppress_deprecation_warnings(override=False)
+        self.assertFirstWarning('error', Warning)
         self.assertEqual(1, len(warnings.filters))
 
     def test_suppress_deprecation_with_filter(self):
         """don't suppress if we already have a filter"""
-        warnings.filterwarnings('ignore', category=DeprecationWarning)
-        self.assertFirstWarning('ignore', DeprecationWarning)
+        warnings.filterwarnings('error', category=DeprecationWarning)
+        self.assertFirstWarning('error', DeprecationWarning)
         self.assertEqual(1, len(warnings.filters))
-        symbol_versioning.suppress_deprecation_warnings()
-        self.assertFirstWarning('ignore', DeprecationWarning)
+        symbol_versioning.suppress_deprecation_warnings(override=False)
+        self.assertFirstWarning('error', DeprecationWarning)
         self.assertEqual(1, len(warnings.filters))
+        symbol_versioning.suppress_deprecation_warnings(override=True)
+        self.assertFirstWarning('ignore', DeprecationWarning)
+        self.assertEqual(2, len(warnings.filters))
 
     def test_activate_deprecation_no_error(self):
         # First nuke the filters, so we know it is clean
@@ -260,7 +263,7 @@ class TestSuppressAndActivate(TestCase):
         warnings.filterwarnings('error', category=Warning)
         self.assertFirstWarning('error', Warning)
         self.assertEqual(1, len(warnings.filters))
-        symbol_versioning.activate_deprecation_warnings()
+        symbol_versioning.activate_deprecation_warnings(override=False)
         # There should not be a new warning
         self.assertFirstWarning('error', Warning)
         self.assertEqual(1, len(warnings.filters))
@@ -271,7 +274,10 @@ class TestSuppressAndActivate(TestCase):
         warnings.filterwarnings('error', category=DeprecationWarning)
         self.assertFirstWarning('error', DeprecationWarning)
         self.assertEqual(1, len(warnings.filters))
-        symbol_versioning.activate_deprecation_warnings()
+        symbol_versioning.activate_deprecation_warnings(override=False)
         # There should not be a new warning
         self.assertFirstWarning('error', DeprecationWarning)
         self.assertEqual(1, len(warnings.filters))
+        symbol_versioning.activate_deprecation_warnings(override=True)
+        self.assertFirstWarning('default', DeprecationWarning)
+        self.assertEqual(2, len(warnings.filters))

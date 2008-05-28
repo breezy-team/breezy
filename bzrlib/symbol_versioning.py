@@ -348,22 +348,25 @@ def _check_for_filter(error_only):
     return False
 
 
-def suppress_deprecation_warnings():
+def suppress_deprecation_warnings(override=True):
     """Call this function to suppress all deprecation warnings.
 
     When this is a final release version, we don't want to annoy users with
     lots of deprecation warnings. We only want the deprecation warnings when
     running a dev or release candidate.
+
+    :param override: If True, always set the ignore, if False, only set the
+        ignore if there isn't already a filter.
     """
     import warnings
-    if _check_for_filter(False):
+    if not override and _check_for_filter(error_only=False):
         # If there is already a filter effecting suppress_deprecation_warnings,
         # then skip it.
         return
     warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 
-def activate_deprecation_warnings():
+def activate_deprecation_warnings(override=True):
     """Call this function to activate deprecation warnings.
 
     When running in a 'final' release we suppress deprecation warnings.
@@ -373,9 +376,13 @@ def activate_deprecation_warnings():
     Note: warnings that have already been issued under 'ignore' will not be
     reported after this point. The 'warnings' module has already marked them as
     handled, so they don't get issued again.
+
+    :param override: If False, only add a filter if there isn't an error filter
+        already. (This slightly differs from suppress_deprecation_warnings, in
+        because it always overrides everything but -Werror).
     """
     import warnings
-    if _check_for_filter(True):
+    if not override and _check_for_filter(error_only=True):
         # DeprecationWarnings are already turned into errors, don't downgrade
         # them to 'default'.
         return
