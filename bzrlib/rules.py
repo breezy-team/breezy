@@ -92,7 +92,7 @@ class _StackedRulesSearcher(_RulesSearcher):
 
 def rules_filename():
     """Return the default rules filename."""
-    return osutils.pathjoin(config.config_dir(), 'bazaar.rules')
+    return osutils.pathjoin(config.config_dir(), 'rules')
 
 
 # The object providing default rules

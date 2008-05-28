@@ -105,7 +105,7 @@ class TestRulesPath(tests.TestCase):
 
     def test_rules_filename(self):
         self.assertEqual(rules.rules_filename(),
-                         self.bzr_home + '/bazaar.rules')
+                         self.bzr_home + '/rules')
 
 
 class TestIterSearchRules(tests.TestCaseInTempDir):
