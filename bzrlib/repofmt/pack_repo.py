@@ -1589,10 +1589,8 @@ class RepositoryPackCollection(object):
                 mode=self.repo.bzrdir._get_file_mode())
             # move the baseline forward
             self._packs_at_load = disk_nodes
-            # now clear out the obsolete packs directory
             if clear_obsolete_packs:
-                self.transport.clone('obsolete_packs').delete_multi(
-                    self.transport.list_dir('obsolete_packs'))
+                self._clear_obsolete_packs()
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
@@ -1623,6 +1621,16 @@ class RepositoryPackCollection(object):
                 # new
                 self._names[name] = sizes
                 self.get_pack_by_name(name)
+
+    def _clear_obsolete_packs(self):
+        """Delete everything from the obsolete-packs directory.
+        """
+        obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        for filename in obsolete_pack_transport.list_dir('.'):
+            try:
+                obsolete_pack_transport.delete(filename)
+            except (errors.PathError, errors.TransportError), e:
+                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
 
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
@@ -1827,18 +1835,19 @@ class InventoryKnitThunk(object):
 
 
 class KnitPackRepository(KnitRepository):
-    """Experimental graph-knit using repository."""
+    """Repository with knit objects stored inside pack containers."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
         control_store, text_store, _commit_builder_class, _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
             _revision_store, control_store, text_store, _commit_builder_class,
             _serializer)
-        index_transport = control_files._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self,
+            self._transport,
             index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
+            self._transport.clone('upload'),
+            self._transport.clone('packs'))
         self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -2130,7 +2139,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+            'lock', lockdir.LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)

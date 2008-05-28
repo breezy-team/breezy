@@ -153,6 +153,22 @@ class TestPush(TestCaseWithBranch):
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
 
+    def test_push_overwrite_of_non_tip_with_stop_revision(self):
+        """Combining the stop_revision and overwrite options works.
+        
+        This was <https://bugs.launchpad.net/bzr/+bug/234229>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.branch.push(target)
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
 
 class TestPushHook(TestCaseWithBranch):
 
