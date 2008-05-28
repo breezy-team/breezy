@@ -42,6 +42,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
+    deprecated_in,
     deprecated_method,
     )
 from bzrlib.revision import ensure_null, NULL_REVISION
@@ -65,7 +66,7 @@ class RemoteBzrDir(BzrDir):
 
         if _client is None:
             medium = transport.get_smart_medium()
-            self._client = client._SmartClient(medium, transport.base)
+            self._client = client._SmartClient(medium)
         else:
             self._client = _client
             return
@@ -120,7 +121,12 @@ class RemoteBzrDir(BzrDir):
     def get_branch_reference(self):
         """See BzrDir.get_branch_reference()."""
         path = self._path_for_remote_call(self._client)
-        response = self._client.call('BzrDir.open_branch', path)
+        try:
+            response = self._client.call('BzrDir.open_branch', path)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_tuple == ('nobranch',):
+                raise errors.NotBranchError(path=self.root_transport.base)
+            raise
         if response[0] == 'ok':
             if response[1] == '':
                 # branch at this location.
@@ -128,8 +134,6 @@ class RemoteBzrDir(BzrDir):
             else:
                 # a branch reference, use the existing BranchReference logic.
                 return response[1]
-        elif response == ('nobranch',):
-            raise errors.NotBranchError(path=self.root_transport.base)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -153,15 +157,17 @@ class RemoteBzrDir(BzrDir):
         path = self._path_for_remote_call(self._client)
         verb = 'BzrDir.find_repositoryV2'
         try:
-            response = self._client.call(verb, path)
-        except errors.UnknownSmartMethod:
-            verb = 'BzrDir.find_repository'
-            response = self._client.call(verb, path)
-        if response[0] == 'norepository':
-            raise errors.NoRepositoryPresent(self)
-        elif response[0] != 'ok':
-            raise SmartProtocolError('unexpected response %r' 
-                % response)
+            try:
+                response = self._client.call(verb, path)
+            except errors.UnknownSmartMethod:
+                verb = 'BzrDir.find_repository'
+                response = self._client.call(verb, path)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'norepository':
+                raise errors.NoRepositoryPresent(self)
+            raise
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
         if verb == 'BzrDir.find_repository':
             # servers that don't support the V2 method don't support external
             # references either.
@@ -377,27 +383,27 @@ class RemoteRepository(object):
             return {}
 
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call_expecting_body(
-            'Repository.get_revision_graph', path, revision_id)
-        if response[0][0] not in ['ok', 'nosuchrevision']:
-            raise errors.UnexpectedSmartServerResponse(response[0])
-        if response[0][0] == 'ok':
-            coded = response[1].read_body_bytes()
-            if coded == '':
-                # no revisions in this repository!
-                return {}
-            lines = coded.split('\n')
-            revision_graph = {}
-            for line in lines:
-                d = tuple(line.split())
-                revision_graph[d[0]] = d[1:]
-                
-            return revision_graph
-        else:
-            response_body = response[1].read_body_bytes()
-            if response_body:
-                raise SmartProtocolError('unexpected response body')
-            raise NoSuchRevision(self, revision_id)
+        try:
+            response = self._client.call_expecting_body(
+                'Repository.get_revision_graph', path, revision_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'nosuchrevision':
+                raise NoSuchRevision(self, revision_id)
+            raise
+        response_tuple, response_handler = response
+        if response_tuple[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        coded = response_handler.read_body_bytes()
+        if coded == '':
+            # no revisions in this repository!
+            return {}
+        lines = coded.split('\n')
+        revision_graph = {}
+        for line in lines:
+            d = tuple(line.split())
+            revision_graph[d[0]] = d[1:]
+            
+        return revision_graph
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
@@ -405,9 +411,10 @@ class RemoteRepository(object):
             # The null revision is always present.
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Repository.has_revision', path, revision_id)
+        response = self._client.call(
+            'Repository.has_revision', path, revision_id)
         if response[0] not in ('yes', 'no'):
-            raise SmartProtocolError('unexpected response code %s' % (response,))
+            raise errors.UnexpectedSmartServerResponse(response)
         return response[0] == 'yes'
 
     def has_revisions(self, revision_ids):
@@ -444,13 +451,12 @@ class RemoteRepository(object):
             fmt_committers = 'no'
         else:
             fmt_committers = 'yes'
-        response = self._client.call_expecting_body(
+        response_tuple, response_handler = self._client.call_expecting_body(
             'Repository.gather_stats', path, fmt_revid, fmt_committers)
-        if response[0][0] != 'ok':
-            raise SmartProtocolError('unexpected response code %s'
-                % (response[0],))
+        if response_tuple[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
 
-        body = response[1].read_body_bytes()
+        body = response_handler.read_body_bytes()
         result = {}
         for line in body.split('\n'):
             if not line:
@@ -515,16 +521,20 @@ class RemoteRepository(object):
         path = self.bzrdir._path_for_remote_call(self._client)
         if token is None:
             token = ''
-        response = self._client.call('Repository.lock_write', path, token)
+        try:
+            response = self._client.call('Repository.lock_write', path, token)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'LockContention':
+                raise errors.LockContention('(remote lock)')
+            elif err.error_verb == 'UnlockableTransport':
+                raise errors.UnlockableTransport(self.bzrdir.root_transport)
+            elif err.error_verb == 'LockFailed':
+                raise errors.LockFailed(err.error_args[0], err.error_args[1])
+            raise
+
         if response[0] == 'ok':
             ok, token = response
             return token
-        elif response[0] == 'LockContention':
-            raise errors.LockContention('(remote lock)')
-        elif response[0] == 'UnlockableTransport':
-            raise errors.UnlockableTransport(self.bzrdir.root_transport)
-        elif response[0] == 'LockFailed':
-            raise errors.LockFailed(response[1], response[2])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -594,11 +604,14 @@ class RemoteRepository(object):
         if not token:
             # with no token the remote repository is not persistently locked.
             return
-        response = self._client.call('Repository.unlock', path, token)
+        try:
+            response = self._client.call('Repository.unlock', path, token)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'TokenMismatch':
+                raise errors.TokenMismatch(token, '(remote token)')
+            raise
         if response == ('ok',):
             return
-        elif response[0] == 'TokenMismatch':
-            raise errors.TokenMismatch(token, '(remote token)')
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -817,9 +830,10 @@ class RemoteRepository(object):
             ancestry.update(parent_map)
         present_keys = [k for k in keys if k in ancestry]
         if 'hpss' in debug.debug_flags:
-            self._requested_parents.update(present_keys)
-            mutter('Current RemoteRepository graph hit rate: %d%%',
-                100.0 * len(self._requested_parents) / len(ancestry))
+            if self._requested_parents is not None and len(ancestry) != 0:
+                self._requested_parents.update(present_keys)
+                mutter('Current RemoteRepository graph hit rate: %d%%',
+                    100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
     def _get_parent_map(self, keys):
@@ -850,6 +864,8 @@ class RemoteRepository(object):
             return rg
 
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if NULL_REVISION in keys:
             keys.discard(NULL_REVISION)
             found_parents = {NULL_REVISION:()}
@@ -904,11 +920,12 @@ class RemoteRepository(object):
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remote_is_at_least_1_2 = False
             return self.get_revision_graph(None)
-        if response[0][0] not in ['ok']:
-            response[1].cancel_read_body()
-            raise errors.UnexpectedSmartServerResponse(response[0])
-        if response[0][0] == 'ok':
-            coded = bz2.decompress(response[1].read_body_bytes())
+        response_tuple, response_handler = response
+        if response_tuple[0] not in ['ok']:
+            response_handler.cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        if response_tuple[0] == 'ok':
+            coded = bz2.decompress(response_handler.read_body_bytes())
             if coded == '':
                 # no revisions found
                 return {}
@@ -1240,6 +1257,13 @@ class RemoteBranch(branch.Branch):
         self._lock_count = 0
         self._leave_lock = False
 
+    def _ensure_real_transport(self):
+        # if we try vfs access, return the real branch's vfs transport
+        self._ensure_real()
+        return self._real_branch._transport
+
+    _transport = property(_ensure_real_transport)
+
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
 
@@ -1250,7 +1274,7 @@ class RemoteBranch(branch.Branch):
 
         Used before calls to self._real_branch.
         """
-        if not self._real_branch:
+        if self._real_branch is None:
             if not vfs.vfs_enabled():
                 raise AssertionError('smart server vfs must be enabled '
                     'to use vfs implementation')
@@ -1304,23 +1328,25 @@ class RemoteBranch(branch.Branch):
             repo_token = self.repository.lock_write()
             self.repository.unlock()
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Branch.lock_write', path, branch_token,
-                                     repo_token or '')
-        if response[0] == 'ok':
-            ok, branch_token, repo_token = response
-            return branch_token, repo_token
-        elif response[0] == 'LockContention':
-            raise errors.LockContention('(remote lock)')
-        elif response[0] == 'TokenMismatch':
-            raise errors.TokenMismatch(token, '(remote token)')
-        elif response[0] == 'UnlockableTransport':
-            raise errors.UnlockableTransport(self.bzrdir.root_transport)
-        elif response[0] == 'ReadOnlyError':
-            raise errors.ReadOnlyError(self)
-        elif response[0] == 'LockFailed':
-            raise errors.LockFailed(response[1], response[2])
-        else:
+        try:
+            response = self._client.call(
+                'Branch.lock_write', path, branch_token, repo_token or '')
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'LockContention':
+                raise errors.LockContention('(remote lock)')
+            elif err.error_verb == 'TokenMismatch':
+                raise errors.TokenMismatch(token, '(remote token)')
+            elif err.error_verb == 'UnlockableTransport':
+                raise errors.UnlockableTransport(self.bzrdir.root_transport)
+            elif err.error_verb == 'ReadOnlyError':
+                raise errors.ReadOnlyError(self)
+            elif err.error_verb == 'LockFailed':
+                raise errors.LockFailed(err.error_args[0], err.error_args[1])
+            raise
+        if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+        ok, branch_token, repo_token = response
+        return branch_token, repo_token
             
     def lock_write(self, token=None):
         if not self._lock_mode:
@@ -1363,15 +1389,17 @@ class RemoteBranch(branch.Branch):
 
     def _unlock(self, branch_token, repo_token):
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Branch.unlock', path, branch_token,
-                                     repo_token or '')
+        try:
+            response = self._client.call('Branch.unlock', path, branch_token,
+                                         repo_token or '')
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'TokenMismatch':
+                raise errors.TokenMismatch(
+                    str((branch_token, repo_token)), '(remote tokens)')
+            raise
         if response == ('ok',):
             return
-        elif response[0] == 'TokenMismatch':
-            raise errors.TokenMismatch(
-                str((branch_token, repo_token)), '(remote tokens)')
-        else:
-            raise errors.UnexpectedSmartServerResponse(response)
+        raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
         self._lock_count -= 1
@@ -1428,11 +1456,11 @@ class RemoteBranch(branch.Branch):
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call_expecting_body(
+        response_tuple, response_handler = self._client.call_expecting_body(
             'Branch.revision_history', path)
-        if response[0][0] != 'ok':
-            raise SmartProtocolError('unexpected response code %s' % (response,))
-        result = response[1].read_body_bytes().split('\x00')
+        if response_tuple[0] != 'ok':
+            raise UnexpectedSmartServerResponse(response_tuple)
+        result = response_handler.read_body_bytes().split('\x00')
         if result == ['']:
             return []
         return result
@@ -1448,12 +1476,15 @@ class RemoteBranch(branch.Branch):
         else:
             rev_id = rev_history[-1]
         self._clear_cached_state()
-        response = self._client.call('Branch.set_last_revision',
-            path, self._lock_token, self._repo_lock_token, rev_id)
-        if response[0] == 'NoSuchRevision':
-            raise NoSuchRevision(self, rev_id)
-        elif response[0] != 'ok':
-            raise SmartProtocolError('unexpected response code %s' % (response,))
+        try:
+            response = self._client.call('Branch.set_last_revision',
+                path, self._lock_token, self._repo_lock_token, rev_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, rev_id)
+            raise
+        if response != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response)
         self._cache_revision_history(rev_history)
 
     def get_parent(self):
@@ -1509,10 +1540,12 @@ class RemoteBranch(branch.Branch):
             self._ensure_real()
             self._clear_cached_state()
             return self._real_branch.set_last_revision_info(revno, revision_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, err.error_args[0])
+            raise
         if response == ('ok',):
             self._clear_cached_state()
-        elif response[0] == 'NoSuchRevision':
-            raise NoSuchRevision(self, response[1])
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 

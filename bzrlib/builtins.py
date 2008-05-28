@@ -1820,7 +1820,8 @@ class cmd_ls(Command):
             Option('from-root',
                    help='Print paths relative to the root of the branch.'),
             Option('unknown', help='Print unknown files.'),
-            Option('versioned', help='Print versioned files.'),
+            Option('versioned', help='Print versioned files.',
+                   short_name='V'),
             Option('ignored', help='Print ignored files.'),
             Option('null',
                    help='Write an ascii NUL (\\0) separator '
@@ -3311,9 +3312,17 @@ class cmd_missing(Command):
         from bzrlib.missing import find_unmerged, iter_log_revisions
 
         if this:
-          mine_only = this
+            mine_only = this
         if other:
-          theirs_only = other
+            theirs_only = other
+        # TODO: We should probably check that we don't have mine-only and
+        #       theirs-only set, but it gets complicated because we also have
+        #       this and other which could be used.
+        restrict = 'all'
+        if mine_only:
+            restrict = 'local'
+        elif theirs_only:
+            restrict = 'remote'
 
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
@@ -3333,8 +3342,9 @@ class cmd_missing(Command):
         try:
             remote_branch.lock_read()
             try:
-                local_extra, remote_extra = find_unmerged(local_branch,
-                                                          remote_branch)
+                local_extra, remote_extra = find_unmerged(
+                    local_branch, remote_branch, restrict)
+
                 if log_format is None:
                     registry = log.log_formatter_registry
                     log_format = registry.get_default(local_branch)
@@ -3342,8 +3352,12 @@ class cmd_missing(Command):
                                 show_ids=show_ids,
                                 show_timezone='original')
                 if reverse is False:
-                    local_extra.reverse()
-                    remote_extra.reverse()
+                    if local_extra is not None:
+                        local_extra.reverse()
+                    if remote_extra is not None:
+                        remote_extra.reverse()
+
+                status_code = 0
                 if local_extra and not theirs_only:
                     self.outf.write("You have %d extra revision(s):\n" %
                                     len(local_extra))
@@ -3352,8 +3366,10 @@ class cmd_missing(Command):
                                         verbose):
                         lf.log_revision(revision)
                     printed_local = True
+                    status_code = 1
                 else:
                     printed_local = False
+
                 if remote_extra and not mine_only:
                     if printed_local is True:
                         self.outf.write("\n\n\n")
@@ -3363,11 +3379,19 @@ class cmd_missing(Command):
                                         remote_branch.repository,
                                         verbose):
                         lf.log_revision(revision)
-                if not remote_extra and not local_extra:
-                    status_code = 0
-                    self.outf.write("Branches are up to date.\n")
-                else:
                     status_code = 1
+
+                if mine_only and not local_extra:
+                    # We checked local, and found nothing extra
+                    self.outf.write('This branch is up to date.\n')
+                elif theirs_only and not remote_extra:
+                    # We checked remote, and found nothing extra
+                    self.outf.write('Other branch is up to date.\n')
+                elif not (mine_only or theirs_only or local_extra or
+                          remote_extra):
+                    # We checked both branches, and neither one had extra
+                    # revisions
+                    self.outf.write("Branches are up to date.\n")
             finally:
                 remote_branch.unlock()
         finally:

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,9 @@
 """Tests for implementations of Repository.has_same_location."""
 
 from bzrlib import bzrdir
+from bzrlib.tests import (
+    TestNotApplicable,
+    )
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 
@@ -80,20 +83,21 @@ class TestHasSameLocation(TestCaseWithRepository):
         """
         repo = self.make_repository('repo')
         try:
-            control_transport = repo.control_files._transport
+            control_transport = repo._transport
         except AttributeError:
-            # This test only applies to repository formats with control_files.
-            return
+            raise TestNotApplicable(
+                "%r has no transport" % (repo,))
         if control_transport.base == repo.bzrdir.transport.base:
+            raise TestNotApplicable(
+                "%r has repository files directly in the bzrdir"
+                % (repo,))
             # This test only applies to repository formats where the repo
             # control_files are separate from other bzrdir files, i.e. metadir
             # formats.
-            return
         control_transport.copy_tree('.', '../repository.backup')
         backup_transport = control_transport.clone('../repository.backup')
         backup_repo = repo._format.open(repo.bzrdir, _found=True,
                                         _override_transport=backup_transport)
-
         self.assertDifferentRepo(repo, backup_repo)
 
     def test_different_format_not_equal(self):
