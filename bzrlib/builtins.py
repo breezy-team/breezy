@@ -2657,7 +2657,7 @@ class cmd_selftest(Command):
         from bzrlib.benchmarks import tree_creator
 
         # Make deprecation warnings visible, unless -Werror is set
-        symbol_versioning.activate_deprecation_warnings(always=False)
+        symbol_versioning.activate_deprecation_warnings()
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
