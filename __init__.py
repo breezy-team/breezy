@@ -80,6 +80,10 @@ def check_subversion_version():
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
     import svn.core
+    if (svn.core.SVN_VER_MINOR >= 5 and 
+            27729 <= svn.core.SVN_VER_REVISION < 31470):
+        warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
+
     mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % (svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__))
 
 

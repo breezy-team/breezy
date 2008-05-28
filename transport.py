@@ -421,7 +421,10 @@ class Connection(object):
     def get_log(self, paths, from_revnum, to_revnum, limit, 
                 discover_changed_paths, strict_node_history, revprops, rcvr, 
                 pool=None):
-        if paths is None:
+        # No paths starting with slash, please
+        assert paths is None or all([not p.startswith("/") for p in paths])
+        if (paths is None and 
+            (svn.core.SVN_VER_MINOR < 6 or svn.core.SVN_VER_REVISION < 31470)):
             paths = ["/"]
         self.mutter('svn log %r:%r %r (limit: %r)' % (from_revnum, to_revnum, paths, limit))
         if hasattr(svn.ra, 'get_log2'):

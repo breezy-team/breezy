@@ -179,6 +179,29 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         mutter('entries: %r' % tree.inventory.entries())
         self.assertEquals("bla", tree.path2id("bdir"))
 
+    def test_fetch_copy_remove_old(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/afile': 'foo', 'dc/tags': None, 
+                         'dc/branches': None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/tags")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.client_copy("dc/trunk", "dc/branches/blal")
+        self.build_tree({'dc/branches/blal/afile': "bar"})
+        self.client_commit("dc", "Msg")
+        self.client_update("dc")
+        self.client_copy("dc/trunk", "dc/tags/bla")
+        self.client_delete("dc/tags/bla/afile")
+        self.client_copy("dc/branches/blal/afile", "dc/tags/bla/afile")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
     def test_fetch_special_char(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({u'dc/trunk/f\x2cle': "data"})
