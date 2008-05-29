@@ -100,10 +100,10 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
 
         b.repository.lock_read()
-        self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
+        self.assertEquals({'bla2': ('newbla2', ("bloe",))}, 
                 generate_simple_plan(b.revision_history(), "bla2", None, 
                     "bloe", 
-                    ["bloe", "bla"],
+                    ("bloe", "bla"),
                     b.repository.get_graph(), 
                     lambda y: "new"+y))
         b.repository.unlock()
@@ -124,9 +124,9 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello again', rev_id="bla3")
 
         b.repository.lock_read()
-        self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
+        self.assertEquals({'bla2': ('newbla2', ("bloe",)), 'bla3': ('newbla3', ('newbla2',))}, 
                 generate_simple_plan(b.revision_history(), "bla2", None, "bloe", 
-                    ["bloe", "bla"],
+                    ("bloe", "bla"),
                     b.repository.get_graph(),
                     lambda y: "new"+y))
         b.repository.unlock()
@@ -203,7 +203,7 @@ class PlanCreatorTests(TestCaseWithTransport):
                 "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ("D'",))}, 
+        self.assertEquals({"D": ("D'", ("C",)), "E": ("E'", ("D'",))}, 
                 generate_simple_plan(["A", "D", "E"], 
                                      "D", None, "C", ["A", "B", "C"], 
                     graph, lambda y: y+"'"))
@@ -233,7 +233,7 @@ class PlanCreatorTests(TestCaseWithTransport):
                 "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals({"D": ("D'", ["C"])}, 
+        self.assertEquals({"D": ("D'", ("C",))}, 
                 generate_simple_plan(["A", "D", "E"], 
                                      "D", None, "C", ["A", "B", "C"], 
                     graph, lambda y: y+"'", True))

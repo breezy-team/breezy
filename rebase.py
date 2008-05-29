@@ -142,8 +142,8 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
 
     :return: replace map
     """
-    assert start_revid is None or start_revid in history
-    assert stop_revid is None or stop_revid in history
+    assert start_revid is None or start_revid in history, "invalid start revid"
+    assert stop_revid is None or stop_revid in history, "invalid stop_revid"
     replace_map = {}
     if start_revid is not None:
         start_revno = history.index(start_revid)
@@ -160,15 +160,17 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
         oldparents = parent_map[oldrevid]
         assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
         assert oldparents == () or \
-                oldparents[0] == history[history.index(oldrevid)-1]
+                oldparents[0] == history[history.index(oldrevid)-1], \
+                "invalid old parents for %r" % oldrevid
         if len(oldparents) > 1:
             parents = (new_parent,) + tuple(filter(lambda p: p not in onto_ancestry or p == onto_revid, oldparents[1:]))
             if len(parents) == 1 and skip_full_merged:
                 continue
         else:
-            parents = [new_parent]
+            parents = (new_parent,)
         newrevid = generate_revid(oldrevid)
-        assert newrevid != oldrevid
+        assert newrevid != oldrevid, "old and newrevid equal (%r)" % newrevid
+        assert isinstance(parents, tuple), "parents not tuple: %r" % parents
         replace_map[oldrevid] = (newrevid, parents)
         new_parent = newrevid
     return replace_map
@@ -229,7 +231,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
                 replace_map[c] = (generate_revid(c), tuple(parents))
-                assert replace_map[c][0] != c
+                assert replace_map[c][0] != c, "Invalid value in replace map %r" % c
             processed.add(r)
             # Add them to todo[]
             todo.extend(filter(lambda x: not x in processed, children[r]))
@@ -250,8 +252,9 @@ def rebase_todo(repository, replace_map):
     :param repository: Repository that contains the revisions
     :param replace_map: Replace map
     """
-    for revid in replace_map:
-        if not repository.has_revision(replace_map[revid][0]):
+    for revid, parent_ids in replace_map.items():
+        assert isinstance(parent_ids, tuple), "replace map parents not tuple"
+        if not repository.has_revision(parent_ids[0]):
             yield revid
 
 
@@ -283,7 +286,7 @@ def rebase(repository, replace_map, replay_fn):
             i += 1
             revid = todo.pop()
             (newrevid, newparents) = replace_map[revid]
-            assert isinstance(newparents, tuple)
+            assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
             if filter(repository.has_revision, newparents) != newparents:
                 # Not all parents present yet, avoid for now
                 continue
@@ -313,7 +316,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
     :param new_parents: Revision ids of the new parent revisions.
     :param revid_renames: Revision id renames for texts.
     """
-    assert isinstance(new_parents, tuple)
+    assert isinstance(new_parents, tuple), "replay_snapshot: Expected tuple for %r" % new_parents
     mutter('creating copy %r of %r with new parents %r' % 
                                (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
@@ -380,7 +383,7 @@ def commit_rebase(wt, oldrev, newrevid):
     :param wt: Mutable tree with the changes.
     :param oldrev: Revision info of new revision to commit.
     :param newrevid: New revision id."""
-    assert oldrev.revision_id != newrevid
+    assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrev.revision_id
     committer = wt.branch.get_config().username()
@@ -443,7 +446,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     # Make sure there are no conflicts or pending merges/changes 
     # in the working tree
     complete_revert(wt, [newparents[0]])
-    assert not wt.changes_from(wt.basis_tree()).has_changed()
+    assert not wt.changes_from(wt.basis_tree()).has_changed(), "Changes in rev"
 
     oldtree = repository.revision_tree(oldrevid)
     write_active_rebase_revid(wt, oldrevid)
@@ -469,7 +472,7 @@ def workingtree_replay(wt, map_ids=False, merge_type=None):
     :param map_ids: Whether to try to map between file ids (False for path-based merge)
     """
     def replay(repository, oldrevid, newrevid, newparents):
-        assert wt.branch.repository == repository
+        assert wt.branch.repository == repository, "Different repository"
         return replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
                                         merge_type=merge_type)
     return replay
@@ -520,7 +523,7 @@ def complete_revert(wt, newparents):
             else:
                 os.unlink(abs_path)
     wt.revert(None, old_tree=newtree, backups=False)
-    assert not wt.changes_from(wt.basis_tree()).has_changed()
+    assert not wt.changes_from(wt.basis_tree()).has_changed(), "Rev changed"
     wt.set_parent_ids(newparents)
 
 

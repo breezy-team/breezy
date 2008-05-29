@@ -48,6 +48,7 @@ class TestRebaseSimple(ExternalBase):
     def test_pending_merges(self):
         os.chdir('../main')
         self.make_file('hello', '42')
+        self.run_bzr('add')
         self.run_bzr('commit -m that')
         os.chdir('../feature')
         self.make_file('hoi', "my data")
