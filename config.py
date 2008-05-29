@@ -63,7 +63,6 @@ class DebBuildConfig(object):
     """
     self._config_files = []
     self.version = version
-    assert(len(files) > 0)
     for input in files:
       config = ConfigObj(input[0])
       self._config_files.append((config, input[1]))

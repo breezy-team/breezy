@@ -1,6 +1,8 @@
 bzr-builddeb (0.95) UNRELEASED; urgency=low
 
-  * 
+  [ Jelmer Vernooij ]
+  * Support building from remote branches,
+    "bzr builddeb http://wherever/package.debian" will now work.
 
  -- James Westby <james.westby@canonical.com>  Fri, 16 May 2008 12:29:08 +0100
 

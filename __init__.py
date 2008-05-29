@@ -25,6 +25,7 @@
 import os
 import subprocess
 
+from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
@@ -49,7 +50,7 @@ from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.properties import BuildProperties
-from bzrlib.plugins.builddeb.util import goto_branch, find_changelog, tarball_name
+from bzrlib.plugins.builddeb.util import find_changelog, tarball_name
 from bzrlib.plugins.builddeb.version import version_info
 
 
@@ -92,9 +93,10 @@ class cmd_builddeb(Command):
   If BRANCH is specified it is assumed that the branch you wish to build is
   located there. If it is not specified then the current directory is used.
 
-  By default the working tree is used to build. If you wish to build the
-  last committed revision use --revision -1. You can specify any other
-  revision using the --revision option.
+  By default the if a working tree is found it is used to build and otherwise
+  the last committed revision was used. To force building the last committed 
+  revision use --revision -1. You can specify any other revision using the 
+  --revision option.
 
   If you only wish to export the package, and not build it (especially useful
   for merge mode), use --export-only.
@@ -167,16 +169,40 @@ class cmd_builddeb(Command):
           export_upstream=None, export_upstream_revision=None,
           source=False, revision=None, no_user_config=False):
 
-    goto_branch(branch)
+    if branch is None:
+      branch = "."
 
-    tree, relpath = WorkingTree.open_containing('.')
-    
-    if no_user_config:
-        config_files = [(local_conf, True), (default_conf, False)]
+    try:
+      tree, _ = WorkingTree.open_containing(branch)
+      branch = tree.branch
+    except NoWorkingTree:
+      tree = None
+      branch, _ = Branch.open_containing(branch)
+
+    if revision is None and tree is not None:
+      info("Building using working tree")
+      working_tree = True
     else:
-        config_files = [(local_conf, True), (global_conf, True),
-                             (default_conf, False)]
-    config = DebBuildConfig(config_files, branch=tree.branch)
+      if revision is None:
+        revid = branch.last_revision()
+      elif len(revision) == 1:
+        revid = revision[0].in_history(branch).rev_id
+      else:
+        raise BzrCommandError('bzr builddeb --revision takes exactly one '
+                              'revision specifier.')
+      info("Building branch from revision %s", revid)
+      tree = branch.repository.revision_tree(revid)
+      working_tree = False
+
+    config_files = []
+    if (working_tree and 
+        tree.has_filename(local_conf) and tree.path2id(local_conf) is None):
+      config_files.append((tree.get_file_byname(local_conf), True))
+    if not no_user_config:
+      config_files.append((global_conf, True))
+    if tree.path2id(default_conf):
+      config_files.append((tree.get_file(tree.path2id(default_conf)), False))
+    config = DebBuildConfig(config_files)
 
     if reuse:
       info("Reusing existing build dir")
@@ -221,21 +247,7 @@ class cmd_builddeb(Command):
           if builder is None:
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
-    if revision is None:
-      info("Building using working tree")
-      t = tree
-      working_tree = True
-    else:
-      if len(revision) != 1:
-        raise BzrCommandError('bzr builddeb --revision takes exactly one '
-                              'revision specifier.')
-      b = tree.branch
-      rev = revision[0].in_history(b)
-      info("Building branch from revision %s", rev.rev_id)
-      t = b.repository.revision_tree(rev.rev_id)
-      working_tree = False
-
-    (changelog, larstiq) = find_changelog(t, merge)
+    (changelog, larstiq) = find_changelog(tree, merge)
 
     config.set_version(changelog.version)
 
@@ -255,30 +267,30 @@ class cmd_builddeb(Command):
       if orig_dir is None:
         orig_dir = default_orig_dir
     
-    properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
+    properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
     if merge:
       if export_upstream is None:
-        build = DebMergeBuild(properties, t, _is_working_tree=working_tree)
+        build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
       else:
         prepull_upstream = config.prepull_upstream
         stop_on_no_change = config.prepull_upstream_stop
-        build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
+        build = DebMergeExportUpstreamBuild(properties, tree, export_upstream,
                                             export_upstream_revision,
                                             prepull_upstream,
                                             stop_on_no_change,
                                             _is_working_tree=working_tree)
     elif native:
-      build = DebNativeBuild(properties, t, _is_working_tree=working_tree)
+      build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
     elif split:
-      build = DebSplitBuild(properties, t, _is_working_tree=working_tree)
+      build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
     else:
       if export_upstream is None:
-        build = DebBuild(properties, t, _is_working_tree=working_tree)
+        build = DebBuild(properties, tree, _is_working_tree=working_tree)
       else:
         prepull_upstream = config.prepull_upstream
         stop_on_no_change = config.prepull_upstream_stop
-        build = DebExportUpstreamBuild(properties, t, export_upstream,
+        build = DebExportUpstreamBuild(properties, tree, export_upstream,
                                        export_upstream_revision,
                                        prepull_upstream,
                                        stop_on_no_change,
@@ -286,7 +298,7 @@ class cmd_builddeb(Command):
 
     build.prepare(use_existing)
 
-    run_hook('pre-export', config)
+    run_hook(tree, 'pre-export', config)
 
     try:
       build.export(use_existing)
@@ -295,9 +307,9 @@ class cmd_builddeb(Command):
       return
 
     if not export_only:
-      run_hook('pre-build', config, wd=properties.source_dir())
+      run_hook(tree, 'pre-build', config, wd=properties.source_dir())
       build.build(builder)
-      run_hook('post-build', config, wd=properties.source_dir())
+      run_hook(tree, 'post-build', config, wd=properties.source_dir())
       if not dont_purge:
         build.clean()
       if result is not None:
@@ -343,7 +355,7 @@ class cmd_merge_upstream(Command):
     if version is None:
       raise BzrCommandError("You must supply the --version argument.")
 
-    tree, relpath = WorkingTree.open_containing('.')
+    tree, _ = WorkingTree.open_containing('.')
 
     config = DebBuildConfig([(local_conf, True), (global_conf, True),
                              (default_conf, False)])
