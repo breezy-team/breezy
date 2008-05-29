@@ -4,7 +4,7 @@ PYTHON ?= $(shell which python)
 SETUP ?= ./setup.py
 CTAGS ?= ctags
 PYLINT ?= pylint
-TESTS ?= "^bzrlib.plugins.rebase"
+TESTS ?= 
 
 all:: build 
 
@@ -26,7 +26,7 @@ $(TMP_PLUGINS_DIR)/rebase: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
 check:: $(TMP_PLUGINS_DIR)/rebase/
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(BZR) selftest $(TEST_OPTIONS) $(TESTS)
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(BZR) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rebase $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
