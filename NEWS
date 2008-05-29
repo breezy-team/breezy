@@ -19,6 +19,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
+      to stdout; also ``tar`` and ``tbz2``.
+      (Martin Pool)
+
   IMPROVEMENTS:
 
     * Diff now handles revision specs like "branch:" and "submit:" more
