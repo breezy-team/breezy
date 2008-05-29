@@ -1565,7 +1565,8 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None, overwrite=False, graph=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
         self._ensure_real()
         return self._real_branch.update_revisions(
             other, stop_revision=stop_revision, overwrite=overwrite,

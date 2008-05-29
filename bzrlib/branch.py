@@ -447,11 +447,16 @@ class Branch(object):
                 raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
         """Pull in new perfect-fit revisions.
 
         :param other: Another Branch to pull from
         :param stop_revision: Updated until the given revision
+        :param overwrite: Always set the branch pointer, rather than checking
+            to see if it is a proper descendant.
+        :param graph: A Graph object that can be used to query history
+            information. This can be None.
         :return: None
         """
         raise NotImplementedError(self.update_revisions)
@@ -1515,7 +1520,7 @@ class BzrBranch(Branch):
                     return
                 stop_revno = other_revno
 
-            # whats the current last revision, before we fetch [and change it
+            # what's the current last revision, before we fetch [and change it
             # possibly]
             last_rev = _mod_revision.ensure_null(self.last_revision())
             # we fetch here so that we don't process data twice in the common
@@ -1677,6 +1682,8 @@ class BzrBranch(Branch):
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
 
+        # We assume that during 'push' this repository is closer than
+        # the target.
         graph = self.repository.get_graph(target.repository)
         target.update_revisions(self, stop_revision, overwrite=overwrite,
                                 graph=graph)

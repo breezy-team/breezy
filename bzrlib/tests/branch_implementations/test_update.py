@@ -104,7 +104,7 @@ class TestUpdateRevisions(TestCaseWithBranch):
         tree1.branch.update_revisions(tree2.branch, overwrite=True)
         self.assertEqual((2, rev2b), tree1.branch.last_revision_info())
 
-    def test_ignores_older(self):
+    def test_ignores_older_unless_overwrite(self):
         tree1 = self.make_branch_and_tree('tree1')
         rev1 = tree1.commit('one')
         tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()

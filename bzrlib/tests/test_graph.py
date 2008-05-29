@@ -1303,7 +1303,7 @@ class TestGraphFindDistanceToNull(TestGraphBase):
         self.assertFindDistance(3, graph, 'rev3', [('rev4', 4)])
 
     def test_target_parallel_to_known_limits(self):
-        # Even though the known revision isn't part of the other ancestry, the
+        # Even though the known revision isn't part of the other ancestry, they
         # eventually converge
         graph = self.make_breaking_graph(with_tail, ['a'])
         self.assertFindDistance(6, graph, 'f', [('g', 6)])
