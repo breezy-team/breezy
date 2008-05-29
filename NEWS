@@ -14,6 +14,10 @@ This release adds a translation of some of the user documentation into Spanish.
 
   CHANGES:
 
+    * Deprecation warnings will not be suppressed when running ``bzr selftest``
+      so that developers can see if their code is using deprecated functions.
+      (John Arbash Meinel)
+
   FEATURES:
 
     * Adding ``-Derror`` will now display a traceback when a plugin fails to
