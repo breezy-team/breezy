@@ -52,6 +52,11 @@ This release adds a translation of some of the user documentation into Spanish.
       attribute '_remote_is_at_least_1_2' attribute errors.
       (Andrew Bennetts, #220806)
 
+    * Failure to delete an obsolete pack file should just give a warning
+      message, not a fatal error.  It may for example fail if the file is still
+      in use by another process.
+      (Martin Pool)
+      
     * Fix MemoryError during large fetches over HTTP by limiting the amount of
       data we try to read per ``recv`` call.  The problem was observed with
       Windows and a proxy, but might affect other environments as well.
