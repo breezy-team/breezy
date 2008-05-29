@@ -5,6 +5,12 @@ Bazaar Release Notes
 .. contents::
 
 
+  BUGFIXES
+
+    * ``bzr merge --lca`` should handle when two revisions have no common
+      ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
+
+
 bzr 1.3 2008-03-20
 ------------------
 
