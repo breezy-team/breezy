@@ -147,7 +147,12 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
 
-    plan = generate_transpose_plan(graph.iter_ancestry([revision_id]), upgrade_map, 
+    if revision_id is None:
+        heads = repository.all_revision_ids() 
+    else:
+        heads = [revision_id]
+
+    plan = generate_transpose_plan(graph.iter_ancestry(heads), upgrade_map, 
       graph,
       lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
     def remove_parents((oldrevid, (newrevid, parents))):
