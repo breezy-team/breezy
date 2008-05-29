@@ -69,6 +69,9 @@ class RevisionMetadata(object):
         self.revprops = revprops
         self.fileprops = fileprops
 
+    def __repr__(self):
+        return "<RevisionMetadata for revision %d in repository %s>" % (self.revnum, self.repository.uuid)
+
     def get_revision_id(self, mapping):
         return self.repository.generate_revision_id(self.revnum, self.branch_path, mapping, self.revprops, self.fileprops)
 

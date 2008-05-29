@@ -182,6 +182,21 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertEqual(1, 
             walker.find_latest_change("", 1))
 
+    def test_find_latest_case(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches/child': "bla"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.build_tree({'dc/BRANCHES/child': "bar"})
+        self.client_add("dc/BRANCHES")
+        self.client_commit("dc", "My Message")
+
+        walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(1, 
+            walker.find_latest_change("branches", 2))
+
     def test_find_latest_parent(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/branches/tmp/foo': None, 'dc/tags': None})

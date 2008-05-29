@@ -129,10 +129,10 @@ class CachingLogWalker(CacheTable):
 
         extra = ""
         if path == "":
-            extra += " OR path LIKE '%'"
+            extra += " OR path GLOB '*'"
         else:
-            extra += " OR path LIKE '%s/%%'" % path.strip("/")
-        extra += " OR ('%s' LIKE (path || '/%%') AND (action = 'R' OR action = 'A'))" % path.strip("/")
+            extra += " OR path GLOB '%s/*'" % path.strip("/")
+        extra += " OR ('%s' GLOB (path || '/*') AND (action = 'R' OR action = 'A'))" % path.strip("/")
  
         query = "SELECT rev FROM changed_path WHERE (path='%s'%s) AND rev <= %d ORDER BY rev DESC LIMIT 1" % (path.strip("/"), extra, revnum)
 
