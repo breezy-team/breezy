@@ -650,62 +650,11 @@ elsewhere.  Information they return, such as from ``list_dir``, is also in
 the form of URL components.
 
 
-Core Topics
-###########
-
-Evolving Interfaces
-===================
-
-We have a commitment to 6 months API stability - any supported symbol in a
-release of bzr MUST NOT be altered in any way that would result in
-breaking existing code that uses it. That means that method names,
-parameter ordering, parameter names, variable and attribute names etc must
-not be changed without leaving a 'deprecated forwarder' behind. This even
-applies to modules and classes.
-
-If you wish to change the behaviour of a supported API in an incompatible
-way, you need to change its name as well. For instance, if I add an optional keyword
-parameter to branch.commit - that's fine. On the other hand, if I add a
-keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the API - i.e. to 'branch.commit_transaction'. 
-
-When renaming such supported API's, be sure to leave a deprecated_method (or
-_function or ...) behind which forwards to the new API. See the
-bzrlib.symbol_versioning module for decorators that take care of the
-details for you - such as updating the docstring, and issuing a warning
-when the old api is used.
-
-For unsupported API's, it does not hurt to follow this discipline, but it's
-not required. Minimally though, please try to rename things so that
-callers will at least get an AttributeError rather than weird results.
-
-
-Deprecation decorators
-----------------------
-
-``bzrlib.symbol_versioning`` provides decorators that can be attached to
-methods, functions, and other interfaces to indicate that they should no
-longer be used.
-
-To deprecate a static method you must call ``deprecated_function``
-(**not** method), after the staticmethod call::
-
-    @staticmethod
-    @deprecated_function(zero_ninetyone)
-    def create_repository(base, shared=False, format=None):
-
-When you deprecate an API, you should not just delete its tests, because
-then we might introduce bugs in them.  If the API is still present at all,
-it should still work.  The basic approach is to use
-``TestCase.applyDeprecated`` which in one step checks that the API gives
-the expected deprecation message, and also returns the real result from
-the method, so that tests can keep running.
-
 Coding Style Guidelines
-=======================
+#######################
 
 hasattr and getattr
--------------------
+===================
 
 ``hasattr`` should not be used because it swallows exceptions including
 ``KeyboardInterrupt``.  Instead, say something like ::
@@ -714,7 +663,7 @@ hasattr and getattr
 
 
 Code layout
------------
+===========
 
 Please write PEP-8__ compliant code.  
 
@@ -803,7 +752,7 @@ violations.
 
 
 Module Imports
---------------
+==============
 
 * Imports should be done at the top-level of the file, unless there is
   a strong reason to have them lazily loaded when a particular
@@ -815,7 +764,7 @@ Module Imports
 
 
 Naming
-------
+======
 
 Functions, methods or members that are "private" to bzrlib are given
 a leading underscore prefix.  Names without a leading underscore are
@@ -838,7 +787,7 @@ inconsistency if other people use the full name.
 
 
 Standard Names
---------------
+==============
 
 ``revision_id`` not ``rev_id`` or ``revid``
 
@@ -847,7 +796,7 @@ Functions that transform one thing to another should be named ``x_to_y``
 
 
 Destructors
------------
+===========
 
 Python destructors (``__del__``) work differently to those of other
 languages.  In particular, bear in mind that destructors may be called
@@ -855,7 +804,9 @@ immediately when the object apparently becomes unreferenced, or at some
 later time, or possibly never at all.  Therefore we have restrictions on
 what can be done inside them.
 
- 0. Never use a __del__ method without asking Martin/Robert first.
+ 0. If you think you need to use a ``__del__`` method ask another
+    developer for alternatives.  If you do need to use one, explain
+    why in a comment.
 
  1. Never rely on a ``__del__`` method running.  If there is code that
     must run, do it from a ``finally`` block instead.
@@ -869,7 +820,7 @@ what can be done inside them.
 
 
 Factories
----------
+=========
 
 In some places we have variables which point to callables that construct
 new instances.  That is to say, they can be used a lot like class objects,
@@ -884,7 +835,7 @@ but they shouldn't be *named* like classes:
 
 
 Registries
-----------
+==========
 
 Several places in Bazaar use (or will use) a registry, which is a 
 mapping from names to objects or classes.  The registry allows for 
@@ -893,7 +844,7 @@ associated information such as a help string or description.
 
 
 Lazy Imports
-------------
+============
 
 To make startup time faster, we use the ``bzrlib.lazy_import`` module to
 delay importing modules until they are actually used. ``lazy_import`` uses
@@ -923,10 +874,6 @@ recommended to prefix it as ``_mod_<module>``. This makes it clearer that
 the variable is a module, and these object should be hidden anyway, since
 they shouldn't be imported into other namespaces.
 
-
-Modules versus Members
-~~~~~~~~~~~~~~~~~~~~~~
-
 While it is possible for ``lazy_import()`` to import members of a module
 when using the ``from module import member`` syntax, it is recommended to
 only use that syntax to load sub modules ``from module import submodule``.
@@ -943,10 +890,6 @@ needing a sub-member for example::
 This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
 object, rather than the real class.
 
-
-Passing to Other Variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 It also is incorrect to assign ``ImportReplacer`` objects to other variables.
 Because the replacer only knows about the original name, it is unable to
 replace other variables. The ``ImportReplacer`` class will raise an
@@ -956,13 +899,109 @@ variable, so some bugs are not detected right away.
 
 
 The Null revision
------------------
+=================
 
 The null revision is the ancestor of all revisions.  Its revno is 0, its
 revision-id is ``null:``, and its tree is the empty tree.  When referring
 to the null revision, please use ``bzrlib.revision.NULL_REVISION``.  Old
 code sometimes uses ``None`` for the null revision, but this practice is
 being phased out.
+
+
+Object string representations
+=============================
+
+Python prints objects using their ``__repr__`` method when they are
+written to logs, exception tracebacks, or the debugger.  We want
+objects to have useful representations to help in determining what went
+wrong.
+
+If you add a new class you should generally add a ``__repr__`` method
+unless there is an adequate method in a parent class.  There should be a
+test for the repr.  
+
+Representations should typically look like Python constructor syntax, but
+they don't need to include every value in the object and they don't need
+to be able to actually execute.  They're to be read by humans, not
+machines.  Don't hardcode the classname in the format, so that we get the
+correct value if the method is inherited by a subclass.  If you're
+printing attributes of the object, including strings, you should normally
+use ``%r`` syntax (to call their repr in turn).
+
+Try to avoid the representation becoming more than one or two lines long.
+(But balance this against including useful information, and simplicity of
+implementation.)
+
+Because repr methods are often called when something has already gone
+wrong, they should be written more defensively than most code.  The object
+may be half-initialized or in some other way in an illegal state.  The
+repr method shouldn't raise an exception, or it may hide the (probably
+more useful) underlying exception.
+
+Example::
+
+    def __repr__(self):
+        try:
+            return '%s(%r)' % (self.__class__.__name__,
+                               self._transport)
+        except:
+            return 'FooObject(**unprintable**)'
+
+
+Core Topics
+###########
+
+Evolving Interfaces
+===================
+
+We have a commitment to 6 months API stability - any supported symbol in a
+release of bzr MUST NOT be altered in any way that would result in
+breaking existing code that uses it. That means that method names,
+parameter ordering, parameter names, variable and attribute names etc must
+not be changed without leaving a 'deprecated forwarder' behind. This even
+applies to modules and classes.
+
+If you wish to change the behaviour of a supported API in an incompatible
+way, you need to change its name as well. For instance, if I add an optional keyword
+parameter to branch.commit - that's fine. On the other hand, if I add a
+keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+
+When renaming such supported API's, be sure to leave a deprecated_method (or
+_function or ...) behind which forwards to the new API. See the
+bzrlib.symbol_versioning module for decorators that take care of the
+details for you - such as updating the docstring, and issuing a warning
+when the old api is used.
+
+For unsupported API's, it does not hurt to follow this discipline, but it's
+not required. Minimally though, please try to rename things so that
+callers will at least get an AttributeError rather than weird results.
+
+
+Deprecation decorators
+----------------------
+
+``bzrlib.symbol_versioning`` provides decorators that can be attached to
+methods, functions, and other interfaces to indicate that they should no
+longer be used.  For example::
+
+   @deprecated_method(deprecated_in((0, 1, 4)))
+   def foo(self):
+        return self._new_foo()
+
+To deprecate a static method you must call ``deprecated_function``
+(**not** method), after the staticmethod call::
+
+    @staticmethod
+    @deprecated_function(deprecated_in((0, 1, 4)))
+    def create_repository(base, shared=False, format=None):
+
+When you deprecate an API, you should not just delete its tests, because
+then we might introduce bugs in them.  If the API is still present at all,
+it should still work.  The basic approach is to use
+``TestCase.applyDeprecated`` which in one step checks that the API gives
+the expected deprecation message, and also returns the real result from
+the method, so that tests can keep running.
 
 
 Getting Input
@@ -1208,7 +1247,7 @@ final fullstop.  If long, they may contain newlines to break the text.
 
 
 Assertions
-----------
+==========
 
 Do not use the Python ``assert`` statement, either in tests or elsewhere.
 A source test checks that it is not used.  It is ok to explicitly raise
