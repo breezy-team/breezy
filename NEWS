@@ -41,6 +41,11 @@ This release adds a translation of some of the user documentation into Spanish.
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
 
+    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
+      the revno of the new revision (``Graph.find_distance_to_null``). This
+      should make something like ``bzr branch -r -100`` in a shared, no-trees
+      repository much snappier. (John Arbash Meinel)
+
   BUGFIXES:
 
     * ``bzr merge --lca`` should handle when two revisions have no common
@@ -114,6 +119,11 @@ This release adds a translation of some of the user documentation into Spanish.
 
     * ``Branch.abspath`` is deprecated; use the Tree or Transport 
       instead.  (Martin Pool)
+
+    * ``Branch.update_revisions`` now takes an optional ``Graph``
+      object. This can be used by ``update_revisions`` when it is
+      checking ancestry, and allows callers to prefer request to go to a
+      local branch.  (John Arbash Meinel)
 
     * Branch, Repository, Tree and BzrDir should expose a Transport as an
       attribute if they have one, rather than having it indirectly accessible

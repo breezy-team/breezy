@@ -447,11 +447,16 @@ class Branch(object):
                 raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
         """Pull in new perfect-fit revisions.
 
         :param other: Another Branch to pull from
         :param stop_revision: Updated until the given revision
+        :param overwrite: Always set the branch pointer, rather than checking
+            to see if it is a proper descendant.
+        :param graph: A Graph object that can be used to query history
+            information. This can be None.
         :return: None
         """
         raise NotImplementedError(self.update_revisions)
@@ -1501,17 +1506,21 @@ class BzrBranch(Branch):
             last_rev, other_branch))
 
     @needs_write_lock
-    def update_revisions(self, other, stop_revision=None, overwrite=False):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
         """See Branch.update_revisions."""
         other.lock_read()
         try:
-            other_last_revno, other_last_revision = other.last_revision_info()
+            other_revno, other_last_revision = other.last_revision_info()
+            stop_revno = None # unknown
             if stop_revision is None:
                 stop_revision = other_last_revision
                 if _mod_revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
-            # whats the current last revision, before we fetch [and change it
+                stop_revno = other_revno
+
+            # what's the current last revision, before we fetch [and change it
             # possibly]
             last_rev = _mod_revision.ensure_null(self.last_revision())
             # we fetch here so that we don't process data twice in the common
@@ -1521,8 +1530,9 @@ class BzrBranch(Branch):
             self.fetch(other, stop_revision)
             # Check to see if one is an ancestor of the other
             if not overwrite:
-                heads = self.repository.get_graph().heads([stop_revision,
-                                                           last_rev])
+                if graph is None:
+                    graph = self.repository.get_graph()
+                heads = graph.heads([stop_revision, last_rev])
                 if heads == set([last_rev]):
                     # The current revision is a decendent of the target,
                     # nothing to do
@@ -1532,17 +1542,14 @@ class BzrBranch(Branch):
                     raise errors.DivergedBranches(self, other)
                 elif heads != set([stop_revision]):
                     raise AssertionError("invalid heads: %r" % heads)
-            if other_last_revision == stop_revision:
-                self.set_last_revision_info(other_last_revno,
-                                            other_last_revision)
-            else:
-                # TODO: jam 2007-11-29 Is there a way to determine the
-                #       revno without searching all of history??
-                if overwrite:
-                    self.generate_revision_history(stop_revision)
-                else:
-                    self.generate_revision_history(stop_revision,
-                        last_rev=last_rev, other_branch=other)
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.repository.get_graph()
+                this_revno, this_last_revision = self.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.set_last_revision_info(stop_revno, stop_revision)
         finally:
             other.unlock()
 
@@ -1566,8 +1573,12 @@ class BzrBranch(Branch):
         result.target_branch = self
         source.lock_read()
         try:
+            # We assume that during 'pull' the local repository is closer than
+            # the remote one.
+            graph = self.repository.get_graph(source.repository)
             result.old_revno, result.old_revid = self.last_revision_info()
-            self.update_revisions(source, stop_revision, overwrite=overwrite)
+            self.update_revisions(source, stop_revision, overwrite=overwrite,
+                                  graph=graph)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
@@ -1670,7 +1681,12 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
-        target.update_revisions(self, stop_revision, overwrite)
+
+        # We assume that during 'push' this repository is closer than
+        # the target.
+        graph = self.repository.get_graph(target.repository)
+        target.update_revisions(self, stop_revision, overwrite=overwrite,
+                                graph=graph)
         result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
