@@ -472,11 +472,11 @@ class SmartClientMedium(object):
 
         :seealso: _is_remote_at_least
         """
-        if (self._remote_version_is_less_than is not None and 
+        if (self._remote_version_is_less_than is not None and
             version_tuple > self._remote_version_is_less_than):
             raise AssertionError, (
                 "_remote_is_not(%r) called, but _remote_is_not(%r) was called "
-                "previously." 
+                "previously."
                 % (version_tuple, self._remote_version_is_less_than))
         self._remote_version_is_less_than = version_tuple
 
