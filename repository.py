@@ -664,29 +664,6 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         self.transport.change_rev_prop(revnum, SVN_REVPROP_BZR_SIGNATURE, signature)
 
-    def get_revision_graph(self, revision_id=None):
-        """See Repository.get_revision_graph()."""
-        graph = self.get_graph()
-
-        if revision_id is None:
-            revision_ids = self.all_revision_ids(self.get_layout(), self.get_mapping())
-        else:
-            revision_ids = [revision_id]
-
-        ret = {}
-        for (revid, parents) in graph.iter_ancestry(revision_ids):
-            if revid == NULL_REVISION:
-                continue
-            if (NULL_REVISION,) == parents:
-                ret[revid] = ()
-            else:
-                ret[revid] = parents
-
-        if revision_id is not None and revision_id != NULL_REVISION and ret[revision_id] is None:
-            raise NoSuchRevision(self, revision_id)
-
-        return ret
-
     def find_branches(self, using=False, layout=None):
         """Find branches underneath this repository.
 
