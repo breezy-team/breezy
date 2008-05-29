@@ -266,6 +266,10 @@ class VersionedFile(object):
                 parents = [lines[p] for p in parent_map[version_id] if p in
                     knit_versions]
             except KeyError:
+                # I don't know how this could ever trigger.
+                # parent_map[version_id] was already triggered in the previous
+                # for loop, and lines[p] has the 'if p in knit_versions' check,
+                # so we again won't have a KeyError.
                 raise errors.RevisionNotPresent(version_id, self)
             if len(parents) > 0:
                 left_parent_blocks = self._extract_blocks(version_id,
