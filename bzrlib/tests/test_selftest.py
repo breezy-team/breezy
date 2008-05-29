@@ -126,8 +126,8 @@ class TestTransportProviderAdapter(TestCase):
     """
 
     def test_get_transport_permutations(self):
-        # this checks that we the module get_test_permutations call
-        # is made by the adapter get_transport_test_permitations method.
+        # this checks that get_test_permutations defined by the module is
+        # called by the adapter get_transport_test_permutations method.
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
@@ -139,11 +139,10 @@ class TestTransportProviderAdapter(TestCase):
                          adapter.get_transport_test_permutations(MockModule()))
 
     def test_adapter_checks_all_modules(self):
-        # this checks that the adapter returns as many permurtations as
-        # there are in all the registered# transport modules for there
-        # - we assume if this matches its probably doing the right thing
-        # especially in combination with the tests for setting the right
-        # classes below.
+        # this checks that the adapter returns as many permutations as there
+        # are in all the registered transport modules - we assume if this
+        # matches its probably doing the right thing especially in combination
+        # with the tests for setting the right classes below.
         from bzrlib.tests.test_transport_implementations \
             import TransportTestProviderAdapter
         from bzrlib.transport import _get_transport_modules
