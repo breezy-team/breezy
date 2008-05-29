@@ -203,7 +203,7 @@ class cmd_rebase(Command):
             replace_map = generate_simple_plan(
                     revhistory, start_revid, stop_revid, onto,
                     wt.branch.repository.get_ancestry(onto),
-                    wt.branch.repository.revision_parents,
+                    wt.branch.repository.get_graph(),
                     lambda revid: regenerate_default_revid(wt.branch.repository, revid),
                     not always_rebase_merges
                     )

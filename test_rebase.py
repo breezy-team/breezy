@@ -17,7 +17,7 @@
 
 from bzrlib.conflicts import ConflictList
 from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
-from bzrlib.graph import Graph
+from bzrlib.graph import Graph, DictParentsProvider
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -104,7 +104,7 @@ class PlanCreatorTests(TestCaseWithTransport):
                 generate_simple_plan(b.revision_history(), "bla2", None, 
                     "bloe", 
                     ["bloe", "bla"],
-                    b.repository.revision_parents, 
+                    b.repository.get_graph(), 
                     lambda y: "new"+y))
         b.repository.unlock()
      
@@ -127,7 +127,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
                 generate_simple_plan(b.revision_history(), "bla2", None, "bloe", 
                     ["bloe", "bla"],
-                    b.repository.revision_parents,
+                    b.repository.get_graph(),
                     lambda y: "new"+y))
         b.repository.unlock()
  
@@ -194,16 +194,17 @@ class PlanCreatorTests(TestCaseWithTransport):
         E -> (E', [D', C])
         """
         parents_map = {
-                "A": [],
-                "B": ["A"],
-                "C": ["B"],
-                "D": ["A"],
-                "E": ["D", "B"]
+                "A": (),
+                "B": ("A",),
+                "C": ("B",),
+                "D": ("A",),
+                "E": ("D", "B")
         }
-        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ["D'"])}, 
+        graph = Graph(DictParentsProvider(parents_map))
+        self.assertEquals({"D": ("D'", ["C"]), "E": ("E'", ("D'",))}, 
                 generate_simple_plan(["A", "D", "E"], 
                                      "D", None, "C", ["A", "B", "C"], 
-                    parents_map.get, lambda y: y+"'"))
+                    graph, lambda y: y+"'"))
 
     def test_plan_with_already_merged_skip_merges(self):
         """We need to use a merge base that makes sense. 
@@ -223,16 +224,17 @@ class PlanCreatorTests(TestCaseWithTransport):
         D -> (D', [C])
         """
         parents_map = {
-                "A": [],
-                "B": ["A"],
-                "C": ["B"],
-                "D": ["A"],
-                "E": ["D", "B"]
+                "A": (),
+                "B": ("A",),
+                "C": ("B",),
+                "D": ("A",),
+                "E": ("D", "B")
         }
+        graph = Graph(DictParentsProvider(parents_map))
         self.assertEquals({"D": ("D'", ["C"])}, 
                 generate_simple_plan(["A", "D", "E"], 
                                      "D", None, "C", ["A", "B", "C"], 
-                    parents_map.get, lambda y: y+"'", True))
+                    graph, lambda y: y+"'", True))
  
 
 class PlanFileTests(TestCaseWithTransport):

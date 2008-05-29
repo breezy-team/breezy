@@ -125,7 +125,7 @@ def regenerate_default_revid(repository, revid):
 
 
 def generate_simple_plan(history, start_revid, stop_revid, onto_revid, 
-                         onto_ancestry, get_parents, generate_revid,
+                         onto_ancestry, graph, generate_revid,
                          skip_full_merged=False):
     """Create a simple rebase plan that replays history based 
     on one revision being replayed on top of another.
@@ -135,7 +135,7 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
     :param stop_revid: Id of revision until which to stop replaying
     :param onto_revid: Id of revision on top of which to replay
     :param onto_ancestry: Ancestry of onto_revid
-    :param get_parents: Function for obtaining the parents of a revision
+    :param graph: Graph object
     :param generate_revid: Function for generating new revision ids
     :param skip_full_merged: Skip revisions that merge already merged 
                              revisions.
@@ -154,13 +154,15 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
     else:
         stop_revno = None
     new_parent = onto_revid
-    for oldrevid in history[start_revno:stop_revno]: 
-        oldparents = list(get_parents(oldrevid))
-        assert isinstance(oldparents, list)
-        assert oldparents == [] or \
+    todo = history[start_revno:stop_revno]
+    parent_map = graph.get_parent_map(todo)
+    for oldrevid in todo: 
+        oldparents = parent_map[oldrevid]
+        assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
+        assert oldparents == () or \
                 oldparents[0] == history[history.index(oldrevid)-1]
         if len(oldparents) > 1:
-            parents = [new_parent] + filter(lambda p: p not in onto_ancestry or p == onto_revid, oldparents[1:]) 
+            parents = (new_parent,) + tuple(filter(lambda p: p not in onto_ancestry or p == onto_revid, oldparents[1:]))
             if len(parents) == 1 and skip_full_merged:
                 continue
         else:
@@ -275,6 +277,7 @@ def rebase(repository, replace_map, replay_fn):
             i += 1
             revid = todo.pop()
             (newrevid, newparents) = replace_map[revid]
+            assert isinstance(newparents, tuple)
             if filter(repository.has_revision, newparents) != newparents:
                 # Not all parents present yet, avoid for now
                 continue
@@ -283,7 +286,7 @@ def rebase(repository, replace_map, replay_fn):
                 continue
             replay_fn(repository, revid, newrevid, newparents)
             assert repository.has_revision(newrevid)
-            assert list(repository.get_parent_map([newrevid])[newrevid]) == newparents, \
+            assert repository.get_parent_map([newrevid])[newrevid] == newparents, \
                    "expected parents %r, got %r" % (newparents, 
                            repository.get_parent_map([newrevid])[newrevid])
             if dependencies.has_key(newrevid):
