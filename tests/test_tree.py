@@ -82,6 +82,17 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertEqual("target",
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
+    def test_annotate_iter(self):
+        self.make_client("d", "dc")
+        self.build_tree({"dc/file": "x\n"})
+        self.client_add("dc/file")
+        self.client_commit("dc", "change")
+        self.client_update("dc")
+        self.build_tree({"dc/file": "x\n\y\n"})
+        self.client_commit("dc", "change")
+        tree = SvnBasisTree(self.open_checkout("dc"))
+        self.assertRaises(NotImplementedError, tree.annotate_iter, tree.path2id("file"))
+
     def test_executable_link(self):
         if not has_symlinks():
             return

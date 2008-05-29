@@ -2,6 +2,8 @@ bzr-svn 0.4.11	UNRELEASED
 
   BUG FIXES
 
+   * Raise appropriate errors when using annotate.
+
    * Fix compatibility with Bazaar 1.6.
 
    * Fix case insensitive handling of paths in 

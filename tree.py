@@ -15,11 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Access to stored Subversion basis trees."""
 
-from bzrlib import urlutils
+from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.inventory import Inventory, InventoryDirectory, TreeReference
 
-from bzrlib import osutils, urlutils
+from bzrlib.revision import CURRENT_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
@@ -122,6 +122,7 @@ else:
                 ret[1], window, ret[2])
 
         return wrapper
+
 
 class SvnRevisionTree(RevisionTree):
     """A tree that existed in a historical Subversion revision."""
@@ -355,3 +356,6 @@ class SvnBasisTree(RevisionTree):
         base_copy = self._abspath(self.id2path(file_id))
         return osutils.split_lines(open(base_copy).read())
 
+    def annotate_iter(self, file_id,
+                      default_revision=CURRENT_REVISION):
+        raise NotImplementedError(self.annotate_iter)
