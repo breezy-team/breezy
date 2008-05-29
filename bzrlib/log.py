@@ -358,11 +358,11 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     
     end_rev_id = None
     if end_revision is None:
-        end_revno = len(which_revs)
+        end_revno = branch_revno
     else:
         if isinstance(end_revision, RevisionInfo):
             end_rev_id = end_revision.rev_id
-            end_revno = end_revision.revno or len(which_revs)
+            end_revno = end_revision.revno or branch_revno
         else:
             branch.check_real_revno(end_revision)
             end_revno = end_revision
