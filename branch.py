@@ -340,8 +340,10 @@ class SvnBranch(Branch):
             revno = self.revision_id_to_revno(revision_id)
         destination.set_last_revision_info(revno, revision_id)
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         """See Branch.update_revisions()."""
+        if overwrite:
+            raise NotImplementedError("overwrite not supported for Subversion branches")
         if stop_revision is None:
             stop_revision = ensure_null(other.last_revision())
         if (self.last_revision() == stop_revision or

@@ -2,6 +2,8 @@ bzr-svn 0.4.11	UNRELEASED
 
   BUG FIXES
 
+   * Fix compatibility with Bazaar 1.6.
+
    * Fix case insensitive handling of paths in 
      CachingLogWalker.find_latest_change(). (#233964)
 
