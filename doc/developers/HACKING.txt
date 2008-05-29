@@ -1003,6 +1003,12 @@ it should still work.  The basic approach is to use
 the expected deprecation message, and also returns the real result from
 the method, so that tests can keep running.
 
+Deprecation warnings will be suppressed for final releases, but not for
+development versions or release candidates, or when running ``bzr
+selftest``. This gives developers information about whether their code is
+using deprecated functions, but avoids confusing users about things they
+can't fix.
+
 
 Getting Input
 =============
