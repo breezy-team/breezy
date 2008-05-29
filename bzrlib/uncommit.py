@@ -35,6 +35,9 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
     :param dry_run: Don't actually change anything
     :param verbose: Print each step as you do it
     :param revno: Remove back to this revision
+    :param local: If this branch is bound, only remove the revisions from the
+        local branch. If this branch is not bound, it is an error to pass
+        local=True.
     """
     unlockable = []
     try:
@@ -74,6 +77,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
             if cur_revno == new_revno:
                 new_revision_id = rev_id
                 break
+            if verbose:
+                print 'Removing revno %d: %s' % (cur_revno, rev_id)
             cur_revno -= 1
             parents = graph.get_parent_map([rev_id]).get(rev_id, None)
             if not parents:
