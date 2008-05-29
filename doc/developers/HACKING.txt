@@ -928,6 +928,10 @@ correct value if the method is inherited by a subclass.  If you're
 printing attributes of the object, including strings, you should normally
 use ``%r`` syntax (to call their repr in turn).
 
+Try to avoid the representation becoming more than one or two lines long.
+(But balance this against including useful information, and simplicity of
+implementation.)
+
 Because repr methods are often called when something has already gone
 wrong, they should be written more defensively than most code.  The object
 may be half-initialized or in some other way in an illegal state.  The

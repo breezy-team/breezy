@@ -90,6 +90,10 @@ This release adds a translation of some of the user documentation into Spanish.
       on the plugin and integration chapters of the User Guide.
       (Ian Clatworthy)
 
+    * More Bazaar developer documentation about packaging and release process,
+      and about use of Python reprs.
+      (Martin Pool, Martin Albisetti)
+
     * Updated Tortise strategy document. (Mark Hammond)
 
   TESTING:
