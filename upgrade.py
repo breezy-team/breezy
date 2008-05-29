@@ -109,7 +109,7 @@ def generate_upgrade_map(new_mapping, revs):
 
     return rename_map
 
-MIN_REBASE_VERSION = (0, 2)
+MIN_REBASE_VERSION = (0, 4)
 
 def create_upgrade_plan(repository, svn_repository, new_mapping,
                         revision_id=None, allow_changes=False):
@@ -147,8 +147,8 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
 
-    plan = generate_transpose_plan(repository.get_revision_graph(revision_id), upgrade_map, 
-      repository.revision_parents,
+    plan = generate_transpose_plan(graph.iter_ancestry([revision_id]), upgrade_map, 
+      graph,
       lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
     def remove_parents((oldrevid, (newrevid, parents))):
         return (oldrevid, newrevid)
