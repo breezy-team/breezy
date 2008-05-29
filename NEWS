@@ -43,6 +43,9 @@ This release adds a translation of some of the user documentation into Spanish.
 
   BUGFIXES:
 
+    * ``bzr merge --lca`` should handle when two revisions have no common
+      ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
+
     * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
       fails.  (Andrew Bennetts, #234229)
       
