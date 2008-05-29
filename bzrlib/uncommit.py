@@ -88,6 +88,10 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
             # but we pop from the end, so reverse the order, and
             # then get the order right at the end
             pending_merges.extend(reversed(parents[1:]))
+        else:
+            # We ran off the end of revisions, which means we should be trying
+            # to get to NULL_REVISION
+            new_revision_id = _mod_revision.NULL_REVISION
 
         if not dry_run:
             if master is not None:
