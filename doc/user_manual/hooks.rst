@@ -49,6 +49,8 @@ Note however that the latter overrides the formula, so your local hooks should
 run all necessary commands from the default hooks that are necessary to build
 the package.
 
+.. _configuration: configuration.html
+
 The hooks are set in a ``[HOOKS]`` section of the configuration file. The
 key is the hook point that the hook is set for, the value is the command(s)
 to run. For instance to run autoconf before building you would set the
