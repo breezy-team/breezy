@@ -1,4 +1,4 @@
-bzr-builddeb (0.95) UNRELEASED; urgency=low
+bzr-builddeb (0.95) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Support building from remote branches,
