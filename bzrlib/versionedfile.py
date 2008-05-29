@@ -254,7 +254,7 @@ class VersionedFile(object):
             try:
                 knit_versions.update(parent_map[version_id])
             except KeyError:
-                raise RevisionNotPresent(version_id, self)
+                raise errors.RevisionNotPresent(version_id, self)
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions).keys())
         lines = dict(zip(knit_versions,
@@ -266,7 +266,7 @@ class VersionedFile(object):
                 parents = [lines[p] for p in parent_map[version_id] if p in
                     knit_versions]
             except KeyError:
-                raise RevisionNotPresent(version_id, self)
+                raise errors.RevisionNotPresent(version_id, self)
             if len(parents) > 0:
                 left_parent_blocks = self._extract_blocks(version_id,
                                                           parents[0], target)
