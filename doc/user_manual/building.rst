@@ -82,18 +82,9 @@ It is possible to build directly from remote branches, e.g.::
 This doesn't require you to have any of the branch history locally, and will
 just download what is needed to build the branch.
 
-Note however that it may create the files in a suprising location. It will still
-default to ``../build-area/`` and will in fact use the
-``.bzr-builddeb/default.conf`` file from the remote branch, which may alter this.
-
-To avoid this you may want to override these things on the command line,
-e.g.::
-
-  $ bzr builddeb --build-dir=. --orig-dir=. \
-        http://bzr.debian.org/pkg-bazaar/bzr-builddeb/trunk/
-
-which will use the current directory as a working area, and leave the resulting
-packages in the current directory.
+If you do not have different directories set in ``~/.bazaar/builddeb.conf``
+then all actions will take place within ``./build-area/``, which should
+avoid overwriting any files that you wish to keep.
 
 .. vim: set ft=rst tw=76 :
 

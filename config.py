@@ -70,6 +70,19 @@ class DebBuildConfig(object):
       self._branch_config = TreeConfig(branch)
     else:
       self._branch_config = None
+    self.user_config = None
+
+  def set_user_config(self, user_conf):
+    if user_conf is not None:
+      self.user_config = ConfigObj(user_conf)
+
+  def _user_config_value(self, key):
+    if self.user_config is not None:
+      try:
+        return self.user_config.get_value(self.section, key)
+      except KeyError:
+        pass
+    return None
 
   def set_version(self, version):
     """Set the version used for substitution."""
@@ -156,11 +169,20 @@ class DebBuildConfig(object):
 
   build_dir = _opt_property('build-dir', "The dir to build in")
 
+  user_build_dir = property(
+          lambda self: self._user_config_value('build-dir'))
+
   orig_dir = _opt_property('orig-dir', "The dir to get upstream tarballs from")
+
+  user_orig_dir = property(
+          lambda self: self._user_config_value('orig-dir'))
 
   builder = _opt_property('builder', "The command to build with", True)
 
   result_dir = _opt_property('result-dir', "The dir to put the results in")
+
+  user_result_dir = property(
+          lambda self: self._user_config_value('result-dir'))
 
   merge = _bool_property('merge', "Run in merge mode")
 

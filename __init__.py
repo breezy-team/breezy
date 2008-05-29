@@ -24,9 +24,11 @@
 
 import os
 import subprocess
+import urlparse
 
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
+from bzrlib.config import ConfigObj
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
                            NotBranchError,
@@ -172,6 +174,11 @@ class cmd_builddeb(Command):
     if branch is None:
       branch = "."
 
+    # Find out if we were passed a local or remote branch
+    is_local = urlparse.urlsplit(branch)[0] in ('', 'file')
+    if is_local:
+      os.chdir(branch)
+
     try:
       tree, _ = WorkingTree.open_containing(branch)
       branch = tree.branch
@@ -195,14 +202,17 @@ class cmd_builddeb(Command):
       working_tree = False
 
     config_files = []
+    user_config = None
     if (working_tree and 
         tree.has_filename(local_conf) and tree.path2id(local_conf) is None):
       config_files.append((tree.get_file_byname(local_conf), True))
     if not no_user_config:
       config_files.append((global_conf, True))
+      user_config = global_conf
     if tree.path2id(default_conf):
       config_files.append((tree.get_file(tree.path2id(default_conf)), False))
     config = DebBuildConfig(config_files)
+    config.set_user_config(user_config)
 
     if reuse:
       info("Reusing existing build dir")
@@ -226,11 +236,6 @@ class cmd_builddeb(Command):
 
         if split:
           info("Running in split mode")
-
-    if result is None:
-      result = config.result_dir
-    if result is not None:
-      result = os.path.realpath(result)
 
     if builder is None:
       if quick:
@@ -257,15 +262,25 @@ class cmd_builddeb(Command):
     if export_upstream_revision is None:
       export_upstream_revision = config.export_upstream_revision
 
+    if result is None:
+      if is_local:
+        result = config.result_dir
+      else:
+        result = config.user_result_dir
+    if result is not None:
+      result = os.path.realpath(result)
+    
     if build_dir is None:
-      build_dir = config.build_dir
-      if build_dir is None:
-        build_dir = default_build_dir
+      if is_local:
+        build_dir = config.build_dir or default_build_dir
+      else:
+        build_dir = config.user_build_dir or 'build-area'
 
     if orig_dir is None:
-      orig_dir = config.orig_dir
-      if orig_dir is None:
-        orig_dir = default_orig_dir
+      if is_local:
+        orig_dir = config.orig_dir or default_orig_dir
+      else:
+        orig_dir = config.user_orig_dir or 'build-area'
     
     properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
