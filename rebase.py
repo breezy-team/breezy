@@ -225,7 +225,9 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                         "Expected tuple of parents, got: %r" % parents
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
-                    parents[list(parents).index(r)] = replace_map[r][0]
+                    parents = list(parents)
+                    parents[parents.index(r)] = replace_map[r][0]
+                    parents = tuple(parents)
                 replace_map[c] = (generate_revid(c), tuple(parents))
                 assert replace_map[c][0] != c
             processed.add(r)
