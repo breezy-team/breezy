@@ -174,30 +174,34 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
     return replace_map
 
 
-def generate_transpose_plan(graph, renames, get_parents, generate_revid):
+def generate_transpose_plan(ancestry, renames, graph, generate_revid):
     """Create a rebase plan that replaces a bunch of revisions
     in a revision graph.
 
-    :param graph: Revision graph in which to operate
+    :param ancestry: Ancestry to consider
     :param renames: Renames of revision
-    :param get_parents: Function for determining parents
+    :param graph: Graph object
     :param generate_revid: Function for creating new revision ids
     """
     replace_map = {}
     todo = []
     children = {}
-    for r in graph:
+    parent_map = {}
+    for r, ps in ancestry:
+        parent_map[r] = ps
         if not children.has_key(r):
             children[r] = []
-        for p in graph[r]:
+        for p in ps:
             if not children.has_key(p):
                 children[p] = []
             children[p].append(r)
 
+    parent_map.update(graph.get_parent_map(filter(lambda x: not x in parent_map, renames.values())))
+
     # todo contains a list of revisions that need to 
     # be rewritten
-    for r in renames:
-        replace_map[r] = (renames[r], get_parents(renames[r]))
+    for r, v in renames.items():
+        replace_map[r] = (v, parent_map[v])
         todo.append(r)
 
     total = len(todo)
@@ -216,7 +220,7 @@ def generate_transpose_plan(graph, renames, get_parents, generate_revid):
                 if replace_map.has_key(c):
                     parents = list(replace_map[c][1])
                 else:
-                    parents = list(graph[c])
+                    parents = list(parent_map[c])
                 assert isinstance(parents, list), \
                         "Expected list of parents, got: %r" % parents
                 # replace r in parents with replace_map[r][0]
@@ -285,10 +289,6 @@ def rebase(repository, replace_map, replay_fn):
                 # Was already converted, no need to worry about it again
                 continue
             replay_fn(repository, revid, newrevid, newparents)
-            assert repository.has_revision(newrevid)
-            assert repository.get_parent_map([newrevid])[newrevid] == newparents, \
-                   "expected parents %r, got %r" % (newparents, 
-                           repository.get_parent_map([newrevid])[newrevid])
             if dependencies.has_key(newrevid):
                 todo.extend(dependencies[newrevid])
                 del dependencies[newrevid]

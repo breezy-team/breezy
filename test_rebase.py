@@ -156,24 +156,26 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='add hello', rev_id="lala")
 
         b.repository.lock_read()
+        graph = b.repository.get_graph()
         self.assertEquals({
             'blie': ('newblie', ['lala'])},
-            generate_transpose_plan(b.repository.get_revision_graph("blie"), 
-            {"bla": "lala"}, b.repository.revision_parents, lambda y: "new"+y))
+            generate_transpose_plan(graph.iter_ancestry(["blie"]), 
+            {"bla": "lala"}, graph, lambda y: "new"+y))
         self.assertEquals({
             'bla2': ('newbla2', ['lala']),
             'bla3': ('newbla3', ['newbla2']),
             'blie': ('newblie', ['lala']),
             'bloe': ('newbloe', ['lala'])},
-            generate_transpose_plan(b.repository.get_revision_graph(), 
+            generate_transpose_plan(graph.iter_ancestry(b.repository._all_revision_ids()), 
             {"bla": "lala"}, 
-            b.repository.revision_parents, lambda y: "new"+y))
+            graph, lambda y: "new"+y))
         b.repository.unlock()
 
     def test_generate_transpose_plan_one(self):
+        graph = Graph(DictParentsProvider({"bla": ["bloe"], "bloe": [], "lala": []}))
         self.assertEquals({"bla": ("newbla", ["lala"])},
-                generate_transpose_plan({"bla": ["bloe"], "bloe": []},
-                    {"bloe": "lala"}, {}.get, lambda y: "new"+y))
+                generate_transpose_plan(graph.iter_ancestry(["bla", "bloe"]),
+                    {"bloe": "lala"}, graph, lambda y: "new"+y))
 
     def test_plan_with_already_merged(self):
         """We need to use a merge base that makes sense. 
