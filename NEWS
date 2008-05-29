@@ -81,6 +81,9 @@ This release adds a translation of some of the user documentation into Spanish.
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
 
+    * ``VersionedFile.make_mpdiffs()`` was raising an exception that wasn't in
+      scope. (Daniel Fischer #235687)
+
   DOCUMENTATION:
 
     * Added directory structure and started translation of docs in spanish.
