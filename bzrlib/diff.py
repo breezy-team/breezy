@@ -28,6 +28,7 @@ import tempfile
 import time
 
 from bzrlib import (
+    branch as _mod_branch,
     bzrdir,
     commands,
     errors,
@@ -40,7 +41,7 @@ from bzrlib import (
 
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        one_zero,
+        one_three
         )
 from bzrlib.trace import mutter, warning
 
@@ -274,83 +275,6 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-@deprecated_function(one_zero)
-def diff_cmd_helper(tree, specific_files, external_diff_options, 
-                    old_revision_spec=None, new_revision_spec=None,
-                    revision_specs=None,
-                    old_label='a/', new_label='b/'):
-    """Helper for cmd_diff.
-
-    :param tree:
-        A WorkingTree
-
-    :param specific_files:
-        The specific files to compare, or None
-
-    :param external_diff_options:
-        If non-None, run an external diff, and pass it these options
-
-    :param old_revision_spec:
-        If None, use basis tree as old revision, otherwise use the tree for
-        the specified revision. 
-
-    :param new_revision_spec:
-        If None, use working tree as new revision, otherwise use the tree for
-        the specified revision.
-    
-    :param revision_specs: 
-        Zero, one or two RevisionSpecs from the command line, saying what revisions 
-        to compare.  This can be passed as an alternative to the old_revision_spec 
-        and new_revision_spec parameters.
-
-    The more general form is show_diff_trees(), where the caller
-    supplies any two trees.
-    """
-
-    # TODO: perhaps remove the old parameters old_revision_spec and
-    # new_revision_spec, since this is only really for use from cmd_diff and
-    # it now always passes through a sequence of revision_specs -- mbp
-    # 20061221
-
-    def spec_tree(spec):
-        if tree:
-            revision = spec.in_store(tree.branch)
-        else:
-            revision = spec.in_store(None)
-        revision_id = revision.rev_id
-        branch = revision.branch
-        return branch.repository.revision_tree(revision_id)
-
-    if revision_specs is not None:
-        assert (old_revision_spec is None
-                and new_revision_spec is None)
-        if len(revision_specs) > 0:
-            old_revision_spec = revision_specs[0]
-        if len(revision_specs) > 1:
-            new_revision_spec = revision_specs[1]
-
-    if old_revision_spec is None:
-        old_tree = tree.basis_tree()
-    else:
-        old_tree = spec_tree(old_revision_spec)
-
-    if (new_revision_spec is None
-        or new_revision_spec.spec is None):
-        new_tree = tree
-    else:
-        new_tree = spec_tree(new_revision_spec)
-
-    if new_tree is not tree:
-        extra_trees = (tree,)
-    else:
-        extra_trees = None
-
-    return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
-                           external_diff_options,
-                           old_label=old_label, new_label=new_label,
-                           extra_trees=extra_trees)
-
-
 def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     """Get the trees and specific files to diff given a list of paths.
 
@@ -446,10 +370,10 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
                 return branch.basis_tree()
         else:
             return tree
-    revision = spec.in_store(branch)
-    revision_id = revision.rev_id
-    rev_branch = revision.branch
-    return rev_branch.repository.revision_tree(revision_id)
+    if not spec.needs_branch():
+        branch = _mod_branch.Branch.open(spec.get_branch())
+    revision_id = spec.as_revision_id(branch)
+    return branch.repository.revision_tree(revision_id)
 
 
 def _relative_paths_in_tree(tree, paths):
@@ -515,9 +439,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     mtime = tree.get_file_mtime(file_id, path)
-    assert mtime is not None, \
-        "got an mtime of None for file-id %s, path %s in tree %s" % (
-                file_id, path, tree)
     return timestamp.format_patch_date(mtime)
 
 
@@ -540,11 +461,19 @@ def _raise_if_nonexistent(paths, old_tree, new_tree):
         raise errors.PathsDoNotExist(sorted(s))
 
 
+@deprecated_function(one_three)
 def get_prop_change(meta_modified):
     if meta_modified:
         return " (properties changed)"
     else:
         return  ""
+
+def get_executable_change(old_is_x, new_is_x):
+    descr = { True:"+x", False:"-x", None:"??" }
+    if old_is_x != new_is_x:
+        return ["%s to %s" % (descr[old_is_x], descr[new_is_x],)]
+    else:
+        return []
 
 
 class DiffPath(object):
@@ -904,7 +833,6 @@ class DiffTree(object):
         else:
             extra_factories = []
         if external_diff_options:
-            assert isinstance(external_diff_options, basestring)
             opts = external_diff_options.split()
             def diff_file(olab, olines, nlab, nlines, to_file):
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
@@ -954,7 +882,15 @@ class DiffTree(object):
             old_present = (kind[0] is not None and versioned[0])
             new_present = (kind[1] is not None and versioned[1])
             renamed = (parent[0], name[0]) != (parent[1], name[1])
-            prop_str = get_prop_change(executable[0] != executable[1])
+
+            properties_changed = []
+            properties_changed.extend(get_executable_change(executable[0], executable[1]))
+
+            if properties_changed:
+                prop_str = " (properties changed: %s)" % (", ".join(properties_changed),)
+            else:
+                prop_str = ""
+
             if (old_present, new_present) == (True, False):
                 self.to_file.write("=== removed %s '%s'\n" %
                                    (kind[0], oldpath_encoded))

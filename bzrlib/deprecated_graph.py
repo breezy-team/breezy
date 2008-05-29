@@ -57,7 +57,6 @@ def node_distances(graph, ancestors, start, root_descendants=None):
         new_lines = set()
         for line in lines:
             line_descendants = graph[line]
-            assert line not in line_descendants, "%s refers to itself" % line
             for descendant in line_descendants:
                 distance = max_distance(descendant, ancestors, distances,
                                         root_descendants)

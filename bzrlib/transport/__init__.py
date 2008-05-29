@@ -33,14 +33,10 @@ import sys
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
-from collections import deque
 from stat import S_ISDIR
-import unittest
 import urllib
 import urlparse
-import warnings
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -50,18 +46,13 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight,
-        zero_eleven,
-        zero_ninety,
+        one_four,
         )
 from bzrlib.trace import (
-    note,
     mutter,
-    warning,
     )
 from bzrlib import registry
 
@@ -143,7 +134,8 @@ def register_transport_proto(prefix, help=None, info=None,
                              register_netloc=False):
     transport_list_registry.register_transport(prefix, help)
     if register_netloc:
-        assert prefix.endswith('://')
+        if not prefix.endswith('://'):
+            raise ValueError(prefix)
         register_urlparse_netloc_protocol(prefix[:-3])
 
 
@@ -185,39 +177,6 @@ def unregister_transport(scheme, factory):
             break
     if len(l) == 0:
         transport_list_registry.remove(scheme)
-
-
-
-@deprecated_function(zero_ninety)
-def split_url(url):
-    # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
-    if isinstance(url, unicode):
-        url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    username = password = host = port = None
-    if '@' in netloc:
-        username, host = netloc.split('@', 1)
-        if ':' in username:
-            username, password = username.split(':', 1)
-            password = urllib.unquote(password)
-        username = urllib.unquote(username)
-    else:
-        host = netloc
-
-    if ':' in host:
-        host, port = host.rsplit(':', 1)
-        try:
-            port = int(port)
-        except ValueError:
-            # TODO: Should this be ConnectionError?
-            raise errors.TransportError(
-                'invalid port number %s in url:\n%s' % (port, url))
-    host = urllib.unquote(host)
-
-    path = urllib.unquote(path)
-
-    return (scheme, username, password, host, port, path)
 
 
 class _CoalescedOffset(object):
@@ -334,7 +293,7 @@ class Transport(object):
     _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
-        super(Transport, self).__init__()
+        super(Transport, self).__init__(base=base)
         self.base = base
 
     def _translate_error(self, e, path, raise_generic=True):
@@ -412,8 +371,6 @@ class Transport(object):
         object or string to another one.
         This just gives them something easy to call.
         """
-        assert not isinstance(from_file, basestring), \
-            '_pump should only be called on files not %s' % (type(from_file,))
         return osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
@@ -613,6 +570,7 @@ class Transport(object):
         """
         return self.get(relpath).read()
 
+    @deprecated_method(one_four)
     def get_smart_client(self):
         """Return a smart client for this transport if possible.
 
@@ -633,6 +591,7 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
+    @deprecated_method(one_four)
     def get_shared_medium(self):
         """Return a smart client shared medium for this transport if possible.
 
@@ -1006,8 +965,9 @@ class Transport(object):
 
         :returns: the length of relpath before the content was written to it.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise TypeError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.append_file(relpath, StringIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
@@ -1546,15 +1506,6 @@ class ConnectedTransport(Transport):
         return transport
 
 
-@deprecated_function(zero_ninety)
-def urlescape(relpath):
-    urlutils.escape(relpath)
-
-
-@deprecated_function(zero_ninety)
-def urlunescape(url):
-    urlutils.unescape(url)
-
 # We try to recognize an url lazily (ignoring user, password, etc)
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
 
@@ -1610,7 +1561,8 @@ def get_transport(base, possible_transports=None):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
                 if possible_transports is not None:
-                    assert transport not in possible_transports
+                    if transport in possible_transports:
+                        raise AssertionError()
                     possible_transports.append(transport)
                 return transport
 
@@ -1803,6 +1755,10 @@ register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+
+register_transport_proto('nosmart+')
+register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
+                        'NoSmartTransportDecorator')
 
 # These two schemes were registered, but don't seem to have an actual transport
 # protocol registered

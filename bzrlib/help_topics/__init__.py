@@ -277,21 +277,21 @@ See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
 development.
 
--Dauth         Trace authentication sections used.
--Derror        Instead of normal error handling, always print a traceback on
-               error.
--Devil         Capture call sites that do expensive or badly-scaling
-               operations.
--Dfetch        Trace history copying between repositories.
--Dhashcache    Log every time a working file is read to determine its hash.
--Dhooks        Trace hook execution.
--Dhpss         Trace smart protocol requests and responses.
--Dhttp         Trace http connections, requests and responses
--Dindex        Trace major index operations.
--Dknit         Trace knit operations.
--Dlock         Trace when lockdir locks are taken or released.
--Dmerge        Emit information for debugging merges.
--Dpack         Emit information about pack operations.
+-Dauth            Trace authentication sections used.
+-Derror           Instead of normal error handling, always print a traceback
+                  on error.
+-Devil            Capture call sites that do expensive or badly-scaling
+                  operations.
+-Dfetch           Trace history copying between repositories.
+-Dhashcache       Log every time a working file is read to determine its hash.
+-Dhooks           Trace hook execution.
+-Dhpss            Trace smart protocol requests and responses.
+-Dhttp            Trace http connections, requests and responses
+-Dindex           Trace major index operations.
+-Dknit            Trace knit operations.
+-Dlock            Trace when lockdir locks are taken or released.
+-Dmerge           Emit information for debugging merges.
+-Dpack            Emit information about pack operations.
 """
 
 _standard_options = \
@@ -349,10 +349,10 @@ don't have a local branch, then you cannot commit locally.
 Lightweight checkouts work best when you have fast reliable access to the
 master branch. This means that if the master branch is on the same disk or LAN
 a lightweight checkout will be faster than a heavyweight one for any commands
-that modify the revision history (as only one copy branch needs to be updated).
-Heavyweight checkouts will generally be faster for any command that uses the
-history but does not change it, but if the master branch is on the same disk
-then there wont be a noticeable difference.
+that modify the revision history (as only one copy of the branch needs to
+be updated). Heavyweight checkouts will generally be faster for any command
+that uses the history but does not change it, but if the master branch is on
+the same disk then there won't be a noticeable difference.
 
 Another possible use for a checkout is to use it with a treeless repository
 containing your branches, where you maintain only one working tree by
@@ -579,8 +579,9 @@ _criss_cross = \
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
 
-If you encounter criss-crosses, you can use merge --weave instead, which
-should provide a much better result.
+In complex merge cases, ``bzr merge --lca`` or ``bzr merge --weave`` may give
+better results.  You may wish to ``bzr revert`` the working tree and merge
+again.  Alternatively, use ``bzr remerge`` on particular conflicted files.
 
 Criss-crosses occur in a branch's history if two branches merge the same thing
 and then merge one another, or if two branches merge one another at the same
@@ -600,7 +601,28 @@ are emitted.
 
 The ``weave`` merge type is not affected by this problem because it uses
 line-origin detection instead of a basis revision to determine the cause of
-differences."""
+differences.
+"""
+
+_branches_out_of_sync = """Branches out of sync
+
+When reconfiguring a checkout, tree or branch into a lightweight checkout,
+a local branch must be destroyed.  (For checkouts, this is the local branch
+that serves primarily as a cache.)  If the branch-to-be-destroyed does not
+have the same last revision as the new reference branch for the lightweight
+checkout, data could be lost, so Bazaar refuses.
+
+How you deal with this depends on *why* the branches are out of sync.
+
+If you have a checkout and have done local commits, you can get back in sync
+by running "bzr update" (and possibly "bzr commit").
+
+If you have a branch and the remote branch is out-of-date, you can push
+the local changes using "bzr push".  If the local branch is out of date, you
+can do "bzr pull".  If both branches have had changes, you can merge, commit
+and then push your changes.  If you decide that some of the changes aren't
+useful, you can "push --overwrite" or "pull --overwrite" instead.
+"""
 
 
 # Register help topics
@@ -658,6 +680,8 @@ topic_registry.register('standalone-trees', _standalone_trees,
 topic_registry.register('working-trees', _working_trees,
                         'Information on working trees', SECT_CONCEPT)
 topic_registry.register('criss-cross', _criss_cross,
+                        'Information on criss-cross merging', SECT_CONCEPT)
+topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
                         'Information on criss-cross merging', SECT_CONCEPT)
 
 

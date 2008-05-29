@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,24 +14,89 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import urllib
-from urlparse import urlparse
-
-from bzrlib.smart import protocol
-from bzrlib import urlutils
+import bzrlib
+from bzrlib.smart import message, protocol
+from bzrlib.trace import warning
+from bzrlib import errors
 
 
 class _SmartClient(object):
 
-    def __init__(self, shared_connection):
+    def __init__(self, medium, headers=None):
         """Constructor.
 
-        :param shared_connection: a bzrlib.transport._SharedConnection
+        :param medium: a SmartClientMedium
         """
-        self._shared_connection = shared_connection
+        self._medium = medium
+        if headers is None:
+            self._headers = {'Software version': bzrlib.__version__}
+        else:
+            self._headers = dict(headers)
 
-    def get_smart_medium(self):
-        return self._shared_connection.connection
+    def _send_request(self, protocol_version, method, args, body=None,
+                      readv_body=None):
+        encoder, response_handler = self._construct_protocol(
+            protocol_version)
+        encoder.set_headers(self._headers)
+        if body is not None:
+            if readv_body is not None:
+                raise AssertionError(
+                    "body and readv_body are mutually exclusive.")
+            encoder.call_with_body_bytes((method, ) + args, body)
+        elif readv_body is not None:
+            encoder.call_with_body_readv_array((method, ) + args,
+                    readv_body)
+        else:
+            encoder.call(method, *args)
+        return response_handler
+
+    def _call_and_read_response(self, method, args, body=None, readv_body=None,
+            expect_response_body=True):
+        if self._medium._protocol_version is not None:
+            response_handler = self._send_request(
+                self._medium._protocol_version, method, args, body=body,
+                readv_body=readv_body)
+            return (response_handler.read_response_tuple(
+                        expect_body=expect_response_body),
+                    response_handler)
+        else:
+            for protocol_version in [3, 2]:
+                response_handler = self._send_request(
+                    protocol_version, method, args, body=body,
+                    readv_body=readv_body)
+                try:
+                    response_tuple = response_handler.read_response_tuple(
+                        expect_body=expect_response_body)
+                except errors.UnexpectedProtocolVersionMarker, err:
+                    # TODO: We could recover from this without disconnecting if
+                    # we recognise the protocol version.
+                    warning(
+                        'Server does not understand Bazaar network protocol %d,'
+                        ' reconnecting.  (Upgrade the server to avoid this.)'
+                        % (protocol_version,))
+                    self._medium.disconnect()
+                    continue
+                else:
+                    self._medium._protocol_version = protocol_version
+                    return response_tuple, response_handler
+            raise errors.SmartProtocolError(
+                'Server is not a Bazaar server: ' + str(err))
+
+    def _construct_protocol(self, version):
+        request = self._medium.get_request()
+        if version == 3:
+            request_encoder = protocol.ProtocolThreeRequester(request)
+            response_handler = message.ConventionalResponseHandler()
+            response_proto = protocol.ProtocolThreeDecoder(
+                response_handler, expect_version_marker=True)
+            response_handler.setProtoAndMediumRequest(response_proto, request)
+        elif version == 2:
+            request_encoder = protocol.SmartClientRequestProtocolTwo(request)
+            response_handler = request_encoder
+        else:
+            request_encoder = protocol.SmartClientRequestProtocolOne(request)
+            response_handler = request_encoder
+        return request_encoder, response_handler
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -47,10 +112,8 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
-        smart_protocol.call(method, *args)
-        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
+        return self._call_and_read_response(
+            method, args, expect_response_body=True)
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
@@ -61,10 +124,9 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call_with_body_bytes((method, ) + args, body)
-        return smart_protocol.read_response_tuple()
+        response, response_handler = self._call_and_read_response(
+            method, args, body=body, expect_response_body=False)
+        return response
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
@@ -75,10 +137,14 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
-        smart_protocol.call_with_body_bytes((method, ) + args, body)
-        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
+        response, response_handler = self._call_and_read_response(
+            method, args, body=body, expect_response_body=True)
+        return (response, response_handler)
+
+    def call_with_body_readv_array(self, args, body):
+        response, response_handler = self._call_and_read_response(
+                args[0], args[1:], readv_body=body, expect_response_body=True)
+        return (response, response_handler)
 
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
@@ -87,11 +153,5 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        base = self._shared_connection.base
-        if base.startswith('bzr+http://') or base.startswith('bzr+https://'):
-            medium_base = self._shared_connection.base
-        else:
-            medium_base = urlutils.join(self._shared_connection.base, '/')
-            
-        rel_url = urlutils.relative_url(medium_base, transport.base)
-        return urllib.unquote(rel_url)
+        return self._medium.remote_path_from_transport(transport)
+

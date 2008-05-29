@@ -33,6 +33,7 @@ from bzrlib import (
     urlutils,
     tests,
     trace,
+    transport,
     )
 from bzrlib.util.configobj import configobj
 
@@ -146,7 +147,8 @@ class FakeBranch(object):
             self.base = "http://example.com/branches/demo"
         else:
             self.base = base
-        self.control_files = FakeControlFiles(user_id=user_id)
+        self._transport = self.control_files = \
+            FakeControlFilesAndTransport(user_id=user_id)
 
     def lock_write(self):
         pass
@@ -155,27 +157,37 @@ class FakeBranch(object):
         pass
 
 
-class FakeControlFiles(object):
+class FakeControlFilesAndTransport(object):
 
     def __init__(self, user_id=None):
-        self.email = user_id
         self.files = {}
+        if user_id:
+            self.files['email'] = user_id
+        self._transport = self
 
     def get_utf8(self, filename):
-        if filename != 'email':
-            raise NotImplementedError
-        if self.email is not None:
-            return StringIO(self.email)
-        raise errors.NoSuchFile(filename)
+        # from LockableFiles
+        raise AssertionError("get_utf8 should no longer be used")
 
     def get(self, filename):
+        # from Transport
         try:
             return StringIO(self.files[filename])
         except KeyError:
             raise errors.NoSuchFile(filename)
 
+    def get_bytes(self, filename):
+        # from Transport
+        try:
+            return self.files[filename]
+        except KeyError:
+            raise errors.NoSuchFile(filename)
+
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
+
+    def put_file(self, filename, fileobj):
+        return self.put(filename, fileobj)
 
 
 class InstrumentedConfig(config.Config):
@@ -960,20 +972,19 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config.username())
-        branch.control_files.email = "John"
+        my_config.branch.control_files.files['email'] = "John"
         my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
         self.assertEqual("John", my_config.username())
-        branch.control_files.email = None
+        del my_config.branch.control_files.files['email']
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
 
     def test_not_set_in_branch(self):
         my_config = self.get_branch_config(sample_config_text)
-        my_config.branch.control_files.email = None
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
-        my_config.branch.control_files.email = "John"
+        my_config.branch.control_files.files['email'] = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZR_EMAIL_OVERRIDES(self):
@@ -1136,6 +1147,35 @@ class TestTreeConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
 
+class TestTransportConfig(tests.TestCaseWithTransport):
+
+    def test_get_value(self):
+        """Test that retreiving a value from a section is possible"""
+        bzrdir_config = config.TransportConfig(transport.get_transport('.'),
+                                               'control.conf')
+        bzrdir_config.set_option('value', 'key', 'SECTION')
+        bzrdir_config.set_option('value2', 'key2')
+        bzrdir_config.set_option('value3-top', 'key3')
+        bzrdir_config.set_option('value3-section', 'key3', 'SECTION')
+        value = bzrdir_config.get_option('key', 'SECTION')
+        self.assertEqual(value, 'value')
+        value = bzrdir_config.get_option('key2')
+        self.assertEqual(value, 'value2')
+        self.assertEqual(bzrdir_config.get_option('non-existant'), None)
+        value = bzrdir_config.get_option('non-existant', 'SECTION')
+        self.assertEqual(value, None)
+        value = bzrdir_config.get_option('non-existant', default='default')
+        self.assertEqual(value, 'default')
+        self.assertEqual(bzrdir_config.get_option('key2', 'NOSECTION'), None)
+        value = bzrdir_config.get_option('key2', 'NOSECTION',
+                                         default='default')
+        self.assertEqual(value, 'default')
+        value = bzrdir_config.get_option('key3')
+        self.assertEqual(value, 'value3-top')
+        value = bzrdir_config.get_option('key3', 'SECTION')
+        self.assertEqual(value, 'value3-section')
+
+
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
 
@@ -1156,10 +1196,15 @@ class TestAuthenticationConfigFile(tests.TestCase):
         self.assertEquals({}, conf._get_config())
         self._got_user_passwd(None, None, conf, 'http', 'foo.net')
 
-    def test_broken_config(self):
+    def test_missing_auth_section_header(self):
+        conf = config.AuthenticationConfig(_file=StringIO('foo = bar'))
+        self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+
+    def test_auth_section_header_not_closed(self):
         conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
         self.assertRaises(errors.ParseConfigError, conf._get_config)
 
+    def test_auth_value_not_boolean(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """[broken]
 scheme=ftp
@@ -1167,6 +1212,8 @@ user=joe
 verify_certificates=askme # Error: Not a boolean
 """))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+
+    def test_auth_value_not_int(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """[broken]
 scheme=ftp
@@ -1291,6 +1338,18 @@ password=jimpass
         self._got_user_passwd(None, None,
                               conf, 'http', 'bar.org', user='georges')
 
+    def test_credentials_for_user_without_password(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[without password]
+scheme=http
+host=bar.org
+user=jim
+"""))
+        # Get user but no password
+        self._got_user_passwd('jim', None,
+                              conf, 'http', 'bar.org')
+
     def test_verify_certificates(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """
@@ -1353,6 +1412,51 @@ class TestAuthenticationConfig(tests.TestCase):
         self._check_default_prompt(
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)
+
+    def test_ssh_password_emits_warning(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[ssh with password]
+scheme=ssh
+host=bar.org
+user=jim
+password=jimpass
+"""))
+        entered_password = 'typed-by-hand'
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
+                                            stdout=stdout)
+
+        # Since the password defined in the authentication config is ignored,
+        # the user is prompted
+        self.assertEquals(entered_password,
+                          conf.get_password('ssh', 'bar.org', user='jim'))
+        self.assertContainsRe(
+            self._get_log(keep_log_file=True),
+            'password ignored in section \[ssh with password\]')
+
+    def test_ssh_without_password_doesnt_emit_warning(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[ssh with password]
+scheme=ssh
+host=bar.org
+user=jim
+"""))
+        entered_password = 'typed-by-hand'
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
+                                            stdout=stdout)
+
+        # Since the password defined in the authentication config is ignored,
+        # the user is prompted
+        self.assertEquals(entered_password,
+                          conf.get_password('ssh', 'bar.org', user='jim'))
+        # No warning shoud be emitted since there is no password. We are only
+        # providing "user".
+        self.assertNotContainsRe(
+            self._get_log(keep_log_file=True),
+            'password ignored in section \[ssh with password\]')
 
 
 # FIXME: Once we have a way to declare authentication to all test servers, we

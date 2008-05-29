@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,17 +48,17 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
 
 
 class TestBranch(TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
-        ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
-        self.assertEqual({'rev-1':(),
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        ancestry_graph = graph.get_parent_map(tree.branch.repository.all_revision_ids())
+        self.assertEqual({'rev-1':('null:',),
                           'rev-2':('rev-1', ),
                           'rev-1.1.1':('rev-1', ),
                           'rev-3':('rev-2', 'rev-1.1.1', ),
@@ -323,10 +323,8 @@ class TestBranch(TestCaseWithBranch):
         # Set the branch nick explicitly.  This will ensure there's a branch
         # config file in the branch.
         branch.nick = "Aaron's branch"
-        branch.nick = "Aaron's branch"
         if not isinstance(branch, remote.RemoteBranch):
-            controlfilename = branch.control_files.controlfilename
-            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(branch._transport.has("branch.conf"))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -369,14 +367,6 @@ class TestBranch(TestCaseWithBranch):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
-
-    def test_check_branch_report_results(self):
-        """Checking a branch produces results which can be printed"""
-        branch = self.make_branch('.')
-        result = branch.check()
-        # reports results through logging
-        result.report_results(verbose=True)
-        result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
         branch = self.make_branch(".")

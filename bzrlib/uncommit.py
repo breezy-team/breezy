@@ -20,12 +20,16 @@
 
 import os
 
-from bzrlib import revision as _mod_revision
+from bzrlib import (
+    errors,
+    revision as _mod_revision,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import BoundBranchOutOfDate
 
 
-def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
+def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
+             local=False):
     """Remove the last revision from the supplied branch.
 
     :param dry_run: Don't actually change anything
@@ -45,10 +49,15 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         if tree is not None:
             pending_merges = tree.get_parent_ids()[1:]
 
-        master = branch.get_master_branch()
-        if master is not None:
-            master.lock_write()
-            unlockable.append(master)
+        if local:
+            master = None
+            if branch.get_bound_location() is None:
+                raise errors.LocalRequiresBoundBranch()
+        else:
+            master = branch.get_master_branch()
+            if master is not None:
+                master.lock_write()
+                unlockable.append(master)
         rh = branch.revision_history()
         if master is not None and rh[-1] != master.last_revision():
             raise BoundBranchOutOfDate(branch, master)

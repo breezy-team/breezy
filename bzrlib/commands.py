@@ -43,6 +43,7 @@ from bzrlib import (
     errors,
     option,
     osutils,
+    registry,
     trace,
     win32utils,
     )
@@ -94,7 +95,6 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
 
@@ -168,6 +168,17 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
+
+    # look for plugins that provide this command but aren't installed
+    for provider in command_providers_registry:
+        try:
+            plugin_metadata = provider.plugin_for_command(cmd_name)
+        except errors.NoPluginAvailable:
+            pass
+        else:
+            raise errors.CommandAvailableInPlugin(cmd_name, 
+                                                  plugin_metadata, provider)
+
     raise KeyError
 
 
@@ -271,9 +282,7 @@ class Command(object):
             elif aname[-1] == '*':
                 aname = '[' + aname[:-1] + '...]'
             s += aname + ' '
-                
-        assert s[-1] == ' '
-        s = s[:-1]
+        s = s[:-1]      # remove last space
         return s
 
     def get_help_text(self, additional_see_also=None, plain=True,
@@ -389,7 +398,7 @@ class Command(object):
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, label, section)
                 label,section = line[1:-1],''
-            elif label != None and len(line) > 1 and not line[0].isspace():
+            elif (label is not None) and len(line) > 1 and not line[0].isspace():
                 save_section(sections, label, section)
                 label,section = None,line
             else:
@@ -433,8 +442,6 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        assert self.encoding_type in ['strict', 'exact', 'replace']
-
         # Originally I was using self.stdout, but that looks
         # *way* too much like sys.stdout
         if self.encoding_type == 'exact':
@@ -817,6 +824,11 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
+     
+    # Is this a final release version? If so, we should suppress warnings
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib import symbol_versioning
+        symbol_versioning.suppress_deprecation_warnings()
     try:
         argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
@@ -881,6 +893,28 @@ class HelpCommandIndex(object):
             return []
         else:
             return [cmd]
+
+
+class Provider(object):
+    '''Generic class to be overriden by plugins'''
+
+    def plugin_for_command(self, cmd_name):
+        '''Takes a command and returns the information for that plugin
+        
+        :return: A dictionary with all the available information 
+        for the requested plugin
+        '''
+        raise NotImplementedError
+
+
+class ProvidersRegistry(registry.Registry):
+    '''This registry exists to allow other providers to exist'''
+
+    def __iter__(self):
+        for key, provider in self.iteritems():
+            yield provider
+
+command_providers_registry = ProvidersRegistry()
 
 
 if __name__ == '__main__':

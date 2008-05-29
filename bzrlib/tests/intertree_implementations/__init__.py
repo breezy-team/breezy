@@ -27,8 +27,6 @@ from bzrlib.transport import get_transport
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
-                          TestLoader,
-                          TestSuite,
                           )
 from bzrlib.tests.tree_implementations import (
     return_parameter,
@@ -89,17 +87,16 @@ class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
                 "mutable_trees_to_test_trees":mutable_trees_to_test_trees,
                 # workingtree_to_test_tree is set to disable changing individual,
                 # trees: instead the mutable_trees_to_test_trees helper is used.,
-                "workingtree_to_test_tree":return_parameter,
+                "_workingtree_to_test_tree": return_parameter,
                 })
             result.append(scenario)
         return result
 
 
-def test_suite():
-    result = TestSuite()
-    loader = TestLoader()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
     # load the tests of the infrastructure for these tests
-    result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.intertree_implementations']))
+    result.addTests(basic_tests)
 
     default_tree_format = WorkingTreeFormat3()
     test_intertree_implementations = [
@@ -121,5 +118,6 @@ def test_suite():
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         test_intertree_permutations)
+    # add the tests for the sub modules
     adapt_modules(test_intertree_implementations, adapter, loader, result)
     return result

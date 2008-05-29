@@ -62,10 +62,6 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
-    def get_weave(self, file_id):
-        return self._get_weave(file_id)
-
     def _get_weave(self, file_id):
         return self._weave_store.get_weave(file_id,
                 self._repository.get_transaction())
@@ -93,9 +89,10 @@ class RevisionTree(Tree):
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         w = self._get_weave(file_id)
-        return w.annotate_iter(self.inventory[file_id].revision)
+        return w.annotate(self.inventory[file_id].revision)
 
     def get_file_size(self, file_id):
+        """See Tree.get_file_size"""
         return self._inventory[file_id].text_size
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
@@ -162,7 +159,6 @@ class RevisionTree(Tree):
         return entry.kind, entry.executable, None
 
     def _file_size(self, entry, stat_value):
-        assert entry.text_size is not None
         return entry.text_size
 
     def _get_ancestors(self, default_revision):
