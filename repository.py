@@ -445,15 +445,25 @@ class SvnRepository(Repository):
         for revision_id in revids:
             if revision_id == NULL_REVISION:
                 parent_map[revision_id] = ()
-            else:
-                try:
-                    parents = self.revision_parents(revision_id)
-                except NoSuchRevision:
-                    pass
-                else:
-                    if len(parents) == 0:
-                        parents = (NULL_REVISION,)
-                    parent_map[revision_id] = parents
+                continue
+
+            try:
+                (branch, revnum, mapping) = self.lookup_revision_id(ensure_null(revision_id))
+            except NoSuchRevision:
+                continue
+
+            mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
+            parent_ids = (mainline_parent,)
+            
+            if mainline_parent != NULL_REVISION:
+
+                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
+                svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+                revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
+
+                parent_ids += revmeta.get_rhs_parents(mapping)
+
+            parent_map[revision_id] = parent_ids
         return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
@@ -474,23 +484,6 @@ class SvnRepository(Repository):
             revid = svk_feature_to_revision_id(feature, mapping)
             if revid is not None:
                 yield revid
-
-    def revision_parents(self, revision_id):
-        """See Repository.revision_parents()."""
-        (branch, revnum, mapping) = self.lookup_revision_id(ensure_null(revision_id))
-        mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
-        if mainline_parent == NULL_REVISION:
-            return ()
-
-        parent_ids = (mainline_parent,)
-
-        svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-        svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
-        revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
-
-        parent_ids += revmeta.get_rhs_parents(mapping)
-
-        return parent_ids
 
     def get_revision(self, revision_id):
         """See Repository.get_revision."""

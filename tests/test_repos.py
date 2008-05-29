@@ -528,7 +528,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertFalse(repository.has_revision(
             repository.get_mapping().generate_revision_id(repository.uuid, 5, "")))
 
-    def test_revision_parents(self):
+    def test_get_parent_map(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -537,16 +537,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual((),
-                repository.revision_parents(
-                    repository.generate_revision_id(0, "", mapping)))
-        self.assertEqual((repository.generate_revision_id(0, "", mapping),),
-                repository.revision_parents(
-                    repository.generate_revision_id(1, "", mapping)))
-        self.assertEqual((
-            repository.generate_revision_id(1, "", mapping),),
-            repository.revision_parents(
-                repository.generate_revision_id(2, "", mapping)))
+        revid = repository.generate_revision_id(0, "", mapping)
+        self.assertEqual({revid: (NULL_REVISION,)}, repository.get_parent_map([revid]))
+        revid = repository.generate_revision_id(1, "", mapping)
+        self.assertEqual({revid: (repository.generate_revision_id(0, "", mapping),)}, repository.get_parent_map([revid]))
+        revid = repository.generate_revision_id(2, "", mapping)
+        self.assertEqual({revid: (repository.generate_revision_id(1, "", mapping),)},
+            repository.get_parent_map([revid]))
+        self.assertEqual({}, repository.get_parent_map(["notexisting"]))
 
     def test_revision_fileidmap(self):
         repos_url = self.make_client('d', 'dc')
