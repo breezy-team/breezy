@@ -218,15 +218,15 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 if c in renames:
                     continue
                 if replace_map.has_key(c):
-                    parents = list(replace_map[c][1])
+                    parents = replace_map[c][1]
                 else:
-                    parents = list(parent_map[c])
-                assert isinstance(parents, list), \
-                        "Expected list of parents, got: %r" % parents
+                    parents = parent_map[c]
+                assert isinstance(parents, tuple), \
+                        "Expected tuple of parents, got: %r" % parents
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
-                    parents[parents.index(r)] = replace_map[r][0]
-                replace_map[c] = (generate_revid(c), parents)
+                    parents[list(parents).index(r)] = replace_map[r][0]
+                replace_map[c] = (generate_revid(c), tuple(parents))
                 assert replace_map[c][0] != c
             processed.add(r)
             # Add them to todo[]
@@ -311,7 +311,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
     :param new_parents: Revision ids of the new parent revisions.
     :param revid_renames: Revision id renames for texts.
     """
-    assert isinstance(new_parents, list)
+    assert isinstance(new_parents, tuple)
     mutter('creating copy %r of %r with new parents %r' % 
                                (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
