@@ -77,6 +77,10 @@ This release adds a translation of some of the user documentation into Spanish.
     * Handle old merge directives correctly in Merger.from_mergeable.  Stricter
       get_parent_map requirements exposed a latent bug here.  (Aaron Bentley)
 
+    * Inserting a bundle which changes the contents of a file with no trailing
+      end of line, causing a knit snapshot in a 'knits' repository will no longer
+      cause KnitCorrupt. (Robert Collins)
+
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
       (Vincent Ladeuil, #203186)
@@ -114,6 +118,9 @@ This release adds a translation of some of the user documentation into Spanish.
       ``split_suite_by_condition``. (Robert Collins)
 
   INTERNALS:
+
+    * Knit record serialisation is now stricter on what it will accept, to
+      guard against potential internal bugs, or broken input. (Robert Collins)
 
   API CHANGES:
 

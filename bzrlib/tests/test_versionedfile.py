@@ -530,6 +530,28 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.ReservedId, vf.get_lines, 'b:')
         self.assertRaises(errors.ReservedId, vf.get_text, 'b:')
 
+    def test_add_lines_with_matching_blocks_noeol_last_line(self):
+        """Add a text with an unchanged last line with no eol should work."""
+        from bzrlib import multiparent
+        # Hand verified sha1 of the text we're adding.
+        sha1 = '6a1d115ec7b60afb664dc14890b5af5ce3c827a4'
+        # Create a mpdiff which adds a new line before the trailing line, and
+        # reuse the last line unaltered (which can cause annotation reuse).
+        # Test adding this in two situations:
+        # On top of a new insertion
+        vf = self.get_file('fulltext')
+        vf.add_lines('noeol', [], ['line'])
+        vf.add_lines('noeol2', ['noeol'], ['newline\n', 'line'],
+            left_matching_blocks=[(0, 1, 1)])
+        self.assertEqualDiff('newline\nline', vf.get_text('noeol2'))
+        # On top of a delta
+        vf = self.get_file('delta')
+        vf.add_lines('base', [], ['line'])
+        vf.add_lines('noeol', ['base'], ['prelude\n', 'line'])
+        vf.add_lines('noeol2', ['noeol'], ['newline\n', 'line'],
+            left_matching_blocks=[(1, 1, 1)])
+        self.assertEqualDiff('newline\nline', vf.get_text('noeol2'))
+
     def test_make_mpdiffs(self):
         from bzrlib import multiparent
         vf = self.get_file('foo')

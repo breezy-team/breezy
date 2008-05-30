@@ -1193,10 +1193,16 @@ class KnitVersionedFile(VersionedFile):
                 for i, j, n in seq.get_matching_blocks():
                     if n == 0:
                         continue
-                    # this appears to copy (origin, text) pairs across to the
-                    # new content for any line that matches the last-checked
+                    # this copies (origin, text) pairs across to the new
+                    # content for any line that matches the last-checked
                     # parent.
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
+            if content._lines and content._lines[-1][1][-1] != '\n':
+                # The copied annotation was from a line without a trailing EOL,
+                # reinstate one for the content object, to ensure correct
+                # serialization.
+                line = content._lines[-1][1] + '\n'
+                content._lines[-1] = (content._lines[-1][0], line)
         if delta:
             if delta_seq is None:
                 reference_content = self._get_content(parents[0], parent_texts)
@@ -1339,6 +1345,10 @@ class KnitVersionedFile(VersionedFile):
             delta = self._check_should_delta(present_parents)
 
         content = self.factory.make(lines, version_id)
+        if 'no-eol' in options:
+            # Hint to the content object that its text() call should strip the
+            # EOL.
+            content._should_strip_eol = True
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if needed.
             delta_hunks = self._merge_annotations(content, present_parents,
@@ -2697,6 +2707,8 @@ class _KnitData(object):
                                      digest)],
             dense_lines or lines,
             ["end %s\n" % version_id]))
+        if lines and lines[-1][-1] != '\n':
+            raise ValueError('corrupt lines value %r' % lines)
         compressed_bytes = bytes_to_gzip(bytes)
         return len(compressed_bytes), compressed_bytes
 
