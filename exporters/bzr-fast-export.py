@@ -156,8 +156,21 @@ class BzrFastExporter:
 
         ##
 
-        tree_old = self.branch.repository.revision_tree(parent)
-        tree_new = self.branch.repository.revision_tree(revobj.revision_id)
+        try:
+            tree_old = self.branch.repository.revision_tree(parent)
+        except bazErrors.UnexpectedInventoryFormat:
+            self.debug("Parent is malformed.. diffing against previous parent")
+            # We can't find the old parent. Let's diff against his parent
+            pp = self.branch.repository.get_revision(parent)
+            tree_old = self.branch.repository.revision_tree(pp.parent_ids[0])
+        
+        tree_new = None
+        try:
+            tree_new = self.branch.repository.revision_tree(revobj.revision_id)
+        except bazErrors.UnexpectedInventoryFormat:
+            # We can't really do anything anymore
+            self.debug("This commit is malformed. Skipping diff")
+            return
 
         changes = tree_new.changes_from(tree_old)
 
