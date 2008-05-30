@@ -66,6 +66,31 @@ class TestStatus(TestCaseWithTransport):
                              '  Joe Foo 2007-12-04 commit 3c\n',
                              output.getvalue())
 
+    def test_repeated_pending_merge(self):
+        # It is currently possible to merge the same thing 2x with 'merge
+        # --force', so test that status still works in that case.
+        config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
+        tree = self.make_branch_and_tree('a')
+        tree.commit('commit 1', timestamp=1196796819, timezone=0)
+        tree2 = tree.bzrdir.sprout('b').open_workingtree()
+        tree2.commit('commit 2b', timestamp=1196796819, timezone=0)
+        rev3 = tree2.commit('commit 3b', timestamp=1196796819, timezone=0)
+        tree2.commit('commit 4b', timestamp=1196796819, timezone=0)
+        tree.merge_from_branch(tree2.branch)
+        tree.merge_from_branch(tree2.branch)
+        tree.merge_from_branch(tree2.branch, to_revision=rev3)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        output = StringIO()
+        show_pending_merges(tree, output)
+        self.assertEqualDiff('pending merges:\n'
+                             '  Joe Foo 2007-12-04 commit 4b\n'
+                             '    Joe Foo 2007-12-04 commit 3b\n'
+                             '    Joe Foo 2007-12-04 commit 2b\n'
+                             '  Joe Foo 2007-12-04 commit 4b\n'
+                             '  Joe Foo 2007-12-04 commit 3b\n',
+                             output.getvalue())
+
     def test_with_pending_ghost(self):
         """Test when a pending merge is itself a ghost"""
         tree = self.make_branch_and_tree('a')
