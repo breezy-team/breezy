@@ -55,9 +55,17 @@ class BzrFastExporter:
         self.options = options
         self.revid_to_mark = {}
         self.branch_names = {}
-                
+        
+        if options.marks:                                              
+            options.import_marks = options.export_marks = options.marks
+        
         if options.import_marks:
             self.import_marks()
+        
+        if options.checkpoint:
+            self.checkpoint = int(options.checkpoint)
+        else:
+            self.checkpoint = -1
         
         self.branch = bzrlib.branch.Branch.open_containing(options.repo)[0]
         self.branch.repository.lock_read()
@@ -77,8 +85,19 @@ class BzrFastExporter:
         ##
         self.export_marks()
 
+    def debug(self, message):
+        sys.stderr.write("*** BzrFastExport: %s\n" % message)
+            
     def emit_commit(self, revid, git_branch):
         revobj = self.branch.repository.get_revision(revid)
+        
+        ncommits = len(self.revid_to_mark)
+        if self.checkpoint > 0 and ncommits % self.checkpoint == 0:
+            self.debug(
+                "Exported %i commits; forcing checkpoint" % ncommits)
+            self.export_marks()
+            sys.stdout.write("checkpoint\n")
+
         mark = self.revid_to_mark[revid] = len(self.revid_to_mark) + 1
         stream = 'commit refs/heads/%s\nmark :%d\n' % (git_branch, mark)
 
@@ -237,7 +256,11 @@ class BzrFastExporter:
         f.close()
 
     def import_marks(self):
-        f = file(options.import_marks)
+        try:
+            f = file(options.import_marks)
+        except IOError:
+            self.debug("Could not open import-marks file, not importing marks")
+            return
 
         firstline = f.readline()
         match = re.match(r'^format=(\d+)$', firstline)
@@ -276,11 +299,17 @@ def parse_options():
     p.add_option('--import-marks', metavar='FILE',
             help='import a mark file previously created with --export-marks')
 
+    p.add_option("--marks", metavar='FILE',
+            help='import marks, and export them to the same file.')
+
+    p.add_option("--checkpoint", metavar="NUM", default=1000,
+            help='Checkpoint every N revisions')
+    
     options, args = p.parse_args()
 
     if len(args) != 1:
         p.error('need a branch to export')
-    options.repo = args
+    options.repo = args[0]
 
     return options, args
 
