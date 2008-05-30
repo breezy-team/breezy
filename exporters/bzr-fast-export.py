@@ -152,8 +152,19 @@ class BzrFastExporter:
         # make "modified" have 3-tuples, as added does
         my_modified = [ x[0:3] for x in changes.modified ]
 
+        # We have to keep track of previous renames in this commit
+        renamed = {}
         for (oldpath, newpath, id_, kind,
                 text_modified, meta_modified) in changes.renamed:
+            for old, new in renamed.iteritems():
+                # If a previous rename is found in this rename, we should
+                # adjust the path
+                if re.match(old, oldpath):
+                    oldpath = re.sub(old + "/", new + "/", oldpath) 
+                    self.debug("Fixing recursive rename for %s" % oldpath)
+
+            renamed[oldpath] = newpath
+
             sys.stdout.write('R %s %s\n' % (self.my_quote(oldpath, True),
                                                     self.my_quote(newpath)))
             if text_modified or meta_modified:
