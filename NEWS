@@ -14,6 +14,10 @@ This release adds a translation of some of the user documentation into Spanish.
 
   CHANGES:
 
+    * Deprecation warnings will not be suppressed when running ``bzr selftest``
+      so that developers can see if their code is using deprecated functions.
+      (John Arbash Meinel)
+
   FEATURES:
 
     * Adding ``-Derror`` will now display a traceback when a plugin fails to
@@ -29,6 +33,11 @@ This release adds a translation of some of the user documentation into Spanish.
       (Andrew Bennetts, #83935)
 
   IMPROVEMENTS:
+
+    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
+      the revno of the new revision (``Graph.find_distance_to_null``). This
+      should make something like ``bzr branch -r -100`` in a shared, no-trees
+      repository much snappier. (John Arbash Meinel)
 
     * ``bzr ls`` now accepts ``-V`` as an alias for ``--versioned``. 
       (Jerad Cramp, #165086)
@@ -46,6 +55,12 @@ This release adds a translation of some of the user documentation into Spanish.
 
   BUGFIXES:
 
+    * ``bzr merge --lca`` should handle when two revisions have no common
+      ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
+
+    * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
+      fails.  (Andrew Bennetts, #234229)
+      
     * Correctly track the base URL of a smart medium when using bzr+http://
       URLs, which was causing spurious "No repository present" errors with
       branches in shared repositories accessed over bzr+http.
@@ -55,11 +70,19 @@ This release adds a translation of some of the user documentation into Spanish.
       implementations have the attribute.  Fixes 'PyCurlTransport' object has no
       attribute '_remote_is_at_least_1_2' attribute errors.
       (Andrew Bennetts, #220806)
+
+    * Failure to delete an obsolete pack file should just give a warning
+      message, not a fatal error.  It may for example fail if the file is still
+      in use by another process.
+      (Martin Pool)
       
     * Fix MemoryError during large fetches over HTTP by limiting the amount of
       data we try to read per ``recv`` call.  The problem was observed with
       Windows and a proxy, but might affect other environments as well.
       (Eric Holmberg, #215426)
+
+    * Handle old merge directives correctly in Merger.from_mergeable.  Stricter
+      get_parent_map requirements exposed a latent bug here.  (Aaron Bentley)
 
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
@@ -86,6 +109,10 @@ This release adds a translation of some of the user documentation into Spanish.
       on the plugin and integration chapters of the User Guide.
       (Ian Clatworthy)
 
+    * More Bazaar developer documentation about packaging and release process,
+      and about use of Python reprs.
+      (Martin Pool, Martin Albisetti)
+
     * Updated Tortise strategy document. (Mark Hammond)
 
   TESTING:
@@ -99,6 +126,11 @@ This release adds a translation of some of the user documentation into Spanish.
 
     * ``Branch.abspath`` is deprecated; use the Tree or Transport 
       instead.  (Martin Pool)
+
+    * ``Branch.update_revisions`` now takes an optional ``Graph``
+      object. This can be used by ``update_revisions`` when it is
+      checking ancestry, and allows callers to prefer request to go to a
+      local branch.  (John Arbash Meinel)
 
     * Branch, Repository, Tree and BzrDir should expose a Transport as an
       attribute if they have one, rather than having it indirectly accessible

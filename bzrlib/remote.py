@@ -48,6 +48,7 @@ from bzrlib.symbol_versioning import (
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
+
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
 class RemoteBzrDir(BzrDir):
@@ -1564,10 +1565,12 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None, overwrite=False):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
         self._ensure_real()
         return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision, overwrite=overwrite)
+            other, stop_revision=stop_revision, overwrite=overwrite,
+            graph=graph)
 
 
 def _extract_tar(tar, to_dir):
