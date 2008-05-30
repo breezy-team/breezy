@@ -76,6 +76,11 @@ class _SmartClient(object):
                         % (protocol_version,))
                     self._medium.disconnect()
                     continue
+                except errors.ErrorFromSmartServer:
+                    # If we received an error reply from the server, then it
+                    # must be ok with this protocol version.
+                    self._medium._protocol_version = protocol_version
+                    raise
                 else:
                     self._medium._protocol_version = protocol_version
                     return response_tuple, response_handler
