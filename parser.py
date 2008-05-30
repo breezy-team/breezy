@@ -337,7 +337,11 @@ class ImportParser(LineBasedParser):
         mark = self._get_mark_if_any()
         author = self._get_user_info('commit', 'author', False)
         committer = self._get_user_info('commit', 'committer')
-        message = self._get_data('commit', 'message').decode('utf_8')
+        message = self._get_data('commit', 'message')
+        try:
+            message = message.decode('utf_8')
+        except UnicodeDecodeError:
+            pass
         from_ = self._get_from()
         merges = []
         while True:
