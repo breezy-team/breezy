@@ -2571,7 +2571,7 @@ class cmd_alias(Command):
 
         Set an alias for 'll'::
 
-            bzr alias ll='log --line -r-10..-1'
+            bzr alias ll="log --line -r-10..-1"
 
         To remove an alias for 'll'::
 
@@ -2609,7 +2609,7 @@ class cmd_alias(Command):
         """Print out the defined aliases in a similar format to bash."""
         aliases = config.GlobalConfig().get_aliases()
         for key, value in sorted(aliases.iteritems()):
-            self.outf.write("bzr alias %s='%s'\n" % (key, value))
+            self.outf.write('bzr alias %s="%s"\n' % (key, value))
 
     @display_command
     def print_alias(self, alias_name):
@@ -2619,7 +2619,7 @@ class cmd_alias(Command):
             self.outf.write("bzr alias: %s: not found\n" % alias_name)
         else:
             self.outf.write(
-                "bzr alias %s='%s'" % (alias_name, ' '.join(alias)))
+                'bzr alias %s="%s"' % (alias_name, ' '.join(alias)))
 
     def set_alias(self, alias_name, alias_commands):
         """Save the alias in the global config."""
