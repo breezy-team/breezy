@@ -374,7 +374,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         raise BzrCommandError("Start revision must be older than "
                               "the end revision.")
 
-    if (end_revno < start_revno):
+    if end_revno < start_revno:
         return None, None, None, None
     cur_revno = branch_revno
     rev_nos = {}
