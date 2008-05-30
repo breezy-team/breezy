@@ -34,6 +34,11 @@ This release adds a translation of some of the user documentation into Spanish.
 
   IMPROVEMENTS:
 
+    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
+      the revno of the new revision (``Graph.find_distance_to_null``). This
+      should make something like ``bzr branch -r -100`` in a shared, no-trees
+      repository much snappier. (John Arbash Meinel)
+
     * ``bzr ls`` now accepts ``-V`` as an alias for ``--versioned``. 
       (Jerad Cramp, #165086)
 
@@ -41,10 +46,12 @@ This release adds a translation of some of the user documentation into Spanish.
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
 
-    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
-      the revno of the new revision (``Graph.find_distance_to_null``). This
-      should make something like ``bzr branch -r -100`` in a shared, no-trees
-      repository much snappier. (John Arbash Meinel)
+    * ``bzr uncommit`` now uses partial history access, rather than always
+      extracting the full revision history for a branch. This makes it
+      resolve the appropriate revisions much faster (in testing it drops
+      uncommit from 1.5s => 0.4s). It also means ``bzr log --short`` is one
+      step closer to not using full revision history.
+      (John Arbash Meinel, #172649)
 
   BUGFIXES:
 
