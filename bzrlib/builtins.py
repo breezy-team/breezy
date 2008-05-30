@@ -2619,7 +2619,7 @@ class cmd_alias(Command):
             self.outf.write("bzr alias: %s: not found\n" % alias_name)
         else:
             self.outf.write(
-                'bzr alias %s="%s"' % (alias_name, ' '.join(alias)))
+                'bzr alias %s="%s"\n' % (alias_name, ' '.join(alias)))
 
     def set_alias(self, alias_name, alias_commands):
         """Save the alias in the global config."""
