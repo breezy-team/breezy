@@ -21,6 +21,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
+
   BUGFIXES:
 
     * Avoid muttering every time a child update does not cause a progress bar

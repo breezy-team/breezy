@@ -2621,10 +2621,10 @@ class cmd_alias(Command):
             self.outf.write(
                 'bzr alias %s="%s"\n' % (alias_name, ' '.join(alias)))
 
-    def set_alias(self, alias_name, alias_commands):
+    def set_alias(self, alias_name, alias_command):
         """Save the alias in the global config."""
         c = config.GlobalConfig()
-        c.set_alias(alias_name, alias_commands)
+        c.set_alias(alias_name, alias_command)
 
 
 class cmd_selftest(Command):

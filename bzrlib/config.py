@@ -459,7 +459,7 @@ class GlobalConfig(IniBasedConfig):
         if not aliases or alias_name not in aliases:
             raise errors.NoSuchAlias(alias_name)
         del aliases[alias_name]
-        self._writeConfigFile()
+        self._write_config_file()
 
     def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
@@ -467,9 +467,9 @@ class GlobalConfig(IniBasedConfig):
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
         self._get_parser().setdefault(section, {})[option] = value
-        self._writeConfigFile()
+        self._write_config_file()
 
-    def _writeConfigFile(self):
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
