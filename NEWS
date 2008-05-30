@@ -39,6 +39,10 @@ This release adds a translation of some of the user documentation into Spanish.
       should make something like ``bzr branch -r -100`` in a shared, no-trees
       repository much snappier. (John Arbash Meinel)
 
+    * ``bzr log --short -r X..Y`` no longer needs to access the full revision
+      history. This makes it noticeably faster when logging the last few
+      revisions. (John Arbash Meinel)
+
     * ``bzr ls`` now accepts ``-V`` as an alias for ``--versioned``. 
       (Jerad Cramp, #165086)
 
@@ -152,6 +156,11 @@ This release adds a translation of some of the user documentation into Spanish.
     * Many methods on ``VersionedFile``, ``Repository`` and in
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
       (Robert Collins)
+
+    * ``RevisionSpec.wants_revision_history`` can be set to False for a given
+      ``RevisionSpec``. This will disable the existing behavior of passing in
+      the full revision history to ``self._match_on``. Useful for specs that
+      don't actually need access to the full history. (John Arbash Meinel)
 
     * The constructors of ``SmartClientMedium`` and its subclasses now require a
       ``base`` parameter.  ``SmartClientMedium`` implementations now also need
