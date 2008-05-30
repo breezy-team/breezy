@@ -370,7 +370,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual({'rev-id-1':(['foo\n', 'bar\n'], sha1sum)}, contents)
 
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_not_enough_lines(self):
         sha1sum = sha.new('foo\n').hexdigest()
@@ -387,7 +387,7 @@ class LowLevelKnitDataTests(TestCase):
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
         sha1sum = sha.new('foo\nbar\n').hexdigest()
@@ -405,7 +405,7 @@ class LowLevelKnitDataTests(TestCase):
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
         sha1sum = sha.new('foo\nbar\n').hexdigest()
@@ -1056,7 +1056,7 @@ class KnitTests(TestCaseWithTransport):
         """
         index_memo = knit._index.get_position(version_id)
         record = (version_id, index_memo)
-        [(_, expected_content)] = list(knit._data.read_records_iter_raw([record]))
+        [(_, expected_content, _)] = list(knit._data.read_records_iter_raw([record]))
         self.assertEqual(expected_content, candidate_content)
 
 
@@ -1293,39 +1293,6 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[1], ('text-1', 'b\n'))
         self.assertEquals(origins[2], ('text-1', 'c\n'))
 
-    def _test_join_with_factories(self, k1_factory, k2_factory):
-        k1 = make_file_knit('test1', get_transport('.'), factory=k1_factory, create=True)
-        k1.add_lines('text-a', [], ['a1\n', 'a2\n', 'a3\n'])
-        k1.add_lines('text-b', ['text-a'], ['a1\n', 'b2\n', 'a3\n'])
-        k1.add_lines('text-c', [], ['c1\n', 'c2\n', 'c3\n'])
-        k1.add_lines('text-d', ['text-c'], ['c1\n', 'd2\n', 'd3\n'])
-        k1.add_lines('text-m', ['text-b', 'text-d'], ['a1\n', 'b2\n', 'd3\n'])
-        k2 = make_file_knit('test2', get_transport('.'), factory=k2_factory, create=True)
-        count = k2.join(k1, version_ids=['text-m'])
-        self.assertEquals(count, 5)
-        self.assertTrue(k2.has_version('text-a'))
-        self.assertTrue(k2.has_version('text-c'))
-        origins = k2.annotate('text-m')
-        self.assertEquals(origins[0], ('text-a', 'a1\n'))
-        self.assertEquals(origins[1], ('text-b', 'b2\n'))
-        self.assertEquals(origins[2], ('text-d', 'd3\n'))
-
-    def test_knit_join_plain_to_plain(self):
-        """Test joining a plain knit with a plain knit."""
-        self._test_join_with_factories(KnitPlainFactory(), KnitPlainFactory())
-
-    def test_knit_join_anno_to_anno(self):
-        """Test joining an annotated knit with an annotated knit."""
-        self._test_join_with_factories(None, None)
-
-    def test_knit_join_anno_to_plain(self):
-        """Test joining an annotated knit with a plain knit."""
-        self._test_join_with_factories(None, KnitPlainFactory())
-
-    def test_knit_join_plain_to_anno(self):
-        """Test joining a plain knit with an annotated knit."""
-        self._test_join_with_factories(KnitPlainFactory(), None)
-
     def test_reannotate(self):
         k1 = make_file_knit('knit1', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
@@ -1336,7 +1303,8 @@ class BasicKnitTests(KnitTests):
 
         k2 = make_file_knit('test2', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
-        k2.join(k1, version_ids=['text-b'])
+        k2.insert_record_stream(k1.get_record_stream(k1.versions(),
+            'unordered', False))
 
         # 2
         k1.add_lines('text-X', ['text-b'], ['a\n', 'b\n'])
@@ -1346,7 +1314,8 @@ class BasicKnitTests(KnitTests):
         k2.add_lines('text-Y', ['text-b'], ['b\n', 'c\n'])
 
         # test-c will have index 3
-        k1.join(k2, version_ids=['text-c'])
+        k1.insert_record_stream(k2.get_record_stream(['text-c'],
+            'unordered', False))
 
         lines = k1.get_lines('text-c')
         self.assertEquals(lines, ['z\n', 'c\n'])
@@ -1504,6 +1473,10 @@ class BasicKnitTests(KnitTests):
         plan = list(my_knit.plan_merge('text1a', 'text1b'))
         for plan_line, expected_line in zip(plan, AB_MERGE):
             self.assertEqual(plan_line, expected_line)
+
+
+class GetDataStreamTests(KnitTests):
+    """Tests for get_data_stream."""
 
     def test_get_stream_empty(self):
         """Get a data stream for an empty knit file."""
@@ -1696,6 +1669,10 @@ class BasicKnitTests(KnitTests):
             bytes = reader_callable(length)
             self.assertRecordContentEqual(k1, version_id, bytes)
 
+
+class InsertDataStreamTests(KnitTests):
+    """Tests for insert_data_stream."""
+
     def assertKnitFilesEqual(self, knit1, knit2):
         """Assert that the contents of the index and data files of two knits are
         equal.
@@ -1720,7 +1697,7 @@ class BasicKnitTests(KnitTests):
             self.assertEqual(left.annotate(version),
                 right.annotate(version))
 
-    def test_insert_data_stream_empty(self):
+    def test_empty_stream(self):
         """Inserting a data stream with no records should not put any data into
         the knit.
         """
@@ -1733,7 +1710,7 @@ class BasicKnitTests(KnitTests):
                          k1.transport.get_bytes(k1._index._filename),
                          "The .kndx should have nothing apart from the header.")
 
-    def test_insert_data_stream_one_record(self):
+    def test_one_record(self):
         """Inserting a data stream with one record from a knit with one record
         results in byte-identical files.
         """
@@ -1744,7 +1721,7 @@ class BasicKnitTests(KnitTests):
         target.insert_data_stream(data_stream)
         self.assertKnitFilesEqual(source, target)
 
-    def test_insert_data_stream_annotated_unannotated(self):
+    def test_annotated_stream_into_unannotated_knit(self):
         """Inserting an annotated datastream to an unannotated knit works."""
         # case one - full texts.
         source = self.make_test_knit(name='source', annotate=True)
@@ -1757,7 +1734,7 @@ class BasicKnitTests(KnitTests):
         target.insert_data_stream(source.get_data_stream(['text-b']))
         self.assertKnitValuesEqual(source, target)
 
-    def test_insert_data_stream_unannotated_annotated(self):
+    def test_unannotated_stream_into_annotated_knit(self):
         """Inserting an unannotated datastream to an annotated knit works."""
         # case one - full texts.
         source = self.make_test_knit(name='source', annotate=False)
@@ -1770,7 +1747,7 @@ class BasicKnitTests(KnitTests):
         target.insert_data_stream(source.get_data_stream(['text-b']))
         self.assertKnitValuesEqual(source, target)
 
-    def test_insert_data_stream_records_already_present(self):
+    def test_records_already_present(self):
         """Insert a data stream where some records are alreday present in the
         target, and some not.  Only the new records are inserted.
         """
@@ -1788,7 +1765,7 @@ class BasicKnitTests(KnitTests):
         # record was not added a second time.
         self.assertKnitFilesEqual(source, target)
 
-    def test_insert_data_stream_multiple_records(self):
+    def test_multiple_records(self):
         """Inserting a data stream of all records from a knit with multiple
         records results in byte-identical files.
         """
@@ -1803,7 +1780,7 @@ class BasicKnitTests(KnitTests):
         
         self.assertKnitFilesEqual(source, target)
 
-    def test_insert_data_stream_ghost_parent(self):
+    def test_ghost_parent(self):
         """Insert a data stream with a record that has a ghost parent."""
         # Make a knit with a record, text-a, that has a ghost parent.
         source = self.make_test_knit(name='source')
@@ -1824,7 +1801,7 @@ class BasicKnitTests(KnitTests):
             target.get_parent_map(['text-a', 'text-ghost']))
         self.assertEqual(split_lines(TEXT_1), target.get_lines('text-a'))
 
-    def test_insert_data_stream_inconsistent_version_lines(self):
+    def test_inconsistent_version_lines(self):
         """Inserting a data stream which has different content for a version_id
         than already exists in the knit will raise KnitCorrupt.
         """
@@ -1838,7 +1815,7 @@ class BasicKnitTests(KnitTests):
         self.assertRaises(
             errors.KnitCorrupt, target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_inconsistent_version_parents(self):
+    def test_inconsistent_version_parents(self):
         """Inserting a data stream which has different parents for a version_id
         than already exists in the knit will raise KnitCorrupt.
         """
@@ -1853,7 +1830,7 @@ class BasicKnitTests(KnitTests):
         self.assertRaises(
             errors.KnitCorrupt, target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_unknown_format(self):
+    def test_unknown_stream_format(self):
         """A data stream in a different format to the target knit cannot be
         inserted.
 
@@ -1867,7 +1844,7 @@ class BasicKnitTests(KnitTests):
             errors.KnitDataStreamUnknown,
             target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_bug_208418(self):
+    def test_bug_208418(self):
         """You can insert a stream with an incompatible format, even when:
           * the stream has a line-delta record,
           * whose parent is in the target, also stored as a line-delta
@@ -1897,10 +1874,26 @@ class BasicKnitTests(KnitTests):
         target.insert_data_stream(data_stream)
         # No errors should have been raised.
 
+    def test_line_delta_record_into_non_delta_knit(self):
+        # Make a data stream with a line-delta record
+        source = self.make_test_knit(name='source', delta=True)
+        base_lines = split_lines(TEXT_1)
+        source.add_lines('version-1', [], base_lines)
+        source.add_lines('version-2', ['version-1'], base_lines + ['a\n'])
+        # The second record should be a delta.
+        self.assertEqual('line-delta', source._index.get_method('version-2'))
+        data_stream = source.get_data_stream(['version-1', 'version-2'])
 
-    #  * test that a stream of "already present version, then new version"
-    #    inserts correctly.
+        # Insert the stream into a non-delta knit.
+        target = self.make_test_knit(name='target', delta=False)
+        target.insert_data_stream(data_stream)
+        
+        # Both versions are fulltexts in the target
+        self.assertEqual('fulltext', target._index.get_method('version-1'))
+        self.assertEqual('fulltext', target._index.get_method('version-2'))
 
+
+class DataStreamTests(KnitTests):
 
     def assertMadeStreamKnit(self, source_knit, versions, target_knit):
         """Assert that a knit made from a stream is as expected."""
@@ -2793,7 +2786,8 @@ class Test_StreamAccess(KnitTests):
         target_knit = self.make_test_knit(name='annotated', annotate=True)
         source_knit.add_lines("A", [], ["Foo\n"])
         # Give the target A, so we can try to thunk across to it.
-        target_knit.join(source_knit)
+        target_knit.insert_record_stream(source_knit.get_record_stream(['A'],
+            'unordered', False))
         index, access = self.get_index_access(target_knit,
             source_knit.get_data_stream([]))
         raw_data = list(access.get_raw_records([(True, "A", None, None)]))[0]

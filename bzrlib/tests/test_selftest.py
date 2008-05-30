@@ -65,7 +65,7 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           preserve_input,
                           randomize_suite,
-                          sort_suite_by_re,
+                          split_suite_by_condition,
                           split_suite_by_re,
                           test_lsprof,
                           test_suite,
@@ -126,8 +126,8 @@ class TestTransportProviderAdapter(TestCase):
     """
 
     def test_get_transport_permutations(self):
-        # this checks that we the module get_test_permutations call
-        # is made by the adapter get_transport_test_permitations method.
+        # this checks that get_test_permutations defined by the module is
+        # called by the adapter get_transport_test_permutations method.
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
@@ -139,11 +139,10 @@ class TestTransportProviderAdapter(TestCase):
                          adapter.get_transport_test_permutations(MockModule()))
 
     def test_adapter_checks_all_modules(self):
-        # this checks that the adapter returns as many permurtations as
-        # there are in all the registered# transport modules for there
-        # - we assume if this matches its probably doing the right thing
-        # especially in combination with the tests for setting the right
-        # classes below.
+        # this checks that the adapter returns as many permutations as there
+        # are in all the registered transport modules - we assume if this
+        # matches its probably doing the right thing especially in combination
+        # with the tests for setting the right classes below.
         from bzrlib.tests.test_transport_implementations \
             import TransportTestProviderAdapter
         from bzrlib.transport import _get_transport_modules
@@ -502,7 +501,9 @@ class TestTreeProviderAdapter(TestCase):
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
-        self.assertEqual(4, len(tests))
+        # XXX We should not have tests fail as we add more scenarios
+        # abentley 20080412
+        self.assertEqual(5, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = WorkingTreeFormat3
@@ -1747,6 +1748,16 @@ class TestSelftestFiltering(TestCase):
         re_filtered = filter_suite_by_re(self.suite, my_pattern)
         self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
+    def test_condition_id_startswith(self):
+        klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        start = klass + 'test_condition_id_starts'
+        test_names = [klass + 'test_condition_id_startswith']
+        filtered_suite = filter_suite_by_condition(
+            self.suite, tests.condition_id_startswith(start))
+        my_pattern = 'TestSelftestFiltering.*test_condition_id_startswith'
+        re_filtered = filter_suite_by_re(self.suite, my_pattern)
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
+
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
@@ -1802,6 +1813,19 @@ class TestSelftestFiltering(TestCase):
             ['bzrlib.tests.test_selftest.'
              'TestSelftestFiltering.test_filter_suite_by_id_list'])
 
+    def test_filter_suite_by_id_startswith(self):
+        # By design this test may fail if another test is added whose name also
+        # begins with the start value used.
+        klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        start = klass + 'test_filter_suite_by_id_starts'
+        test_list = [klass + 'test_filter_suite_by_id_startswith']
+        filtered_suite = tests.filter_suite_by_id_startswith(self.suite, start)
+        filtered_names = _test_ids(filtered_suite)
+        self.assertEqual(
+            filtered_names,
+            ['bzrlib.tests.test_selftest.'
+             'TestSelftestFiltering.test_filter_suite_by_id_startswith'])
+
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
         self.assertTrue(self.suite is preserve_input(self.suite))
@@ -1822,13 +1846,17 @@ class TestSelftestFiltering(TestCase):
         # necessarily.)
         self.assertEqual(len(self.all_names), len(_test_ids(randomized_suite)))
 
-    def test_sort_suite_by_re(self):
-        sorted_suite = self.applyDeprecated(one_zero,
-            sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
-        sorted_names = _test_ids(sorted_suite)
-        self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
-            'TestSelftestFiltering.test_filter_suite_by_re')
-        self.assertEquals(sorted(self.all_names), sorted(sorted_names))
+    def test_split_suit_by_condition(self):
+        self.all_names = _test_ids(self.suite)
+        condition = condition_id_re('test_filter_suite_by_r')
+        split_suite = split_suite_by_condition(self.suite, condition)
+        filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_filter_suite_by_re')
+        self.assertEqual([filtered_name], _test_ids(split_suite[0]))
+        self.assertFalse(filtered_name in _test_ids(split_suite[1]))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(filtered_name)
+        self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
     def test_split_suit_by_re(self):
         self.all_names = _test_ids(self.suite)
@@ -1987,13 +2015,12 @@ class TestTestIdList(tests.TestCase):
         # category
         test_list = [
             # testmod_names
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
             # transport implementations
             'bzrlib.tests.test_transport_implementations.TransportTests'
             '.test_abspath(LocalURLServer)',
-            # packages_to_test()
-            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
-            # MODULES_TO_DOCTEST
+            # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
@@ -2076,6 +2103,36 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals([], _test_ids(suite))
+
+
+class TestFilteredByNameStartTestLoader(tests.TestCase):
+
+    def _create_loader(self, name_start):
+        def needs_module(name):
+            return name.startswith(name_start) or name_start.startswith(name)
+        loader = TestUtil.FilteredByModuleTestLoader(needs_module)
+        return loader
+
+    def test_load_tests(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader('bzrlib.tests.test_samp')
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_load_tests_inside_module(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader('bzrlib.tests.test_sampler.Demo')
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_exclude_tests(self):
+        test_list = ['bogus']
+        loader = self._create_loader('bogus')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))

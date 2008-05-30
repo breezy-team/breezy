@@ -67,6 +67,9 @@ class Reconciler(object):
                               ancestry was being reported incorrectly.
         garbage_inventories: The number of inventory objects without revisions
                              that were garbage collected.
+        fixed_branch_history: None if there was no branch, False if the branch
+                              history was correct, True if the branch history
+                              needed to be re-normalized.
         """
         self.pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -76,6 +79,22 @@ class Reconciler(object):
 
     def _reconcile(self):
         """Helper function for performing reconciliation."""
+        self._reconcile_branch()
+        self._reconcile_repository()
+
+    def _reconcile_branch(self):
+        try:
+            self.branch = self.bzrdir.open_branch()
+        except errors.NotBranchError:
+            # Nothing to check here
+            self.fixed_branch_history = None
+            return
+        self.pb.note('Reconciling branch %s',
+                     self.branch.base)
+        branch_reconciler = self.branch.reconcile(thorough=True)
+        self.fixed_branch_history = branch_reconciler.fixed_history
+
+    def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
         self.pb.note('Reconciling repository %s',
                      self.repo.bzrdir.root_transport.base)
@@ -90,6 +109,49 @@ class Reconciler(object):
                 'Run "bzr check" for more details.')
         else:
             self.pb.note('Reconciliation complete.')
+
+
+class BranchReconciler(object):
+    """Reconciler that works on a branch."""
+
+    def __init__(self, a_branch, thorough=False):
+        self.fixed_history = None
+        self.thorough = thorough
+        self.branch = a_branch
+
+    def reconcile(self):
+        self.branch.lock_write()
+        try:
+            self.pb = ui.ui_factory.nested_progress_bar()
+            try:
+                self._reconcile_steps()
+            finally:
+                self.pb.finished()
+        finally:
+            self.branch.unlock()
+
+    def _reconcile_steps(self):
+        self._reconcile_revision_history()
+
+    def _reconcile_revision_history(self):
+        repo = self.branch.repository
+        last_revno, last_revision_id = self.branch.last_revision_info()
+        real_history = list(repo.iter_reverse_revision_history(
+                                last_revision_id))
+        real_history.reverse()
+        if last_revno != len(real_history):
+            self.fixed_history = True
+            # Technically for Branch5 formats, it is more efficient to use
+            # set_revision_history, as this will regenerate it again.
+            # Not really worth a whole BranchReconciler class just for this,
+            # though.
+            self.pb.note('Fixing last revision info %s => %s',
+                         last_revno, len(real_history))
+            self.branch.set_last_revision_info(len(real_history),
+                                               last_revision_id)
+        else:
+            self.fixed_history = False
+            self.pb.note('revision_history ok.')
 
 
 class RepoReconciler(object):
@@ -184,7 +246,9 @@ class RepoReconciler(object):
             parents = self._rev_graph[rev_id]
             # double check this really is in topological order.
             unavailable = [p for p in parents if p not in new_inventory_vf]
-            assert len(unavailable) == 0
+            if unavailable:
+                raise AssertionError('unavailable parents: %r'
+                    % unavailable)
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
@@ -203,7 +267,8 @@ class RepoReconciler(object):
             new_inventory_vf._save()
         # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory_vf.versions()) == self.pending
+        if not (set(new_inventory_vf.versions()) == self.pending):
+            raise AssertionError()
         self.pb.update('Writing weave')
         self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.repo.get_transaction())
         self.repo.control_weaves.delete('inventory.new', self.repo.get_transaction())
@@ -221,7 +286,6 @@ class RepoReconciler(object):
         # analyse revision id rev_id and put it in the stack.
         self._reweave_step('loading revisions')
         rev = self.repo.get_revision_reconcile(rev_id)
-        assert rev.revision_id == rev_id
         parents = []
         for parent in rev.parent_ids:
             if self._parent_is_available(parent):
@@ -340,7 +404,9 @@ class KnitReconciler(RepoReconciler):
             # double check this really is in topological order, ignoring existing ghosts.
             unavailable = [p for p in parents if p not in new_inventory_vf and
                 p in self.revisions]
-            assert len(unavailable) == 0
+            if unavailable:
+                raise AssertionError(
+                    'unavailable parents: %r' % (unavailable,))
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
@@ -350,7 +416,8 @@ class KnitReconciler(RepoReconciler):
 
         # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory_vf.versions()) == set(self.revisions.versions())
+        if not(set(new_inventory_vf.versions()) == set(self.revisions.versions())):
+            raise AssertionError()
         self.pb.update('Writing weave')
         self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.transaction)
         self.repo.control_weaves.delete('inventory.new', self.transaction)

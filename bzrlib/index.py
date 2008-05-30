@@ -830,7 +830,8 @@ class GraphIndex(object):
                 trim_start = data.find('\n') + 1
             else:
                 trim_start = data.find('\n', trim_start) + 1
-            assert trim_start != 0, 'no \n was present'
+            if not (trim_start != 0):
+                raise AssertionError('no \n was present')
             # print 'removing start', offset, trim_start, repr(data[:trim_start])
         if not end_adjacent:
             # work around python bug in rfind
@@ -838,12 +839,14 @@ class GraphIndex(object):
                 trim_end = data.rfind('\n') + 1
             else:
                 trim_end = data.rfind('\n', None, trim_end) + 1
-            assert trim_end != 0, 'no \n was present'
+            if not (trim_end != 0):
+                raise AssertionError('no \n was present')
             # print 'removing end', offset, trim_end, repr(data[trim_end:])
         # adjust offset and data to the parseable data.
         trimmed_data = data[trim_start:trim_end]
-        assert trimmed_data, 'read unneeded data [%d:%d] from [%d:%d]' % (
-            trim_start, trim_end, offset, offset + len(data))
+        if not (trimmed_data):
+            raise AssertionError('read unneeded data [%d:%d] from [%d:%d]' 
+                % (trim_start, trim_end, offset, offset + len(data)))
         if trim_start:
             offset += trim_start
         # print "parsing", repr(trimmed_data)
@@ -867,7 +870,8 @@ class GraphIndex(object):
             if line == '':
                 # must be at the end
                 if self._size:
-                    assert self._size == pos + 1, "%s %s" % (self._size, pos)
+                    if not (self._size == pos + 1):
+                        raise AssertionError("%s %s" % (self._size, pos))
                 trailers += 1
                 continue
             elements = line.split('\0')
@@ -958,7 +962,8 @@ class GraphIndex(object):
             for offset, data in readv_data:
                 if self._bisect_nodes is None:
                     # this must be the start
-                    assert offset == 0
+                    if not (offset == 0):
+                        raise AssertionError()
                     offset, data = self._parse_header_from_bytes(data)
                 # print readv_ranges, "[%d:%d]" % (offset, offset + len(data))
                 self._parse_region(offset, data)

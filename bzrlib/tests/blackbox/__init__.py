@@ -27,19 +27,20 @@ import sys
 from bzrlib.tests import (
                           adapt_modules,
                           TestCaseWithTransport,
-                          TestSuite,
-                          TestLoader,
                           iter_suite_tests,
                           )
 from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eighteen,
     )
 import bzrlib.ui as ui
 
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
+
     testmod_names = [
                      'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
@@ -116,12 +117,12 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_versioning',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
+    # add the tests for the sub modules
+    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
+
     test_encodings = [
         'bzrlib.tests.blackbox.test_non_ascii',
     ]
-
-    loader = TestLoader()
-    suite = loader.loadTestsFromModuleNames(testmod_names) 
 
     adapter = EncodingTestAdapter()
     adapt_modules(test_encodings, adapter, loader, suite)
@@ -130,12 +131,6 @@ def test_suite():
 
 
 class ExternalBase(TestCaseWithTransport):
-
-    @deprecated_method(zero_eighteen)
-    def runbzr(self, args, retcode=0):
-        if isinstance(args, basestring):
-            args = args.split()
-        return self.run_bzr(args, retcode=retcode)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.

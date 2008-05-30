@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,6 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
-    deprecated_graph,
     errors,
     knit,
     lockable_files,
@@ -61,12 +60,18 @@ from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
+    RepositoryFormat,
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import (
+    mutter,
+    mutter_callsite,
+    note,
+    warning,
+    )
 
 
 class PackCommitBuilder(CommitBuilder):
@@ -198,8 +203,9 @@ class ExistingPack(Pack):
             signature_index)
         self.name = name
         self.pack_transport = pack_transport
-        assert None not in (revision_index, inventory_index, text_index,
-            signature_index, name, pack_transport)
+        if None in (revision_index, inventory_index, text_index,
+                signature_index, name, pack_transport):
+            raise AssertionError()
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -322,11 +328,12 @@ class NewPack(Pack):
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
-        assert self._state in ('open', 'finished')
         if self._state == 'finished':
             return Pack.access_tuple(self)
-        else:
+        elif self._state == 'open':
             return self.upload_transport, self.random_name
+        else:
+            raise AssertionError(self._state)
 
     def data_inserted(self):
         """True if data has been added to this pack."""
@@ -495,9 +502,10 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
         """
-        assert self.add_callback is None, \
-            "%s already has a writable index through %s" % \
-            (self, self.add_callback)
+        if self.add_callback is not None:
+            raise AssertionError(
+                "%s already has a writable index through %s" % \
+                (self, self.add_callback))
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -596,7 +604,7 @@ class Packer(object):
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
             self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.control_files._file_mode)
+            file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -1093,7 +1101,7 @@ class ReconcilePacker(Packer):
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
-                % (refs - keys,))
+                % (missing_text_keys,))
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
@@ -1149,7 +1157,8 @@ class RepositoryPackCollection(object):
         
         :param pack: A Pack object.
         """
-        assert pack.name not in self._packs_by_name
+        if pack.name in self._packs_by_name:
+            raise AssertionError()
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -1577,13 +1586,11 @@ class RepositoryPackCollection(object):
             for key, value in disk_nodes:
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.control_files._file_mode)
+                mode=self.repo.bzrdir._get_file_mode())
             # move the baseline forward
             self._packs_at_load = disk_nodes
-            # now clear out the obsolete packs directory
             if clear_obsolete_packs:
-                self.transport.clone('obsolete_packs').delete_multi(
-                    self.transport.list_dir('obsolete_packs'))
+                self._clear_obsolete_packs()
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
@@ -1615,13 +1622,23 @@ class RepositoryPackCollection(object):
                 self._names[name] = sizes
                 self.get_pack_by_name(name)
 
+    def _clear_obsolete_packs(self):
+        """Delete everything from the obsolete-packs directory.
+        """
+        obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        for filename in obsolete_pack_transport.list_dir('.'):
+            try:
+                obsolete_pack_transport.delete(filename)
+            except (errors.PathError, errors.TransportError), e:
+                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.control_files._file_mode)
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1704,7 +1721,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback)
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.revision_index.knit_access)
@@ -1722,7 +1739,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback, parents=False)
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.signature_index.knit_access)
@@ -1811,25 +1828,26 @@ class InventoryKnitThunk(object):
             add_callback=add_callback, deltas=True, parents=True)
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.inventory_index.knit_access)
 
 
 class KnitPackRepository(KnitRepository):
-    """Experimental graph-knit using repository."""
+    """Repository with knit objects stored inside pack containers."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
         control_store, text_store, _commit_builder_class, _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
             _revision_store, control_store, text_store, _commit_builder_class,
             _serializer)
-        index_transport = control_files._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self,
+            self._transport,
             index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
+            self._transport.clone('upload'),
+            self._transport.clone('packs'))
         self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -1903,6 +1921,8 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection.ensure_loaded()
         index = self._pack_collection.revision_index.combined_index
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if _mod_revision.NULL_REVISION in keys:
             keys.discard(_mod_revision.NULL_REVISION)
             found_parents = {_mod_revision.NULL_REVISION:()}
@@ -1917,61 +1937,6 @@ class KnitPackRepository(KnitRepository):
                 parents = tuple(parent[0] for parent in parents)
             found_parents[key[0]] = parents
         return found_parents
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        if revision_id is None:
-            revision_vf = self._get_revision_vf()
-            return revision_vf.get_graph()
-        g = self.get_graph()
-        first = g.get_parent_map([revision_id])
-        if revision_id not in first:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            ancestry = {}
-            children = {}
-            NULL_REVISION = _mod_revision.NULL_REVISION
-            ghosts = set([NULL_REVISION])
-            for rev_id, parent_ids in g.iter_ancestry([revision_id]):
-                if parent_ids is None: # This is a ghost
-                    ghosts.add(rev_id)
-                    continue
-                ancestry[rev_id] = parent_ids
-                for p in parent_ids:
-                    if p in children:
-                        children[p].append(rev_id)
-                    else:
-                        children[p] = [rev_id]
-
-            if NULL_REVISION in ancestry:
-                del ancestry[NULL_REVISION]
-
-            # Find all nodes that reference a ghost, and filter the ghosts out
-            # of their parent lists. To preserve the order of parents, and
-            # avoid double filtering nodes, we just find all children first,
-            # and then filter.
-            children_of_ghosts = set()
-            for ghost in ghosts:
-                children_of_ghosts.update(children[ghost])
-
-            for child in children_of_ghosts:
-                ancestry[child] = tuple(p for p in ancestry[child]
-                                           if p not in ghosts)
-            return ancestry
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
@@ -2169,13 +2134,12 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+            'lock', lockdir.LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)

@@ -1,5 +1,5 @@
-Welcome to best practices
-=========================
+The journey ahead
+=================
 
 We hope that earlier chapters have given you a solid
 understanding of how Bazaar can assist you in being productive
@@ -8,7 +8,9 @@ If you are learning Bazaar for the first time, it might be
 good to try the procedures covered already for a while,
 coming back to this manual once you have mastered them.
 
-This chapter covers miscellaneous topics to guide you in
-further optimizing how you use Bazaar. Unless stated otherwise,
-the topics are independent of each other and can therefore be
-read in whichever order you wish.
+Remaining chapters
+covers various topics to guide you in further optimizing how you
+use Bazaar. Unless stated otherwise, the topics in this and
+remaining chapters are independent of each other and can therefore
+be read in whichever order you wish.
+

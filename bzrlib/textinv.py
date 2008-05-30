@@ -36,7 +36,8 @@ def escape(s):
 
 
 def unescape(s):
-    assert s.find(' ') == -1
+    if s.find(' ') != -1:
+        raise AssertionError()
     s = (s.replace(r'\x20', ' ')
          .replace(r'\x09', '\t')
          .replace(r'\x0a', '\n')

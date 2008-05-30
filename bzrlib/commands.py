@@ -95,7 +95,6 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
 
@@ -283,9 +282,7 @@ class Command(object):
             elif aname[-1] == '*':
                 aname = '[' + aname[:-1] + '...]'
             s += aname + ' '
-                
-        assert s[-1] == ' '
-        s = s[:-1]
+        s = s[:-1]      # remove last space
         return s
 
     def get_help_text(self, additional_see_also=None, plain=True,
@@ -401,7 +398,7 @@ class Command(object):
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, label, section)
                 label,section = line[1:-1],''
-            elif label != None and len(line) > 1 and not line[0].isspace():
+            elif (label is not None) and len(line) > 1 and not line[0].isspace():
                 save_section(sections, label, section)
                 label,section = None,line
             else:
@@ -445,8 +442,6 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        assert self.encoding_type in ['strict', 'exact', 'replace']
-
         # Originally I was using self.stdout, but that looks
         # *way* too much like sys.stdout
         if self.encoding_type == 'exact':
@@ -829,6 +824,11 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
+     
+    # Is this a final release version? If so, we should suppress warnings
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib import symbol_versioning
+        symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
         argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:

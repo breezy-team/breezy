@@ -89,7 +89,8 @@ class FtpTransport(ConnectedTransport):
 
     def __init__(self, base, _from_transport=None):
         """Set the base path where files will be stored."""
-        assert base.startswith('ftp://') or base.startswith('aftp://')
+        if not (base.startswith('ftp://') or base.startswith('aftp://')):
+            raise ValueError(base)
         super(FtpTransport, self).__init__(base,
                                            _from_transport=_from_transport)
         self._unqualified_scheme = 'ftp'
@@ -180,6 +181,8 @@ class FtpTransport(ConnectedTransport):
             or 'file doesn\'t exist' in s
             or 'rnfr command failed.' in s # vsftpd RNFR reply if file not found
             or 'file/directory not found' in s # filezilla server
+            # Microsoft FTP-Service RNFR reply if file not found
+            or (s.startswith('550 ') and 'unable to rename to' in extra)
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
@@ -513,6 +516,16 @@ class FtpTransport(ConnectedTransport):
             paths = f.nlst(basepath)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, relpath, extra='error with list_dir')
+        except ftplib.error_temp, e:
+            # xs4all's ftp server raises a 450 temp error when listing an empty
+            # directory. Check for that and just return an empty list in that
+            # case. See bug #215522
+            if str(e).lower().startswith('450 no files found'):
+                mutter('FTP Server returned "%s" for nlst.'
+                       ' Assuming it means empty directory',
+                       str(e))
+                return []
+            raise
         # If FTP.nlst returns paths prefixed by relpath, strip 'em
         if paths and paths[0].startswith(basepath):
             entries = [path[len(basepath)+1:] for path in paths]

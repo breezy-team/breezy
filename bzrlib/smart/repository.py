@@ -350,7 +350,6 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, compression):
         from bzrlib import osutils
-        repo_transport = repository.control_files._transport
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
             controldir_name = tmp_dirname + '/.bzr'
@@ -389,7 +388,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             dirname = dirname.encode(sys.getfilesystemencoding())
             # python's tarball module includes the whole path by default so
             # override it
-            assert dirname.endswith('.bzr')
+            if not dirname.endswith('.bzr'):
+                raise ValueError(dirname)
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
@@ -412,14 +412,8 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
         pack = ContainerSerialiser()
         buffer.write(pack.begin())
         try:
-            try:
-                for name_tuple, bytes in stream:
-                    buffer.write(pack.bytes_record(bytes, [name_tuple]))
-            except:
-                # Undo the lock_read that happens once the iterator from
-                # get_data_stream is started.
-                repository.unlock()
-                raise
+            for name_tuple, bytes in stream:
+                buffer.write(pack.bytes_record(bytes, [name_tuple]))
         except errors.RevisionNotPresent, e:
             return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         buffer.write(pack.end())

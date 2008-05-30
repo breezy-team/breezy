@@ -90,7 +90,6 @@ class KnitRevisionStore(RevisionStore):
         try:
             for text, revision_id in zip(texts, revision_ids):
                 r = self._serializer.read_revision_from_string(text)
-                assert r.revision_id == revision_id
                 revisions.append(r)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml for %s: %s' %
@@ -113,7 +112,11 @@ class KnitRevisionStore(RevisionStore):
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
-        return self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        vf = self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        # The revisions knit should always be non-delta, so force delta=False
+        # here.
+        vf.delta = False
+        return vf
 
     def get_signature_file(self, transaction):
         """Get the signature text versioned file object."""

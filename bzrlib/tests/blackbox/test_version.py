@@ -34,15 +34,17 @@ class TestVersion(TestCase):
     def test_version(self):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
-        # must occur once; could be more if it matches a file path
-        first = out.splitlines()[0]
-        self.assertEqualDiff(first,
+        self.assertEqualDiff(out.splitlines()[0],
             "Bazaar (bzr) %s" % bzrlib.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
         self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
+
+    def test_version_short(self):
+        out = self.run_bzr(["version", "--short"])[0]
+        self.assertEqualDiff(out, bzrlib.version_string + '\n')
 
 
 class TestVersionUnicodeOutput(TestCaseInTempDir):
