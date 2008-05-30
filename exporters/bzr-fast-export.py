@@ -48,6 +48,7 @@ from email.Utils import quote, parseaddr
 
 import bzrlib.branch
 import bzrlib.revision
+from bzrlib import errors as bazErrors
 
 class BzrFastExporter:
 
@@ -89,7 +90,16 @@ class BzrFastExporter:
         sys.stderr.write("*** BzrFastExport: %s\n" % message)
             
     def emit_commit(self, revid, git_branch):
-        revobj = self.branch.repository.get_revision(revid)
+        if revid in self.revid_to_mark:
+            return
+
+        try:
+            revobj = self.branch.repository.get_revision(revid)
+        except bazErrors.NoSuchRevision:
+            # This is a ghost revision. Mark it as not found and next!
+            self.revid_to_mark[revid] = -1
+            return
+
         
         ncommits = len(self.revid_to_mark)
         if self.checkpoint > 0 and ncommits % self.checkpoint == 0:
@@ -99,6 +109,21 @@ class BzrFastExporter:
             sys.stdout.write("checkpoint\n")
 
         mark = self.revid_to_mark[revid] = len(self.revid_to_mark) + 1
+        nparents = len(revobj.parent_ids)
+
+        # This is a parentless commit. We need to create a new branch
+        # otherwise git-fast-import will assume the previous commit
+        # was this one's parent
+        for parent in revobj.parent_ids:
+            self.emit_commit(parent, git_branch)
+
+        if nparents == 0:
+            git_branch = self.next_available_branch_name()
+            parent = bzrlib.revision.NULL_REVISION
+        else:
+            parent = revobj.parent_ids[0]
+        
+
         stream = 'commit refs/heads/%s\nmark :%d\n' % (git_branch, mark)
 
         rawdate = '%d %s' % (int(revobj.timestamp), '%+03d%02d' % (
@@ -112,34 +137,21 @@ class BzrFastExporter:
         stream += 'committer %s %s\n' % (
                 self.name_with_angle_brackets(revobj.committer), rawdate)
 
-        stream += 'data %d\n%s\n' % (
-            len(revobj.message.encode('utf-8')), revobj.message)
+        message = revobj.message.encode('utf-8')
+        stream += 'data %d\n%s\n' % (len(message), revobj.message)
 
-        nparents = len(revobj.parent_ids)
+        for p in revobj.parent_ids:
+            if self.revid_to_mark[p] == -1:
+                self.debug("This is a merge with a ghost-commit. Skipping second parent.")
+                continue
 
-        if nparents >= 1:
-            parent = revobj.parent_ids[0]
-            stream += 'from :%d\n' % (self.revid_to_mark[parent],)
-            if nparents == 2:
-                pending = []
-                current = revobj.parent_ids[1]
-                new_git_branch = git_branch
-                while current not in self.revid_to_mark:
-                    pending.append(current)
-                    r = self.branch.repository.get_revision(current)
-                    if r.parent_ids:
-                        current = r.parent_ids[0]
-                    else:
-                        # user did bzr merge -r 0..-1
-                        new_git_branch = self.next_available_branch_name()
-                        break
-                for r in reversed(pending):
-                    self.emit_commit(r, git_branch=new_git_branch)
-        
-                stream += 'merge :%d\n' % (self.revid_to_mark[revobj.parent_ids[1]],)
-        else:
-            parent = bzrlib.revision.NULL_REVISION
-          
+            if p == parent:
+                s = "from"
+            else:
+                s = "merge"
+            stream += '%s :%d\n' % (s, self.revid_to_mark[p])
+
+
         sys.stdout.write(stream.encode('utf-8'))
 
         ##
