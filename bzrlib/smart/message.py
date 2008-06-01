@@ -241,7 +241,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                 mutter(
                     'decoder state: buf[:10]=%r, state_accept=%s',
                     self._protocol_decoder._in_buffer[:10],
-                    self._protocol_decoder.state_accept.im_func.func_name)
+                    self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
                 "please check connectivity and permissions",
                 "(and try -Dhpss if further diagnosis is required)")
