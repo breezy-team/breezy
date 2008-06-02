@@ -704,6 +704,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         while not _body_decoder.finished_reading:
             bytes_wanted = min(_body_decoder.next_read_size(), max_read)
             bytes = self._request.read_bytes(bytes_wanted)
+            if bytes == '':
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "Connection lost while reading response body.")
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
         self._body_buffer = StringIO(_body_decoder.read_pending_data())
@@ -805,6 +809,10 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         while not _body_decoder.finished_reading:
             bytes_wanted = min(_body_decoder.next_read_size(), max_read)
             bytes = self._request.read_bytes(bytes_wanted)
+            if bytes == '':
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "Connection lost while reading streamed body.")
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):
                 if 'hpss' in debug.debug_flags and type(body_bytes) is str:

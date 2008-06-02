@@ -80,6 +80,10 @@ This release adds a translation of some of the user documentation into Spanish.
       in use by another process.
       (Martin Pool)
       
+    * Fix infinite loop consuming 100% CPU when a connection is lost while
+      reading a response body via the smart protocol v1 or v2.
+      (Andrew Bennetts)
+      
     * Fix MemoryError during large fetches over HTTP by limiting the amount of
       data we try to read per ``recv`` call.  The problem was observed with
       Windows and a proxy, but might affect other environments as well.
