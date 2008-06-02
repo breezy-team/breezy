@@ -63,9 +63,15 @@ class RevisionLoader(object):
                 inv, present_parents)
         except errors.RevisionAlreadyPresent:
             pass
+        repo = self.repo
         if signature is not None:
-            self.repo.add_signature_text(rev.revision_id, signature)
-        self.repo.add_revision(rev.revision_id, rev, inv)
+            repo.add_signature_text(rev.revision_id, signature)
+        # repo.add_revision(rev.revision_id, rev, inv)
+        # There's no need to do everything repo.add_revision does and
+        # doing so (since bzr.dev 3392) can be pretty slow for long
+        # delta chains on inventories. Just do the essentials here ...
+        _mod_revision.check_not_reserved_id(rev.revision_id)
+        repo._revision_store.add_revision(rev, repo.get_transaction())
 
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
         """Load texts to a repository for inventory entries.
@@ -187,22 +193,24 @@ class ExperimentalRevisionLoader(ImportRevisionLoader):
     it is an incubator for experimental code.
     """
 
-    def __init__(self, repo, parent_texts_to_cache=1, fulltext_every=200):
+    def __init__(self, repo, parent_texts_to_cache=1, fulltext_when=None):
         """See ImportRevisionLoader.__init__.
         
-        :para fulltext_every: how often to store an inventory fulltext
+        :para fulltext_when: if non None, a function to call to decide
+          whether to fulltext the inventory or not. The revision count
+          is passed as a parameter and the result is treated as a boolean.
         """
         ImportRevisionLoader.__init__(self, repo, parent_texts_to_cache)
         self.revision_count = 0
-        self.fulltext_every = fulltext_every
+        self.fulltext_when = fulltext_when
 
     def _inventory_add_lines(self, inv_vf, version_id, parents, lines,
             parent_texts):
         """See Repository._inventory_add_lines()."""
         # setup parameters used in original code but not this API
         self.revision_count += 1
-        if self.revision_count % self.fulltext_every == 0:
-            delta = False
+        if self.fulltext_when is not None:
+            delta = not self.fulltext_when(self.revision_count)
         else:
             delta = inv_vf.delta
         left_matching_blocks = None

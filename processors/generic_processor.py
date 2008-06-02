@@ -57,6 +57,9 @@ _DEFAULT_AUTO_PROGRESS = 1000
 # How many commits before automatically checkpointing
 _DEFAULT_AUTO_CHECKPOINT = 10000
 
+# How many commits before each inventory fulltext
+_DEFAULT_INV_FULLTEXT = 200
+
 # How many inventories to cache
 _DEFAULT_INV_CACHE_SIZE = 10
 
@@ -99,6 +102,9 @@ class GenericProcessor(processor.ImportProcessor):
     * count - only import this many commits then exit. If not set
       or negative, all commits are imported.
     
+    * inv-fulltext - create an inventory fulltext every n commits.
+      The default is 200.
+
     * inv-cache - number of inventories to cache.
       If not set, the default is 10.
 
@@ -112,6 +118,7 @@ class GenericProcessor(processor.ImportProcessor):
         'checkpoint',
         'count',
         'inv-cache',
+        'inv-fulltext',
         'experimental',
         ]
 
@@ -152,10 +159,23 @@ class GenericProcessor(processor.ImportProcessor):
 
         # Create the revision loader needed for committing
         if self._experimental:
-            loader_factory = revisionloader.ExperimentalRevisionLoader
+            def fulltext_when(count):
+                total = self.total_commits
+                if total is not None and count == total:
+                    fulltext = True
+                else:
+                    fulltext = count % self.inv_fulltext_every == 0
+                if fulltext:
+                    self.note("%d commits - storing inventory as full-text",
+                        count)
+                return fulltext
+
+            self.loader = revisionloader.ExperimentalRevisionLoader(
+                self.repo, self.inventory_cache_size,
+                fulltext_when=fulltext_when)
         else:
-            loader_factory = revisionloader.ImportRevisionLoader
-        self.loader = loader_factory(self.repo, self.inventory_cache_size)
+            self.loader = revisionloader.ImportRevisionLoader(
+                self.repo, self.inventory_cache_size)
 
         # Disable autopacking if the repo format supports it.
         # THIS IS A HACK - there is no sanctioned way of doing this yet.
@@ -197,6 +217,10 @@ class GenericProcessor(processor.ImportProcessor):
         # Decide how often to automatically checkpoint
         self.checkpoint_every = int(self.params.get('checkpoint',
             _DEFAULT_AUTO_CHECKPOINT))
+
+        # Decide how often to fulltext the inventory
+        self.inv_fulltext_every = int(self.params.get('inv-fulltext',
+            _DEFAULT_INV_FULLTEXT))
 
         # Decide how big to make the inventory cache
         self.inventory_cache_size = int(self.params.get('inv-cache',
