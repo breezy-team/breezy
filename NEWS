@@ -225,7 +225,7 @@ bzr 1.5rc1 2008-05-09
   IMPROVEMENTS:
 
     * Diff now handles revision specs like "branch:" and "submit:" more
-      efficiently.  (Aaron Bentley)
+      efficiently.  (Aaron Bentley, #202928)
 
     * More friendly error given when attempt to start the smart server
       on an address already in use. (Andrea Corbellini, #200575)
@@ -6188,3 +6188,6 @@ bzr-0.0.0.69  2005-03-22
 
     * Storage of local versions: init, add, remove, rm, info, log,
       diff, status, etc.
+
+..
+   vim: tw=74 ft=rst ff=unix
