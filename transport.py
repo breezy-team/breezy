@@ -424,7 +424,8 @@ class Connection(object):
         # No paths starting with slash, please
         assert paths is None or all([not p.startswith("/") for p in paths])
         if (paths is None and 
-            (svn.core.SVN_VER_MINOR < 6 or svn.core.SVN_VER_REVISION < 31470)):
+            (svn.core.SVN_VER_MINOR < 6 or (
+             svn.core.SVN_VER_REVISION < 31470 and svn.core.SVN_VER_REVISION != 0))):
             paths = ["/"]
         self.mutter('svn log %r:%r %r (limit: %r)' % (from_revnum, to_revnum, paths, limit))
         if hasattr(svn.ra, 'get_log2'):
