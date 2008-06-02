@@ -253,6 +253,7 @@ class LineBasedParser(object):
 # the first bit is \w*, not \w+.) Also git-fast-import code says the
 # space before the email is optional.
 _WHO_AND_WHEN_RE = re.compile(r'([^<]*)<(.+)> (.+)')
+_WHO_RE = re.compile(r'([^<]*)<(.+)>')
 
 
 class ImportParser(LineBasedParser):
@@ -337,7 +338,12 @@ class ImportParser(LineBasedParser):
         mark = self._get_mark_if_any()
         author = self._get_user_info('commit', 'author', False)
         committer = self._get_user_info('commit', 'committer')
-        message = self._get_data('commit', 'message').decode('utf_8')
+        message = self._get_data('commit', 'message')
+        try:
+            message = message.decode('utf_8')
+        except UnicodeDecodeError:
+            # TODO: output a warning here about a broken front-end
+            pass
         from_ = self._get_from()
         merges = []
         while True:
@@ -379,7 +385,7 @@ class ImportParser(LineBasedParser):
     def _parse_tag(self, name):
         """Parse a tag command."""
         from_ = self._get_from('tag')
-        tagger = self._get_user_info('tag', 'tagger')
+        tagger = self._get_user_info('tag', 'tagger', accept_just_who=True)
         message = self._get_data('tag', 'message').decode('utf_8')
         return commands.TagCommand(name, from_, tagger, message)
 
@@ -412,11 +418,13 @@ class ImportParser(LineBasedParser):
             self.push_line(line)
             return None
 
-    def _get_user_info(self, cmd, section, required=True):
+    def _get_user_info(self, cmd, section, required=True,
+        accept_just_who=False):
         """Parse a user section."""
         line = self.next_line()
         if line.startswith(section + ' '):
-            return self._who_when(line[len(section + ' '):], cmd, section)
+            return self._who_when(line[len(section + ' '):], cmd, section,
+                accept_just_who=accept_just_who)
         elif required:
             self.abort(errors.MissingSection, cmd, section)
         else:
@@ -442,7 +450,7 @@ class ImportParser(LineBasedParser):
         else:
             self.abort(errors.MissingSection, required_for, section)
 
-    def _who_when(self, s, cmd, section):
+    def _who_when(self, s, cmd, section, accept_just_who=False):
         """Parse who and when information from a string.
         
         :return: a tuple of (name,email,timestamp,timezone). name may be
@@ -461,13 +469,19 @@ class ImportParser(LineBasedParser):
                     format = 'rfc2822'
                 self.date_parser = dates.DATE_PARSERS_BY_NAME[format]
             when = self.date_parser(datestr)
-            name = match.group(1)
-            if len(name) > 0:
-                if name[-1] == " ":
-                    name = name[:-1].decode('utf_8')
-            return (name,match.group(2),when[0],when[1])
         else:
-            self.abort(errors.BadFormat, cmd, section, s)
+            match = _WHO_RE.search(s)
+            if accept_just_who and match:
+                # HACK around missing time
+                # TODO: output a warning here
+                when = dates.DATE_PARSERS_BY_NAME['now']('now')
+            else:
+                self.abort(errors.BadFormat, cmd, section, s)
+        name = match.group(1)
+        if len(name) > 0:
+            if name[-1] == " ":
+                name = name[:-1].decode('utf_8')
+        return (name,match.group(2),when[0],when[1])
 
     def _path(self, s):
         """Parse a path."""
