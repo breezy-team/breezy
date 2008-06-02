@@ -58,9 +58,15 @@ This is the procedure for making a new bzr release:
 
    Register the branch at https://launchpad.net/products/bzr/+addbranch
 
-#. Run the automatic test suite and any non-automated tests.  (For example, try a download over http; these should eventually be scripted though not automatically run.). Try to have all optional dependencies installed so that there are no tests skipped. Also make sure that you have the c extensions compiled (``make`` or ``python setup.py build_ext -i``).
+#. Run the automatic test suite and any non-automated tests.  
+   Try to have all optional dependencies installed so that there are no tests skipped. 
+   Also make sure that you have the c extensions compiled (``make`` or ``python setup.py build_ext -i``).
 
-#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``
+#. In the release branch, update  ``version_info`` in
+   ``./bzrlib/__init__.py``.  
+   (This must match ``_script_version`` in the ``bzr`` script, but 
+   that is updated at the start of the release cycle, and
+   doesn't need to say if it's an rc or final release.)
 
 #. Add the date and release number to ``./NEWS``, and a one-paragraph
    summary of changes in this release.
