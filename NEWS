@@ -126,6 +126,11 @@ This release adds a translation of some of the user documentation into Spanish.
 
   INTERNALS:
 
+    * ``Branch.missing_revisions`` has been deprecated. Similar functionality
+      can be obtained using ``bzrlib.missing.find_unmerged``. The api was
+      fairly broken, and the function was unused, so we are getting rid of it.
+      (John Arbash Meinel)
+
   API CHANGES:
 
     * ``Branch.abspath`` is deprecated; use the Tree or Transport 
