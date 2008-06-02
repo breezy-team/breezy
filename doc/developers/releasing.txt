@@ -68,6 +68,10 @@ This is the procedure for making a new bzr release:
    that is updated at the start of the release cycle, and
    doesn't need to say if it's an rc or final release.)
 
+   Run this command and check the output::
+
+     ./bzr --version
+
 #. Add the date and release number to ``./NEWS``, and a one-paragraph
    summary of changes in this release.
 
