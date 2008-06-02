@@ -58,7 +58,7 @@ This release adds a translation of some of the user documentation into Spanish.
     * ``bzr merge --lca`` should handle when two revisions have no common
       ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
 
-    * ``bzr status`` was breaking if you merged the same revision 2x.
+    * ``bzr status`` was breaking if you merged the same revision twice.
       (John Arbash Meinel, #235407)
 
     * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
@@ -172,6 +172,12 @@ This release adds a translation of some of the user documentation into Spanish.
       used for streaming from a smart server. The new get_record_stream and
       insert_record_stream are meant to efficiently replace this method.
       (Robert Collins)
+
+    * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
+      which are in the ancestry of other revisions. So if you merge the same
+      tree twice, or merge an ancestor of an existing merge, it will only
+      record the newest. (If you merge a descendent, it will replace its
+      ancestor). (John Arbash Meinel, #235407)
 
     * ``WorkingTreeFormat2.stub_initialize_remote`` is now private.
       (Martin Pool) 
