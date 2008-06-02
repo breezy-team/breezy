@@ -1255,12 +1255,16 @@ class TreeTransform(TreeTransformBase):
         """
         new_paths = self.new_paths()
         modified_paths = []
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         completed_new = []
+        new_path_file_ids = [self.final_file_id(t) for p, t in new_paths]
+        entries = self._tree.iter_entries_by_dir(new_path_file_ids)
+        old_paths = dict((e.file_id, p) for p, e in entries)
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
                 new_entry = None
-                child_pb.update('adding file', num, len(new_paths))
+                if (num % 10) == 0:
+                    child_pb.update('adding file', num, len(new_paths))
                 if trans_id in self._new_contents or \
                     self.path_changed(trans_id):
                     full_path = self._tree.abspath(path)
@@ -1295,10 +1299,7 @@ class TreeTransform(TreeTransformBase):
                             self.final_name(trans_id),
                             self.final_file_id(self.final_parent(trans_id)),
                             self.final_file_id(trans_id))
-                    try:
-                        old_path = self._tree.id2path(new_entry.file_id)
-                    except errors.NoSuchId:
-                        old_path = None
+                    old_path = old_paths.get(new_entry.file_id)
                     inventory_delta.append((old_path, path, new_entry.file_id,
                                             new_entry))
 
