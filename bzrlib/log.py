@@ -335,8 +335,8 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 
     :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
     """
-    which_revs = _enumerate_history(branch)
-    if not which_revs:
+    branch_revno, branch_last_revision = branch.last_revision_info()
+    if branch_revno == 0:
         return None, None, None, None
 
     # For mainline generation, map start_revision and end_revision to 
@@ -349,7 +349,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if start_revision is None:
         start_revno = 1
     else:
-        if isinstance(start_revision,RevisionInfo):
+        if isinstance(start_revision, RevisionInfo):
             start_rev_id = start_revision.rev_id
             start_revno = start_revision.revno or 1
         else:
@@ -358,11 +358,11 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     
     end_rev_id = None
     if end_revision is None:
-        end_revno = len(which_revs)
+        end_revno = branch_revno
     else:
-        if isinstance(end_revision,RevisionInfo):
+        if isinstance(end_revision, RevisionInfo):
             end_rev_id = end_revision.rev_id
-            end_revno = end_revision.revno or len(which_revs)
+            end_revno = end_revision.revno or branch_revno
         else:
             branch.check_real_revno(end_revision)
             end_revno = end_revision
@@ -374,20 +374,29 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         raise BzrCommandError("Start revision must be older than "
                               "the end revision.")
 
-    # list indexes are 0-based; revisions are 1-based
-    cut_revs = which_revs[(start_revno-1):(end_revno)]
-    if not cut_revs:
+    if end_revno < start_revno:
         return None, None, None, None
+    cur_revno = branch_revno
+    rev_nos = {}
+    mainline_revs = []
+    for revision_id in branch.repository.iter_reverse_revision_history(
+                        branch_last_revision):
+        if cur_revno < start_revno:
+            # We have gone far enough, but we always add 1 more revision
+            rev_nos[revision_id] = cur_revno
+            mainline_revs.append(revision_id)
+            break
+        if cur_revno <= end_revno:
+            rev_nos[revision_id] = cur_revno
+            mainline_revs.append(revision_id)
+        cur_revno -= 1
+    else:
+        # We walked off the edge of all revisions, so we add a 'None' marker
+        mainline_revs.append(None)
 
-    # convert the revision history to a dictionary:
-    rev_nos = dict((k, v) for v, k in cut_revs)
+    mainline_revs.reverse()
 
     # override the mainline to look like the revision history.
-    mainline_revs = [revision_id for index, revision_id in cut_revs]
-    if cut_revs[0][0] == 1:
-        mainline_revs.insert(0, None)
-    else:
-        mainline_revs.insert(0, which_revs[start_revno-2][1])
     return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
 

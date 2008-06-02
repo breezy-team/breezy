@@ -48,16 +48,16 @@ hack away.
 The branch command
 ------------------
 
-To get a copy of an existing branch, use the ``branch`` command.
+To get a branch based on an existing branch, use the ``branch`` command.
 The syntax is::
 
   bzr branch URL [directory]
 
 If a directory is not given, one is created based on the last part of
-the URL. Here are some examples showing a network share URL and an
+the URL. Here are some examples showing a drive qualified path (M:/) and an
 sftp URL respectively::
 
-  bzr branch m:/cool-trunk
+  bzr branch M:/cool-trunk
   bzr branch sftp://bill@mary-laptop/cool-repo/cool-trunk
 
 This example shows explicitly giving the directory name to use for the
