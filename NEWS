@@ -10,7 +10,7 @@ bzr 1.6beta1 2008-06-02
 
 
 Commands that work on the revision history such as push, pull, missing,
-uncommit and missing are now substantially faster.  This release adds a
+uncommit and log are now substantially faster.  This release adds a
 translation of some of the user documentation into Spanish.  (Contributions of
 other translations would be very welcome.)  Bazaar 1.6beta1 adds a new network
 protocol which is used by default and which allows for more efficient transfers
