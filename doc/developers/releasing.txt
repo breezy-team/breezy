@@ -14,6 +14,34 @@ See also: `Bazaar Developer Document Catalog <index.html>`_.
 
 .. contents::
 
+General process
+---------------
+
+Our usual process is that one week before release we will make a release
+branch from the trunk.  We do one commit to that branch to change the
+version number to 'rc1', and advance the trunk version to 'dev' for the
+next release.
+
+We then publish and announce this release candidate according to the
+process below.  We then have a week of general testing of the rc,
+including some time for plugin authors to update their code for any
+changes.
+
+Normally no changes will be made on the release branch unless serious bugs
+or regressions are found, and the release manager decides they should be
+merged in.  After one week, the release branch's version number is updated
+and it's published as the final release.  If regressions or serious
+problems are discovered after the final release we may make an additional
+point release from that branch.
+
+The process or timing can vary if that seems appropriate in a particular
+case but we try to release on a regular four week cycle.
+
+The net effect is that the code gets some extra testing before release,
+and the trunk is always open for general development.
+
+
+
 
 Starting a Release
 ------------------
@@ -45,13 +73,6 @@ covering these points (as appropriate):
 * Reminder re release objectives
 
 * Reminder re things needing attention, e.g. bug triage, reviews, testing of certain things, etc.
-
-
-Feature Freeze
---------------
-
-TODO: Get material from http://bazaar-vcs.org/FeatureFreeze.
-
 
 
 Preparing the tree for release
@@ -287,12 +308,16 @@ future:
 
 #. Download the official tarball of the release to e.g. ``~/bzr/Releases``
 
-#. Copy the original tarball into your per-disto directory, then untar it 
-   and if necessary rename it::
+#. Copy the original tarball into your per-disto directory, then untar
+   it::
 
      cp -l ~/bzr/Releases/bzr-1.3.tar.gz bzr_1.3.orig.tar.gz
      tar xfvz bzr_1.3.orig.tar.gz
-     mv bzr bzr-1.3
+
+   The bzrtools extracted directory does not contain a version number
+   and must be renamed::
+
+     mv bzrtools bzrtools-1.3.0
 
 #. Change into that directory and check out the packaging branch::
 
