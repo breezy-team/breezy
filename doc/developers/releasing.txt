@@ -4,6 +4,11 @@ Releasing Bazaar
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.
 
+We normally have one person acting as the release manager, who 
+organizes development for the release and also actually makes the release
+tarball and posts announcements.  It can be a different person from one
+week to the next.
+
 See also: `Bazaar Developer Document Catalog <index.html>`_.
 
 
@@ -24,15 +29,21 @@ To start a new release cycle:
    series for every *x.y* release.
 
 
-Weekly Status Updates
+Weekly Metronome Mail
 ---------------------
 
-TODO: Things to cover:
+Every week the release manager should send a mail to the Bazaar list
+covering these points (as appropriate):
 
-* Early communication to downstream teams (e.g. Launchpad) about changes in dependencies.
-* Reminder re lifecycle and where we're up to right now
-* Summary of recent successes and pending work
+* Early communication about changing dependencies or defaults
+
+* Reminder re lifecycle and where we're up to right now, in particular the 
+  dates for the next release and/or candidate.
+
+* Summary of recent successes and pending work.
+
 * Reminder re release objectives
+
 * Reminder re things needing attention, e.g. bug triage, reviews, testing of certain things, etc.
 
 
@@ -58,9 +69,18 @@ This is the procedure for making a new bzr release:
 
    Register the branch at https://launchpad.net/products/bzr/+addbranch
 
-#. Run the automatic test suite and any non-automated tests.  
-   Try to have all optional dependencies installed so that there are no tests skipped. 
-   Also make sure that you have the c extensions compiled (``make`` or ``python setup.py build_ext -i``).
+#. Make a local branch for preparing this release.  (Only for the first 
+   release in a series, otherwise you should already have a branch.) ::
+
+     bzr branch trunk prepare-1.6
+
+#. Configure pqm-submit for this branch, with a section like this in
+   ``~/.bazaar/locations.conf``::
+
+	[/home/mbp/bzr/prepare-1.4]
+	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
+	submit_branch = http://bazaar-vcs.org/bzr/bzr.1.4
+	submit_to = bazaar@lists.canonical.com
 
 #. In the release branch, update  ``version_info`` in
    ``./bzrlib/__init__.py``.  
@@ -77,7 +97,7 @@ This is the procedure for making a new bzr release:
 
 #. Commit these changes to the release branch, using a command like::
     
-     bzr commit -m "(jam) Release 0.12rc1." 
+     bzr commit -m "Release 0.12rc1." 
    
    The diff before you commit will be something like::
 
@@ -105,9 +125,13 @@ This is the procedure for making a new bzr release:
             version_string = '%d.%d.%d' % version_info[:3]
 
 #. Submit those changes to PQM for merge into the appropriate release
-   branch.
+   branch::
+ 
+     bzr push
+     bzr pqm-submit -m "(mbp) prepare 1.6"
 
 #. When PQM succeeds, pull down the master release branch.
+
 
 Making the source tarball
 -------------------------
@@ -141,7 +165,7 @@ available to the world.
    escudero, and also update the ``latest`` symlink in
    ``/srv/bazaar.canonical.com/doc/``.)
 
-#. Announce on the `Bazaar home page`__
+#. Announce on the `Bazaar home page`__.
    
  __ http://bazaar-vcs.org/
 
@@ -186,14 +210,13 @@ Now that the release is publicly available, tell people about it.
    
    This should be done for both release candidates and final releases. If you do not have a Freshmeat account yet, ask one of the existing admins.
 
-#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not Release Candidates.
+#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not for Release Candidates.
 
 #. Package maintainers should update packages when they see the
    announcement.
 
-#. Blog about it.
-
-#. Post to http://mail.python.org/mailman/listinfo/python-announce-list for major releases
+#. For final releases, also send the announcement mail to
+   info-gnu@gnu.org and python-announce-list@python.org.
 
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
    done by running ::
@@ -354,3 +377,6 @@ If you add all the bzr PPAs to your ``sources.list`` then you can see a
 summary of current package versions with::
 
   apt-cache madison bzr
+
+..
+   vim: ft=rst tw=74 ai
