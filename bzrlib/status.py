@@ -159,11 +159,6 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
         are considered ghosts should not be present in the map.
     :return: iterator from MergeSorter.iter_topo_order()
     """
-    if not revision_ids:
-        # For whatever reason, there are no unique revisions for this node.
-        # This could happen if you merge an ancestor of an already merged
-        # revision (or merge the revision itself 2x).
-        return iter([(1, tip_revision, 0, 0)])
     # MergeSorter requires that all nodes be present in the graph, so get rid
     # of any references pointing outside of this graph.
     parent_graph = {}
