@@ -127,9 +127,6 @@ This release adds a translation of some of the user documentation into Spanish.
     * Fix the test HTTPServer to be isolated from chdir calls made while it is
       running, allowing it to be used in blackbox tests. (Robert Collins)
 
-    * The branch interface tests were invalid for branches using subtree
-      repositories by default. This has been fixed. (Robert Collins)
-
   INTERNALS:
 
     * ``Branch.missing_revisions`` has been deprecated. Similar functionality
