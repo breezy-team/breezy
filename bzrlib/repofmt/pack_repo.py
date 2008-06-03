@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,6 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
-    deprecated_graph,
     errors,
     knit,
     lockable_files,
@@ -61,12 +60,18 @@ from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
+    RepositoryFormat,
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import (
+    mutter,
+    mutter_callsite,
+    note,
+    warning,
+    )
 
 
 class PackCommitBuilder(CommitBuilder):
@@ -198,8 +203,9 @@ class ExistingPack(Pack):
             signature_index)
         self.name = name
         self.pack_transport = pack_transport
-        assert None not in (revision_index, inventory_index, text_index,
-            signature_index, name, pack_transport)
+        if None in (revision_index, inventory_index, text_index,
+                signature_index, name, pack_transport):
+            raise AssertionError()
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -322,11 +328,12 @@ class NewPack(Pack):
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
-        assert self._state in ('open', 'finished')
         if self._state == 'finished':
             return Pack.access_tuple(self)
-        else:
+        elif self._state == 'open':
             return self.upload_transport, self.random_name
+        else:
+            raise AssertionError(self._state)
 
     def data_inserted(self):
         """True if data has been added to this pack."""
@@ -495,9 +502,10 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
         """
-        assert self.add_callback is None, \
-            "%s already has a writable index through %s" % \
-            (self, self.add_callback)
+        if self.add_callback is not None:
+            raise AssertionError(
+                "%s already has a writable index through %s" % \
+                (self, self.add_callback))
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -596,7 +604,7 @@ class Packer(object):
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
             self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.control_files._file_mode)
+            file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -642,9 +650,11 @@ class Packer(object):
         # at this point.
         self.pb.update("Copying inventory texts", 2)
         total_items, readv_group_iter = self._least_readv_node_readv(inv_nodes)
+        # Only grab the output lines if we will be processing them
+        output_lines = bool(self.revision_ids)
         inv_lines = self._copy_nodes_graph(inventory_index_map,
             self.new_pack._writer, self.new_pack.inventory_index,
-            readv_group_iter, total_items, output_lines=True)
+            readv_group_iter, total_items, output_lines=output_lines)
         if self.revision_ids:
             self._process_inventory_lines(inv_lines)
         else:
@@ -656,7 +666,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base,
                 self.new_pack.random_name,
                 self.new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
+                time.time() - self.new_pack.start_time)
 
     def _copy_text_texts(self):
         # select text keys
@@ -1059,7 +1069,6 @@ class ReconcilePacker(Packer):
             deltas=True, parents=True)
         output_knit = knit.KnitVersionedFile('reconcile-texts',
             self._pack_collection.transport,
-            None,
             index=knit_index,
             access_method=_PackAccess(
                 {self.new_pack.text_index:self.new_pack.access_tuple()},
@@ -1092,7 +1101,7 @@ class ReconcilePacker(Packer):
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
-                % (refs - keys,))
+                % (missing_text_keys,))
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
@@ -1148,7 +1157,8 @@ class RepositoryPackCollection(object):
         
         :param pack: A Pack object.
         """
-        assert pack.name not in self._packs_by_name
+        if pack.name in self._packs_by_name:
+            raise AssertionError()
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -1576,13 +1586,11 @@ class RepositoryPackCollection(object):
             for key, value in disk_nodes:
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.control_files._file_mode)
+                mode=self.repo.bzrdir._get_file_mode())
             # move the baseline forward
             self._packs_at_load = disk_nodes
-            # now clear out the obsolete packs directory
             if clear_obsolete_packs:
-                self.transport.clone('obsolete_packs').delete_multi(
-                    self.transport.list_dir('obsolete_packs'))
+                self._clear_obsolete_packs()
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
@@ -1614,13 +1622,23 @@ class RepositoryPackCollection(object):
                 self._names[name] = sizes
                 self.get_pack_by_name(name)
 
+    def _clear_obsolete_packs(self):
+        """Delete everything from the obsolete-packs directory.
+        """
+        obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        for filename in obsolete_pack_transport.list_dir('.'):
+            try:
+                obsolete_pack_transport.delete(filename)
+            except (errors.PathError, errors.TransportError), e:
+                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.control_files._file_mode)
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1703,8 +1721,8 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback)
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            self.repo.bzrdir._get_file_mode(),
+            create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.revision_index.knit_access)
         return self.repo._revision_knit
@@ -1721,8 +1739,8 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback, parents=False)
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            self.repo.bzrdir._get_file_mode(),
+            create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.signature_index.knit_access)
         return self.repo._signature_knit
@@ -1810,25 +1828,26 @@ class InventoryKnitThunk(object):
             add_callback=add_callback, deltas=True, parents=True)
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            self.repo.bzrdir._get_file_mode(),
+            create=False,
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.inventory_index.knit_access)
 
 
 class KnitPackRepository(KnitRepository):
-    """Experimental graph-knit using repository."""
+    """Repository with knit objects stored inside pack containers."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
         control_store, text_store, _commit_builder_class, _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
             _revision_store, control_store, text_store, _commit_builder_class,
             _serializer)
-        index_transport = control_files._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self,
+            self._transport,
             index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
+            self._transport.clone('upload'),
+            self._transport.clone('packs'))
         self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -1846,15 +1865,6 @@ class KnitPackRepository(KnitRepository):
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
-
-    def _access_mode(self):
-        """Return 'w' or 'r' for depending on whether a write lock is active.
-        
-        This method is a helper for the Knit-thunking support objects.
-        """
-        if self.is_write_locked():
-            return 'w'
-        return 'r'
 
     def _find_inconsistent_revision_parents(self):
         """Find revisions with incorrectly cached parents.
@@ -1911,6 +1921,8 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection.ensure_loaded()
         index = self._pack_collection.revision_index.combined_index
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if _mod_revision.NULL_REVISION in keys:
             keys.discard(_mod_revision.NULL_REVISION)
             found_parents = {_mod_revision.NULL_REVISION:()}
@@ -2064,7 +2076,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             repo_transport,
             prefixed=False,
             file_mode=control_files._file_mode,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'factory': knit.KnitPlainFactory()},
             )
 
@@ -2075,7 +2087,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             file_mode=control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'delta': False,
                                   'factory': knit.KnitPlainFactory(),
                                  },
@@ -2088,7 +2100,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         return self._get_versioned_file_store('knits',
                                   transport,
                                   control_files,
-                                  versionedfile_class=knit.KnitVersionedFile,
+                                  versionedfile_class=knit.make_file_knit,
                                   versionedfile_kwargs={
                                       'create_parent_dir': True,
                                       'delay_create': True,
@@ -2122,13 +2134,12 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+            'lock', lockdir.LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)

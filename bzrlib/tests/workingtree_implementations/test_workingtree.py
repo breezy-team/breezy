@@ -579,7 +579,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # FIXME: This doesn't really test that it works; also this is not
         # implementation-independent. mbp 20070226
         tree = self.make_branch_and_tree('master')
-        tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
+        tree._transport.put_bytes('merge-hashes', 'asdfasdf')
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
     def test_merge_modified(self):
@@ -608,11 +608,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
-        tree2._control_files.put('conflicts', StringIO(''))
-        self.assertRaises(errors.ConflictFormatError, 
+        tree2._transport.put_bytes('conflicts', '')
+        self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
-        tree2._control_files.put('conflicts', StringIO('a'))
-        self.assertRaises(errors.ConflictFormatError, 
+        tree2._transport.put_bytes('conflicts', 'a')
+        self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
 
     def make_merge_conflicts(self):
@@ -826,6 +826,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
+    def test_stored_kind_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        os.rmdir('tree/b')
+        self.assertEqual('file', tree.stored_kind('a-id'))
+        self.assertEqual('directory', tree.stored_kind('b-id'))
+
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
         tree = self.make_branch_and_tree('.')
@@ -864,6 +875,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.__class__ == WorkingTree2:
             raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+
+    def test_all_file_ids_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
+                         tree.all_file_ids())
 
     def test_sprout_hardlink(self):
         source = self.make_branch_and_tree('source')

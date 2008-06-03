@@ -118,7 +118,7 @@ The protocol (for both requests and responses) is described by::
 
   REQUEST := MESSAGE_V1
   RESPONSE := MESSAGE_V1
-  MESSAGE_V1 := ARGS BODY
+  MESSAGE_V1 := ARGS [BODY]
 
   ARGS := ARG [MORE_ARGS] NEWLINE
   MORE_ARGS := SEP ARG [MORE_ARGS]
@@ -144,7 +144,8 @@ The request protocol is::
 
 The response protocol is::
 
-  RESPONSE_V2 := "bzr response 2" NEWLINE MESSAGE_V2
+  RESPONSE_V2 := "bzr response 2" NEWLINE RESPONSE_STATUS NEWLINE MESSAGE_V2
+  RESPONSE_STATUS := "success" | "failed"
 
 Future versions should follow this structure, like version two does::
 
@@ -160,7 +161,7 @@ than structured response prefixed with a version string.
 
 Version two of the message protocol is::
 
-  MESSAGE_V2 := ARGS BODY
+  MESSAGE_V2 := ARGS [BODY_V2]
   BODY_V2 := BODY | STREAMED_BODY
 
 That is, a version one length-prefixed body, or a version two streamed
@@ -174,8 +175,8 @@ a lot like HTTP's chunked encoding::
  
   STREAMED_BODY := "chunked" NEWLINE CHUNKS TERMINATOR
   CHUNKS := CHUNK [CHUNKS]
-  CHUNK := CHUNK_LENGTH CHUNK_CONTENT
-  CHUNK_LENGTH := HEX_DIGITS NEWLINE
+  CHUNK := HEX_LENGTH CHUNK_CONTENT
+  HEX_LENGTH := HEX_DIGITS NEWLINE
   CHUNK_CONTENT := bytes
   
   TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
@@ -195,6 +196,107 @@ body.
 The type of body (length-prefixed or chunked) in a response is always the
 same for a given request method.  Only new request methods introduced in
 Bazaar 0.91 and later use streamed bodies.
+
+Version three
+-------------
+
+.. note::
+  
+  For some discussion of the requirements that led to this new protocol
+  version, see `bug #83935`_.
+
+.. _bug #83935: https://bugs.launchpad.net/bzr/+bug/83935
+
+Version three has bencoding of most protocol structures, to make parsing
+simpler.  For extra parsing convenience, these structures are length
+prefixed::
+
+  LENGTH_PREFIX := 32-bit unsigned integer in network byte order
+
+Unlike earlier versions, clients and servers are no longer required to
+know which request verbs and responses will have bodies attached.  Because
+of length-prefixing and other changes, it is always possible to know when
+a complete request or response has been read, even if the server
+implements no verbs.
+
+The underlying message format is::
+
+  MESSAGE := "bzr message 3 (bzr 1.6)" NEWLINE HEADERS MESSAGE_PARTS
+  HEADERS := LENGTH_PREFIX bencoded_dict
+  MESSAGE_PARTS := MESSAGE_PART [MORE_MESSAGE_PARTS]
+  MORE_MESSAGE_PARTS := END_MESSAGE_PARTS | MESSAGE_PARTS
+  END_MESSAGE_PARTS := "e"
+
+  MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES
+  ONE_BYTE := "o" byte
+  STRUCTURE := "s" LENGTH_PREFIX bencoded_structure
+  BYTES := "b" LENGTH_PREFIX bytes
+
+This format allows an arbitrary sequence of message parts to be encoded
+in a single message.
+
+Headers
+~~~~~~~
+
+Each request and response will have “headers”, a dictionary of key-value pairs.
+The keys must be strings, not any other type of value.
+
+Currently, the only defined header is “Software version”.  Both the client and
+the server should include a “Software version” header, with a value of a
+free-form string such as “bzrlib 1.5”, to aid debugging and logging.  Clients
+and servers **should not** vary behaviour based on this string.
+
+Conventional requests and responses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By convention, most requests and responses have a simple “arguments plus
+optional body” structure, as in earlier protocol versions.  This section
+describes how such messages are encoded.  All requests and responses
+defined by earlier protocol versions must be encoded in this way.
+
+Conventional requests will send a sequence of:
+
+* Arguments (a STRUCTURE of a tuple)
+
+* (Optional) body
+
+  * Single body (BYTES), or
+
+  * Streamed body (multiple BYTES parts), followed by a status (ONE_BYTE)
+
+    * if status is "E", followed by an Error (STRUCTURE)
+
+Conventional responses will send a sequence of:
+
+* Status (ONE_BYTE)
+
+* Arguments (a STRUCTURE of a tuple)
+
+* (Optional) body
+
+  * Single body (BYTES), or
+
+  * Streamed body (multiple BYTES parts), followed by a status (ONE_BYTE)
+
+    * if status is "E", followed by an Error (STRUCTURE)
+
+In all cases, the ONE_BYTE status is either "S" for Success or "E" for
+Error.  Note that the streamed body from version two is now just multiple
+BYTES parts.
+
+For new methods, these sequences are just a convention and may be varied
+if appropriate for a particular request or response.  However, each
+request should at least start with a STRUCTURE encoding the arguments
+tuple.  The first element of that tuple must be a string that names the
+request method.  (Note that arguments in this protocol version are
+bencoded.  As a result, unlike previous protocol versions, arguments in
+this version are 8-bit clean.)
+
+For errors (where the Status byte of a response or a streamed body is
+"E"), the situation is analagous to requests.  The first item in the
+encoded sequence must be a string of the error name.  The other arguments
+supply details about the error, and their number and types will depend on
+the type of error (as identified by the error name).
 
 Paths
 =====
@@ -229,6 +331,18 @@ The available request methods are registered in `bzrlib.smart.request`.
 **XXX**: ideally the request methods should be documented here.
 Contributions welcome!
 
+
+Recognised errors
+=================
+
+The first argument of an error response specifies the error type.
+
+One possible error name is ``UnknownMethod``, which means the server does
+not recognise the verb used by the client's request.  This error was
+introduced in version three.
+
+**XXX**: ideally the error types should be documented here.  Contributions
+welcome!
 
 ..
    vim: ft=rst tw=74 ai

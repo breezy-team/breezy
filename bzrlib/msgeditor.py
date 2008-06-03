@@ -61,10 +61,10 @@ def _run_editor(filename):
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
-           # We're searching for an editor, so catch safe errors and continue
-           if e.errno in (errno.ENOENT, ):
-               continue
-           raise
+            # We're searching for an editor, so catch safe errors and continue
+            if e.errno in (errno.ENOENT, ):
+                continue
+            raise
         if x == 0:
             return True
         elif x == 127:
