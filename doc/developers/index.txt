@@ -9,7 +9,10 @@ Overall developer documentation
 ===============================
 
 * `Developer Guide <../en/developer-guide/HACKING.html>`_
-* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
+* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_ (external link)
+  -- automatically generated API reference information
+* http://bazaar-vcs.org/NewDeveloperIntroduction
+  -- 
 
 Process
 =======
