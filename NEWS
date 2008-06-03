@@ -100,6 +100,9 @@ This release adds a translation of some of the user documentation into Spanish.
       them.
       (Vincent Ladeuil, #229076)
 
+    * The "Unable to obtain lock" error message now also suggests using
+      ``bzr break-lock`` to fix it.  (Martin Albisetti, #139202)
+
     * Treat an encoding of '' as ascii; this can happen when bzr is run
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
