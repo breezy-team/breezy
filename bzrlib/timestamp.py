@@ -47,7 +47,8 @@ def format_highres_date(t, offset=0):
     >>> format_highres_date(1152428738.867522, 19800)
     'Sun 2006-07-09 12:35:38.867522001 +0530'
     """
-    assert isinstance(t, float)
+    if not isinstance(t, float):
+        raise ValueError(t)
 
     # This has to be formatted for "original" date, so that the
     # revision XML entry will be reproduced faithfully.
@@ -129,8 +130,9 @@ def format_patch_date(secs, offset=0):
 
     Inverse of parse_patch_date.
     """
-    assert offset % 60 == 0, \
-        "can't represent timezone %s offset by fractional minutes" % offset
+    if offset % 60 != 0:
+        raise ValueError(
+        "can't represent timezone %s offset by fractional minutes" % offset)
     # so that we don't need to do calculations on pre-epoch times, 
     # which doesn't work with win32 python gmtime, we always
     # give the epoch in utc
@@ -151,8 +153,9 @@ def parse_patch_date(date_str):
     """
     secs_str = date_str[:-6]
     offset_str = date_str[-5:]
-    assert len(offset_str) == 5, \
-            "invalid timezone %r" % offset_str
+    if len(offset_str) != 5:
+        raise ValueError(
+            "invalid timezone %r" % offset_str)
     offset_hours, offset_mins = offset_str[:3], offset_str[3:]
     offset = int(offset_hours) * 3600 + int(offset_mins) * 60
     tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')

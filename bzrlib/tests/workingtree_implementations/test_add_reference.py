@@ -36,13 +36,19 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         sub_tree.commit('commit', rev_id='sub_1')
         return tree, sub_tree
 
+    def _references_unsupported(self, tree):
+        if tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES:
+            raise tests.TestSkipped('Tree format does not support references')
+        else:
+            self.fail('%r does not support references but should'
+                % (tree, ))
+
     def make_nested_trees(self):
         tree, sub_tree = self.make_trees()
         try:
             tree.add_reference(sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
-            raise tests.TestSkipped('Tree format does not support references')
+            self._references_unsupported(tree)
         return tree, sub_tree
 
     def test_add_reference(self):
@@ -76,8 +82,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
                               sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
-            raise tests.TestSkipped('Tree format does not support references')
+            self._references_unsupported(tree)
 
     def test_root_present(self):
         """Subtree root is present, though not the working tree root"""
@@ -87,8 +92,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
                               sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
-            raise tests.TestSkipped('Tree format does not support references')
+            self._references_unsupported(tree)
 
     def test_add_non_subtree(self):
         tree, sub_tree = self.make_trees()
@@ -98,8 +102,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
                               sibling)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
-            raise tests.TestSkipped('Tree format does not support references')
+            self._references_unsupported(tree)
 
     def test_get_nested_tree(self):
         tree, sub_tree = self.make_nested_trees()

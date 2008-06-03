@@ -2,11 +2,20 @@
 Bazaar Developer Document Catalog
 =================================
 
-See the `Main Document Catalog <../index.html>`_ for additional documents
-including the Bazaar Developer Guide and bzrlib API reference.
+Bazaar user documentation is in the 
+`Main Document Catalog <../index.html>`_.
+
+Overall developer documentation
+===============================
+
+* `Developer Guide <../en/developer-guide/HACKING.html>`_
+* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
 
 Process
 =======
+
+* `Releasing Bazaar <releasing.html>`_ -- How to make a release of Bazaar,
+  and how to coordinate the monthly development cycle.
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
@@ -22,10 +31,16 @@ Specifications
 
 * `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
 
+* `Authentication ring <authentication-ring.html>`_ |--| Configuring
+  authentication.
+
 * `Bundles <bundles.html>`_ |--| All about bzr bundles.
 
 * `Container format <container-format.html>`_ |--| Notes on a container format
   for streaming and storing Bazaar data.
+
+* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+  for repositories (a layer above the container format).
 
 * `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
 
@@ -35,7 +50,12 @@ Specifications
 
 * `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
 
+* `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
+
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
+
+* `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
+  any python application.
 
 Data formats
 ============

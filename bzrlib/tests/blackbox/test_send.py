@@ -203,6 +203,17 @@ class TestSend(tests.TestCaseWithTransport):
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
+    def test_mailto_child_option(self):
+        """Make sure that child_submit_to is used."""
+        self.make_trees()
+        branch = _mod_branch.Branch.open('branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
+        parent = _mod_branch.Branch.open('parent')
+        parent.get_config().set_user_option('child_submit_to', 
+                           'somebody@example.org')
+        self.run_bzr_error(('Unknown mail client: bogus',),
+                           'send -f branch')
+
     def test_format(self):
         self.make_trees()
         s = StringIO(self.run_bzr('send -f branch -o- --format=4')[0])

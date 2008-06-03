@@ -109,8 +109,9 @@ class LRUCache(object):
         self._queue = new_queue
         # All entries should be of the same size. There should be one entry in
         # queue for each entry in cache, and all refcounts should == 1
-        assert (len(self._queue) == len(self._cache) ==
-                len(self._refcount) == sum(self._refcount.itervalues()))
+        if not (len(self._queue) == len(self._cache) ==
+                len(self._refcount) == sum(self._refcount.itervalues())):
+            raise AssertionError()
 
     def _remove(self, key):
         """Remove an entry, making sure to maintain the invariants."""

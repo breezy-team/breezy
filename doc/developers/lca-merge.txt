@@ -106,6 +106,23 @@ common case; if there is only one LCA, then it is merely an alternative
 implementation of three-way.  (One that happens to automatically do
 ``--reprocess``, ftw).
 
+Exception to three-way behavior
+-------------------------------
+There is a special case of three-way merge which LCA merge handles differently
+from our default "merge3" algorithm:
+BASE has content X, THIS deletes the content, and OTHER changes X to Y.  In
+this case, LCA merge emits Y in its output and does not indicate a conflict.
+merge3 would output Y, but would also indicate a conflict.  (This is also the
+behavior in the inverse case where OTHER has nothing and THIS has Y.)
+
+This behavior is due the way LCA determines basic conflicts; they
+can only be emitted when THIS and OTHER each have unique lines between common
+lines.  If THIS does not have unique lines in this position, conflicts will not
+be emitted, even if its (lack of) content is unique.
+
+This behavior difference is shared with "weave" merge.  I hope that a future
+revision of LCA merge will handle this case as merge3 would.
+
 Why a new name
 --------------
 

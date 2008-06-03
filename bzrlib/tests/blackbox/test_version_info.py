@@ -139,3 +139,15 @@ class TestVersionInfo(TestCaseWithTransport):
         wt = self.make_branch_and_tree('branch')
         out, err = self.run_bzr('version-info --custom', retcode=3)
         self.assertContainsRe(err, r'ERROR: No template specified\.')
+
+    def test_custom_implies_all(self):
+        self.create_tree()
+        out, err = self.run_bzr('version-info --custom --template='
+            '"{revno} {branch_nick} {clean}\n" branch')
+        self.assertEqual("2 branch 1\n", out)
+        self.assertEqual("", err)
+        self.build_tree_contents([('branch/c', 'now unclean\n')])
+        out, err = self.run_bzr('version-info --custom --template='
+            '"{revno} {branch_nick} {clean}\n" branch')
+        self.assertEqual("2 branch 0\n", out)
+        self.assertEqual("", err)
