@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,12 +34,17 @@ class TestVersion(TestCase):
     def test_version(self):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
-        self.assertEquals(1, out.count(bzrlib.__version__))
+        self.assertEqualDiff(out.splitlines()[0],
+            "Bazaar (bzr) %s" % bzrlib.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
         self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
+
+    def test_version_short(self):
+        out = self.run_bzr(["version", "--short"])[0]
+        self.assertEqualDiff(out, bzrlib.version_string + '\n')
 
 
 class TestVersionUnicodeOutput(TestCaseInTempDir):

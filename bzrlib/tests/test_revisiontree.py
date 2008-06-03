@@ -22,7 +22,6 @@ from bzrlib import (
     )
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tree import RevisionTree
 
 
 class TestTreeWithCommits(TestCaseWithTransport):

@@ -17,22 +17,21 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import optparse
-
 from bzrlib import (
     errors,
-    log,
-    registry,
     revisionspec,
-    symbol_versioning,
     )
 """)
-from bzrlib.trace import warning
 
+from bzrlib import (
+    log,
+    registry,
+    )
 
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
@@ -180,7 +179,8 @@ class Option(object):
         self.type = type
         self._short_name = short_name
         if type is None:
-            assert argname is None
+            if argname:
+                raise ValueError('argname not valid for booleans')
         elif argname is None:
             argname = 'ARG'
         self.argname = argname

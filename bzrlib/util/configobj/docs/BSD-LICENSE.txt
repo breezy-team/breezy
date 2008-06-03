@@ -18,7 +18,7 @@ doesn't happen to anyone else {sm;:-)}.
 
 ::
 
-    Copyright (c) 2003-2007, Michael Foord
+    Copyright (c) 2003-2008, Michael Foord & Nicola Larosa
     All rights reserved.
     E-mail : fuzzyman AT voidspace DOT org DOT uk
     

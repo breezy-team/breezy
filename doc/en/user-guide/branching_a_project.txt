@@ -30,14 +30,14 @@ protocols, see the ``urlspec`` online help topic or the
 `URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
 section of the Bazaar User Reference.
 
-A reminder re shared repositories
----------------------------------
+A reminder about shared repositories
+------------------------------------
 
 Before getting a copy of a branch, have a quick think about
 where to put it on your filesystem. For maximum storage
 efficiency down the track, it is recommended that branches
-be created somewhere under a directory setup as a shared
-repository. For example::
+be created somewhere under a directory that has been set up
+as a shared repository. For example::
 
   bzr init-repo my-repo
   cd my-repo
@@ -48,16 +48,16 @@ hack away.
 The branch command
 ------------------
 
-To get a copy of an existing branch, use the ``branch`` command.
+To get a branch based on an existing branch, use the ``branch`` command.
 The syntax is::
 
   bzr branch URL [directory]
 
 If a directory is not given, one is created based on the last part of
-the URL. Here are some examples showing a network share URL and an
+the URL. Here are some examples showing a drive qualified path (M:/) and an
 sftp URL respectively::
 
-  bzr branch m:/cool-trunk
+  bzr branch M:/cool-trunk
   bzr branch sftp://bill@mary-laptop/cool-repo/cool-trunk
 
 This example shows explicitly giving the directory name to use for the

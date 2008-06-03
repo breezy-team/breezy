@@ -146,7 +146,8 @@ class BundleSerializerV08(BundleSerializer):
             If this parameter is True, and value is the empty string, we will
             write an extra space.
         """
-        assert indent > 0, 'indentation must be greater than 0'
+        if indent < 1:
+            raise ValueError('indentation must be greater than 0')
         f = self.to_file
         f.write('#' + (' ' * indent))
         f.write(key.encode('utf-8'))
@@ -523,7 +524,8 @@ class BundleReader(object):
             action, lines, do_continue = self._read_one_patch()
             if action is not None:
                 revision_actions.append((action, lines))
-        assert self.info.revisions[-1].tree_actions is None
+        if self.info.revisions[-1].tree_actions is not None:
+            raise AssertionError()
         self.info.revisions[-1].tree_actions = revision_actions
 
     def _read_footer(self):
