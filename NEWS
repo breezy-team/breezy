@@ -133,9 +133,6 @@ This release adds a translation of some of the user documentation into Spanish.
     * New helper function for splitting test suites
       ``split_suite_by_condition``. (Robert Collins)
 
-    * The branch interface tests were invalid for branches using subtree
-      repositories by default. This has been fixed. (Robert Collins)
-
   INTERNALS:
 
     * ``Branch.missing_revisions`` has been deprecated. Similar functionality
