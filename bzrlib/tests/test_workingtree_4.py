@@ -496,7 +496,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             (None, u'dir'),
             (None, 'directory'),
             (None, False))]
-        self.assertEqual(expected, list(tree._iter_changes(tree.basis_tree(),
+        self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
             specific_files=['dir'])))
         tree.unlock()
         # do a commit, we want to trigger the dirstate fast-path too
@@ -514,7 +514,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             ('dir', 'dir'),
             ('directory', None),
             (False, False))]
-        self.assertEqual(expected, list(tree._iter_changes(tree.basis_tree())))
+        self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree())))
         tree.unlock()
 
     def test_with_subtree_supports_tree_references(self):
@@ -526,7 +526,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # workingtree_4.
 
     def test_iter_changes_ignores_unversioned_dirs(self):
-        """_iter_changes should not descend into unversioned directories."""
+        """iter_changes should not descend into unversioned directories."""
         tree = self.make_branch_and_tree('.', format='dirstate')
         # We have an unversioned directory at the root, a versioned one with
         # other versioned files and an unversioned directory, and another
@@ -564,14 +564,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         changes = [c[1] for c in
-                   tree._iter_changes(basis, want_unversioned=True)]
+                   tree.iter_changes(basis, want_unversioned=True)]
         self.assertEqual([(None, 'unversioned'),
                           (None, 'versioned/unversioned'),
                           (None, 'versioned2/unversioned'),
                          ], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
         del returned[:] # reset
-        changes = [c[1] for c in tree._iter_changes(basis)]
+        changes = [c[1] for c in tree.iter_changes(basis)]
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
 
@@ -599,7 +599,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
                                             [('f', '', 0, False, ''),
                                              ('r', 'bar', 0 , False, '')]))
             self.assertListRaises(errors.CorruptDirstate,
-                                  tree._iter_changes, tree.basis_tree())
+                                  tree.iter_changes, tree.basis_tree())
         finally:
             tree.unlock()
 

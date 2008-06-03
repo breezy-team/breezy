@@ -21,6 +21,7 @@
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     symbol_versioning,
     urlutils,
     )
@@ -50,6 +51,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.DuplicateHelpPrefix('foo')
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
+
+    def test_ghost_revisions_have_no_revno(self):
+        error = errors.GhostRevisionsHaveNoRevno('target', 'ghost_rev')
+        self.assertEqualDiff("Could not determine revno for {target} because"
+                             " its ancestry shows a ghost at {ghost_rev}",
+                             str(error))
 
     def test_incompatibleAPI(self):
         error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
@@ -185,12 +192,6 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
-    def test_read_only_lock_error(self):
-        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
-            errors.ReadOnlyLockError, 'filename', 'error message')
-        self.assertEqualDiff("Cannot acquire write lock on filename."
-                             " error message", str(error))
-
     def test_lock_failed(self):
         error = errors.LockFailed('http://canonical.com/', 'readonly transport')
         self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
@@ -202,6 +203,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
             "the currently open request.",
+            str(error))
+
+    def test_unavailable_representation(self):
+        error = errors.UnavailableRepresentation(('key',), "mpdiff", "fulltext")
+        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
+            "('key',) which is encoded as 'fulltext'.",
             str(error))
 
     def test_unknown_hook(self):
@@ -468,12 +475,29 @@ class TestErrors(TestCaseWithTransport):
             "Unable to create symlink u'\\xb5' on this platform",
             str(err))
 
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
+
     def test_incorrect_url(self):
         err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
         self.assertEquals(
             ("The URL for bug tracker \"foo\" doesn't contain {id}: "
              "http://bug.com/"),
             str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable to encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
+            str(err))
+
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
 
 
 class PassThroughError(errors.BzrError):

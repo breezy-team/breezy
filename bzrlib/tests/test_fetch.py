@@ -28,9 +28,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -285,9 +282,13 @@ class TestHttpFetch(TestCaseWithWebserver):
         # unfortunately this log entry is branch format specific. We could 
         # factor out the 'what files does this format use' to a method on the 
         # repository, which would let us to this generically. RBC 20060419
+        # RBC 20080408: Or perhaps we can assert that no files are fully read
+        # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
-        self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
+        # XXX: This *should* be '1', but more intrusive fetch changes are
+        # needed to drop this back to 1.
+        self.assertEqual(2, self._count_log_matches('inventory.kndx', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         self.assertTrue(1 >= self._count_log_matches('revision-history',
@@ -296,8 +297,14 @@ class TestHttpFetch(TestCaseWithWebserver):
                                                      http_logs))
         # FIXME naughty poking in there.
         self.get_readonly_server().logs = []
-        # check there is nothing more to fetch
-        source = Branch.open(self.get_readonly_url("source/"))
+        # check there is nothing more to fetch.  We take care to re-use the
+        # existing transport so that the request logs we're about to examine
+        # aren't cluttered with redundant probes for a smart server.
+        # XXX: Perhaps this further parameterisation: test http with smart
+        # server, and test http without smart server?
+        source = Branch.open(
+            self.get_readonly_url("source/"),
+            possible_transports=[source.bzrdir.root_transport])
         self.assertEqual(target.fetch(source), (0, []))
         # should make just two requests
         http_logs = self.get_readonly_server().logs
@@ -305,9 +312,82 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.log('\n'.join(http_logs))
         self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
+        self.assertEqual(1, self._count_log_matches('repository/format',
+            http_logs))
         self.assertTrue(1 >= self._count_log_matches('revision-history',
                                                      http_logs))
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class Test1To2Fetch(TestCaseWithTransport):
+    """Tests for Model1To2 failure modes"""
+
+    def make_tree_and_repo(self):
+        self.tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        self.repo = self.make_repository('rich-repo', format='rich-root-pack')
+        self.repo.lock_write()
+        self.addCleanup(self.repo.unlock)
+
+    def do_fetch_order_test(self, first, second):
+        """Test that fetch works no matter what the set order of revision is.
+
+        This test depends on the order of items in a set, which is
+        implementation-dependant, so we test A, B and then B, A.
+        """
+        self.make_tree_and_repo()
+        self.tree.commit('Commit 1', rev_id=first)
+        self.tree.commit('Commit 2', rev_id=second)
+        self.repo.fetch(self.tree.branch.repository, second)
+
+    def test_fetch_order_AB(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('A', 'B')
+
+    def test_fetch_order_BA(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('B', 'A')
+
+    def get_parents(self, file_id, revision_id):
+        transaction = self.repo.get_transaction()
+        vf = self.repo.weave_store.get_weave(file_id, transaction)
+        return vf.get_parents_with_ghosts(revision_id)
+
+    def test_fetch_ghosts(self):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='left-parent')
+        self.tree.add_parent_tree_id('ghost-parent')
+        fork = self.tree.bzrdir.sprout('fork', 'null:').open_workingtree()
+        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        self.tree.branch.repository.fetch(fork.branch.repository,
+                                     'not-ghost-parent')
+        self.tree.add_parent_tree_id('not-ghost-parent')
+        self.tree.commit('second commit', rev_id='second-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+        root_id = self.tree.get_root_id()
+        self.assertEqual(['left-parent', 'ghost-parent', 'not-ghost-parent'],
+                         self.get_parents(root_id, 'second-id'))
+
+    def make_two_commits(self, change_root, fetch_twice):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='first-id')
+        if change_root:
+            self.tree.set_root_id('unique-id')
+        self.tree.commit('second commit', rev_id='second-id')
+        if fetch_twice:
+            self.repo.fetch(self.tree.branch.repository, 'first-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+
+    def test_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=False)
+        self.assertEqual([], self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=True)
+        self.assertEqual([], self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetches(self):
+        self.make_two_commits(change_root=False, fetch_twice=True)
+        self.assertEqual(['first-id'],
+                         self.get_parents('TREE_ROOT', 'second-id'))

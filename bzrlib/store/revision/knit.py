@@ -26,7 +26,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     )
-from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
+from bzrlib.knit import make_file_knit, KnitPlainFactory
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
@@ -42,7 +42,7 @@ class KnitRevisionStoreFactory(object):
         versioned_file_store = VersionedFileStore(
             t.clone('revision-store'),
             precious=True,
-            versionedfile_class=KnitVersionedFile,
+            versionedfile_class=make_file_knit,
             versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()})
         return KnitRevisionStore(versioned_file_store)
 
@@ -90,7 +90,6 @@ class KnitRevisionStore(RevisionStore):
         try:
             for text, revision_id in zip(texts, revision_ids):
                 r = self._serializer.read_revision_from_string(text)
-                assert r.revision_id == revision_id
                 revisions.append(r)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml for %s: %s' %
@@ -113,7 +112,11 @@ class KnitRevisionStore(RevisionStore):
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
-        return self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        vf = self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        # The revisions knit should always be non-delta, so force delta=False
+        # here.
+        vf.delta = False
+        return vf
 
     def get_signature_file(self, transaction):
         """Get the signature text versioned file object."""
