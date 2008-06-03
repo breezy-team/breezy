@@ -537,6 +537,20 @@ class TestBzrDir(TestCaseWithBzrDir):
             target.open_repository())
         target.open_workingtree().revert()
 
+    def test_clone_on_transport_preserves_repo_format(self):
+        if self.bzrdir_format == bzrdir.format_registry.make_bzrdir('default'):
+            format = 'knit'
+        else:
+            format = None
+        source_branch = self.make_branch('source', format=format)
+        # Ensure no format data is cached
+        a_dir = bzrlib.branch.Branch.open_from_transport(
+            self.get_transport('source')).bzrdir
+        target_transport = a_dir.root_transport.clone('..').clone('target')
+        target_bzrdir = a_dir.clone_on_transport(target_transport)
+        target_repo = target_bzrdir.open_repository()
+        self.assertEqual(target_repo._format, source_branch.repository._format)
+
     def test_revert_inventory(self):
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
@@ -1582,12 +1596,7 @@ class TestBreakLock(TestCaseWithBzrDir):
                 # its still held by the explicit lock we took, and the break
                 # lock should not have touched it.
                 repo = thisdir.open_repository()
-                orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
-                try:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = 1
-                    self.assertRaises(errors.LockContention, repo.lock_write)
-                finally:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
+                self.assertRaises(errors.LockContention, repo.lock_write)
         finally:
             unused_repo.unlock()
         self.assertRaises(errors.LockBroken, master.unlock)

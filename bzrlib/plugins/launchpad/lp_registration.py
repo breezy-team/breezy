@@ -104,9 +104,12 @@ class LaunchpadService(object):
             # TODO: if there's no registrant email perhaps we should
             # just connect anonymously?
             scheme, hostinfo, path = urlsplit(self.service_url)[:3]
-            assert '@' not in hostinfo
-            assert self.registrant_email is not None
-            assert self.registrant_password is not None
+            if '@' in hostinfo:
+                raise AssertionError(hostinfo)
+            if self.registrant_email is None:
+                raise AssertionError()
+            if self.registrant_password is None:
+                raise AssertionError()
             # TODO: perhaps fully quote the password to make it very slightly
             # obscured
             # TODO: can we perhaps add extra Authorization headers
@@ -139,7 +142,6 @@ class LaunchpadService(object):
 
     def send_request(self, method_name, method_params, authenticated):
         proxy = self.get_proxy(authenticated)
-        assert method_name
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
@@ -205,7 +207,8 @@ class BranchRegistrationRequest(BaseRequest):
                  author_email='',
                  product_name='',
                  ):
-        assert branch_url, 'branch_url %r is invalid' % branch_url
+        if not branch_url:
+            raise errors.InvalidURL(branch_url, "You need to specify a non-empty branch URL.")
         self.branch_url = branch_url
         if branch_name:
             self.branch_name = branch_name
@@ -239,7 +242,6 @@ class BranchBugLinkRequest(BaseRequest):
     _methodname = 'link_branch_to_bug'
 
     def __init__(self, branch_url, bug_id):
-        assert branch_url
         self.bug_id = bug_id
         self.branch_url = branch_url
 
@@ -257,7 +259,9 @@ class ResolveLaunchpadPathRequest(BaseRequest):
     _authenticated = False
 
     def __init__(self, path):
-        assert path
+        if not path:
+            raise errors.InvalidURL(path=path,
+                                    extra="You must specify a product.")
         self.path = path
 
     def _request_params(self):

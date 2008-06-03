@@ -153,6 +153,22 @@ class TestPush(TestCaseWithBranch):
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
 
+    def test_push_overwrite_of_non_tip_with_stop_revision(self):
+        """Combining the stop_revision and overwrite options works.
+        
+        This was <https://bugs.launchpad.net/bzr/+bug/234229>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.branch.push(target)
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
 
 class TestPushHook(TestCaseWithBranch):
 
@@ -182,7 +198,8 @@ class TestPushHook(TestCaseWithBranch):
     def test_post_push_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
+        Branch.hooks.install_named_hook('post_push',
+                                        self.capture_post_push_hook, None)
         source.push(target)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -210,7 +227,8 @@ class TestPushHook(TestCaseWithBranch):
             local = BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
+        Branch.hooks.install_named_hook('post_push',
+                                        self.capture_post_push_hook, None)
         source.push(local)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -229,7 +247,8 @@ class TestPushHook(TestCaseWithBranch):
         sourcedir = target.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
+        Branch.hooks.install_named_hook('post_push',
+                                        self.capture_post_push_hook, None)
         source.branch.push(target.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
