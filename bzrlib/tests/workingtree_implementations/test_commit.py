@@ -23,6 +23,7 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    mutabletree,
     osutils,
     revision as _mod_revision,
     ui,
@@ -497,8 +498,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
-        branch.Branch.hooks.install_hook('post_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('post_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
@@ -522,8 +523,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass
-        branch.Branch.hooks.install_hook('pre_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('pre_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
@@ -536,3 +537,21 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ],
             factory._calls
            )
+
+    def test_start_commit_hook(self):
+        """Make sure a start commit hook can modify the tree that is 
+        committed."""
+        def start_commit_hook_adds_file(tree):
+            open(tree.abspath("newfile"), 'w').write("data")
+            tree.add(["newfile"])
+        def restoreDefaults():
+            mutabletree.MutableTree.hooks['start_commit'] = []
+        self.addCleanup(restoreDefaults)
+        tree = self.make_branch_and_tree('.')
+        mutabletree.MutableTree.hooks.install_named_hook(
+            'start_commit',
+            start_commit_hook_adds_file,
+            None)
+        revid = tree.commit('first post')
+        committed_tree = tree.basis_tree()
+        self.assertTrue(committed_tree.has_filename("newfile"))
