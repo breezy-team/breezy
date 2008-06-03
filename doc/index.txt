@@ -52,3 +52,6 @@ Other Languages
 ===============
 
 * `Spanish Documentation <index.es.html>`_
+
+..
+   vim: ft=rst tw=74 ai

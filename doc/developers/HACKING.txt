@@ -15,6 +15,9 @@ The current version of this document is available in the file
 ``doc/developers/HACKING.txt`` in the source tree, or at
 http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
 
+See also:
+`Bazaar Developer Documentation Catalog <../../developers/index.html>`_.
+
 .. contents::
 
 
