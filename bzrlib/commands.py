@@ -828,7 +828,7 @@ def main(argv):
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
         from bzrlib import symbol_versioning
-        symbol_versioning.suppress_deprecation_warnings()
+        symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
         argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:

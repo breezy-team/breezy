@@ -1820,7 +1820,8 @@ class cmd_ls(Command):
             Option('from-root',
                    help='Print paths relative to the root of the branch.'),
             Option('unknown', help='Print unknown files.'),
-            Option('versioned', help='Print versioned files.'),
+            Option('versioned', help='Print versioned files.',
+                   short_name='V'),
             Option('ignored', help='Print ignored files.'),
             Option('null',
                    help='Write an ascii NUL (\\0) separator '
@@ -2654,6 +2655,9 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+
+        # Make deprecation warnings visible, unless -Werror is set
+        symbol_versioning.activate_deprecation_warnings(override=False)
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)

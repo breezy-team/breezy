@@ -52,6 +52,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
 
+    def test_ghost_revisions_have_no_revno(self):
+        error = errors.GhostRevisionsHaveNoRevno('target', 'ghost_rev')
+        self.assertEqualDiff("Could not determine revno for {target} because"
+                             " its ancestry shows a ghost at {ghost_rev}",
+                             str(error))
+
     def test_incompatibleAPI(self):
         error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
         self.assertEqualDiff(

@@ -4,7 +4,6 @@ Bazaar Release Notes
 
 .. contents::
 
-
 IN DEVELOPMENT
 --------------
 
@@ -14,6 +13,10 @@ This release adds a translation of some of the user documentation into Spanish.
   NOTES WHEN UPGRADING:
 
   CHANGES:
+
+    * Deprecation warnings will not be suppressed when running ``bzr selftest``
+      so that developers can see if their code is using deprecated functions.
+      (John Arbash Meinel)
 
   FEATURES:
 
@@ -31,16 +34,59 @@ This release adds a translation of some of the user documentation into Spanish.
 
   IMPROVEMENTS:
 
+    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
+      the revno of the new revision (``Graph.find_distance_to_null``). This
+      should make something like ``bzr branch -r -100`` in a shared, no-trees
+      repository much snappier. (John Arbash Meinel)
+
+    * ``bzr log --short -r X..Y`` no longer needs to access the full revision
+      history. This makes it noticeably faster when logging the last few
+      revisions. (John Arbash Meinel)
+
+    * ``bzr ls`` now accepts ``-V`` as an alias for ``--versioned``. 
+      (Jerad Cramp, #165086)
+
     * ``bzr missing`` uses the new ``Graph.find_unique_ancestors`` and
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
 
+    * ``bzr uncommit`` now uses partial history access, rather than always
+      extracting the full revision history for a branch. This makes it
+      resolve the appropriate revisions much faster (in testing it drops
+      uncommit from 1.5s => 0.4s). It also means ``bzr log --short`` is one
+      step closer to not using full revision history.
+      (John Arbash Meinel, #172649)
+
   BUGFIXES:
 
+    * ``bzr merge --lca`` should handle when two revisions have no common
+      ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
+
+    * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
+      fails.  (Andrew Bennetts, #234229)
+      
     * Correctly track the base URL of a smart medium when using bzr+http://
       URLs, which was causing spurious "No repository present" errors with
       branches in shared repositories accessed over bzr+http.
       (Andrew Bennetts, #230550)
+
+    * Define ``_remote_is_at_least_1_2`` on ``SmartClientMedium`` so that all
+      implementations have the attribute.  Fixes 'PyCurlTransport' object has no
+      attribute '_remote_is_at_least_1_2' attribute errors.
+      (Andrew Bennetts, #220806)
+
+    * Failure to delete an obsolete pack file should just give a warning
+      message, not a fatal error.  It may for example fail if the file is still
+      in use by another process.
+      (Martin Pool)
+      
+    * Fix MemoryError during large fetches over HTTP by limiting the amount of
+      data we try to read per ``recv`` call.  The problem was observed with
+      Windows and a proxy, but might affect other environments as well.
+      (Eric Holmberg, #215426)
+
+    * Handle old merge directives correctly in Merger.from_mergeable.  Stricter
+      get_parent_map requirements exposed a latent bug here.  (Aaron Bentley)
 
     * Issue a warning and ignore passwords declared in authentication.conf when
       used for an ssh scheme (sftp or bzr+ssh).
@@ -54,6 +100,10 @@ This release adds a translation of some of the user documentation into Spanish.
       them.
       (Vincent Ladeuil, #229076)
 
+    * Treat an encoding of '' as ascii; this can happen when bzr is run
+      under vim on Mac OS X.
+      (Neil Martinsen-Burrell)
+
   DOCUMENTATION:
 
     * Added directory structure and started translation of docs in spanish.
@@ -63,6 +113,12 @@ This release adds a translation of some of the user documentation into Spanish.
       on the plugin and integration chapters of the User Guide.
       (Ian Clatworthy)
 
+    * More Bazaar developer documentation about packaging and release process,
+      and about use of Python reprs.
+      (Martin Pool, Martin Albisetti)
+
+    * Updated Tortise strategy document. (Mark Hammond)
+
   TESTING:
 
     * New helper function for splitting test suites
@@ -70,7 +126,26 @@ This release adds a translation of some of the user documentation into Spanish.
 
   INTERNALS:
 
-  API BREAKS:
+    * ``Branch.missing_revisions`` has been deprecated. Similar functionality
+      can be obtained using ``bzrlib.missing.find_unmerged``. The api was
+      fairly broken, and the function was unused, so we are getting rid of it.
+      (John Arbash Meinel)
+
+  API CHANGES:
+
+    * ``Branch.abspath`` is deprecated; use the Tree or Transport 
+      instead.  (Martin Pool)
+
+    * ``Branch.update_revisions`` now takes an optional ``Graph``
+      object. This can be used by ``update_revisions`` when it is
+      checking ancestry, and allows callers to prefer request to go to a
+      local branch.  (John Arbash Meinel)
+
+    * Branch, Repository, Tree and BzrDir should expose a Transport as an
+      attribute if they have one, rather than having it indirectly accessible
+      as ``.control_files._transport``.  This doesn't add a requirement
+      to support a Transport in cases where it was not needed before;
+      it just simplifies the way it is reached.  (Martin Pool)
 
     * ``bzr missing --mine-only`` will return status code 0 if you have no
       new revisions, but the remote does. Similarly for ``--theirs-only``.
@@ -79,19 +154,38 @@ This release adds a translation of some of the user documentation into Spanish.
       It also changes the output to print '[This|Other] branch is up to
       date.' rather than displaying nothing.  (John Arbash Meinel)
 
+    * ``LockableFiles.put_utf8``, ``put_bytes`` and ``controlfilename``
+      are now deprecated in favor of using Transport operations.
+      (Martin Pool)
+
     * Many methods on ``VersionedFile``, ``Repository`` and in
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
       (Robert Collins)
+
+    * ``RevisionSpec.wants_revision_history`` can be set to False for a given
+      ``RevisionSpec``. This will disable the existing behavior of passing in
+      the full revision history to ``self._match_on``. Useful for specs that
+      don't actually need access to the full history. (John Arbash Meinel)
 
     * The constructors of ``SmartClientMedium`` and its subclasses now require a
       ``base`` parameter.  ``SmartClientMedium`` implementations now also need
       to provide a ``remote_path_from_transport`` method.  (Andrew Bennetts)
       
+    * The default permissions for creating new files and directories 
+      should now be obtained from ``BzrDir._get_file_mode()`` and 
+      ``_get_dir_mode()``, rather than from LockableFiles.  The ``_set_file_mode``
+      and ``_set_dir_mode`` variables on LockableFiles which were advertised
+      as a way for plugins to control this are no longer consulted.
+      (Martin Pool)
+
     * ``VersionedFile.join`` is deprecated. This method required local
       instances of both versioned file objects and was thus hostile to being
       used for streaming from a smart server. The new get_record_stream and
       insert_record_stream are meant to efficiently replace this method.
       (Robert Collins)
+
+    * ``WorkingTreeFormat2.stub_initialize_remote`` is now private.
+      (Martin Pool) 
 
 
 bzr 1.5 2008-05-16
@@ -131,7 +225,7 @@ bzr 1.5rc1 2008-05-09
   IMPROVEMENTS:
 
     * Diff now handles revision specs like "branch:" and "submit:" more
-      efficiently.  (Aaron Bentley)
+      efficiently.  (Aaron Bentley, #202928)
 
     * More friendly error given when attempt to start the smart server
       on an address already in use. (Andrea Corbellini, #200575)
@@ -274,8 +368,8 @@ bzr 1.5rc1 2008-05-09
       Repository.item_keys_introduced_by() no longer take read locks.
       (Aaron Bentley)
 
-    * ``LockableFiles.get_utf8`` is deprecated, as a start towards 
-      removing LockableFiles and ``.control_files`` entirely.
+    * ``LockableFiles.get_utf8`` and ``.get`` are deprecated, as a start
+      towards removing LockableFiles and ``.control_files`` entirely.
       (Martin Pool)
 
     * Methods deprecated prior to 1.1 have been removed.
@@ -6094,3 +6188,6 @@ bzr-0.0.0.69  2005-03-22
 
     * Storage of local versions: init, add, remove, rm, info, log,
       diff, status, etc.
+
+..
+   vim: tw=74 ft=rst ff=unix
