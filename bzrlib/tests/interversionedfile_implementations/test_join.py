@@ -18,6 +18,7 @@
 
 
 import bzrlib.errors as errors
+from bzrlib.symbol_versioning import one_five
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 import bzrlib.versionedfile as versionedfile
@@ -44,7 +45,7 @@ class TestJoin(TestCaseWithTransport):
         f1.add_lines('r0', [], ['a\n', 'b\n'])
         f1.add_lines('r1', ['r0'], ['c\n', 'b\n'])
         f2 = self.get_target()
-        f2.join(f1, None)
+        self.applyDeprecated(one_five, f2.join, f1, None)
         def verify_file(f):
             self.assertTrue(f.has_version('r0'))
             self.assertTrue(f.has_version('r1'))
@@ -52,7 +53,7 @@ class TestJoin(TestCaseWithTransport):
         verify_file(self.get_target())
 
         self.assertRaises(errors.RevisionNotPresent,
-            f2.join, f1, version_ids=['r3'])
+            self.applyDeprecated, one_five, f2.join, f1, version_ids=['r3'])
 
     def test_gets_expected_inter_worker(self):
         source = self.get_source()
@@ -72,7 +73,8 @@ class TestJoin(TestCaseWithTransport):
         source.add_lines('ancestorright', ['base'], [])
         source.add_lines('namedleft', ['ancestorleft'], [])
         source.add_lines('namedright', ['ancestorright'], [])
-        target.join(source, version_ids=['namedleft', 'namedright'])
+        self.applyDeprecated(one_five, target.join, source,
+            version_ids=['namedleft', 'namedright'])
         self.assertFalse(target.has_version('sibling'))
         self.assertTrue(target.has_version('ancestorleft'))
         self.assertTrue(target.has_version('ancestorright'))
@@ -88,7 +90,7 @@ class TestJoin(TestCaseWithTransport):
         w1.add_lines('v-3', ['v-1'], ['line 1\n'])
         w2.add_lines('v-3', ['v-2'], ['line 1\n'])
         try:
-            w1.join(w2)
+            self.applyDeprecated(one_five, w1.join, w2)
         except errors.WeaveParentMismatch:
             # Acceptable behaviour:
             return
@@ -96,8 +98,7 @@ class TestJoin(TestCaseWithTransport):
                          'v-1 v-2 v-3'.split())
         self.assertEqualDiff(w1.get_text('v-3'),
                 'line 1\n')
-        self.assertEqual(sorted(w1.get_parents('v-3')),
-                ['v-1'])
+        self.assertEqual({'v-3':('v-1',)}, w1.get_parent_map(['v-3']))
         ann = list(w1.annotate('v-3'))
         self.assertEqual(len(ann), 1)
         self.assertEqual(ann[0][0], 'v-1')
@@ -116,17 +117,17 @@ class TestJoin(TestCaseWithTransport):
         """Reweave adding empty weave"""
         wb = self.get_target()
         w1 = self.build_weave1()
-        w1.join(wb)
+        self.applyDeprecated(one_five, w1.join, wb)
         self.verify_weave1(w1)
 
     def verify_weave1(self, w1):
         self.assertEqual(sorted(w1.versions()), ['v1', 'v2', 'v3'])
         self.assertEqual(w1.get_lines('v1'), ['hello\n'])
-        self.assertEqual([], w1.get_parents('v1'))
+        self.assertEqual({'v1':()}, w1.get_parent_map(['v1']))
         self.assertEqual(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        self.assertEqual(['v1'], w1.get_parents('v2'))
+        self.assertEqual({'v2':('v1',)}, w1.get_parent_map(['v2']))
         self.assertEqual(w1.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
-        self.assertEqual(['v2'], w1.get_parents('v3'))
+        self.assertEqual({'v3':('v2',)}, w1.get_parent_map(['v3']))
 
     def test_join_source_has_less_parents_preserves_parents(self):
         # when the target has a text with more parent info, join 
@@ -137,8 +138,8 @@ class TestJoin(TestCaseWithTransport):
         t = self.get_target()
         t.add_lines('base', [], [])
         t.add_lines('text', ['base'], [])
-        t.join(s)
-        self.assertEqual(['base'], t.get_parents('text'))
+        self.applyDeprecated(one_five, t.join, s)
+        self.assertEqual({'text':('base',)}, t.get_parent_map(['text']))
 
     def test_join_with_ghosts(self):
         """Join that inserts parents of an existing revision.
@@ -160,14 +161,14 @@ class TestJoin(TestCaseWithTransport):
         wb.add_lines('v1', [], ['hello\n'])
         wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
         try:
-            w1.join(wb)
+            self.applyDeprecated(one_five, w1.join, wb)
         except errors.WeaveParentMismatch:
             # Acceptable behaviour:
             return
         self.assertEqual(['v1', 'v2', 'v3', 'x1',], sorted(w1.versions()))
         self.assertEqual('line from x1\n', w1.get_text('x1'))
         self.assertEqual(['hello\n', 'world\n'], w1.get_lines('v2'))
-        self.assertEqual(['v1'], w1.get_parents('v2'))
+        self.assertEqual({'v2':('v1',)}, w1.get_parent_map(['v2']))
 
     def test_join_with_ignore_missing_versions(self):
         # test that ignore_missing=True makes a listed but absent version id
@@ -177,12 +178,13 @@ class TestJoin(TestCaseWithTransport):
         wb.add_lines('x1', [], ['line from x1\n'])
         wb.add_lines('v1', [], ['hello\n'])
         wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        w1.join(wb, version_ids=['x1', 'z1'], ignore_missing=True)
+        self.applyDeprecated(one_five, w1.join, wb, version_ids=['x1', 'z1'],
+            ignore_missing=True)
         eq = self.assertEquals
         eq(sorted(w1.versions()), ['v1', 'v2', 'v3', 'x1'])
         eq(w1.get_text('x1'), 'line from x1\n')
         eq(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        eq(w1.get_parents('v2'), ['v1'])
+        self.assertEqual({'v2':('v1',)}, w1.get_parent_map(['v2']))
     
     def build_source_weave(self, name, *pattern):
         w = self.get_source(name)
@@ -206,64 +208,43 @@ class TestJoin(TestCaseWithTransport):
         # does not must discard it, and when filling a ghost for a listed
         # ghost must reconcile it
         source = self.get_source()
-        try:
-            source.has_ghost('a')
-            source_ghosts = True
-        except NotImplementedError:
-            source_ghosts = False
         target = self.get_target()
-        try:
-            target.has_ghost('a')
-            target_ghosts = True
-        except NotImplementedError:
-            target_ghosts = False
-
-        if not source_ghosts and not target_ghosts:
-            # nothing to do
-            return
-        if source_ghosts and not target_ghosts:
-            # switch source and target so source is ghostless
-            t = source
-            source = target
-            target = t
-            source_ghosts = False
-            target_ghosts = True
-        # now target always supports ghosts.
-
         # try filling target with ghosts and filling in reverse -  
-        target.add_lines_with_ghosts('notbase', ['base'], [])
-        source.join(target)
+        try:
+            target.add_lines_with_ghosts('notbase', ['base'], [])
+        except NotImplementedError:
+            # The target does not support ghosts; the test is irrelevant.
+            return
+        try:
+            self.applyDeprecated(one_five, source.join, target)
+        except errors.RevisionNotPresent:
+            return
         # legacy apis should behave
         self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
-        self.assertEqual([], source.get_parents('notbase'))
-        self.assertEqual({'notbase':()}, source.get_graph())
         self.assertFalse(source.has_version('base'))
-        if source_ghosts:
-            # ghost data should have been preserved
-            self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
-            self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
-            self.assertEqual({'notbase':['base']}, source.get_graph_with_ghosts())
-            self.assertTrue(source.has_ghost('base'))
+        # ghost data should have been preserved
+        self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
+        self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
+        self.assertEqual({'notbase':('base',)},
+            source.get_parent_map(source.versions()))
 
         # if we add something that is fills out what is a ghost, then 
         # when joining into a ghost aware join it should flesh out the ghosts.
         source.add_lines('base', [], [])
-        target.join(source, version_ids=['base']) 
+        self.applyDeprecated(one_five, target.join, source, version_ids=['base'])
         self.assertEqual(['base', 'notbase'], target.get_ancestry(['notbase']))
-        self.assertEqual(['base'], target.get_parents('notbase'))
         self.assertEqual({'base':(),
                           'notbase':('base', ),
                           },
-                         target.get_graph())
+                         target.get_parent_map(target.versions()))
         self.assertTrue(target.has_version('base'))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual(['base', 'notbase'], target.get_ancestry_with_ghosts(['notbase']))
         self.assertEqual(['base'], target.get_parents_with_ghosts('notbase'))
-        self.assertEqual({'base':[],
-                          'notbase':['base'],
+        self.assertEqual({'base':(),
+                          'notbase':('base',),
                           },
-                         target.get_graph_with_ghosts())
-        self.assertFalse(target.has_ghost('base'))
+            source.get_parent_map(source.versions()))
 
     def test_restricted_join_into_empty(self):
         # joining into an empty versioned file with a version_ids list
@@ -273,7 +254,7 @@ class TestJoin(TestCaseWithTransport):
         source.add_lines('inherit_me', [], ['b\n'])
         source.add_lines('select_me', ['inherit_me'], ['b\n'])
         target = self.get_target()
-        target.join(source, version_ids=['select_me'])
+        self.applyDeprecated(one_five, target.join, source, version_ids=['select_me'])
         self.assertEqual(['inherit_me', 'select_me'], target.versions())
 
     def test_join_odd_records(self):
@@ -289,7 +270,7 @@ class TestJoin(TestCaseWithTransport):
         source.add_lines('4', ['2'], ['1st\n'])
         source.add_lines('5', ['3'], ['1st\n', '2nd\n', '3rd\n'])
         target = self.get_target()
-        target.join(source, version_ids=['1', '3', '5'])
+        self.applyDeprecated(one_five, target.join, source, version_ids=['1', '3', '5'])
         target = self.get_target(create=False)
         self.assertEqual(set(['1', '3', '5']), set(target.versions()))
         self.assertEqual(3, len(target.versions()))

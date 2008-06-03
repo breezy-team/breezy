@@ -41,7 +41,7 @@ class TestRegistry(TestCase):
 
         self.failUnless(a_registry.default_key is None)
 
-        # test get() (self.default_key == None)
+        # test get() (self.default_key is None)
         self.assertRaises(KeyError, a_registry.get)
         self.assertRaises(KeyError, a_registry.get, None)
         self.assertEqual(2, a_registry.get('two'))
@@ -186,6 +186,20 @@ class TestRegistry(TestCase):
                           ('two', 2),
                          ], sorted((key, a_registry.get_info(key))
                                     for key in a_registry.keys()))
+
+    def test_get_prefix(self):
+        my_registry = registry.Registry()
+        http_object = object()
+        sftp_object = object()
+        my_registry.register('http:', http_object)
+        my_registry.register('sftp:', sftp_object)
+        found_object, suffix = my_registry.get_prefix('http://foo/bar')
+        self.assertEqual('//foo/bar', suffix)
+        self.assertIs(http_object, found_object)
+        self.assertIsNot(sftp_object, found_object)
+        found_object, suffix = my_registry.get_prefix('sftp://baz/qux')
+        self.assertEqual('//baz/qux', suffix)
+        self.assertIs(sftp_object, found_object)
 
 
 class TestRegistryWithDirs(TestCaseInTempDir):
