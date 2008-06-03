@@ -79,7 +79,8 @@ class ReadOnlyTransaction(object):
 
     def set_cache_size(self, size):
         """Set a new cache size."""
-        assert -1 <= size
+        if size < -1:
+            raise ValueError(size)
         self._limit = size
         self._trim()
 

@@ -228,13 +228,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         branch_copy.lock_write()
         try:
             try:
-                orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
-                try:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = 1
-                    self.assertRaises(errors.LockError, wt.lock_write)
-                finally:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
-
+                self.assertRaises(errors.LockError, wt.lock_write)
                 self.assertFalse(wt.is_locked())
                 self.assertFalse(wt.branch.is_locked())
             finally:

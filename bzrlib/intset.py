@@ -149,7 +149,6 @@ class IntSet(Exception):
 
 
     def __contains__(self, i):
-        assert i >= 0
         return self._val & (1L << i)
 
 
@@ -177,12 +176,10 @@ class IntSet(Exception):
             self._val |= to_add._val
         else:
             for i in to_add:
-                assert i >= 0
                 self._val |= (1L << i)
 
 
     def add(self, to_add):
-        assert 0 <= to_add
         self._val |= (1L << to_add)
 
 
@@ -203,7 +200,6 @@ class IntSet(Exception):
         >>> not a
         True
         """
-        assert 0 <= to_remove
         m = 1L << to_remove
         if not self._val & m:
             raise KeyError(to_remove)

@@ -1,8 +1,22 @@
 Hooks
 =====
 
-post_push
----------
+Introduction
+------------
+
+A hook of type *xxx* of class *yyy* needs to be registered using::
+
+  yyy.hooks.install_named_hook("xxx", ...)
+
+See `Using hooks`_ in the User Guide for examples.
+
+.. _Using hooks: ../user-guide/index.html#using-hooks
+
+The class of each hook is given immediately after each hook type below.
+
+
+post_push (Branch)
+------------------
 
 Run after ``push`` has completed.
 
@@ -35,8 +49,9 @@ The hook signature is (push_result), containing the members
   new_revid
     The revision id (eg joe@foo.com-5676566-boa234a) after the push.
 
-post_pull
----------
+
+post_pull (Branch)
+------------------
 
 Run after ``pull`` has completed.
 
@@ -47,10 +62,21 @@ master branch, and the rest should be self explanatory. The source
 is read-locked and the target branches are write-locked. Source will
 be the local low-latency branch.
 
-pre_commit
-----------
 
-Run prefore ``commit`` has completed.
+start_commit (MutableTree)
+--------------------------
+
+Run on the working tree before ``commit`` starts processing it.
+Unlike the ``pre_commit`` hook (see below), the ``start_commit`` hook
+can safely change the working tree.
+
+The hook signature is (tree) where tree is a MutableTree object.
+
+
+pre_commit (Branch)
+-------------------
+
+Run before ``commit`` has completed.
 
 The hook signature is (local, master, old_revno, old_revid, future_revno,
 future_revid, tree_delta, future_tree) where old_revno is NULL_REVISION for
@@ -59,16 +85,18 @@ changes from the basis revision, and future_tree is an in-memory tree
 obtained from CommitBuilder.revision_tree(). Hooks MUST NOT modify tree_delta
 and future_tree.
 
-post_commit
------------
+
+post_commit (Branch)
+--------------------
 
 Run after ``commit`` has completed.
 
 The hook signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) old_revid is NULL_REVISION for the first commit to a branch.
 
-post_uncommit
--------------
+
+post_uncommit (Branch)
+----------------------
 
 Run after ``uncommit`` has completed.
 
@@ -76,15 +104,57 @@ The api signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) where local is the local branch or None, master is the target
 branch, and an empty branch receives new_revno of 0, new_revid of None.
 
-set_rh
-------
 
-Run after the branch's revision history has been modified (push, pull, commit
-and uncommit can all modify the revision history).
+post_change_branch_tip (Branch)
+-------------------------------
 
-The hook signature is (branch, revision_history), and the branch will be
-write-locked.
+Run after a branch tip has been changed but while the branch is still
+write-locked. Note that push, pull, commit and uncommit all invoke this hook.
 
-See also `Using hooks`_ in the User Guide.
+The hook signature is (params), where params is an object containing
+the members
 
-.. _Using hooks: ../user-guide/index.html#using-hooks
+  branch
+    The branch whose tip has been changed.
+
+  old_revno
+    The revision number (eg 10) of the branch before the change.
+
+  old_revid
+    The revision id (eg joe@foo.com-1234234-aoeua34) before the change.
+
+  new_revno
+    The revision number (eg 12) of the branch after the change.
+
+  new_revid
+    The revision id (eg joe@foo.com-5676566-boa234a) after the change.
+
+The old_revno and new_revno members are integers, as the head
+revision is never has a dotted revision number.
+
+
+set_rh (Branch)
+---------------
+
+Note: This hook is now deprecated and will be removed in the near future.
+Please use the ``post_change_branch_tip`` hook instead.
+
+
+server_started (SmartTCPServer)
+-------------------------------
+
+Invoked whenever the server starts serving a directory.
+The hook signature is (backing urls, public url), where:
+
+  backing_url
+    A list of (string) URLs giving the server-specific directory locations.
+
+  public_url
+    The public URL for the directory.
+
+
+server_stopped (SmartTCPServer)
+-------------------------------
+
+Invoked whenever the server stops serving a directory.
+The hook signature is the same as ``server_started``.

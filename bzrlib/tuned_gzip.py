@@ -149,7 +149,8 @@ class GzipFile(gzip.GzipFile):
 
         if buf == "":
             self._add_read_data(self.decompress.flush())
-            assert len(self.decompress.unused_data) >= 8, "what does flush do?"
+            if len(self.decompress.unused_data) < 8:
+                raise AssertionError("what does flush do?")
             self._gzip_tail = self.decompress.unused_data[0:8]
             self._read_eof()
             # tell the driving read() call we have stuffed all the data
@@ -175,7 +176,8 @@ class GzipFile(gzip.GzipFile):
                 self._gzip_tail = self.decompress.unused_data[0:8]
             elif seek_length < 0:
                 # we haven't read enough to check the checksum.
-                assert -8 < seek_length, "too great a seek."
+                if not (-8 < seek_length):
+                    raise AssertionError("too great a seek")
                 buf = self.fileobj.read(-seek_length)
                 self._gzip_tail = self.decompress.unused_data + buf
             else:
@@ -200,7 +202,8 @@ class GzipFile(gzip.GzipFile):
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size
         # stored is the true file size mod 2**32.
-        assert len(self._gzip_tail) == 8, "gzip trailer is incorrect length."
+        if not (len(self._gzip_tail) == 8):
+            raise AssertionError("gzip trailer is incorrect length.")
         crc32, isize = struct.unpack("<LL", self._gzip_tail)
         # note that isize is unsigned - it can exceed 2GB
         if crc32 != U32(self.crc):

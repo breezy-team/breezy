@@ -56,3 +56,9 @@ Technical specifications, roadmaps and various
 technical notes are available in English below:
 
 * `Developer Document Catalog <developers/index.html>`_
+
+
+Other Languages
+===============
+
+* `Spanish Documentation <index.es.html>`_

@@ -37,7 +37,7 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
-    MetaDirRepository,
+    MetaDirVersionedFileRepository,
     MetaDirRepositoryFormat,
     Repository,
     RepositoryFormat,
@@ -52,9 +52,8 @@ class AllInOneRepository(Repository):
     _serializer = xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
-        # we reuse one control files instance.
-        dir_mode = a_bzrdir._control_files._dir_mode
-        file_mode = a_bzrdir._control_files._file_mode
+        dir_mode = a_bzrdir._get_dir_mode()
+        file_mode = a_bzrdir._get_file_mode()
 
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
@@ -62,7 +61,7 @@ class AllInOneRepository(Repository):
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = a_bzrdir._control_files._escape(name)
-            store = TextStore(a_bzrdir._control_files._transport.clone(relpath),
+            store = TextStore(a_bzrdir.transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
                               file_mode=file_mode)
@@ -75,7 +74,11 @@ class AllInOneRepository(Repository):
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
-        super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+        super(AllInOneRepository, self).__init__(_format,
+            a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+        if control_store is not None:
+            control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -107,10 +110,11 @@ class AllInOneRepository(Repository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -140,42 +144,6 @@ class AllInOneRepository(Repository):
             self._check_revision_parents(rev, inv)
         return revs
 
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-        
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self.get_inventory_weave()
-        all_revisions = self._eliminate_revisions_not_present(
-                                a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
-        if revision_id is None:
-            return entire_graph
-        elif revision_id not in entire_graph:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = entire_graph[node]
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
-
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
         result = set()
@@ -200,8 +168,8 @@ class AllInOneRepository(Repository):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        raise NotImplementedError(self.set_make_working_trees)
-    
+        raise errors.RepositoryUpgradeRequired(self.bzrdir.root_transport.base)
+
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
@@ -212,7 +180,7 @@ class AllInOneRepository(Repository):
         return False
 
 
-class WeaveMetaDirRepository(MetaDirRepository):
+class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     _serializer = xml5.serializer_v5
@@ -247,10 +215,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -280,42 +249,6 @@ class WeaveMetaDirRepository(MetaDirRepository):
         inv = self.get_inventory_weave()
         self._check_revision_parents(r, inv)
         return r
-
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-        
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self.get_inventory_weave()
-        all_revisions = self._eliminate_revisions_not_present(
-                                a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
-        if revision_id is None:
-            return entire_graph
-        elif revision_id not in entire_graph:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = entire_graph[node]
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
@@ -355,21 +288,18 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         empty_weave = sio.getvalue()
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)),
-                 ]
         
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(a_bzrdir.transport,
-                                'branch-lock', lockable_files.TransportLock)
+            'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
+        transport = a_bzrdir.transport
         try:
-            for file, content in files:
-                control_files.put(file, content)
+            transport.mkdir_multi(['revision-store', 'weaves'],
+                mode=a_bzrdir._get_dir_mode())
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
@@ -599,7 +529,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -626,7 +555,6 @@ class WeaveCommitBuilder(CommitBuilder):
         result = versionedfile.add_lines(
             self._new_revision_id, parents, new_lines,
             nostore_sha=nostore_sha)[0:2]
-        versionedfile.clear_cache()
         return result
 
 
