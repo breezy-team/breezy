@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@ from bzrlib import (
     )
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
@@ -35,44 +38,84 @@ from bzrlib.transport import get_transport
 
 
 # these tests are applied in each parameterized suite for LockableFiles
+#
+# they use an old style of parameterization, but we want to remove this class
+# so won't modernize them now. - mbp 20080430
 class _TestLockableFiles_mixin(object):
 
     def test_read_write(self):
-        self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
-        self.assertRaises(NoSuchFile, self.lockable.get_utf8, 'foo')
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            deprecated_in((1, 5, 0)),
+            self.lockable.get, 'foo')
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            deprecated_in((1, 5, 0)),
+            self.lockable.get_utf8, 'foo')
         self.lockable.lock_write()
         try:
             unicode_string = u'bar\u1234'
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
-                              StringIO(unicode_string))
-            self.lockable.put('foo', StringIO(byte_string))
-            self.assertEqual(byte_string,
-                             self.lockable.get('foo').read())
+            self.assertRaises(UnicodeEncodeError,
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put, 'foo',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put,
+                'foo', StringIO(byte_string))
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'foo')
+            self.assertEqual(byte_string, byte_stream.read())
+            unicode_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get_utf8,
+                'foo')
             self.assertEqual(unicode_string,
-                             self.lockable.get_utf8('foo').read())
+                unicode_stream.read())
             self.assertRaises(BzrBadParameterNotString,
-                              self.lockable.put_utf8,
-                              'bar',
-                              StringIO(unicode_string)
-                              )
-            self.lockable.put_utf8('bar', unicode_string)
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                unicode_string)
+            unicode_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get_utf8,
+                'bar')
             self.assertEqual(unicode_string,
-                             self.lockable.get_utf8('bar').read())
-            self.assertEqual(byte_string,
-                             self.lockable.get('bar').read())
-            self.lockable.put_bytes('raw', 'raw\xffbytes')
-            self.assertEqual('raw\xffbytes',
-                             self.lockable.get('raw').read())
+                unicode_stream.read())
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'bar')
+            self.assertEqual(byte_string, byte_stream.read())
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_bytes,
+                'raw', 'raw\xffbytes')
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'raw')
+            self.assertEqual('raw\xffbytes', byte_stream.read())
         finally:
             self.lockable.unlock()
 
     def test_locks(self):
         self.lockable.lock_read()
         try:
-            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
+            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo',
                               StringIO('bar\u1234'))
         finally:
             self.lockable.unlock()

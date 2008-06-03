@@ -201,9 +201,9 @@ class FTPServer(transport.Server):
 
     def setUp(self, vfs_server=None):
         from bzrlib.transport.local import LocalURLServer
-        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
-            "FTPServer currently assumes local transport, got %s" % vfs_server
-
+        if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
+            raise AssertionError(
+                "FTPServer currently assumes local transport, got %s" % vfs_server)
         self._root = os.getcwdu()
         self._ftp_server = ftp_server(
             authorizer=test_authorizer(root=self._root),

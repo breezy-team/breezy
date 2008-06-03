@@ -197,6 +197,15 @@ class TestUserEncoding(TestCase):
                           ' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
 
+    def test_user_empty(self):
+        """Running bzr from a vim script gives '' for a preferred locale"""
+        def f():
+            return ''
+
+        locale.getpreferredencoding = f
+        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('', sys.stderr.getvalue())
+
     def test_user_locale_error(self):
         def f():
             raise locale.Error, 'unsupported locale'

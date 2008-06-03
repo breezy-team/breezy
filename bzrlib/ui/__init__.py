@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-
 
 """UI abstraction.
 
@@ -35,6 +33,7 @@ lazy_import(globals(), """
 import getpass
 
 from bzrlib import (
+    errors,
     osutils,
     progress,
     trace,
@@ -125,6 +124,8 @@ class CLIUIFactory(UIFactory):
                 return False
 
     def get_non_echoed_password(self, prompt):
+        if not sys.stdin.isatty():
+            raise errors.NotATerminal()
         encoding = osutils.get_terminal_encoding()
         return getpass.getpass(prompt.encode(encoding, 'replace'))
 

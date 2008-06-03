@@ -30,8 +30,6 @@ from bzrlib import (
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eighteen)
 
 
 def plural(n, base='', pl=None):

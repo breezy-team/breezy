@@ -17,21 +17,10 @@
 """Tests for WorkingTree.set_root_id"""
 
 from bzrlib import inventory
-from bzrlib.symbol_versioning import zero_twelve
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestSetRootId(TestCaseWithWorkingTree):
-
-    def test_set_None(self):
-        # setting the root_id to None is equivalent to setting it
-        # to inventory.ROOT_ID
-        tree = self.make_branch_and_tree('a-tree')
-        self.callDeprecated([
-            'WorkingTree.set_root_id with fileid=None was deprecated in version'
-            ' 0.12.'],
-            tree.set_root_id, None)
-        self.assertEqual(inventory.ROOT_ID, tree.get_root_id())
 
     def test_set_and_read_unicode(self):
         tree = self.make_branch_and_tree('a-tree')
