@@ -15,6 +15,15 @@ NOT RELEASED YET
       reading from the repository.)
       (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
 
+    * Inserting a bundle which changes the contents of a file with no trailing
+      end of line, causing a knit snapshot in a 'knits' repository will no longer
+      cause KnitCorrupt. (Robert Collins)
+
+  INTERNALS:
+
+    * Knit record serialisation is now stricter on what it will accept, to
+      guard against potential internal bugs, or broken input. (Robert Collins)
+
 
 bzr 1.6beta1 2008-06-02
 -----------------------
