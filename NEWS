@@ -5,6 +5,23 @@ Bazaar Release Notes
 .. contents::
 
 
+IN DEVELOPMENT
+--------------
+
+  BUGFIXES:
+
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
+
+  API CHANGES:
+
+    * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
+      which are in the ancestry of other revisions. So if you merge the same
+      tree twice, or merge an ancestor of an existing merge, it will only
+      record the newest. (If you merge a descendent, it will replace its
+      ancestor). (John Arbash Meinel, #235407)
+
+
 bzr 1.6beta1 2008-06-02
 -----------------------
 
