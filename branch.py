@@ -19,7 +19,7 @@ from bzrlib import ui
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
-                           NotBranchError)
+                           NotBranchError, UnstackableBranchFormat)
 from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
@@ -424,6 +424,9 @@ class SvnBranch(Branch):
         result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         return result
+
+    def get_stacked_on(self):
+        raise UnstackableBranchFormat(self._format, self.base)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
