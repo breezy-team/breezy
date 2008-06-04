@@ -141,6 +141,7 @@ def test_suite():
             'test_hooks',
             'test_import_dsc',
             'test_repack_tarball_extra',
+            'test_tree_patcher',
             'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)

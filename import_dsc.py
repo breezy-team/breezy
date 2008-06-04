@@ -26,8 +26,8 @@
 
 import gzip
 import os
-import stat
 import select
+import stat
 from subprocess import Popen, PIPE
 import tarfile
 
@@ -40,10 +40,13 @@ from bzrlib import (bzrdir,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
-from bzrlib.errors import FileExists, BzrError, UncommittedChanges
+from bzrlib.errors import (FileExists,
+        BzrError,
+        UncommittedChanges,
+        )
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import warning, info
+from bzrlib.trace import warning, info, mutter
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
@@ -60,21 +63,12 @@ from bzrlib.plugins.builddeb.errors import (ImportError,
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
                 )
+from bzrlib.plugins.builddeb.tree_patcher import (
+        TreePatcher,
+        files_to_ignore,
+        ignore_arguments,
+        )
 
-# TODO: support explicit upstream branch.
-
-files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
-    '.gitignore', 'CVS', 'RCS', '.deps', '{arch}', '.arch-ids', '.svn',
-    '.hg', '_darcs', '.git', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
-    '.bzr-builddeb'])
-
-exclude_as_files = ['*/' + x for x in files_to_ignore]
-exclude_as_dirs = ['*/' + x + '/*' for x in files_to_ignore]
-exclude = exclude_as_files + exclude_as_dirs
-underscore_x = ['-x'] * len(exclude)
-ignore_arguments = []
-map(ignore_arguments.extend, zip(underscore_x, exclude))
-ignore_arguments = ignore_arguments + ['-x', '*,v']
 
 def import_tar(tree, tar_input, file_ids_from=None):
     """Replace the contents of a working directory with tarfile contents.
@@ -419,7 +413,8 @@ class DscImporter(object):
     for filename in output.split('\n'):
       if filename.endswith('\n'):
         filename = filename[:-1]
-      touched_paths.append(filename)
+      if filename != "":
+        touched_paths.append(filename)
     r = child_proc.wait()
     if r != 0:
       raise BzrError('lsdiff failed')
@@ -493,18 +488,20 @@ class DscImporter(object):
         tree.add_parent_tree_id(dangling_revid)
       message = 'merge packaging changes from %s' % \
                   (os.path.basename(diffname))
+      author = None
       changelog_path = os.path.join(tree.basedir, 'debian', 'changelog')
       if os.path.exists(changelog_path):
         changelog_contents = open(changelog_path).read()
         changelog = Changelog(file=changelog_contents, max_blocks=1)
         if changelog._blocks:
+          author = changelog._blocks[0].author
           changes = changelog._blocks[0].changes()
           message = ''
           sep = ''
           for change in reversed(changes):
             message = change + sep + message
             sep = "\n"
-      tree.commit(message)
+      tree.commit(message, author=author)
     finally:
       f.close()
 
@@ -763,4 +760,788 @@ class SnapshotImporter(SourcesImporter):
     return True
 
 # vim: ts=2 sts=2 sw=2
+
+
+class DistributionBranchSet(object):
+    """A collection of DistributionBranches with an ordering.
+
+    A DistributionBranchSet collects a group of DistributionBranches
+    and an order, and then can provide the branches with information
+    about their place in the relationship with other branches.
+    """
+
+    def __init__(self):
+        """Create a DistributionBranchSet."""
+        self._branch_list = []
+
+    def add_branch(self, branch):
+        """Adds a DistributionBranch to the end of the list.
+
+        Appends the passed distribution branch to the end of the list
+        that this DistributionBranchSet represents. It also provides
+        the distribution branch with a way to get the branches that
+        are before and after it in the list.
+
+        It will call branch.set_get_lesser_branches_callback() and
+        branch.set_get_greater_branches_callback(), passing it methods
+        that the DistributionBranch can call to get the list of branches
+        before it in the list and after it in the list respectively.
+        The passed methods take no arguments and return a list (possibly
+        empty) of the desired branches.
+
+        :param branch: the DistributionBranch to add.
+        """
+        self._branch_list.append(branch)
+        lesser_callback = self._make_lesser_callback(branch)
+        branch.set_get_lesser_branches_callback(lesser_callback)
+        greater_callback = self._make_greater_callback(branch)
+        branch.set_get_greater_branches_callback(greater_callback)
+
+    def _make_lesser_callback(self, branch):
+        return lambda: self.get_lesser_branches(branch)
+
+    def _make_greater_callback(self, branch):
+        return lambda: self.get_greater_branches(branch)
+
+    def get_lesser_branches(self, branch):
+        """Return the list of branches less than the argument.
+
+        :param branch: The branch that all branches returned must be less
+            than.
+        :return: a (possibly empty) list of all the branches that are
+            less than the argument. The list is sorted starting with the
+            least element.
+        """
+        index = self._branch_list.index(branch)
+        return self._branch_list[:index]
+
+    def get_greater_branches(self, branch):
+        """Return the list of branches greater than the argument.
+
+        :param branch: The branch that all branches returned must be greater
+            than.
+        :return: a (possibly empty) list of all the branches that are
+            greater than the argument. The list is sorted starting with the
+            least element.
+        """
+        index = self._branch_list.index(branch)
+        return self._branch_list[index+1:]
+
+
+class DistributionBranch(object):
+    """A DistributionBranch is a representation of one line of development.
+
+    It is a branch that is linked to a line of development, such as Debian
+    unstable. It also has associated branches, some of which are "lesser"
+    and some are "greater". A lesser branch is one that this branch
+    derives from. A greater branch is one that derives from this. For
+    instance Debian experimental would have unstable as a lesser branch,
+    and vice-versa. It is assumed that a group of DistributionBranches will
+    have a total ordering with respect to these relationships.
+    """
+
+    def __init__(self, name, tree, upstream_tree):
+        """Create a distribution branch.
+
+        :param name: a String which is used as a descriptive name.
+        :param tree: a working tree that the packages are imported in to.
+        :param upstream_tree: a working tree that the upstream snapshots
+            are imported in to.
+        """
+        self.name = name
+        self.tree = tree
+        self.upstream_tree = upstream_tree
+        self.get_lesser_branches = None
+        self.get_greater_branches = None
+
+    def set_get_lesser_branches_callback(self, callback):
+        """Set the callback to get the branches "lesser" than this.
+
+        The function passed to this method will be used to get the
+        list of branches that are "lesser" than this one. It is
+        expected to require no arguments, and to return the desired
+        (possibly empty) list of branches. The returned list should
+        be sorted starting with the least element.
+
+        :param callback: a function that is called to get the desired list
+            of branches.
+        """
+        self.get_lesser_branches = callback
+
+    def set_get_greater_branches_callback(self, callback):
+        """Set the callback to get the branches "greater" than this.
+
+        The function passed to this method will be used to get the
+        list of branches that are "greater" than this one. It is
+        expected to require no arguments, and to return the desired
+        (possibly empty) list of branches. The returned list should
+        be sorted starting with the least element.
+
+        :param callback: a function that is called to get the desired list
+            of branches.
+        """
+        self.get_greater_branches = callback
+
+    def tag_name(self, version):
+        """Gets the name of the tag that is used for the version.
+
+        :param version: the Version object that the tag should refer to.
+        :return: a String with the name of the tag.
+        """
+        return self.name + "-" + str(version)
+
+    def upstream_tag_name(self, version):
+        """Gets the tag name for the upstream part of version.
+
+        :param version: the Version object to extract the upstream
+            part of the version number from.
+        :return: a String with the name of the tag.
+        """
+        return "upstream-" + self.tag_name(version.upstream_version)
+
+    def _has_version(self, branch, tag_name, md5=None):
+        if branch.tags.has_tag(tag_name):
+            if md5 is None:
+                return True
+            revid = branch.tags.lookup_tag(tag_name)
+            rev = branch.repository.get_revision(revid)
+            try:
+                return rev.properties['deb-md5'] == md5
+            except KeyError:
+                warning("tag %s present in branch, but there is no "
+                    "associated 'deb-md5' property" % tag_name)
+                pass
+        return False
+
+    def has_version(self, version, md5=None):
+        """Whether this branch contains the package version specified.
+
+        The version must be judged present by having the appropriate tag
+        in the branch. If the md5 argument is not None then the string
+        passed must the the md5sum that is associated with the revision
+        pointed to by the tag.
+
+        :param version: a Version object to look for in this branch.
+        :param md5: a string with the md5sum that if not None must be
+            associated with the revision.
+        :return: True if this branch contains the specified version of the
+            package. False otherwise.
+        """
+        branch = self.tree.branch
+        tag_name = self.tag_name(version)
+        return self._has_version(branch, tag_name, md5=md5)
+
+    def has_upstream_version(self, version, md5=None):
+        """Whether this branch contains the upstream version specified.
+
+        The version must be judged present by having the appropriate tag
+        in the upstream branch. If the md5 argument is not None then the
+        string passed must the the md5sum that is associated with the
+        revision pointed to by the tag.
+
+        :param version: a Version object from which to extract the upstream
+            version number to look for in the upstream branch.
+        :param md5: a string with the md5sum that if not None must be
+            associated with the revision.
+        :return: True if the upstream branch contains the specified upstream
+            version of the package. False otherwise.
+        """
+        branch = self.upstream_tree.branch
+        tag_name = self.upstream_tag_name(version)
+        return self._has_version(branch, tag_name, md5=md5)
+
+    def contained_versions(self, versions):
+        """Splits a list of versions depending on presence in the branch.
+
+        Partitions the input list of versions depending on whether they
+        are present in the branch or not.
+
+        The two output lists will be sorted in the same order as the input
+        list.
+
+        :param versions: a list of Version objects to look for in the
+            branch. May be an empty list.
+        :return: A tuple of two lists. The first list is the list of those
+            items from the input list that are present in the branch. The
+            second list is the list of those items from the input list that
+            are not present in the branch. The two lists will be disjoint
+            and cover the input list. Either list may be empty, or both if
+            the input list is empty.
+        """
+        #FIXME: should probably do an ancestory check to find all
+        # merged revisions. This will avoid adding an extra parent
+        # when say
+        # experimental 1-1~rc1
+        # unstable 1-1 1-1~rc1
+        # Ubuntu 1-1ubuntu1 1-1 1-1~rc1
+        # where only the first in each list is actually uploaded.
+        contained = []
+        not_contained = []
+        for version in versions:
+            if self.has_version(version):
+                contained.append(version)
+            else:
+                not_contained.append(version)
+        return contained, not_contained
+
+    def missing_versions(self, versions):
+        """Returns the versions from the list that the branch does not have.
+
+        Looks at all the versions specified and returns a list of the ones
+        that are earlier in the list that the last version that is
+        contained in this branch.
+
+        :param versions: a list of Version objects to look for in the branch.
+            May be an empty list.
+        :return: The subset of versions from the list that are not present
+            in this branch. May be an empty list.
+        """
+        last_contained = self.last_contained_version(versions)
+        if last_contained is None:
+            return versions
+        index = versions.index(last_contained)
+        return versions[:index]
+
+    def last_contained_version(self, versions):
+        """Returns the highest version from the list present in this branch.
+
+        It assumes that the input list of versions is sorted with the
+        highest version first.
+
+        :param versions: a list of Version objects to look for in the branch.
+            Must be sorted with the highest version first. May be an empty
+            list.
+        :return: the highest version that is contained in this branch, or
+            None if none of the versions are contained within the branch.
+        """
+        for version in versions:
+            if self.has_version(version):
+                return version
+        return None
+
+    def revid_of_version(self, version):
+        """Returns the revision id corresponding to that version.
+
+        :param version: the Version object that you wish to retrieve the
+            revision id of. The Version must be present in the branch.
+        :return: the revision id corresponding to that version
+        """
+        return self.tree.branch.tags.lookup_tag(self.tag_name(version))
+
+    def revid_of_upstream_version(self, version):
+        """Returns the revision id corresponding to the upstream version.
+
+        :param version: the Version object to extract the upstream version
+            from to retreive the revid of. The upstream version must be
+            present in the upstream branch.
+        :return: the revision id corresponding to the upstream portion
+            of the version
+        """
+        tag_name = self.upstream_tag_name(version)
+        return self.upstream_tree.branch.tags.lookup_tag(tag_name)
+
+    def tag_version(self, version):
+        """Tags the branch's last revision with the given version.
+
+        Sets a tag on the last revision of the branch with a tag that refers
+        to the version provided.
+
+        :param version: the Version object to derive the tag name from.
+        """
+        tag_name = self.tag_name(version)
+        self.tree.branch.tags.set_tag(tag_name,
+                self.tree.branch.last_revision())
+
+    def tag_upstream_version(self, version):
+        """Tags the upstream branch's last revision with an upstream version.
+
+        Sets a tag on the last revision of the upstream branch with a tag
+        that refers to the upstream part of the version provided.
+
+        :param version: the Version object from which to extract the upstream
+            part of the version number to derive the tag name from.
+        """
+        tag_name = self.upstream_tag_name(version)
+        self.upstream_tree.branch.tags.set_tag(tag_name,
+                self.upstream_tree.branch.last_revision())
+
+    def branch_to_pull_version_from(self, version, md5):
+        """Checks whether this upload is a pull from a lesser branch.
+
+        Looks in all the lesser branches for the given version/md5 pair
+        in a branch that has not diverged from this.
+
+        If it is present in a lower branch that has not diverged this
+        method will return the greatest branch that it is present in,
+        otherwise it will return None. If it returns a branch then it
+        indicates that a pull should be done from that branch, rather
+        than importing the version as a new revision in this branch.
+
+        :param version: the Version object to look for in the lesser
+            branches.
+        :param md5: a String containing the md5 associateed with the
+            version.
+        :return: a DistributionBranch object to pull from if that is
+            what should be done, otherwise None.
+        """
+        assert md5 is not None, \
+            ("It's not a good idea to use branch_to_pull_version_from with "
+             "md5 == None, as you may pull the wrong revision.")
+        self.tree.branch.lock_read()
+        try:
+            for branch in reversed(self.get_lesser_branches()):
+                if branch.has_version(version, md5=md5):
+                    # Check that they haven't diverged
+                    branch.tree.branch.lock_read()
+                    try:
+                        graph = branch.tree.branch.repository.get_graph(
+                                self.tree.branch.repository)
+                        if len(graph.heads([branch.tree.branch.last_revision(),
+                                    self.tree.branch.last_revision()])) == 1:
+                            return branch
+                    finally:
+                        branch.tree.branch.unlock()
+            return None
+        finally:
+            self.tree.branch.unlock()
+
+    def branch_to_pull_upstream_from(self, version, md5):
+        """Checks whether this upstream is a pull from a lesser branch.
+
+        Looks in all the lesser upstream branches for the given
+        version/md5 pair in a branch that has not diverged from this.
+        If it is present in a lower branch this method will return the
+        greatest branch that it is present in that has not diverged,
+        otherwise it will return None. If it returns a branch then it
+        indicates that a pull should be done from that branch, rather
+        than importing the upstream as a new revision in this branch.
+
+        :param version: the Version object to use the upstream part
+            of when searching in the lesser branches.
+        :param md5: a String containing the md5 associateed with the
+            upstream version.
+        :return: a DistributionBranch object to pull the upstream from
+            if that is what should be done, otherwise None.
+        """
+        assert md5 is not None, \
+            ("It's not a good idea to use branch_to_pull_upstream_from with "
+             "md5 == None, as you may pull the wrong revision.")
+        up_branch = self.upstream_tree.branch
+        up_branch.lock_read()
+        try:
+            for branch in reversed(self.get_lesser_branches()):
+                if branch.has_upstream_version(version, md5=md5):
+                    # Check for divergenge.
+                    other_up_branch = branch.upstream_tree.branch
+                    other_up_branch.lock_read()
+                    try:
+                        graph = other_up_branch.repository.get_graph(
+                                up_branch.repository)
+                        if len(graph.heads([other_up_branch.last_revision(),
+                                    up_branch.last_revision()])) == 1:
+                            return branch
+                    finally:
+                        other_up_branch.unlock()
+            return None
+        finally:
+            up_branch.unlock()
+
+    def get_parents(self, versions):
+        """Return the list of parents for a specific version.
+
+        This method returns the list of revision ids that should be parents
+        for importing a specifc package version. The specific package version
+        is the first element of the list of versions passed.
+
+        The parents are determined by looking at the other versions in the
+        passed list and examining which of the branches (if any) they are
+        already present in.
+
+        You should probably use get_parents_with_upstream rather than
+        this method.
+
+        :param versions: a list of Version objects, the first item of
+            which is the version of the package that is currently being
+            imported.
+        :return: a list of tuples of (DistributionBranch, version,
+            revision id). The revision ids should all be parents of the
+            revision that imports the specified version of the package.
+            The versions are the versions that correspond to that revision
+            id. The DistributionBranch is the branch that contains that
+            version.
+        """
+        assert len(versions) > 0, "Need a version to import"
+        mutter("Getting parents of %s" % str(versions))
+        missing_versions = self.missing_versions(versions)
+        mutter("Versions we don't have are %s" % str(missing_versions))
+        last_contained_version = self.last_contained_version(versions)
+        parents = []
+        if last_contained_version is not None:
+            assert last_contained_version != versions[0], \
+                "Reupload of a version?"
+            mutter("The last versions we do have is %s" \
+                    % str(last_contained_version))
+            parents = [(self, last_contained_version,
+                    self.revid_of_version(last_contained_version))]
+        else:
+            mutter("We don't have any of those versions")
+        for branch in reversed(self.get_lesser_branches()):
+            merged, missing_versions = \
+                branch.contained_versions(missing_versions)
+            if merged:
+                revid = branch.revid_of_version(merged[0])
+                parents.append((branch, merged[0], revid))
+                mutter("Adding merge from lesser of %s for version %s from "
+                    "branch %s" % (revid, str(merged[0]), branch.name))
+                #FIXME: should this really be here?
+                branch.tree.branch.tags.merge_to(self.tree.branch.tags)
+                self.tree.branch.fetch(branch.tree.branch,
+                        last_revision=revid)
+        for branch in self.get_greater_branches():
+            merged, missing_versions = \
+                branch.contained_versions(missing_versions)
+            if merged:
+                revid = branch.revid_of_version(merged[0])
+                parents.append((branch, merged[0], revid))
+                mutter("Adding merge from greater of %s for version %s from "
+                    "branch %s" % (revid, str(merged[0]), branch.name))
+                #FIXME: should this really be here?
+                branch.tree.branch.tags.merge_to(self.tree.branch.tags)
+                self.tree.branch.fetch(branch.tree.branch,
+                        last_revision=revid)
+        return parents
+
+    def pull_upstream_from_branch(self, pull_branch, version):
+        """Pulls an upstream version from a branch.
+
+        Given a DistributionBranch and a version number this method
+        will pull the upstream part of the given version from the
+        branch in to this. The upstream version must be present
+        in the DistributionBranch, and it is assumed that the md5
+        matches.
+
+        It sets the necessary tags so that the pulled version is
+        recognised as being part of this branch.
+
+        :param pull_branch: the DistributionBranch to pull from.
+        :param version: the Version to use the upstream part of.
+        """
+        pull_revision = pull_branch.revid_of_upstream_version(version)
+        mutter("Pulling upstream part of %s from revision %s of %s" % \
+                (str(version), pull_revision, pull_branch.name))
+        up_pull_branch = pull_branch.upstream_tree.branch
+        self.upstream_tree.pull(up_pull_branch,
+                stop_revision=pull_revision)
+        self.tag_upstream_version(version)
+        self.tree.branch.fetch(self.upstream_tree.branch,
+                last_revision=pull_revision)
+
+    def pull_version_from_branch(self, pull_branch, version):
+        """Pull a version from a particular branch.
+
+        Given a DistributionBranch and a version number this method
+        will pull the given version from the branch in to this. The
+        version must be present in the DistributionBranch, and it
+        is assumed that the md5 matches.
+
+        It will also pull in any upstream part that is needed to
+        the upstream branch. It is assumed that the md5 matches
+        here as well. If the upstream version must be present in
+        at least one of the upstream branches.
+
+        It sets the necessary tags on the revisions so they are
+        recongnised in this branch as well.
+
+        :param pull_branch: the DistributionBranch to pull from.
+        :param version: the Version to pull.
+        """
+        pull_revision = pull_branch.revid_of_version(version)
+        mutter("%s already has version %s so pulling from revision %s"
+                % (pull_branch.name, str(version), pull_revision))
+        self.tree.pull(pull_branch.tree.branch,
+                stop_revision=pull_revision)
+        self.tag_version(version)
+        if not self.has_upstream_version(version):
+            if pull_branch.has_upstream_version(version):
+                self.pull_upstream_from_branch(pull_branch, version)
+            else:
+                assert False, "Can't find the needed upstream part"
+        else:
+            mutter("Not importing the upstream part as it is already "
+                    "present in the upstream branch")
+
+    def get_parents_with_upstream(self, version, versions,
+            force_upstream_parent=False):
+        """Get the list of parents including any upstream parents.
+
+        Further to get_parents this method includes any upstream parents
+        that are needed. An upstream parent is needed if none of
+        the other parents include the upstream version. The needed
+        upstream must already present in the upstream branch before
+        calling this method.
+
+        If force_upstream_parent is True then the upstream parent will
+        be included, even if another parent is already using that
+        upstream. This is for use in cases where the .orig.tar.gz
+        is different in two ditributions.
+
+        :param version: the Version that we are currently importing.
+        :param versions: the list of Versions that are ancestors of
+            version, including version itself. Sorted with the latest
+            versions first, so version must be the first entry.
+        :param force_upstream_parent: if True then an upstream parent
+            will be added as the first parent, regardless of what the
+            other parents are.
+        :return: a list of revision ids that should be the parents when
+            importing the specified revision.
+        """
+        assert version == versions[0], \
+            "version is not the first entry of versions"
+        parents = self.get_parents(versions)
+        need_upstream_parent = True
+        if not force_upstream_parent:
+            for parent_pair in parents:
+                if (parent_pair[1].upstream_version == \
+                        version.upstream_version):
+                    need_upstream_parent = False
+                    break
+        real_parents = [p[2] for p in parents]
+        if need_upstream_parent:
+            parent_revid = self.revid_of_upstream_version(version)
+            if len(parents) > 0:
+                real_parents.insert(1, parent_revid)
+            else:
+                real_parents = [parent_revid]
+        return real_parents
+
+    def import_upstream(self, upstream_filename, version, md5):
+        """Import an upstream part on to the upstream branch.
+
+        This imports the upstream part of the code from the .orig.tar.gz
+        and places it on to the upstream branch, setting the necessary
+        tags.
+
+        :param upstream_filename: the path of the upstream part of
+            the package, i.e. the .orig.tar.gz.
+        :param version: the Version of the package that is being imported.
+        """
+        # Should we just dump the upstream part on whatever is currently
+        # there, or try and pull all of the other upstream versions
+        # from lesser branches first? For now we'll just dump it on.
+        # TODO: this method needs a lot of work for when we will make
+        # the branches writeable by others.
+        # TODO: check md5 matches upstream_filename
+        mutter("Importing upstream version %s from %s" \
+                % (version, upstream_filename))
+        tar_input = open(upstream_filename, 'rb')
+        import_tar(self.upstream_tree, tar_input,
+                file_ids_from=self.upstream_tree)
+        revid = self.upstream_tree.commit("Import upstream from %s" \
+                % (osutils.basename(upstream_filename),),
+                revprops={"deb-md5":md5})
+        self.tag_upstream_version(version)
+        self.tree.branch.fetch(self.upstream_tree.branch,
+                last_revision=revid)
+
+    def _import_patch(self, diff_filename, parents):
+        """Apply a patch and update the tree to match.
+
+        This applies the patch from diff_filename to self.tree, and
+        then performs adds and removes in the working tree as necessary,
+        depending on what the patch did.
+
+        :param diff_filename: the filename of the the file containing the
+            diff in gzip compressed form.
+        :param parents: the list of parents that will be used when the
+            result is committed.
+        """
+        f = gzip.GzipFile(diff_filename)
+        try:
+            tp = TreePatcher(self.tree)
+            tp.set_patch_from_fileobj(f)
+            tp.patch_tree(parents)
+        finally:
+            f.close()
+
+    def _get_commit_message_from_changelog(self):
+        """Retrieves the messages from the last section of debian/changelog.
+
+        Reads the last section of debian/changelog and returns the
+        text of the changes in that section, it also returns the 
+        uploader of that change.
+
+        :return: a tuple (message, author), both Strings. If the
+            information is not available then either can be None.
+        """
+        changelog_path = os.path.join(self.tree.basedir, 'debian',
+            'changelog')
+        author = None
+        message = None
+        if os.path.exists(changelog_path):
+          changelog_contents = open(changelog_path).read()
+          changelog = Changelog(file=changelog_contents, max_blocks=1)
+          if changelog._blocks:
+            author = changelog._blocks[0].author
+            changes = changelog._blocks[0].changes()
+            message = ''
+            sep = ''
+            for change in reversed(changes):
+              message = change + sep + message
+              sep = "\n"
+        return (message, author)
+
+    def import_diff(self, diff_filename, version, parents, md5):
+        """Import the diff part of a source package.
+
+        :param diff_filename: a filename of a gzip compressed patch
+            to the corresponding upstream version.
+        :param version: the Version that this diff corresponds to.
+        :param parents: a list of revision ids that should be the
+            parents of the imported revision.
+        :param md5: the md5 sum reported by the .dsc for
+            diff_filename.
+        """
+        mutter("Importing diff part for version %s from %s, with parents "
+                "%s" % (str(version), diff_filename, str(parents)))
+        # TODO: check md5 matches the md5 of diff_filename
+        # First we move the branch to the first parent
+        if parents:
+            parent_revid = parents[0]
+        else:
+            parent_revid = NULL_REVISION
+        self.tree.pull(self.tree.branch, overwrite=True,
+                stop_revision=parent_revid)
+        # Then we revert the tree to the upstream code, as that is
+        # what the patch applies to.
+        upstream_revid = self.revid_of_upstream_version(version)
+        self.tree.revert(None,
+                self.upstream_tree.branch.repository.revision_tree(
+                    upstream_revid))
+        self._import_patch(diff_filename, parents)
+        rules_path = os.path.join(self.tree.basedir, 'debian', 'rules')
+        if os.path.isfile(rules_path):
+            os.chmod(rules_path,
+                     (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|
+                      stat.S_IROTH|stat.S_IXOTH))
+        self.tree.set_parent_ids(parents)
+        (message, author) = self._get_commit_message_from_changelog()
+        if message is None:
+            message = 'merge packaging changes from %s' % \
+                        (os.path.basename(diff_filename))
+        self.tree.commit(message, author=author, revprops={"deb-md5":md5})
+        self.tag_version(version)
+
+    def _get_changelog_from_diff(self, diff_filename):
+        """Don't look, it's too horrible."""
+        cmd = ['filterdiff', '-i', '*/debian/changelog', '-z',
+             diff_filename]
+        child_proc = Popen(cmd, stdout=PIPE, close_fds=True)
+        output = ''
+        for line in child_proc.stdout.readlines():
+            if line.startswith("---"):
+                continue
+            if line.startswith("+++"):
+                continue
+            if line.startswith("@@"):
+                continue
+            output += line[1:]
+        return output
+
+    def _get_dsc_part(self, dsc, end):
+        """Get the path and md5 of a file ending with end in dsc."""
+        files = dsc['files']
+        for file_info in files:
+            name = file_info['name']
+            if name.endswith(end):
+                filename = name
+                md5 = file_info['md5sum']
+                return (filename, md5)
+        return (None, None)
+
+    def get_upstream_part(self, dsc):
+        """Gets the information about the upstream part from the dsc.
+
+        :param dsc: a deb822.Dsc object to take the information from.
+        :return: a tuple (path, md5), both strings, the former being
+            the path to the .orig.tar.gz, the latter being the md5
+            reported for it. If there is no upstream part both will
+            be None.
+        """
+        return self._get_dsc_part(dsc, ".orig.tar.gz")
+
+    def get_diff_part(self, dsc):
+        """Gets the information about the diff part from the dsc.
+
+        :param dsc: a deb822.Dsc object to take the information from.
+        :return: a tuple (path, md5), both strings, the former being
+            the path to the .diff.gz, the latter being the md5
+            reported for it. If there is no diff part both will be
+            None.
+        """
+        return self._get_dsc_part(dsc, ".diff.gz")
+
+    def _init_upstream_from_other(self, versions):
+        parents = self.get_parents(versions)
+        if len(parents) > 0:
+            branch = parents[0][0]
+            pull_version = parents[0][1]
+            pull_revid = branch.revid_of_upstream_version(pull_version)
+            mutter("Initialising upstream from %s, version %s" \
+                    % (str(branch), str(pull_version)))
+            up_pull_branch = branch.upstream_tree.branch
+            self.upstream_tree.pull(up_pull_branch,
+                    stop_revision=pull_revid)
+
+    def import_package(self, dsc_filename):
+        """Import a source package.
+
+        :param dsc_filename: a path to a .dsc file for the version
+            to be imported.
+        """
+        base_path = osutils.dirname(dsc_filename)
+        dsc = deb822.Dsc(open(dsc_filename).read())
+        version = Version(dsc['Version'])
+        # TODO: check files make sense (no two .orig or similar)
+        (upstream_part, upstream_md5) = self.get_upstream_part(dsc)
+        (diff_filename, md5) = self.get_diff_part(dsc)
+        assert diff_filename is not None
+        assert upstream_part is not None
+        diff_filename = os.path.join(base_path, diff_filename)
+        upstream_part = os.path.join(base_path, upstream_part)
+        cl_text = self._get_changelog_from_diff(diff_filename)
+        cl = Changelog()
+        cl.parse_changelog(cl_text)
+        versions = cl.versions
+        assert not self.has_version(version), \
+            "Trying to import version %s again" % str(version)
+        #TODO: check that the versions list is correctly ordered,
+        # as some methods assume that, and it's not clear what
+        # should happen if it isn't.
+        pull_branch = self.branch_to_pull_version_from(version, md5)
+        if pull_branch is not None:
+            self.pull_version_from_branch(pull_branch, version)
+        else:
+            # We need to import at least the diff, possibly upstream.
+            # Work out if we need the upstream part first.
+            imported_upstream = False
+            if not self.has_upstream_version(version):
+                up_pull_branch = \
+                    self.branch_to_pull_upstream_from(version, upstream_md5)
+                if up_pull_branch is not None:
+                    self.pull_upstream_from_branch(up_pull_branch, version)
+                else:
+                    imported_upstream = True
+                    # Check whether we should pull first if this initialises
+                    # from another branch:
+                    if (self.upstream_tree.branch.last_revision()
+                            == NULL_REVISION):
+                        self._init_upstream_from_other(versions)
+                    self.import_upstream(upstream_part, version,
+                            upstream_md5)
+            else:
+                mutter("We already have the needed upstream part")
+            parents = self.get_parents_with_upstream(version, versions,
+                    force_upstream_parent=imported_upstream)
+            # Now we have the list of parents we need to import the .diff.gz
+            self.import_diff(diff_filename, version, parents, md5)
 

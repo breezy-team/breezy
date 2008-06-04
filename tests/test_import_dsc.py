@@ -24,6 +24,8 @@ import shutil
 import sys
 import tarfile
 
+from debian_bundle.changelog import Version, Changelog
+
 from bzrlib.config import ConfigObj
 from bzrlib.conflicts import TextConflict
 from bzrlib.errors import FileExists, UncommittedChanges
@@ -31,7 +33,12 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.errors import ImportError, OnlyImportSingleDsc
-from bzrlib.plugins.builddeb.import_dsc import DscImporter, files_to_ignore
+from bzrlib.plugins.builddeb.import_dsc import (
+        DscImporter,
+        files_to_ignore,
+        DistributionBranch,
+        DistributionBranchSet,
+        )
 
 def write_to_file(filename, contents):
   f = open(filename, 'wb')
@@ -1225,14 +1232,15 @@ if sys.version > (2, 4):
             linkname = self.linkname
             if linkname:
                 # if linkname is empty we end up with a '.'
-                linkname = normpath(linkname)
+                linkname = os.path.normpath(linkname)
 
             if posix:
                 if self.size > tarfile.MAXSIZE_MEMBER:
                     raise ValueError("file is too large (>= 8 GB)")
 
                 if len(self.linkname) > tarfile.LENGTH_LINK:
-                    raise ValueError("linkname is too long (>%d)" % (LENGTH_LINK))
+                    raise ValueError("linkname is too long (>%d)" \
+                            % (tarfile.LENGTH_LINK))
 
                 if len(name) > tarfile.LENGTH_NAME:
                     prefix = name[:tarfile.LENGTH_PREFIX + 1]
@@ -1279,4 +1287,789 @@ if sys.version > (2, 4):
             return buf
 
 # vim: sw=2 sts=2 ts=2 
+
+class DistributionBranchTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(DistributionBranchTests, self).setUp()
+        self.tree1 = self.make_branch_and_tree('unstable')
+        self.up_tree1 = self.make_branch_and_tree('unstable-upstream')
+        self.name1 = "debian-unstable"
+        self.db1 = DistributionBranch(self.name1, self.tree1, self.up_tree1)
+        self.tree2 = self.make_branch_and_tree('experimental')
+        self.up_tree2 = self.make_branch_and_tree('experimental-upstream')
+        self.name2 = "debian-experimental"
+        self.db2 = DistributionBranch(self.name2, self.tree2, self.up_tree2)
+        self.tree3 = self.make_branch_and_tree('gutsy')
+        self.up_tree3 = self.make_branch_and_tree('gutsy-upstream')
+        self.name3 = "ubuntu-gutsy"
+        self.db3 = DistributionBranch(self.name3, self.tree3, self.up_tree3)
+        self.tree4 = self.make_branch_and_tree('hardy')
+        self.up_tree4 = self.make_branch_and_tree('hardy-upstream')
+        self.name4 = "ubuntu-hardy"
+        self.db4 = DistributionBranch(self.name4, self.tree4, self.up_tree4)
+        self.set = DistributionBranchSet()
+        self.set.add_branch(self.db1)
+        self.set.add_branch(self.db2)
+        self.set.add_branch(self.db3)
+        self.set.add_branch(self.db4)
+        self.fake_md5_1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        self.fake_md5_2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    def assertContentsAre(self, filename, expected_contents):
+        f = open(filename)
+        try:
+          contents = f.read()
+        finally:
+          f.close()
+        self.assertEqual(contents, expected_contents,
+                         "Contents of %s are not as expected" % filename)
+
+    def do_commit_with_md5(self, tree, message, md5):
+        return tree.commit(message, revprops={"deb-md5":md5})
+
+    def test_create(self):
+        db = self.db1
+        self.assertNotEqual(db, None)
+        self.assertEqual(db.name, self.name1)
+        self.assertEqual(db.tree, self.tree1)
+        self.assertEqual(db.upstream_tree, self.up_tree1)
+
+    def test_tag_name(self):
+        db = self.db1
+        version_no = "0.1-1"
+        version = Version(version_no)
+        self.assertEqual(db.tag_name(version),
+                self.name1 + "-" + version_no)
+
+    def test_upstream_tag_name(self):
+        db = self.db1
+        upstream_v_no = "0.1"
+        version_no = upstream_v_no + "-1"
+        version = Version(version_no)
+        self.assertEqual(db.upstream_tag_name(version),
+                "upstream-" + self.name1 + "-" + upstream_v_no)
+
+    def test_tag_version(self):
+        db = self.db1
+        tree = self.tree1
+        version = Version("0.1-1")
+        revid = tree.commit("one")
+        db.tag_version(version)
+        self.assertEqual(tree.branch.tags.lookup_tag(db.tag_name(version)),
+                revid)
+
+    def test_tag_upstream_version(self):
+        db = self.db1
+        tree = self.up_tree1
+        version = Version("0.1-1")
+        revid = tree.commit("one")
+        db.tag_upstream_version(version)
+        tag_name = db.upstream_tag_name(version)
+        self.assertEqual(tree.branch.tags.lookup_tag(tag_name), revid)
+
+    def test_has_version(self):
+        db = self.db1
+        version = Version("0.1-1")
+        self.assertFalse(db.has_version(version))
+        self.assertFalse(db.has_version(version, self.fake_md5_1))
+        self.do_commit_with_md5(self.tree1, "one", self.fake_md5_1)
+        db.tag_version(version)
+        self.assertTrue(db.has_version(version))
+        self.assertTrue(db.has_version(version, self.fake_md5_1))
+        self.assertFalse(db.has_version(version, self.fake_md5_2))
+        version = Version("0.1-2")
+        self.assertFalse(db.has_version(version))
+        self.assertFalse(db.has_version(version, self.fake_md5_1))
+        self.assertFalse(db.has_version(version, self.fake_md5_2))
+
+    def test_has_upstream_version(self):
+        db = self.db1
+        version = Version("0.1-1")
+        self.assertFalse(db.has_upstream_version(version))
+        self.assertFalse(db.has_upstream_version(version, self.fake_md5_1))
+        self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
+        db.tag_upstream_version(version)
+        self.assertTrue(db.has_upstream_version(version))
+        self.assertTrue(db.has_upstream_version(version, self.fake_md5_1))
+        self.assertFalse(db.has_upstream_version(version, self.fake_md5_2))
+        version = Version("0.1-2")
+        self.assertTrue(db.has_upstream_version(version))
+        self.assertTrue(db.has_upstream_version(version, self.fake_md5_1))
+        self.assertFalse(db.has_upstream_version(version, self.fake_md5_2))
+        version = Version("0.2-1")
+        self.assertFalse(db.has_upstream_version(version))
+        self.assertFalse(db.has_upstream_version(version, self.fake_md5_1))
+        self.assertFalse(db.has_upstream_version(version, self.fake_md5_2))
+
+    def test_revid_of_version(self):
+        db = self.db1
+        tree = self.tree1
+        version = Version("0.1-1")
+        revid = tree.commit("one")
+        db.tag_version(version)
+        self.assertEqual(db.revid_of_version(version), revid)
+
+    def test_revid_of_upstream_version(self):
+        db = self.db1
+        tree = self.up_tree1
+        version = Version("0.1-1")
+        revid = tree.commit("one")
+        db.tag_upstream_version(version)
+        self.assertEqual(db.revid_of_upstream_version(version), revid)
+
+    def test_contained_versions(self):
+        db = self.db1
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        version3 = Version("0.1-3")
+        version4 = Version("0.1-4")
+        version5 = Version("0.1-5")
+        self.assertEqual(db.contained_versions([]), ([], []))
+        self.assertEqual(db.contained_versions([version1]),
+                ([], [version1]))
+        self.tree1.commit("one")
+        db.tag_version(version1)
+        db.tag_version(version3)
+        db.tag_version(version4)
+        version_list = [version5, version4, version3, version2, version1]
+        self.assertEqual(db.contained_versions(version_list),
+                ([version4, version3, version1], [version5, version2]))
+        self.assertEqual(db.contained_versions([]), ([], []))
+
+    def test_missing_versions(self):
+        db = self.db1
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        version3 = Version("0.1-3")
+        version4 = Version("0.1-4")
+        version5 = Version("0.1-5")
+        self.assertEqual(db.missing_versions([]), [])
+        self.assertEqual(db.missing_versions([version1]), [version1])
+        self.tree1.commit("one")
+        db.tag_version(version1)
+        db.tag_version(version3)
+        version_list = [version5, version4, version3, version2, version1]
+        self.assertEqual(db.missing_versions(version_list),
+                [version5, version4])
+        self.assertEqual(db.missing_versions([]), [])
+
+    def test_last_contained_version(self):
+        db = self.db1
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        version3 = Version("0.1-3")
+        self.assertEqual(db.last_contained_version([]), None)
+        self.assertEqual(db.last_contained_version([version1]), None)
+        self.tree1.commit("one")
+        db.tag_version(version1)
+        db.tag_version(version3)
+        self.assertEqual(db.last_contained_version([version2]), None)
+        self.assertEqual(db.last_contained_version([]), None)
+        self.assertEqual(db.last_contained_version([version2, version1]),
+                version1)
+        self.assertEqual(db.last_contained_version([version3, version2,
+                                                    version1]), version3)
+
+    def test_get_parents_first_version(self):
+        """If there are no previous versions then there are no parents."""
+        db = self.db1
+        version1 = Version("0.1-1")
+        self.assertEqual(db.get_parents([version1]), [])
+        db = self.db2
+        self.assertEqual(db.get_parents([version1]), [])
+
+    def test_get_parents_second_version(self):
+        """Previous with same upstream should give that as parent."""
+        db = self.db1
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        db.tag_version(version1)
+        self.assertEqual(db.get_parents([version2, version1]),
+                [(db, version1, revid1)])
+
+    def test_get_parents_merge_from_lesser(self):
+        """Merge with same upstream version gives merged as second parent."""
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-0ubuntu1")
+        version3 = Version("0.1-1ubuntu1")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        versions = [version3, version1, version2]
+        # test is that revid1 is second parent
+        self.assertEqual(self.db2.get_parents(versions),
+                [(self.db2, version2, revid2),
+                (self.db1, version1, revid1)])
+
+    def test_get_parents_merge_from_greater(self):
+        """Merge from greater is same as merge from lesser."""
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        versions = [version3, version2, version1]
+        # test is that revid2 is second parent
+        self.assertEqual(self.db1.get_parents(versions),
+                [(self.db1, version1, revid1),
+                (self.db2, version2, revid2)])
+
+    def test_get_parents_merge_from_two_lesser(self):
+        """Should use greatest lesser when two candidates."""
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-0ubuntu1")
+        version3 = Version("0.1-1ubuntu1")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree3.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version1)
+        self.db3.tag_version(version2)
+        versions = [version3, version1, version2]
+        # test is that revid2 and not revid1 is second parent
+        self.assertEqual(self.db3.get_parents(versions),
+                [(self.db3, version2, revid3),
+                (self.db2, version1, revid2)])
+
+    def test_get_parents_merge_from_two_greater(self):
+        """Should use least greater when two candidates."""
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-0ubuntu1")
+        version3 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree3.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        self.db3.tag_version(version2)
+        versions = [version3, version2, version1]
+        # test is that revid2 and not revid3 is second parent
+        self.assertEqual(self.db1.get_parents(versions),
+                [(self.db1, version1, revid1),
+                (self.db2, version2, revid2)])
+
+    def test_get_parents_merge_multiple_from_greater(self):
+        """More than two parents correctly ordered."""
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.1-1other1")
+        version4 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree3.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        self.db3.tag_version(version3)
+        versions = [version4, version3, version2, version1]
+        # test is that revid2 is second, revid3 is third
+        self.assertEqual(self.db1.get_parents(versions),
+                [(self.db1, version1, revid1), (self.db2, version2, revid2),
+                (self.db3, version3, revid3)])
+
+    def test_get_parents_sync_when_diverged(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree1.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        self.db1.tag_version(version3)
+        versions = [version3, version2, version1]
+        # This is a sync, but we have diverged, so we should
+        # get two parents, the last ubuntu upload,
+        # and the Debian upload as the second parent.
+        self.assertEqual(self.db2.get_parents(versions),
+                [(self.db2, version2, revid2),
+                (self.db1, version3, revid3)])
+
+    def test_get_parents_skipped_version(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        version3 = Version("0.1-2ubuntu1")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        versions = [version3, version2, version1]
+        self.assertEqual(self.db2.get_parents(versions),
+                [(self.db2, version2, revid2)])
+
+    def test_get_parents_with_upstream_first_version(self):
+        db = self.db1
+        version1 = Version("0.1-1")
+        up_revid = self.up_tree1.commit("one")
+        db.tag_upstream_version(version1)
+        self.assertEqual(db.get_parents_with_upstream(version1, [version1]),
+                [up_revid])
+        db = self.db2
+        self.up_tree2.pull(self.up_tree1.branch)
+        db.tag_upstream_version(version1)
+        self.assertEqual(db.get_parents_with_upstream(version1, [version1]),
+                [up_revid])
+
+    def test_get_parents_with_upstream_second_version(self):
+        db = self.db1
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        db.tag_version(version1)
+        up_revid = self.up_tree1.commit("upstream one")
+        db.tag_upstream_version(version1)
+        # No upstream parent
+        self.assertEqual(db.get_parents_with_upstream(version2,
+                    [version2, version1]), [revid1])
+
+    def test_get_parents_with_upstream_merge_from_lesser(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-0ubuntu1")
+        version3 = Version("0.1-1ubuntu1")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db1.tag_upstream_version(version1)
+        self.db2.tag_upstream_version(version2)
+        versions = [version3, version1, version2]
+        # No upstream parent
+        self.assertEqual(self.db2.get_parents_with_upstream(version3,
+                    versions), [revid2, revid1])
+
+    def test_get_parents_with_upstream_merge_from_greater(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db1.tag_upstream_version(version1)
+        self.db2.tag_upstream_version(version2)
+        versions = [version3, version2, version1]
+        # No upstream parent
+        self.assertEqual(self.db1.get_parents_with_upstream(version3,
+                    versions), [revid1, revid2])
+
+    def test_get_parents_with_upstream_new_upstream_import(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.2-0ubuntu1")
+        revid1 = self.tree1.commit("one")
+        self.tree2.pull(self.tree1.branch)
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version1)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        up_revid2 = self.up_tree2.commit("upstream two")
+        self.db1.tag_upstream_version(version1)
+        self.db2.tag_upstream_version(version2)
+        versions = [version2, version1]
+        # Upstream parent as it is new upstream version
+        self.assertEqual(self.db2.get_parents_with_upstream(version2,
+                    versions), [revid1, up_revid2])
+
+    def test_get_parents_merge_new_upstream_from_lesser(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.2-1")
+        version4 = Version("0.2-1ubuntu1")
+        revid1 = self.tree1.commit("one")
+        self.db1.tag_version(version1)
+        revid2 = self.tree2.commit("two")
+        self.db2.tag_version(version2)
+        revid3 = self.tree1.commit("three")
+        self.db1.tag_version(version3)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.db1.tag_upstream_version(version1)
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db2.tag_upstream_version(version2)
+        up_revid2 = self.up_tree1.commit("upstream two")
+        self.db1.tag_upstream_version(version3)
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db2.tag_upstream_version(version4)
+        versions = [version4, version3, version2, version1]
+        # no upstream parent as the lesser branch has already merged it
+        self.assertEqual(self.db2.get_parents_with_upstream(version4,
+                    versions), [revid2, revid3])
+
+    def test_get_parents_with_upstream_force_upstream(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        revid1 = self.tree1.commit("one")
+        self.db1.tag_version(version1)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.db1.tag_upstream_version(version1)
+        up_revid2 = self.up_tree2.commit("different upstream one")
+        self.db2.tag_upstream_version(version2)
+        versions = [version2, version1]
+        # a previous test checked that this wouldn't give an
+        # upstream parent, but we are requiring one.
+        self.assertEqual(self.db2.get_parents_with_upstream(version2,
+                    versions, force_upstream_parent=True),
+                [revid1, up_revid2])
+
+    def test_get_parents_with_upstream_sync_when_diverged(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.1-2")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree1.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        self.db1.tag_version(version3)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.db1.tag_upstream_version(version1)
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db2.tag_upstream_version(version2)
+        versions = [version3, version2, version1]
+        # This is a sync but we are diverged so we should get two
+        # parents
+        self.assertEqual(self.db2.get_parents_with_upstream(version3,
+                    versions), [revid2, revid3])
+
+    def test_get_parents_with_upstream_sync_new_upstream(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.2-1")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree1.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        self.db1.tag_version(version3)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.db1.tag_upstream_version(version1)
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db2.tag_upstream_version(version2)
+        up_revid2 = self.up_tree1.commit("upstream two")
+        self.db1.tag_upstream_version(version3)
+        versions = [version3, version2, version1]
+        # This a sync, but we are diverged, so we should get two
+        # parents. There should be no upstream as the synced
+        # version will already have it.
+        self.assertEqual(self.db2.get_parents_with_upstream(version3,
+                    versions), [revid2, revid3])
+
+    def test_get_parents_with_upstream_sync_new_upstream_force(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.2-1")
+        revid1 = self.tree1.commit("one")
+        revid2 = self.tree2.commit("two")
+        revid3 = self.tree1.commit("three")
+        self.db1.tag_version(version1)
+        self.db2.tag_version(version2)
+        self.db1.tag_version(version3)
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.db1.tag_upstream_version(version1)
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db2.tag_upstream_version(version2)
+        up_revid2 = self.up_tree1.commit("upstream two")
+        self.db1.tag_upstream_version(version3)
+        versions = [version3, version2, version1]
+        up_revid3 = self.up_tree2.commit("different upstream two")
+        self.db2.tag_upstream_version(version3)
+        versions = [version3, version2, version1]
+        # test_get_parents_with_upstream_sync_new_upstream
+        # checks that there is not normally an upstream parent
+        # when we fake-sync, but we are forcing one here.
+        #TODO: should the upstream parent be second or third?
+        self.assertEqual(self.db2.get_parents_with_upstream(version3,
+                    versions, force_upstream_parent=True),
+                [revid2, up_revid3, revid3])
+
+    def test_branch_to_pull_version_from(self):
+        """Test the check for pulling from a branch.
+
+        It should only return a branch to pull from if the version
+        is present with the correct md5, and the history has not
+        diverged.
+        """
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        # With no versions tagged everything is None
+        branch = self.db2.branch_to_pull_version_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        branch = self.db2.branch_to_pull_version_from(version1,
+                self.fake_md5_2)
+        self.assertEqual(branch, None)
+        branch = self.db1.branch_to_pull_version_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        # Version and md5 available, so we get the correct branch.
+        self.do_commit_with_md5(self.tree1, "one", self.fake_md5_1)
+        self.db1.tag_version(version1)
+        branch = self.db2.branch_to_pull_version_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, self.db1)
+        # Otherwise (different version or md5) then we get None
+        branch = self.db2.branch_to_pull_version_from(version1,
+                self.fake_md5_2)
+        self.assertEqual(branch, None)
+        branch = self.db2.branch_to_pull_version_from(version2,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        branch = self.db2.branch_to_pull_version_from(version2,
+                self.fake_md5_2)
+        self.assertEqual(branch, None)
+        # And we still don't get a branch for the one that already
+        # has the version
+        branch = self.db1.branch_to_pull_version_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        # And we get the greatest branch when two lesser branches
+        # have what we are looking for.
+        self.tree2.pull(self.tree1.branch)
+        self.db2.tag_version(version1)
+        branch = self.db3.branch_to_pull_version_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, self.db2)
+        # If the branches have diverged then we don't get a branch.
+        self.tree3.commit("three")
+        branch = self.db3.branch_to_pull_version_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+
+    def test_branch_to_pull_upstream_from(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.2-1")
+        # With no versions tagged everything is None
+        branch = self.db2.branch_to_pull_upstream_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        branch = self.db2.branch_to_pull_upstream_from(version1,
+                self.fake_md5_2)
+        self.assertEqual(branch, None)
+        branch = self.db1.branch_to_pull_upstream_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
+        self.db1.tag_upstream_version(version1)
+        # Version and md5 available, so we get the correct branch.
+        branch = self.db2.branch_to_pull_upstream_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, self.db1)
+        # Otherwise (different version or md5) then we get None
+        branch = self.db2.branch_to_pull_upstream_from(version1,
+                self.fake_md5_2)
+        self.assertEqual(branch, None)
+        branch = self.db2.branch_to_pull_upstream_from(version2,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        branch = self.db2.branch_to_pull_upstream_from(version2,
+                self.fake_md5_2)
+        self.assertEqual(branch, None)
+        # And we don't get a branch for the one that already has
+        # the version
+        branch = self.db1.branch_to_pull_upstream_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+        self.up_tree2.pull(self.up_tree1.branch)
+        self.db2.tag_upstream_version(version1)
+        # And we get the greatest branch when two lesser branches
+        # have what we are looking for.
+        branch = self.db3.branch_to_pull_upstream_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, self.db2)
+        # If the branches have diverged then we don't get a branch.
+        self.up_tree3.commit("three")
+        branch = self.db3.branch_to_pull_upstream_from(version1,
+                self.fake_md5_1)
+        self.assertEqual(branch, None)
+
+    def test_pull_from_lesser_branch_no_upstream(self):
+        version = Version("0.1-1")
+        self.do_commit_with_md5(self.up_tree1, "upstream one",
+                self.fake_md5_1)
+        self.db1.tag_upstream_version(version)
+        up_revid = self.do_commit_with_md5(self.up_tree2, "upstream two",
+                self.fake_md5_1)
+        self.db2.tag_upstream_version(version)
+        revid = self.do_commit_with_md5(self.tree1, "one", self.fake_md5_2)
+        self.db1.tag_version(version)
+        self.assertNotEqual(self.tree2.branch.last_revision(), revid)
+        self.db2.pull_version_from_branch(self.db1, version)
+        self.assertEqual(self.tree2.branch.last_revision(), revid)
+        self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
+        self.assertEqual(self.db2.revid_of_version(version), revid)
+        self.assertEqual(self.db2.revid_of_upstream_version(version),
+                up_revid)
+
+    def test_pull_from_lesser_branch_with_upstream(self):
+        version = Version("0.1-1")
+        up_revid = self.do_commit_with_md5(self.up_tree1, "upstream one",
+                self.fake_md5_1)
+        self.db1.tag_upstream_version(version)
+        revid = self.do_commit_with_md5(self.tree1, "one", self.fake_md5_2)
+        self.db1.tag_version(version)
+        self.assertNotEqual(self.tree2.branch.last_revision(), revid)
+        self.assertNotEqual(self.up_tree2.branch.last_revision(), up_revid)
+        self.db2.pull_version_from_branch(self.db1, version)
+        self.assertEqual(self.tree2.branch.last_revision(), revid)
+        self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
+        self.assertEqual(self.db2.revid_of_version(version), revid)
+        self.assertEqual(self.db2.revid_of_upstream_version(version),
+                up_revid)
+
+    def test_pull_upstream_from_branch(self):
+        version = Version("0.1-1")
+        up_revid = self.do_commit_with_md5(self.up_tree1, "upstream one",
+                self.fake_md5_1)
+        self.db1.tag_upstream_version(version)
+        self.assertNotEqual(self.up_tree2.branch.last_revision(), up_revid)
+        self.db2.pull_upstream_from_branch(self.db1, version)
+        self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
+        self.assertEqual(self.db2.revid_of_upstream_version(version),
+                up_revid)
+
+    def test_import_upstream(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.build_orig()
+        self.db1.import_upstream(builder.orig_name(), version,
+                self.fake_md5_1)
+        tree = self.up_tree1
+        branch = tree.branch
+        rh = branch.revision_history()
+        self.assertEqual(len(rh), 1)
+        self.assertEqual(self.db1.revid_of_upstream_version(version), rh[0])
+        rev = branch.repository.get_revision(rh[0])
+        self.assertEqual(rev.message,
+                "Import upstream from %s" % builder.orig_name())
+        self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
+
+    def test_import_package_init_from_other(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.2-1")
+        up_revid1 = self.up_tree1.commit("upstream one")
+        self.db1.tag_upstream_version(version1)
+        revid1 = self.tree1.commit("one")
+        self.db1.tag_version(version1)
+        builder = SourcePackageBuilder("package", version2)
+        cl = Changelog()
+        cl.new_block(package="package", version=version1,
+                distributions="unstable", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        cl.new_block(package="package", version=version2,
+                distributions="experimental", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        builder.add_debian_file("debian/changelog", str(cl))
+        builder.build()
+        self.db2.import_package(builder.dsc_name())
+        self.assertEqual(len(self.up_tree2.branch.revision_history()), 2)
+
+    def import_package_single(self):
+        version1 = Version("0.1-1")
+        builder = SourcePackageBuilder("package", version1)
+        cl = Changelog()
+        cl.new_block(package="package", version=version1,
+                distributions="unstable", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        builder.add_upstream_file("README", "foo")
+        builder.add_debian_file("debian/changelog", str(cl))
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+
+
+class SourcePackageBuilder(object):
+
+    def __init__(self, name, version):
+        self.upstream_files = []
+        self.debian_files = []
+        self.name = name
+        self.version = version
+
+    def add_upstream_file(self, name, content=None):
+        self.add_upstream_files([(name, content)])
+
+    def add_upstream_files(self, files):
+        self.upstream_files += files
+
+    def add_debian_file(self, name, content=None):
+        self.add_debian_files([(name, content)])
+
+    def add_debian_files(self, files):
+        self.debian_files += files
+
+    def orig_name(self):
+        v_num = str(self.version.upstream_version)
+        return "%s_%s.orig.tar.gz" % (self.name, v_num)
+
+    def diff_name(self):
+        return "%s_%s.diff.gz" % (self.name, str(self.version))
+
+    def dsc_name(self):
+        return "%s_%s.dsc" % (self.name, str(self.version))
+
+    def _make_files(self, files_list, basedir):
+        for (path, content) in files_list:
+            dirname = os.path.dirname(path)
+            if dirname is not None and dirname != "":
+                os.makedirs(os.path.join(basedir, dirname))
+            f = open(os.path.join(basedir, path), 'wb')
+            try:
+                if content is None:
+                    content = ''
+                f.write(content)
+            finally:
+                f.close()
+
+    def basedir(self):
+        return self.name + "-" + str(self.version.upstream_version)
+
+    def build_orig(self):
+        basedir = self.basedir()
+        os.mkdir(basedir)
+        self._make_files(self.upstream_files, basedir)
+        tar = tarfile.open(self.orig_name(), 'w:gz')
+        try:
+          tar.add(basedir)
+        finally:
+          tar.close()
+
+    def build(self):
+        basedir = self.basedir()
+        self.build_orig()
+        orig_basedir = basedir + ".orig"
+        shutil.copytree(basedir, orig_basedir)
+        self._make_files(self.debian_files, basedir)
+        os.system('diff -Nru %s %s | gzip -9 - > %s' % (orig_basedir,
+                    basedir, self.diff_name()))
+        shutil.rmtree(basedir)
+        shutil.rmtree(orig_basedir)
+        f = open(self.dsc_name(), 'wb')
+        try:
+            f.write("""Format: 1.0
+Source: %s
+Version: %s
+Binary: package
+Maintainer: maintainer <maint@maint.org>
+Architecture: any
+Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 5.0.0)
+Files:
+ 8636a3e8ae81664bac70158503aaf53a 1328218 %s
+ 1acd97ad70445afd5f2a64858296f211 20709   %s
+""" % (self.name, self.version, self.orig_name(), self.diff_name()))
+        finally:
+            f.close()
 
