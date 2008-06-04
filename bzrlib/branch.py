@@ -1669,15 +1669,11 @@ class BzrBranch(Branch):
         result = PushResult()
         result.source_branch = self
         result.target_branch = target
-        target.lock_write()
-        try:
-            result.old_revno, result.old_revid = target.last_revision_info()
-            target.update_revisions(self, stop_revision, overwrite)
-            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
-            result.new_revno, result.new_revid = target.last_revision_info()
-            return result
-        finally:
-            target.unlock()
+        result.old_revno, result.old_revid = target.last_revision_info()
+        target.update_revisions(self, stop_revision, overwrite)
+        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+        result.new_revno, result.new_revid = target.last_revision_info()
+        return result
 
     def get_parent(self):
         """See Branch.get_parent."""
