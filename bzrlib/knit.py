@@ -60,7 +60,6 @@ in the deltas to provide line annotation
 # record content length ?
                   
 
-from copy import copy
 from cStringIO import StringIO
 from itertools import izip, chain
 import operator
@@ -2277,6 +2276,13 @@ class _KnitAccess(object):
         self._dir_mode = _dir_mode
         self._need_to_create = _need_to_create
         self._create_parent_dir = _create_parent_dir
+
+    def __repr__(self):
+        try:
+            return "%s(%r)" % (self.__class__.__name__,
+                self._transport.abspath(self._filename))
+        except:
+            return "_KnitAccess(**unprintable**)"
 
     def add_raw_records(self, sizes, raw_data):
         """Add raw knit bytes to a storage area.
