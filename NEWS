@@ -5,6 +5,17 @@ Bazaar Release Notes
 .. contents::
 
 
+NOT RELEASED YET
+----------------
+
+  BUG FIXES:
+
+    * Avoid KnitCorrupt error extracting inventories from some repositories.
+      (The data is not corrupt; an internal check is detecting a problem
+      reading from the repository.)
+      (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
+
+
 bzr 1.6beta1 2008-06-02
 -----------------------
 

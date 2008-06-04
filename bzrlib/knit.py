@@ -280,7 +280,12 @@ class KnitContentFactory(ContentFactory):
 
 
 class KnitContent(object):
-    """Content of a knit version to which deltas can be applied."""
+    """Content of a knit version to which deltas can be applied.
+    
+    This is for historical reasons always stored in memory as a list of lines
+    with \n at the end, plus a flag saying if the final ending is really there
+    or not.
+    """
 
     def __init__(self):
         self._should_strip_eol = False
@@ -288,12 +293,6 @@ class KnitContent(object):
     def apply_delta(self, delta, new_version_id):
         """Apply delta to this object to become new_version_id."""
         raise NotImplementedError(self.apply_delta)
-
-    def cleanup_eol(self, copy_on_mutate=True):
-        if self._should_strip_eol:
-            if copy_on_mutate:
-                self._lines = self._lines[:]
-            self.strip_last_line_newline()
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
@@ -345,7 +344,11 @@ class AnnotatedKnitContent(KnitContent):
 
     def annotate(self):
         """Return a list of (origin, text) for each content line."""
-        return list(self._lines)
+        lines = self._lines[:]
+        if self._should_strip_eol:
+            origin, last_line = lines[-1]
+            lines[-1] = (origin, last_line.rstrip('\n'))
+        return lines
 
     def apply_delta(self, delta, new_version_id):
         """Apply delta to this object to become new_version_id."""
@@ -354,11 +357,6 @@ class AnnotatedKnitContent(KnitContent):
         for start, end, count, delta_lines in delta:
             lines[offset+start:offset+end] = delta_lines
             offset = offset + (start - end) + count
-
-    def strip_last_line_newline(self):
-        line = self._lines[-1][1].rstrip('\n')
-        self._lines[-1] = (self._lines[-1][0], line)
-        self._should_strip_eol = False
 
     def text(self):
         try:
@@ -370,7 +368,6 @@ class AnnotatedKnitContent(KnitContent):
             raise KnitCorrupt(self,
                 "line in annotated knit missing annotation information: %s"
                 % (e,))
-
         if self._should_strip_eol:
             lines[-1] = lines[-1].rstrip('\n')
         return lines
@@ -407,10 +404,6 @@ class PlainKnitContent(KnitContent):
 
     def copy(self):
         return PlainKnitContent(self._lines[:], self._version_id)
-
-    def strip_last_line_newline(self):
-        self._lines[-1] = self._lines[-1].rstrip('\n')
-        self._should_strip_eol = False
 
     def text(self):
         lines = self._lines
@@ -1472,7 +1465,6 @@ class KnitVersionedFile(VersionedFile):
                     if multiple_versions:
                         content_map[component_id] = content
 
-            content.cleanup_eol(copy_on_mutate=multiple_versions)
             final_content[version_id] = content
 
             # digest here is the digest from the last applied component.
