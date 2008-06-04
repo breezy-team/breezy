@@ -282,9 +282,9 @@ class KnitContentFactory(ContentFactory):
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied.
     
-    This is for historical reasons always stored in memory as a list of lines
-    with \n at the end, plus a flag saying if the final ending is really there
-    or not.
+    This is always stored in memory as a list of lines with \n at the end,
+    plus a flag saying if the final ending is really there or not, because that 
+    corresponds to the on-disk knit representation.
     """
 
     def __init__(self):
@@ -2270,11 +2270,8 @@ class _KnitAccess(object):
         self._create_parent_dir = _create_parent_dir
 
     def __repr__(self):
-        try:
-            return "%s(%r)" % (self.__class__.__name__,
-                self._transport.abspath(self._filename))
-        except:
-            return "_KnitAccess(**unprintable**)"
+        return "%s(%r)" % (self.__class__.__name__,
+            self._transport.abspath(self._filename))
 
     def add_raw_records(self, sizes, raw_data):
         """Add raw knit bytes to a storage area.
