@@ -367,7 +367,7 @@ bzr 1.5rc1 2008-05-09
     * The Python ``assert`` statement is no longer used in Bazaar source, and 
       a test checks this.  (Martin Pool)
 
-  API BREAKS:
+  API CHANGES:
 
     * ``bzrlib.status.show_pending_merges`` requires the repository to be
       locked by the caller. Callers should have been doing it anyway, but it
