@@ -19,7 +19,7 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
                            UnexpectedEndOfContainerError)
 from bzrlib.tests import TestCase
 
-from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
+from bzrlib.plugins.svn.errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
                     NotSvnBranchPath, InvalidSvnBranchPath,
                     SVN_ERR_UNKNOWN_HOSTNAME)
 

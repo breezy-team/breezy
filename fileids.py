@@ -23,7 +23,7 @@ from bzrlib.trace import mutter
 
 import urllib
 
-import changes
+from bzrlib.plugins.svn import changes
 from bzrlib.plugins.svn.mapping import escape_svn_path
 
 def get_local_changes(paths, branch, mapping, generate_revid, 

@@ -19,10 +19,10 @@
 from bzrlib.errors import NoSuchRevision
 
 import os
-import logwalker
+from bzrlib.plugins.svn import logwalker
 from bzrlib import debug
-from tests import TestCaseWithSubversionRepository
-from transport import SvnRaTransport
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.transport import SvnRaTransport
 
 class TestLogWalker(TestCaseWithSubversionRepository):
     def setUp(self):

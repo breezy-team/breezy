@@ -23,7 +23,7 @@ from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null
 from bzrlib.transport import get_transport
 
-from format import get_rich_root_format
+from bzrlib.plugins.svn.format import get_rich_root_format
 
 import svn.core, svn.repos
 

@@ -25,12 +25,12 @@ from bzrlib.tests import TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from commit import set_svn_revprops, _revision_id_to_svk_feature
+from bzrlib.plugins.svn.commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
-from errors import RevpropChangeFailed
+from bzrlib.plugins.svn.errors import RevpropChangeFailed
 import os
-from transport import SvnRaTransport
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.transport import SvnRaTransport
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 from svn.core import svn_time_to_cstring
 

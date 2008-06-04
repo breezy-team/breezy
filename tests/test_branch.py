@@ -26,12 +26,12 @@ from bzrlib.trace import mutter
 import os
 from unittest import TestCase
 
-from branch import FakeControlFiles, SvnBranchFormat
-from convert import load_dumpfile
-from mapping import SVN_PROP_BZR_REVISION_ID
-from mapping3 import BzrSvnMappingv3FileProps
-from mapping3.scheme import TrunkBranchingScheme
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.branch import FakeControlFiles, SvnBranchFormat
+from bzrlib.plugins.svn.convert import load_dumpfile
+from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
+from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_last_rev_rev_hist(self):

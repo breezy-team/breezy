@@ -21,10 +21,10 @@ from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 from bzrlib.tests import TestCase
 
-from fileids import simple_apply_changes
-from mapping3 import BzrSvnMappingv3FileProps, set_branching_scheme
-from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.fileids import simple_apply_changes
+from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps, set_branching_scheme
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class MockRepo(object):
     def __init__(self, mapping, uuid="uuid"):

@@ -27,12 +27,12 @@ from bzrlib.workingtree import WorkingTree
 import svn.client, svn.core
 from svn.core import SubversionException
 
-from commit import push
-from config import BranchConfig
-from errors import NotSvnBranchPath
-from format import get_rich_root_format
-from repository import SvnRepository
-from transport import bzr_to_svn_url, create_svn_client
+from bzrlib.plugins.svn.commit import push
+from bzrlib.plugins.svn.config import BranchConfig
+from bzrlib.plugins.svn.errors import NotSvnBranchPath
+from bzrlib.plugins.svn.format import get_rich_root_format
+from bzrlib.plugins.svn.repository import SvnRepository
+from bzrlib.plugins.svn.transport import bzr_to_svn_url, create_svn_client
 
 
 class FakeControlFiles(object):

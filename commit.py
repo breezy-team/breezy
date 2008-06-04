@@ -31,12 +31,13 @@ from bzrlib.trace import mutter, warning
 from bzrlib.plugins.svn import util
 
 from cStringIO import StringIO
-from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
-from svk import (generate_svk_feature, serialize_svk_features, 
+from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
+from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
-from logwalker import lazy_dict
+from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
-from repository import SvnRepositoryFormat, SvnRepository
+from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
+
 import urllib
 
 

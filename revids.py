@@ -22,12 +22,12 @@ from bzrlib.trace import mutter
 
 import svn.core
 
-from cache import CacheTable
-from errors import InvalidPropertyValue
+from bzrlib.plugins.svn.cache import CacheTable
+from bzrlib.plugins.svn.errors import InvalidPropertyValue
 from bzrlib.plugins.svn.mapping import (parse_revision_id, BzrSvnMapping, 
                      SVN_PROP_BZR_REVISION_ID, parse_revid_property)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
-from mapping3.scheme import BranchingScheme
+from bzrlib.plugins.svn.mapping3.scheme import BranchingScheme
 
 class RevidMap(object):
     def __init__(self, repos):

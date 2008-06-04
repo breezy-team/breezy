@@ -23,8 +23,8 @@ from bzrlib.lockable_files import TransportLock
 import os
 
 lazy_import(globals(), """
-import errors
-import remote
+from bzrlib.plugins.svn import errors
+from bzrlib.plugins.svn import remote
 
 from bzrlib import errors as bzr_errors
 """)

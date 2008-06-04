@@ -19,9 +19,8 @@ from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import version_info
+from bzrlib.plugins.svn import version_info, errors
 import calendar
-import errors
 import svn
 import time
 import urllib

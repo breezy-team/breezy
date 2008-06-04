@@ -25,11 +25,11 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os, sys
-from convert import convert_repository, NotDumpFile, load_dumpfile
-from format import get_rich_root_format
-from mapping3 import set_branching_scheme
-from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.convert import convert_repository, NotDumpFile, load_dumpfile
+from bzrlib.plugins.svn.format import get_rich_root_format
+from bzrlib.plugins.svn.mapping3 import set_branching_scheme
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 import svn.repos
 

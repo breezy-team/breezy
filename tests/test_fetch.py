@@ -26,14 +26,14 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestSkipped, KnownFailure
 from bzrlib.trace import mutter
 
-from convert import load_dumpfile
+from bzrlib.plugins.svn.convert import load_dumpfile
 from bzrlib.plugins.svn.errors import InvalidFileName
-import format
-import remote
-from mapping3 import set_branching_scheme
-from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
-from tests import TestCaseWithSubversionRepository
-from transport import SvnRaTransport
+from bzrlib.plugins.svn import format
+from bzrlib.plugins.svn import remote
+from bzrlib.plugins.svn.mapping3 import set_branching_scheme
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.transport import SvnRaTransport
 
 import os, sys
 

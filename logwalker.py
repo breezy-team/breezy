@@ -24,8 +24,8 @@ from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
 import svn.core
 
-from cache import CacheTable
-import changes
+from bzrlib.plugins.svn.cache import CacheTable
+from bzrlib.plugins.svn import changes
 
 LOG_CHUNK_LIMIT = 0
 

@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from cache import CacheTable
+from bzrlib.plugins.svn.cache import CacheTable
 
 class SqliteCachingParentsProvider(object):
     def __init__(self, actual, cachedb=None):

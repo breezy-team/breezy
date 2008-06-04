@@ -1,5 +1,9 @@
 bzr-svn 0.4.11	UNRELEASED
 
+  CHANGES
+
+   * Now uses absolute imports and no longer adds plugin directory to the system path.
+
   BUG FIXES
 
    * Raise appropriate errors when using annotate.

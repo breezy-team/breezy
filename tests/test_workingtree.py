@@ -30,9 +30,9 @@ import svn.wc
 
 import os, sys
 
-from transport import svn_config
-from tests import TestCaseWithSubversionRepository
-from workingtree import generate_ignore_list
+from bzrlib.plugins.svn.transport import svn_config
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.workingtree import generate_ignore_list
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):

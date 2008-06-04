@@ -17,9 +17,9 @@
 """Config tests."""
 
 from bzrlib.branch import Branch
-from config import SvnRepositoryConfig, BranchConfig
-from mapping3.scheme import TrunkBranchingScheme
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.config import SvnRepositoryConfig, BranchConfig
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 from bzrlib.tests import TestCaseInTempDir
 

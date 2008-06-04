@@ -26,7 +26,7 @@ import svn.ra
 import svn.core
 import svn.client
 
-from errors import convert_svn_error, NoSvnRepositoryPresent
+from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent
 import urlparse
 import urllib
 

@@ -19,9 +19,9 @@ from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 
-from mapping3 import BzrSvnMappingv3FileProps
-from mapping3.scheme import NoBranchingScheme
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
+from bzrlib.plugins.svn.mapping3.scheme import NoBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 import os, sys
 

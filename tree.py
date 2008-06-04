@@ -31,7 +31,7 @@ import urllib
 import svn.core, svn.wc, svn.delta
 from svn.core import Pool
 
-import errors
+from bzrlib.plugins.svn import errors
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.

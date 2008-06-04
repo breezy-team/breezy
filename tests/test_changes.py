@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bzrlib.tests import TestCase
-from changes import path_is_child, find_prev_location, changes_path
+from bzrlib.plugins.svn.changes import path_is_child, find_prev_location, changes_path
 
 class PathIsChildTests(TestCase):
     def test_both_empty(self):

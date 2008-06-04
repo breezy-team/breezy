@@ -14,8 +14,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bzrlib.tests import TestCase
-from svk import parse_svk_feature
-from svk import parse_svk_features
+from bzrlib.plugins.svn.svk import parse_svk_feature
+from bzrlib.plugins.svn.svk import parse_svk_features
 
 class SvkTests(TestCase):
     def test_parse_svk_feature_root(self):

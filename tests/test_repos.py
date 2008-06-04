@@ -33,16 +33,16 @@ import os, sys
 
 import svn.fs, svn
 
-import format
-from mapping import (escape_svn_path, unescape_svn_path, 
+from bzrlib.plugins.svn import format
+from bzrlib.plugins.svn.mapping import (escape_svn_path, unescape_svn_path, 
                      SVN_PROP_BZR_REVISION_ID)
-from mapping3 import (SVN_PROP_BZR_BRANCHING_SCHEME, set_branching_scheme,
+from bzrlib.plugins.svn.mapping3 import (SVN_PROP_BZR_BRANCHING_SCHEME, set_branching_scheme,
                       set_property_scheme, BzrSvnMappingv3)
-from mapping3.scheme import (TrunkBranchingScheme, NoBranchingScheme, 
+from bzrlib.plugins.svn.mapping3.scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme, SingleBranchingScheme)
-from transport import SvnRaTransport
-from tests import TestCaseWithSubversionRepository
-from repository import SvnRepositoryFormat
+from bzrlib.plugins.svn.transport import SvnRaTransport
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.repository import SvnRepositoryFormat
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):

@@ -18,10 +18,10 @@
 
 from bzrlib.errors import NoSuchRevision
 
-from tests import TestCaseWithSubversionRepository
-from branchprops import PathPropertyProvider
-from logwalker import LogWalker, CachingLogWalker
-from transport import SvnRaTransport
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.branchprops import PathPropertyProvider
+from bzrlib.plugins.svn.logwalker import LogWalker, CachingLogWalker
+from bzrlib.plugins.svn.transport import SvnRaTransport
 
 class TestBranchProps(TestCaseWithSubversionRepository):
     def setUp(self):

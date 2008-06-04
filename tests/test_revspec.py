@@ -23,7 +23,7 @@ from bzrlib.errors import BzrError, InvalidRevisionSpec
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.tests import TestCase
 
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 
 class TestRevSpec(TestCase):

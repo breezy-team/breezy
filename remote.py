@@ -24,10 +24,10 @@ from bzrlib.transport.local import LocalTransport
 from svn.core import SubversionException
 import svn.core, svn.repos
 
-from errors import NoSvnRepositoryPresent
-from format import get_rich_root_format, SvnRemoteFormat
-from repository import SvnRepository
-from transport import bzr_to_svn_url, get_svn_ra_transport
+from bzrlib.plugins.svn.errors import NoSvnRepositoryPresent
+from bzrlib.plugins.svn.format import get_rich_root_format, SvnRemoteFormat
+from bzrlib.plugins.svn.repository import SvnRepository
+from bzrlib.plugins.svn.transport import bzr_to_svn_url, get_svn_ra_transport
 
 
 class SvnRemoteAccess(BzrDir):
