@@ -1244,7 +1244,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     The stacked location pointer is passed down to the repository and requires
     a repository format with supports_external_lookups = True.
 
-    This format was introduced in bzr 1.3.
+    This format was introduced in bzr 1.6.
     """
 
     def _branch_class(self):
@@ -1252,7 +1252,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 7 (needs bzr 1.3)\n"
+        return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
