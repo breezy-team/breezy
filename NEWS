@@ -4,20 +4,20 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
 
-This release adds a translation of some of the user documentation into Spanish.
-(Contributions of other translations would be very welcome.)
+bzr 1.6beta1 2008-06-02
+-----------------------
+
+
+Commands that work on the revision history such as push, pull, missing,
+uncommit and log are now substantially faster.  This release adds a
+translation of some of the user documentation into Spanish.  (Contributions of
+other translations would be very welcome.)  Bazaar 1.6beta1 adds a new network
+protocol which is used by default and which allows for more efficient transfers
+and future extensions.
+
 
   NOTES WHEN UPGRADING:
-
-  CHANGES:
-
-  FEATURES:
-
-    * Adding ``-Derror`` will now display a traceback when a plugin fails to
-      load. (James Westby)
 
     * There is a new version of the network protocol used for bzr://, bzr+ssh://
       and bzr+http:// connections.  This will allow more efficient requests and
@@ -28,7 +28,27 @@ This release adds a translation of some of the user documentation into Spanish.
       these protocols.  Use alternatives like SFTP or upgrade those servers.
       (Andrew Bennetts, #83935)
 
+  CHANGES:
+
+    * Deprecation warnings will not be suppressed when running ``bzr selftest``
+      so that developers can see if their code is using deprecated functions.
+      (John Arbash Meinel)
+
+  FEATURES:
+
+    * Adding ``-Derror`` will now display a traceback when a plugin fails to
+      load. (James Westby)
+
   IMPROVEMENTS:
+
+    * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
+      the revno of the new revision (``Graph.find_distance_to_null``). This
+      should make something like ``bzr branch -r -100`` in a shared, no-trees
+      repository much snappier. (John Arbash Meinel)
+
+    * ``bzr log --short -r X..Y`` no longer needs to access the full revision
+      history. This makes it noticeably faster when logging the last few
+      revisions. (John Arbash Meinel)
 
     * ``bzr ls`` now accepts ``-V`` as an alias for ``--versioned``. 
       (Jerad Cramp, #165086)
@@ -37,7 +57,17 @@ This release adds a translation of some of the user documentation into Spanish.
       ``Graph.find_differences`` to determine missing revisions without having
       to search the whole ancestry. (John Arbash Meinel, #174625)
 
+    * ``bzr uncommit`` now uses partial history access, rather than always
+      extracting the full revision history for a branch. This makes it
+      resolve the appropriate revisions much faster (in testing it drops
+      uncommit from 1.5s => 0.4s). It also means ``bzr log --short`` is one
+      step closer to not using full revision history.
+      (John Arbash Meinel, #172649)
+
   BUGFIXES:
+
+    * ``bzr merge --lca`` should handle when two revisions have no common
+      ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
 
     * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
       fails.  (Andrew Bennetts, #234229)
@@ -77,6 +107,9 @@ This release adds a translation of some of the user documentation into Spanish.
       them.
       (Vincent Ladeuil, #229076)
 
+    * The "Unable to obtain lock" error message now also suggests using
+      ``bzr break-lock`` to fix it.  (Martin Albisetti, #139202)
+
     * Treat an encoding of '' as ascii; this can happen when bzr is run
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
@@ -90,6 +123,10 @@ This release adds a translation of some of the user documentation into Spanish.
       on the plugin and integration chapters of the User Guide.
       (Ian Clatworthy)
 
+    * More Bazaar developer documentation about packaging and release process,
+      and about use of Python reprs.
+      (Martin Pool, Martin Albisetti)
+
     * Updated Tortise strategy document. (Mark Hammond)
 
   TESTING:
@@ -99,10 +136,20 @@ This release adds a translation of some of the user documentation into Spanish.
 
   INTERNALS:
 
+    * ``Branch.missing_revisions`` has been deprecated. Similar functionality
+      can be obtained using ``bzrlib.missing.find_unmerged``. The api was
+      fairly broken, and the function was unused, so we are getting rid of it.
+      (John Arbash Meinel)
+
   API CHANGES:
 
     * ``Branch.abspath`` is deprecated; use the Tree or Transport 
       instead.  (Martin Pool)
+
+    * ``Branch.update_revisions`` now takes an optional ``Graph``
+      object. This can be used by ``update_revisions`` when it is
+      checking ancestry, and allows callers to prefer request to go to a
+      local branch.  (John Arbash Meinel)
 
     * Branch, Repository, Tree and BzrDir should expose a Transport as an
       attribute if they have one, rather than having it indirectly accessible
@@ -124,6 +171,11 @@ This release adds a translation of some of the user documentation into Spanish.
     * Many methods on ``VersionedFile``, ``Repository`` and in
       ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
       (Robert Collins)
+
+    * ``RevisionSpec.wants_revision_history`` can be set to False for a given
+      ``RevisionSpec``. This will disable the existing behavior of passing in
+      the full revision history to ``self._match_on``. Useful for specs that
+      don't actually need access to the full history. (John Arbash Meinel)
 
     * The constructors of ``SmartClientMedium`` and its subclasses now require a
       ``base`` parameter.  ``SmartClientMedium`` implementations now also need
@@ -183,7 +235,7 @@ bzr 1.5rc1 2008-05-09
   IMPROVEMENTS:
 
     * Diff now handles revision specs like "branch:" and "submit:" more
-      efficiently.  (Aaron Bentley)
+      efficiently.  (Aaron Bentley, #202928)
 
     * More friendly error given when attempt to start the smart server
       on an address already in use. (Andrea Corbellini, #200575)
@@ -6146,3 +6198,6 @@ bzr-0.0.0.69  2005-03-22
 
     * Storage of local versions: init, add, remove, rm, info, log,
       diff, status, etc.
+
+..
+   vim: tw=74 ft=rst ff=unix

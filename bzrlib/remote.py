@@ -48,6 +48,7 @@ from bzrlib.symbol_versioning import (
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
+
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
 class RemoteBzrDir(BzrDir):
@@ -1658,7 +1659,12 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.set_push_location(location)
 
     @needs_write_lock
-    def update_revisions(self, other, stop_revision=None, overwrite=False):
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
+        """See Branch.update_revisions.
+
+        This implementation ignores the 'graph' param.
+        """
         other.lock_read()
         try:
             if stop_revision is None:

@@ -40,6 +40,7 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.osutils import getcwd
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 from bzrlib.tests.http_server import HttpServer
@@ -303,6 +304,36 @@ class TestBranch(TestCaseWithBranch):
         d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
+
+    def test_missing_revisions(self):
+        t1 = self.make_branch_and_tree('b1')
+        rev1 = t1.commit('one')
+        t2 = t1.bzrdir.sprout('b2').open_workingtree()
+        rev2 = t1.commit('two')
+        rev3 = t1.commit('three')
+
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch))
+
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=1))
+        self.assertEqual([rev2],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=2))
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=3))
+
+        self.assertRaises(errors.NoSuchRevision,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=4)
+
+        rev4 = t2.commit('four')
+        self.assertRaises(errors.DivergedBranches,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch)
 
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
