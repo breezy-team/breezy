@@ -1672,8 +1672,6 @@ class RemoteBranch(branch.Branch):
                 if revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
-            # whats the current last revision, before we fetch [and change it
-            # possibly]
             self.fetch(other, stop_revision)
 
             if overwrite:
