@@ -2785,8 +2785,18 @@ class InterPackRepo(InterSameDataRepository):
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and viceversa, anywhere in the history of revision_id.
             graph = self.target.get_graph(other_repository=self.source)
-            found_ids = frozenset(chain(*graph._make_breadth_first_searcher(
-                [revision_id])))
+            searcher = graph._make_breadth_first_searcher([revision_id])
+            found_ids = set()
+            while True:
+                try:
+                    next_revs, ghosts = searcher.next_with_ghosts()
+                except StopIteration:
+                    break
+                if revision_id in ghosts:
+                    raise errors.NoSuchRevision(self.source, revision_id)
+                found_ids.update(next_revs)
+                found_ids.update(ghosts)
+            found_ids = frozenset(found_ids)
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(

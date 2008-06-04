@@ -1244,7 +1244,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     The stacked location pointer is passed down to the repository and requires
     a repository format with supports_external_lookups = True.
 
-    This format was introduced in bzr 1.3.
+    This format was introduced in bzr 1.6.
     """
 
     def _branch_class(self):
@@ -1252,7 +1252,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar Branch Format 7 (needs bzr 1.3)\n"
+        return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -2114,7 +2114,8 @@ class BzrBranch7(BzrBranch5):
 
     def get_stacked_on(self):
         self._check_stackable_repo()
-        stacked_url = self.control_files.get_utf8('stacked-on').read()[:-1]
+        stacked_url_str = self._transport.get_bytes('stacked-on')
+        stacked_url = stacked_url_str.decode('utf_8').rstrip('\n')
         if not stacked_url:
             raise errors.NotStacked(self)
         return stacked_url
@@ -2150,7 +2151,7 @@ class BzrBranch7(BzrBranch5):
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
-        self.control_files.put_utf8('stacked-on', url + '\n')
+        self._transport.put_bytes('stacked-on', (url + '\n').encode('utf_8'))
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -2365,6 +2366,6 @@ class Converter6to7(object):
 
     def convert(self, branch):
         format = BzrBranchFormat7()
-        branch.control_files.put_utf8('stacked-on', '\n')
+        branch._transport.put_bytes('stacked-on', '\n')
         # update target format
-        branch.control_files.put_utf8('format', format.get_format_string())
+        branch._transport.put_bytes('format', format.get_format_string())
