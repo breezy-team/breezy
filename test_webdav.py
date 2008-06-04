@@ -42,12 +42,12 @@ from bzrlib import (
     trace,
     )
 from bzrlib.plugins.webdav import webdav
-from bzrlib.tests.HttpServer import (
+from bzrlib.tests.http_server import (
     HttpServer,
     TestingHTTPRequestHandler,
     )
 from bzrlib.tests import (
-    HTTPTestUtil,
+    http_utils,
     TestUtil,
     )
 from bzrlib.transport.http import _urllib2_wrappers
@@ -405,7 +405,7 @@ class DAVServer_append(DAVServer):
     _url_protocol = 'http+webdav'
 
 
-class TestCaseWithDAVServer(HTTPTestUtil.TestCaseWithTransport):
+class TestCaseWithDAVServer(http_utils.TestCaseWithTransport):
     """A support class that provides urls that are http+webdav://.
 
     This is done by forcing the server to be an http DAV one.

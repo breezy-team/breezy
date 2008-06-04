@@ -26,3 +26,23 @@ Extensions:
 - Looking  at Apache  sources  it appears  that  PATCH have  been
   introduced  in  Apache 1.3.4,  but  only  the  request name  is
   reserved, there is no code to implement it.
+
+Installation example:
+
+<IfModule mod_dav.c>
+Alias /bzr /srv/DAV
+<Directory /srv/DAV>
+	DAV On
+	# DirectorySlash tells apache to reply with redirections if
+	# directories miss their final '/'. It does not play well with
+	# bzr (to they the least) and provide no benefits in our
+	# case. So just turn it off.
+	DirectorySlash Off
+	AuthType Basic
+	AuthName bzr
+	AuthUserFile /etc/apache2/dav.users
+	<LimitExcept GET OPTIONS>
+		Require valid-user
+	</LimitExcept>
+</Directory>
+</IfModule>

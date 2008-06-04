@@ -27,6 +27,7 @@ version_info = tuple(int(n) for n in __version__.split('.'))
 import bzrlib
 major, minor, micro, releaselevel = bzrlib.version_info[:4]
 
+
 if major != 0 or minor < 92:
     # We need bzr 0.92
     from bzrlib import trace

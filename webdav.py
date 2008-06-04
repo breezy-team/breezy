@@ -37,10 +37,6 @@ This should enable remote push operations.
 # implies a mean to  store file properties, apply them, detecting
 # their changes, etc.
 
-# TODO: Various parts of the code assert that a header can not
-# appear several times in a HTTP response. Try to investigate the
-# possible consequences.
-
 # TODO:   Cache  files   to   improve  performance   (a  bit   at
 # least). Files  should be kept  in a temporary directory  (or an
 # hash-based hierarchy to limit  local file systems problems) and
@@ -53,16 +49,9 @@ This should enable remote push operations.
 # accessible function. Otherwise  duplicate it here (bad). Anyway
 # all translations of IOError and OSError should be factored.
 
-# TODO: Review all hhtp^W http codes used here and by various DAV
-# servers implementations, I feel bugs lying around...
-
 # TODO: Have the webdav plugin try to use APPEND, and if it isn't
 # available, permanently switch back to get + put for the life of
 # the Transport.
-
-# TODO:  It looks  like  Apache  1.x and  2.x  reserve the  PATCH
-# request name without implementing it,  bzr does not use it now,
-# but providing it may allow experiments.
 
 # TODO:  We can  detect that  the  server do  not accept  "write"
 # operations (it will return 501) and raise InvalidHttpRequest(to
@@ -74,13 +63,6 @@ This should enable remote push operations.
 # request.  Is it possible to define PUT with a file-like object,
 # so that we don't have to potentially read in and hold onto
 # potentially 600MB of file contents?
-#
-# There is a contradiction between returning a file-object after
-# a GET and sharing connections: they both want to use the same
-# socket. To solve this we need to either create a new connection
-# (but some servers limits the number of simultaneous connections
-# see bug #31140) when one is used for streaming or create a
-# temporary local file with the GET content an return that file.
 
 # TODO: Factor out the error handling.
 
@@ -470,6 +452,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         # tests,  what  we really  should  do  is  test that  the
         # directory  is not  empty *because  bzr do  not  want to
         # remove non-empty dirs*.
+        # Which requires implementing list_dir, hi Robert ;)
         if code == 999:
             raise errors.DirectoryNotEmpty(abs_path)
         if code != 204:
