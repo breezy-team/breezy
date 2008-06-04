@@ -1322,7 +1322,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.get_format_string(),
-            mode=control_files._file_mode)
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
@@ -2550,4 +2550,4 @@ class Converter3to4(object):
         """Change the format marker."""
         tree._transport.put_bytes('format',
             self.target_format.get_format_string(),
-            mode=tree._control_files._file_mode)
+            mode=tree.bzrdir._get_file_mode())

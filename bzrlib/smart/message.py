@@ -237,6 +237,11 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         bytes = self._medium_request.read_bytes(next_read_size)
         if bytes == '':
             # end of file encountered reading from server
+            if 'hpss' in debug.debug_flags:
+                mutter(
+                    'decoder state: buf[:10]=%r, state_accept=%s',
+                    self._protocol_decoder._in_buffer[:10],
+                    self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
                 "please check connectivity and permissions",
                 "(and try -Dhpss if further diagnosis is required)")

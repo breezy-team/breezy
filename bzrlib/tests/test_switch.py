@@ -130,7 +130,5 @@ class TestSwitchHeavyweight(TestSwitch):
         self.failIfExists('checkout/file-3')
         self.failUnlessExists('checkout/file-4')
         # Check that the checkout is a true mirror of the bound branch
-        missing_in_checkout = checkout.branch.missing_revisions(to_branch)
-        self.assertEqual([], missing_in_checkout)
-        missing_in_remote = to_branch.missing_revisions(checkout.branch)
-        self.assertEqual([], missing_in_remote)
+        self.assertEqual(to_branch.last_revision_info(),
+                         checkout.branch.last_revision_info())
