@@ -33,8 +33,10 @@ from bzrlib.repofmt import (
     )
 from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
 from bzrlib.smart.server import (
-    SmartTCPServer_for_testing,
     ReadonlySmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing_v2_only,
+    SmartTCPServer_for_testing,
+    SmartTCPServer_for_testing_v2_only,
     )
 from bzrlib.tests import (
                           adapt_modules,
@@ -58,11 +60,12 @@ class RepositoryTestProviderAdapter(TestScenarioApplier):
     """
 
     def __init__(self, transport_server, transport_readonly_server, formats,
-                 vfs_transport_factory=None):
+                 vfs_transport_factory=None, name_suffix=''):
         TestScenarioApplier.__init__(self)
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._vfs_transport_factory = vfs_transport_factory
+        self._name_suffix = name_suffix
         self.scenarios = self.formats_to_scenarios(formats)
     
     def formats_to_scenarios(self, formats):
@@ -72,7 +75,9 @@ class RepositoryTestProviderAdapter(TestScenarioApplier):
         """
         result = []
         for repository_format, bzrdir_format in formats:
-            scenario = (repository_format.__class__.__name__,
+            scenario_name = repository_format.__class__.__name__
+            scenario_name += self._name_suffix
+            scenario = (scenario_name,
                 {"transport_server":self._transport_server,
                  "transport_readonly_server":self._transport_readonly_server,
                  "bzrdir_format":bzrdir_format,
@@ -851,13 +856,21 @@ def load_tests(basic_tests, module, loader):
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
         [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
-        MemoryServer
-        )
+        MemoryServer,
+        name_suffix='-default')
+
+    remote_repo_v2_adapter = RepositoryTestProviderAdapter(
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        MemoryServer,
+        name_suffix='-v2')
 
     # format_scenarios is all the implementations of Repository; i.e. all disk
     # formats plus RemoteRepository.
     format_scenarios = (disk_format_adapter.scenarios +
-                        remote_repo_adapter.scenarios)
+                        remote_repo_adapter.scenarios +
+                        remote_repo_v2_adapter.scenarios)
 
     prefix = 'bzrlib.tests.repository_implementations.'
     test_repository_modules = [

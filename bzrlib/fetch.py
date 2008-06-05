@@ -458,6 +458,7 @@ class RemoteToOtherFetcher(GenericRepoFetcher):
 
     def _fetch_everything_for_search(self, search, pp):
         data_stream = self.from_repository.get_data_stream_for_search(search)
-        self.to_repository.insert_data_stream(data_stream)
+        revisions_count = self.to_repository.insert_data_stream(data_stream)
+        self.count_copied += revisions_count
 
 

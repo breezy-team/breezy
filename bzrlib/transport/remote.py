@@ -475,6 +475,21 @@ class RemoteTCPTransport(RemoteTransport):
         return client_medium, None
 
 
+class RemoteTCPTransportV2Only(RemoteTransport):
+    """Connection to smart server over plain tcp with the client hard-coded to
+    assume protocol v2 and remote server version <= 1.6.
+
+    This should only be used for testing.
+    """
+
+    def _build_medium(self):
+        client_medium = medium.SmartTCPClientMedium(
+            self._host, self._port, self.base)
+        client_medium._protocol_version = 2
+        client_medium._remote_is_not((1, 6))
+        return client_medium, None
+
+
 class RemoteSSHTransport(RemoteTransport):
     """Connection to smart server over SSH.
 
