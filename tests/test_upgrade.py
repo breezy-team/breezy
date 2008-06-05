@@ -174,8 +174,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         mapping = oldrepos.get_mapping()
         vf = newrepos.weave_store.get_weave_or_empty(tree.inventory.path2id("a"), newrepos.get_transaction())
-        vf.clone_text("customrev%s-upgrade" % mapping.upgrade_suffix,
-                "svn-v1:1@%s-" % oldrepos.uuid, ["svn-v1:1@%s-" % oldrepos.uuid])
+        vf.add_lines("customrev%s-upgrade" % mapping.upgrade_suffix,
+                ["svn-v1:1@%s-" % oldrepos.uuid],
+                vf.get_lines("svn-v1:1@%s-" % oldrepos.uuid))
 
         newrepos.commit_write_group()
         newrepos.unlock()
