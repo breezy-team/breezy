@@ -281,7 +281,8 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         ra = svn.client.open_ra_session(url.encode('utf8'), 
                     self.client_ctx)
         class CommitEditor:
-            def __init__(self, ra, editor, edit_baton, base_revnum):
+            def __init__(self, ra, editor, edit_baton, base_revnum, base_url):
+                self._used = False
                 self.ra = ra
                 self.base_revnum = base_revnum
                 self.editor = editor
@@ -289,12 +290,19 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 self.data = {}
                 self.create = set()
                 self.props = {}
+                self.copyfrom = {}
+                self.base_url = base_url
 
             def _parts(self, path):
                 return path.strip("/").split("/")
 
-            def add_dir(self, path):
+            def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
                 self.create.add(path)
+                if copyfrom_path is not None:
+                    if copyfrom_rev == -1:
+                        copyfrom_rev = self.base_revnum
+                    copyfrom_path = os.path.join(self.base_url, copyfrom_path)
+                self.copyfrom[path] = (copyfrom_path, copyfrom_rev)
                 self.open_dir(path)
 
             def open_dir(self, path):
@@ -340,7 +348,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                         svn.delta.editor_invoke_delete_entry(self.editor, dir_baton, subpath)
                     elif isinstance(contents, dict):
                         if subpath in self.create:
-                            child_baton = svn.delta.editor_invoke_add_directory(self.editor, subpath, dir_baton, -1)
+                            child_baton = svn.delta.editor_invoke_add_directory(self.editor, subpath, dir_baton, self.copyfrom[subpath][0], self.copyfrom[subpath][1])
                         else:
                             child_baton = svn.delta.editor_invoke_open_directory(self.editor, subpath, dir_baton, -1)
                         if subpath in self.props:
@@ -362,15 +370,19 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                         svn.delta.editor_invoke_close_file(self.editor, child_baton, None)
 
             def done(self):
+                assert self._used == False
+                self._used = True
                 root_baton = svn.delta.editor_invoke_open_root(self.editor, self.edit_baton, 
                                                                self.base_revnum)
                 self._process_dir(root_baton, self.data, "")
                 svn.delta.editor_invoke_close_directory(self.editor, root_baton)
                 svn.delta.editor_invoke_close_edit(self.editor, self.edit_baton)
 
+                assert svn.ra.get_latest_revnum(ra) > self.base_revnum
+
         base_revnum = svn.ra.get_latest_revnum(ra)
         editor, edit_baton = svn.ra.get_commit_editor(ra, message, None, None, True)
-        return CommitEditor(ra, editor, edit_baton, base_revnum)
+        return CommitEditor(ra, editor, edit_baton, base_revnum, url)
 
 
 def test_suite():
