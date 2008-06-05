@@ -978,19 +978,16 @@ Try to avoid the representation becoming more than one or two lines long.
 implementation.)
 
 Because repr methods are often called when something has already gone
-wrong, they should be written more defensively than most code.  The object
-may be half-initialized or in some other way in an illegal state.  The
-repr method shouldn't raise an exception, or it may hide the (probably
-more useful) underlying exception.
+wrong, they should be written somewhat more defensively than most code.
+The object may be half-initialized or in some other way in an illegal
+state.  The repr method shouldn't raise an exception, or it may hide the
+(probably more useful) underlying exception.
 
 Example::
 
     def __repr__(self):
-        try:
-            return '%s(%r)' % (self.__class__.__name__,
-                               self._transport)
-        except:
-            return 'FooObject(**unprintable**)'
+        return '%s(%r)' % (self.__class__.__name__,
+                           self._transport)
 
 
 Core Topics
