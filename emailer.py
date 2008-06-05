@@ -46,7 +46,7 @@ class EmailSender(object):
         self.revno = self.branch.revision_id_to_revno(self._revision_id)
 
     def body(self):
-        from bzrlib.log import log_formatter, show_log
+        from bzrlib import log
 
         rev1 = rev2 = self.revno
         if rev1 == 0:
@@ -63,17 +63,25 @@ class EmailSender(object):
 
         outf.write('At %s\n\n' % self.url())
 
-        lf = log_formatter('long',
-                           show_ids=True,
-                           to_file=outf
-                           )
+        lf = log.log_formatter('long',
+                               show_ids=True,
+                               to_file=outf
+                               )
 
-        show_log(self.branch,
-                 lf,
-                 start_revision=rev1,
-                 end_revision=rev2,
-                 verbose=True
-                 )
+        if len(self.revision.parent_ids) <= 1:
+            # This is not a merge, so we can special case the display of one
+            # revision, and not have to encur the show_log overhead.
+            lr = log.LogRevision(self.revision, self.revno, 0, None)
+            lf.log_revision(lr)
+        else:
+            # let the show_log code figure out what revisions need to be
+            # displayed, as this is a merge
+            log.show_log(self.branch,
+                         lf,
+                         start_revision=rev1,
+                         end_revision=rev2,
+                         verbose=True
+                         )
 
         return outf.getvalue()
 
