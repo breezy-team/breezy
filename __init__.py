@@ -20,7 +20,7 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
-__version__ = '0.92.0'
+__version__ = '1.6.0'
 version_info = tuple(int(n) for n in __version__.split('.'))
 
 # Don't go further if we are not compatible
@@ -28,11 +28,11 @@ import bzrlib
 major, minor, micro, releaselevel = bzrlib.version_info[:4]
 
 
-if major != 0 or minor < 92:
-    # We need bzr 0.92
+if major != 1 or minor < 6:
+    # We need bzr 1.6
     from bzrlib import trace
     trace.note('not installing http[s]+webdav:// support'
-               ' (only supported for bzr 0.92 and above)')
+               ' (only supported for bzr 1.6 and above)')
 else:
     from bzrlib import transport
 

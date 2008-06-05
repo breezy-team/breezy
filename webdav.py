@@ -194,6 +194,10 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         """See Transport.is_readonly."""
         return False
 
+    def listable(self):
+        """See Transport.listable."""
+        return True
+
     def _raise_http_error(self, url, response, info=None):
         if info is None:
             msg = ''
@@ -463,15 +467,18 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
-        request = _urllib2_wrappers.Request('COPY', abs_from, None,
-                                            {'Destination': abs_to},
-                                            accepted_errors=[201, 404, 409])
+        request = _urllib2_wrappers.Request(
+            'COPY', abs_from, None,
+            {'Destination': abs_to},
+            accepted_errors=[201, 204, 404, 409])
         response = self._perform(request)
 
         code = response.code
         if code in (404, 409):
             raise errors.NoSuchFile(abs_from)
-        if code != 201:
+        # XXX: out test server returns 201 but apache2 returns 204, need
+        # investivation.
+        if code not in(201, 204):
             self._raise_http_error(abs_from, response,
                                    'unable to copy from %r to %r'
                                    % (abs_from,abs_to))

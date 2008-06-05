@@ -405,7 +405,7 @@ class DAVServer_append(DAVServer):
     _url_protocol = 'http+webdav'
 
 
-class TestCaseWithDAVServer(http_utils.TestCaseWithTransport):
+class TestCaseWithDAVServer(tests.TestCaseWithTransport):
     """A support class that provides urls that are http+webdav://.
 
     This is done by forcing the server to be an http DAV one.
@@ -414,48 +414,3 @@ class TestCaseWithDAVServer(http_utils.TestCaseWithTransport):
         super(TestCaseWithDAVServer, self).setUp()
         self.transport_server = DAVServer
 
-
-# The following classes are defined only to test TestBrokenPipeline, and
-# desmonstrate why urllib2 was *not* such a good design for our needs :-/
-# Bug filled as #160012.
-class BrokenDavResponse(webdav.DavResponse):
-
-    _body_ignored_responses = []
-
-
-class BrokenDavHTTPConnection(webdav.DavHTTPConnection):
-
-    response_class = BrokenDavResponse
-
-
-class BrokenDavConnectionHandler(webdav.DavConnectionHandler):
-
-    def http_request(self, request):
-        return self.capture_connection(request, BrokenDavHTTPConnection)
-
-class BrokenDavOpener(_urllib2_wrappers.Opener):
-
-    def __init__(self):
-        super(BrokenDavOpener, self).__init__(
-            connection=BrokenDavConnectionHandler)
-
-
-class BrokenDAVTransport(webdav.HttpDavTransport):
-
-    _opener_class = BrokenDavOpener
-
-
-class TestBrokenPipeline(TestCaseWithDAVServer):
-
-    def get_transport(self, relpath=None):
-        url = self.get_url(relpath)
-        t = BrokenDAVTransport(url)
-        return t
-
-    def test_wrong_pipeline_use(self):
-        import pdb; pdb.set_trace()
-        t = self.get_transport()
-        # put_bytes issues several requests to the server, so that's enough to
-        # get the pipeline dirty
-        self.assertRaises(httplib.ResponseNotReady,
-                          t.put_bytes, 'a', 'contents of a\n')
