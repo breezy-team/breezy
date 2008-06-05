@@ -110,7 +110,7 @@ class ReposConfigTests(TestCaseInTempDir):
 class BranchConfigTests(TestCaseWithSubversionRepository):
     def setUp(self):
         super(BranchConfigTests, self).setUp()
-        self.repos_url = self.make_client("d", "dc")
+        self.repos_url = self.make_repository("d")
         self.config = BranchConfig(Branch.open(self.repos_url))
 
     def test_set_option(self):

@@ -509,7 +509,7 @@ class TestPushNested(TestCaseWithSubversionRepository):
 
 class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
     def test_bind(self):
-        repos_url = self.make_client("d", "sc")
+        repos_url = self.make_repository("d")
         master_branch = Branch.open(repos_url)
         os.mkdir("b")
         local_dir = master_branch.bzrdir.sprout("b")
@@ -518,7 +518,7 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         local_dir.open_branch().unbind()
 
     def test_commit(self):
-        repos_url = self.make_client("d", "sc")
+        repos_url = self.make_repository("d")
         master_branch = Branch.open(repos_url)
         os.mkdir("b")
         local_dir = master_branch.bzrdir.sprout("b")
@@ -531,7 +531,7 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         self.assertEquals(revid, master_branch.last_revision())
 
     def test_fileid(self):
-        repos_url = self.make_client("d", "sc")
+        repos_url = self.make_repository("d")
         master_branch = Branch.open(repos_url)
         os.mkdir("b")
         local_dir = master_branch.bzrdir.sprout("b")
@@ -557,7 +557,7 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         self.assertEquals(1, len(delta.renamed))
 
     def test_nested_fileid(self):
-        repos_url = self.make_client("d", "sc")
+        repos_url = self.make_repository("d")
         master_branch = Branch.open(repos_url)
         os.mkdir("b")
         local_dir = master_branch.bzrdir.sprout("b")
@@ -577,23 +577,25 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
 
 class RevpropTests(TestCaseWithSubversionRepository):
     def test_change_revprops(self):
-        repos_url = self.make_client("d", "dc")
-        self.build_tree({"dc/foo.txt": "txt"})
-        self.client_add("dc/foo.txt")
-        self.client_commit("dc", "My commit")
+        repos_url = self.make_repository("d")
+
+        dc = self.commit_editor(repos_url, message="My commit")
+        dc.add_file("foo.txt")
+        dc.done()
 
         transport = SvnRaTransport(repos_url)
         set_svn_revprops(transport, 1, {"svn:author": "Somebody", 
                                         "svn:date": svn_time_to_cstring(1000000*473385600)})
 
         self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
-                          self.client_log("dc")[1][1:])
+                          self.client_log(repos_url)[1][1:])
 
     def test_change_revprops_disallowed(self):
-        repos_url = self.make_client("d", "dc", allow_revprop_changes=False)
-        self.build_tree({"dc/foo.txt": "txt"})
-        self.client_add("dc/foo.txt")
-        self.client_commit("dc", "My commit")
+        repos_url = self.make_repository("d", allow_revprop_changes=False)
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("foo.txt")
+        dc.done()
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 

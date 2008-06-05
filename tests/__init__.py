@@ -385,7 +385,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 svn.delta.editor_invoke_close_directory(self.editor, root_baton)
                 svn.delta.editor_invoke_close_edit(self.editor, self.edit_baton)
 
-                assert svn.ra.get_latest_revnum(ra) > self.base_revnum
+                my_revnum = svn.ra.get_latest_revnum(ra)
+                assert my_revnum > self.base_revnum
+
+                return my_revnum
 
         base_revnum = svn.ra.get_latest_revnum(ra)
         editor, edit_baton = svn.ra.get_commit_editor(ra, message, None, None, True)
