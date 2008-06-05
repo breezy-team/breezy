@@ -63,7 +63,7 @@ class TestConvertError(TestCase):
         self.assertIsInstance(convert_error(SubversionException("Unexpected end of stream", ERR_INCOMPLETE_DATA)), UnexpectedEndOfContainerError)
 
     def test_convert_unknown_hostname(self):
-        self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", SVN_ERR_UNKNOWN_HOSTNAME)), ConnectionError)
+        self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", ERR_UNKNOWN_HOSTNAME)), ConnectionError)
 
     def test_not_implemented(self):
         self.assertIsInstance(convert_error(SubversionException("Remote server doesn't support ...", ERR_RA_NOT_IMPLEMENTED)), NotImplementedError)
