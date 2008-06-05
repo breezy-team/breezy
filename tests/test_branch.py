@@ -35,13 +35,13 @@ from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_last_rev_rev_hist(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
 
     def test_get_branch_path_root(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         self.assertEqual("", branch.get_branch_path())
 
@@ -54,11 +54,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual("trunk", branch.get_branch_path())
 
     def test_open_nonexistant(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         self.assertRaises(NotBranchError, Branch.open, repos_url + "/trunk")
 
     def test_last_rev_rev_info(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         self.assertEqual((1, branch.generate_revision_id(0)),
                 branch.last_revision_info())
@@ -67,24 +67,24 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
                 branch.last_revision_info())
 
     def test_lookup_revision_id_unknown(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         self.assertRaises(NoSuchRevision, 
                 lambda: branch.lookup_revision_id("bla"))
 
     def test_lookup_revision_id(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         self.assertEquals(0, 
                 branch.lookup_revision_id(branch.last_revision()))
 
     def test_set_parent(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open(repos_url)
         branch.set_parent("foobar")
 
     def test_num_revnums(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
         self.assertEqual(branch.generate_revision_id(0),
@@ -114,47 +114,47 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
                 branch.last_revision())
 
     def test_set_revision_history(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         self.assertRaises(NotImplementedError, branch.set_revision_history, [])
 
     def test_break_lock(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         branch.control_files.break_lock()
 
     def test_repr(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         self.assertEqual("SvnBranch('svn+%s')" % repos_url, branch.__repr__())
 
     def test_get_physical_lock_status(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         self.assertFalse(branch.get_physical_lock_status())
 
     def test_set_push_location(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         self.assertRaises(NotImplementedError, branch.set_push_location, [])
 
     def test_get_parent(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         self.assertEqual(None, branch.get_parent())
 
     def test_append_revision(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         branch.append_revision([])
 
     def test_get_push_location(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open("svn+"+repos_url)
         self.assertIs(None, branch.get_push_location())
 
     def test_revision_history(self):
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
 
         branch = Branch.open("svn+"+repos_url)
         self.assertEqual([branch.generate_revision_id(0)], 
@@ -192,14 +192,14 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
     def test_revision_id_to_revno_none(self):
         """The None revid should map to revno 0."""
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open(repos_url)
         self.assertEquals(0, branch.revision_id_to_revno(NULL_REVISION))
 
     def test_revision_id_to_revno_nonexistant(self):
         """revision_id_to_revno() should raise NoSuchRevision if
         the specified revision did not exist in the branch history."""
-        repos_url = self.make_client('a', 'dc')
+        repos_url = self.make_repository('a')
         branch = Branch.open(repos_url)
         self.assertRaises(NoSuchRevision, branch.revision_id_to_revno, "bla")
     
@@ -564,7 +564,7 @@ foohosts""")
         newbranch.repository.unlock()
 
     def test_check(self):
-        self.make_client('d', 'dc')
+        self.make_repository('d')
         branch = Branch.open('d')
         result = branch.check()
         self.assertEqual(branch, result.branch) 

@@ -56,10 +56,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 "Subversion Local Checkout")
 
     def test_get_branch_log(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("foo")
+        cb.done()
 
         repos = Repository.open(repos_url)
 
