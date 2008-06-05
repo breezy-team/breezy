@@ -44,6 +44,7 @@ def load_tests(basic_tests, module, loader):
     testmod_names = [
                      'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_alias',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
                      'bzrlib.tests.blackbox.test_annotate',

@@ -8,6 +8,10 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  IMPROVEMENTS:
+
+    * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
+
   BUGFIXES:
 
     * ``bzr status`` was breaking if you merged the same revision twice.
