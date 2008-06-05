@@ -19,7 +19,7 @@
 import os
 import sys
 import bzrlib
-from bzrlib import osutils
+from bzrlib import osutils, urlutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
@@ -276,6 +276,101 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         repos = svn.repos.open(relpath)
 
         return svn.repos.fs(repos)
+
+    def commit_editor(self, url, message="Test commit"):
+        ra = svn.client.open_ra_session(url.encode('utf8'), 
+                    self.client_ctx)
+        class CommitEditor:
+            def __init__(self, ra, editor, edit_baton, base_revnum):
+                self.ra = ra
+                self.base_revnum = base_revnum
+                self.editor = editor
+                self.edit_baton = edit_baton
+                self.data = {}
+                self.create = set()
+                self.props = {}
+
+            def _parts(self, path):
+                return path.strip("/").split("/")
+
+            def add_dir(self, path):
+                self.create.add(path)
+                self.open_dir(path)
+
+            def open_dir(self, path):
+                x = self.data
+                for p in self._parts(path):
+                    if not p in x:
+                        x[p] = {}
+                    x = x[p]
+                return x
+
+            def add_file(self, path, contents=None):
+                self.create.add(path)
+                self.change_file(path, contents)
+                
+            def change_file(self, path, contents=None):
+                parts = self._parts(path)
+                x = self.open_dir("/".join(parts[:-1]))
+                if contents is None:
+                    contents = osutils.rand_chars(100)
+                x[parts[-1]] = contents
+
+            def delete(self, path):
+                parts = self._parts(path)
+                x = self.open_dir("/".join(parts[:-1]))
+                x[parts[-1]] = None
+                
+            def change_dir_prop(self, path, propname, propval):
+                self.open_dir(path)
+                if not path in self.props:
+                    self.props[path] = {}
+                self.props[path][propname] = propval
+
+            def change_file_prop(self, path, propname, propval):
+                self.open_file(path)
+                if not path in self.props:
+                    self.props[path] = {}
+                self.props[path][propname] = propval
+
+            def _process_dir(self, dir_baton, dir_dict, path):
+                for name, contents in dir_dict.items():
+                    subpath = urlutils.join(path, name).strip("/")
+                    if contents is None:
+                        svn.delta.editor_invoke_delete_entry(self.editor, dir_baton, subpath)
+                    elif isinstance(contents, dict):
+                        if subpath in self.create:
+                            child_baton = svn.delta.editor_invoke_add_directory(self.editor, subpath, dir_baton, -1)
+                        else:
+                            child_baton = svn.delta.editor_invoke_open_directory(self.editor, subpath, dir_baton, -1)
+                        if subpath in self.props:
+                            for k, v in self.props[subpath].items():
+                                svn.delta_editor_invoke_change_dir_prop(self.editor, child_baton, k, v)
+
+                        self._process_dir(child_baton, dir_dict[name], subpath)
+
+                        svn.delta.editor_invoke_close_directory(self.editor, child_baton)
+                    elif isinstance(contents, str):
+                        if subpath in self.create:
+                            child_baton = svn.delta.editor_invoke_add_file(self.editor, subpath, dir_baton, None, -1)
+                        else:
+                            child_baton = svn.delta.editor_invoke_open_file(self.editor, subpath, dir_baton, -1)
+                         # FIXME
+                        if subpath in self.props:
+                            for k, v in self.props[subpath].items():
+                                svn.delta.editor_invoke_change_file_prop(self.editor, child_baton, k, v)
+                        svn.delta.editor_invoke_close_file(self.editor, child_baton, None)
+
+            def done(self):
+                root_baton = svn.delta.editor_invoke_open_root(self.editor, self.edit_baton, 
+                                                               self.base_revnum)
+                self._process_dir(root_baton, self.data, "")
+                svn.delta.editor_invoke_close_directory(self.editor, root_baton)
+                svn.delta.editor_invoke_close_edit(self.editor, self.edit_baton)
+
+        base_revnum = svn.ra.get_latest_revnum(ra)
+        editor, edit_baton = svn.ra.get_commit_editor(ra, message, None, None, True)
+        return CommitEditor(ra, editor, edit_baton, base_revnum)
 
 
 def test_suite():
