@@ -23,6 +23,7 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
 
+
 class TestAdded(ExternalBase):
 
     def test_added(self):
@@ -33,8 +34,8 @@ class TestAdded(ExternalBase):
         """Test that 'added' command reports added files with spaces in their names quoted"""
         self._test_added('a filename with spaces', '"a filename with spaces"\n')
     
-    def test_added_null_seperator(self):
-        """Test that added uses it's null operator properly"""
+    def test_added_null_separator(self):
+        """Test that added uses its null operator properly"""
         self._test_added('a', 'a\0', null=True)
 
     def _test_added(self, name, output, null=False):

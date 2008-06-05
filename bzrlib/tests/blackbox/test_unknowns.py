@@ -20,6 +20,7 @@
 
 from bzrlib.tests.blackbox import ExternalBase
 
+
 class TestUnknowns(ExternalBase):
 
     def test_unknowns(self):
@@ -33,7 +34,7 @@ class TestUnknowns(ExternalBase):
         self.build_tree_contents([('a', 'contents of a\n')])
         self.assertEquals(self.run_bzr('unknowns')[0], 'a\n')
 
-        # multiple unknown files, including one with a space in it's name
+        # multiple unknown files, including one with a space in its name
         self.build_tree(['b', 'c', 'd e'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\n"d e"\n')
 
