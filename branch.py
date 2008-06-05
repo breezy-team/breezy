@@ -340,7 +340,8 @@ class SvnBranch(Branch):
             revno = self.revision_id_to_revno(revision_id)
         destination.set_last_revision_info(revno, revision_id)
 
-    def update_revisions(self, other, stop_revision=None, overwrite=False):
+    def update_revisions(self, other, stop_revision=None, overwrite=False, 
+                         graph=None):
         """See Branch.update_revisions()."""
         if overwrite:
             raise NotImplementedError("overwrite not supported for Subversion branches")
@@ -349,9 +350,11 @@ class SvnBranch(Branch):
         if (self.last_revision() == stop_revision or
             self.last_revision() == other.last_revision()):
             return
+        if graph is None:
+            graph = self.repository.get_graph()
         if not other.repository.get_graph().is_ancestor(self.last_revision(), 
                                                         stop_revision):
-            if self.repository.get_graph().is_ancestor(stop_revision, 
+            if graph.is_ancestor(stop_revision, 
                                                        self.last_revision()):
                 return
             raise DivergedBranches(self, other)
