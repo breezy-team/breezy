@@ -31,11 +31,15 @@ from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class TestBasisTree(TestCaseWithSubversionRepository):
     def test_executable(self):
-        self.make_client("d", "dc")
-        self.build_tree({"dc/file": "x"})
-        self.client_add("dc/file")
-        self.client_set_prop("dc/file", "svn:executable", "*")
-        self.client_commit("dc", "executable")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("file", "x")
+        dc.change_file_prop("file", "svn:executable", "*")
+        dc.done()
+
+        self.client_update("dc")
+
         tree = SvnBasisTree(self.open_checkout("dc"))
         self.assertTrue(tree.inventory[tree.inventory.path2id("file")].executable)
 

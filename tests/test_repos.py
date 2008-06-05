@@ -69,12 +69,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             [(l.branch_path, l.paths, l.revnum) for l in repos.iter_reverse_branch_changes("", 1, NoBranchingScheme())])
 
     def test_make_working_trees(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.make_working_trees())
 
     def test_get_config_global_set(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         cfg = GlobalConfig()
         cfg.set_user_option("foo", "Still Life")
 
@@ -83,7 +83,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repos.get_config().get_user_option("foo"))
 
     def test_get_config(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         repos.get_config().set_user_option("foo", "Van Der Graaf Generator")
 
@@ -93,7 +93,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
 
     def test_get_physical_lock_status(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.get_physical_lock_status())
 
@@ -111,13 +111,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals("bla/bar", ret[0][0])
 
     def test_set_make_working_trees(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         repos.set_make_working_trees(True)
         self.assertFalse(repos.make_working_trees())
 
     def test_get_fileid_map(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         mapping = repos.get_mapping()
         self.assertEqual({u"": (mapping.generate_file_id(repos.uuid, 0, "", u""), mapping.generate_revision_id(repos.uuid, 0, ""))}, repos.get_fileid_map(0, "", mapping))
@@ -143,13 +143,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 revid)
 
     def test_add_revision(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         self.assertRaises(NotImplementedError, repos.add_revision, "revid", 
                 None)
 
     def test_has_signature_for_revision_id_no(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.has_signature_for_revision_id("foo"))
 
@@ -175,7 +175,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual("SvnRepository('%s/')" % urlutils.local_path_to_url(urlutils.join(self.test_dir, "a")), repos.__repr__())
 
     def test_get_branch_invalid_revision(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         self.assertRaises(NoSuchRevision, list, 
                repos.iter_reverse_branch_changes("/", 20, NoBranchingScheme()))
@@ -233,7 +233,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                    len(list(repos.all_revision_ids(repos.get_layout()))))
 
     def test_all_revs_empty(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
         self.assertEqual([], list(repos.all_revision_ids()))
@@ -258,7 +258,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             list(repos.all_revision_ids()))
 
     def test_follow_history_empty(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         repos = Repository.open(repos_url)
         self.assertEqual([repos.generate_revision_id(0, '', repos.get_mapping())], 
               list(repos.all_revision_ids(repos.get_layout())))
@@ -432,7 +432,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 list(repos.find_branchpaths(TrunkBranchingScheme(1), to_revnum=2)))
 
     def test_find_branchpaths_no(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, NoBranchingScheme())
@@ -441,7 +441,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 list(repos.find_branchpaths(NoBranchingScheme(), to_revnum=0)))
 
     def test_find_branchpaths_no_later(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, NoBranchingScheme())
@@ -450,7 +450,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 list(repos.find_branchpaths(NoBranchingScheme(), to_revnum=0)))
 
     def test_find_branchpaths_trunk_empty(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
