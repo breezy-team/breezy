@@ -94,8 +94,11 @@ class TestCheckout(TestCaseWithSubversionRepository):
 
     def test_checkout_branch(self):
         repos_url = self.make_client("d", "dc")
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "msg")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.done()
+
+        self.client_update("dc")
         x = self.open_checkout_bzrdir("dc/trunk")
         self.assertEquals(repos_url+"/trunk", x.open_branch().base)

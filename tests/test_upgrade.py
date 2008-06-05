@@ -145,11 +145,12 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
     @skip_no_rebase
     def test_single_custom_continue(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/a': 'b', 'dc/b': 'c'})
-        self.client_add("dc/a")
-        self.client_add("dc/b")
-        self.client_commit("dc", "data")
+        repos_url = self.make_repository("a")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("a", "b")
+        dc.add_file("b", "c")
+        dc.done()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -313,10 +314,11 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
     @skip_no_rebase
     def test_raise_incompat(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/d': 'e'})
-        self.client_add("dc/d")
-        self.client_commit("dc", "data")
+        repos_url = self.make_repository("a")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("d", "e")
+        dc.done()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())

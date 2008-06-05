@@ -31,9 +31,11 @@ from bzrlib.plugins.svn.transport import SvnRaTransport
 class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_clone(self):
         repos_url = self.make_client("d", "dc")
-        self.build_tree({"dc/foo": None})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "msg")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_dir("foo")
+        dc.done()
+
         x = self.open_checkout_bzrdir("dc")
         self.assertRaises(NotImplementedError, x.clone, "dir")
 
@@ -77,10 +79,12 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
                 transport.check_path("trunk", 1))
 
     def test_bad_dir(self):
-        repos_url = self.make_client("d", "dc")
-        self.build_tree({"dc/foo": None})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "msg")
+        repos_url = self.make_repository("d")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("foo")
+        dc.done()
+
         BzrDir.open(repos_url+"/foo")
 
     def test_create(self):
@@ -107,10 +111,12 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.assertTrue(hasattr(repos, 'uuid'))
 
     def test_find_repos_nonroot(self):
-        repos_url = self.make_client("d", "dc")
-        self.build_tree({'dc/trunk': None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "data")
+        repos_url = self.make_repository("d")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.done()
+
         x = BzrDir.open(repos_url+"/trunk")
         repos = x.find_repository()
         self.assertTrue(hasattr(repos, 'uuid'))
@@ -122,10 +128,12 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.assertTrue(hasattr(repos, 'uuid'))
 
     def test_open_repos_nonroot(self):
-        repos_url = self.make_client("d", "dc")
-        self.build_tree({'dc/trunk': None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "data")
+        repos_url = self.make_repository("d")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.done()
+
         x = BzrDir.open(repos_url+"/trunk")
         self.assertRaises(NoRepositoryPresent, x.open_repository)
 
