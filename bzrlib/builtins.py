@@ -2541,6 +2541,76 @@ class cmd_nick(Command):
         print branch.nick
 
 
+class cmd_alias(Command):
+    """Set/unset and display aliases.
+
+    :Examples:
+        Show the current aliases::
+
+            bzr alias
+
+        Show the alias specified for 'll'::
+
+            bzr alias ll
+
+        Set an alias for 'll'::
+
+            bzr alias ll="log --line -r-10..-1"
+
+        To remove an alias for 'll'::
+
+            bzr alias --remove ll
+
+    """
+    takes_args = ['name?']
+    takes_options = [
+        Option('remove', help='Remove the alias.'),
+        ]
+
+    def run(self, name=None, remove=False):
+        if remove:
+            self.remove_alias(name)
+        elif name is None:
+            self.print_aliases()
+        else:
+            equal_pos = name.find('=')
+            if equal_pos == -1:
+                self.print_alias(name)
+            else:
+                self.set_alias(name[:equal_pos], name[equal_pos+1:])
+
+    def remove_alias(self, alias_name):
+        if alias_name is None:
+            raise errors.BzrCommandError(
+                'bzr alias --remove expects an alias to remove.')
+        # If alias is not found, print something like:
+        # unalias: foo: not found
+        c = config.GlobalConfig()
+        c.unset_alias(alias_name)
+
+    @display_command
+    def print_aliases(self):
+        """Print out the defined aliases in a similar format to bash."""
+        aliases = config.GlobalConfig().get_aliases()
+        for key, value in sorted(aliases.iteritems()):
+            self.outf.write('bzr alias %s="%s"\n' % (key, value))
+
+    @display_command
+    def print_alias(self, alias_name):
+        from bzrlib.commands import get_alias
+        alias = get_alias(alias_name)
+        if alias is None:
+            self.outf.write("bzr alias: %s: not found\n" % alias_name)
+        else:
+            self.outf.write(
+                'bzr alias %s="%s"\n' % (alias_name, ' '.join(alias)))
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the global config."""
+        c = config.GlobalConfig()
+        c.set_alias(alias_name, alias_command)
+
+
 class cmd_selftest(Command):
     """Run internal test suite.
     
