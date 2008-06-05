@@ -834,6 +834,7 @@ class Repository(object):
         Is it a substitute for fetch? 
         Should it manage its own write group ?
         """
+        revisions_count = 0
         for item_key, bytes in stream:
             if item_key[0] == 'file':
                 (file_id,) = item_key[1:]
@@ -844,6 +845,7 @@ class Repository(object):
             elif item_key == ('revisions',):
                 knit = self._revision_store.get_revision_file(
                     self.get_transaction())
+                revisions_count += 1
             elif item_key == ('signatures',):
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
@@ -865,6 +867,7 @@ class Repository(object):
                     return buffer.read(count)
             knit.insert_data_stream(
                 (format, data_list, reader_func))
+        return revisions_count
 
     @needs_read_lock
     def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
@@ -1975,7 +1978,7 @@ class MetaDirRepository(Repository):
                 pass
         else:
             self._transport.put_bytes('no-working-trees', '',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
@@ -2963,7 +2966,7 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts)
 
     @classmethod
