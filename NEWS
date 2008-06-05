@@ -8,6 +8,17 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  BUG FIXES:
+
+    * Avoid KnitCorrupt error extracting inventories from some repositories.
+      (The data is not corrupt; an internal check is detecting a problem
+      reading from the repository.)
+      (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
+
+    * Inserting a bundle which changes the contents of a file with no trailing
+      end of line, causing a knit snapshot in a 'knits' repository will no longer
+      cause KnitCorrupt. (Robert Collins)
+
   IMPROVEMENTS:
 
     * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
@@ -29,6 +40,11 @@ IN DEVELOPMENT
       tree twice, or merge an ancestor of an existing merge, it will only
       record the newest. (If you merge a descendent, it will replace its
       ancestor). (John Arbash Meinel, #235407)
+
+  INTERNALS:
+
+    * Knit record serialisation is now stricter on what it will accept, to
+      guard against potential internal bugs, or broken input. (Robert Collins)
 
 
 bzr 1.6beta1 2008-06-02
