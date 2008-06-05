@@ -23,6 +23,7 @@ import os
 from bzrlib.plugins.svn import properties
 
 import svn.core
+from svn.core import SubversionException
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
@@ -230,7 +231,7 @@ class BranchConfig(Config):
                     return "True"
                 else:
                     return "False"
-            except svn.core.SubversionException:
+            except SubversionException:
                 return None
         return None
 
