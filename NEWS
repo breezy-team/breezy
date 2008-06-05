@@ -5,8 +5,8 @@ Bazaar Release Notes
 .. contents::
 
 
-NOT RELEASED YET
-----------------
+IN DEVELOPMENT
+--------------
 
   BUG FIXES:
 
@@ -18,6 +18,28 @@ NOT RELEASED YET
     * Inserting a bundle which changes the contents of a file with no trailing
       end of line, causing a knit snapshot in a 'knits' repository will no longer
       cause KnitCorrupt. (Robert Collins)
+
+  IMPROVEMENTS:
+
+    * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
+
+  BUGFIXES:
+
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
+
+  TESTING:
+
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
+
+  API CHANGES:
+
+    * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
+      which are in the ancestry of other revisions. So if you merge the same
+      tree twice, or merge an ancestor of an existing merge, it will only
+      record the newest. (If you merge a descendent, it will replace its
+      ancestor). (John Arbash Meinel, #235407)
 
   INTERNALS:
 
@@ -88,6 +110,9 @@ and future extensions.
 
     * ``bzr merge --lca`` should handle when two revisions have no common
       ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
+
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
 
     * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
       fails.  (Andrew Bennetts, #234229)
@@ -213,6 +238,12 @@ and future extensions.
       used for streaming from a smart server. The new get_record_stream and
       insert_record_stream are meant to efficiently replace this method.
       (Robert Collins)
+
+    * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
+      which are in the ancestry of other revisions. So if you merge the same
+      tree twice, or merge an ancestor of an existing merge, it will only
+      record the newest. (If you merge a descendent, it will replace its
+      ancestor). (John Arbash Meinel, #235407)
 
     * ``WorkingTreeFormat2.stub_initialize_remote`` is now private.
       (Martin Pool) 
@@ -387,7 +418,7 @@ bzr 1.5rc1 2008-05-09
     * The Python ``assert`` statement is no longer used in Bazaar source, and 
       a test checks this.  (Martin Pool)
 
-  API BREAKS:
+  API CHANGES:
 
     * ``bzrlib.status.show_pending_merges`` requires the repository to be
       locked by the caller. Callers should have been doing it anyway, but it

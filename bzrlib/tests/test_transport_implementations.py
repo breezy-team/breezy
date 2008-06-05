@@ -1597,6 +1597,9 @@ class TransportTests(TestTransportImplementation):
             self.assertTrue(result[0][0] <= 400)
             self.assertTrue(result[0][0] + data_len >= 1034)
             check_result_data(result)
+
+    def test_readv_with_adjust_for_latency_with_big_file(self):
+        transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
             file('a', 'w').write('a'*1024*1024)
