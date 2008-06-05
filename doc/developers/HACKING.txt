@@ -990,6 +990,18 @@ Example::
                            self._transport)
 
 
+Exception handling
+==================
+
+A bare ``except`` statement will catch all exceptions, including ones that
+really should terminate the program such as ``MemoryError`` and
+``KeyboardInterrupt``.  They should rarely be used unless the exception is
+later re-raised.  Even then, think about whether catching just
+``Exception`` (which excludes system errors in Python2.5 and later) would
+be better.
+
+
+
 Core Topics
 ###########
 
