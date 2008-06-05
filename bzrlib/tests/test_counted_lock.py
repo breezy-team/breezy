@@ -41,10 +41,13 @@ class DummyLock(object):
         self._lock_mode = 'r'
         self._calls.append('lock_read')
 
-    def lock_write(self):
+    def lock_write(self, token=None):
+        if token not in (None, 'token'):
+            raise TokenMismatch(token, 'token')
         self._assert_not_locked()
         self._lock_mode = 'w'
         self._calls.append('lock_write')
+        return 'token'
 
     def unlock(self):
         self._assert_locked()
@@ -68,6 +71,8 @@ class DummyLock(object):
         if token == 'token':
             # already held by this caller
             return 'token'
+        elif token is None:
+            return
         else:
             raise TokenMismatch(token, 'token')
 
