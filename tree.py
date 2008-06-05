@@ -31,7 +31,7 @@ import urllib
 import svn.core, svn.wc, svn.delta
 from svn.core import Pool
 
-from bzrlib.plugins.svn import errors
+from bzrlib.plugins.svn import errors, properties
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.
@@ -176,39 +176,39 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+        if name == properties.PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
-        elif name == svn.core.SVN_PROP_IGNORE:
+        elif name == properties.PROP_IGNORE:
             self.dir_ignores[id] = value
-        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
-                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
-                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
-                      svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_EXECUTABLE):
+        elif name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                      properties.PROP_ENTRY_LAST_AUTHOR,
+                      properties.PROP_ENTRY_LOCK_TOKEN,
+                      properties.PROP_ENTRY_UUID,
+                      properties.PROP_EXECUTABLE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+        elif name.startswith(properties.PROP_WC_PREFIX):
             pass
-        elif name.startswith(svn.core.SVN_PROP_PREFIX):
+        elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
-        if name == svn.core.SVN_PROP_EXECUTABLE:
+        if name == properties.PROP_EXECUTABLE:
             self.is_executable = (value != None)
-        elif name == svn.core.SVN_PROP_SPECIAL:
+        elif name == properties.PROP_SPECIAL:
             self.is_symlink = (value != None)
-        elif name == svn.core.SVN_PROP_EXTERNALS:
+        elif name == properties.PROP_EXTERNALS:
             mutter('%r property on file!' % name)
-        elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+        elif name == properties.PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
-        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
-                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
-                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
-                      svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_MIME_TYPE):
+        elif name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                      properties.PROP_ENTRY_LAST_AUTHOR,
+                      properties.PROP_ENTRY_LOCK_TOKEN,
+                      properties.PROP_ENTRY_UUID,
+                      properties.PROP_MIME_TYPE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+        elif name.startswith(properties.PROP_WC_PREFIX):
             pass
-        elif name.startswith(svn.core.SVN_PROP_PREFIX):
+        elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
@@ -281,7 +281,7 @@ class SvnBasisTree(RevisionTree):
             props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"), wc)
             if isinstance(props, list): # Subversion 1.5
                 props = props[1]
-            if props.has_key(svn.core.SVN_PROP_SPECIAL):
+            if props.has_key(properties.PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
                 ie.text_sha1 = None
@@ -293,7 +293,7 @@ class SvnBasisTree(RevisionTree):
                 data = osutils.fingerprint_file(open(self._abspath(relpath)))
                 ie.text_sha1 = data['sha1']
                 ie.text_size = data['size']
-                ie.executable = props.has_key(svn.core.SVN_PROP_EXECUTABLE)
+                ie.executable = props.has_key(properties.PROP_EXECUTABLE)
             ie.revision = revid
             return ie
 

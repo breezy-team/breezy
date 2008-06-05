@@ -20,6 +20,8 @@ from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, 
 
 import os
 
+from bzrlib.plugins.svn import properties
+
 import svn.core
 
 # Settings are stored by UUID. 
@@ -120,7 +122,7 @@ class SvnRepositoryConfig(IniBasedConfig):
         def get_list(parser, section):
             try:
                 if parser.get_bool(section, "override-svn-revprops"):
-                    return [svn.core.SVN_PROP_REVISION_DATE, svn.core.SVN_PROP_REVISION_AUTHOR]
+                    return [properties.PROP_REVISION_DATE, properties.PROP_REVISION_AUTHOR]
                 return []
             except ValueError:
                 val = parser.get_value(section, "override-svn-revprops")

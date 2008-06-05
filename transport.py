@@ -26,6 +26,7 @@ import svn.ra
 import svn.core
 import svn.client
 
+from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent
 import urlparse
 import urllib
@@ -387,11 +388,11 @@ class Connection(object):
             if hasattr(svn.ra, 'get_commit_editor3'):
                 editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
                                                   lock_token, keep_locks)
-            elif revprops.keys() != [svn.core.SVN_PROP_REVISION_LOG]:
+            elif revprops.keys() != [properties.PROP_REVISION_LOG]:
                 raise NotImplementedError()
             else:
                 editor = svn.ra.get_commit_editor2(self._ra, 
-                            revprops[svn.core.SVN_PROP_REVISION_LOG],
+                            revprops[properties.PROP_REVISION_LOG],
                             done_cb, lock_token, keep_locks)
 
             return Editor(self, editor)
@@ -438,12 +439,12 @@ class Connection(object):
             def __init__(self, changed_paths, rev, author, date, message):
                 self.changed_paths = changed_paths
                 self.revprops = {}
-                if svn.core.SVN_PROP_REVISION_AUTHOR in revprops:
-                    self.revprops[svn.core.SVN_PROP_REVISION_AUTHOR] = author
-                if svn.core.SVN_PROP_REVISION_LOG in revprops:
-                    self.revprops[svn.core.SVN_PROP_REVISION_LOG] = message
-                if svn.core.SVN_PROP_REVISION_DATE in revprops:
-                    self.revprops[svn.core.SVN_PROP_REVISION_DATE] = date
+                if properties.PROP_REVISION_AUTHOR in revprops:
+                    self.revprops[properties.PROP_REVISION_AUTHOR] = author
+                if properties.PROP_REVISION_LOG in revprops:
+                    self.revprops[properties.PROP_REVISION_LOG] = message
+                if properties.PROP_REVISION_DATE in revprops:
+                    self.revprops[properties.PROP_REVISION_DATE] = date
                 # FIXME: Check other revprops
                 # FIXME: Handle revprops is None
                 self.revision = rev

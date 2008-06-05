@@ -32,6 +32,7 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
+from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.branch import SvnBranch
 from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
 from bzrlib.plugins.svn.convert import SvnConverter
@@ -107,7 +108,7 @@ class SvnWorkingTree(WorkingTree):
         ignores.update(svn.wc.get_default_ignores(svn_config))
 
         def dir_add(wc, prefix, patprefix):
-            ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
+            ignorestr = svn.wc.prop_get(properties.PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
