@@ -18,7 +18,6 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import chain
 import re
 import time
 
@@ -2783,7 +2782,7 @@ class InterPackRepo(InterSameDataRepository):
             return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
-            # the other, and viceversa, anywhere in the history of revision_id.
+            # the other, and vice versa, anywhere in the history of revision_id.
             graph = self.target.get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()
