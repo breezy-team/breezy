@@ -23,6 +23,7 @@ import time
 from bzrlib import (
     dirstate,
     errors,
+    inventory,
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
@@ -2514,3 +2515,21 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         state._discard_merge_parents()
         state._validate()
         self.assertEqual(exp_dirblocks, state._dirblocks)
+
+
+class Test_InvEntryToDetails(TestCaseWithDirState):
+
+    def assertDetails(self, expected, inv_entry):
+        details = dirstate.DirState._inv_entry_to_details(inv_entry)
+        self.assertEqual(expected, details)
+
+    def test_unicode_symlink(self):
+        uni_link_target = u'Non-\xe5scii'
+        utf8_link_target = 'Non-\xc3\xa5scii'
+        self.assertEqual(utf8_link_target, uni_link_target.encode('UTF-8'))
+        inv_entry = inventory.InventoryLink('link-file-id', 'name',
+                                            'link-parent-id')
+        inv_entry.revision = 'link-revision-id'
+        inv_entry.symlink_target = uni_link_target
+        self.assertDetails(('l', utf8_link_target, 0, False,
+                           'link-revision-id'), inv_entry)
