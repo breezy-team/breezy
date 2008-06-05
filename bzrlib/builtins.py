@@ -1585,13 +1585,21 @@ class cmd_modified(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
+    takes_options = [
+            Option('null',
+                   help='Write an ascii NUL (\\0) separator '
+                   'between files rather than a newline.')
+            ]
 
     @display_command
-    def run(self):
+    def run(self, null=False):
         tree = WorkingTree.open_containing(u'.')[0]
         td = tree.changes_from(tree.basis_tree())
         for path, id, kind, text_modified, meta_modified in td.modified:
-            self.outf.write(path + '\n')
+            if null:
+                self.outf.write(path + '\0')
+            else:
+                self.outf.write(osutils.quotefn(path) + '\n')
 
 
 class cmd_added(Command):
@@ -1600,9 +1608,14 @@ class cmd_added(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
+    takes_options = [
+            Option('null',
+                   help='Write an ascii NUL (\\0) separator '
+                   'between files rather than a newline.')
+            ]
 
     @display_command
-    def run(self):
+    def run(self, null=False):
         wt = WorkingTree.open_containing(u'.')[0]
         wt.lock_read()
         try:
@@ -1619,7 +1632,10 @@ class cmd_added(Command):
                     path = inv.id2path(file_id)
                     if not os.access(osutils.abspath(path), os.F_OK):
                         continue
-                    self.outf.write(path + '\n')
+                    if null:
+                        self.outf.write(path + '\0')
+                    else:
+                        self.outf.write(osutils.quotefn(path) + '\n')
             finally:
                 basis.unlock()
         finally:

@@ -23,6 +23,11 @@ IN DEVELOPMENT
 
     * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
 
+    * ``added``, ``modified``, and ``unknowns`` behaviour made consistent (all three
+      now quote paths where required). Added ``--null`` option to ``added`` and 
+      ``modified`` (for null-separated unknowns, use ``ls --unknown --null``)
+      (Adrian Wilkins)
+
   BUGFIXES:
 
     * ``bzr status`` was breaking if you merged the same revision twice.
@@ -928,6 +933,8 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
   TESTING:
+    
+    * Added missing blackbox tests for ``modified`` (Adrian Wilkins)
 
     * The branch interface tests were invalid for branches using rich-root
       repositories because the empty string is not a valid file-id.
