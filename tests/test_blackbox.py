@@ -27,7 +27,7 @@ import os, sys
 
 class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
     def test_branch_empty(self):
-        repos_url = self.make_client('d', 'de')
+        repos_url = self.make_repository('d')
         self.run_bzr("branch %s dc" % repos_url)
 
     def test_branch_onerev(self):
@@ -39,7 +39,7 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         self.check_output("2\n", "revno de")
         
     def test_log_empty(self):
-        repos_url = self.make_client('d', 'de')
+        repos_url = self.make_repository('d')
         self.run_bzr('log %s' % repos_url)
 
     def test_dumpfile(self):
@@ -266,10 +266,10 @@ if len(sys.argv) == 2:
 
     def test_set_branching_scheme_local(self):
         self.make_fake_editor()
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         self.check_output("", 'svn-branching-scheme --set %s' % repos_url)
 
     def test_set_branching_scheme_global(self):
         self.make_fake_editor()
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         self.check_output("", 'svn-branching-scheme --repository-wide --set %s' % repos_url)
