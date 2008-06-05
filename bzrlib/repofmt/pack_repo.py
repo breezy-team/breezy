@@ -2388,7 +2388,7 @@ class RepositoryFormatPackDevelopment0Subtree(RepositoryFormatPack):
 class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
     """A no-subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.2.
+    This format should be retained until the second release after bzr 1.5.
 
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
@@ -2406,7 +2406,7 @@ class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 1 (needs bzr.dev from before 1.3)\n"
+        return "Bazaar development format 1 (needs bzr.dev from before 1.6)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -2420,7 +2420,7 @@ class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
 class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPackDevelopment0):
     """A subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.2.
+    This format should be retained until the second release after bzr 1.5.
 
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
@@ -2448,7 +2448,7 @@ class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPackDevelopment0):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format 1 with subtree support "
-            "(needs bzr.dev from before 1.3)\n")
+            "(needs bzr.dev from before 1.6)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
