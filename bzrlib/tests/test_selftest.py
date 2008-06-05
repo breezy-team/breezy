@@ -1049,6 +1049,15 @@ class TestTestResult(TestCase):
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
 
+class TestUnicodeFilenameFeature(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        tests.UnicodeFilename._probe()
+
+
 class TestRunner(TestCase):
 
     def dummy_test(self):
