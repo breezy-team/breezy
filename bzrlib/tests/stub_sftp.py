@@ -71,9 +71,10 @@ class StubSFTPServer (SFTPServerInterface):
         if home is None:
             self.home = ''
         else:
-            assert home.startswith(self.root), \
-                    "home must be a subdirectory of root (%s vs %s)" \
-                    % (home, root)
+            if not home.startswith(self.root):
+                raise AssertionError(
+                    "home must be a subdirectory of root (%s vs %s)"
+                    % (home, root))
             self.home = home[len(self.root):]
         if self.home.startswith('/'):
             self.home = self.home[1:]

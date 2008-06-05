@@ -7,8 +7,8 @@
 ----------------------------------------
 
 :Authors: Michael Foord, Nicola Larosa
-:Version: ConfigObj 4.5.1
-:Date: 2008/02/05
+:Version: ConfigObj 4.5.2
+:Date: 2008/02/24
 :Homepage: `ConfigObj Homepage`_
 :Sourceforge: Sourceforge_
 :Development: `SVN Repository`_
@@ -47,11 +47,9 @@ It has lots of other features though :
     - repeated sections
     - and allowing default values
 
-* All comments in the file are preserved
-* The order of keys/sections is preserved
-* No external dependencies
+* When writing out config files, ConfigObj preserves all comments and the order of members and sections
+* Many useful methods and options for working with configuration files (like the 'reload' method)
 * Full Unicode support
-* A powerful ``unrepr`` mode for storing basic datatypes
 
 
 For support and bug reports please use the ConfigObj `Mailing List`_.
@@ -60,7 +58,7 @@ For support and bug reports please use the ConfigObj `Mailing List`_.
 Downloading
 ===========
 
-The current version is **4.5.1**, dated 5th February 2008. ConfigObj 4 is
+The current version is **4.5.2**, dated 24th February 2008. ConfigObj 4 is
 now stable. We still expect to pick up a few bugs along the way though [#]_.
 {sm;:-)}
 
@@ -108,7 +106,7 @@ It is sometimes possible to get the latest *development version* of ConfigObj
 from the `Subversion Repository <http://svn.pythonutils.python-hosting.com/trunk/pythonutils/>`_.
 
 .. _configobj.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj.py
-.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.5.1.zip
+.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.5.2.zip
 .. _validate.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=validate.py
 .. _this document:
 .. _configobj homepage: http://www.voidspace.org.uk/python/configobj.html
@@ -138,11 +136,15 @@ ConfigObj in the Real World
    {acro;PIM;Personal Information Manager}, being developed by the 
    `OSAFoundation <http://www.osafoundation.org/>`_.
  
+* `matplotlib <http://matplotlib.sourceforge.net/>`_
+
+	A 2D plotting library.
+
 * `IPython <http://ipython.scipy.org/moin/>`_
 
     IPython is an enhanced interactive Python shell. IPython uses ConfigObj in a module called 'TConfig' that combines it with enthought `Traits <http://code.enthought.com/traits/>`_: `tconfig <http://ipython.scipy.org/ipython/ipython/browser/ipython/branches/saw/sandbox/tconfig>`_.
     
-* ` Elisa - the Fluendo Mediacenter <http://elisa.fluendo.com/>`_    
+* `Elisa - the Fluendo Mediacenter <http://elisa.fluendo.com/>`_    
     
     Elisa is an open source cross-platform media center solution designed to be simple for people not particularly familiar with computers.
 
@@ -2336,6 +2338,13 @@ CHANGELOG
 
 This is an abbreviated changelog showing the major releases up to version 4.
 From version 4 it lists all releases and changes.
+
+
+2008/02/05 - Version 4.5.2
+--------------------------
+
+Distribution updated to include version 0.3.2 of validate_. This means that
+``None`` as a default value win configspecs works.
 
 
 2008/02/05 - Version 4.5.1

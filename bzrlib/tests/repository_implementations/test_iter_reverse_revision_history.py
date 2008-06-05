@@ -90,7 +90,8 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
     def test_is_generator(self):
         tree = self.create_linear_history()
         repo = tree.branch.repository
-
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         rev_history = repo.iter_reverse_revision_history('rev4')
         self.assertEqual('rev4', rev_history.next())
         self.assertEqual('rev3', rev_history.next())
@@ -100,7 +101,11 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
 
     def assertRevHistoryList(self, expected, repo, revision_id):
         """Assert the return values of iter_reverse_revision_history."""
-        actual = list(repo.iter_reverse_revision_history(revision_id))
+        repo.lock_read()
+        try:
+            actual = list(repo.iter_reverse_revision_history(revision_id))
+        finally:
+            repo.unlock()
         self.assertEqual(expected, actual)
 
     def test_linear_history(self):
@@ -119,7 +124,6 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
     def test_revision_ids_are_utf8(self):
         tree = self.create_linear_history_with_utf8()
         repo = tree.branch.repository
-
         self.assertRevHistoryList(['rev-\xc3\xa5', 'rev-\xc2\xb5'],
                                   repo, 'rev-\xc3\xa5')
 
