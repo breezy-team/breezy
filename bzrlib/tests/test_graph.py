@@ -396,6 +396,28 @@ boundary = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e'], 'e': ['f'],
 with_ghost = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e', 'g'],
               'e': ['f'], 'f':[NULL_REVISION], NULL_REVISION:()}
 
+# A graph that shows we can shortcut finding revnos when reaching them from the
+# side.
+#  NULL_REVISION
+#       |
+#       a
+#       |
+#       b
+#       |
+#       c
+#       |
+#       d
+#       |
+#       e
+#      / \
+#     f   g
+#     |
+#     h
+#     |
+#     i
+
+with_tail = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'], 'e':['d'],
+             'f':['e'], 'g':['e'], 'h':['f'], 'i':['h']}
 
 
 class InstrumentedParentsProvider(object):
@@ -407,6 +429,24 @@ class InstrumentedParentsProvider(object):
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
         return self._real_parents_provider.get_parent_map(nodes)
+
+
+class TestGraphBase(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+
+    def make_breaking_graph(self, ancestors, break_on):
+        """Make a Graph that raises an exception if we hit a node."""
+        g = self.make_graph(ancestors)
+        orig_parent_map = g.get_parent_map
+        def get_parent_map(keys):
+            bad_keys = set(keys).intersection(break_on)
+            if bad_keys:
+                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
+            return orig_parent_map(keys)
+        g.get_parent_map = get_parent_map
+        return g
 
 
 class TestGraph(TestCaseWithMemoryTransport):
@@ -1138,22 +1178,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
 
 
-class TestFindUniqueAncestors(tests.TestCase):
-
-    def make_graph(self, ancestors):
-        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
-
-    def make_breaking_graph(self, ancestors, break_on):
-        """Make a Graph that raises an exception if we hit a node."""
-        g = self.make_graph(ancestors)
-        orig_parent_map = g.get_parent_map
-        def get_parent_map(keys):
-            bad_keys = set(keys).intersection(break_on)
-            if bad_keys:
-                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
-            return orig_parent_map(keys)
-        g.get_parent_map = get_parent_map
-        return g
+class TestFindUniqueAncestors(TestGraphBase):
 
     def assertFindUniqueAncestors(self, graph, expected, node, common):
         actual = graph.find_unique_ancestors(node, common)
@@ -1226,6 +1251,65 @@ class TestFindUniqueAncestors(tests.TestCase):
             ['p', 'q', 'z'], 'z', ['y'])
         self.assertFindUniqueAncestors(graph,
             ['h', 'i', 'j', 'y'], 'j', ['z'])
+
+
+class TestGraphFindDistanceToNull(TestGraphBase):
+    """Test an api that should be able to compute a revno"""
+
+    def assertFindDistance(self, revno, graph, target_id, known_ids):
+        """Assert the output of Graph.find_distance_to_null()"""
+        actual = graph.find_distance_to_null(target_id, known_ids)
+        self.assertEqual(revno, actual)
+
+    def test_nothing_known(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindDistance(0, graph, NULL_REVISION, [])
+        self.assertFindDistance(1, graph, 'rev1', [])
+        self.assertFindDistance(2, graph, 'rev2a', [])
+        self.assertFindDistance(2, graph, 'rev2b', [])
+        self.assertFindDistance(3, graph, 'rev3', [])
+        self.assertFindDistance(4, graph, 'rev4', [])
+
+    def test_rev_is_ghost(self):
+        graph = self.make_graph(ancestry_1)
+        e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                              graph.find_distance_to_null, 'rev_missing', [])
+        self.assertEqual('rev_missing', e.revision_id)
+        self.assertEqual('rev_missing', e.ghost_revision_id)
+
+    def test_ancestor_is_ghost(self):
+        graph = self.make_graph({'rev':['parent']})
+        e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                              graph.find_distance_to_null, 'rev', [])
+        self.assertEqual('rev', e.revision_id)
+        self.assertEqual('parent', e.ghost_revision_id)
+
+    def test_known_in_ancestry(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindDistance(2, graph, 'rev2a', [('rev1', 1)])
+        self.assertFindDistance(3, graph, 'rev3', [('rev2a', 2)])
+
+    def test_known_in_ancestry_limits(self):
+        graph = self.make_breaking_graph(ancestry_1, ['rev1'])
+        self.assertFindDistance(4, graph, 'rev4', [('rev3', 3)])
+
+    def test_target_is_ancestor(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindDistance(2, graph, 'rev2a', [('rev3', 3)])
+
+    def test_target_is_ancestor_limits(self):
+        """We shouldn't search all history if we run into ourselves"""
+        graph = self.make_breaking_graph(ancestry_1, ['rev1'])
+        self.assertFindDistance(3, graph, 'rev3', [('rev4', 4)])
+
+    def test_target_parallel_to_known_limits(self):
+        # Even though the known revision isn't part of the other ancestry, they
+        # eventually converge
+        graph = self.make_breaking_graph(with_tail, ['a'])
+        self.assertFindDistance(6, graph, 'f', [('g', 6)])
+        self.assertFindDistance(7, graph, 'h', [('g', 6)])
+        self.assertFindDistance(8, graph, 'i', [('g', 6)])
+        self.assertFindDistance(6, graph, 'g', [('i', 8)])
 
 
 class TestCachingParentsProvider(tests.TestCase):

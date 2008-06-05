@@ -67,3 +67,51 @@ class TestUpdate(TestCaseWithBranch):
         master_tree.commit('bar', rev_id='bar', allow_pointless=True)
         self.assertEqual('foo', child_tree.branch.update())
         self.assertEqual(['bar'], child_tree.branch.revision_history())
+
+
+class TestUpdateRevisions(TestCaseWithBranch):
+
+    def test_accepts_graph(self):
+        # An implementation may not use it, but it should allow a 'graph' to be
+        # supplied
+        tree1 = self.make_branch_and_tree('tree1')
+        rev1 = tree1.commit('one')
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        rev2 = tree2.commit('two')
+
+        tree1.lock_write()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        graph = tree2.branch.repository.get_graph(tree1.branch.repository)
+
+        tree1.branch.update_revisions(tree2.branch, graph=graph)
+        self.assertEqual((2, rev2), tree1.branch.last_revision_info())
+
+    def test_overwrite_ignores_diverged(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        rev1 = tree1.commit('one')
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        rev2 = tree1.commit('two')
+        rev2b = tree2.commit('alt two')
+
+        self.assertRaises(errors.DivergedBranches,
+                          tree1.branch.update_revisions,
+                          tree2.branch, overwrite=False)
+        # However, the revision should be copied into the repository
+        self.assertTrue(tree1.branch.repository.has_revision(rev2b))
+
+        tree1.branch.update_revisions(tree2.branch, overwrite=True)
+        self.assertEqual((2, rev2b), tree1.branch.last_revision_info())
+
+    def test_ignores_older_unless_overwrite(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        rev1 = tree1.commit('one')
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        rev2 = tree1.commit('two')
+
+        tree1.branch.update_revisions(tree2.branch)
+        self.assertEqual((2, rev2), tree1.branch.last_revision_info())
+
+        tree1.branch.update_revisions(tree2.branch, overwrite=True)
+        self.assertEqual((1, rev1), tree1.branch.last_revision_info())

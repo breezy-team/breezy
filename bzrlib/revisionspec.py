@@ -135,6 +135,7 @@ class RevisionSpec(object):
     """
 
     prefix = None
+    wants_revision_history = True
 
     def __new__(cls, spec, _internal=False):
         if _internal:
@@ -215,7 +216,10 @@ class RevisionSpec(object):
 
     def in_history(self, branch):
         if branch:
-            revs = branch.revision_history()
+            if self.wants_revision_history:
+                revs = branch.revision_history()
+            else:
+                revs = None
         else:
             # this should never trigger.
             # TODO: make it a deprecated code path. RBC 20060928
@@ -292,6 +296,7 @@ class RevisionSpec_revno(RevisionSpec):
                                    your history is very long.
     """
     prefix = 'revno:'
+    wants_revision_history = False
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""

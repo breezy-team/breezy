@@ -644,6 +644,15 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('conflicted-b', 'e\n'),
                          ], list(plan))
 
+    def test_plan_lca_merge_with_null(self):
+        self.add_version('A', [], 'ab')
+        self.add_version('B', [], 'bc')
+        plan = self.plan_merge_vf.plan_lca_merge('A', 'B')
+        self.assertEqual([('new-a', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('new-b', 'c\n'),
+                         ], list(plan))
+
 
 class TestMergeImplementation(object):
 

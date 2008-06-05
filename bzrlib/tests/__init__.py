@@ -861,6 +861,10 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
+        if a == b + '\n':
+            message = 'first string is missing a final newline.\n'
+        if a + '\n' == b:
+            message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
         

@@ -1685,10 +1685,6 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
-    @deprecated_method(symbol_versioning.one_five)
-    def revision_parents(self, revision_id):
-        return self.get_inventory_weave().parent_names(revision_id)
-
     @deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
@@ -1979,7 +1975,7 @@ class MetaDirRepository(Repository):
                 pass
         else:
             self._transport.put_bytes('no-working-trees', '',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""

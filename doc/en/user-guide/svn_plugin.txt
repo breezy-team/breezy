@@ -92,7 +92,7 @@ In this case, committing to the trunk only commits the merge locally.
 To commit back to the master Subversion trunk, an additional command
 (``bzr push``) is required.
 
-Note: You'll need to give ``pull and ``push`` the relevant URLs
+Note: You'll need to give ``pull`` and ``push`` the relevant URLs
 the first time you use those commands in the trunk branch. After that,
 bzr remembers them.
 
