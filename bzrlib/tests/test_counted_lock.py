@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
 from bzrlib.counted_lock import CountedLock
 from bzrlib.errors import (
     LockError,
+    LockNotHeld,
     ReadOnlyError,
+    TokenMismatch,
     )
 from bzrlib.tests import TestCase
 
@@ -61,6 +63,13 @@ class DummyLock(object):
         if self._lock_mode:
             raise LockError("%s is already locked in mode %r" %
                 (self, self._lock_mode))
+
+    def validate_token(self, token):
+        if token == 'token':
+            # already held by this caller
+            return 'token'
+        else:
+            raise TokenMismatch(token, 'token')
 
 
 class TestDummyLock(TestCase):
@@ -131,7 +140,7 @@ class TestCountedLock(TestCase):
     def test_unlock_not_locked(self):
         real_lock = DummyLock()
         l = CountedLock(real_lock)
-        self.assertRaises(LockError, l.unlock)
+        self.assertRaises(LockNotHeld, l.unlock)
 
     def test_read_lock_while_write_locked(self):
         real_lock = DummyLock()

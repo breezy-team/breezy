@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,9 +17,8 @@
 """Counted lock class"""
 
 
-from bzrlib.errors import (
-    LockError,
-    ReadOnlyError,
+from bzrlib import (
+    errors,
     )
 
 
@@ -39,6 +38,10 @@ class CountedLock(object):
         self._real_lock = real_lock
         self._lock_mode = None
         self._lock_count = 0
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__,
+            self._real_lock)
 
     def break_lock(self):
         self._real_lock.break_lock()
@@ -71,12 +74,12 @@ class CountedLock(object):
             self._real_lock.lock_write()
             self._lock_mode = 'w'
         elif self._lock_mode != 'w':
-            raise ReadOnlyError(self)
+            raise errors.ReadOnlyError(self)
         self._lock_count += 1
 
     def unlock(self):
         if self._lock_count == 0:
-            raise LockError("%s not locked" % (self,))
+            raise errors.LockNotHeld("%r not locked" % (self,))
         elif self._lock_count == 1:
             self._real_lock.unlock()
             self._lock_mode = None
