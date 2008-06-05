@@ -31,12 +31,15 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         return CachingLogWalker(LogWalker(transport=transport))
 
     def test_get_old_properties(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/foo': "bla"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.commit_editor(repos_url)
+        dc.change_dir_prop("", "myprop", "data")
+        dc.done()
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("foo")
+        dc.done()
 
         logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -45,9 +48,11 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.assertEqual("data", bp.get_properties("", 2)["myprop"])
 
     def test_get_properties(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.commit_editor(repos_url)
+        dc.change_dir_prop("", "myprop", "data")
+        dc.done()
 
         transport = SvnRaTransport(repos_url)
         logwalk = self.get_log_walker(transport=transport)
@@ -61,16 +66,19 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.assertTrue("svn:entry:committed-date" in props)
 
     def test_get_changed_properties(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data\n")
-        self.client_commit("dc", "My Message")
-        self.client_update("dc")
-        self.client_set_prop("dc", "myprop", "newdata\n")
-        self.client_commit("dc", "My Message")
-        self.client_update("dc")
-        self.client_set_prop("dc", "myp2", "newdata\n")
-        self.client_commit("dc", "My Message")
-        self.client_update("dc")
+        repos_url = self.make_repository('d')
+
+        dc = self.commit_editor(repos_url)
+        dc.change_dir_prop("", "myprop", "data\n")
+        dc.done()
+
+        dc = self.commit_editor(repos_url)
+        dc.change_dir_prop("", "myprop", "newdata\n")
+        dc.done()
+
+        dc = self.commit_editor(repos_url)
+        dc.change_dir_prop("", "myp2", "newdata\n")
+        dc.done()
 
         logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
