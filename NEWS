@@ -19,6 +19,9 @@ IN DEVELOPMENT
       end of line, causing a knit snapshot in a 'knits' repository will no longer
       cause KnitCorrupt. (Robert Collins)
 
+    * Sanitize branch nick before using it as an attachment filename in
+      ``bzr send``. (Lukáš Lalinský, #210218)
+
   IMPROVEMENTS:
 
     * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
