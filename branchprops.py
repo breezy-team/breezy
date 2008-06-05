@@ -19,6 +19,8 @@
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 
+from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION
+
 from svn.core import SubversionException
 import svn.core
 
@@ -41,7 +43,7 @@ class PathPropertyProvider(object):
             (_, _, props) = self.log._transport.get_dir(path, 
                 revnum)
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+            if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)
             raise
 

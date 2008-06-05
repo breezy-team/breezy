@@ -58,9 +58,9 @@ class SvnRemoteFormat(BzrDirFormat):
         try:
             transport = get_svn_ra_transport(transport)
         except svn.core.SubversionException, (_, num):
-            if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
-                       svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
-                       svn.core.SVN_ERR_BAD_URL):
+            if num in (errors.ERR_RA_ILLEGAL_URL, \
+                       errors.ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
+                       errors.ERR_BAD_URL):
                 raise bzr_errors.NotBranchError(path=transport.base)
 
         return format
@@ -70,7 +70,7 @@ class SvnRemoteFormat(BzrDirFormat):
         try: 
             return remote.SvnRemoteAccess(transport, self)
         except svn.core.SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
+            if num == errors.ERR_RA_DAV_REQUEST_FAILED:
                 raise bzr_errors.NotBranchError(transport.base)
             raise
 
@@ -134,7 +134,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         try:
             return SvnCheckout(transport, self)
         except svn.core.SubversionException, (_, num):
-            if num in (svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED,):
+            if num in (errors.ERR_RA_LOCAL_REPOS_OPEN_FAILED,):
                 raise errors.NoSvnRepositoryPresent(transport.base)
             raise
 

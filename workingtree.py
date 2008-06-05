@@ -36,7 +36,7 @@ from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.branch import SvnBranch
 from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
 from bzrlib.plugins.svn.convert import SvnConverter
-from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
+from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoSvnRepositoryPresent, ERR_FS_TXN_OUT_OF_DATE, ERR_ENTRY_EXISTS, ERR_WC_PATH_NOT_FOUND, ERR_WC_NOT_DIRECTORY
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                      generate_revision_metadata)
@@ -457,7 +457,7 @@ class SvnWorkingTree(WorkingTree):
                 commit_info = svn.client.commit3(specific_files, True, False, 
                                                  self.client_ctx)
             except SubversionException, (_, num):
-                if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+                if num == ERR_FS_TXN_OUT_OF_DATE:
                     raise OutOfDateTree(self)
                 raise
         except:
@@ -541,9 +541,9 @@ class SvnWorkingTree(WorkingTree):
                     if ids is not None:
                         self._change_fileid_mapping(ids.next(), f, wc)
                 except SubversionException, (_, num):
-                    if num == svn.core.SVN_ERR_ENTRY_EXISTS:
+                    if num == ERR_ENTRY_EXISTS:
                         continue
-                    elif num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
+                    elif num == ERR_WC_PATH_NOT_FOUND:
                         raise NoSuchFile(path=f)
                     raise
             finally:
@@ -790,7 +790,7 @@ class SvnCheckout(BzrDir):
             branch = SvnBranch(self.remote_transport.base, repos, 
                                self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
+            if num == ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)
             raise
 

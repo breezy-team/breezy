@@ -380,7 +380,7 @@ class SvnRepository(Repository):
         try:
             return (svn.core.svn_node_dir == self.transport.check_path(path, revnum))
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+            if num == ERR_FS_NO_SUCH_REVISION:
                 return False
             raise
 
@@ -734,7 +734,7 @@ class SvnRepository(Repository):
                                         elif (layout.is_branch_parent(n) or 
                                               layout.is_tag_parent(n)):
                                             parents.append(n)
-                                except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+                                except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
                                     pass
         finally:
             pb.finished()

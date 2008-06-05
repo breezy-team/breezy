@@ -27,7 +27,7 @@ import svn.core
 import svn.client
 
 from bzrlib.plugins.svn import properties
-from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent
+from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND
 import urlparse
 import urllib
 
@@ -202,9 +202,9 @@ class Connection(object):
             self._ra = svn.client.open_ra_session(url.encode('utf8'), 
                     self._client)
         except SubversionException, (_, num):
-            if num in (svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND,):
+            if num == ERR_RA_SVN_REPOS_NOT_FOUND:
                 raise NoSvnRepositoryPresent(url=url)
-            if num == svn.core.SVN_ERR_BAD_URL:
+            if num == ERR_BAD_URL:
                 raise InvalidURL(url)
             raise
         self.url = url
@@ -350,9 +350,9 @@ class Connection(object):
         try:
             svn.client.mkdir([path.encode("utf-8")], self._client)
         except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+            if num == ERR_FS_NOT_FOUND:
                 raise NoSuchFile(path)
-            if num == svn.core.SVN_ERR_FS_ALREADY_EXISTS:
+            if num == ERR_FS_ALREADY_EXISTS:
                 raise FileExists(path)
             raise
 
@@ -695,7 +695,7 @@ class SvnRaTransport(Transport):
         try:
             (dirents, _, _) = self.get_dir(relpath, self.get_latest_revnum())
         except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+            if num == ERR_FS_NOT_DIRECTORY:
                 raise NoSuchFile(relpath)
             raise
         return dirents.keys()

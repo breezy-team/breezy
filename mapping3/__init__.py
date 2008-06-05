@@ -17,6 +17,7 @@ from bzrlib import osutils, ui
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 from bzrlib.plugins.svn import mapping, properties
+from bzrlib.plugins.svn.errors import ERR_FS_NOT_DIRECTORY, ERR_FS_NOT_FOUND
 from bzrlib.plugins.svn.layout import RepositoryLayout
 from bzrlib.plugins.svn.mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path, 
                              guess_scheme_from_history, ListBranchingScheme, 
@@ -71,9 +72,9 @@ class SchemeDerivedLayout(RepositoryLayout):
             try:
                 dirents = self.repository.transport.get_dir(path, revnum)[0]
             except SubversionException, (msg, num):
-                if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+                if num == ERR_FS_NOT_DIRECTORY:
                     return None
-                if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+                if num == ERR_FS_NOT_FOUND:
                     return None
                 raise
             return dirents.keys()

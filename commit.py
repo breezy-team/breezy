@@ -21,8 +21,7 @@ from svn.core import Pool, SubversionException, svn_time_to_cstring
 from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
-                           UnrelatedBranches, AppendRevisionsOnlyViolation,
-                           )
+                           UnrelatedBranches, AppendRevisionsOnlyViolation)
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
@@ -31,7 +30,7 @@ from bzrlib.trace import mutter, warning
 from bzrlib.plugins.svn import properties
 
 from cStringIO import StringIO
-from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
+from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
 from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from bzrlib.plugins.svn.logwalker import lazy_dict
@@ -82,7 +81,7 @@ def set_svn_revprops(transport, revnum, revprops):
     for (name, value) in revprops.items():
         try:
             transport.change_rev_prop(revnum, name, value)
-        except SubversionException, (_, svn.core.SVN_ERR_REPOS_DISABLED_FEATURE):
+        except SubversionException, (_, ERR_REPOS_DISABLED_FEATURE):
             raise RevpropChangeFailed(name)
 
 
@@ -689,7 +688,7 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
     try:
         builder.commit(rev.message)
     except SubversionException, (_, num):
-        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+        if num == ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
     except ChangesRootLHSHistory:

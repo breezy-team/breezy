@@ -28,8 +28,33 @@ class InvalidExternalsDescription(BzrError):
     _fmt = """Unable to parse externals description."""
 
 
-# APR define, not in svn.core
-SVN_ERR_UNKNOWN_HOSTNAME = 670002
+ERR_UNKNOWN_HOSTNAME = 670002
+ERR_UNKNOWN_HOSTNAME = 670002
+ERR_RA_SVN_CONNECTION_CLOSED = 210002
+ERR_WC_LOCKED = 155004
+ERR_RA_NOT_AUTHORIZED = 170001
+ERR_INCOMPLETE_DATA = 200003
+ERR_RA_SVN_MALFORMED_DATA = 210004
+ERR_RA_NOT_IMPLEMENTED = 170003
+ERR_FS_NO_SUCH_REVISION = 160006
+ERR_FS_TXN_OUT_OF_DATE = 160028
+ERR_REPOS_DISABLED_FEATURE = 165006
+ERR_STREAM_MALFORMED_DATA = 140001
+ERR_RA_ILLEGAL_URL = 170000
+ERR_RA_LOCAL_REPOS_OPEN_FAILED = 180001
+ERR_BAD_URL = 125002
+ERR_RA_DAV_REQUEST_FAILED = 175002
+ERR_FS_NOT_DIRECTORY = 160016
+ERR_FS_NOT_FOUND = 160013
+ERR_FS_ALREADY_EXISTS = 160020
+ERR_RA_SVN_REPOS_NOT_FOUND = 210005
+ERR_WC_NOT_DIRECTORY = 155007
+ERR_ENTRY_EXISTS = 150002
+ERR_WC_PATH_NOT_FOUND = 155010
+ERR_CANCELLED = 200015
+ERR_WC_UNSUPPORTED_FORMAT = 155021
+
+
 
 class NotSvnBranchPath(NotBranchError):
     """Error raised when a path was specified that did not exist."""
@@ -76,19 +101,19 @@ def convert_error(err):
     """
     (msg, num) = err.args
 
-    if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
+    if num == ERR_RA_SVN_CONNECTION_CLOSED:
         return ConnectionReset(msg=msg)
-    elif num == svn.core.SVN_ERR_WC_LOCKED:
+    elif num == ERR_WC_LOCKED:
         return LockError(message=msg)
-    elif num == svn.core.SVN_ERR_RA_NOT_AUTHORIZED:
+    elif num == ERR_RA_NOT_AUTHORIZED:
         return PermissionDenied('.', msg)
-    elif num == svn.core.SVN_ERR_INCOMPLETE_DATA:
+    elif num == ERR_INCOMPLETE_DATA:
         return UnexpectedEndOfContainerError()
-    elif num == svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA:
+    elif num == ERR_RA_SVN_MALFORMED_DATA:
         return TransportError("Malformed data", msg)
-    elif num == svn.core.SVN_ERR_RA_NOT_IMPLEMENTED:
+    elif num == ERR_RA_NOT_IMPLEMENTED:
         return NotImplementedError("Function not implemented in remote server")
-    elif num == SVN_ERR_UNKNOWN_HOSTNAME:
+    elif num == ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
     elif num > 0 and num < 1000:
         return OSError(num, msg)

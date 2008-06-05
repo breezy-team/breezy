@@ -29,7 +29,7 @@ from svn.core import SubversionException
 
 from bzrlib.plugins.svn.commit import push
 from bzrlib.plugins.svn.config import BranchConfig
-from bzrlib.plugins.svn.errors import NotSvnBranchPath
+from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.repository import SvnRepository
 from bzrlib.plugins.svn.transport import bzr_to_svn_url, create_svn_client
@@ -81,7 +81,7 @@ class SvnBranch(Branch):
                 revnum) != svn.core.svn_node_dir:
                 raise NotBranchError(self.base)
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+            if num == ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
         if not self.mapping.is_branch(branch_path):
