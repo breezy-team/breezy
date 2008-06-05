@@ -2522,14 +2522,19 @@ class Test_InvEntryToDetails(TestCaseWithDirState):
     def assertDetails(self, expected, inv_entry):
         details = dirstate.DirState._inv_entry_to_details(inv_entry)
         self.assertEqual(expected, details)
+        # details should always allow join() and always be a plain str when
+        # finished
+        (minikind, fingerprint, size, executable, tree_data) = details
+        self.assertIsInstance(minikind, str)
+        self.assertIsInstance(fingerprint, str)
+        self.assertIsInstance(tree_data, str)
 
     def test_unicode_symlink(self):
-        uni_link_target = u'Non-\xe5scii'
-        utf8_link_target = 'Non-\xc3\xa5scii'
-        self.assertEqual(utf8_link_target, uni_link_target.encode('UTF-8'))
+        # In general, the code base doesn't support a target that contains
+        # non-ascii characters. So we just assert tha 
         inv_entry = inventory.InventoryLink('link-file-id', 'name',
                                             'link-parent-id')
         inv_entry.revision = 'link-revision-id'
-        inv_entry.symlink_target = uni_link_target
-        self.assertDetails(('l', utf8_link_target, 0, False,
-                           'link-revision-id'), inv_entry)
+        inv_entry.symlink_target = u'link-target'
+        details = self.assertDetails(('l', 'link-target', 0, False,
+                                      'link-revision-id'), inv_entry)

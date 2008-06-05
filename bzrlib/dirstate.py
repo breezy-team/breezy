@@ -1842,13 +1842,8 @@ class DirState(object):
             size = 0
             executable = False
         elif kind == 'symlink':
-            fingerprint = inv_entry.symlink_target
-            if fingerprint is None:
-                fingerprint = ''
-            else:
-                assert isinstance(fingerprint, unicode)
-                # Do we need a 'isinstance(fingerprint, unicode)' check here?
-                fingerprint = fingerprint.encode('UTF-8')
+            # We don't support non-ascii targets for symlinks yet.
+            fingerprint = str(inv_entry.symlink_target or '')
             size = 0
             executable = False
         elif kind == 'file':
