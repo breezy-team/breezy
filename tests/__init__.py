@@ -19,6 +19,9 @@
 import os
 import sys
 import bzrlib
+
+from cStringIO import StringIO
+
 from bzrlib import osutils, urlutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
@@ -336,7 +339,9 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 self.props[path][propname] = propval
 
             def change_file_prop(self, path, propname, propval):
-                self.open_file(path)
+                parts = self._parts(path)
+                x = self.open_dir("/".join(parts[:-1]))
+                x[parts[-1]] = ()
                 if not path in self.props:
                     self.props[path] = {}
                 self.props[path][propname] = propval
@@ -345,7 +350,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 for name, contents in dir_dict.items():
                     subpath = urlutils.join(path, name).strip("/")
                     if contents is None:
-                        svn.delta.editor_invoke_delete_entry(self.editor, dir_baton, subpath)
+                        svn.delta.editor_invoke_delete_entry(self.editor, subpath, -1, dir_baton)
                     elif isinstance(contents, dict):
                         if subpath in self.create:
                             child_baton = svn.delta.editor_invoke_add_directory(self.editor, subpath, dir_baton, self.copyfrom[subpath][0], self.copyfrom[subpath][1])
@@ -353,17 +358,19 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                             child_baton = svn.delta.editor_invoke_open_directory(self.editor, subpath, dir_baton, -1)
                         if subpath in self.props:
                             for k, v in self.props[subpath].items():
-                                svn.delta_editor_invoke_change_dir_prop(self.editor, child_baton, k, v)
+                                svn.delta.editor_invoke_change_dir_prop(self.editor, child_baton, k, v)
 
                         self._process_dir(child_baton, dir_dict[name], subpath)
 
                         svn.delta.editor_invoke_close_directory(self.editor, child_baton)
-                    elif isinstance(contents, str):
+                    else:
                         if subpath in self.create:
                             child_baton = svn.delta.editor_invoke_add_file(self.editor, subpath, dir_baton, None, -1)
                         else:
                             child_baton = svn.delta.editor_invoke_open_file(self.editor, subpath, dir_baton, -1)
-                         # FIXME
+                        if isinstance(contents, str):
+                            (txdelta, txbaton) = svn.delta.editor_invoke_apply_textdelta(self.editor, child_baton, None)
+                            svn.delta.svn_txdelta_send_stream(StringIO(contents), txdelta, txbaton)
                         if subpath in self.props:
                             for k, v in self.props[subpath].items():
                                 svn.delta.editor_invoke_change_file_prop(self.editor, child_baton, k, v)
