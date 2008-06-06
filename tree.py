@@ -189,7 +189,7 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name.startswith(properties.PROP_WC_PREFIX):
             pass
         elif name.startswith(properties.PROP_PREFIX):
-            mutter('unsupported dir property %r' % name)
+            mutter('unsupported dir property %r', name)
 
     def change_file_prop(self, id, name, value, pool):
         if name == properties.PROP_EXECUTABLE:
@@ -197,7 +197,7 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name == properties.PROP_SPECIAL:
             self.is_symlink = (value != None)
         elif name == properties.PROP_EXTERNALS:
-            mutter('%r property on file!' % name)
+            mutter('%r property on file!', name)
         elif name == properties.PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name in (properties.PROP_ENTRY_COMMITTED_DATE,
@@ -209,7 +209,7 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name.startswith(properties.PROP_WC_PREFIX):
             pass
         elif name.startswith(properties.PROP_PREFIX):
-            mutter('unsupported file property %r' % name)
+            mutter('unsupported file property %r', name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
         path = path.decode("utf-8")

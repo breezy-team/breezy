@@ -42,12 +42,12 @@ class ParentsCache(CacheTable):
         """)
 
     def insert_parents(self, revid, parents):
-        self.mutter('insert parents: %r -> %r' % (revid, parents))
+        self.mutter('insert parents: %r -> %r', revid, parents)
         for parent in parents:
             self.cachedb.execute("insert into parent (revision, parent) VALUES (?, ?)", (revid, parent))
 
     def lookup_parents(self, revid):
-        self.mutter('lookup parents: %r' % (revid,))
+        self.mutter('lookup parents: %r', revid)
         ret = []
         for row in self.cachedb.execute("select parent from parent where revision = ?", (revid,)).fetchall():
             ret.append(row[0])

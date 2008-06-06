@@ -131,7 +131,7 @@ def parse_merge_property(line):
     :return: List of revisions merged
     """
     if ' ' in line:
-        mutter('invalid revision id %r in merged property, skipping' % line)
+        mutter('invalid revision id %r in merged property, skipping', line)
         return ()
 
     return tuple(filter(lambda x: x != "", line.split("\t")))

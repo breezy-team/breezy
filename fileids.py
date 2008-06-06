@@ -49,7 +49,7 @@ def get_local_changes(paths, branch, mapping, generate_revid,
                 # Make it look like the files were added in this revision
                 if get_children is not None:
                     for c in get_children(data[1], data[2]):
-                        mutter('oops: %r child %r' % (data[1], c))
+                        mutter('oops: %r child %r', data[1], c)
                         new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
                 data = (data[0], None, -1)
 
@@ -72,13 +72,13 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
             map[inv_p] = new_file_id(inv_p)
 
             if data[1] is not None:
-                mutter('%r copied from %r:%s' % (inv_p, data[1], data[2]))
+                mutter('%r copied from %r:%s', inv_p, data[1], data[2])
                 if find_children is not None:
                     for c in find_children(data[1], data[2]):
                         inv_c = c.decode("utf-8")
                         path = c.replace(data[1].decode("utf-8"), inv_p+"/", 1).replace(u"//", u"/")
                         map[path] = new_file_id(path)
-                        mutter('added mapping %r -> %r' % (path, map[path]))
+                        mutter('added mapping %r -> %r', path, map[path])
 
     return map
 
@@ -195,7 +195,7 @@ class CachingFileIdMap(object):
         self.repos = actual.repos
 
     def save(self, revid, parent_revids, _map):
-        mutter('saving file id map for %r' % revid)
+        mutter('saving file id map for %r', revid)
 
         for path, (id, created_revid)  in _map.items():
             assert isinstance(path, unicode)

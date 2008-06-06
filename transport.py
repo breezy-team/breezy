@@ -198,7 +198,7 @@ class Connection(object):
         self._client = create_svn_client(url)
         self._unbusy_handler = None
         try:
-            self.mutter('opening SVN RA connection to %r' % url)
+            self.mutter('opening SVN RA connection to %r', url)
             self._ra = svn.client.open_ra_session(url.encode('utf8'), 
                     self._client)
         except SubversionException, (_, num):
@@ -265,9 +265,9 @@ class Connection(object):
             self._unbusy_handler()
             self._unbusy_handler = None
 
-    def mutter(self, text):
+    def mutter(self, text, *args):
         if 'transport' in debug.debug_flags:
-            mutter(text)
+            mutter(text, *args)
 
     @convert_svn_error
     @needs_busy
@@ -297,7 +297,7 @@ class Connection(object):
 
     @convert_svn_error
     def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
-        self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
+        self.mutter('svn switch -r %d -> %r', switch_rev, switch_url)
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor, pool)
         return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", 
@@ -305,7 +305,7 @@ class Connection(object):
 
     @convert_svn_error
     def change_rev_prop(self, revnum, name, value, pool=None):
-        self.mutter('svn revprop -r%d --set %s=%s' % (revnum, name, value))
+        self.mutter('svn revprop -r%d --set %s=%s', revnum, name, value)
         svn.ra.change_rev_prop(self._ra, revnum, name, value)
 
     @convert_svn_error
@@ -323,7 +323,7 @@ class Connection(object):
     @convert_svn_error
     @needs_busy
     def get_dir(self, path, revnum, pool=None, kind=False):
-        self.mutter("svn ls -r %d '%r'" % (revnum, path))
+        self.mutter("svn ls -r %d '%r'", revnum, path)
         assert len(path) == 0 or path[0] != "/"
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
@@ -339,7 +339,7 @@ class Connection(object):
     @needs_busy
     def check_path(self, path, revnum):
         assert len(path) == 0 or path[0] != "/"
-        self.mutter("svn check_path -r%d %s" % (revnum, path))
+        self.mutter("svn check_path -r%d %s", revnum, path)
         return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum)
 
     @convert_svn_error
@@ -358,7 +358,7 @@ class Connection(object):
 
     @convert_svn_error
     def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
-        self.mutter('svn replay -r%r:%r' % (low_water_mark, revision))
+        self.mutter('svn replay -r%r:%r', low_water_mark, revision)
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor, pool)
         svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
@@ -366,7 +366,7 @@ class Connection(object):
 
     @convert_svn_error
     def do_update(self, revnum, recurse, editor, pool=None):
-        self.mutter('svn update -r %r' % revnum)
+        self.mutter('svn update -r %r', revnum)
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor, pool)
         return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
@@ -378,7 +378,7 @@ class Connection(object):
 
     @convert_svn_error
     def revprop_list(self, revnum, pool=None):
-        self.mutter('svn revprop-list -r %r' % revnum)
+        self.mutter('svn revprop-list -r %r', revnum)
         return svn.ra.rev_proplist(self._ra, revnum, pool)
 
     @convert_svn_error
@@ -428,7 +428,7 @@ class Connection(object):
             (svn.core.SVN_VER_MINOR < 6 or (
              svn.core.SVN_VER_REVISION < 31470 and svn.core.SVN_VER_REVISION != 0))):
             paths = ["/"]
-        self.mutter('svn log %r:%r %r (limit: %r)' % (from_revnum, to_revnum, paths, limit))
+        self.mutter('svn log %r:%r %r (limit: %r)', from_revnum, to_revnum, paths, limit)
         if hasattr(svn.ra, 'get_log2'):
             return svn.ra.get_log2(self._ra, paths, 
                            from_revnum, to_revnum, limit, 
@@ -463,7 +463,7 @@ class Connection(object):
         if self.url == url:
             return
         if hasattr(svn.ra, 'reparent'):
-            self.mutter('svn reparent %r' % url)
+            self.mutter('svn reparent %r', url)
             svn.ra.reparent(self._ra, url)
             self.url = url
         else:
@@ -674,9 +674,9 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
-    def mutter(self, text):
+    def mutter(self, text, *args):
         if 'transport' in debug.debug_flags:
-            mutter(text)
+            mutter(text, *args)
 
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:
@@ -685,7 +685,7 @@ class SvnRaTransport(Transport):
         if newsvnurl == self._backing_url:
             return ""
         newrelpath = urlutils.relative_url(self._backing_url+"/", newsvnurl+"/").strip("/")
-        self.mutter('request path %r -> %r' % (relpath, newrelpath))
+        self.mutter('request path %r -> %r', relpath, newrelpath)
         return newrelpath
 
     def list_dir(self, relpath):

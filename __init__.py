@@ -59,8 +59,8 @@ def check_bzrlib_version(desired):
         raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
     else:
         warning('bzr-svn is not up to date with installed bzr version %s.'
-                ' \nThere should be a newer version of bzr-svn available.' 
-                % (bzrlib.__version__))
+                ' \nThere should be a newer version of bzr-svn available.',
+                bzrlib.__version__)
         if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
             raise BzrError('Version mismatch')
 
@@ -84,7 +84,7 @@ def check_subversion_version():
             27729 <= svn.core.SVN_VER_REVISION < 31470):
         warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
 
-    mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % (svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__))
+    mutter("bzr-svn: using Subversion %d.%d.%d (%s)", svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__)
 
 
 def check_rebase_version(min_version):

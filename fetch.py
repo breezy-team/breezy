@@ -218,7 +218,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             if copyfrom_path is None:
                 # This should ideally never happen!
                 copyfrom_path = self.old_inventory.id2path(file_id)
-                mutter('no copyfrom path set, assuming %r' % copyfrom_path)
+                mutter('no copyfrom path set, assuming %r', copyfrom_path)
             assert copyfrom_path == self.old_inventory.id2path(file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
@@ -273,7 +273,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         elif (name.startswith(properties.PROP_WC_PREFIX)):
             pass
         elif name.startswith(properties.PROP_PREFIX):
-            mutter('unsupported dir property %r' % name)
+            mutter('unsupported dir property %r', name)
 
     def change_file_prop(self, id, name, value, pool):
         if name == properties.PROP_EXECUTABLE: 
@@ -298,7 +298,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif (name.startswith(properties.PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
-            mutter('unsupported file property %r' % name)
+            mutter('unsupported file property %r', name)
 
     def add_file(self, path, (old_parent_id, new_parent_id), copyfrom_path, copyfrom_revnum, baton):
         assert isinstance(path, str)
@@ -316,7 +316,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             if copyfrom_path is None:
                 # This should ideally never happen
                 copyfrom_path = self.old_inventory.id2path(self.file_id)
-                mutter('no copyfrom path set, assuming %r' % copyfrom_path)
+                mutter('no copyfrom path set, assuming %r', copyfrom_path)
             assert copyfrom_path == self.old_inventory.id2path(self.file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)

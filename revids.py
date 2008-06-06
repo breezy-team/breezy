@@ -218,7 +218,7 @@ class RevisionIdMapCache(CacheTable):
         :param layout: Repository layout.
         :return: Last revision number checked or 0.
         """
-        self.mutter("last revnum checked %r" % layout)
+        self.mutter("last revnum checked %r", layout)
         ret = self.cachedb.execute(
             "select max_revnum from revids_seen where scheme = ?", (layout,)).fetchone()
         if ret is None:
@@ -233,7 +233,7 @@ class RevisionIdMapCache(CacheTable):
             branching scheme.
         """
         assert isinstance(revid, str)
-        self.mutter("lookup revid %r" % revid)
+        self.mutter("lookup revid %r", revid)
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:
@@ -247,7 +247,7 @@ class RevisionIdMapCache(CacheTable):
         :param path: Subversion branch path.
         :param scheme: Branching scheme name
         """
-        self.mutter("lookup branch,revnum %r:%r" % (path, revnum))
+        self.mutter("lookup branch,revnum %r:%r", path, revnum)
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert isinstance(scheme, str)
@@ -273,7 +273,7 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(scheme, str)
         assert isinstance(branch, str)
         assert isinstance(min_revnum, int) and isinstance(max_revnum, int)
-        self.mutter("insert revid %r:%r-%r -> %r" % (branch, min_revnum, max_revnum, revid))
+        self.mutter("insert revid %r:%r-%r -> %r", branch, min_revnum, max_revnum, revid)
         cursor = self.cachedb.execute(
             "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))
