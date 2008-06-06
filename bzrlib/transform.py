@@ -1728,6 +1728,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, mutate_tree):
         divert_trans = set(file_trans_id[f] for f in divert)
         resolver = lambda t, c: resolve_checkout(t, c, divert_trans)
         raw_conflicts = resolve_conflicts(tt, pass_func=resolver)
+        if len(raw_conflicts) > 0:
+            precomputed_delta = None
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
             warning(conflict)

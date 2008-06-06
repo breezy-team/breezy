@@ -1704,6 +1704,19 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], list(target.iter_changes(revision_tree)))
         self.assertTrue(source.is_executable('file1-id'))
 
+    def test_case_insensitive_build_tree_inventory(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file', 'source/FILE'])
+        source.add(['file', 'FILE'], ['lower-id', 'upper-id'])
+        source.commit('added files')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive
+        target = self.make_branch_and_tree('target')
+        target.case_sensitive = False
+        build_tree(source.basis_tree(), target, source, mutate_tree=True)
+        self.assertEqual('file.moved', target.id2path('lower-id'))
+        self.assertEqual('FILE', target.id2path('upper-id'))
+
 
 class MockTransform(object):
 
