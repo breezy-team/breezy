@@ -1300,7 +1300,8 @@ class TreeTransform(TreeTransformBase):
                             completed_new.append(trans_id)
                     file_id = new_path_file_ids[trans_id]
                     if file_id is not None and (trans_id in self._new_id or
-                        trans_id in self._new_name or trans_id in self._new_parent
+                        trans_id in self._new_name or
+                        trans_id in self._new_parent
                         or trans_id in self._new_executability):
                         try:
                             kind = self.final_kind(trans_id)
@@ -1309,7 +1310,8 @@ class TreeTransform(TreeTransformBase):
                         parent_trans_id = self.final_parent(trans_id)
                         parent_file_id = new_path_file_ids.get(parent_trans_id)
                         if parent_file_id is None:
-                            parent_file_id = self.final_file_id(parent_trans_id)
+                            parent_file_id = self.final_file_id(
+                                parent_trans_id)
                         if trans_id in self._new_reference_revision:
                             new_entry = inventory.TreeReference(
                                 file_id,
