@@ -1361,7 +1361,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                     wt._set_root_id(basis_root_id)
                     wt.flush()
                 transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink)
+                                     hardlink=hardlink, mutate_tree=True)
             finally:
                 basis.unlock()
         finally:
