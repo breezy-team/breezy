@@ -1434,7 +1434,10 @@ class _PlanLCAMerge(_PlanMergeBase):
         _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
         self.lcas = graph.find_lca(a_rev, b_rev)
         for lca in self.lcas:
-            lca_lines = self.vf.get_lines(lca)
+            if _mod_revision.is_null(lca):
+                lca_lines = []
+            else:
+                lca_lines = self.vf.get_lines(lca)
             matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_a,
                                                            lca_lines)
             blocks = list(matcher.get_matching_blocks())

@@ -2590,6 +2590,7 @@ class StubMediumRequest(object):
 
     def __init__(self):
         self.calls = []
+        self._medium = 'dummy medium'
 
     def accept_bytes(self, bytes):
         self.calls.append('accept_bytes')
@@ -2924,7 +2925,40 @@ class Test_SmartClientVersionDetection(tests.TestCase):
             errors.SmartProtocolError,
             smart_client.call, 'method-name', 'arg 1', 'arg 2')
         self.assertEqual([], medium._expected_events)
+
+    def test_first_response_is_error(self):
+        """If the server replies with an error, then the version detection
+        should be complete.
         
+        This test is very similar to test_version_two_server, but catches a bug
+        we had in the case where the first reply was an error response.
+        """
+        medium = MockMedium()
+        smart_client = client._SmartClient(medium, headers={})
+        message_start = protocol.MESSAGE_VERSION_THREE + '\x00\x00\x00\x02de'
+        # Issue a request that gets an error reply in a non-default protocol
+        # version.
+        medium.expect_request(
+            message_start +
+            's\x00\x00\x00\x10l11:method-nameee',
+            'bzr response 2\nfailed\n\n')
+        medium.expect_disconnect()
+        medium.expect_request(
+            'bzr request 2\nmethod-name\n',
+            'bzr response 2\nfailed\nFooBarError\n')
+        err = self.assertRaises(
+            errors.ErrorFromSmartServer,
+            smart_client.call, 'method-name')
+        self.assertEqual(('FooBarError',), err.error_tuple)
+        # Now the medium should have remembered the protocol version, so
+        # subsequent requests will use the remembered version immediately.
+        medium.expect_request(
+            'bzr request 2\nmethod-name\n',
+            'bzr response 2\nsuccess\nresponse value\n')
+        result = smart_client.call('method-name')
+        self.assertEqual(('response value',), result)
+        self.assertEqual([], medium._expected_events)
+
 
 class Test_SmartClient(tests.TestCase):
 
