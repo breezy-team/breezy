@@ -36,6 +36,10 @@ IN DEVELOPMENT
     * ``bzr status`` was breaking if you merged the same revision twice.
       (John Arbash Meinel, #235407)
 
+  DOCUMENTATION:
+
+    * Added *Bazaar Zen* section to the User Guide. (Ian Clatworthy)
+
   TESTING:
 
     * Fix the test HTTPServer to be isolated from chdir calls made while it is
