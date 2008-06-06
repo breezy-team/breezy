@@ -3062,7 +3062,7 @@ class _OsFifoFeature(Feature):
 OsFifoFeature = _OsFifoFeature()
 
 
-class _UnicodeFilename(Feature):
+class _UnicodeFilenameFeature(Feature):
     """Does the filesystem support Unicode filenames?"""
 
     def _probe(self):
@@ -3079,7 +3079,7 @@ class _UnicodeFilename(Feature):
             # for some reason.
             return True
 
-UnicodeFilename = _UnicodeFilename()
+UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
 class TestScenarioApplier(object):

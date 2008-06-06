@@ -1052,10 +1052,10 @@ class TestTestResult(TestCase):
 class TestUnicodeFilenameFeature(TestCase):
 
     def test_probe_passes(self):
-        """UnicodeFilename._probe passes."""
+        """UnicodeFilenameFeature._probe passes."""
         # We can't test much more than that because the behaviour depends
         # on the platform.
-        tests.UnicodeFilename._probe()
+        tests.UnicodeFilenameFeature._probe()
 
 
 class TestRunner(TestCase):

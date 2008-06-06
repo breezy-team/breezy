@@ -519,7 +519,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         is a binary file in the diff.
         """
         # See https://bugs.launchpad.net/bugs/110092.
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         # This bug isn't triggered with cStringIO.
         from StringIO import StringIO
@@ -544,7 +544,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
 
     def test_unicode_filename(self):
         """Test when the filename are unicode."""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         alpha, omega = u'\u03b1', u'\u03c9'
         autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')

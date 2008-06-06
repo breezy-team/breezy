@@ -258,7 +258,7 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
             os.mkdir(self.info['directory'])
             os.chdir(self.info['directory'])
