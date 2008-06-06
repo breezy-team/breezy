@@ -1713,7 +1713,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         # Force the tree to report that it is case insensitive
         target = self.make_branch_and_tree('target')
         target.case_sensitive = False
-        build_tree(source.basis_tree(), target, source, mutate_tree=True)
+        build_tree(source.basis_tree(), target, source, delta_from_tree=True)
         self.assertEqual('file.moved', target.id2path('lower-id'))
         self.assertEqual('FILE', target.id2path('upper-id'))
 

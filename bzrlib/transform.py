@@ -1592,7 +1592,7 @@ def topology_sorted_ids(tree):
 
 
 def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
-               mutate_tree=False):
+               delta_from_tree=False):
     """Create working tree for a branch, using a TreeTransform.
     
     This function should be used on empty trees, having a tree root at most.
@@ -1614,8 +1614,8 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
     :param hardlink: If true, hard-link files to accelerator_tree, where
         possible.  accelerator_tree must implement abspath, i.e. be a
         working tree.
-    :param mutate_tree: If true, build_tree may mutate the input Tree to
-        improve performance.
+    :param delta_from_tree: If true, build_tree may use the input Tree to
+        generate the inventory delta.
     """
     wt.lock_tree_write()
     try:
@@ -1625,7 +1625,7 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
                 accelerator_tree.lock_read()
             try:
                 return _build_tree(tree, wt, accelerator_tree, hardlink,
-                                   mutate_tree)
+                                   delta_from_tree)
             finally:
                 if accelerator_tree is not None:
                     accelerator_tree.unlock()
@@ -1635,7 +1635,7 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
         wt.unlock()
 
 
-def _build_tree(tree, wt, accelerator_tree, hardlink, mutate_tree):
+def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     """See build_tree."""
     for num, _unused in enumerate(wt.all_file_ids()):
         if num > 0:  # more than just a root
@@ -1667,7 +1667,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, mutate_tree):
         try:
             deferred_contents = []
             num = 0
-            if mutate_tree:
+            if delta_from_tree:
                 precomputed_delta = []
             else:
                 precomputed_delta = None
@@ -1679,7 +1679,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, mutate_tree):
                     continue
                 reparent = False
                 file_id = entry.file_id
-                if mutate_tree:
+                if delta_from_tree:
                     precomputed_delta.append((None, tree_path, file_id, entry))
                 if tree_path in existing_files:
                     target_path = wt.abspath(tree_path)
