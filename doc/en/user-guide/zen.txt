@@ -21,17 +21,17 @@ integer. (First commit gets 1, 10th commit gets 10, etc.) This makes them
 fairly natural to use when you want to say "grab the 10th revision from my
 branch", or "fixed in revision 3050".
 
-For revisions which have been merged into a branch, a dotted notation is
-used (eg, 3112.1.5). Dotted revision numbers have three numbers. The first
+For revisions which have been merged into a branch, a dotted notation is used
+(e.g., 3112.1.5). Dotted revision numbers have three numbers [#]_. The first
 number indicates what mainline revision change is derived from. The second
 number is the branch counter. There can be many branches derived from the
 same revision, so they all get a unique number. The third number is the
 number of revisions since the branch started. For example, 3112.1.5 is the
 first branch from revision 3112, the fifth revision on that branch.
 
-Note: Versions prior to bzr 1.2 used a slightly different algorithm.
-Some nested branches would get extra numbers (such as 1.1.1.1.1)
-rather than the simpler 3-number system.
+.. [#] Versions prior to bzr 1.2 used a slightly different algorithm.
+   Some nested branches would get extra numbers (such as 1.1.1.1.1)
+   rather than the simpler 3-number system.
 
 Hierarchical history is good
 ----------------------------
@@ -205,9 +205,7 @@ that.
 Summary
 -------
 
-Bazaar may *seem* similar to other distributed VCS tools (like Darcs, Git
-and Mercurial) but it presents history differently and that encourages certain
-ways of working. In general, if you follow the advice given earlier - organise
+In general, if you follow the advice given earlier - organise
 your work in branches and use merge to collaborate - you'll find Bazaar
 generally does what you expect.
 
