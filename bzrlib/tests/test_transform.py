@@ -64,7 +64,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def get_transform(self):
         transform = TreeTransform(self.wt)
-        #self.addCleanup(transform.finalize)
+        self.addCleanup(transform.finalize)
         return transform, transform.root
 
     def test_existing_limbo(self):
