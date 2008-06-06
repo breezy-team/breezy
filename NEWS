@@ -6,6 +6,8 @@ bzr-svn 0.4.11	UNRELEASED
 
   BUG FIXES
 
+   * More efficient use of mutter.
+
    * Remember parent branch correctly during sprout. (#237174)
 
    * Raise appropriate errors when using annotate.
