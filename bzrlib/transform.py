@@ -1640,6 +1640,9 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, mutate_tree):
     for num, _unused in enumerate(wt.all_file_ids()):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
+    existing_files = set()
+    for dir, files in wt.walkdirs():
+        existing_files.update(f[0] for f in files)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
@@ -1678,12 +1681,9 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, mutate_tree):
                 file_id = entry.file_id
                 if mutate_tree:
                     precomputed_delta.append((None, tree_path, file_id, entry))
-                target_path = wt.abspath(tree_path)
-                try:
+                if tree_path in existing_files:
+                    target_path = wt.abspath(tree_path)
                     kind = file_kind(target_path)
-                except NoSuchFile:
-                    pass
-                else:
                     if kind == "directory":
                         try:
                             bzrdir.BzrDir.open(target_path)
