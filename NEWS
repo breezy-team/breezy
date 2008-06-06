@@ -31,6 +31,9 @@ IN DEVELOPMENT
       ``modified`` (for null-separated unknowns, use ``ls --unknown --null``)
       (Adrian Wilkins)
 
+    * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
+      (Ian Clatworthy, Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr status`` was breaking if you merged the same revision twice.
