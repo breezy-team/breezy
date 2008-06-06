@@ -995,9 +995,13 @@ class cmd_branch(Command):
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
-                msg = "The branch %s has no revision %s." % (from_location, revision[0])
+                msg = "The branch %s has no revision %s." % (from_location,
+                    revision[0])
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
+            # If the source branch is shallow, the new branch may
+            # be shallow whether we asked for that explicitly or not.
+            # We therefore need a try/except here and not just 'if shallow:'
             try:
                 note('Created new shallow branch referring to %s.' %
                     branch.get_stacked_on())
