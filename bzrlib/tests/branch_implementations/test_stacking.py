@@ -58,3 +58,24 @@ class TestStacking(TestCaseWithBranch):
         new_tree = new_dir.open_workingtree()
         new_tree.commit('something local')
 
+    def test_clone_from_stacked_branch(self):
+        # We can clone from the bzrdir of a stacked branch. The cloned
+        # branch is stacked on the same branch as the original.
+        tree = self.make_branch_and_tree('stacked-on')
+        tree.commit('Added foo')
+        try:
+            stacked_bzrdir = tree.branch.bzrdir.sprout(
+                'stacked', tree.branch.last_revision(), shallow=True)
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            # not a testable combination.
+            return
+        cloned_bzrdir = stacked_bzrdir.clone('cloned')
+        try:
+            self.assertEqual(
+                stacked_bzrdir.open_branch().get_stacked_on(),
+                cloned_bzrdir.open_branch().get_stacked_on())
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            pass
+

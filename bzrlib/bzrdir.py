@@ -204,6 +204,11 @@ class BzrDir(object):
                 result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_branch = local_branch.clone(result, revision_id=revision_id)
+            try:
+                result_branch.set_stacked_on(local_branch.get_stacked_on())
+            except (errors.UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat, errors.NotStacked):
+                pass
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
                 result_branch.repository.fetch(local_repo,
