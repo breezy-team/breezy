@@ -170,7 +170,7 @@ class BzrDir(object):
                                        force_new_repo=force_new_repo)
 
     def clone_on_transport(self, transport, revision_id=None,
-                           force_new_repo=False):
+                           force_new_repo=False, preserve_stacking=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
         If the target directory does not exist, it will be created.
@@ -179,6 +179,8 @@ class BzrDir(object):
             itself to download less data.
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
+        :param preserve_stacking: When cloning a stacked branch, stack the
+            new branch on top of the other branch's stacked-on branch.
         """
         transport.ensure_base()
         result = self.cloning_metadir().initialize_on_transport(transport)
@@ -204,13 +206,16 @@ class BzrDir(object):
                 result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_branch = local_branch.clone(result, revision_id=revision_id)
-            try:
-                result_branch.set_stacked_on(local_branch.get_stacked_on())
-            except (errors.UnstackableBranchFormat,
-                    errors.UnstackableRepositoryFormat, errors.NotStacked):
-                pass
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
+                if preserve_stacking:
+                    try:
+                        result_branch.set_stacked_on(
+                            local_branch.get_stacked_on())
+                    except (errors.UnstackableBranchFormat,
+                            errors.UnstackableRepositoryFormat,
+                            errors.NotStacked):
+                        pass
                 result_branch.repository.fetch(local_repo,
                                                revision_id=revision_id)
         try:
