@@ -722,14 +722,13 @@ class cmd_push(Command):
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
         Option('reference',
-            help='Create a shallow branch that only refers to another branch '
-                'for the commit history. Only the work not present in that '
-                'other branch is included in this shallow branch.',
+            help='Create a shallow branch that refers to another branch '
+                'for the commit history. Only the work not present in the '
+                'referenced branch is included in the branch created.',
             type=unicode),
         Option('shallow',
-            help="Create a shallow branch with an automatic reference url. "
-                "The chosen url is the parent branches' public location. See "
-                "--reference for more information."),
+            help='Create a shallow branch that references the public location '
+                'of the parent branch. See --reference for more information.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -755,7 +754,7 @@ class cmd_push(Command):
         # Get the reference branch, if any
         if reference is not None:
             reference = urlutils.normalize_url(reference)
-        if shallow:
+        elif shallow:
             reference = None
             parent_url = br_from.get_parent()
             if parent_url:

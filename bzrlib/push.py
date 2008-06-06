@@ -140,14 +140,20 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     elif br_to is None:
         # We have a repository but no branch, copy the revisions, and then
         # create a branch.
+        if reference is not None:
+            warning("Ignoring request for a shallow branch as repository "
+                    "already exists at the destination location.")
         repository_to.fetch(br_from.repository, revision_id=revision_id)
         br_to = br_from.clone(dir_to, revision_id=revision_id)
         note('Created new branch.')
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(br_to.base)
     else: # We have a valid to branch
-        # We were able to connect to the remote location, so remember it
-        # we don't need to successfully push because of possible divergence.
+        if reference is not None:
+            warning("Ignoring request for a shallow branch as branch "
+                    "already exists at the destination location.")
+        # We were able to connect to the remote location, so remember it.
+        # (We don't need to successfully push because of possible divergence.)
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(br_to.base)
         if verbose:
