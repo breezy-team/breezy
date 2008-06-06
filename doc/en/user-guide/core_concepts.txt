@@ -35,9 +35,21 @@ by a *revision-id*. An example revision-id is::
 
  pqm@pqm.ubuntu.com-20071129184101-u9506rihe4zbzyyz
 
-While these identifiers are necessary for internal use and external tool
-integration, branch-specific *revision numbers* are the preferred
-interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
+Revision-ids are generated at commit time or, for imports from other
+systems, at the time of import. While revision-ids are necessary
+for internal use and external tool integration, branch-specific
+*revision numbers* are the preferred interface for humans.
+
+Revision numbers are dotted decimal identifiers like 1, 42 and 2977.1.59
+that trace a path through the revision number graph for a branch.
+Revision numbers are generally shorter than revision-ids and,
+within a single branch, can be compared with each other to get a sense
+of their relationship. For example, revision 10 is the mainline (see below)
+revision immediately after revision 9. Revision numbers
+are generated on the fly when commands are executing, because they
+depend on which revision is the tip (i.e. most recent revision)
+in the branch.
+
 See `Specifying revisions`_ in the appendices for a closer look at
 the numerous ways that revisions and ranges of revisions can be specified
 in Bazaar, and `Understanding Revision Numbers`_ for a more detailed
@@ -60,7 +72,7 @@ Branch
 ------
 
 In the simplest case, a branch is an *ordered series of revisions*.
-The last revision is known as the *head*.
+The last revision is known as the *tip*.
 
 Branches may split apart and be *merged* back together, forming a
 *graph* of revisions. Technically, the graph shows directed relationships
