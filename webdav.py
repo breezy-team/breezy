@@ -185,6 +185,7 @@ class PUTRequest(_urllib2_wrappers.Request):
         _urllib2_wrappers.Request.__init__(self, 'PUT', url, data, headers,
                                            accepted_errors=accepted_errors)
 
+
 class DavResponse(_urllib2_wrappers.Response):
     """Custom HTTPResponse.
 
@@ -204,6 +205,7 @@ class DavResponse(_urllib2_wrappers.Response):
         _urllib2_wrappers.Response.begin(self)
         if self.status in (201, 204):
             self.will_close = False
+
 
 # Takes DavResponse into account:
 class DavHTTPConnection(_urllib2_wrappers.HTTPConnection):
@@ -557,7 +559,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
     def listable(self):
         """See Transport.listable."""
-        return True
+        return False
 
     def list_dir(self, relpath):
         """
