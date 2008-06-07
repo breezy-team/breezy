@@ -453,8 +453,8 @@ class TreeTransformBase(object):
     def new_paths(self, filesystem_only=False):
         """Determine the paths of all new and changed files.
 
-        :param filesystem_only: if True, only calulate values for files
-            that require renames or execute bit setting.
+        :param filesystem_only: if True, only calculate values for files
+            that require renames or execute bit changes.
         """
         new_ids = set()
         if filesystem_only:
@@ -1183,6 +1183,8 @@ class TreeTransform(TreeTransformBase):
 
         :param no_conflicts: if True, the caller guarantees there are no
             conflicts, so no check is made.
+        :param precomputed_delta: An inventory delta to use instead of
+            calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
         if not no_conflicts:
@@ -1225,6 +1227,8 @@ class TreeTransform(TreeTransformBase):
         That is, delete files that are to be deleted, and put any files that
         need renaming into limbo.  This must be done in strict child-to-parent
         order.
+
+        If inventory_delta is None, no inventory delta generation is performed.
         """
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
@@ -1246,7 +1250,8 @@ class TreeTransform(TreeTransformBase):
                             raise
                     else:
                         self.rename_count += 1
-                if trans_id in self._removed_id:
+                if (trans_id in self._removed_id
+                    and inventory_delta is not None):
                     if trans_id == self._new_root:
                         file_id = self._tree.get_root_id()
                     else:
@@ -1254,8 +1259,7 @@ class TreeTransform(TreeTransformBase):
                     # File-id isn't really being deleted, just moved
                     if file_id in self._r_new_id:
                         continue
-                    if inventory_delta is not None:
-                        inventory_delta.append((path, None, file_id, None))
+                    inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
 
@@ -1274,8 +1278,10 @@ class TreeTransform(TreeTransformBase):
         completed_new = []
         new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                  new_paths)
-        entries = self._tree.iter_entries_by_dir(new_path_file_ids.values())
-        old_paths = dict((e.file_id, p) for p, e in entries)
+        if inventory_delta is not None:
+            entries = self._tree.iter_entries_by_dir(
+                new_path_file_ids.values())
+            old_paths = dict((e.file_id, p) for p, e in entries)
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
