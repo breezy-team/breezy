@@ -81,6 +81,24 @@ class TestPull(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
 
+    def test_pull_returns_result(self):
+        import pdb; pdb.set_trace()
+        parent = self.make_branch_and_tree('parent')
+        parent.commit('1st post', rev_id='P1')
+        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine.commit('my change', rev_id='M1')
+        result = parent.branch.pull(mine.branch)
+        self.assertIsNot(None, result)
+        self.assertIs(mine.branch, result.source_branch)
+        self.assertIs(parent.branch, result.target_branch)
+        self.assertIs(parent.branch, result.master_branch)
+        self.assertIs(None, result.local_branch)
+        self.assertEqual(1, result.old_revno)
+        self.assertEqual('P1', result.old_revid)
+        self.assertEqual(2, result.new_revno)
+        self.assertEqual('M1', result.new_revid)
+        self.assertEqual(None, result.tag_conflicts)
+
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1')
