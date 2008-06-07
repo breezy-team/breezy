@@ -41,6 +41,7 @@ import xml.sax
 
 
 from bzrlib import (
+    errors,
     tests,
     trace,
     )
@@ -422,19 +423,16 @@ class TestCaseWithDAVServer(tests.TestCaseWithTransport):
 
 class TestDavSaxParser(tests.TestCase):
 
-    def _get_handler(self):
-        return webdav.DavResponseHandler()
+    def _get_parser(self, handler=None):
+        if handler is None:
+            handler = webdav.DavResponseHandler()
+        return webdav.DavResponseParser(handler)
 
-    def _get_parser(self, handler):
-        parser = xml.sax.make_parser()
-        parser.setContentHandler(handler)
-        return parser
-
-    def _parse_string(self, str):
-        handler = self._get_handler()
-        parser = self._get_parser(handler)
-        parser.parse(StringIO(str))
-        return handler
+    def _parse_string(self, str, url):
+        parser = self._get_parser()
+        parser.handler.set_url(url)
+        parser.parse(StringIO(str), url)
+        return parser.handler
 
     def test_apache2_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
@@ -472,7 +470,7 @@ class TestDavSaxParser(tests.TestCase):
         </D:propstat>
     </D:response>
 </D:multistatus>"""
-        handler = self._parse_string(example)
+        handler = self._parse_string(example, 'http://localhost/blah')
         self.assertEqual(['a', 'b', 'c'], handler.get_dir_content())
 
     def test_lighttpd_example(self):
@@ -488,6 +486,42 @@ class TestDavSaxParser(tests.TestCase):
 <D:href>http://localhost/toto</D:href>
 </D:response>
 </D:multistatus>"""
-        handler = self._parse_string(example)
+        handler = self._parse_string(example, 'http://localhost/blah')
         self.assertEqual(['titi', 'toto'], handler.get_dir_content())
 
+    def test_malformed_response(self):
+        # Invalid xml, neither multistatus nor response are properly closed
+        example = """<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
+<D:response>
+<D:href>http://localhost/</D:href>"""
+        self.assertRaises(errors.InvalidHttpResponse,
+                          self._parse_string, example,
+                          'http://localhost/blah')
+
+    def test_unkown_format_response(self):
+        # Valid but unrelated xml
+        example = """<document/>"""
+        self.assertRaises(errors.InvalidHttpResponse,
+                          self._parse_string, example,
+                          'http://localhost/blah')
+
+    def test_incomplete_format_response(self):
+        # The minimal information is present but doesn't conform to RFC 2518
+        # (well, as I understand it since the reference servers disagree on
+        # more than details).
+
+        # The last href below is not enclosed in a response element and is
+        # therefore ignored.
+        example = """<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
+<D:response>
+<D:href>http://localhost/</D:href>
+</D:response>
+<D:response>
+<D:href>http://localhost/titi</D:href>
+</D:response>
+<D:href>http://localhost/toto</D:href>
+</D:multistatus>"""
+        handler = self._parse_string(example, 'http://localhost/blah')
+        self.assertEqual(['titi'], handler.get_dir_content())

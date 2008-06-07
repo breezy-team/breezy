@@ -87,17 +87,18 @@ import urllib2
 import xml.sax
 import xml.sax.handler
 
+
 from bzrlib import (
     errors,
     osutils,
     trace,
     transport,
     )
-
 from bzrlib.transport.http import (
     _urllib,
     _urllib2_wrappers,
     )
+
 
 class DavResponseHandler(xml.sax.handler.ContentHandler):
     """Handle a mutli-status DAV response.
@@ -108,18 +109,22 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
     """
 
     def __init__(self):
+        self.url = None
         self.dir_content = None
         self.elt_stack = None
         self.chars = None
 
+    def set_url(self, url):
+        """Set the url used for error reporting when handling a response."""
+        self.url = url
+
     def startDocument(self):
-        self.dir_content = []
         self.elt_stack = []
 
     def endDocument(self):
-        if self.elt_stack is not None and len(self.elt_stack):
-            # Some xml element wasn't closed properly, the response is invalid
-            self.dir_content = None
+        if self.dir_content is None:
+            raise errors.InvalidHttpResponse(self.url,
+                                             msg='Unknown xml response')
 
     def startElement(self, name, attrs):
         self.elt_stack.append(name)
@@ -127,9 +132,15 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
             self.chars = []
 
     def endElement(self, name):
-        if name == 'D:href':
+        st = self.elt_stack
+        if (len(st) == 3
+            and st[0] == 'D:multistatus'
+            and st[1] == 'D:response'
+            and name == 'D:href'): # sax guarantees that st[2] is also D:href
+            if self.dir_content is None:
+                self.dir_content = []
             self.dir_content.append(''.join(self.chars))
-            self.chars = None
+        self.chars = None
         self.elt_stack.pop()
 
     def characters(self, chrs):
@@ -164,6 +175,34 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
                     name = name[0:-1]
                 elements.append(name)
         return elements
+
+
+class DavResponseParser(object):
+    """A parser for DAV responses.
+
+    The main aim is to encapsulate sax house keeping and translate exceptions.
+    """
+
+    def __init__(self, handler=None):
+        if handler is None:
+            handler = DavResponseHandler()
+        self.handler = handler
+        self.parser = None
+
+    def parse(self, infile, url):
+        p = self._get_parser()
+        try:
+            p.parse(infile)
+        except xml.sax.SAXParseException, e:
+            raise errors.InvalidHttpResponse(
+                url, msg='Malformed xml response: %s' % e)
+
+    def _get_parser(self):
+        if self.parser is None:
+            parser = xml.sax.make_parser()
+            parser.setContentHandler(self.handler)
+            self.parser = parser
+        return self.parser
 
 
 class PUTRequest(_urllib2_wrappers.Request):
