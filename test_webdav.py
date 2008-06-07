@@ -25,6 +25,7 @@ implements the DAV specification parts used by the webdav plugin.
 # TODO: Implement the testing of the range header for PUT requests (GET request
 # are already heavily tested in bzr). Test servers are available there too.
 
+from cStringIO import StringIO
 import errno
 import httplib
 import os
@@ -36,21 +37,25 @@ import shutil
 import sys
 import time
 import urlparse
+import xml.sax
+
 
 from bzrlib import (
     tests,
     trace,
     )
-from bzrlib.plugins.webdav import webdav
-from bzrlib.tests.http_server import (
-    HttpServer,
-    TestingHTTPRequestHandler,
-    )
 from bzrlib.tests import (
     http_utils,
     TestUtil,
     )
+from bzrlib.tests.http_server import (
+    HttpServer,
+    TestingHTTPRequestHandler,
+    )
 from bzrlib.transport.http import _urllib2_wrappers
+
+
+from bzrlib.plugins.webdav import webdav
 
 
 class TestingDAVRequestHandler(TestingHTTPRequestHandler):
@@ -413,4 +418,76 @@ class TestCaseWithDAVServer(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestCaseWithDAVServer, self).setUp()
         self.transport_server = DAVServer
+
+
+class TestDavSaxParser(tests.TestCase):
+
+    def _get_handler(self):
+        return webdav.DavResponseHandler()
+
+    def _get_parser(self, handler):
+        parser = xml.sax.make_parser()
+        parser.setContentHandler(handler)
+        return parser
+
+    def _parse_string(self, str):
+        handler = self._get_handler()
+        parser = self._get_parser(handler)
+        parser.parse(StringIO(str))
+        return handler
+
+    def test_apache2_example(self):
+        example = """<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
+    <D:response>
+        <D:href>/19016477731212686926.835527/</D:href>
+        <D:propstat>
+            <D:prop>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/19016477731212686926.835527/a</D:href>
+        <D:propstat>
+            <D:prop>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/19016477731212686926.835527/b</D:href>
+        <D:propstat>
+            <D:prop>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+    <D:response>
+        <D:href>/19016477731212686926.835527/c/</D:href>
+        <D:propstat>
+            <D:prop>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+    </D:response>
+</D:multistatus>"""
+        handler = self._parse_string(example)
+        self.assertEqual(['a', 'b', 'c'], handler.get_dir_content())
+
+    def test_lighttpd_example(self):
+        example = """<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
+<D:response>
+<D:href>http://localhost/</D:href>
+</D:response>
+<D:response>
+<D:href>http://localhost/titi</D:href>
+</D:response>
+<D:response>
+<D:href>http://localhost/toto</D:href>
+</D:response>
+</D:multistatus>"""
+        handler = self._parse_string(example)
+        self.assertEqual(['titi', 'toto'], handler.get_dir_content())
 

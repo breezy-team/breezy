@@ -78,15 +78,14 @@ This should enable remote push operations.
 # <lifeless> but for the current format there is no alternative
 # <lifeless> that isn't worse.
 
-# TODO: Implement the redirection scheme described in:
-# http://thread.gmane.org/gmane.comp.version-control.bazaar-ng.general/14881/
-
 from cStringIO import StringIO
 import os
 import random
 import sys
 import time
 import urllib2
+import xml.sax
+import xml.sax.handler
 
 from bzrlib import (
     errors,
@@ -100,8 +99,72 @@ from bzrlib.transport.http import (
     _urllib2_wrappers,
     )
 
-transport.register_urlparse_netloc_protocol('http+webdav')
-transport.register_urlparse_netloc_protocol('https+webdav')
+class DavResponseHandler(xml.sax.handler.ContentHandler):
+    """Handle a mutli-status DAV response.
+
+    Currently this class focus on handling a response for a PROPFIND request of
+    depth 1 targeted as getting the content of a directory. This may evolve to
+    handle more responses.
+    """
+
+    def __init__(self):
+        self.dir_content = None
+        self.elt_stack = None
+        self.chars = None
+
+    def startDocument(self):
+        self.dir_content = []
+        self.elt_stack = []
+
+    def endDocument(self):
+        if self.elt_stack is not None and len(self.elt_stack):
+            # Some xml element wasn't closed properly, the response is invalid
+            self.dir_content = None
+
+    def startElement(self, name, attrs):
+        self.elt_stack.append(name)
+        if name == 'D:href':
+            self.chars = []
+
+    def endElement(self, name):
+        if name == 'D:href':
+            self.dir_content.append(''.join(self.chars))
+            self.chars = None
+        self.elt_stack.pop()
+
+    def characters(self, chrs):
+        if self._current_element() == 'D:href':
+            self.chars.append(chrs)
+
+    def _current_element(self):
+        return self.elt_stack[-1]
+
+    def get_dir_content(self):
+        # Surprisingly enough (or not), our two references DAV servers disagree
+        # on almost every detail, expect using xml.
+        # For the href element:
+
+        # - apache2 use the path part of the URL (i.e. http://host/path) and
+        #   append a '/' to directory names.
+
+        # - lighttpd use the full URL (i.e. /path) and doesn't distinguish
+        #   between files and directories.
+
+        # Fortunately they both put the directory requested in front of the
+        # list. So we take that directory and strip it from all other
+        # elements...
+        dir = self.dir_content[0]
+        dir_len = len(dir)
+        elements = []
+        for href in self.dir_content[1:]: # Ignore first element
+            if href.startswith(dir):
+                name = href[dir_len:]
+                if name.endswith('/'):
+                    # Get rid of final '/'
+                    name = name[0:-1]
+                elements.append(name)
+        return elements
+
 
 class PUTRequest(_urllib2_wrappers.Request):
 
@@ -193,10 +256,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
     def is_readonly(self):
         """See Transport.is_readonly."""
         return False
-
-    def listable(self):
-        """See Transport.listable."""
-        return True
 
     def _raise_http_error(self, url, response, info=None):
         if info is None:
@@ -438,9 +497,9 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         """
         Delete the item at relpath.
 
-        Not that if you pass a non-empty dir, a conforming DAV
-        server will delete the dir and all its content. That does
-        not normally append in bzr.
+        Note that when a non-empty dir required to be deleted, a conforming DAV
+        server will delete the dir and all its content. That does not normally
+        append in bzr.
         """
         abs_path = self._remote_path(rel_path)
 
@@ -495,6 +554,43 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         # disabled it for HTTP
         return transport.Transport.copy_to(self, relpaths, other,
                                            mode=mode, pb=pb)
+
+    def listable(self):
+        """See Transport.listable."""
+        return True
+
+    def list_dir(self, relpath):
+        """
+        Return a list of all files at the given location.
+        """
+        abspath = self._remote_path(relpath)
+        propfind = """<?xml version="1.0" encoding="utf-8" ?>
+   <D:propfind xmlns:D="DAV:">
+     <D:prop/>
+   </D:propfind>
+"""
+        request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
+                                            {'Depth': 1},
+                                            accepted_errors=[207, 404, 409,])
+        response = self._perform(request)
+        data = response.read()
+
+        code = response.code
+        if code == 404:
+            raise errors.NoSuchFile(abspath)
+        if code == 409:
+            # More precisely some intermediate directories are missing
+            raise errors.NoSuchFile(abspath)
+        if code != 207:
+            # As we don't want  to accept overwriting abs_to, 204
+            # (meaning  abs_to  was   existing  (but  empty,  the
+            # non-empty case is 412))  will be an error, a server
+            # bug  even,  since  we  require explicitely  to  not
+            # overwrite.
+            self._raise_http_error(abspath, response,
+                                   'unable to list  %r directory' % (abspath))
+        # FIXME: Yes, we need to plug the xml parser/handler here
+        return []
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive access.

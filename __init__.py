@@ -36,6 +36,9 @@ if major != 1 or minor < 6:
 else:
     from bzrlib import transport
 
+    transport.register_urlparse_netloc_protocol('http+webdav')
+    transport.register_urlparse_netloc_protocol('https+webdav')
+
     transport.register_lazy_transport('https+webdav://',
                                       'bzrlib.plugins.webdav.webdav',
                                       'HttpDavTransport')
