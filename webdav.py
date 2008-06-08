@@ -93,6 +93,7 @@ from bzrlib import (
     osutils,
     trace,
     transport,
+    urlutils,
     )
 from bzrlib.transport.http import (
     _urllib,
@@ -194,7 +195,9 @@ def _extract_dir_content(url, infile):
     except xml.sax.SAXParseException, e:
         raise errors.InvalidHttpResponse(
             url, msg='Malformed xml response: %s' % e)
-    return handler.get_dir_content()
+    # We receive already url-encoded strings so down-casting is safe. And bzr
+    # insists on getting strings not unicode strings.
+    return map(str, handler.get_dir_content())
 
 class PUTRequest(_urllib2_wrappers.Request):
 
@@ -589,7 +592,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
     def listable(self):
         """See Transport.listable."""
-        return False
+        return True
 
     def list_dir(self, relpath):
         """
@@ -598,14 +601,13 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abspath = self._remote_path(relpath)
         propfind = """<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
-     <D:prop/>
+     <D:allprop/>
    </D:propfind>
 """
         request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
                                             {'Depth': 1},
                                             accepted_errors=[207, 404, 409,])
         response = self._perform(request)
-        data = response.read()
 
         code = response.code
         if code == 404:
@@ -621,8 +623,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             # overwrite.
             self._raise_http_error(abspath, response,
                                    'unable to list  %r directory' % (abspath))
-        # FIXME: Yes, we need to plug the xml parser/handler here
-        return []
+        return _extract_dir_content(abspath, response)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive access.

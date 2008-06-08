@@ -422,7 +422,7 @@ class TestCaseWithDAVServer(tests.TestCaseWithTransport):
 
 class TestDavSaxParser(tests.TestCase):
 
-    def test_apache2_example(self):
+    def test_list_dir_apache2_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
     <D:response>
@@ -462,7 +462,7 @@ class TestDavSaxParser(tests.TestCase):
                          webdav._extract_dir_content('http://localhost/blah',
                                                      StringIO(example)))
 
-    def test_lighttpd_example(self):
+    def test_list_dir_lighttpd_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
 <D:response>
@@ -479,7 +479,7 @@ class TestDavSaxParser(tests.TestCase):
                          webdav._extract_dir_content('http://localhost/blah',
                                                      StringIO(example)))
 
-    def test_malformed_response(self):
+    def test_list_dir_malformed_response(self):
         # Invalid xml, neither multistatus nor response are properly closed
         example = """<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
@@ -496,7 +496,7 @@ class TestDavSaxParser(tests.TestCase):
                           webdav._extract_dir_content,
                           'http://localhost/blah', StringIO(example))
 
-    def test_incomplete_format_response(self):
+    def test_list_dir_incomplete_format_response(self):
         # The minimal information is present but doesn't conform to RFC 2518
         # (well, as I understand it since the reference servers disagree on
         # more than details).
