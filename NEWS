@@ -58,6 +58,12 @@ IN DEVELOPMENT
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
+    * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
+      ``unlock`` if there was an error in the original function. This helps
+      most when there is a failure with a smart server action, since often the
+      connection closes and we cannot unlock.
+      (Andrew Bennetts, John Arbash Meinel, #125784)
+
   DOCUMENTATION:
 
     * Improved documentation on send/merge relationship. (Peter Schuller)
