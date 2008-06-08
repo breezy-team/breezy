@@ -151,7 +151,7 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
 
 
 class DavStatHandler(DavResponseHandler):
-    """Handle a PROPPFIND depth 0 DAV response for a file or directory.
+    """Handle a PROPPFIND DAV response for a file or directory.
 
     The expected content is:
     - a multi-status element containing
@@ -182,22 +182,32 @@ class DavStatHandler(DavResponseHandler):
         DavResponseHandler.startElement(self, name, attrs)
 
     def endElement(self, name):
-        sname = self._strip_ns(name)
         if self._response_seen:
-            if sname != 'multistatus':
-                raise errors.InvalidHttpResponse(
-                    self.url, msg='Unexpected %s element' % name)
-        else:
-            # We process only the first response (just in case)
-            if self._href_end():
-                self.href = self.chars
-            elif self._getcontentlength_end():
-                self.length = self.chars
-            elif self._executable_end():
-                self.executable = self.chars
-        if sname == 'response':
+            self._additional_response_starting(name)
+
+        if self._href_end():
+            self.href = self.chars
+        elif self._getcontentlength_end():
+            self.length = self.chars
+        elif self._executable_end():
+            self.executable = self.chars
+
+        if self._strip_ns(name) == 'response':
             self._response_seen = True
+            self._response_handled()
         DavResponseHandler.endElement(self, name)
+
+
+    def _response_handled(self):
+        """A response element inside a multistatus have been parsed."""
+        pass
+
+    def _additional_response_starting(self, name):
+        """A additional response element inside a multistatus begins."""
+        sname = self._strip_ns(name)
+        if sname != 'multistatus':
+            raise errors.InvalidHttpResponse(
+                self.url, msg='Unexpected %s element' % name)
 
     def _href_end(self):
         stack = self.elt_stack
@@ -272,35 +282,32 @@ def _extract_stat_info(url, infile):
     return _DAVStat(size, is_dir, is_exec)
 
 
-class DavListDirHandler(DavResponseHandler):
-    """Handle a PROPPFIND depth 1 DAV response for a directory.
-
-    The expected content is a multi-status containing a list of response
-    containing at least a href property.
-    """
+class DavListDirHandler(DavStatHandler):
+    """Handle a PROPPFIND depth 1 DAV response for a directory."""
     def __init__(self):
-        DavResponseHandler.__init__(self)
+        DavStatHandler.__init__(self)
         self.dir_content = None
 
     def _validate_handling(self):
         if self.dir_content is not None:
             self.expected_content_handled = True
 
-    def startElement(self, name, attrs):
-        self.chars_wanted = (self._strip_ns(name) == 'href')
-        DavResponseHandler.startElement(self, name, attrs)
+    def _make_response_tuple(self):
+        return (self.href, self.length, self.executable)
 
-    def endElement(self, name):
-        stack = self.elt_stack
-        if (len(stack) == 3
-            and stack[0] == 'multistatus'
-            and stack[1] == 'response'
-             # sax guarantees that name is also href (when ns is stripped)
-            and stack[2] == 'href'):
-            if self.dir_content is None:
-                self.dir_content = []
-            self.dir_content.append(self.chars)
-        DavResponseHandler.endElement(self, name)
+    def _response_handled(self):
+        """A response element inside a multistatus have been parsed."""
+        if self.dir_content is None:
+            self.dir_content = []
+        self.dir_content.append(self._make_response_tuple())
+        # Resest the attributes for the next response if any
+        self.href = None
+        self.length = None
+        self.executable = None
+
+    def _additional_response_starting(self, name):
+        """A additional response element inside a multistatus begins."""
+        pass
 
 
 def _extract_dir_content(url, infile):
@@ -321,10 +328,10 @@ def _extract_dir_content(url, infile):
             url, msg='Malformed xml response: %s' % e)
     # Reformat for bzr needs
     dir_content = handler.dir_content
-    dir = dir_content[0]
+    dir = dir_content[0][0]
     dir_len = len(dir)
     elements = []
-    for href in dir_content[1:]: # Ignore first element
+    for (href, size, is_exec) in dir_content[1:]: # Ignore first element
         if href.startswith(dir):
             name = href[dir_len:]
             if name.endswith('/'):
@@ -738,7 +745,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abspath = self._remote_path(relpath)
         propfind = """<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
-     <D:prop/>
+     <D:allprop/>
    </D:propfind>
 """
         request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
