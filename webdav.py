@@ -150,70 +150,6 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
             return name[where +1:]
 
 
-class DavListDirHandler(DavResponseHandler):
-    """Handle a PROPPFIND depth 1 DAV response for a directory.
-
-    The expected content is a multi-status containing a list of response
-    containing at least a href property.
-    """
-    def __init__(self):
-        DavResponseHandler.__init__(self)
-        self.dir_content = None
-
-    def _validate_handling(self):
-        if self.dir_content is not None:
-            self.expected_content_handled = True
-
-    def startElement(self, name, attrs):
-        self.chars_wanted = (self._strip_ns(name) == 'href')
-        DavResponseHandler.startElement(self, name, attrs)
-
-    def endElement(self, name):
-        stack = self.elt_stack
-        if (len(stack) == 3
-            and stack[0] == 'multistatus'
-            and stack[1] == 'response'
-             # sax guarantees that name is also href (when ns is stripped)
-            and stack[2] == 'href'):
-            if self.dir_content is None:
-                self.dir_content = []
-            self.dir_content.append(self.chars)
-        DavResponseHandler.endElement(self, name)
-
-
-def _extract_dir_content(url, infile):
-    """Extract the directory content from a DAV PROPFIND response.
-
-    :param url: The url used for the PROPFIND request.
-    :param infile: A file-like object pointing at the start of the response.
-    """
-    parser = xml.sax.make_parser()
-
-    handler = DavListDirHandler()
-    handler.set_url(url)
-    parser.setContentHandler(handler)
-    try:
-        parser.parse(infile)
-    except xml.sax.SAXParseException, e:
-        raise errors.InvalidHttpResponse(
-            url, msg='Malformed xml response: %s' % e)
-    # Reformat for bzr needs
-    dir_content = handler.dir_content
-    dir = dir_content[0]
-    dir_len = len(dir)
-    elements = []
-    for href in dir_content[1:]: # Ignore first element
-        if href.startswith(dir):
-            name = href[dir_len:]
-            if name.endswith('/'):
-                # Get rid of final '/'
-                name = name[0:-1]
-            # We receive already url-encoded strings so down-casting is
-            # safe. And bzr insists on getting strings not unicode strings.
-            elements.append(str(name))
-    return elements
-
-
 class DavStatHandler(DavResponseHandler):
     """Handle a PROPPFIND depth 0 DAV response for a file or directory.
 
@@ -334,6 +270,70 @@ def _extract_stat_info(url, infile):
         size = int(handler.length)
         is_exec = (handler.executable == 'T')
     return _DAVStat(size, is_dir, is_exec)
+
+
+class DavListDirHandler(DavResponseHandler):
+    """Handle a PROPPFIND depth 1 DAV response for a directory.
+
+    The expected content is a multi-status containing a list of response
+    containing at least a href property.
+    """
+    def __init__(self):
+        DavResponseHandler.__init__(self)
+        self.dir_content = None
+
+    def _validate_handling(self):
+        if self.dir_content is not None:
+            self.expected_content_handled = True
+
+    def startElement(self, name, attrs):
+        self.chars_wanted = (self._strip_ns(name) == 'href')
+        DavResponseHandler.startElement(self, name, attrs)
+
+    def endElement(self, name):
+        stack = self.elt_stack
+        if (len(stack) == 3
+            and stack[0] == 'multistatus'
+            and stack[1] == 'response'
+             # sax guarantees that name is also href (when ns is stripped)
+            and stack[2] == 'href'):
+            if self.dir_content is None:
+                self.dir_content = []
+            self.dir_content.append(self.chars)
+        DavResponseHandler.endElement(self, name)
+
+
+def _extract_dir_content(url, infile):
+    """Extract the directory content from a DAV PROPFIND response.
+
+    :param url: The url used for the PROPFIND request.
+    :param infile: A file-like object pointing at the start of the response.
+    """
+    parser = xml.sax.make_parser()
+
+    handler = DavListDirHandler()
+    handler.set_url(url)
+    parser.setContentHandler(handler)
+    try:
+        parser.parse(infile)
+    except xml.sax.SAXParseException, e:
+        raise errors.InvalidHttpResponse(
+            url, msg='Malformed xml response: %s' % e)
+    # Reformat for bzr needs
+    dir_content = handler.dir_content
+    dir = dir_content[0]
+    dir_len = len(dir)
+    elements = []
+    for href in dir_content[1:]: # Ignore first element
+        if href.startswith(dir):
+            name = href[dir_len:]
+            if name.endswith('/'):
+                # Get rid of final '/'
+                name = name[0:-1]
+            # We receive already url-encoded strings so down-casting is
+            # safe. And bzr insists on getting strings not unicode strings.
+            elements.append(str(name))
+    return elements
 
 
 class PUTRequest(_urllib2_wrappers.Request):
