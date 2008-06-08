@@ -120,6 +120,8 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
 
     def startDocument(self):
         self.elt_stack = []
+        self.dir_content = None
+        self.chars = None
 
     def endDocument(self):
         if self.dir_content is None:
@@ -132,16 +134,16 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
             self.chars = []
 
     def endElement(self, name):
-        st = self.elt_stack
-        if (len(st) == 3
-            and st[0] == 'D:multistatus'
-            and st[1] == 'D:response'
-            and name == 'D:href'): # sax guarantees that st[2] is also D:href
+        stack = self.elt_stack
+        if (len(stack) == 3
+            and stack[0] == 'D:multistatus'
+            and stack[1] == 'D:response'
+            and name == 'D:href'): # sax guarantees that stack[2] is also D:href
             if self.dir_content is None:
                 self.dir_content = []
             self.dir_content.append(''.join(self.chars))
         self.chars = None
-        self.elt_stack.pop()
+        stack.pop()
 
     def characters(self, chrs):
         if self._current_element() == 'D:href':
@@ -177,33 +179,22 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
         return elements
 
 
-class DavResponseParser(object):
-    """A parser for DAV responses.
+def _extract_dir_content(url, infile):
+    """Extract the directory content from a DAV PROPFIND response.
 
-    The main aim is to encapsulate sax house keeping and translate exceptions.
+    :param url: The url used for the PROPFIND request.
+    :param infile: A file-like object pointing at the start of the response.
     """
+    parser = xml.sax.make_parser()
 
-    def __init__(self, handler=None):
-        if handler is None:
-            handler = DavResponseHandler()
-        self.handler = handler
-        self.parser = None
-
-    def parse(self, infile, url):
-        p = self._get_parser()
-        try:
-            p.parse(infile)
-        except xml.sax.SAXParseException, e:
-            raise errors.InvalidHttpResponse(
-                url, msg='Malformed xml response: %s' % e)
-
-    def _get_parser(self):
-        if self.parser is None:
-            parser = xml.sax.make_parser()
-            parser.setContentHandler(self.handler)
-            self.parser = parser
-        return self.parser
-
+    handler = DavResponseHandler()
+    parser.setContentHandler(handler)
+    try:
+        parser.parse(infile)
+    except xml.sax.SAXParseException, e:
+        raise errors.InvalidHttpResponse(
+            url, msg='Malformed xml response: %s' % e)
+    return handler.get_dir_content()
 
 class PUTRequest(_urllib2_wrappers.Request):
 

@@ -37,7 +37,6 @@ import shutil
 import sys
 import time
 import urlparse
-import xml.sax
 
 
 from bzrlib import (
@@ -423,17 +422,6 @@ class TestCaseWithDAVServer(tests.TestCaseWithTransport):
 
 class TestDavSaxParser(tests.TestCase):
 
-    def _get_parser(self, handler=None):
-        if handler is None:
-            handler = webdav.DavResponseHandler()
-        return webdav.DavResponseParser(handler)
-
-    def _parse_string(self, str, url):
-        parser = self._get_parser()
-        parser.handler.set_url(url)
-        parser.parse(StringIO(str), url)
-        return parser.handler
-
     def test_apache2_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
@@ -470,8 +458,9 @@ class TestDavSaxParser(tests.TestCase):
         </D:propstat>
     </D:response>
 </D:multistatus>"""
-        handler = self._parse_string(example, 'http://localhost/blah')
-        self.assertEqual(['a', 'b', 'c'], handler.get_dir_content())
+        self.assertEqual(['a', 'b', 'c'],
+                         webdav._extract_dir_content('http://localhost/blah',
+                                                     StringIO(example)))
 
     def test_lighttpd_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
@@ -486,8 +475,9 @@ class TestDavSaxParser(tests.TestCase):
 <D:href>http://localhost/toto</D:href>
 </D:response>
 </D:multistatus>"""
-        handler = self._parse_string(example, 'http://localhost/blah')
-        self.assertEqual(['titi', 'toto'], handler.get_dir_content())
+        self.assertEqual(['titi', 'toto'],
+                         webdav._extract_dir_content('http://localhost/blah',
+                                                     StringIO(example)))
 
     def test_malformed_response(self):
         # Invalid xml, neither multistatus nor response are properly closed
@@ -496,15 +486,15 @@ class TestDavSaxParser(tests.TestCase):
 <D:response>
 <D:href>http://localhost/</D:href>"""
         self.assertRaises(errors.InvalidHttpResponse,
-                          self._parse_string, example,
-                          'http://localhost/blah')
+                          webdav._extract_dir_content,
+                          'http://localhost/blah', StringIO(example))
 
     def test_unkown_format_response(self):
         # Valid but unrelated xml
         example = """<document/>"""
         self.assertRaises(errors.InvalidHttpResponse,
-                          self._parse_string, example,
-                          'http://localhost/blah')
+                          webdav._extract_dir_content,
+                          'http://localhost/blah', StringIO(example))
 
     def test_incomplete_format_response(self):
         # The minimal information is present but doesn't conform to RFC 2518
@@ -523,5 +513,6 @@ class TestDavSaxParser(tests.TestCase):
 </D:response>
 <D:href>http://localhost/toto</D:href>
 </D:multistatus>"""
-        handler = self._parse_string(example, 'http://localhost/blah')
-        self.assertEqual(['titi'], handler.get_dir_content())
+        self.assertEqual(['titi'],
+                         webdav._extract_dir_content('http://localhost/blah',
+                                                     StringIO(example)))
