@@ -34,6 +34,8 @@ bzr-svn 0.4.11	UNRELEASED
 
    * Fix dealing with strange remove during replace operation. (#232196)
 
+   * Deal with missing branches/tags directories when using webdav. (#235301)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
