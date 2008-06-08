@@ -162,15 +162,21 @@ class DavStatHandler(DavResponseHandler):
           - a prop element containing at least (other are ignored)
             - a getcontentlength element (for files only)
             - an executable element (for files only)
+            - a resourcetype element containing
+              - a collection element (for directories only)
     """
 
     def __init__(self):
         DavResponseHandler.__init__(self)
+        # Flags defining the context for the actions
+        self._response_seen = False
+        self._init_response_attrs()
+
+    def _init_response_attrs(self):
         self.href = None
         self.length = None
         self.executable = None
-        # Flags defining the context for the actions
-        self._response_seen = False
+        self.is_dir = False
 
     def _validate_handling(self):
         if self.href is not None:
@@ -191,6 +197,8 @@ class DavStatHandler(DavResponseHandler):
             self.length = self.chars
         elif self._executable_end():
             self.executable = self.chars
+        elif self._collection_end():
+            self.is_dir = True
 
         if self._strip_ns(name) == 'response':
             self._response_seen = True
@@ -234,6 +242,16 @@ class DavStatHandler(DavResponseHandler):
                 and stack[3] == 'prop'
                 and stack[4] == 'executable')
 
+    def _collection_end(self):
+        stack = self.elt_stack
+        return (len(stack) == 6
+                and stack[0] == 'multistatus'
+                and stack[1] == 'response'
+                and stack[2] == 'propstat'
+                and stack[3] == 'prop'
+                and stack[4] == 'resourcetype'
+                and stack[5] == 'collection')
+
 
 class _DAVStat(object):
     """The stat info as it can be acquired with DAV."""
@@ -270,16 +288,13 @@ def _extract_stat_info(url, infile):
     except xml.sax.SAXParseException, e:
         raise errors.InvalidHttpResponse(
             url, msg='Malformed xml response: %s' % e)
-    is_dir = (handler.href is not None
-              and handler.length is None
-              and handler.executable is None)
-    if is_dir:
+    if handler.is_dir:
         size = None # directory sizes are meaningless for bzr
         is_exec = True
     else:
         size = int(handler.length)
         is_exec = (handler.executable == 'T')
-    return _DAVStat(size, is_dir, is_exec)
+    return _DAVStat(size, handler.is_dir, is_exec)
 
 
 class DavListDirHandler(DavStatHandler):
@@ -293,7 +308,11 @@ class DavListDirHandler(DavStatHandler):
             self.expected_content_handled = True
 
     def _make_response_tuple(self):
-        return (self.href, self.length, self.executable)
+        if self.executable == 'T':
+            is_exec = True
+        else:
+            is_exec = False
+        return (self.href, self.is_dir, self.length, is_exec)
 
     def _response_handled(self):
         """A response element inside a multistatus have been parsed."""
@@ -301,9 +320,7 @@ class DavListDirHandler(DavStatHandler):
             self.dir_content = []
         self.dir_content.append(self._make_response_tuple())
         # Resest the attributes for the next response if any
-        self.href = None
-        self.length = None
-        self.executable = None
+        self._init_response_attrs()
 
     def _additional_response_starting(self, name):
         """A additional response element inside a multistatus begins."""
@@ -328,11 +345,13 @@ def _extract_dir_content(url, infile):
             url, msg='Malformed xml response: %s' % e)
     # Reformat for bzr needs
     dir_content = handler.dir_content
-    dir = dir_content[0][0]
-    dir_len = len(dir)
+    (dir_name, is_dir) = dir_content[0][:2]
+    if not is_dir:
+        raise errors.NotADirectory(url)
+    dir_len = len(dir_name)
     elements = []
-    for (href, size, is_exec) in dir_content[1:]: # Ignore first element
-        if href.startswith(dir):
+    for (href, is_dir, size, is_exec) in dir_content[1:]: # Ignore first element
+        if href.startswith(dir_name):
             name = href[dir_len:]
             if name.endswith('/'):
                 # Get rid of final '/'
@@ -690,13 +709,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         code = response.code
         if code == 404:
             raise errors.NoSuchFile(abs_path)
-        # FIXME: This  is an  hoooooorible workaround to  pass the
-        # tests,  what  we really  should  do  is  test that  the
-        # directory  is not  empty *because  bzr do  not  want to
-        # remove non-empty dirs*.
-        # Which requires implementing list_dir, hi Robert ;)
-        if code == 999:
-            raise errors.DirectoryNotEmpty(abs_path)
         if code != 204:
             self._raise_curl_http_error(curl, 'unable to delete')
 
@@ -779,7 +791,10 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
-        self.delete(relpath) # That was easy thanks DAV
+        content = self.list_dir(relpath)
+        if len(content) > 0:
+            raise errors.DirectoryNotEmpty(self._remote_path(relpath))
+        self.delete(relpath)
 
     def stat(self, relpath):
         """See Transport.stat.
