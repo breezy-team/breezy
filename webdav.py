@@ -66,21 +66,10 @@ This should enable remote push operations.
 
 # TODO: Factor out the error handling.
 
-# TODO: implement list_dir, it's currently used by the pack format
-# The pack format is still experimental but may become the default
-# format in the near future (2007-11-04).
-# 
-# list_dir is considered usable for writable transports:
-# 
-# <lifeless> there is no technical reason I know of yet to avoid
-#    list_dir for writable transports
-# <lifeless> I plan in a future packs format to see if we can remove list_dir
-# <lifeless> but for the current format there is no alternative
-# <lifeless> that isn't worse.
-
 from cStringIO import StringIO
 import os
 import random
+import re
 import sys
 import time
 import urllib2
@@ -102,18 +91,14 @@ from bzrlib.transport.http import (
 
 
 class DavResponseHandler(xml.sax.handler.ContentHandler):
-    """Handle a mutli-status DAV response.
-
-    Currently this class focus on handling a response for a PROPFIND request of
-    depth 1 targeted as getting the content of a directory. This may evolve to
-    handle more responses.
-    """
+    """Handle a multi-status DAV response."""
 
     def __init__(self):
         self.url = None
-        self.dir_content = None
         self.elt_stack = None
         self.chars = None
+        self.chars_wanted = False
+        self.expected_content_handled = False
 
     def set_url(self, url):
         """Set the url used for error reporting when handling a response."""
@@ -121,63 +106,79 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
 
     def startDocument(self):
         self.elt_stack = []
-        self.dir_content = None
         self.chars = None
+        self.expected_content_handled = False
 
     def endDocument(self):
-        if self.dir_content is None:
+        self._validate_handling()
+        if not self.expected_content_handled:
             raise errors.InvalidHttpResponse(self.url,
                                              msg='Unknown xml response')
 
     def startElement(self, name, attrs):
-        self.elt_stack.append(name)
-        if name == 'D:href':
-            self.chars = []
+        self.elt_stack.append(self._strip_ns(name))
+        # The following is incorrect in the general case where elements are
+        # intermixed with chars in a higher level element. That's not the case
+        # here (otherwise the chars_wanted will have to be stacked too).
+        if self.chars_wanted:
+            self.chars = ''
+        else:
+            self.chars = None
 
     def endElement(self, name):
-        stack = self.elt_stack
-        if (len(stack) == 3
-            and stack[0] == 'D:multistatus'
-            and stack[1] == 'D:response'
-            and name == 'D:href'): # sax guarantees that stack[2] is also D:href
-            if self.dir_content is None:
-                self.dir_content = []
-            self.dir_content.append(''.join(self.chars))
         self.chars = None
-        stack.pop()
+        self.chars_wanted = False
+        self.elt_stack.pop()
 
     def characters(self, chrs):
-        if self._current_element() == 'D:href':
-            self.chars.append(chrs)
+        if self.chars_wanted:
+            self.chars += chrs
 
     def _current_element(self):
         return self.elt_stack[-1]
 
-    def get_dir_content(self):
-        # Surprisingly enough (or not), our two references DAV servers disagree
-        # on almost every detail, expect using xml.
-        # For the href element:
+    def _strip_ns(self, name):
+        """Strip the leading namespace from name.
 
-        # - apache2 use the path part of the URL (i.e. http://host/path) and
-        #   append a '/' to directory names.
+        We don't have namespaces clashes in our context, stripping it makes the
+        code simpler.
+        """
+        where = name.find(':')
+        if where == -1:
+            return name
+        else:
+            return name[where +1:]
 
-        # - lighttpd use the full URL (i.e. /path) and doesn't distinguish
-        #   between files and directories.
 
-        # Fortunately they both put the directory requested in front of the
-        # list. So we take that directory and strip it from all other
-        # elements...
-        dir = self.dir_content[0]
-        dir_len = len(dir)
-        elements = []
-        for href in self.dir_content[1:]: # Ignore first element
-            if href.startswith(dir):
-                name = href[dir_len:]
-                if name.endswith('/'):
-                    # Get rid of final '/'
-                    name = name[0:-1]
-                elements.append(name)
-        return elements
+class DavListDirHandler(DavResponseHandler):
+    """Handle a PROPPFIND depth 1 DAV response for a directory.
+
+    The expected content is a multi-status containing a list of response
+    containing at least a href property.
+    """
+    def __init__(self):
+        DavResponseHandler.__init__(self)
+        self.dir_content = None
+
+    def _validate_handling(self):
+        if self.dir_content is not None:
+            self.expected_content_handled = True
+
+    def startElement(self, name, attrs):
+        self.chars_wanted = (self._strip_ns(name) == 'href')
+        DavResponseHandler.startElement(self, name, attrs)
+
+    def endElement(self, name):
+        stack = self.elt_stack
+        if (len(stack) == 3
+            and stack[0] == 'multistatus'
+            and stack[1] == 'response'
+             # sax guarantees that name is also href (when ns is stripped)
+            and stack[2] == 'href'):
+            if self.dir_content is None:
+                self.dir_content = []
+            self.dir_content.append(self.chars)
+        DavResponseHandler.endElement(self, name)
 
 
 def _extract_dir_content(url, infile):
@@ -188,16 +189,152 @@ def _extract_dir_content(url, infile):
     """
     parser = xml.sax.make_parser()
 
-    handler = DavResponseHandler()
+    handler = DavListDirHandler()
+    handler.set_url(url)
     parser.setContentHandler(handler)
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException, e:
         raise errors.InvalidHttpResponse(
             url, msg='Malformed xml response: %s' % e)
-    # We receive already url-encoded strings so down-casting is safe. And bzr
-    # insists on getting strings not unicode strings.
-    return map(str, handler.get_dir_content())
+    # Reformat for bzr needs
+    dir_content = handler.dir_content
+    dir = dir_content[0]
+    dir_len = len(dir)
+    elements = []
+    for href in dir_content[1:]: # Ignore first element
+        if href.startswith(dir):
+            name = href[dir_len:]
+            if name.endswith('/'):
+                # Get rid of final '/'
+                name = name[0:-1]
+            # We receive already url-encoded strings so down-casting is
+            # safe. And bzr insists on getting strings not unicode strings.
+            elements.append(str(name))
+    return elements
+
+
+class DavStatHandler(DavResponseHandler):
+    """Handle a PROPPFIND depth 0 DAV response for a file or directory.
+
+    The expected content is:
+    - a multi-status element containing
+      - a single response element containing
+        - a href element
+        - a propstat element containing
+          - a status element (ignored)
+          - a prop element containing at least (other are ignored)
+            - a getcontentlength element (for files only)
+            - an executable element (for files only)
+    """
+
+    def __init__(self):
+        DavResponseHandler.__init__(self)
+        self.href = None
+        self.length = None
+        self.executable = None
+        # Flags defining the context for the actions
+        self._response_seen = False
+
+    def _validate_handling(self):
+        if self.href is not None:
+            self.expected_content_handled = True
+
+    def startElement(self, name, attrs):
+        sname = self._strip_ns(name)
+        self.chars_wanted = sname in ('href', 'getcontentlength', 'executable')
+        DavResponseHandler.startElement(self, name, attrs)
+
+    def endElement(self, name):
+        sname = self._strip_ns(name)
+        if self._response_seen:
+            if sname != 'multistatus':
+                raise errors.InvalidHttpResponse(
+                    self.url, msg='Unexpected %s element' % name)
+        else:
+            # We process only the first response (just in case)
+            if self._href_end():
+                self.href = self.chars
+            elif self._getcontentlength_end():
+                self.length = self.chars
+            elif self._executable_end():
+                self.executable = self.chars
+        if sname == 'response':
+            self._response_seen = True
+        DavResponseHandler.endElement(self, name)
+
+    def _href_end(self):
+        stack = self.elt_stack
+        return (len(stack) == 3
+                and stack[0] == 'multistatus'
+                and stack[1] == 'response'
+                and stack[2] == 'href')
+
+    def _getcontentlength_end(self):
+        stack = self.elt_stack
+        return (len(stack) == 5
+                and stack[0] == 'multistatus'
+                and stack[1] == 'response'
+                and stack[2] == 'propstat'
+                and stack[3] == 'prop'
+                and stack[4] == 'getcontentlength')
+
+    def _executable_end(self):
+        stack = self.elt_stack
+        return (len(stack) == 5
+                and stack[0] == 'multistatus'
+                and stack[1] == 'response'
+                and stack[2] == 'propstat'
+                and stack[3] == 'prop'
+                and stack[4] == 'executable')
+
+
+class _DAVStat(object):
+    """The stat info as it can be acquired with DAV."""
+
+    def __init__(self, size, is_dir, is_exec):
+        self.st_size = size
+        # We build a mode considering that:
+
+        # - we have no idea about group or other chmod bits so we use a sane
+        #   default (bzr should not care anyway)
+
+        # - we suppose that the user can write
+        if is_dir:
+            self.st_mode = 0040644
+        else:
+            self.st_mode = 0100644
+        if is_exec:
+            self.st_mode = self.st_mode | 0755
+
+
+def _extract_stat_info(url, infile):
+    """Extract the stat-like information from a DAV PROPFIND response.
+
+    :param url: The url used for the PROPFIND request.
+    :param infile: A file-like object pointing at the start of the response.
+    """
+    parser = xml.sax.make_parser()
+
+    handler = DavStatHandler()
+    handler.set_url(url)
+    parser.setContentHandler(handler)
+    try:
+        parser.parse(infile)
+    except xml.sax.SAXParseException, e:
+        raise errors.InvalidHttpResponse(
+            url, msg='Malformed xml response: %s' % e)
+    is_dir = (handler.href is not None
+              and handler.length is None
+              and handler.executable is None)
+    if is_dir:
+        size = None # directory sizes are meaningless for bzr
+        is_exec = True
+    else:
+        size = int(handler.length)
+        is_exec = (handler.executable == 'T')
+    return _DAVStat(size, is_dir, is_exec)
+
 
 class PUTRequest(_urllib2_wrappers.Request):
 
@@ -601,7 +738,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abspath = self._remote_path(relpath)
         propfind = """<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
-     <D:allprop/>
+     <D:prop/>
    </D:propfind>
 """
         request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
@@ -616,11 +753,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             # More precisely some intermediate directories are missing
             raise errors.NoSuchFile(abspath)
         if code != 207:
-            # As we don't want  to accept overwriting abs_to, 204
-            # (meaning  abs_to  was   existing  (but  empty,  the
-            # non-empty case is 412))  will be an error, a server
-            # bug  even,  since  we  require explicitely  to  not
-            # overwrite.
             self._raise_http_error(abspath, response,
                                    'unable to list  %r directory' % (abspath))
         return _extract_dir_content(abspath, response)
@@ -641,6 +773,33 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         self.delete(relpath) # That was easy thanks DAV
+
+    def stat(self, relpath):
+        """See Transport.stat.
+
+        We provide a limited implementation for bzr needs.
+        """
+        abspath = self._remote_path(relpath)
+        propfind = """<?xml version="1.0" encoding="utf-8" ?>
+   <D:propfind xmlns:D="DAV:">
+     <D:allprop/>
+   </D:propfind>
+"""
+        request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
+                                            {'Depth': 0},
+                                            accepted_errors=[207, 404, 409,])
+        response = self._perform(request)
+
+        code = response.code
+        if code == 404:
+            raise errors.NoSuchFile(abspath)
+        if code == 409:
+            # More precisely some intermediate directories are missing
+            raise errors.NoSuchFile(abspath)
+        if code != 207:
+            self._raise_http_error(abspath, response,
+                                   'unable to list  %r directory' % (abspath))
+        return _extract_stat_info(abspath, response)
 
     # TODO: Before
     # www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt

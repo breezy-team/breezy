@@ -1,4 +1,10 @@
-- add specific tests
+* handle PROPFIND in the test server
 
-- handle the TODOs in webdav.py
+** handle depths 0, 1, Infinity
+
+** handle prop and allprop for file and directory as apache2
+
+* handle the TODOs in webdav.py
+
+** move the relevant TODOs in webdav.py and elsewhere here :)
 
