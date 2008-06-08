@@ -483,7 +483,7 @@ def _get_list_dir_apache2_depth_1_allprop():
             <D:prop>
                 <lp1:resourcetype/>
                 <lp1:creationdate>2008-06-08T09:50:15Z</lp1:creationdate>
-                <lp1:getcontentlength>0</lp1:getcontentlength>
+                <lp1:getcontentlength>14</lp1:getcontentlength>
                 <lp1:getlastmodified>Sun, 08 Jun 2008 09:50:11 GMT</lp1:getlastmodified>
                 <lp1:getetag>"da9f81-0-9ef33ac0"</lp1:getetag>
                 <lp2:executable>T</lp2:executable>
@@ -508,7 +508,7 @@ def _get_list_dir_apache2_depth_1_allprop():
             <D:prop>
                 <lp1:resourcetype/>
                 <lp1:creationdate>2008-06-08T09:50:11Z</lp1:creationdate>
-                <lp1:getcontentlength>0</lp1:getcontentlength>
+                <lp1:getcontentlength>42</lp1:getcontentlength>
                 <lp1:getlastmodified>Sun, 08 Jun 2008 09:50:11 GMT</lp1:getlastmodified>
                 <lp1:getetag>"da9f80-0-9ef33ac0"</lp1:getetag>
                 <lp2:executable>F</lp2:executable>
@@ -640,6 +640,14 @@ class TestDavSaxParser(tests.TestCase):
         self.assertRaises(errors.NotADirectory,
                          self._extract_dir_content_from_str, example)
 
+    def test_list_dir_apache2_dir_depth_1_example(self):
+        example = _get_list_dir_apache2_depth_1_allprop()
+        self.assertEquals([('executable', False, 14, True),
+                           ('read-only', False, 42, False),
+                           ('titi', False, 6, False),
+                           ('toto', True, -1, False)],
+                          self._extract_dir_content_from_str(example))
+
     def test_stat_malformed_response(self):
         # Invalid xml, neither multistatus nor response are properly closed
         example = """<?xml version="1.0" encoding="utf-8"?>
@@ -732,6 +740,6 @@ class TestDavSaxParser(tests.TestCase):
 </D:multistatus>
 """
         st = self._extract_stat_from_str(example)
-        self.assertEquals(None, st.st_size)
+        self.assertEquals(-1, st.st_size)
         self.assertTrue(stat.S_ISDIR(st.st_mode))
         self.assertTrue(st.st_mode & stat.S_IXUSR)

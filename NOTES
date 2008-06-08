@@ -10,22 +10,9 @@ real	9m54.487s
 user	1m15.280s
 sys	0m20.060s
 
+The above measure is imprecise and certainly out-of-date.
 
 Tests:
-
-The plugin pass the bzr selftest except for:
-
-- lock_write: We  can implement  that, but it  seems it  has been
-  abandoned in the existing code already in favor of a global lock
-  valid for all transports.
-
-- test_rmdir_not_empty: We have cheated there. That's bad.
-
-Extensions:
-
-- Looking  at Apache  sources  it appears  that  PATCH have  been
-  introduced  in  Apache 1.3.4,  but  only  the  request name  is
-  reserved, there is no code to implement it.
 
 Installation example:
 
@@ -38,10 +25,18 @@ Alias /bzr /srv/DAV
 	# bzr (to they the least) and provide no benefits in our
 	# case. So just turn it off.
 	DirectorySlash Off
+        # We need to activate the following which is off by
+        # default. For good security reasons which don't apply to
+        # bzr directories ;)
+        DavDepthInfinity on
+        # The simplest auth scheme is basic, just given as an
+        # example, using https is recommanded with it, or at
+        # least digest if https is not possible.
 	AuthType Basic
 	AuthName bzr
 	AuthUserFile /etc/apache2/dav.users
 	<LimitExcept GET OPTIONS>
+                # Write access requires authentication
 		Require valid-user
 	</LimitExcept>
 </Directory>

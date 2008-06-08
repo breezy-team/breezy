@@ -174,7 +174,7 @@ class DavStatHandler(DavResponseHandler):
 
     def _init_response_attrs(self):
         self.href = None
-        self.length = None
+        self.length = -1
         self.executable = None
         self.is_dir = False
 
@@ -194,7 +194,7 @@ class DavStatHandler(DavResponseHandler):
         if self._href_end():
             self.href = self.chars
         elif self._getcontentlength_end():
-            self.length = self.chars
+            self.length = int(self.chars)
         elif self._executable_end():
             self.executable = self.chars
         elif self._collection_end():
@@ -289,10 +289,10 @@ def _extract_stat_info(url, infile):
         raise errors.InvalidHttpResponse(
             url, msg='Malformed xml response: %s' % e)
     if handler.is_dir:
-        size = None # directory sizes are meaningless for bzr
+        size = -1 # directory sizes are meaningless for bzr
         is_exec = True
     else:
-        size = int(handler.length)
+        size = handler.length
         is_exec = (handler.executable == 'T')
     return _DAVStat(size, handler.is_dir, is_exec)
 
@@ -358,7 +358,7 @@ def _extract_dir_content(url, infile):
                 name = name[0:-1]
             # We receive already url-encoded strings so down-casting is
             # safe. And bzr insists on getting strings not unicode strings.
-            elements.append(str(name))
+            elements.append((str(name), is_dir, size, is_exec))
     return elements
 
 
@@ -754,6 +754,9 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         """
         Return a list of all files at the given location.
         """
+        return [elt[0] for elt in self._list_tree(relpath, 1)]
+
+    def _list_tree(self, relpath, depth):
         abspath = self._remote_path(relpath)
         propfind = """<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
@@ -761,7 +764,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
    </D:propfind>
 """
         request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
-                                            {'Depth': 1},
+                                            {'Depth': depth},
                                             accepted_errors=[207, 404, 409,])
         response = self._perform(request)
 
@@ -822,6 +825,15 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             self._raise_http_error(abspath, response,
                                    'unable to list  %r directory' % (abspath))
         return _extract_stat_info(abspath, response)
+
+    def iter_files_recursive(self):
+        """Walk the relative paths of all files in this transport."""
+        # We get the whole tree with a single request
+        tree = self._list_tree('.', 'Infinity')
+        # Now filter out the directories
+        for (name, is_dir, size, is_exex) in tree:
+            if not is_dir:
+                yield name
 
     # TODO: Before
     # www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt
