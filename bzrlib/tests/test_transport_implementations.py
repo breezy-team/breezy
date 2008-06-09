@@ -951,14 +951,14 @@ class TransportTests(TestTransportImplementation):
         except TransportNotPossible:
             # ok, this transport does not support delete_tree
             return
-        
+
         # did it delete that trivial case?
         self.assertRaises(NoSuchFile, t.stat, 'adir')
 
         self.build_tree(['adir/',
-                         'adir/file', 
-                         'adir/subdir/', 
-                         'adir/subdir/file', 
+                         'adir/file',
+                         'adir/subdir/',
+                         'adir/subdir/file',
                          'adir/subdir2/',
                          'adir/subdir2/file',
                          ], transport=t)
@@ -1045,7 +1045,7 @@ class TransportTests(TestTransportImplementation):
             return
 
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
-        sizes = [14, 0, 16, 0, 18] 
+        sizes = [14, 0, 16, 0, 18]
         self.build_tree(paths, transport=t, line_endings='binary')
 
         for path, size in zip(paths, sizes):
@@ -1073,7 +1073,7 @@ class TransportTests(TestTransportImplementation):
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()
-        
+
         if not t.listable():
             self.assertRaises(TransportNotPossible, t.list_dir, '.')
             return
@@ -1109,7 +1109,7 @@ class TransportTests(TestTransportImplementation):
         else:
             os.unlink('c/d')
             os.unlink('b')
-            
+
         self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.', t))
         self.assertEqual(['e'], sorted_list('c', t))
 
@@ -1126,7 +1126,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(['a/', 'a/%'], transport=t)
         else:
             self.build_tree(['a/', 'a/%'])
-        
+
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
         self.assertIsInstance(names[0], str)
