@@ -190,9 +190,13 @@ class TestLockDir(TestCaseWithTransport):
             lf1.unlock()
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
+        lock_url = lf2.transport.abspath(lf2.path)
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
-                         'Will continue to try until %s\n',
+                         'Will continue to try until %s, unless '
+                         'you press Ctrl-C\n'
+                         'If you\'re sure that it\'s not being '
+                         'modified, use bzr break-lock %s',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -406,10 +410,13 @@ class TestLockDir(TestCaseWithTransport):
         # There should be 2 reports, because the lock changed
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(2, len(self._logged_reports))
-
+        lock_url = lf2.transport.abspath(lf2.path)
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
-                         'Will continue to try until %s\n',
+                         'Will continue to try until %s, unless '
+                         'you press Ctrl-C\n'
+                         'If you\'re sure that it\'s not being '
+                         'modified, use bzr break-lock %s',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -421,7 +428,10 @@ class TestLockDir(TestCaseWithTransport):
 
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
-                         'Will continue to try until %s\n',
+                         'Will continue to try until %s, unless '
+                         'you press Ctrl-C\n'
+                         'If you\'re sure that it\'s not being '
+                         'modified, use bzr break-lock %s',
                          self._logged_reports[1][0])
         args = self._logged_reports[1][1]
         self.assertEqual('Lock owner changed for', args[0])

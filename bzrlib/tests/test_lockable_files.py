@@ -27,7 +27,10 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
 from bzrlib.transactions import (PassThroughTransaction,
@@ -154,7 +157,7 @@ class _TestLockableFiles_mixin(object):
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            return
+            raise TestNotApplicable("%r is not breakable" % (self.lockable,))
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
@@ -177,7 +180,7 @@ class _TestLockableFiles_mixin(object):
             if token is not None:
                 # This test does not apply, because this lockable supports
                 # tokens.
-                return
+                raise TestNotApplicable("%r uses tokens" % (self.lockable,))
             self.assertRaises(errors.TokenLockingNotSupported,
                               self.lockable.lock_write, token='token')
         finally:
@@ -371,7 +374,10 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         super(TestLockableFiles_TransportLock, self).tearDown()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
-        del self.sub_transport
+        try:
+            del self.sub_transport
+        except AttributeError:
+            pass
 
     def get_lockable(self):
         return LockableFiles(self.sub_transport, 'my-lock', TransportLock)
