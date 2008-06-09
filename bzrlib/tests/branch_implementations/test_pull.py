@@ -82,7 +82,6 @@ class TestPull(TestCaseWithBranch):
                 checkout.branch.pull, other.branch)
 
     def test_pull_returns_result(self):
-        import pdb; pdb.set_trace()
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1')
         mine = parent.bzrdir.sprout('mine').open_workingtree()
