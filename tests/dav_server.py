@@ -26,12 +26,14 @@ import os
 import os.path # FIXME: Can't we use bzrlib.osutils ?
 import re
 import shutil # FIXME: Can't we use bzrlib.osutils ?
-import urlparse # FIXME: Can't we use bzrlib.utlutils ?
+import stat
+import urlparse # FIXME: Can't we use bzrlib.urlutils ?
 
 
 from bzrlib import (
     tests,
     trace,
+    urlutils,
     )
 from bzrlib.tests import http_server
 
@@ -273,7 +275,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         url_to = self.headers.get('Destination')
         if url_to is None:
-            self.send_error(400,"Destination header missing")
+            self.send_error(400, "Destination header missing")
             return
         overwrite_header = self.headers.get('Overwrite')
         if overwrite_header == 'F':
@@ -288,15 +290,15 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         if should_overwrite is False and os.access(abs_to, os.F_OK):
-            self.send_error(412,"Precondition Failed")
+            self.send_error(412, "Precondition Failed")
             return
         try:
             os.rename(abs_from, abs_to)
         except (IOError, OSError), e:
             if e.errno == errno.ENOENT:
-                self.send_error(404,"File not found") ;
+                self.send_error(404, "File not found") ;
             else:
-                self.send_error(409,"Conflict") ;
+                self.send_error(409, "Conflict") ;
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -304,6 +306,110 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.send_response(201)
             self.end_headers()
 
+    def _generate_response(self, path):
+        local_path = self.translate_path(path)
+        st = os.stat(local_path)
+        prop = dict()
+
+        def _prop(ns, name, value=None):
+            if value is None:
+                return '<%s:%s/>' % (ns, name)
+            else:
+                return '<%s:%s>%s</%s:%s>' % (ns, name, value, ns, name)
+
+        # For namespaces (and test purposes), where apache2 use:
+        # - lp1, we use liveprop,
+        # - lp2, we use bzr
+        if stat.S_ISDIR(st.st_mode):
+            dpath = path
+            if not dpath.endswith('/'):
+                dpath +=  '/'
+            prop['href'] = _prop('D', 'href', dpath)
+            prop['type'] = _prop('liveprop', 'resourcetype', '<D:collection/>')
+            prop['length'] = ''
+            prop['exec'] = ''
+        else:
+            # FIXME: assert S_ISREG ? Handle symlinks ?
+            prop['href'] = _prop('D', 'href', path)
+            prop['type'] = _prop('liveprop', 'resourcetype')
+            prop['length'] = _prop('liveprop', 'getcontentlength',
+                                          st.st_size)
+            if st.st_mode & stat.S_IXUSR:
+                is_exec = 'T'
+            else:
+                is_exec = 'F'
+            prop['exec'] = _prop('bzr', 'excutable', is_exec)
+        prop['status'] = _prop('D', 'status', 'HTTP/1.1 200 OK')
+
+        response = """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
+    %(href)s
+    <D:propstat>
+        <D:prop>
+             %(type)s
+             %(length)s
+             %(exec)s
+        </D:prop>
+        %(status)s
+    </D:propstat>
+</D:response>
+""" % prop
+        return response, st
+
+    def _generate_dir_responses(self, path, depth):
+        local_path = self.translate_path(path)
+        entries = os.listdir(local_path)
+
+        for entry in entries:
+            entry_path = urlutils.escape(entry)
+            if path.endswith('/'):
+                entry_path = path + entry_path
+            else:
+                entry_path = path + '/' + entry_path
+            response, st = self._generate_response(entry_path)
+            yield response
+            if depth == 'Infinity' and stat.S_ISDIR(st.st_mode):
+                for sub_resp in self._generate_dir_responses(entry_path, depth):
+                    yield sub_resp
+
+    def do_PROPFIND(self):
+        """Serve a PROPFIND request."""
+        depth = self.headers.get('Depth')
+        if depth is None:
+            depth = 'Infinity'
+        if depth not in ('0', '1', 'Infinity'):
+            self.send_error(400, "Bad Depth")
+            return
+
+        path = self.translate_path(self.path)
+        # Don't bother parsing the body, we handle only allprop anyway.
+        # FIXME: Handle the body :)
+        data = self.read_body()
+
+        try:
+            response, st = self._generate_response(self.path)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                self.send_error(404)
+                return
+            else:
+                raise
+
+        if depth in ('1', 'Infinity') and stat.S_ISDIR(st.st_mode):
+            dir_responses = self._generate_dir_responses(self.path, depth)
+        else:
+            dir_responses = []
+
+        # Generate the response, we don't care about performance, so we just
+        # expand everything into a big string.
+        response = """<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
+%s%s
+</D:multistatus>""" % (response, ''.join(list(dir_responses)))
+
+        self.send_response(207)
+        self.send_header('Content-length', len(response))
+        self.end_headers()
+        self.wfile.write(response)
 
 class DAVServer(http_server.HttpServer):
     """Subclass of HttpServer that gives http+webdav urls.

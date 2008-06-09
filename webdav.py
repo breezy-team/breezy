@@ -774,6 +774,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         if code == 404:
             raise errors.NoSuchFile(abspath)
         if code == 409:
+            # FIXME: Could this really occur ?
             # More precisely some intermediate directories are missing
             raise errors.NoSuchFile(abspath)
         if code != 207:
