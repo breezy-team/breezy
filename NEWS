@@ -22,6 +22,11 @@ IN DEVELOPMENT
     * Sanitize branch nick before using it as an attachment filename in
       ``bzr send``. (Lukáš Lalinský, #210218)
 
+    * Squash ``inv_entry.symlink_target`` to a plain string when
+      generating DirState details. This prevents from getting a
+      ``UnicodeError`` when you have symlinks and non-ascii filenames.
+      (John Arbash Meinel, #135320)
+
   IMPROVEMENTS:
 
     * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
