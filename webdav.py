@@ -652,7 +652,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
         Note that when a non-empty dir required to be deleted, a conforming DAV
         server will delete the dir and all its content. That does not normally
-        append in bzr.
+        happen in bzr.
         """
         abs_path = self._remote_path(rel_path)
 
@@ -790,11 +790,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             if not is_dir:
                 yield name
 
-    # TODO: Before
-    # www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt
-    # becomes  a real  RFC and  gets implemented,  we can  try to
-    # implement   it   in   a   test  server.   Below   are   two
-    # implementations, a third one will correspond to the draft.
     def append_file(self, relpath, f, mode=None):
         """See Transport.append_file"""
         return self.append_bytes(relpath, f.read(), mode=mode)
@@ -867,8 +862,4 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     import tests.dav_server
-    return [(HttpDavTransport, tests.dav_server.DAVServer),
-            # Until the Dav transport try to use the APPEND
-            # request, there is no need to activate the following
-            # (HttpDavTransport, test_webdav.DAVServer_append),
-            ]
+    return [(HttpDavTransport, tests.dav_server.DAVServer),]

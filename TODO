@@ -6,9 +6,6 @@
 
 * webdav.py
 
-** get rid of the APPEND experiments, this is not going to be
-   supported anytime soon.
-
 ** We can detect that the server do not accept "write" operations
    (it will return 501) and raise InvalidHttpRequest(to be
    defined as a daughter of InvalidHttpResponse) but what will

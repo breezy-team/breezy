@@ -304,47 +304,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.send_response(201)
             self.end_headers()
 
-class TestingDAVAppendRequestHandler(TestingDAVRequestHandler):
-    """
-    Subclass of TestingDAVRequestHandler implementing te APPEND command.
-
-    http://www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt
-    propose two new commands: APPEND and PATCH. Their description
-    is sparse, this is a best effort attempt to implement the
-    APPEND command.
-    """
-    def do_APPEND(self):
-        """Serve an APPEND request"""
-        path = self.translate_path(self.path)
-        trace.mutter("do_APPEND rel: [%s], abs: [%s]" % (self.path,path))
-
-        if self.headers.get('Expect') == '100-continue':
-            # Tell the client to go ahead, we're ready to get the content
-            self.send_response(100,"Continue")
-            self.end_headers()
-
-        try:
-            # Always write in binary mode.
-            trace.mutter("do_APPEND will try to open: [%s]" % path)
-            f = open(path, 'wb+')
-        except (IOError, OSError), e :
-            self.send_error(409, "Conflict")
-            return
-
-        try:
-            data = self.read_body()
-            f.write(data)
-        except (IOError, OSError):
-            # FIXME: We leave a partially updated file here
-            self.send_error(409, "Conflict")
-            f.close()
-            return
-        f.close()
-        trace.mutter("do_APPEND done: [%s]" % self.path)
-        # FIXME: We should send 204 if the file didn't exist before
-        self.send_response(201)
-        self.end_headers()
-
 
 class DAVServer(http_server.HttpServer):
     """Subclass of HttpServer that gives http+webdav urls.
@@ -357,25 +316,6 @@ class DAVServer(http_server.HttpServer):
         # We    have   special    requests    to   handle    that
         # HttpServer_urllib doesn't know about
         super(DAVServer,self).__init__(TestingDAVRequestHandler)
-
-    # urls returned by this server should require the webdav client impl
-    _url_protocol = 'http+webdav'
-
-
-class DAVServer_append(DAVServer):
-    """Subclass of HttpServer that gives http+webdav urls.
-
-    This is for use in testing: connections to this server will always go
-    through pycurl where possible.
-    This server implements the proposed
-    (www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt)
-    APPEND request.
-    """
-
-    def __init__(self):
-        # We    have   special    requests    to   handle    that
-        # HttpServer_PyCurl don't know about
-        super(DAVServer_append,self).__init__(TestingDAVAppendRequestHandler)
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
