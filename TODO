@@ -26,8 +26,6 @@
 
 * tests
 
-** Move the server into its own file
-
 ** Implement the testing of the range header for PUT requests
    (GET request are already heavily tested in bzr). Test servers
    are available there too. This will also help for reporting
