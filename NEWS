@@ -19,6 +19,10 @@ IN DEVELOPMENT
       end of line, causing a knit snapshot in a 'knits' repository will no longer
       cause KnitCorrupt. (Robert Collins)
 
+    * ``RemoteBranch.pull`` needs to return the ``self._real_branch``'s
+      pull result. It was instead just returning None, which breaks ``bzr
+      pull``. (John Arbash Meinel, #238149)
+
     * Sanitize branch nick before using it as an attachment filename in
       ``bzr send``. (Lukáš Lalinský, #210218)
 
