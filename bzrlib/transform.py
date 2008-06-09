@@ -1675,14 +1675,14 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         try:
             deferred_contents = []
             num = 0
+            total = len(tree.inventory)
             if delta_from_tree:
                 precomputed_delta = []
             else:
                 precomputed_delta = None
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
-                pb.update("Building tree", num - len(deferred_contents),
-                          len(tree.inventory))
+                pb.update("Building tree", num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
                 reparent = False
@@ -1705,21 +1705,17 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
                             reparent = True
-                if entry.parent_id not in file_trans_id:
-                    raise AssertionError(
-                        'entry %s parent id %r is not in file_trans_id %r'
-                        % (entry, entry.parent_id, file_trans_id))
                 parent_id = file_trans_id[entry.parent_id]
                 if entry.kind == 'file':
                     # We *almost* replicate new_by_entry, so that we can defer
                     # getting the file text, and get them all at once.
                     trans_id = tt.create_path(entry.name, parent_id)
                     file_trans_id[file_id] = trans_id
-                    tt.version_file(entry.file_id, trans_id)
-                    executable = tree.is_executable(entry.file_id, tree_path)
+                    tt.version_file(file_id, trans_id)
+                    executable = tree.is_executable(file_id, tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    deferred_contents.append((entry.file_id, trans_id))
+                    deferred_contents.append((file_id, trans_id))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                           tree)
