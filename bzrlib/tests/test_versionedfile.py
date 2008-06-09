@@ -618,6 +618,15 @@ class VersionedFileTestMixIn(object):
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
 
+    def test_make_mpdiffs_with_ghosts(self):
+        vf = self.get_file('foo')
+        try:
+            vf.add_lines_with_ghosts('text', ['ghost'], ['line\n'])
+        except NotImplementedError:
+            # old Weave formats do not allow ghosts
+            return
+        self.assertRaises(errors.RevisionNotPresent, vf.make_mpdiffs, ['ghost'])
+
     def _setup_for_deltas(self, f):
         self.assertFalse(f.has_version('base'))
         # add texts that should trip the knit maximum delta chain threshold
