@@ -47,15 +47,11 @@ else:
                                       'HttpDavTransport')
 
 
-    def test_suite():
-        from bzrlib.tests import TestUtil
-
-        suite = TestUtil.TestSuite()
-        loader = TestUtil.TestLoader()
+    def load_tests(basic_tests, module, loader):
         testmod_names = [
-            'test_webdav',
+            'tests',
             ]
-
-        suite.addTest(loader.loadTestsFromModuleNames(
+        basic_tests.addTest(loader.loadTestsFromModuleNames(
                 ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-        return suite
+        return basic_tests
+

@@ -21,51 +21,6 @@ partially the WebDAV protocol to push files.
 This should enable remote push operations.
 """
 
-# FIXME: Turning directory indexes off may make the server
-# reports that an existing directory does not exist. Reportedly,
-# using multiviews can provoke that too. Investigate and fix.
-
-# FIXME: A DAV web server can't handle mode on files because:
-# - there is nothing in the protocol for that,
-# - the  server  itself  generally  uses  the mode  for  its  own
-#   purposes, except  if you  make it run  suid which  is really,
-#   really   dangerous   (Apache    should   be   compiled   with
-#   -D-DBIG_SECURITY_HOLE for those who didn't get the message).
-# That means  this transport will do  no better. May  be the file
-# mode should  be a file property handled  explicitely inside the
-# repositories  and applied  by bzr  in the  working  trees. That
-# implies a mean to  store file properties, apply them, detecting
-# their changes, etc.
-
-# TODO:   Cache  files   to   improve  performance   (a  bit   at
-# least). Files  should be kept  in a temporary directory  (or an
-# hash-based hierarchy to limit  local file systems problems) and
-# indexed  on  their  full  URL  to  allow  sharing  between  DAV
-# transport  instances. If the  full content  is not  cached, the
-# Content-Length header, if cached,  may avoid a roundtrip to the
-# server when appending.
-
-# TODO:  Try to  use Transport.translate_error  if it  becomes an
-# accessible function. Otherwise  duplicate it here (bad). Anyway
-# all translations of IOError and OSError should be factored.
-
-# TODO: Have the webdav plugin try to use APPEND, and if it isn't
-# available, permanently switch back to get + put for the life of
-# the Transport.
-
-# TODO:  We can  detect that  the  server do  not accept  "write"
-# operations (it will return 501) and raise InvalidHttpRequest(to
-# be defined as a  daughter of InvalidHttpResponse) but what will
-# the upper layers do ?
-
-# TODO: 20060908 All *_file functions are defined in terms of
-# *_bytes because we have to read the file to create a proper PUT
-# request.  Is it possible to define PUT with a file-like object,
-# so that we don't have to potentially read in and hold onto
-# potentially 600MB of file contents?
-
-# TODO: Factor out the error handling.
-
 from cStringIO import StringIO
 import os
 import random
@@ -911,8 +866,8 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    import test_webdav
-    return [(HttpDavTransport, test_webdav.DAVServer),
+    import tests.test_webdav
+    return [(HttpDavTransport, tests.test_webdav.DAVServer),
             # Until the Dav transport try to use the APPEND
             # request, there is no need to activate the following
             # (HttpDavTransport, test_webdav.DAVServer_append),

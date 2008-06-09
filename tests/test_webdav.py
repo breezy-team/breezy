@@ -20,11 +20,6 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
-# TODO: Move the server into its own file
-
-# TODO: Implement the testing of the range header for PUT requests (GET request
-# are already heavily tested in bzr). Test servers are available there too.
-
 from cStringIO import StringIO
 import errno
 import httplib
