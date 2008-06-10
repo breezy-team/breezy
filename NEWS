@@ -8,10 +8,54 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  BUG FIXES:
+
+    * Avoid KnitCorrupt error extracting inventories from some repositories.
+      (The data is not corrupt; an internal check is detecting a problem
+      reading from the repository.)
+      (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
+
+    * Inserting a bundle which changes the contents of a file with no trailing
+      end of line, causing a knit snapshot in a 'knits' repository will no longer
+      cause KnitCorrupt. (Robert Collins)
+
+    * ``RemoteBranch.pull`` needs to return the ``self._real_branch``'s
+      pull result. It was instead just returning None, which breaks ``bzr
+      pull``. (John Arbash Meinel, #238149)
+
+    * Sanitize branch nick before using it as an attachment filename in
+      ``bzr send``. (Lukáš Lalinský, #210218)
+
+    * Squash ``inv_entry.symlink_target`` to a plain string when
+      generating DirState details. This prevents from getting a
+      ``UnicodeError`` when you have symlinks and non-ascii filenames.
+      (John Arbash Meinel, #135320)
+
+  IMPROVEMENTS:
+
+    * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
+
+    * ``added``, ``modified``, and ``unknowns`` behaviour made consistent (all three
+      now quote paths where required). Added ``--null`` option to ``added`` and 
+      ``modified`` (for null-separated unknowns, use ``ls --unknown --null``)
+      (Adrian Wilkins)
+
+    * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
+      (Ian Clatworthy, Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr status`` was breaking if you merged the same revision twice.
       (John Arbash Meinel, #235407)
+
+  DOCUMENTATION:
+
+    * Added *Bazaar Zen* section to the User Guide. (Ian Clatworthy)
+
+  TESTING:
+
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
 
   API CHANGES:
 
@@ -20,6 +64,11 @@ IN DEVELOPMENT
       tree twice, or merge an ancestor of an existing merge, it will only
       record the newest. (If you merge a descendent, it will replace its
       ancestor). (John Arbash Meinel, #235407)
+
+  INTERNALS:
+
+    * Knit record serialisation is now stricter on what it will accept, to
+      guard against potential internal bugs, or broken input. (Robert Collins)
 
 
 bzr 1.6beta1 2008-06-02
@@ -134,6 +183,9 @@ and future extensions.
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
 
+    * ``VersionedFile.make_mpdiffs()`` was raising an exception that wasn't in
+      scope. (Daniel Fischer #235687)
+
   DOCUMENTATION:
 
     * Added directory structure and started translation of docs in spanish.
@@ -150,6 +202,12 @@ and future extensions.
     * Updated Tortise strategy document. (Mark Hammond)
 
   TESTING:
+
+    * ``bzrlib.tests.adapt_tests`` was broken and unused - it has been fixed.
+      (Robert Collins)
+
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
 
     * New helper function for splitting test suites
       ``split_suite_by_condition``. (Robert Collins)
@@ -903,6 +961,8 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
   TESTING:
+    
+    * Added missing blackbox tests for ``modified`` (Adrian Wilkins)
 
     * The branch interface tests were invalid for branches using rich-root
       repositories because the empty string is not a valid file-id.
