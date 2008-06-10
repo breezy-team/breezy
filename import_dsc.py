@@ -297,7 +297,10 @@ class DscImporter(object):
                                  make_upstream_tag(last_upstream))
         tree.revert(None,
                     tree.branch.repository.revision_tree(old_upstream_revid))
-      import_tar(tree, f, file_ids_from=[dangling_tree])
+      file_ids_from = []
+      if dangling_tree is not None:
+        file_ids_from = [dangling_tree]
+      import_tar(tree, f, file_ids_from=file_ids_from)
       if last_upstream is not None:
         tree.set_parent_ids([old_upstream_revid])
         revno = tree.branch.revision_id_to_revno(old_upstream_revid)
@@ -327,7 +330,10 @@ class DscImporter(object):
           dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
         tree.revert(None,
                     tree.branch.repository.revision_tree(old_upstream_revid))
-      import_tar(tree, f, file_ids_from=[dangling_tree])
+      file_ids_from = []
+      if dangling_tree is not None:
+        file_ids_from = [dangling_tree]
+      import_tar(tree, f, file_ids_from=file_ids_from)
       if last_upstream is not None:
         tree.set_parent_ids([old_upstream_revid])
         revno = tree.branch.revision_id_to_revno(old_upstream_revid)
