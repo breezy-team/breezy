@@ -979,7 +979,6 @@ class BzrDir(object):
             if shallow:
                 shallow_branch_url = self.root_transport.base
             else:
-                shallow_branch_url = None
                 try:
                     shallow_branch_url = source_branch.get_stacked_on()
                 except (errors.NotStacked, errors.UnstackableBranchFormat,
@@ -999,12 +998,13 @@ class BzrDir(object):
                 result_repo = result.find_repository()
             except errors.NoRepositoryPresent:
                 result_repo = None
-        if source_repository is None and result_repo is not None:
-            pass
-        elif source_repository is None and result_repo is None:
-            # no repo available, make a new one
-            result.create_repository()
-        elif shallow_branch_url:
+
+        # Create/update the result repository as required
+        if source_repository is None:
+            if result_repo is None:
+                # no repo available, make a new one
+                result.create_repository()
+        elif shallow_branch_url is not None:
             if result_repo is None:
                 result_repo = source_repository._format.initialize(result)
             stacked_dir = BzrDir.open(shallow_branch_url)
@@ -1014,24 +1014,28 @@ class BzrDir(object):
                 stacked_repo = stacked_dir.open_repository()
             result_repo.add_fallback_repository(stacked_repo)
             result_repo.fetch(source_repository, revision_id=revision_id)
-        elif source_repository is not None and result_repo is None:
+        elif result_repo is None:
             # have source, and want to make a new target repo
             result_repo = source_repository.sprout(result,
                                                    revision_id=revision_id)
         else:
-            # fetch needed content into target.
-            if source_repository is not None:
-                # would rather do 
-                # source_repository.copy_content_into(result_repo,
-                #                                     revision_id=revision_id)
-                # so we can override the copy method
-                result_repo.fetch(source_repository, revision_id=revision_id)
+            # Fetch needed content into target.
+            # Would rather do it this way ...
+            # source_repository.copy_content_into(result_repo,
+            #                                     revision_id=revision_id)
+            # so we can override the copy method
+            result_repo.fetch(source_repository, revision_id=revision_id)
+
+        # Create/update the result branch
         if source_branch is not None:
-            result_branch = source_branch.sprout(result, revision_id=revision_id)
+            result_branch = source_branch.sprout(result,
+                revision_id=revision_id)
         else:
             result_branch = result.create_branch()
-        if shallow_branch_url:
+        if shallow_branch_url is not None:
             result_branch.set_stacked_on(shallow_branch_url)
+
+        # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
@@ -1052,12 +1056,10 @@ class BzrDir(object):
                 basis = wt.basis_tree()
                 basis.lock_read()
                 subtrees = basis.iter_references()
-                recurse_branch = wt.branch
             elif source_branch is not None:
                 basis = source_branch.basis_tree()
                 basis.lock_read()
                 subtrees = basis.iter_references()
-                recurse_branch = source_branch
             else:
                 subtrees = []
                 basis = None
@@ -1067,7 +1069,8 @@ class BzrDir(object):
                     sublocation = source_branch.reference_parent(file_id, path)
                     sublocation.bzrdir.sprout(target,
                         basis.get_reference_revision(file_id, path),
-                        force_new_repo=force_new_repo, recurse=recurse)
+                        force_new_repo=force_new_repo, recurse=recurse,
+                        shallow=shallow)
             finally:
                 if basis is not None:
                     basis.unlock()
@@ -2889,7 +2892,7 @@ format_registry.register_metadir('development0-subtree',
     )
 format_registry.register_metadir('development1',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
-    help='A branch and pack based repository that support stacking. '
+    help='A branch and pack based repository that supports stacking. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
@@ -2900,7 +2903,7 @@ format_registry.register_metadir('development1',
     )
 format_registry.register_metadir('development1-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
-    help='A branch and pack based repository that support stacking. '
+    help='A branch and pack based repository that supports stacking. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',

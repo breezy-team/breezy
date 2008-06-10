@@ -347,7 +347,7 @@ class Branch(object):
         raise NotImplementedError(self.set_revision_history)
 
     def set_stacked_on(self, url):
-        """set the URL this branch is stacked against.
+        """Set the URL this branch is stacked against.
 
         :raises UnstackableBranchFormat: If the branch does not support
             stacking.
@@ -1188,7 +1188,7 @@ class BranchFormatMetadir(BranchFormat):
         raise NotImplementedError(self._branch_class)
 
     def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
+        """Return the branch object for a_bzrdir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already be done.
@@ -2143,7 +2143,8 @@ class BzrBranch7(BzrBranch5):
             source_repository = self._get_fallback_repository(old_url)
             for revision_id in chain([self.last_revision()],
                 self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id, find_ghosts=True)
+                self.repository.fetch(source_repository, revision_id,
+                    find_ghosts=True)
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
@@ -2233,7 +2234,8 @@ class BzrBranch7(BzrBranch5):
 class BzrBranch6(BzrBranch7):
     """See BzrBranchFormat6 for the capabilities of this branch.
 
-    This subclass of BzrBranch7 disables the new features BzrBranch7 added.
+    This subclass of BzrBranch7 disables the new features BzrBranch7 added,
+    i.e. stacking.
     """
 
     def get_stacked_on(self):

@@ -1522,7 +1522,7 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.set_parent(url)
         
     def set_stacked_on(self, stacked_location):
-        """set the URL this branch is stacked against.
+        """Set the URL this branch is stacked against.
 
         :raises UnstackableBranchFormat: If the branch does not support
             stacking.
