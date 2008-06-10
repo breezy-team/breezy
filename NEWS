@@ -5,8 +5,13 @@ Bazaar Release Notes
 .. contents::
 
 
-IN DEVELOPMENT
---------------
+bzr 1.6beta2 2008-06-10
+-----------------------
+
+This release contains further progress towards our 1.6 goals of shallow
+repositories, and contains a fix for some user-affecting bugs in the
+repository layer.  Building working trees during checkout and branch is
+now faster.
 
   BUG FIXES:
 
