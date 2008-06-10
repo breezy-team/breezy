@@ -49,12 +49,12 @@ class TestStacking(TestCaseWithBranch):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline')
         trunk_revid = trunk_tree.commit('mainline')
-        # and make branch from it which is shallow
+        # and make branch from it which is stacked
         try:
-            new_dir = trunk_tree.bzrdir.sprout('newbranch', shallow=True)
-        except (errors.UnstackableBranchFormat, errors.UnstackableRepositoryFormat):
+            new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        except (errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat):
             # not a testable combination.
             return
         new_tree = new_dir.open_workingtree()
         new_tree.commit('something local')
-

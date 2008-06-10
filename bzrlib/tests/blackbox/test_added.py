@@ -23,13 +23,30 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
 
+
 class TestAdded(ExternalBase):
 
     def test_added(self):
         """Test that 'added' command reports added files"""
+        self._test_added('a', 'a\n')
 
-        def check_added(expected):
-            out, err = self.run_bzr('added')
+    def test_added_with_spaces(self):
+        """Test that 'added' command reports added files with spaces in their names quoted"""
+        self._test_added('a filename with spaces', '"a filename with spaces"\n')
+    
+    def test_added_null_separator(self):
+        """Test that added uses its null operator properly"""
+        self._test_added('a', 'a\0', null=True)
+
+    def _test_added(self, name, output, null=False):
+
+        def check_added(expected, null=False):
+            command = 'added'
+
+            if null:
+                command += ' --null'
+
+            out, err = self.run_bzr(command)
             self.assertEquals(out, expected)
             self.assertEquals(err, '')
 
@@ -38,15 +55,15 @@ class TestAdded(ExternalBase):
         check_added('')
 
         # with unknown file, still nothing added
-        self.build_tree_contents([('a', 'contents of a\n')])
+        self.build_tree_contents([(name, 'contents of %s\n' % (name))])
         check_added('')
-
+        
         # after add, shows up in list
         # bug report 20060119 by Nathan McCallum -- 'bzr added' causes
         # NameError
-        tree.add('a')
-        check_added('a\n')
+        tree.add(name)
+        check_added(output, null) 
 
         # after commit, now no longer listed
-        tree.commit(message='add a')
+        tree.commit(message='add "%s"' % (name))
         check_added('')

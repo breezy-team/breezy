@@ -94,7 +94,7 @@ class Check(object):
 
     def plan_revisions(self):
         repository = self.repository
-        self.planned_revisions = list(repository.all_revision_ids())
+        self.planned_revisions = repository.all_revision_ids()
         self.progress.clear()
         inventoried = set(self.inventory_weave.versions())
         awol = set(self.planned_revisions) - inventoried
@@ -203,6 +203,10 @@ class Check(object):
         files_in_revisions = {}
         revisions_of_files = {}
         weave_checker = self.repository._get_versioned_file_checker()
+        # XXX: for pack repositories, this iteration seems a bit redundant
+        # with iteration also done within the versioned file checker.  also
+        # note that the inventory/revision/signature data is not included in
+        # this enumeration -- mbp 20080528
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking versionedfile', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,

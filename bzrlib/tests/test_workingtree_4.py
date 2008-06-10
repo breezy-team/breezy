@@ -115,17 +115,19 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev2 = subtree2.commit('commit in subdir2')
 
         subtree.flush()
-        subtree.merge_from_branch(subtree2.branch)
-        rev3 = subtree.commit('merge from subdir2')
+        subtree3 = subtree.bzrdir.sprout('subdir3').open_workingtree()
+        rev3 = subtree3.commit('merge from subdir2')
 
         repo = tree.branch.repository
-        repo.fetch(subtree.branch.repository, rev3)
+        repo.fetch(subtree.branch.repository, rev1)
+        repo.fetch(subtree2.branch.repository, rev2)
+        repo.fetch(subtree3.branch.repository, rev3)
         # will also pull the others...
 
         # create repository based revision trees
-        rev1_revtree = subtree.branch.repository.revision_tree(rev1)
-        rev2_revtree = subtree2.branch.repository.revision_tree(rev2)
-        rev3_revtree = subtree.branch.repository.revision_tree(rev3)
+        rev1_revtree = repo.revision_tree(rev1)
+        rev2_revtree = repo.revision_tree(rev2)
+        rev3_revtree = repo.revision_tree(rev3)
         # tree doesn't contain a text merge yet but we'll just
         # set the parents as if a merge had taken place. 
         # this should cause the tree data to be folded into the 

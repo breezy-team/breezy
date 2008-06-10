@@ -173,47 +173,49 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.create_simple_tree()
 
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
-
         tree2.commit('unchanged', rev_id='b3')
+
+        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        tree3.commit('unchanged', rev_id='c3')
 
         wt.merge_from_branch(tree2.branch)
         wt.commit('merge b3', rev_id='a3')
 
-        tree2.commit('unchanged', rev_id='b4')
-
-        wt.merge_from_branch(tree2.branch)
-        wt.commit('merge b4', rev_id='a4')
+        wt.merge_from_branch(tree3.branch)
+        wt.commit('merge c3', rev_id='a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit --force -r 2')
 
-        self.assertEqual(['a2', 'b3', 'b4'], wt.get_parent_ids())
+        self.assertEqual(['a2', 'b3', 'c3'], wt.get_parent_ids())
 
     def test_uncommit_merge_plus_pending(self):
         wt = self.create_simple_tree()
 
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
-
         tree2.commit('unchanged', rev_id='b3')
+        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        tree3.commit('unchanged', rev_id='c3')
+
         wt.branch.fetch(tree2.branch)
         wt.set_pending_merges(['b3'])
         wt.commit('merge b3', rev_id='a3')
 
-        tree2.commit('unchanged', rev_id='b4')
-        wt.branch.fetch(tree2.branch)
-        wt.set_pending_merges(['b4'])
 
-        self.assertEqual(['a3', 'b4'], wt.get_parent_ids())
+        wt.merge_from_branch(tree3.branch)
+
+        self.assertEqual(['a3', 'c3'], wt.get_parent_ids())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit --force -r 2')
 
-        self.assertEqual(['a2', 'b3', 'b4'], wt.get_parent_ids())
+        self.assertEqual(['a2', 'b3', 'c3'], wt.get_parent_ids())
 
     def test_uncommit_octopus_merge(self):
         # Check that uncommit keeps the pending merges in the same order
+        # though it will also filter out ones in the ancestry
         wt = self.create_simple_tree()
 
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
@@ -238,7 +240,7 @@ class TestUncommit(TestCaseWithTransport):
         os.chdir('tree')
         out, err = self.run_bzr('uncommit --force -r 2')
 
-        self.assertEqual(['a2', 'b3', 'c3', 'c4', 'b4'], wt.get_parent_ids())
+        self.assertEqual(['a2', 'c4', 'b4'], wt.get_parent_ids())
 
     def test_uncommit_nonascii(self):
         tree = self.make_branch_and_tree('tree')
