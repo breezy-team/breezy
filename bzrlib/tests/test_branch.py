@@ -351,10 +351,6 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         branch = self.make_branch('a', format=self.get_format_name())
         self.assertRaises(errors.NotStacked, branch.get_stacked_on)
 
-    def test_stacked_location_file(self):
-        branch = self.make_branch('a', format=self.get_format_name())
-        self.assertFileEqual('\n', 'a/.bzr/branch/stacked-on')
-
     def test_stack_and_unstack(self):
         branch = self.make_branch('a', format=self.get_format_name())
         target = self.make_branch_and_tree('b', format=self.get_format_name())
