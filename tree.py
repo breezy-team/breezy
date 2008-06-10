@@ -332,7 +332,7 @@ class SvnBasisTree(RevisionTree):
                 
                 if entry.kind == svn.core.svn_node_dir:
                     subwc = svn.wc.adm_open3(wc, 
-                            self.workingtree.abspath(subrelpath), 
+                            self.workingtree.abspath(subrelpath).encode('utf-8'), 
                                              False, 0, None)
                     try:
                         add_dir_to_inv(subrelpath, subwc, id)
