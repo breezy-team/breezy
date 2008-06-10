@@ -287,6 +287,8 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def _translate_path(self, path):
         """Translate a /-separated PATH to the local filename syntax.
 
+        Note that we're translating http URLs here, not file URLs.
+        The URL root location is the server's startup directory.
         Components that mean special things to the local file system
         (e.g. drive or directory names) are ignored.  (XXX They should
         probably be diagnosed.)
@@ -300,8 +302,9 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         words = path.split('/')
         words = filter(None, words)
         path = self._cwd
-        for word in words:
-            drive, word = os.path.splitdrive(word)
+        for num, word in enumerate(words):
+            if num == 0:
+                drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
             if word in (os.curdir, os.pardir): continue
             path = os.path.join(path, word)

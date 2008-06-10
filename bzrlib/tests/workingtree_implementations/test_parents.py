@@ -160,6 +160,73 @@ class TestSetParents(TestParents):
         self.assertConsistentParents(
             [first_revision, second_revision, third_revision], t)
 
+    def test_set_duplicate_parent_ids(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        rev2 = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        rev3 = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        t.set_parent_ids([rev1, rev2, rev2, rev3])
+        # We strip the duplicate, but preserve the ordering
+        self.assertConsistentParents([rev1, rev2, rev3], t)
+
+    def test_set_duplicate_parent_trees(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        rev2 = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        rev3 = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        rev_tree1 = t.branch.repository.revision_tree(rev1)
+        rev_tree2 = t.branch.repository.revision_tree(rev2)
+        rev_tree3 = t.branch.repository.revision_tree(rev3)
+        t.set_parent_trees([(rev1, rev_tree1), (rev2, rev_tree2),
+                            (rev2, rev_tree2), (rev3, rev_tree3)])
+        # We strip the duplicate, but preserve the ordering
+        self.assertConsistentParents([rev1, rev2, rev3], t)
+
+    def test_set_parent_ids_in_ancestry(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        rev2 = t.commit('second post')
+        rev3 = t.commit('third post')
+        # Reset the tree, back to rev1
+        t.set_parent_ids([rev1])
+        t.branch.set_last_revision_info(1, rev1)
+        self.assertConsistentParents([rev1], t)
+        t.set_parent_ids([rev1, rev2, rev3])
+        # rev2 is in the ancestry of rev3, so it will be filtered out
+        self.assertConsistentParents([rev1, rev3], t)
+        # Order should be preserved, and the first revision should always be
+        # kept
+        t.set_parent_ids([rev2, rev3, rev1])
+        self.assertConsistentParents([rev2, rev3], t)
+
+    def test_set_parent_trees_in_ancestry(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        rev2 = t.commit('second post')
+        rev3 = t.commit('third post')
+        # Reset the tree, back to rev1
+        t.set_parent_ids([rev1])
+        t.branch.set_last_revision_info(1, rev1)
+        self.assertConsistentParents([rev1], t)
+        rev_tree1 = t.branch.repository.revision_tree(rev1)
+        rev_tree2 = t.branch.repository.revision_tree(rev2)
+        rev_tree3 = t.branch.repository.revision_tree(rev3)
+        t.set_parent_trees([(rev1, rev_tree1), (rev2, rev_tree2),
+                            (rev3, rev_tree3)])
+        # rev2 is in the ancestry of rev3, so it will be filtered out
+        self.assertConsistentParents([rev1, rev3], t)
+        # Order should be preserved, and the first revision should always be
+        # kept
+        t.set_parent_trees([(rev2, rev_tree2), (rev1, rev_tree1),
+                            (rev3, rev_tree3)])
+        self.assertConsistentParents([rev2, rev3], t)
+
 
 class TestAddParent(TestParents):
 

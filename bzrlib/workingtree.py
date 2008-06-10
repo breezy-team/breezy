@@ -724,6 +724,25 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
             mode=self._control_files._file_mode)
 
+    def _filter_parent_ids_by_ancestry(self, revision_ids):
+        """Check that all merged revisions are proper 'heads'.
+
+        This will always return the first revision_id, and any merged revisions
+        which are 
+        """
+        if len(revision_ids) == 0:
+            return revision_ids
+        graph = self.branch.repository.get_graph()
+        heads = graph.heads(revision_ids)
+        new_revision_ids = revision_ids[:1]
+        for revision_id in revision_ids[1:]:
+            if revision_id in heads and revision_id not in new_revision_ids:
+                new_revision_ids.append(revision_id)
+        if new_revision_ids != revision_ids:
+            trace.mutter('requested to set revision_ids = %s,'
+                         ' but filtered to %s', revision_ids, new_revision_ids)
+        return new_revision_ids
+
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
@@ -742,6 +761,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         for revision_id in revision_ids:
             _mod_revision.check_not_reserved_id(revision_id)
 
+        revision_ids = self._filter_parent_ids_by_ancestry(revision_ids)
+
         if len(revision_ids) > 0:
             self.set_last_revision(revision_ids[0])
         else:
@@ -758,6 +779,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         self._check_parents_for_ghosts(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
 
         if len(parent_ids) == 0:
             leftmost_parent_id = _mod_revision.NULL_REVISION

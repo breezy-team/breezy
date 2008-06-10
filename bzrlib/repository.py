@@ -1997,7 +1997,7 @@ class MetaDirRepository(Repository):
                 pass
         else:
             self._transport.put_bytes('no-working-trees', '',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""

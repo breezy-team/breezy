@@ -17,8 +17,9 @@
 
 """Repository implementation tests for external reference repositories.
 
-These test the conformance of repositories which refer to other repositories
-for some data.
+These tests check the conformance of repositories which refer to other
+repositories for some data, and are run for each repository format supporting
+this.
 """
 
 from bzrlib import (
@@ -68,35 +69,34 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
             self.repository_format.__class__)
 
 
-def load_tests(standard_tests, module, loader):
-    # format_scenarios is all the implementations of Repository; i.e. all disk
-    # formats plus RemoteRepository.
-    adapter = TestScenarioApplier()
-    scenarios = all_repository_format_scenarios()
-    adapter.scenarios = []
-    for scenario in scenarios:
-        format = scenario[1]['repository_format']
+def external_reference_test_scenarios():
+    """Generate test scenarios for repositories supporting external references.
+    """
+    result = []
+    for test_name, scenario_info in all_repository_format_scenarios():
         # For remote repositories, we need at least one external reference
         # capable format to test it: defer this until landing such a format.
         # if isinstance(format, remote.RemoteRepositoryFormat):
         #     scenario[1]['bzrdir_format'].repository_format = 
-        if format.supports_external_lookups:
-            adapter.scenarios.append(scenario)
+        if scenario_info['repository_format'].supports_external_lookups:
+            result.append((test_name, scenario_info))
+    return result
 
-    prefix = module.__name__ + '.test_'
-    test_repository_modules = [
-        'add_inventory',
-        'add_revision',
-        'add_signature_text',
-        'all_revision_ids',
-        'break_lock',
-        'check',
+
+def load_tests(standard_tests, module, loader):
+    adapter = TestScenarioApplier()
+    adapter.scenarios = external_reference_test_scenarios()
+
+    module_list = [
+        'bzrlib.tests.per_repository_reference.test_add_inventory',
+        'bzrlib.tests.per_repository_reference.test_add_revision',
+        'bzrlib.tests.per_repository_reference.test_add_signature_text',
+        'bzrlib.tests.per_repository_reference.test_all_revision_ids',
+        'bzrlib.tests.per_repository_reference.test_break_lock',
+        'bzrlib.tests.per_repository_reference.test_check',
         ]
-    module_name_list = [prefix + module_name
-        for module_name in test_repository_modules]
-
     # Parameterize repository_implementations test modules by format.
     result = TestSuite()
     adapt_tests(standard_tests, adapter, result)
-    adapt_modules(module_name_list, adapter, loader, result)
+    adapt_modules(module_list, adapter, loader, result)
     return result

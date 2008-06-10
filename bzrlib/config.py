@@ -440,13 +440,36 @@ class GlobalConfig(IniBasedConfig):
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
+        self._set_option(option, value, 'DEFAULT')
+
+    def get_aliases(self):
+        """Return the aliases section."""
+        if 'ALIASES' in self._get_parser():
+            return self._get_parser()['ALIASES']
+        else:
+            return {}
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the configuration."""
+        self._set_option(alias_name, alias_command, 'ALIASES')
+
+    def unset_alias(self, alias_name):
+        """Unset an existing alias."""
+        aliases = self._get_parser().get('ALIASES')
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
+        del aliases[alias_name]
+        self._write_config_file()
+
+    def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if 'DEFAULT' not in self._get_parser():
-            self._get_parser()['DEFAULT'] = {}
-        self._get_parser()['DEFAULT'][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
+        self._write_config_file()
+
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
