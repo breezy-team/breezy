@@ -347,7 +347,7 @@ class Branch(object):
         raise NotImplementedError(self.set_revision_history)
 
     def set_stacked_on(self, url):
-        """set the URL this branch is stacked against.
+        """Set the URL this branch is stacked against.
 
         :raises UnstackableBranchFormat: If the branch does not support
             stacking.
@@ -473,6 +473,7 @@ class Branch(object):
                 raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
+    @needs_write_lock
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -485,7 +486,51 @@ class Branch(object):
             information. This can be None.
         :return: None
         """
-        raise NotImplementedError(self.update_revisions)
+        other.lock_read()
+        try:
+            other_revno, other_last_revision = other.last_revision_info()
+            stop_revno = None # unknown
+            if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+                stop_revno = other_revno
+
+            # what's the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = _mod_revision.ensure_null(self.last_revision())
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for 
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
+            self.fetch(other, stop_revision)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                if graph is None:
+                    graph = self.repository.get_graph()
+                heads = graph.heads([stop_revision, last_rev])
+                if heads == set([last_rev]):
+                    # The current revision is a decendent of the target,
+                    # nothing to do
+                    return
+                elif heads == set([stop_revision, last_rev]):
+                    # These branches have diverged
+                    raise errors.DivergedBranches(self, other)
+                elif heads != set([stop_revision]):
+                    raise AssertionError("invalid heads: %r" % heads)
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.repository.get_graph()
+                this_revno, this_last_revision = self.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.set_last_revision_info(stop_revno, stop_revision)
+        finally:
+            other.unlock()
+
+
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
@@ -944,7 +989,7 @@ class BranchFormat(object):
             for (filename, content) in utf8_files:
                 branch_transport.put_bytes(
                     filename, content,
-                    mode=control_files._file_mode)
+                    mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
@@ -1143,7 +1188,7 @@ class BranchFormatMetadir(BranchFormat):
         raise NotImplementedError(self._branch_class)
 
     def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
+        """Return the branch object for a_bzrdir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already be done.
@@ -1473,7 +1518,7 @@ class BzrBranch(Branch):
         It is intended to be called by BzrBranch5.set_revision_history."""
         self._transport.put_bytes(
             'revision-history', '\n'.join(history),
-            mode=self.control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -1565,54 +1610,6 @@ class BzrBranch(Branch):
         """
         self.set_revision_history(self._lefthand_history(revision_id,
             last_rev, other_branch))
-
-    @needs_write_lock
-    def update_revisions(self, other, stop_revision=None, overwrite=False,
-                         graph=None):
-        """See Branch.update_revisions."""
-        other.lock_read()
-        try:
-            other_revno, other_last_revision = other.last_revision_info()
-            stop_revno = None # unknown
-            if stop_revision is None:
-                stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-                stop_revno = other_revno
-
-            # what's the current last revision, before we fetch [and change it
-            # possibly]
-            last_rev = _mod_revision.ensure_null(self.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for 
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
-            self.fetch(other, stop_revision)
-            # Check to see if one is an ancestor of the other
-            if not overwrite:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                heads = graph.heads([stop_revision, last_rev])
-                if heads == set([last_rev]):
-                    # The current revision is a decendent of the target,
-                    # nothing to do
-                    return
-                elif heads == set([stop_revision, last_rev]):
-                    # These branches have diverged
-                    raise errors.DivergedBranches(self, other)
-                elif heads != set([stop_revision]):
-                    raise AssertionError("invalid heads: %r" % heads)
-            if stop_revno is None:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                this_revno, this_last_revision = self.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
-            self.set_last_revision_info(stop_revno, stop_revision)
-        finally:
-            other.unlock()
 
     def basis_tree(self):
         """See Branch.basis_tree."""
@@ -1798,7 +1795,7 @@ class BzrBranch(Branch):
             self._transport.delete('parent')
         else:
             self._transport.put_bytes('parent', url + '\n',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
 
     def set_stacked_on(self, url):
         raise errors.UnstackableBranchFormat(self._format, self.base)
@@ -1993,7 +1990,7 @@ class BzrBranch7(BzrBranch5):
         revision_id = _mod_revision.ensure_null(revision_id)
         out_string = '%d %s\n' % (revno, revision_id)
         self._transport.put_bytes('last-revision', out_string,
-            mode=self.control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
@@ -2146,7 +2143,8 @@ class BzrBranch7(BzrBranch5):
             source_repository = self._get_fallback_repository(old_url)
             for revision_id in chain([self.last_revision()],
                 self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id, find_ghosts=True)
+                self.repository.fetch(source_repository, revision_id,
+                    find_ghosts=True)
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
@@ -2236,7 +2234,8 @@ class BzrBranch7(BzrBranch5):
 class BzrBranch6(BzrBranch7):
     """See BzrBranchFormat6 for the capabilities of this branch.
 
-    This subclass of BzrBranch7 disables the new features BzrBranch7 added.
+    This subclass of BzrBranch7 disables the new features BzrBranch7 added,
+    i.e. stacking.
     """
 
     def get_stacked_on(self):
@@ -2268,8 +2267,11 @@ class PullResult(_Result):
     :ivar old_revid: Tip revision id before pull.
     :ivar new_revid: Tip revision id after pull.
     :ivar source_branch: Source (local) branch object.
-    :ivar master_branch: Master branch of the target, or None.
+    :ivar master_branch: Master branch of the target, or the target if no
+        Master
+    :ivar local_branch: target branch if there is a Master, else None
     :ivar target_branch: Target/destination branch object.
+    :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
     def __int__(self):
@@ -2350,7 +2352,7 @@ class Converter5to6(object):
         # Copying done; now update target format
         new_branch._transport.put_bytes('format',
             format.get_format_string(),
-            mode=new_branch.control_files._file_mode)
+            mode=new_branch.bzrdir._get_file_mode())
 
         # Clean up old files
         new_branch._transport.delete('revision-history')
