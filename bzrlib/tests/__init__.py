@@ -2186,7 +2186,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
-                return local_controldir.create_workingtree()
+                wt = local_controldir.create_workingtree()
+                if b._format.get_format_string() == 'Remote BZR Branch':
+                    wt._branch = b
+                    # Make sure that assigning to wt._branch fixes wt.branch,
+                    # in case the implementation details of workingtree objects
+                    # change.
+                    self.assertIs(b, wt.branch)
+                return wt
             else:
                 return b.create_checkout(relpath, lightweight=True)
 
