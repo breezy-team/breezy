@@ -1263,7 +1263,6 @@ class BzrBranchFormat7(BranchFormatMetadir):
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
-                      ('stacked-on', '\n'),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
@@ -2114,9 +2113,8 @@ class BzrBranch7(BzrBranch5):
 
     def get_stacked_on(self):
         self._check_stackable_repo()
-        stacked_url_str = self._transport.get_bytes('stacked-on')
-        stacked_url = stacked_url_str.decode('utf_8').rstrip('\n')
-        if not stacked_url:
+        stacked_url = self._get_config_location('stacked_on_location')
+        if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
 
@@ -2152,7 +2150,7 @@ class BzrBranch7(BzrBranch5):
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
-        self._transport.put_bytes('stacked-on', (url + '\n').encode('utf_8'))
+        self._set_config_location('stacked_on_location', url)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -2368,6 +2366,6 @@ class Converter6to7(object):
 
     def convert(self, branch):
         format = BzrBranchFormat7()
-        branch._transport.put_bytes('stacked-on', '\n')
+        branch._set_config_location('stacked_on_location', '')
         # update target format
         branch._transport.put_bytes('format', format.get_format_string())
