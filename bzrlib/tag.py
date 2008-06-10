@@ -196,7 +196,8 @@ class BasicTags(_Tags):
         :param overwrite: Overwrite conflicting tags in the target branch
 
         :returns: A list of tags that conflicted, each of which is 
-            (tagname, source_target, dest_target).
+            (tagname, source_target, dest_target), or None if no copying was
+            done.
         """
         if self.branch == to_tags.branch:
             return
