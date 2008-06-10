@@ -98,13 +98,13 @@ class TestBranch(ExternalBase):
         self.assertEqual(source_stat, target_stat)
 
     def assertShallow(self, branch_revid, stacked_on):
-        """Assert that the branch 'published' has been published correctly."""
+        """Assert that the branch 'newbranch' has been published correctly."""
         new_branch = branch.Branch.open('newbranch')
         # The branch refers to the mainline
         self.assertEqual(stacked_on, new_branch.get_stacked_on())
         # and the branch's work was pushed
         self.assertTrue(new_branch.repository.has_revision(branch_revid))
-        # but the mainlines was not included
+        # but the mainline's was not included
         repo = new_branch.bzrdir.open_repository()
         self.assertEqual(1, len(repo.all_revision_ids()))
 
@@ -133,8 +133,9 @@ class TestBranch(ExternalBase):
         trunk_tree = self.make_branch_and_tree('mainline',
             format='development')
         trunk_tree.commit('mainline')
-        # and make branch from it which is shallow
-        out, err = self.run_bzr(['branch', '--shallow', 'mainline', 'newbranch'])
+        # and a branch from it which is shallow
+        out, err = self.run_bzr(['branch', '--shallow', 'mainline',
+            'newbranch'])
         self.assertEqual('', out)
         self.assertEqual('Created new shallow branch referring to %s.\n' %
             trunk_tree.branch.base, err)
