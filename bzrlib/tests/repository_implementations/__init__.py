@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -52,7 +52,8 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
     vfs_transport_factory=None):
     """Transform the input formats to a list of scenarios.
 
-    :param formats: A list of (repository_format, bzrdir_format).
+    :param formats: A list of (scenario_name, scenario_info)
+        where the scenario_info is a dict that controls the test.
     """
     result = []
     for repository_format, bzrdir_format in formats:
@@ -71,7 +72,11 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
 
 
 def all_repository_format_scenarios():
-    """Return a list of test scenarios for parameterising repository tests."""
+    """Return a list of test scenarios for parameterising repository tests.
+    
+    :param formats: A list of (scenario_name, scenario_info)
+        where the scenario_info is a dict that controls the test.
+    """
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
