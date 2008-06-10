@@ -1932,6 +1932,34 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(self.db2.revid_of_upstream_version(version),
                 up_revid)
 
+    def check_changes(self, changes, added=[], removed=[], modified=[],
+                      renamed=[]):
+        def check_one_type(type, expected, actual):
+            def make_set(list):
+                output = set()
+                for item in list:
+                    if item[2] == 'directory':
+                        output.add(item[0] + '/')
+                    else:
+                        output.add(item[0])
+                return output
+            exp = set(expected)
+            real = make_set(actual)
+            missing = exp.difference(real)
+            extra = real.difference(exp)
+            if len(missing) > 0:
+                self.fail("Some expected paths not found %s in the changes: "
+                          "%s, expected %s, got %s." % (type, str(missing),
+                              str(expected), str(actual)))
+            if len(extra) > 0:
+                self.fail("Some extra paths found %s in the changes: "
+                          "%s, expected %s, got %s." % (type, str(extra),
+                              str(expected), str(actual)))
+        check_one_type("added", added, changes.added)
+        check_one_type("removed", removed, changes.removed)
+        check_one_type("modified", modified, changes.modified)
+        check_one_type("renamed", renamed, changes.renamed)
+
     def test_import_upstream(self):
         version = Version("0.1-1")
         name = "package"
@@ -1951,11 +1979,45 @@ class DistributionBranchTests(TestCaseWithTransport):
                 "Import upstream from %s" % builder.orig_name())
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
 
+    def test_import_upstream_on_another(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-2")
+        name = "package"
+        builder = SourcePackageBuilder(name, version1)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_upstream_file("COPYING")
+        builder.build_orig()
+        self.db1.import_upstream(builder.orig_name(), version1,
+                self.fake_md5_1)
+        builder = SourcePackageBuilder(name, version2)
+        builder.add_upstream_file("README", "Now even better\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_upstream_file("NEWS")
+        builder.build_orig()
+        self.db1.import_upstream(builder.orig_name(), version2,
+                self.fake_md5_2)
+        tree = self.up_tree1
+        branch = tree.branch
+        rh = branch.revision_history()
+        self.assertEqual(len(rh), 2)
+        self.assertEqual(self.db1.revid_of_upstream_version(version2), rh[1])
+        rev = branch.repository.get_revision(rh[1])
+        self.assertEqual(rev.message,
+                "Import upstream from %s" % builder.orig_name())
+        self.assertEqual(rev.properties['deb-md5'], self.fake_md5_2)
+        rev_tree1 = branch.repository.revision_tree(rh[0])
+        rev_tree2 = branch.repository.revision_tree(rh[1])
+        changes = rev_tree2.changes_from(rev_tree1)
+        self.check_changes(changes, added=["NEWS"], removed=["COPYING"],
+                modified=["README"])
+
     def test_import_package_init_from_other(self):
         version1 = Version("0.1-1")
         version2 = Version("0.2-1")
         up_revid1 = self.up_tree1.commit("upstream one")
         self.db1.tag_upstream_version(version1)
+        self.tree1.pull(self.up_tree1.branch)
         revid1 = self.tree1.commit("one")
         self.db1.tag_version(version1)
         builder = SourcePackageBuilder("package", version2)
@@ -1974,6 +2036,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         builder.build()
         self.db2.import_package(builder.dsc_name())
         self.assertEqual(len(self.up_tree2.branch.revision_history()), 2)
+        self.assertEqual(len(self.tree2.branch.revision_history()), 3)
 
     def import_package_single(self):
         version1 = Version("0.1-1")
@@ -1988,6 +2051,120 @@ class DistributionBranchTests(TestCaseWithTransport):
         builder.add_debian_file("debian/changelog", str(cl))
         builder.build()
         self.db1.import_package(builder.dsc_name())
+        self.assertEqual(len(self.up_tree1.branch.revision_history()), 1)
+        self.assertEqual(len(self.tree1.branch.revision_history()), 2)
+
+    def test_import_package_double(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.2-1")
+        builder = SourcePackageBuilder("package", version1)
+        cl = Changelog()
+        cl.new_block(package="package", version=version1,
+                distributions="unstable", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        builder.add_upstream_file("README", "foo")
+        builder.add_upstream_file("BUGS")
+        builder.add_upstream_file("NEWS")
+        builder.add_debian_file("debian/changelog", str(cl))
+        builder.add_debian_file("COPYING", "Don't do it\n")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        cl.new_block(package="package", version=version2,
+                distributions="unstable", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        builder = SourcePackageBuilder("package", version2)
+        builder.add_upstream_file("README", "bar")
+        builder.add_upstream_file("BUGS")
+        builder.add_upstream_file("COPYING", "Please do\n")
+        builder.add_upstream_file("src.c")
+        builder.add_debian_file("debian/changelog", str(cl))
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh = self.tree1.branch.revision_history()
+        up_rh = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(up_rh), 2)
+        self.assertEqual(len(rh), 3)
+        self.assertEqual(rh[0], up_rh[0])
+        self.assertNotEqual(rh[1], up_rh[1])
+        # Check the parents are correct.
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh[1])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh[2])
+        up_rev_tree1 = self.up_tree1.branch.repository.revision_tree(up_rh[0])
+        up_rev_tree2 = self.up_tree1.branch.repository.revision_tree(up_rh[1])
+        self.assertEqual(up_rev_tree1.get_parent_ids(), [])
+        self.assertEqual(up_rev_tree2.get_parent_ids(), [up_rh[0]])
+        self.assertEqual(rev_tree1.get_parent_ids(), [up_rh[0]])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh[1], up_rh[1]])
+        # Check that the file ids are correct.
+        self.check_changes(up_rev_tree2.changes_from(up_rev_tree1),
+                added=["COPYING", "src.c"], removed=["NEWS"],
+                modified=["README"])
+        self.check_changes(rev_tree1.changes_from(up_rev_tree1),
+                added=["debian/", "debian/changelog", "COPYING"])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                modified=["debian/changelog", "COPYING", "README"],
+                added=["src.c"], removed=["NEWS"])
+        self.check_changes(rev_tree2.changes_from(up_rev_tree2),
+                added=["debian/", "debian/changelog"])
+        self.check_changes(up_rev_tree2.changes_from(rev_tree1),
+                added=["src.c"],
+                removed=["NEWS", "debian/", "debian/changelog"],
+                modified=["README", "COPYING"])
+
+    def test_import_two_roots(self):
+        version1 = Version("0.1-0ubuntu1")
+        version2 = Version("0.1-1")
+        builder = SourcePackageBuilder("package", version1)
+        cl = Changelog()
+        cl.new_block(package="package", version=version1,
+                distributions="intrepid", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        builder.add_upstream_file("README", "foo")
+        builder.add_debian_file("debian/changelog", str(cl))
+        builder.build()
+        self.db2.import_package(builder.dsc_name())
+        cl = Changelog()
+        cl.new_block(package="package", version=version2,
+                distributions="unstable", urgency="low",
+                author="Maint <maint@maint.org",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        cl.add_change("  * foo")
+        builder = SourcePackageBuilder("package", version2)
+        builder.add_upstream_file("README", "bar")
+        builder.add_debian_file("debian/changelog", str(cl))
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        rh2 = self.tree2.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        up_rh2 = self.up_tree2.branch.revision_history()
+        self.assertEqual(len(rh1), 2)
+        self.assertEqual(len(rh2), 2)
+        self.assertEqual(len(up_rh1), 1)
+        self.assertEqual(len(up_rh2), 1)
+        self.assertNotEqual(rh1, rh2)
+        self.assertNotEqual(rh1[0], rh2[0])
+        self.assertNotEqual(rh1[1], rh2[1])
+        self.assertEqual(rh1[0], up_rh1[0])
+        self.assertEqual(rh2[0], up_rh2[0])
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
+        rev_tree2 = self.tree2.branch.repository.revision_tree(rh2[1])
+        up_rev_tree1 = self.up_tree1.branch.repository.revision_tree(rh1[0])
+        up_rev_tree2 = self.up_tree2.branch.repository.revision_tree(rh2[0])
+        self.check_changes(rev_tree1.changes_from(up_rev_tree1),
+                added=["debian/", "debian/changelog"])
+        self.check_changes(rev_tree2.changes_from(up_rev_tree2),
+                added=["debian/", "debian/changelog"])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                modified=["README", "debian/changelog"])
+        self.check_changes(up_rev_tree2.changes_from(up_rev_tree1),
+                modified=["README"])
 
 
 class SourcePackageBuilder(object):
@@ -2036,19 +2213,24 @@ class SourcePackageBuilder(object):
     def basedir(self):
         return self.name + "-" + str(self.version.upstream_version)
 
-    def build_orig(self):
+    def _make_base(self):
         basedir = self.basedir()
         os.mkdir(basedir)
         self._make_files(self.upstream_files, basedir)
+        return basedir
+
+    def build_orig(self):
+        basedir = self._make_base()
         tar = tarfile.open(self.orig_name(), 'w:gz')
         try:
           tar.add(basedir)
         finally:
           tar.close()
+        shutil.rmtree(basedir)
 
     def build(self):
-        basedir = self.basedir()
         self.build_orig()
+        basedir = self._make_base()
         orig_basedir = basedir + ".orig"
         shutil.copytree(basedir, orig_basedir)
         self._make_files(self.debian_files, basedir)

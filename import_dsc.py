@@ -122,6 +122,9 @@ def import_archive(tree, archive_file, file_ids_from=None):
     prefix = common_directory(names_of_files(archive_file))
     tt = TreeTransform(tree)
 
+    if file_ids_from is None:
+        file_ids_from = []
+
     removed = set()
     for path, entry in tree.inventory.iter_entries():
         if entry.parent_id is None:
@@ -167,12 +170,15 @@ def import_archive(tree, archive_file, file_ids_from=None):
         else:
             raise UnknownType(relative_path)
         if tt.tree_file_id(trans_id) is None:
-            if (file_ids_from is not None and
-                file_ids_from.has_filename(relative_path)):
-                file_id = file_ids_from.path2id(relative_path)
-                assert file_id is not None
-                tt.version_file(file_id, trans_id)
-            else:
+            found = False
+            for other_tree in file_ids_from:
+                if other_tree.has_filename(relative_path):
+                    file_id = other_tree.path2id(relative_path)
+                    assert file_id is not None
+                    tt.version_file(file_id, trans_id)
+                    found = True
+                    break
+            if not found:
                 name = basename(member.name.rstrip('/'))
                 file_id = generate_ids.gen_file_id(name)
                 tt.version_file(file_id, trans_id)
@@ -184,12 +190,15 @@ def import_archive(tree, archive_file, file_ids_from=None):
         path = tree.abspath(relative_path)
         do_directory(tt, trans_id, tree, relative_path, path)
         if tt.tree_file_id(trans_id) is None:
-            if (file_ids_from is not None and
-                file_ids_from.has_filename(relative_path)):
-                file_id = file_ids_from.path2id(relative_path)
-                assert file_id is not None
-                tt.version_file(file_id, trans_id)
-            else:
+            found = False
+            for other_tree in file_ids_from:
+                if other_tree.has_filename(relative_path):
+                    file_id = other_tree.path2id(relative_path)
+                    assert file_id is not None
+                    tt.version_file(file_id, trans_id)
+                    found = True
+                    break
+            if not found:
                 tt.version_file(trans_id, trans_id)
         added.add(relative_path)
 
@@ -288,7 +297,7 @@ class DscImporter(object):
                                  make_upstream_tag(last_upstream))
         tree.revert(None,
                     tree.branch.repository.revision_tree(old_upstream_revid))
-      import_tar(tree, f, file_ids_from=dangling_tree)
+      import_tar(tree, f, file_ids_from=[dangling_tree])
       if last_upstream is not None:
         tree.set_parent_ids([old_upstream_revid])
         revno = tree.branch.revision_id_to_revno(old_upstream_revid)
@@ -318,7 +327,7 @@ class DscImporter(object):
           dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
         tree.revert(None,
                     tree.branch.repository.revision_tree(old_upstream_revid))
-      import_tar(tree, f, file_ids_from=dangling_tree)
+      import_tar(tree, f, file_ids_from=[dangling_tree])
       if last_upstream is not None:
         tree.set_parent_ids([old_upstream_revid])
         revno = tree.branch.revision_id_to_revno(old_upstream_revid)
@@ -882,6 +891,16 @@ class DistributionBranch(object):
         """
         self.get_greater_branches = callback
 
+    def get_other_branches(self):
+        """Return all the other branches in this set.
+
+        The returned list will be ordered, and will not contain this
+        branch.
+
+        :return: a list of all the other branches in this set (if any).
+        """
+        return self.get_lesser_branches() + self.get_greater_branches()
+
     def tag_name(self, version):
         """Gets the name of the tag that is used for the version.
 
@@ -1334,8 +1353,10 @@ class DistributionBranch(object):
         mutter("Importing upstream version %s from %s" \
                 % (version, upstream_filename))
         tar_input = open(upstream_filename, 'rb')
+        other_branches = self.get_other_branches()
+        upstream_trees = [o.upstream_tree for o in other_branches]
         import_tar(self.upstream_tree, tar_input,
-                file_ids_from=self.upstream_tree)
+                file_ids_from=upstream_trees + [self.tree])
         revid = self.upstream_tree.commit("Import upstream from %s" \
                 % (osutils.basename(upstream_filename),),
                 revprops={"deb-md5":md5})
@@ -1343,7 +1364,7 @@ class DistributionBranch(object):
         self.tree.branch.fetch(self.upstream_tree.branch,
                 last_revision=revid)
 
-    def _import_patch(self, diff_filename, parents):
+    def _import_patch(self, diff_filename, parents, file_ids_from=None):
         """Apply a patch and update the tree to match.
 
         This applies the patch from diff_filename to self.tree, and
@@ -1359,7 +1380,7 @@ class DistributionBranch(object):
         try:
             tp = TreePatcher(self.tree)
             tp.set_patch_from_fileobj(f)
-            tp.patch_tree(parents)
+            tp.patch_tree(parents, file_ids_from=file_ids_from)
         finally:
             f.close()
 
@@ -1417,7 +1438,10 @@ class DistributionBranch(object):
         self.tree.revert(None,
                 self.upstream_tree.branch.repository.revision_tree(
                     upstream_revid))
-        self._import_patch(diff_filename, parents)
+        other_branches = self.get_other_branches()
+        debian_trees = [o.tree for o in other_branches]
+        self._import_patch(diff_filename, parents,
+                file_ids_from=debian_trees)
         rules_path = os.path.join(self.tree.basedir, 'debian', 'rules')
         if os.path.isfile(rules_path):
             os.chmod(rules_path,

@@ -115,7 +115,7 @@ class TreePatcher(object):
             raise BzrError('lsdiff failed')
         return touched_paths
 
-    def _update_path(self, path, parent_trees):
+    def _update_path(self, path, parent_trees, file_ids_from):
         """You probably want _update_path_info instead."""
         tree = self.tree
         # If tree doesn't have it then it was removed.
@@ -130,12 +130,20 @@ class TreePatcher(object):
             file_id = parent_tree.path2id(path)
             if file_id is not None:
                 tree.add([path], [file_id])
+                added = True
                 break
+        if not added:
+            for other_tree in file_ids_from:
+                file_id = other_tree.path2id(path)
+                if file_id is not None:
+                    tree.add([path], [file_id])
+                    added = True
+                    break
         if not added:
             # New file that didn't exist in any parent, just add it
             tree.add([path])
 
-    def _update_path_info(self, touched_paths, parents):
+    def _update_path_info(self, touched_paths, parents, file_ids_from=None):
         """Update the working tree to reflect the changes in certain paths.
 
         Given a list of paths this method will update the working tree
@@ -148,6 +156,8 @@ class TreePatcher(object):
         :param parents: a list of revision ids that should be used
             for working out whether a path needs modification.
         """
+        if file_ids_from is None:
+            file_ids_from = []
         tree = self.tree
         def get_tree(parent):
             return tree.branch.repository.revision_tree(parent)
@@ -162,10 +172,10 @@ class TreePatcher(object):
                     base_path = os.path.join(base_path, part)
                 if base_path in checked_paths:
                     continue
-                self._update_path(base_path, parent_trees)
+                self._update_path(base_path, parent_trees, file_ids_from)
                 checked_paths.add(base_path)
 
-    def patch_tree(self, parents):
+    def patch_tree(self, parents, file_ids_from=None):
         """Patch the tree with the supplied patch file.
 
         :param parents: a list of parent ids to take the file ids from
@@ -175,6 +185,7 @@ class TreePatcher(object):
         self._patch_tree(self.patch, self.tree.basedir)
         self.patch.seek(0)
         touched_paths = self._get_touched_paths(self.patch)
-        self._update_path_info(touched_paths, parents)
+        self._update_path_info(touched_paths, parents,
+                file_ids_from=file_ids_from)
 
 
