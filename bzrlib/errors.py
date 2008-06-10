@@ -2723,6 +2723,14 @@ class UnableEncodePath(BzrError):
         self.user_encoding = osutils.get_user_encoding()
 
 
+class NoSuchAlias(BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        BzrError.__init__(self, alias_name=alias_name)
+
+
 class CannotBindAddress(BzrError):
 
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
