@@ -722,12 +722,12 @@ class cmd_push(Command):
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
         Option('reference',
-            help='Create a shallow branch that refers to another branch '
+            help='Create a stacked branch that refers to another branch '
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
             type=unicode),
-        Option('shallow',
-            help='Create a shallow branch that references the public location '
+        Option('stacked',
+            help='Create a stacked branch that references the public location '
                 'of the parent branch. See --reference for more information.'),
         ]
     takes_args = ['location?']
@@ -735,7 +735,7 @@ class cmd_push(Command):
 
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
-        use_existing_dir=False, directory=None, reference=None, shallow=False):
+        use_existing_dir=False, directory=None, reference=None, stacked=False):
         from bzrlib.push import _show_push_branch
 
         # Get the source branch and revision_id
@@ -754,7 +754,7 @@ class cmd_push(Command):
         # Get the reference branch, if any
         if reference is not None:
             reference = urlutils.normalize_url(reference)
-        elif shallow:
+        elif stacked:
             reference = None
             parent_url = br_from.get_parent()
             if parent_url:
