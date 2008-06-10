@@ -722,12 +722,12 @@ class cmd_push(Command):
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
         Option('reference',
-            help='Create a shallow branch that refers to another branch '
+            help='Create a stacked branch that refers to another branch '
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
             type=unicode),
-        Option('shallow',
-            help='Create a shallow branch that references the public location '
+        Option('stacked',
+            help='Create a stacked branch that references the public location '
                 'of the parent branch. See --reference for more information.'),
         ]
     takes_args = ['location?']
@@ -735,7 +735,7 @@ class cmd_push(Command):
 
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
-        use_existing_dir=False, directory=None, reference=None, shallow=False):
+        use_existing_dir=False, directory=None, reference=None, stacked=False):
         from bzrlib.push import _show_push_branch
 
         # Get the source branch and revision_id
@@ -754,7 +754,7 @@ class cmd_push(Command):
         # Get the reference branch, if any
         if reference is not None:
             reference = urlutils.normalize_url(reference)
-        elif shallow:
+        elif stacked:
             reference = None
             parent_url = br_from.get_parent()
             if parent_url:
@@ -806,15 +806,15 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
-        Option('shallow',
-            help='Create a shallow branch referring to the source branch. '
+        Option('stacked',
+            help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
                 'branch for all operations.'),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, shallow=False):
+            hardlink=False, stacked=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -849,7 +849,7 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, shallow=shallow)
+                                            hardlink=hardlink, stacked=stacked)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -857,11 +857,11 @@ class cmd_branch(Command):
                     revision[0])
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
-            # If the source branch is shallow, the new branch may
-            # be shallow whether we asked for that explicitly or not.
-            # We therefore need a try/except here and not just 'if shallow:'
+            # If the source branch is stacked, the new branch may
+            # be stacked whether we asked for that explicitly or not.
+            # We therefore need a try/except here and not just 'if stacked:'
             try:
-                note('Created new shallow branch referring to %s.' %
+                note('Created new stacked branch referring to %s.' %
                     branch.get_stacked_on())
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:
