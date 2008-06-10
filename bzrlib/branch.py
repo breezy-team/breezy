@@ -484,16 +484,11 @@ class Branch(object):
             if not overwrite:
                 if graph is None:
                     graph = self.repository.get_graph()
-                heads = graph.heads([stop_revision, last_rev])
-                if heads == set([last_rev]):
-                    # The current revision is a decendent of the target,
-                    # nothing to do
+                if self._ensure_not_diverged(
+                        stop_revision, last_rev, graph, other):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
                     return
-                elif heads == set([stop_revision, last_rev]):
-                    # These branches have diverged
-                    raise errors.DivergedBranches(self, other)
-                elif heads != set([stop_revision]):
-                    raise AssertionError("invalid heads: %r" % heads)
             if stop_revno is None:
                 if graph is None:
                     graph = self.repository.get_graph()
@@ -853,6 +848,40 @@ class Branch(object):
 
     def supports_tags(self):
         return self._format.supports_tags()
+
+    def _ensure_not_diverged(self, revision_a, revision_b, graph, other_branch):
+        """Ensure that revision_b is a descendant of revision_a.
+
+        This is a helper function for update_revisions.
+        
+        :raises: DivergedBranches if revision_b has diverged from revision_a.
+        :returns: True if revision_b is a descendant of revision_a.
+        """
+        relation = self._revision_relations(revision_a, revision_b, graph)
+        if relation == 'b_descends_from_a':
+            return True
+        elif relation == 'diverged':
+            raise errors.DivergedBranches(self, other_branch)
+        elif relation == 'a_descends_from_b':
+            return False
+        else:
+            raise AssertionError("invalid heads: %r" % heads)
+
+    def _revision_relations(self, revision_a, revision_b, graph):
+        """Determine the relationship between two revisions.
+        
+        :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
+        """
+        heads = graph.heads([revision_a, revision_b])
+        if heads == set([revision_b]):
+            return 'b_descends_from_a'
+        elif heads == set([revision_a, revision_b]):
+            # These branches have diverged
+            return 'diverged'
+        elif heads == set([revision_a]):
+            return 'a_descends_from_b'
+        else:
+            raise AssertionError("invalid heads: %r" % heads)
 
 
 class BranchFormat(object):

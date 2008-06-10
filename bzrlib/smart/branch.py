@@ -131,16 +131,27 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
 class SmartServerBranchRequestSetLastRevisionDescendant(SmartServerLockedBranchRequest):
     """New in 1.6."""
     
-    def do_with_locked_branch(self, branch, new_last_revision_id):
+    def do_with_locked_branch(self, branch, new_last_revision_id,
+            allow_divergence, do_not_overwrite_descendant):
         try:
-            last_rev = branch.last_revision()
-            branch.generate_revision_history(new_last_revision_id, last_rev)
-        except errors.DivergedBranches:
-            return FailedSmartServerResponse(('NotDescendant',))
+            last_revno, last_rev = branch.last_revision_info()
+            graph = branch.repository.get_graph()
+            if not allow_divergence or do_not_overwrite_descendant:
+                relation = branch._revision_relations(
+                    last_rev, new_last_revision_id, graph)
+                if relation == 'diverged' and not allow_divergence:
+                    return FailedSmartServerResponse(('Diverged',))
+                if relation == 'a_descends_from_b' and do_not_overwrite_descendant:
+                    return SuccessfulSmartServerResponse(
+                        ('ok', last_revno, last_rev))
+            new_revno = graph.find_distance_to_null(
+                new_last_revision_id, [(last_rev, last_revno)])
+            branch.set_last_revision_info(new_revno, new_last_revision_id)
         except errors.NoSuchRevision:
             return FailedSmartServerResponse(
                 ('NoSuchRevision', new_last_revision_id))
-        return SuccessfulSmartServerResponse(('ok', branch.revno()))
+        return SuccessfulSmartServerResponse(
+            ('ok', new_revno, new_last_revision_id))
 
 
 class SmartServerBranchRequestSetLastRevisionInfo(

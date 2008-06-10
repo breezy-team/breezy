@@ -282,6 +282,10 @@ class RemoteGraph(object):
     def find_difference(self, left_revision, right_revision):
         return self._real_graph.find_difference(left_revision, right_revision)
 
+    def find_distance_to_null(self, target_revision_id, known_revision_ids):
+        return self._real_graph.find_distance_to_null(
+            target_revision_id, known_revision_ids)
+        
     def find_unique_ancestors(self, unique_revision, common_revisions):
         return self._real_graph.find_unique_ancestors(
             unique_revision, common_revisions)
@@ -1521,28 +1525,31 @@ class RemoteBranch(branch.Branch):
         response_tuple, response_handler = self._client.call_expecting_body(
             'Branch.revision_history', path)
         if response_tuple[0] != 'ok':
-            raise UnexpectedSmartServerResponse(response_tuple)
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
         result = response_handler.read_body_bytes().split('\x00')
         if result == ['']:
             return []
         return result
 
-    def _set_last_revision_descendant(self, revision_id, other_branch):
+    @needs_write_lock
+    def _set_last_revision_descendant(self, revision_id, other_branch,
+            allow_diverged=False, do_not_overwrite_descendant=True):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call('Branch.set_last_revision_descendant',
-                path, self._lock_token, self._repo_lock_token, revision_id)
+                path, self._lock_token, self._repo_lock_token, revision_id,
+                int(allow_diverged), int(do_not_overwrite_descendant))
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'NoSuchRevision':
                 raise NoSuchRevision(self, revision_id)
-            elif err.error_verb == 'NotDescendant':
+            elif err.error_verb == 'Diverged':
                 raise errors.DivergedBranches(self, other_branch)
             raise
         self._clear_cached_state()
-        if len(response) != 2 and response[0] != 'ok':
+        if len(response) != 3 and response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        new_revno = response[1]
-        self._last_revision_info_cache = new_revno, revision_id
+        new_revno, new_revision_id = response[1:]
+        self._last_revision_info_cache = new_revno, new_revision_id
 
     def _set_last_revision(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1640,9 +1647,10 @@ class RemoteBranch(branch.Branch):
         medium = self._client._medium
         if medium._is_remote_at_least((1, 6)):
             try:
-                self._set_last_revision_descendant(revision_id, other_branch)
+                self._set_last_revision_descendant(revision_id, other_branch,
+                    allow_diverged=True, do_not_overwrite_descendant=False)
                 return
-            except UnknownSmartMethod:
+            except errors.UnknownSmartMethod:
                 medium._remote_is_not((1, 6))
         self._clear_cached_state()
         self._ensure_real()
@@ -1661,10 +1669,7 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None):
-        """See Branch.update_revisions.
-
-        This implementation ignores the 'graph' param.
-        """
+        """See Branch.update_revisions."""
         other.lock_read()
         try:
             if stop_revision is None:
@@ -1675,6 +1680,8 @@ class RemoteBranch(branch.Branch):
             self.fetch(other, stop_revision)
 
             if overwrite:
+                # Just unconditionally set the new revision.  We don't care if
+                # the branches have diverged.
                 self._set_last_revision(stop_revision)
             else:
                 medium = self._client._medium
@@ -1684,9 +1691,17 @@ class RemoteBranch(branch.Branch):
                         return
                     except errors.UnknownSmartMethod:
                         medium._remote_is_not((1, 6))
+                # Fallback for pre-1.6 servers: check for divergence
+                # client-side, then do _set_last_revision.
                 last_rev = revision.ensure_null(self.last_revision())
-                self.generate_revision_history(
-                    stop_revision, last_rev=last_rev, other_branch=other)
+                if graph is None:
+                    graph = self.repository.get_graph()
+                if self._ensure_not_diverged(
+                        stop_revision, last_rev, graph, other):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+                self._set_last_revision(stop_revision)
         finally:
             other.unlock()
 
