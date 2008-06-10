@@ -14,31 +14,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for add_revision on a repository with external references."""
+"""Tests for add_inventory on a repository with external references."""
 
 from bzrlib import errors
-from bzrlib.tests.repository_external_reference_implementations import (
+from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
 
 
-class TestAddRevision(TestCaseWithExternalReferenceRepository):
+class TestAddInventory(TestCaseWithExternalReferenceRepository):
 
-    def test_add_revision_goes_to_repo(self):
-        # adding a revision only writes to the repository add_revision is
+    def test_add_inventory_goes_to_repo(self):
+        # adding an inventory only writes to the repository add_inventory is
         # called on.
         tree = self.make_branch_and_tree('sample')
         revid = tree.commit('one')
         inv = tree.branch.repository.get_inventory(revid)
-        rev = tree.branch.repository.get_revision(revid)
         base = self.make_repository('base')
         repo = self.make_referring('referring', 'base')
         repo.lock_write()
         try:
             repo.start_write_group()
             try:
-                rev = tree.branch.repository.get_revision(revid)
-                repo.add_revision(revid, rev, inv=inv)
+                repo.add_inventory(revid, inv, [])
             except:
                 repo.abort_write_group()
                 raise
@@ -46,6 +44,6 @@ class TestAddRevision(TestCaseWithExternalReferenceRepository):
                 repo.commit_write_group()
         finally:
             repo.unlock()
-        rev2 = repo.get_revision(revid)
-        self.assertEqual(rev, rev2)
-        self.assertRaises(errors.NoSuchRevision, base.get_revision, revid)
+        inv2 = repo.get_inventory(revid)
+        self.assertEqual(inv._byid, inv2._byid)
+        self.assertRaises(errors.RevisionNotPresent, base.get_inventory, revid)

@@ -18,7 +18,6 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import chain
 import re
 import time
 
@@ -1998,7 +1997,7 @@ class MetaDirRepository(Repository):
                 pass
         else:
             self._transport.put_bytes('no-working-trees', '',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
@@ -2315,13 +2314,13 @@ format_registry.register_lazy(
     'RepositoryFormatPackDevelopment0Subtree',
     )
 format_registry.register_lazy(
-    "Bazaar development format 1 (needs bzr.dev from before 1.3)\n",
+    "Bazaar development format 1 (needs bzr.dev from before 1.6)\n",
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment1',
     )
 format_registry.register_lazy(
     ("Bazaar development format 1 with subtree support "
-        "(needs bzr.dev from before 1.3)\n"),
+        "(needs bzr.dev from before 1.6)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment1Subtree',
     )
@@ -2783,7 +2782,7 @@ class InterPackRepo(InterSameDataRepository):
             return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
-            # the other, and viceversa, anywhere in the history of revision_id.
+            # the other, and vice versa, anywhere in the history of revision_id.
             graph = self.target.get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()

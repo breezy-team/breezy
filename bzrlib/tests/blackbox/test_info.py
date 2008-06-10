@@ -1450,7 +1450,7 @@ Repository:
         trunk_tree = self.make_branch_and_tree('mainline',
             format='development1')
         trunk_tree.commit('mainline')
-        # and make branch from it which is shallow
+        # and a branch from it which is shallow
         new_dir = trunk_tree.bzrdir.sprout('newbranch', shallow=True)
         out, err = self.run_bzr('info newbranch')
         self.assertEqual(

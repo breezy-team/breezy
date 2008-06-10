@@ -18,7 +18,7 @@
 
 import bzrlib.ui
 from bzrlib import errors
-from bzrlib.tests.repository_external_reference_implementations import (
+from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
 
