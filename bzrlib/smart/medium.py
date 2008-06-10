@@ -440,9 +440,45 @@ class SmartClientMedium(object):
         self._protocol_version = None
         self._done_hello = False
         # Be optimistic: we assume the remote end can accept new remote
-        # requests until we get an error saying otherwise.  (1.2 adds some
-        # requests that send bodies, which confuses older servers.)
-        self._remote_is_at_least_1_2 = True
+        # requests until we get an error saying otherwise.
+        # _remote_version_is_less_than tracks the bzr version the remote side
+        # can be based on what we've seen so far.
+        self._remote_version_is_less_than = None
+
+    def _is_remote_at_least(self, version_tuple):
+        """Is it possible the remote side is supports RPCs for a given version?
+
+        Typical use::
+
+            needed_version = (1, 2)
+            if not medium._is_remote_at_least(needed_version):
+                fallback_to_pre_1_2_rpc()
+            else:
+                try:
+                    do_1_2_rpc()
+                except UnknownSmartMethod:
+                    medium._remote_is_not(needed_version)
+                    fallback_to_pre_1_2_rpc()
+
+        :seealso: _remote_is_not
+        """
+        if self._remote_version_is_less_than is None:
+            # So far, the remote side seems to support everything
+            return True
+        return version_tuple < self._remote_version_is_less_than
+
+    def _remote_is_not(self, version_tuple):
+        """Tell this medium that the remote side is older the given version.
+
+        :seealso: _is_remote_at_least
+        """
+        if (self._remote_version_is_less_than is not None and
+            version_tuple > self._remote_version_is_less_than):
+            raise AssertionError, (
+                "_remote_is_not(%r) called, but _remote_is_not(%r) was called "
+                "previously."
+                % (version_tuple, self._remote_version_is_less_than))
+        self._remote_version_is_less_than = version_tuple
 
     def protocol_version(self):
         """Find out if 'hello' smart request works."""
