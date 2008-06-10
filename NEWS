@@ -67,6 +67,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``stacked`` to control
+      creating stacked branches. (Robert Collins)
+
     * Knit record serialisation is now stricter on what it will accept, to
       guard against potential internal bugs, or broken input. (Robert Collins)
 
@@ -218,9 +221,6 @@ and future extensions.
       can be obtained using ``bzrlib.missing.find_unmerged``. The api was
       fairly broken, and the function was unused, so we are getting rid of it.
       (John Arbash Meinel)
-
-    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``shallow`` to control
-      creating shallow branches. (Robert Collins)
 
   API CHANGES:
 
