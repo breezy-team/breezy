@@ -148,7 +148,8 @@ class _BaseMergeDirective(object):
         else:
             revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
                 ['merge'])
-        return '%s-%s' % (branch.nick, '.'.join(str(n) for n in revno))
+        nick = re.sub('(\W+)', '-', branch.nick).strip('-')
+        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
