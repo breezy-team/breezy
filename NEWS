@@ -10,6 +10,29 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  DOCUMENTATION:
+
+  TESTING:
+
+  API CHANGES:
+
+  INTERNALS:
+
+
+bzr 1.6beta2 2008-06-10
+-----------------------
+
+This release contains further progress towards our 1.6 goals of shallow
+repositories, and contains a fix for some user-affecting bugs in the
+repository layer.  Building working trees during checkout and branch is
+now faster.
+
+  BUG FIXES:
+
     * Avoid KnitCorrupt error extracting inventories from some repositories.
       (The data is not corrupt; an internal check is detecting a problem
       reading from the repository.)
