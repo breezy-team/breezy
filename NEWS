@@ -67,8 +67,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``shallow`` to control
-      creating shallow branches. (Robert Collins)
+    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``stacked`` to control
+      creating stacked branches. (Robert Collins)
 
     * Knit record serialisation is now stricter on what it will accept, to
       guard against potential internal bugs, or broken input. (Robert Collins)
