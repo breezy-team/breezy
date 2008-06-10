@@ -806,15 +806,15 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
-        Option('shallow',
-            help='Create a shallow branch referring to the source branch. '
+        Option('stacked',
+            help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
                 'branch for all operations.'),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, shallow=False):
+            hardlink=False, stacked=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -849,7 +849,7 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, shallow=shallow)
+                                            hardlink=hardlink, stacked=stacked)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -857,11 +857,11 @@ class cmd_branch(Command):
                     revision[0])
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
-            # If the source branch is shallow, the new branch may
-            # be shallow whether we asked for that explicitly or not.
-            # We therefore need a try/except here and not just 'if shallow:'
+            # If the source branch is stacked, the new branch may
+            # be stacked whether we asked for that explicitly or not.
+            # We therefore need a try/except here and not just 'if stacked:'
             try:
-                note('Created new shallow branch referring to %s.' %
+                note('Created new stacked branch referring to %s.' %
                     branch.get_stacked_on())
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:

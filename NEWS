@@ -10,7 +10,7 @@ IN DEVELOPMENT
 
   FEATURES:
 
-    * Shallow branches are now supported. See ``bzr help branch`` and 
+    * Stacked branches are now supported. See ``bzr help branch`` and 
       ``bzr help push``. (Robert Collins)
 
   BUG FIXES:
