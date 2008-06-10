@@ -1373,8 +1373,11 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
+                # delta_from_tree is safe even for DirStateRevisionTrees,
+                # because wt4.apply_inventory_delta does not mutate the input
+                # inventory entries.
                 transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink)
+                                     hardlink=hardlink, delta_from_tree=True)
             finally:
                 basis.unlock()
         finally:

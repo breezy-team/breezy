@@ -2140,8 +2140,11 @@ class PullResult(_Result):
     :ivar old_revid: Tip revision id before pull.
     :ivar new_revid: Tip revision id after pull.
     :ivar source_branch: Source (local) branch object.
-    :ivar master_branch: Master branch of the target, or None.
+    :ivar master_branch: Master branch of the target, or the target if no
+        Master
+    :ivar local_branch: target branch if there is a Master, else None
     :ivar target_branch: Target/destination branch object.
+    :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
     def __int__(self):

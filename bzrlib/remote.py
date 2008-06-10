@@ -1598,7 +1598,7 @@ class RemoteBranch(branch.Branch):
         # fixed.  It should get a _override_hook_target branch,
         # as push does.  -- mbp 20070405
         self._ensure_real()
-        self._real_branch.pull(
+        return self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
             **kwargs)
 
