@@ -66,7 +66,7 @@ class cmd_upload(commands.Command):
         'revision',
         'remember',
         option.Option('full', 'Upload the full working tree.'),
-        option.Option('quiet', 'Do not output what is being done.', 
+        option.Option('quiet', 'Do not output what is being done.',
                        short_name='q'),
         option.Option('directory',
                       help='Branch to upload from, '
