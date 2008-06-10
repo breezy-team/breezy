@@ -1825,7 +1825,8 @@ class DirState(object):
             raise
         return result
 
-    def _inv_entry_to_details(self, inv_entry):
+    @staticmethod
+    def _inv_entry_to_details(inv_entry):
         """Convert an inventory entry (from a revision tree) to state details.
 
         :param inv_entry: An inventory entry whose sha1 and link targets can be
@@ -1841,7 +1842,8 @@ class DirState(object):
             size = 0
             executable = False
         elif kind == 'symlink':
-            fingerprint = inv_entry.symlink_target or ''
+            # We don't support non-ascii targets for symlinks yet.
+            fingerprint = str(inv_entry.symlink_target or '')
             size = 0
             executable = False
         elif kind == 'file':
