@@ -1341,7 +1341,7 @@ class TestDevelopment1(TestKnitPackNoSubtrees, TestExternalDevelopment1):
 
     def check_format(self, t):
         self.assertEqualDiff(
-            "Bazaar development format 1 (needs bzr.dev from before 1.3)\n",
+            "Bazaar development format 1 (needs bzr.dev from before 1.6)\n",
             t.get('format').read())
 
     def test_supports_external_lookups(self):
@@ -1358,7 +1358,7 @@ class TestDevelopment1Subtree(TestKnitPackNoSubtrees, TestExternalDevelopment1):
     def check_format(self, t):
         self.assertEqualDiff(
             "Bazaar development format 1 with subtree support "
-            "(needs bzr.dev from before 1.3)\n",
+            "(needs bzr.dev from before 1.6)\n",
             t.get('format').read())
 
     def test_supports_external_lookups(self):
