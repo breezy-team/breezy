@@ -557,10 +557,11 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.lock_write()
         replay_delta_workingtree(wt, "oldcommit", "newcommit", 
-            ["newparent", "ghost"])
+            ("newparent", "ghost"))
         wt.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
+        self.assertEquals(["oldparent", "ghost"], oldrev.parent_ids)
         self.assertEquals(["newparent", "ghost"], newrev.parent_ids)
         self.assertEquals("newcommit", newrev.revision_id)
         self.assertEquals(oldrev.timestamp, newrev.timestamp)
