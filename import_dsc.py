@@ -27,9 +27,12 @@
 import gzip
 import os
 import select
+import shutil
 import stat
 from subprocess import Popen, PIPE
+from StringIO import StringIO
 import tarfile
+import tempfile
 
 from debian_bundle import deb822
 from debian_bundle.changelog import Version, Changelog
@@ -63,11 +66,20 @@ from bzrlib.plugins.builddeb.errors import (ImportError,
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
                 )
-from bzrlib.plugins.builddeb.tree_patcher import (
-        TreePatcher,
-        files_to_ignore,
-        ignore_arguments,
-        )
+
+
+files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
+    '.gitignore', 'CVS', 'RCS', '.deps', '{arch}', '.arch-ids', '.svn',
+    '.hg', '_darcs', '.git', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
+    '.bzr-builddeb'])
+
+exclude_as_files = ['*/' + x for x in files_to_ignore]
+exclude_as_dirs = ['*/' + x + '/*' for x in files_to_ignore]
+exclude = exclude_as_files + exclude_as_dirs
+underscore_x = ['-x'] * len(exclude)
+ignore_arguments = []
+map(ignore_arguments.extend, zip(underscore_x, exclude))
+ignore_arguments = ignore_arguments + ['-x', '*,v']
 
 
 def import_tar(tree, tar_input, file_ids_from=None):
@@ -76,6 +88,76 @@ def import_tar(tree, tar_input, file_ids_from=None):
     """
     tar_file = tarfile.open('lala', 'r', tar_input)
     import_archive(tree, tar_file, file_ids_from=file_ids_from)
+
+
+class DirWrapper(object):
+    def __init__(self, fileobj, mode='r'):
+        assert mode == 'r', mode
+        self.root = os.path.realpath(fileobj.read())
+
+    def __repr__(self):
+        return 'DirWrapper(%r)' % self.root
+
+    def getmembers(self, subdir=None):
+        if subdir is not None:
+            mydir = os.path.join(self.root, subdir)
+        else:
+            mydir = self.root
+        for child in os.listdir(mydir):
+            if subdir is not None:
+                child = os.path.join(subdir, child)
+            fi = FileInfo(self.root, child)
+            yield fi
+            if fi.isdir():
+                for v in self.getmembers(child):
+                    yield v
+
+    def extractfile(self, member):
+        return open(member.fullpath)
+
+
+class FileInfo(object):
+
+    def __init__(self, root, filepath):
+        self.fullpath = os.path.join(root, filepath)
+        self.root = root
+        if filepath != '':
+            self.name = os.path.join(basename(root), filepath)
+        else:
+            print 'root %r' % root
+            self.name = basename(root)
+        self.type = None
+        stat = os.lstat(self.fullpath)
+        self.mode = stat.st_mode
+        if self.isdir():
+            self.name += '/'
+
+    def __repr__(self):
+        return 'FileInfo(%r)' % self.name
+
+    def isreg(self):
+        return stat.S_ISREG(self.mode)
+
+    def isdir(self):
+        return stat.S_ISDIR(self.mode)
+
+    def issym(self):
+        if stat.S_ISLNK(self.mode):
+            self.linkname = os.readlink(self.fullpath)
+            return True
+        else:
+            return False
+
+    def islnk(self):
+        # This could be accurate, but the use below seems like
+        # it wouldn't really care
+        return False
+
+
+def import_dir(tree, dir, file_ids_from=None):
+    dir_input = StringIO(dir)
+    dir_file = DirWrapper(dir_input)
+    import_archive(tree, dir_file, file_ids_from=file_ids_from)
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
@@ -1339,15 +1421,14 @@ class DistributionBranch(object):
                 real_parents = [parent_revid]
         return real_parents
 
-    def import_upstream(self, upstream_filename, version, md5):
+    def import_upstream(self, upstream_part, version, md5):
         """Import an upstream part on to the upstream branch.
 
-        This imports the upstream part of the code from the .orig.tar.gz
-        and places it on to the upstream branch, setting the necessary
-        tags.
+        This imports the upstream part of the code and places it on to
+        the upstream branch, setting the necessary tags.
 
-        :param upstream_filename: the path of the upstream part of
-            the package, i.e. the .orig.tar.gz.
+        :param upstream_part: the path of a directory containing the
+            unpacked upstream part of the source package.
         :param version: the Version of the package that is being imported.
         """
         # Should we just dump the upstream part on whatever is currently
@@ -1355,40 +1436,18 @@ class DistributionBranch(object):
         # from lesser branches first? For now we'll just dump it on.
         # TODO: this method needs a lot of work for when we will make
         # the branches writeable by others.
-        # TODO: check md5 matches upstream_filename
         mutter("Importing upstream version %s from %s" \
-                % (version, upstream_filename))
-        tar_input = open(upstream_filename, 'rb')
+                % (version, upstream_part))
         other_branches = self.get_other_branches()
         upstream_trees = [o.upstream_tree for o in other_branches]
-        import_tar(self.upstream_tree, tar_input,
+        import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
-        revid = self.upstream_tree.commit("Import upstream from %s" \
-                % (osutils.basename(upstream_filename),),
+        revid = self.upstream_tree.commit("Import upstream version %s" \
+                % (str(version.upstream_version),),
                 revprops={"deb-md5":md5})
         self.tag_upstream_version(version)
         self.tree.branch.fetch(self.upstream_tree.branch,
                 last_revision=revid)
-
-    def _import_patch(self, diff_filename, parents, file_ids_from=None):
-        """Apply a patch and update the tree to match.
-
-        This applies the patch from diff_filename to self.tree, and
-        then performs adds and removes in the working tree as necessary,
-        depending on what the patch did.
-
-        :param diff_filename: the filename of the the file containing the
-            diff in gzip compressed form.
-        :param parents: the list of parents that will be used when the
-            result is committed.
-        """
-        f = gzip.GzipFile(diff_filename)
-        try:
-            tp = TreePatcher(self.tree)
-            tp.set_patch_from_fileobj(f)
-            tp.patch_tree(parents, file_ids_from=file_ids_from)
-        finally:
-            f.close()
 
     def _get_commit_message_from_changelog(self):
         """Retrieves the messages from the last section of debian/changelog.
@@ -1417,20 +1476,19 @@ class DistributionBranch(object):
               sep = "\n"
         return (message, author)
 
-    def import_diff(self, diff_filename, version, parents, md5):
-        """Import the diff part of a source package.
+    def import_debian(self, debian_part, version, parents, md5):
+        """Import the debian part of a source package.
 
-        :param diff_filename: a filename of a gzip compressed patch
-            to the corresponding upstream version.
-        :param version: the Version that this diff corresponds to.
+        :param debian_part: the path of a directory containing the unpacked
+            source package.
+        :param version: the Version of the source package.
         :param parents: a list of revision ids that should be the
             parents of the imported revision.
         :param md5: the md5 sum reported by the .dsc for
-            diff_filename.
+            the .diff.gz part of this source package.
         """
-        mutter("Importing diff part for version %s from %s, with parents "
-                "%s" % (str(version), diff_filename, str(parents)))
-        # TODO: check md5 matches the md5 of diff_filename
+        mutter("Importing debian part for version %s from %s, with parents "
+                "%s" % (str(version), debian_part, str(parents)))
         # First we move the branch to the first parent
         if parents:
             parent_revid = parents[0]
@@ -1438,16 +1496,14 @@ class DistributionBranch(object):
             parent_revid = NULL_REVISION
         self.tree.pull(self.tree.branch, overwrite=True,
                 stop_revision=parent_revid)
-        # Then we revert the tree to the upstream code, as that is
-        # what the patch applies to.
-        upstream_revid = self.revid_of_upstream_version(version)
-        self.tree.revert(None,
-                self.upstream_tree.branch.repository.revision_tree(
-                    upstream_revid))
         other_branches = self.get_other_branches()
         debian_trees = [o.tree for o in other_branches]
-        self._import_patch(diff_filename, parents,
-                file_ids_from=debian_trees)
+        parent_trees = []
+        for parent in parents:
+            parent_trees.append(self.tree.branch.repository.revision_tree(
+                        parent))
+        import_dir(self.tree, debian_part,
+                file_ids_from=parent_trees + debian_trees)
         rules_path = os.path.join(self.tree.basedir, 'debian', 'rules')
         if os.path.isfile(rules_path):
             os.chmod(rules_path,
@@ -1456,26 +1512,10 @@ class DistributionBranch(object):
         self.tree.set_parent_ids(parents)
         (message, author) = self._get_commit_message_from_changelog()
         if message is None:
-            message = 'merge packaging changes from %s' % \
-                        (os.path.basename(diff_filename))
+            message = 'Import packaging changes for version %s' % \
+                        (str(version),)
         self.tree.commit(message, author=author, revprops={"deb-md5":md5})
         self.tag_version(version)
-
-    def _get_changelog_from_diff(self, diff_filename):
-        """Don't look, it's too horrible."""
-        cmd = ['filterdiff', '-i', '*/debian/changelog', '-z',
-             diff_filename]
-        child_proc = Popen(cmd, stdout=PIPE, close_fds=True)
-        output = ''
-        for line in child_proc.stdout.readlines():
-            if line.startswith("---"):
-                continue
-            if line.startswith("+++"):
-                continue
-            if line.startswith("@@"):
-                continue
-            output += line[1:]
-        return output
 
     def _get_dsc_part(self, dsc, end):
         """Get the path and md5 of a file ending with end in dsc."""
@@ -1522,31 +1562,25 @@ class DistributionBranch(object):
             self.upstream_tree.pull(up_pull_branch,
                     stop_revision=pull_revid)
 
-    def import_package(self, dsc_filename):
-        """Import a source package.
-
-        :param dsc_filename: a path to a .dsc file for the version
-            to be imported.
-        """
-        base_path = osutils.dirname(dsc_filename)
-        dsc = deb822.Dsc(open(dsc_filename).read())
-        version = Version(dsc['Version'])
-        # TODO: check files make sense (no two .orig or similar)
-        (upstream_part, upstream_md5) = self.get_upstream_part(dsc)
-        (diff_filename, md5) = self.get_diff_part(dsc)
-        assert diff_filename is not None
-        assert upstream_part is not None
-        diff_filename = os.path.join(base_path, diff_filename)
-        upstream_part = os.path.join(base_path, upstream_part)
-        cl_text = self._get_changelog_from_diff(diff_filename)
+    def get_changelog_from_source(self, dir):
+        cl_filename = os.path.join(dir, "debian", "changelog")
         cl = Changelog()
-        cl.parse_changelog(cl_text)
-        versions = cl.versions
-        assert not self.has_version(version), \
-            "Trying to import version %s again" % str(version)
-        #TODO: check that the versions list is correctly ordered,
-        # as some methods assume that, and it's not clear what
-        # should happen if it isn't.
+        cl.parse_changelog(open(cl_filename).read())
+        return cl
+
+    def extract_dsc(self, dsc_filename):
+        """Extract a dsc file in to a temporary directory."""
+        tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(dsc_filename)
+        proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
+                cwd=tempdir, stdout=PIPE, stderr=PIPE)
+        ret = proc.wait()
+        assert ret == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
+                    (proc.stdout.read(), proc.stderr.read())
+        return tempdir
+
+    def _do_import_package(self, version, versions, debian_part, md5,
+            upstream_part, upstream_md5):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version)
@@ -1573,5 +1607,37 @@ class DistributionBranch(object):
             parents = self.get_parents_with_upstream(version, versions,
                     force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
-            self.import_diff(diff_filename, version, parents, md5)
+            self.import_debian(debian_part, version, parents, md5)
+
+    def import_package(self, dsc_filename):
+        """Import a source package.
+
+        :param dsc_filename: a path to a .dsc file for the version
+            to be imported.
+        """
+        base_path = osutils.dirname(dsc_filename)
+        dsc = deb822.Dsc(open(dsc_filename).read())
+        version = Version(dsc['Version'])
+        name = dsc['Source']
+        tempdir = self.extract_dsc(dsc_filename)
+        try:
+            # TODO: make more robust against strange .dsc files.
+            (upstream_part, upstream_md5) = self.get_upstream_part(dsc)
+            (diff_filename, md5) = self.get_diff_part(dsc)
+            upstream_part = os.path.join(tempdir,
+                    "%s-%s.orig" % (name, str(version.upstream_version)))
+            debian_part = os.path.join(tempdir,
+                    "%s-%s" % (name, str(version.upstream_version)))
+            assert os.path.exists(upstream_part)
+            cl = self.get_changelog_from_source(debian_part)
+            versions = cl.versions
+            assert not self.has_version(version), \
+                "Trying to import version %s again" % str(version)
+            #TODO: check that the versions list is correctly ordered,
+            # as some methods assume that, and it's not clear what
+            # should happen if it isn't.
+            self._do_import_package(version, versions, debian_part, md5,
+                    upstream_part, upstream_md5)
+        finally:
+            shutil.rmtree(tempdir)
 

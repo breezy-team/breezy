@@ -1934,6 +1934,34 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(self.db2.revid_of_upstream_version(version),
                 up_revid)
 
+    def test_extract_dsc(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_changelog()
+        builder.add_default_control()
+        builder.build()
+        tempdir = self.db1.extract_dsc(builder.dsc_name())
+        self.assertTrue(os.path.exists(tempdir))
+        try:
+            unpacked_dir = os.path.join(tempdir,
+                            name+"-"+str(version.upstream_version))
+            orig_dir = unpacked_dir + ".orig"
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertTrue(os.path.exists(orig_dir))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(os.path.join(orig_dir,
+                            "README")))
+            self.assertFalse(os.path.exists(os.path.join(orig_dir,
+                            "debian", "control")))
+        finally:
+            shutil.rmtree(tempdir)
+
     def check_changes(self, changes, added=[], removed=[], modified=[],
                       renamed=[]):
         def check_one_type(type, expected, actual):
@@ -1965,14 +1993,11 @@ class DistributionBranchTests(TestCaseWithTransport):
     def test_import_upstream(self):
         version = Version("0.1-1")
         name = "package"
-        builder = SourcePackageBuilder(name, version)
-        builder.add_upstream_file("README", "Hi\n")
-        builder.add_upstream_file("BUGS")
-        builder.add_default_changelog()
-        builder.add_default_control()
-        builder.build()
-        self.db1.import_upstream(builder.orig_name(), version,
-                self.fake_md5_1)
+        basedir = name + "-" + str(version.upstream_version)
+        os.mkdir(basedir)
+        write_to_file(os.path.join(basedir, "README"), "Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), "")
+        self.db1.import_upstream(basedir, version, self.fake_md5_1)
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -1980,31 +2005,25 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(self.db1.revid_of_upstream_version(version), rh[0])
         rev = branch.repository.get_revision(rh[0])
         self.assertEqual(rev.message,
-                "Import upstream from %s" % builder.orig_name())
+                "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
 
     def test_import_upstream_on_another(self):
         version1 = Version("0.1-1")
         version2 = Version("0.2-1")
         name = "package"
-        builder = SourcePackageBuilder(name, version1)
-        builder.add_upstream_file("README", "Hi\n")
-        builder.add_upstream_file("BUGS")
-        builder.add_upstream_file("COPYING")
-        builder.add_default_changelog()
-        builder.add_default_control()
-        builder.build()
-        self.db1.import_upstream(builder.orig_name(), version1,
-                self.fake_md5_1)
-        builder = SourcePackageBuilder(name, version2)
-        builder.add_upstream_file("README", "Now even better\n")
-        builder.add_upstream_file("BUGS")
-        builder.add_upstream_file("NEWS")
-        builder.add_default_changelog()
-        builder.add_default_control()
-        builder.build()
-        self.db1.import_upstream(builder.orig_name(), version2,
-                self.fake_md5_2)
+        basedir = name + "-" + str(version1.upstream_version)
+        os.mkdir(basedir)
+        write_to_file(os.path.join(basedir, "README"), "Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), "")
+        write_to_file(os.path.join(basedir, "COPYING"), "")
+        self.db1.import_upstream(basedir, version1, self.fake_md5_1)
+        basedir = name + "-" + str(version2.upstream_version)
+        os.mkdir(basedir)
+        write_to_file(os.path.join(basedir, "README"), "Now even better\n")
+        write_to_file(os.path.join(basedir, "BUGS"), "")
+        write_to_file(os.path.join(basedir, "NEWS"), "")
+        self.db1.import_upstream(basedir, version2, self.fake_md5_2)
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -2012,7 +2031,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(self.db1.revid_of_upstream_version(version2), rh[1])
         rev = branch.repository.get_revision(rh[1])
         self.assertEqual(rev.message,
-                "Import upstream from %s" % builder.orig_name())
+                "Import upstream version %s" % str(version2.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_2)
         rev_tree1 = branch.repository.revision_tree(rh[0])
         rev_tree2 = branch.repository.revision_tree(rh[1])
