@@ -4,13 +4,99 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
 
-This release adds a translation of some of the user documentation into Spanish.
-(Contributions of other translations would be very welcome.)
+  BUG FIXES:
+
+    * Avoid KnitCorrupt error extracting inventories from some repositories.
+      (The data is not corrupt; an internal check is detecting a problem
+      reading from the repository.)
+      (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
+
+    * Fix infinite loop consuming 100% CPU when a connection is lost while
+      reading a response body via the smart protocol v1 or v2.
+      (Andrew Bennetts)
+      
+    * Inserting a bundle which changes the contents of a file with no trailing
+      end of line, causing a knit snapshot in a 'knits' repository will no longer
+      cause KnitCorrupt. (Robert Collins)
+
+    * ``RemoteBranch.pull`` needs to return the ``self._real_branch``'s
+      pull result. It was instead just returning None, which breaks ``bzr
+      pull``. (John Arbash Meinel, #238149)
+
+    * Sanitize branch nick before using it as an attachment filename in
+      ``bzr send``. (Lukáš Lalinský, #210218)
+
+    * Squash ``inv_entry.symlink_target`` to a plain string when
+      generating DirState details. This prevents from getting a
+      ``UnicodeError`` when you have symlinks and non-ascii filenames.
+      (John Arbash Meinel, #135320)
+
+  IMPROVEMENTS:
+
+    * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
+
+    * ``added``, ``modified``, and ``unknowns`` behaviour made consistent (all three
+      now quote paths where required). Added ``--null`` option to ``added`` and 
+      ``modified`` (for null-separated unknowns, use ``ls --unknown --null``)
+      (Adrian Wilkins)
+
+    * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
+      (Ian Clatworthy, Aaron Bentley)
+
+  BUGFIXES:
+
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
+
+  DOCUMENTATION:
+
+    * Added *Bazaar Zen* section to the User Guide. (Ian Clatworthy)
+
+  TESTING:
+
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
+
+  API CHANGES:
+
+    * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
+      which are in the ancestry of other revisions. So if you merge the same
+      tree twice, or merge an ancestor of an existing merge, it will only
+      record the newest. (If you merge a descendent, it will replace its
+      ancestor). (John Arbash Meinel, #235407)
+
+  INTERNALS:
+
+    * Knit record serialisation is now stricter on what it will accept, to
+      guard against potential internal bugs, or broken input. (Robert Collins)
+
+
+bzr 1.6beta1 2008-06-02
+-----------------------
+
+
+Commands that work on the revision history such as push, pull, missing,
+uncommit and log are now substantially faster.  This release adds a
+translation of some of the user documentation into Spanish.  (Contributions of
+other translations would be very welcome.)  Bazaar 1.6beta1 adds a new network
+protocol which is used by default and which allows for more efficient transfers
+and future extensions.
+
 
   NOTES WHEN UPGRADING:
+
+    * There is a new version of the network protocol used for bzr://, bzr+ssh://
+      and bzr+http:// connections.  This will allow more efficient requests and
+      responses, and more graceful fallback when a server is too old to
+      recognise a request from a more recent client.  Bazaar 1.6 will
+      interoperate with 0.16 and later versions, but servers should be upgraded
+      when possible.  Bazaar 1.6 no longer interoperates with 0.15 and earlier via
+      these protocols.  Use alternatives like SFTP or upgrade those servers.
+      (Andrew Bennetts, #83935)
 
   CHANGES:
 
@@ -22,15 +108,6 @@ This release adds a translation of some of the user documentation into Spanish.
 
     * Adding ``-Derror`` will now display a traceback when a plugin fails to
       load. (James Westby)
-
-    * There is a new version of the network protocol used for bzr://, bzr+ssh://
-      and bzr+http:// connections.  This will allow more efficient requests and
-      responses, and more graceful fallback when a server is too old to
-      recognise a request from a more recent client.  Bazaar 1.6 will
-      interoperate with 0.16 and later versions, but servers should be upgraded
-      when possible.  Bazaar 1.6 no longer interoperates with 0.15 and earlier via
-      these protocols.  Use alternatives like SFTP or upgrade those servers.
-      (Andrew Bennetts, #83935)
 
   IMPROVEMENTS:
 
@@ -62,6 +139,9 @@ This release adds a translation of some of the user documentation into Spanish.
     * ``bzr merge --lca`` should handle when two revisions have no common
       ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
 
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
+
     * ``bzr push`` with both ``--overwrite`` and ``-r NNN`` options no longer
       fails.  (Andrew Bennetts, #234229)
       
@@ -79,10 +159,6 @@ This release adds a translation of some of the user documentation into Spanish.
       message, not a fatal error.  It may for example fail if the file is still
       in use by another process.
       (Martin Pool)
-      
-    * Fix infinite loop consuming 100% CPU when a connection is lost while
-      reading a response body via the smart protocol v1 or v2.
-      (Andrew Bennetts)
       
     * Fix MemoryError during large fetches over HTTP by limiting the amount of
       data we try to read per ``recv`` call.  The problem was observed with
@@ -104,9 +180,15 @@ This release adds a translation of some of the user documentation into Spanish.
       them.
       (Vincent Ladeuil, #229076)
 
+    * The "Unable to obtain lock" error message now also suggests using
+      ``bzr break-lock`` to fix it.  (Martin Albisetti, #139202)
+
     * Treat an encoding of '' as ascii; this can happen when bzr is run
       under vim on Mac OS X.
       (Neil Martinsen-Burrell)
+
+    * ``VersionedFile.make_mpdiffs()`` was raising an exception that wasn't in
+      scope. (Daniel Fischer #235687)
 
   DOCUMENTATION:
 
@@ -125,10 +207,21 @@ This release adds a translation of some of the user documentation into Spanish.
 
   TESTING:
 
+    * ``bzrlib.tests.adapt_tests`` was broken and unused - it has been fixed.
+      (Robert Collins)
+
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
+
     * New helper function for splitting test suites
       ``split_suite_by_condition``. (Robert Collins)
 
   INTERNALS:
+
+    * ``Branch.missing_revisions`` has been deprecated. Similar functionality
+      can be obtained using ``bzrlib.missing.find_unmerged``. The api was
+      fairly broken, and the function was unused, so we are getting rid of it.
+      (John Arbash Meinel)
 
   API CHANGES:
 
@@ -183,6 +276,12 @@ This release adds a translation of some of the user documentation into Spanish.
       insert_record_stream are meant to efficiently replace this method.
       (Robert Collins)
 
+    * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
+      which are in the ancestry of other revisions. So if you merge the same
+      tree twice, or merge an ancestor of an existing merge, it will only
+      record the newest. (If you merge a descendent, it will replace its
+      ancestor). (John Arbash Meinel, #235407)
+
     * ``WorkingTreeFormat2.stub_initialize_remote`` is now private.
       (Martin Pool) 
 
@@ -224,7 +323,7 @@ bzr 1.5rc1 2008-05-09
   IMPROVEMENTS:
 
     * Diff now handles revision specs like "branch:" and "submit:" more
-      efficiently.  (Aaron Bentley)
+      efficiently.  (Aaron Bentley, #202928)
 
     * More friendly error given when attempt to start the smart server
       on an address already in use. (Andrea Corbellini, #200575)
@@ -356,7 +455,7 @@ bzr 1.5rc1 2008-05-09
     * The Python ``assert`` statement is no longer used in Bazaar source, and 
       a test checks this.  (Martin Pool)
 
-  API BREAKS:
+  API CHANGES:
 
     * ``bzrlib.status.show_pending_merges`` requires the repository to be
       locked by the caller. Callers should have been doing it anyway, but it
@@ -866,6 +965,8 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
   TESTING:
+    
+    * Added missing blackbox tests for ``modified`` (Adrian Wilkins)
 
     * The branch interface tests were invalid for branches using rich-root
       repositories because the empty string is not a valid file-id.
@@ -6187,3 +6288,6 @@ bzr-0.0.0.69  2005-03-22
 
     * Storage of local versions: init, add, remove, rm, info, log,
       diff, status, etc.
+
+..
+   vim: tw=74 ft=rst ff=unix
