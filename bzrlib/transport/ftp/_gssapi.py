@@ -19,7 +19,10 @@
 See RFC2228 for details.
 """
 
-from bzrlib import config, errors
+from bzrlib import (
+    config, 
+    errors,
+    )
 from bzrlib.trace import info, mutter
 from bzrlib.transport.ftp import FtpTransport
 from bzrlib.transport import register_transport_proto, register_transport
@@ -30,7 +33,11 @@ except ImportError, e:
     mutter('failed to import kerberos lib: %s', e)
     raise errors.DependencyNotPresent('kerberos', e)
 
-import ftplib, getpass
+if getattr(kerberos, "authGSSClientWrap", None) is None:
+    raise errors.DependencyNotPresent('kerberos', 
+                                      "missing encryption functions")
+
+import base64, ftplib, getpass
 
 class SecureFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
@@ -44,9 +51,10 @@ class SecureFtp(ftplib.FTP):
     def mic_getmultiline(self):
         resp = ftplib.FTP.getmultiline(self)
         assert resp[:3] == '631'
-        kerberos.authGSSClientUnwrap(self.vc, resp[4:])
-        response = kerberos.authGSSClientResponse(self.vc)
-        return response 
+        kerberos.authGSSClientUnwrap(self.vc, resp[4:].strip("\r\n"))
+        response = base64.b64decode(kerberos.authGSSClientResponse(self.vc))
+        print "< " + response
+        return response
 
     def gssapi_login(self):
         # Try GSSAPI login first
