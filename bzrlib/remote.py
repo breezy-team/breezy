@@ -1607,7 +1607,7 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
-            **kwargs)
+            _override_hook_target=self, **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
