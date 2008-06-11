@@ -2187,7 +2187,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
                 wt = local_controldir.create_workingtree()
-                if b._format.get_format_string() == 'Remote BZR Branch':
+                if wt.branch._format != b._format:
                     wt._branch = b
                     # Make sure that assigning to wt._branch fixes wt.branch,
                     # in case the implementation details of workingtree objects
