@@ -18,6 +18,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * You can now compare file revisions in Windows diff programs from 
+      Cygwin Bazaar.
+      (Matt McClure, #209281)
+
   DOCUMENTATION:
 
    * Updated developer documentation.
