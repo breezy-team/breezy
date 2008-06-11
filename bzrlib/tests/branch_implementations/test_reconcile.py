@@ -43,6 +43,11 @@ class TestBranchReconcile(TestCaseWithBranch):
         # Now, try to set an invalid history
         try:
             tree.branch.set_revision_history([r1, r2b, r5])
+            if tree.branch.last_revision_info() != (3, r5):
+                # RemoteBranch silently corrects an impossible revision
+                # history given to set_revision_history.  It can be tricked
+                # with set_last_revision_info though.
+                tree.branch.set_last_revision_info(3, r5)
         except errors.NotLefthandHistory:
             # Branch5 allows set_revision_history to be wrong
             # Branch6 raises NotLefthandHistory, but we can force bogus stuff
