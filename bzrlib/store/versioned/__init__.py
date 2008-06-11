@@ -179,13 +179,10 @@ class VersionedFileStore(TransportStore):
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
         myweave = self._make_new_versionedfile(file_id, transaction)
-        myweave.insert_record_stream(weave.get_record_stream(weave.versions(),
+        myweave.insert_record_stream(weave.get_record_stream(
+            [(version,) for version in weave.versions()],
             'topological', False))
 
-    def copy(self, source, result_id, transaction):
-        """Copy the source versioned file to result_id in this store."""
-        source.copy_to(self.filename(result_id), self._transport)
- 
     def copy_all_ids(self, store_from, pb=None, from_transaction=None,
                      to_transaction=None):
         """Copy all the file ids from store_from into self."""
@@ -242,7 +239,8 @@ class VersionedFileStore(TransportStore):
                 target = self._make_new_versionedfile(f, to_transaction)
                 source = from_store.get_weave(f, from_transaction)
                 target.insert_record_stream(source.get_record_stream(
-                    source.versions(), 'topological', False))
+                    [(version,) for version in source.versions()],
+                    'topological', False))
         finally:
             pb.finished()
 

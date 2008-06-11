@@ -267,9 +267,7 @@ class TransportStore(Store):
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
         for quoted_relpath in self._transport.iter_files_recursive():
-            # transport iterator always returns quoted paths, regardless of
-            # escaping
-            yield urllib.unquote(quoted_relpath)
+            yield quoted_relpath
 
     def __iter__(self):
         for relpath in self._iter_files_recursive():
@@ -298,8 +296,8 @@ class TransportStore(Store):
         else:
             suffixes = []
         path = self._mapper.map((fileid,))
-        full_path = u'.'.join([path] + suffixes)
-        return urlutils.escape(full_path)
+        full_path = '.'.join([path] + suffixes)
+        return full_path
 
     def __repr__(self):
         if self._transport is None:

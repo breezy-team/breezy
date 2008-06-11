@@ -395,7 +395,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
-        except errors.RevisionNotPresent:
+        except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
             # occured. If the revision is present, its a problem, if its not
             # its a ghost.
