@@ -121,6 +121,26 @@ class TestCommit(TestCaseWithTransport):
         tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
 
+    def test_partial_commit_move(self):
+        """Test a partial commit where a file was renamed but not committed.
+
+        https://bugs.launchpad.net/bzr/+bug/83039
+        
+        If not handled properly, commit will try to snapshot
+        dialog.py with olive/ as a parent, while 
+        olive/ has not been snapshotted yet.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['annotate/', 'annotate/foo.py',
+                         'olive/', 'olive/dialog.py'
+                        ])
+        wt.add(['annotate', 'olive', 'annotate/foo.py', 'olive/dialog.py'])
+        wt.commit(message='add files')
+        wt.rename_one("olive/dialog.py", "aaa")
+        self.build_tree_contents([('annotate/foo.py', 'modified\n')])
+        wt.commit('renamed hello', specific_files=["annotate"])
+
     def test_pointless_commit(self):
         """Commit refuses unless there are changes or it's forced."""
         wt = self.make_branch_and_tree('.')

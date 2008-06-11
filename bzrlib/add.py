@@ -110,24 +110,3 @@ add_action_add = AddAction()
 add_action_null = add_action_add
 add_action_add_and_print = AddAction(should_print=True)
 add_action_print = add_action_add_and_print
-
-
-@deprecated_function(zero_eighteen)
-def smart_add(file_list, recurse=True, action=None, save=True):
-    """Add files to version, optionally recursing into directories.
-
-    This is designed more towards DWIM for humans than API simplicity.
-    For the specific behaviour see the help for cmd_add().
-
-    Returns the number of files added.
-    Deprecated in 0.18. Please use MutableTree.smart_add.
-    """
-    tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, action=action, save=save)
-
-
-@deprecated_function(zero_eighteen)
-def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
-    """Deprecated in 0.18. Please use MutableTree.smart_add."""
-    return tree.smart_add(file_list, recurse, action, save)
-

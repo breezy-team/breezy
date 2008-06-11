@@ -148,7 +148,8 @@ class _BaseMergeDirective(object):
         else:
             revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
                 ['merge'])
-        return '%s-%s' % (branch.nick, '.'.join(str(n) for n in revno))
+        nick = re.sub('(\W+)', '-', branch.nick).strip('-')
+        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
@@ -273,7 +274,8 @@ class MergeDirective(_BaseMergeDirective):
         """
         _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
-        assert patch_type in (None, 'diff', 'bundle'), patch_type
+        if patch_type not in (None, 'diff', 'bundle'):
+            raise ValueError(patch_type)
         if patch_type != 'bundle' and source_branch is None:
             raise errors.NoMergeSource()
         if patch_type is not None and patch is None:

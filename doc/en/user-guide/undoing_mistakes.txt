@@ -29,15 +29,15 @@ that it will not delete a modified file. For example::
 
 This will complain about the file being modified or unknown.
 If you want to keep the file, use the ``--keep`` option.
-Alternatively, if you want to remove the file, use the ``--force`` option.
+Alternatively, if you want to delete the file, use the ``--force`` option.
 For example::
 
   bzr add foo.html
   (oops - didn't mean that)
   bzr remove --keep foo.html
-  (foo.html left on disk)
+  (foo.html left on disk, but deregistered)
 
-On the other hand, the ``TODO`` file is deregistered and
+On the other hand, the unchanged ``TODO`` file is deregistered and
 removed from disk without complaint in this example::
 
   bzr add TODO

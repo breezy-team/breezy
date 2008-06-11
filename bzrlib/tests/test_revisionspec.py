@@ -90,6 +90,35 @@ class TestRevisionSpec(TestCaseWithTransport):
                          spec.as_revision_id(self.tree.branch))
 
 
+class RevisionSpecMatchOnTrap(RevisionSpec):
+
+    def _match_on(self, branch, revs):
+        self.last_call = (branch, revs)
+        return super(RevisionSpecMatchOnTrap, self)._match_on(branch, revs)
+
+
+class TestRevisionSpecBase(TestRevisionSpec):
+
+    def test_wants_revision_history(self):
+        # If wants_revision_history = True, then _match_on should get the
+        # branch revision history
+        spec = RevisionSpecMatchOnTrap('foo', _internal=True)
+        spec.in_history(self.tree.branch)
+
+        self.assertEqual((self.tree.branch, ['r1' ,'r2']),
+                         spec.last_call)
+
+    def test_wants_no_revision_history(self):
+        # If wants_revision_history = False, then _match_on should get None for
+        # the branch revision history
+        spec = RevisionSpecMatchOnTrap('foo', _internal=True)
+        spec.wants_revision_history = False
+        spec.in_history(self.tree.branch)
+
+        self.assertEqual((self.tree.branch, None), spec.last_call)
+
+
+
 class TestOddRevisionSpec(TestRevisionSpec):
     """Test things that aren't normally thought of as revision specs"""
 
