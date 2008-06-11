@@ -25,6 +25,7 @@ from bzrlib import (
     errors,
     msgeditor,
     osutils,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.config import ensure_config_dir_exists, config_filename
@@ -257,8 +258,7 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        from bzrlib.tests.test_diff import UnicodeFilename
-        self.requireFeature(UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
             os.mkdir(self.info['directory'])
             os.chdir(self.info['directory'])

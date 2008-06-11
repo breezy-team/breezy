@@ -861,6 +861,10 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
+        if a == b + '\n':
+            message = 'first string is missing a final newline.\n'
+        if a + '\n' == b:
+            message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
         
@@ -2744,6 +2748,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.per_repository_reference',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionspec',
@@ -2964,14 +2969,14 @@ def multiply_scenarios(scenarios_left, scenarios_right):
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
-        suite.addTests(adapter.adapt(test))
+    tests = loader.loadTestsFromModuleNames(mods_list)
+    adapt_tests(tests, adapter, suite)
 
 
-def adapt_tests(tests_list, adapter, loader, suite):
+def adapt_tests(tests_list, adapter, suite):
     """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in tests_list:
-        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
+    for test in iter_suite_tests(tests_list):
+        suite.addTests(adapter.adapt(test))
 
 
 def _rmtree_temp_dir(dirname):
@@ -3056,6 +3061,26 @@ class _OsFifoFeature(Feature):
         return 'filesystem fifos'
 
 OsFifoFeature = _OsFifoFeature()
+
+
+class _UnicodeFilenameFeature(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
 class TestScenarioApplier(object):
