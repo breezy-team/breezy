@@ -1607,7 +1607,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases.
+* managing releases (see the `Releasing Bazaar <releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
@@ -1616,27 +1616,6 @@ stuff covered above, "core" developers have responsibility for:
   By documenting how the above things are done, we hope to
   encourage more people to participate in these activities, keeping the
   differences between core and non-core contributors to a minimum.
-
-
-The Development Lifecycle
--------------------------
-
-As a rule, Bazaar development follows a 4 week cycle:
-
-* 3 weeks - general changes
-* 1 week+ - Release Candidate stabilization
-
-During the FeatureFreeze week, the trunk (bzr.dev) is open in a limited
-way: only low risk changes, critical and high priority fixes are accepted
-during this time. At the end of FeatureFreeze, a branch is created for the
-first Release Candidate and the trunk is reopened for general development
-on the *next* release. A week or so later, the final release is packaged
-assuming no serious problems were encountered with the one or more Release
-Candidates.
-
-.. note::
-  There is a one week overlap between the start of one release and
-  the end of the previous one.
 
 
 Communicating and Coordinating
