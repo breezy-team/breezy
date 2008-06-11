@@ -7,7 +7,7 @@ release, and managing the release process.
 We normally have one person acting as the release manager, who 
 organizes development for the release and also actually makes the release
 tarball and posts announcements.  It can be a different person from one
-week to the next.
+release to the next.
 
 See also: `Bazaar Developer Document Catalog <index.html>`_.
 
