@@ -1607,7 +1607,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases (see the `Releasing Bazaar <releasing.html>`_)
+* managing releases (see the `Releasing Bazaar <../../developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
