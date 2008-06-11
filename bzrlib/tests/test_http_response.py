@@ -48,6 +48,9 @@ from bzrlib.transport.http import (
     response,
     _urllib2_wrappers,
     )
+from bzrlib.tests.file_utils import (
+    FakeReadFile,
+    )
 
 
 class ReadSocket(object):
@@ -58,6 +61,7 @@ class ReadSocket(object):
 
     def makefile(self, mode='r', bufsize=None):
         return self.readfile
+
 
 class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
 
@@ -753,3 +757,38 @@ class TestHandleResponse(tests.TestCase):
         out.read()  # Read the whole range
         # Fail to find the boundary line
         self.assertRaises(errors.InvalidHttpResponse, out.seek, 1, 1)
+
+
+class TestRangeFileSizeReadLimited(tests.TestCase):
+    """Test RangeFile _max_read_size functionality which limits the size of
+    read blocks to prevent MemoryError messages in socket.recv.
+    """
+
+    def setUp(self):
+        # create a test datablock larger than _max_read_size.
+        chunk_size = response.RangeFile._max_read_size
+        test_pattern = '0123456789ABCDEF'
+        self.test_data =  test_pattern * (3 * chunk_size / len(test_pattern))
+        self.test_data_len = len(self.test_data)
+
+    def test_max_read_size(self):
+        """Read data in blocks and verify that the reads are not larger than
+           the maximum read size.
+        """
+        # retrieve data in large blocks from response.RangeFile object
+        mock_read_file = FakeReadFile(self.test_data)
+        range_file = response.RangeFile('test_max_read_size', mock_read_file)
+        response_data = range_file.read(self.test_data_len)
+
+        # verify read size was equal to the maximum read size
+        self.assertTrue(mock_read_file.get_max_read_size() > 0)
+        self.assertEqual(mock_read_file.get_max_read_size(),
+                         response.RangeFile._max_read_size)
+        self.assertEqual(mock_read_file.get_read_count(), 3)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+

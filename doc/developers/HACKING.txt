@@ -250,7 +250,7 @@ by community members. Equally importantly, we can be surer that changes
 down the track do not break new features or bug fixes that you are
 contributing today.
 
-As of May 2007, Bazaar ships with a test suite containing over 6000 tests
+As of May 2008, Bazaar ships with a test suite containing over 12000 tests
 and growing. We are proud of it and want to remain so. As community
 members, we all benefit from it. Would you trust version control on
 your project to a product *without* a test suite like Bazaar has?
@@ -282,6 +282,39 @@ To list tests without running them, use the --list-only option like so::
 
 This option can be combined with other selftest options (like -x) and
 filter patterns to understand their effect.
+
+Once you understand how to create a list of tests, you can use the --load-list
+option to run only a restricted set of tests that you kept in a file, one test
+id by line. Keep in mind that this will never be sufficient to validate your
+modifications, you still need to run the full test suite for that, but using it
+can help in some cases (like running only the failed tests for some time)::
+
+  ./bzr selftest -- load-list my_failing_tests
+
+This option can also be combined with other selftest options, including
+patterns. It has some drawbacks though, the list can become out of date pretty
+quick when doing Test Driven Development.
+
+To address this concern, there is another way to run a restricted set of tests:
+the --starting-with option will run only the tests whose name starts with the
+specified string. It will also avoid loading the other tests and as a
+consequence starts running your tests quicker::
+
+  ./bzr selftest --starting-with bzrlib.blackbox
+
+This option can be combined with all the other selftest options including
+--load-list. The later is rarely used but allows to run a subset of a list of
+failing tests for example.
+
+Test suite debug flags
+----------------------
+
+Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
+``-E=foo`` debug flags.  These flags are:
+
+:allow_debug: do *not* clear the global debug flags when running a test.
+  This can provide useful logging to help debug test failures when used
+  with e.g. ``bzr -Dhpss selftest -E=allow_debug``
 
 
 Writing Tests
@@ -617,62 +650,11 @@ elsewhere.  Information they return, such as from ``list_dir``, is also in
 the form of URL components.
 
 
-Core Topics
-###########
-
-Evolving Interfaces
-===================
-
-We have a commitment to 6 months API stability - any supported symbol in a
-release of bzr MUST NOT be altered in any way that would result in
-breaking existing code that uses it. That means that method names,
-parameter ordering, parameter names, variable and attribute names etc must
-not be changed without leaving a 'deprecated forwarder' behind. This even
-applies to modules and classes.
-
-If you wish to change the behaviour of a supported API in an incompatible
-way, you need to change its name as well. For instance, if I add an optional keyword
-parameter to branch.commit - that's fine. On the other hand, if I add a
-keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the API - i.e. to 'branch.commit_transaction'. 
-
-When renaming such supported API's, be sure to leave a deprecated_method (or
-_function or ...) behind which forwards to the new API. See the
-bzrlib.symbol_versioning module for decorators that take care of the
-details for you - such as updating the docstring, and issuing a warning
-when the old api is used.
-
-For unsupported API's, it does not hurt to follow this discipline, but it's
-not required. Minimally though, please try to rename things so that
-callers will at least get an AttributeError rather than weird results.
-
-
-Deprecation decorators
-----------------------
-
-``bzrlib.symbol_versioning`` provides decorators that can be attached to
-methods, functions, and other interfaces to indicate that they should no
-longer be used.
-
-To deprecate a static method you must call ``deprecated_function``
-(**not** method), after the staticmethod call::
-
-    @staticmethod
-    @deprecated_function(zero_ninetyone)
-    def create_repository(base, shared=False, format=None):
-
-When you deprecate an API, you should not just delete its tests, because
-then we might introduce bugs in them.  If the API is still present at all,
-it should still work.  The basic approach is to use
-``TestCase.applyDeprecated`` which in one step checks that the API gives
-the expected deprecation message, and also returns the real result from
-the method, so that tests can keep running.
-
 Coding Style Guidelines
-=======================
+#######################
 
-General Python rules
---------------------
+hasattr and getattr
+===================
 
 ``hasattr`` should not be used because it swallows exceptions including
 ``KeyboardInterrupt``.  Instead, say something like ::
@@ -681,7 +663,7 @@ General Python rules
 
 
 Code layout
------------
+===========
 
 Please write PEP-8__ compliant code.  
 
@@ -770,7 +752,7 @@ violations.
 
 
 Module Imports
---------------
+==============
 
 * Imports should be done at the top-level of the file, unless there is
   a strong reason to have them lazily loaded when a particular
@@ -782,7 +764,7 @@ Module Imports
 
 
 Naming
-------
+======
 
 Functions, methods or members that are "private" to bzrlib are given
 a leading underscore prefix.  Names without a leading underscore are
@@ -805,7 +787,7 @@ inconsistency if other people use the full name.
 
 
 Standard Names
---------------
+==============
 
 ``revision_id`` not ``rev_id`` or ``revid``
 
@@ -814,7 +796,7 @@ Functions that transform one thing to another should be named ``x_to_y``
 
 
 Destructors
------------
+===========
 
 Python destructors (``__del__``) work differently to those of other
 languages.  In particular, bear in mind that destructors may be called
@@ -822,7 +804,9 @@ immediately when the object apparently becomes unreferenced, or at some
 later time, or possibly never at all.  Therefore we have restrictions on
 what can be done inside them.
 
- 0. Never use a __del__ method without asking Martin/Robert first.
+ 0. If you think you need to use a ``__del__`` method ask another
+    developer for alternatives.  If you do need to use one, explain
+    why in a comment.
 
  1. Never rely on a ``__del__`` method running.  If there is code that
     must run, do it from a ``finally`` block instead.
@@ -836,7 +820,7 @@ what can be done inside them.
 
 
 Factories
----------
+=========
 
 In some places we have variables which point to callables that construct
 new instances.  That is to say, they can be used a lot like class objects,
@@ -851,7 +835,7 @@ but they shouldn't be *named* like classes:
 
 
 Registries
-----------
+==========
 
 Several places in Bazaar use (or will use) a registry, which is a 
 mapping from names to objects or classes.  The registry allows for 
@@ -860,7 +844,7 @@ associated information such as a help string or description.
 
 
 Lazy Imports
-------------
+============
 
 To make startup time faster, we use the ``bzrlib.lazy_import`` module to
 delay importing modules until they are actually used. ``lazy_import`` uses
@@ -890,10 +874,6 @@ recommended to prefix it as ``_mod_<module>``. This makes it clearer that
 the variable is a module, and these object should be hidden anyway, since
 they shouldn't be imported into other namespaces.
 
-
-Modules versus Members
-~~~~~~~~~~~~~~~~~~~~~~
-
 While it is possible for ``lazy_import()`` to import members of a module
 when using the ``from module import member`` syntax, it is recommended to
 only use that syntax to load sub modules ``from module import submodule``.
@@ -910,10 +890,6 @@ needing a sub-member for example::
 This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
 object, rather than the real class.
 
-
-Passing to Other Variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 It also is incorrect to assign ``ImportReplacer`` objects to other variables.
 Because the replacer only knows about the original name, it is unable to
 replace other variables. The ``ImportReplacer`` class will raise an
@@ -923,13 +899,115 @@ variable, so some bugs are not detected right away.
 
 
 The Null revision
------------------
+=================
 
 The null revision is the ancestor of all revisions.  Its revno is 0, its
 revision-id is ``null:``, and its tree is the empty tree.  When referring
 to the null revision, please use ``bzrlib.revision.NULL_REVISION``.  Old
 code sometimes uses ``None`` for the null revision, but this practice is
 being phased out.
+
+
+Object string representations
+=============================
+
+Python prints objects using their ``__repr__`` method when they are
+written to logs, exception tracebacks, or the debugger.  We want
+objects to have useful representations to help in determining what went
+wrong.
+
+If you add a new class you should generally add a ``__repr__`` method
+unless there is an adequate method in a parent class.  There should be a
+test for the repr.  
+
+Representations should typically look like Python constructor syntax, but
+they don't need to include every value in the object and they don't need
+to be able to actually execute.  They're to be read by humans, not
+machines.  Don't hardcode the classname in the format, so that we get the
+correct value if the method is inherited by a subclass.  If you're
+printing attributes of the object, including strings, you should normally
+use ``%r`` syntax (to call their repr in turn).
+
+Try to avoid the representation becoming more than one or two lines long.
+(But balance this against including useful information, and simplicity of
+implementation.)
+
+Because repr methods are often called when something has already gone
+wrong, they should be written more defensively than most code.  The object
+may be half-initialized or in some other way in an illegal state.  The
+repr method shouldn't raise an exception, or it may hide the (probably
+more useful) underlying exception.
+
+Example::
+
+    def __repr__(self):
+        try:
+            return '%s(%r)' % (self.__class__.__name__,
+                               self._transport)
+        except:
+            return 'FooObject(**unprintable**)'
+
+
+Core Topics
+###########
+
+Evolving Interfaces
+===================
+
+We have a commitment to 6 months API stability - any supported symbol in a
+release of bzr MUST NOT be altered in any way that would result in
+breaking existing code that uses it. That means that method names,
+parameter ordering, parameter names, variable and attribute names etc must
+not be changed without leaving a 'deprecated forwarder' behind. This even
+applies to modules and classes.
+
+If you wish to change the behaviour of a supported API in an incompatible
+way, you need to change its name as well. For instance, if I add an optional keyword
+parameter to branch.commit - that's fine. On the other hand, if I add a
+keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+
+When renaming such supported API's, be sure to leave a deprecated_method (or
+_function or ...) behind which forwards to the new API. See the
+bzrlib.symbol_versioning module for decorators that take care of the
+details for you - such as updating the docstring, and issuing a warning
+when the old api is used.
+
+For unsupported API's, it does not hurt to follow this discipline, but it's
+not required. Minimally though, please try to rename things so that
+callers will at least get an AttributeError rather than weird results.
+
+
+Deprecation decorators
+----------------------
+
+``bzrlib.symbol_versioning`` provides decorators that can be attached to
+methods, functions, and other interfaces to indicate that they should no
+longer be used.  For example::
+
+   @deprecated_method(deprecated_in((0, 1, 4)))
+   def foo(self):
+        return self._new_foo()
+
+To deprecate a static method you must call ``deprecated_function``
+(**not** method), after the staticmethod call::
+
+    @staticmethod
+    @deprecated_function(deprecated_in((0, 1, 4)))
+    def create_repository(base, shared=False, format=None):
+
+When you deprecate an API, you should not just delete its tests, because
+then we might introduce bugs in them.  If the API is still present at all,
+it should still work.  The basic approach is to use
+``TestCase.applyDeprecated`` which in one step checks that the API gives
+the expected deprecation message, and also returns the real result from
+the method, so that tests can keep running.
+
+Deprecation warnings will be suppressed for final releases, but not for
+development versions or release candidates, or when running ``bzr
+selftest``. This gives developers information about whether their code is
+using deprecated functions, but avoids confusing users about things they
+can't fix.
 
 
 Getting Input
@@ -1172,6 +1250,36 @@ format string.
 
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
+
+
+Assertions
+==========
+
+Do not use the Python ``assert`` statement, either in tests or elsewhere.
+A source test checks that it is not used.  It is ok to explicitly raise
+AssertionError.
+
+Rationale:
+
+ * It makes the behaviour vary depending on whether bzr is run with -O
+   or not, therefore giving a chance for bugs that occur in one case or
+   the other, several of which have already occurred: assertions with
+   side effects, code which can't continue unless the assertion passes,
+   cases where we should give the user a proper message rather than an
+   assertion failure.
+ * It's not that much shorter than an explicit if/raise.
+ * It tends to lead to fuzzy thinking about whether the check is
+   actually needed or not, and whether it's an internal error or not
+ * It tends to cause look-before-you-leap patterns.
+ * It's unsafe if the check is needed to protect the integrity of the
+   user's data.
+ * It tends to give poor messages since the developer can get by with
+   no explanatory text at all.
+ * We can't rely on people always running with -O in normal use, so we
+   can't use it for tests that are actually expensive.
+ * Expensive checks that help developers are better turned on from the
+   test suite or a -D flag.
+ * If used instead of ``self.assert*()`` in tests it makes them falsely pass with -O.
 
 
 Documenting Changes
@@ -1755,381 +1863,7 @@ active role with particular attention to the following tasks:
 .. note::
   As well as prioritizing bugs and nominating them against a
   target milestone, Launchpad lets core developers offer to mentor others in
-  fixing them. Nice.
-
-
-Managing a Release
-==================
-
-Starting a Release
-------------------
-
-To start a new release cycle:
-
-#. Send mail to the list with the key dates, who will be the release
-   manager, and the main themes or targetted bugs.  Ask people to nominate
-   objectives, or point out an high-risk things that are best done early,
-   or that interact with other changes.
-
-#. Add a new "series" in Launchpad at <https://launchpad.net/bzr/+addseries>.  There is one 
-   series for every *x.y* release.
-
-Weekly Status Updates
----------------------
-
-TODO: Things to cover:
-
-* Early communication to downstream teams (e.g. Launchpad) about changes in dependencies.
-* Reminder re lifecycle and where we're up to right now
-* Summary of recent successes and pending work
-* Reminder re release objectives
-* Reminder re things needing attention, e.g. bug triage, reviews, testing of certain things, etc.
-
-
-Feature Freeze
---------------
-
-TODO: Get material from http://bazaar-vcs.org/FeatureFreeze.
-
-
-
-Making a Release or Release Candidate
--------------------------------------
-
-.. Was previously at http://bazaar-vcs.org/ReleaseChecklist
-
-.. TODO: Still needs more clarity on what's in a RC versus a final
-.. release?
-
-.. TODO: Too much of this is manual but could be automated...
-
-This is the procedure for making a new bzr release:
-
-#. If the release is the first candidate, make a new branch in PQM. (Contact RobertCollins for this step).
-
-   Register the branch at https://launchpad.net/products/bzr/+addbranch
-
-#. Run the automatic test suite and any non-automated tests.  (For example, try a download over http; these should eventually be scripted though not automatically run.). Try to have all optional dependencies installed so that there are no tests skipped. Also make sure that you have the c extensions compiled (``make`` or ``python setup.py build_ext -i``).
-
-#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``
-
-#. Add the date and release number to ``./NEWS``.
-
-#. Update the release number in the README. (It's not there as of 0.15, but please check).
-
-#. Commit these changes to the release branch, using a command like::
-    
-     bzr commit -m "(jam) Release 0.12rc1." 
-   
-   The diff before you commit will be something like::
-
-       === modified file 'NEWS'
-       --- NEWS        2006-10-23 13:11:17 +0000
-       +++ NEWS        2006-10-23 22:50:50 +0000
-       @@ -1,4 +1,4 @@
-       -IN DEVELOPMENT
-       +bzr 0.12rc1  2006-10-23
-
-          IMPROVEMENTS:
-
-
-       === modified file 'bzrlib/__init__.py'
-       --- bzrlib/__init__.py  2006-10-16 01:47:43 +0000
-       +++ bzrlib/__init__.py  2006-10-23 22:49:46 +0000
-       @@ -35,7 +35,7 @@
-        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
-        # releaselevel of 'dev' for unreleased under-development code.
-
-       -version_info = (0, 12, 0, 'dev', 0)
-       +version_info = (0, 12, 0, 'candidate', 1)
-
-        if version_info[3] == 'final':
-            version_string = '%d.%d.%d' % version_info[:3]
-
-#. Submit those changes to PQM for merge into the appropriate release
-   branch.
-
-#. When PQM succeeds, pull down the master release branch.
-
-#. Run ``make dist`` from a clean copy of the release branch; this will
-   produce a tarball and prompt you to sign it.
-
-#. Unpack the tarball into a temporary directory and run ``make check`` in
-   that directory.
-
-#. Run ``setup.py install`` --root=prefix to do a test install into your system directory, home directory, or some other prefix.  Check the install worked and that the installed version is usable. (run the bzr script from the installed path with PYTHONPATH set to the site-packages directory it created). i.e. ::
-
-    python setup.py install --root=installed
-    PYTHONPATH=installed/usr/lib/python2.4/site-packages installed/usr/bin/bzr
-
-
-Publishing the release
-----------------------
-
-Now you have the releasable product.  The next step is making it
-available to the world.
-
-#. In <https://launchpad.net/bzr/> click the "Release series" for this
-   series, to take you to e.g. <https://launchpad.net/bzr/1.1>.  Then
-   click "Register a release", and add information about this release.
-
-#. Within that release, upload the source tarball and the GPG signature.
-
-   (These used to also be uploaded to 
-   <sftp://escudero.ubuntu.com/srv/bazaar.canonical.com/www/releases/src>
-   but that's not accessible to all developers, and gets some mime types
-   wrong...  This upload can still be done with ``make
-   dist-upload-escudero``.)
-
-#. Link from http://bazaar-vcs.org/Download to the tarball and signature.
-
-#. Update http://doc.bazaar-vcs.org/ to have a directory of documentation
-   for this release.  (Controlled by the ``update-bzr-docs`` script on
-   escudero, and also update the ``latest`` symlink in
-   ``/srv/bazaar.canonical.com/doc/``.)
-
-#. Announce on the `Bazaar home page`__
-   
- __ http://bazaar-vcs.org/
-
-
-Announcing the release
-----------------------
-
-Now that the release is publicly available, tell people about it.
-
-#. Announce to ``bazaar-announce`` and ``bazaar`` mailing lists. 
-   The announce mail will look something like this:
-   
-    | Subject: bzr 0.11 release candidate 1
-    | 
-    | INTRO HERE. Mention the release number and date, and why the release. (i.e. release candidate for testing, final release of a version, backport/bugfix etc).
-    | 
-    | Tarballs:
-    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz
-    | and GPG signature:
-    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz.sig
-    | 
-    | DESCRIBE-CHANGES-IN-OVERVIEW-HERE
-    | 
-    | DESCRIBE-when the next release will be (if there is another - i.e. this is a release candidate)
-    | 
-    | Many thanks to all the contributors to this release! I've included the
-    | contents of NEWS for VERSION below:
-
-   To generate the data from NEWS, just copy and paste the relevant news section and clean it up as appropriate. The main clean-up task is to confirm that all major changes are indeed covered. This can be done by running ``bzr log`` back to the point when the branch was opened and cross checking the changes against the NEWS entries.
-
-   (RC announcements should remind plugin maintainers to update their plugins.)
-
-     * For point releases (i.e. a release candidate, or an incremental fix to a released version) take everything in the relevant NEWS secion : for 0.11rc2 take everything in NEWS from the bzr 0.11rc2 line to the bzr 0.11rc1 line further down.
-
-     * For major releases (i.e. 0.11, 0.12 etc), take all the combined NEWS sections from within that version: for 0.11 take all of the 0.11 specific section, plus 0.11rc2, plus 0.11rc1 etc.
-
-#. Update the `news side menu`__ -- this currently requires downloading the file, editing it, deleting it, and uploading a replacement.
-
-   __ http://bazaar-vcs.org/site/menu?action=AttachFile&do=view&target=news.html
-
-#. Update the IRC channel topic. Use the ``/topic`` command to do this, ensuring the new topic text keeps the project name, web site link, etc.
-
-#. Announce on http://freshmeat.net/projects/bzr/
-   
-   This should be done for both release candidates and final releases. If you do not have a Freshmeat account yet, ask one of the existing admins.
-
-#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not Release Candidates.
-
-#. Package maintainers should update packages when they see the
-   announcement.
-
-#. Blog about it.
-
-#. Post to http://mail.python.org/mailman/listinfo/python-announce-list for major releases
-
-#. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
-   done by running ::
-
-       python setup.py register
-
-   Remember to check the results afterwards.
-
-
-Merging the released code back to trunk
----------------------------------------
-
-Merge the release branch back into the trunk.  Check that changes in NEWS
-were merged into the right sections.  If it's not already done, advance
-the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
-back into pqm for bzr.dev.
-
-
-
-Making Win32 installers
------------------------
-
-**XXX:** This information is now probably obsolete, as Alexander uploads
-direct to Launchpad.  --mbp 20080116
-
-Alexander Belchenko has been very good about getting packaged installers compiled (see Win32ReleaseChecklist for details). He generally e-mails John Arbash Meinel when they are ready. This is just a brief checklist of what needs to be done.
-
-#. Download and verify the sha1 sums and gpg signatures. Frequently the sha1 files are in dos mode, and need to be converted to unix mode (strip off the trailing ``\r``) before they veryify correctly.
-
-#. Upload to the Launchpad page for this release.
-
-#. Upload to escudero (to the b.c.c/www/releases/win32 directory) using sftp, lftp or rsync
-
-#. Cat the contents of the .sha1 files into the SHA1SUM.
-
-#. Update the SHA1SUM and MD5SUM files using something like ``md5sum bzr-0.14.0.win32.exe >> MD5SUM``. Make sure you use append (>>) rather than overwrite (>).
-
-#. Verify once again that everything is correct with ``sha1sum -c SHA1SUM`` and ``md5sum -c MD5SUM``.
-
-#. Update ``.htaccess`` so that the 'bzr-latest.win32.exe' links point to the latest release. This is not done for candidate releases, only for final releases. (example: bzr-0.14.0, but not bzr-0.14.0rc1).
-
-#. Make sure these urls work as expected:
-
-   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.5.exe
-
-   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.5.exe.asc
-
-   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.4.exe
-
-   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.4.exe.asc
-
-   http://bazaar-vcs.org/releases/win32/bzr-setup-latest.exe
-
-   http://bazaar-vcs.org/releases/win32/bzr-setup-latest.exe.asc
-   
-They should all try to download a file with the correct version number.
-
-#. Update http://bazaar-vcs.org/Download to indicate the newly available versions.
-
-#. Update http://bazaar-vcs.org/WindowsDownloads to have the correct version number as well as the correct sha1sum displayed.
-
-
-The Bazaar PPA archive
-----------------------
-
-We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
-process.  These packages are hosted in a `Personal Package Archive (PPA)`__ on
-Launchpad, at <https://launchpad.net/~bzr/+archive>.
-
-  __ https://help.launchpad.net/PPAQuickStart
-
-We build packages for every supported Ubuntu release
-<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
-when the release passes end-of-life because all users should have then
-update.
-
-The ``debian/`` directory containing the packaging information is kept in
-branches on Launchpad, named like 
-<https://code.launchpad.net/~bzr/bzrtools/packaging-dapper>
-
-Updating the PPA for a new release
-----------------------------------
-
-Preconditions for building these packages:
-  
- * You must have a Launchpad account and be a member of the `~bzr`__ team
-   
- __ https://edge.launchpad.net/~bzr/+members>
-
- * You must have a GPG key registered to your Launchpad account.
-
- * Configure ``dput`` to upload to our PPA with this section in your
-   ``~/.dput.cf``::
-
-        [bzr-ppa]
-        fqdn = ppa.launchpad.net
-        method = ftp
-        incoming = ~bzr/ubuntu
-        login = anonymous
-        allow_unsigned_uploads = 0
-
- * You need a Ubuntu (or probably Debian) machine, and ::
-
-     sudo apt-get install build-essential devscripts dput
-
-Here is the process; there are some steps which should be automated in
-future:
-
-#. You will need a working directory for each supported release, such as
-   ``~/bzr/Packaging/dapper``
-
-#. Download the official tarball of the release to e.g. ``~/bzr/Releases``
-
-#. Copy the original tarball into your per-disto directory, then untar it 
-   and if necessary rename it::
-
-     cp -l ~/bzr/Releases/bzrtools-1.3.0.tar.gz bzrtools_1.3.0.orig.tar.gz
-     tar xfvz bzrtools_1.3.0.orig.tar.gz
-     mv bzrtools bzrtools-1.3.0
-
-#. Change into that directory and check out the packaging branch::
-
-     cd bzrtools
-     bzr checkout \
-       bzr+ssh://bazaar.launchpad.net/~bzr/bzrtools/packaging-dapper \
-       debian
-
-#. For Bazaar plugins, change the ``debian/control`` file to express a
-   dependency on the correct version of ``bzr``.
-
-   For bzrtools this is typically::
-
-      Build-Depends-Indep: bzr (>= 1.3~), rsync
-      Depends: ${python:Depends}, bzr (>= 1.3~), bzr (<< 1.4~), patch
-
-#. Make a new ``debian/changelog`` entry for the new release,
-   either by using ``dch`` or just editing the file::
-
-     dch -v '1.3.0-1~bazaar1~dapper1' -D dapper
-
-   dch will default to the distro you're working in and this isn't checked
-   against the version number (which is just our conversion).  So make
-   sure to specify it.
-
-   Make sure you have the correct email address for yourself, version
-   number, and distribution.  It should look something like this::
-
-     >  bzrtools (1.3.0-1~bazaar1~dapper1) dapper; urgency=low
-     >
-     >   * New upstream release.
-     >
-     >  -- John Sample <sample@example.com>  Mon, 31 Mar 2008 12:36:27 +1100
-
-   If you need to upload the package again to fix a problem, normally you
-   should increment the last number in the version number, following the
-   distro name.  Make sure not to omit the initial ``-1``, and make sure
-   that the distro name in the version is consistent with the target name
-   outside the parenthesis.
-
-#. Commit these changes into the packaging branch::
-
-     bzr ci -m '1.3.0-1~bazaar1~dapper1: New upstream release.' debian
-
-#. Build a source package::
-
-     debuild -S -sa -i
-
-   This will create a ``.changes`` file in the per-distro directory,
-   and should invoke gpg to sign it with your key.
-   Check that file is reasonable: it should be uploading to the intended
-   distribution, have a .orig file included, and the right version number.
-
-#. Upload into the PPA::
-
-     dput bzr-ppa ../bzrtools__1.3.0-1\~bazaar1\~dapper1_source.changes
-
-   Don't forget the ``bzr-ppa`` component or dput will try to upload into
-   the main archive by default.  You can disable this by adding this
-   section to your ``.dput.cf``::
-
-     [ubuntu]
-     fqdn = SPECIFY.A.PPA.NAME
-
-#. You should soon get an "upload accepted" mail from Launchpad, which
-   means that your package is waiting to be built.  You can then track its
-   progress in <https://launchpad.net/~bzr/+archive> and
-   <https://launchpad.net/~bzr/+archive/+builds>.
+  fixing them. 
 
 
 ..

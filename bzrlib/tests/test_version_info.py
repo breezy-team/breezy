@@ -296,15 +296,3 @@ class TestVersionInfoFormatRegistry(tests.TestCase):
                          registry.get_help('testbuilder'))
         registry.remove('testbuilder')
         self.assertRaises(KeyError, registry.get, 'testbuilder')
-
-    def test_old_functions(self):
-        self.applyDeprecated(symbol_versioning.one_zero,
-            version_info_formats.register_builder,
-            'test-builder', __name__, 'TestBuilder')
-        formats = self.applyDeprecated(symbol_versioning.one_zero,
-            version_info_formats.get_builder_formats)
-        self.failUnless('test-builder' in formats)
-        self.assertIs(TestBuilder,
-            self.applyDeprecated(symbol_versioning.one_zero,
-                version_info_formats.get_builder, 'test-builder'))
-        version_info_formats.format_registry.remove('test-builder')

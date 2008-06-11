@@ -53,6 +53,7 @@ from bzrlib.errors import (NotBranchError,
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
+
 class TestDefaultFormat(TestCase):
 
     def test_default_format(self):
@@ -293,6 +294,7 @@ class TestBranch6(TestCaseWithTransport):
             trace.warning = _warning
         self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
                          'locations.conf')
+
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
