@@ -10,7 +10,8 @@ Overall developer documentation
 
 * `Developer Guide <../en/developer-guide/HACKING.html>`_
 
-* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_ (external link)
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
+  (external link)
   |--| automatically generated API reference information
 
 * `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
