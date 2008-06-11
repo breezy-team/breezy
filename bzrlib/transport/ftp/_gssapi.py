@@ -129,22 +129,27 @@ class SecureFtpTransport(FtpTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    # Dummy server to have the test suite report the number of tests
-    # needing that feature. We raise UnavailableFeature from methods before
-    # the test server is being used. Doing so in the setUp method has bad
-    # side-effects (tearDown is never called).
-    class UnavailableFTPServer(object):
+    from bzrlib import tests
+    if tests.FTPServerFeature.available():
+        from bzrlib.tests import ftp_server
+        return [(SecureFtpTransport, ftp_server.FTPServer)]
+    else:
+        # Dummy server to have the test suite report the number of tests
+        # needing that feature. We raise UnavailableFeature from methods before
+        # the test server is being used. Doing so in the setUp method has bad
+        # side-effects (tearDown is never called).
+        class UnavailableFTPServer(object):
 
-        def setUp(self):
-            pass
+            def setUp(self):
+                pass
 
-        def tearDown(self):
-            pass
+            def tearDown(self):
+                pass
 
-        def get_url(self):
-            raise tests.UnavailableFeature(tests.FTPServerFeature)
+            def get_url(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
 
-        def get_bogus_url(self):
-            raise tests.UnavailableFeature(tests.FTPServerFeature)
+            def get_bogus_url(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
 
-    return [(FtpTransport, UnavailableFTPServer)]
+        return [(FtpTransport, UnavailableFTPServer)]
