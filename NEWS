@@ -49,6 +49,10 @@ now faster.
       reading from the repository.)
       (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
 
+    * Fix infinite loop consuming 100% CPU when a connection is lost while
+      reading a response body via the smart protocol v1 or v2.
+      (Andrew Bennetts)
+      
     * Inserting a bundle which changes the contents of a file with no trailing
       end of line, causing a knit snapshot in a 'knits' repository will no longer
       cause KnitCorrupt. (Robert Collins)
