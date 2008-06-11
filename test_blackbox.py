@@ -42,6 +42,20 @@ class TestRebaseSimple(ExternalBase):
         os.chdir('../feature')
         self.check_output('No revisions to rebase.\n', 'rebase ../main')
 
+    def test_notneeded_feature_ahead(self):
+        os.chdir('../feature')
+        self.make_file('barbla', "bloe")
+        self.run_bzr('add')
+        self.run_bzr('commit -m bloe')
+        self.check_output('No revisions to rebase.\n', 'rebase ../main')
+
+    def test_notneeded_main_ahead(self):
+        self.make_file('barbla', "bloe")
+        self.run_bzr('add')
+        self.run_bzr('commit -m bloe')
+        os.chdir('../feature')
+        self.check_output("Base branch is descendant of current branch. Use 'bzr pull'.\n", 'rebase ../main')
+
     def test_no_pending_merges(self):
         self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'], 'rebase --pending-merges')
 

@@ -194,6 +194,9 @@ class cmd_rebase(Command):
                 if common_revid == upstream.last_revision():
                     self.outf.write("No revisions to rebase.\n")
                     return
+                if common_revid == revhistory[-1]:
+                    self.outf.write("Base branch is descendant of current branch. Use 'bzr pull'.\n")
+                    return
                 try:
                     start_revid = revhistory[revhistory.index(common_revid)+1]
                 except NoSuchRevision:
