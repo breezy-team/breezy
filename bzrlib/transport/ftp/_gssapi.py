@@ -37,43 +37,46 @@ if getattr(kerberos, "authGSSClientWrap", None) is None:
     raise errors.DependencyNotPresent('kerberos', 
                                       "missing encryption functions")
 
-import base64, ftplib, getpass
+import base64, ftplib, getpass, socket
 
 class SecureFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
     def mic_putcmd(self, line):
-        kerberos.authGSSClientWrap(
-                    self.vc, line.rstrip("\r\n"), 'jelmer')
+        rc = kerberos.authGSSClientWrap(self.vc, 
+            base64.b64encode(line), 'jelmer@VERNSTOK.NL')
         wrapped = kerberos.authGSSClientResponse(self.vc)
-        print "> " + wrapped
         ftplib.FTP.putcmd(self, "MIC " + wrapped)
 
-    def mic_getmultiline(self):
-        resp = ftplib.FTP.getmultiline(self)
-        assert resp[:3] == '631'
-        kerberos.authGSSClientUnwrap(self.vc, resp[4:].strip("\r\n"))
+    def mic_getline(self):
+        resp = ftplib.FTP.getline(self)
+        assert resp[:4] == '631 '
+        rc = kerberos.authGSSClientUnwrap(self.vc, resp[4:].strip("\r\n"))
         response = base64.b64decode(kerberos.authGSSClientResponse(self.vc))
-        print "< " + response
         return response
 
-    def gssapi_login(self):
+    def gssapi_login(self, user):
         # Try GSSAPI login first
         resp = self.sendcmd('AUTH GSSAPI')
         if resp[:3] == '334':
             rc, self.vc = kerberos.authGSSClientInit("ftp@%s" % self.host)
 
-            kerberos.authGSSClientStep(self.vc, "")
-            while resp[:3] in ('334', '335'):
-                authdata = kerberos.authGSSClientResponse(self.vc)
-                resp = self.sendcmd('ADAT ' + authdata)
-                if resp[:3] in ('235', '335'):
-                    kerberos.authGSSClientStep(self.vc, resp[9:])
+            if kerberos.authGSSClientStep(self.vc, "") != 1:
+                while resp[:3] in ('334', '335'):
+                    authdata = kerberos.authGSSClientResponse(self.vc)
+                    resp = self.sendcmd('ADAT ' + authdata)
+                    if resp[:9] in ('235 ADAT=', '335 ADAT='):
+                        rc = kerberos.authGSSClientStep(self.vc, resp[9:])
+                        assert ((resp[:3] == '235' and rc == 1) or 
+                                (resp[:3] == '335' and rc == 0))
             info("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
+
             # Monkey patch ftplib
             self.putcmd = self.mic_putcmd
-            self.getmultiline = self.mic_getmultiline
+            self.getline = self.mic_getline
 
+            self.sendcmd('USER ' + user)
+            return resp
 
 class SecureFtpTransport(FtpTransport):
     def _create_connection(self, credentials=None):
@@ -106,7 +109,7 @@ class SecureFtpTransport(FtpTransport):
             connection = SecureFtp()
             connection.connect(host=self._host, port=self._port)
             try:
-                connection.gssapi_login()
+                connection.gssapi_login(user=user)
             except ftplib.error_perm, e:
                 if user and user != 'anonymous' and \
                         password is None: # '' is a valid password
