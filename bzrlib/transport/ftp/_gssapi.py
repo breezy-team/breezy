@@ -39,6 +39,7 @@ if getattr(kerberos, "authGSSClientWrap", None) is None:
 
 import base64, ftplib, getpass, socket
 
+
 class SecureFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
     def mic_putcmd(self, line):
@@ -77,6 +78,7 @@ class SecureFtp(ftplib.FTP):
 
             self.sendcmd('USER ' + user)
             return resp
+
 
 class SecureFtpTransport(FtpTransport):
     def _create_connection(self, credentials=None):
