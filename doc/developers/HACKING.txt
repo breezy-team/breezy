@@ -261,7 +261,10 @@ doc/developers
         
 
 Automatically-generated API reference information is available at 
-<http://bazaar-vcs.org/BzrLib>.  See also the `Essential Domain Classes`_
+<http://starship.python.net/crew/mwh/bzrlibapi/>.  
+(There is an experimental editable version at 
+<http://starship.python.net/crew/mwh/bzrlibapi-oe/>.)
+See also the `Essential Domain Classes`_
 section of this guide.
 
 
@@ -1620,8 +1623,7 @@ The Development Lifecycle
 
 As a rule, Bazaar development follows a 4 week cycle:
 
-* 2 weeks - general changes
-* 1 week - feature freeze
+* 3 weeks - general changes
 * 1 week+ - Release Candidate stabilization
 
 During the FeatureFreeze week, the trunk (bzr.dev) is open in a limited
