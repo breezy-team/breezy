@@ -138,6 +138,7 @@ class WorkingTree4(WorkingTree3):
         # if branch is at our basedir and is a format 6 or less
         # assume all other formats have their own control files.
         self._control_files = _control_files
+        self._transport = self._control_files._transport
         self._dirty = None
         #-------------
         # during a read or write lock these objects are set, and are
@@ -1084,9 +1085,21 @@ class WorkingTree4(WorkingTree3):
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
         real_trees = []
         ghosts = []
+
+        parent_ids = [rev_id for rev_id, tree in parents_list]
+        graph = self.branch.repository.get_graph()
+        heads = graph.heads(parent_ids)
+        accepted_revisions = set()
+
         # convert absent trees to the null tree, which we convert back to
         # missing on access.
         for rev_id, tree in parents_list:
+            if len(accepted_revisions) > 0:
+                # we always accept the first tree
+                if rev_id in accepted_revisions or rev_id not in heads:
+                    # We have already included either this tree, or its
+                    # descendent, so we skip it.
+                    continue
             _mod_revision.check_not_reserved_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
@@ -1094,6 +1107,7 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id,
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
+            accepted_revisions.add(rev_id)
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
         self._make_dirty(reset_inventory=False)
 
@@ -1307,7 +1321,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        control_files.put_utf8('format', self.get_format_string())
+        transport.put_bytes('format', self.get_format_string(),
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
@@ -1358,8 +1373,11 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
+                # delta_from_tree is safe even for DirStateRevisionTrees,
+                # because wt4.apply_inventory_delta does not mutate the input
+                # inventory entries.
                 transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink)
+                                     hardlink=hardlink, delta_from_tree=True)
             finally:
                 basis.unlock()
         finally:
@@ -2527,5 +2545,6 @@ class Converter3to4(object):
 
     def update_format(self, tree):
         """Change the format marker."""
-        tree._control_files.put_utf8('format',
-            self.target_format.get_format_string())
+        tree._transport.put_bytes('format',
+            self.target_format.get_format_string(),
+            mode=tree.bzrdir._get_file_mode())

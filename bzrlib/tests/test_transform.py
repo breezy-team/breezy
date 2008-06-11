@@ -64,7 +64,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def get_transform(self):
         transform = TreeTransform(self.wt)
-        #self.addCleanup(transform.finalize)
+        self.addCleanup(transform.finalize)
         return transform, transform.root
 
     def test_existing_limbo(self):
@@ -85,7 +85,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_existing_pending_deletion(self):
         transform, root = self.get_transform()
         deletion_path = self._limbodir = urlutils.local_path_from_url(
-            transform._tree._control_files.controlfilename('pending-deletion'))
+            transform._tree._transport.abspath('pending-deletion'))
         os.mkdir(pathjoin(deletion_path, 'blocking-directory'))
         self.assertRaises(ImmortalPendingDeletion, transform.apply)
         self.assertRaises(LockError, self.wt.unlock)
@@ -1703,6 +1703,19 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
         self.assertTrue(source.is_executable('file1-id'))
+
+    def test_case_insensitive_build_tree_inventory(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file', 'source/FILE'])
+        source.add(['file', 'FILE'], ['lower-id', 'upper-id'])
+        source.commit('added files')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive
+        target = self.make_branch_and_tree('target')
+        target.case_sensitive = False
+        build_tree(source.basis_tree(), target, source, delta_from_tree=True)
+        self.assertEqual('file.moved', target.id2path('lower-id'))
+        self.assertEqual('FILE', target.id2path('upper-id'))
 
 
 class MockTransform(object):

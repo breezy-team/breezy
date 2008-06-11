@@ -147,7 +147,8 @@ class FakeBranch(object):
             self.base = "http://example.com/branches/demo"
         else:
             self.base = base
-        self.control_files = FakeControlFiles(user_id=user_id)
+        self._transport = self.control_files = \
+            FakeControlFilesAndTransport(user_id=user_id)
 
     def lock_write(self):
         pass
@@ -156,7 +157,7 @@ class FakeBranch(object):
         pass
 
 
-class FakeControlFiles(object):
+class FakeControlFilesAndTransport(object):
 
     def __init__(self, user_id=None):
         self.files = {}
@@ -587,6 +588,14 @@ class TestGlobalConfigItems(tests.TestCase):
         my_config = self._get_sample_config()
         self.assertEqual('help', my_config.get_alias('h'))
 
+    def test_get_aliases(self):
+        my_config = self._get_sample_config()
+        aliases = my_config.get_aliases()
+        self.assertEqual(2, len(aliases))
+        sorted_keys = sorted(aliases)
+        self.assertEqual('help', aliases[sorted_keys[0]])
+        self.assertEqual(sample_long_alias, aliases[sorted_keys[1]])
+
     def test_get_no_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.get_alias('foo'))
@@ -594,6 +603,28 @@ class TestGlobalConfigItems(tests.TestCase):
     def test_get_long_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
+
+
+class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
+
+    def test_empty(self):
+        my_config = config.GlobalConfig()
+        self.assertEqual(0, len(my_config.get_aliases()))
+
+    def test_set_alias(self):
+        my_config = config.GlobalConfig()
+        alias_value = 'commit --strict'
+        my_config.set_alias('commit', alias_value)
+        new_config = config.GlobalConfig()
+        self.assertEqual(alias_value, new_config.get_alias('commit'))
+
+    def test_remove_alias(self):
+        my_config = config.GlobalConfig()
+        my_config.set_alias('commit', 'commit --strict')
+        # Now remove the alias again.
+        my_config.unset_alias('commit')
+        new_config = config.GlobalConfig()
+        self.assertIs(None, new_config.get_alias('commit'))
 
 
 class TestLocationConfig(tests.TestCaseInTempDir):
@@ -1411,6 +1442,51 @@ class TestAuthenticationConfig(tests.TestCase):
         self._check_default_prompt(
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)
+
+    def test_ssh_password_emits_warning(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[ssh with password]
+scheme=ssh
+host=bar.org
+user=jim
+password=jimpass
+"""))
+        entered_password = 'typed-by-hand'
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
+                                            stdout=stdout)
+
+        # Since the password defined in the authentication config is ignored,
+        # the user is prompted
+        self.assertEquals(entered_password,
+                          conf.get_password('ssh', 'bar.org', user='jim'))
+        self.assertContainsRe(
+            self._get_log(keep_log_file=True),
+            'password ignored in section \[ssh with password\]')
+
+    def test_ssh_without_password_doesnt_emit_warning(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[ssh with password]
+scheme=ssh
+host=bar.org
+user=jim
+"""))
+        entered_password = 'typed-by-hand'
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
+                                            stdout=stdout)
+
+        # Since the password defined in the authentication config is ignored,
+        # the user is prompted
+        self.assertEquals(entered_password,
+                          conf.get_password('ssh', 'bar.org', user='jim'))
+        # No warning shoud be emitted since there is no password. We are only
+        # providing "user".
+        self.assertNotContainsRe(
+            self._get_log(keep_log_file=True),
+            'password ignored in section \[ssh with password\]')
 
 
 # FIXME: Once we have a way to declare authentication to all test servers, we

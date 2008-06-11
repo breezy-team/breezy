@@ -88,10 +88,10 @@ def deprecated_in(version_tuple):
     """Generate a message that something was deprecated in a release.
 
     >>> deprecated_in((1, 4, 0))
-    '%s was deprecated in version 1.4'
+    '%s was deprecated in version 1.4.'
     """
-    return ("%s was deprecated in version "
-            + bzrlib._format_version_tuple(version_tuple))
+    return ("%%s was deprecated in version %s."
+            % bzrlib._format_version_tuple(version_tuple))
 
 
 def set_warning_method(method):
@@ -331,3 +331,59 @@ def deprecated_list(deprecation_version, variable_name,
                 return self._warn_deprecated(list.pop)
 
     return _DeprecatedList(initial_value)
+
+
+def _check_for_filter(error_only):
+    """Check if there is already a filter for deprecation warnings.
+    
+    :param error_only: Only match an 'error' filter
+    :return: True if a filter is found, False otherwise
+    """
+    import warnings
+    for filter in warnings.filters:
+        if issubclass(DeprecationWarning, filter[2]):
+            # This filter will effect DeprecationWarning
+            if not error_only or filter[0] == 'error':
+                return True
+    return False
+
+
+def suppress_deprecation_warnings(override=True):
+    """Call this function to suppress all deprecation warnings.
+
+    When this is a final release version, we don't want to annoy users with
+    lots of deprecation warnings. We only want the deprecation warnings when
+    running a dev or release candidate.
+
+    :param override: If True, always set the ignore, if False, only set the
+        ignore if there isn't already a filter.
+    """
+    import warnings
+    if not override and _check_for_filter(error_only=False):
+        # If there is already a filter effecting suppress_deprecation_warnings,
+        # then skip it.
+        return
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+
+def activate_deprecation_warnings(override=True):
+    """Call this function to activate deprecation warnings.
+
+    When running in a 'final' release we suppress deprecation warnings.
+    However, the test suite wants to see them. So when running selftest, we
+    re-enable the deprecation warnings.
+
+    Note: warnings that have already been issued under 'ignore' will not be
+    reported after this point. The 'warnings' module has already marked them as
+    handled, so they don't get issued again.
+
+    :param override: If False, only add a filter if there isn't an error filter
+        already. (This slightly differs from suppress_deprecation_warnings, in
+        because it always overrides everything but -Werror).
+    """
+    import warnings
+    if not override and _check_for_filter(error_only=True):
+        # DeprecationWarnings are already turned into errors, don't downgrade
+        # them to 'default'.
+        return
+    warnings.filterwarnings('default', category=DeprecationWarning)

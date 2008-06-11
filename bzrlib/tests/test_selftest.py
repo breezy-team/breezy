@@ -126,8 +126,8 @@ class TestTransportProviderAdapter(TestCase):
     """
 
     def test_get_transport_permutations(self):
-        # this checks that we the module get_test_permutations call
-        # is made by the adapter get_transport_test_permitations method.
+        # this checks that get_test_permutations defined by the module is
+        # called by the adapter get_transport_test_permutations method.
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
@@ -139,11 +139,10 @@ class TestTransportProviderAdapter(TestCase):
                          adapter.get_transport_test_permutations(MockModule()))
 
     def test_adapter_checks_all_modules(self):
-        # this checks that the adapter returns as many permurtations as
-        # there are in all the registered# transport modules for there
-        # - we assume if this matches its probably doing the right thing
-        # especially in combination with the tests for setting the right
-        # classes below.
+        # this checks that the adapter returns as many permutations as there
+        # are in all the registered transport modules - we assume if this
+        # matches its probably doing the right thing especially in combination
+        # with the tests for setting the right classes below.
         from bzrlib.tests.test_transport_implementations \
             import TransportTestProviderAdapter
         from bzrlib.transport import _get_transport_modules
@@ -235,35 +234,16 @@ class TestBzrDirProviderAdapter(TestCase):
             adapter.scenarios)
 
 
-class TestRepositoryProviderAdapter(TestCase):
+class TestRepositoryParameterisation(TestCase):
     """A group of tests that test the repository implementation test adapter."""
-
-    def test_constructor(self):
-        # check that constructor parameters are passed through to the
-        # scenarios.
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        server1 = "a"
-        server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
-        adapter = RepositoryTestProviderAdapter(server1, server2, formats)
-        self.assertEqual([
-            ('str',
-             {'bzrdir_format': 'C',
-              'repository_format': 'c',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
-            ('str',
-             {'bzrdir_format': 'D',
-              'repository_format': 'd',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
-            adapter.scenarios)
 
     def test_setting_vfs_transport(self):
         """The vfs_transport_factory can be set optionally."""
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        formats = [("a", "b"), ("c", "d")]
-        adapter = RepositoryTestProviderAdapter(None, None, formats,
+        from bzrlib.tests.repository_implementations import formats_to_scenarios
+        scenarios = formats_to_scenarios(
+            [("a", "b"), ("c", "d")],
+            None,
+            None,
             vfs_transport_factory="vfs")
         self.assertEqual([
             ('str',
@@ -278,17 +258,17 @@ class TestRepositoryProviderAdapter(TestCase):
               'transport_readonly_server': None,
               'transport_server': None,
               'vfs_transport_factory': 'vfs'})],
-            adapter.scenarios)
+            scenarios)
 
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        no_vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
-            [], None)
-        vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
-            [], vfs_transport_factory="vfs")
-        # no_vfs generate scenarios without vfs_transport_factor
+        from bzrlib.tests.repository_implementations import formats_to_scenarios
         formats = [("c", "C"), (1, "D")]
+        no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
+            None)
+        vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
+            vfs_transport_factory="vfs")
+        # no_vfs generate scenarios without vfs_transport_factor
         self.assertEqual([
             ('str',
              {'bzrdir_format': 'C',
@@ -300,7 +280,7 @@ class TestRepositoryProviderAdapter(TestCase):
               'repository_format': 1,
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'})],
-            no_vfs_adapter.formats_to_scenarios(formats))
+            no_vfs_scenarios)
         self.assertEqual([
             ('str',
              {'bzrdir_format': 'C',
@@ -314,7 +294,7 @@ class TestRepositoryProviderAdapter(TestCase):
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'})],
-            vfs_adapter.formats_to_scenarios(formats))
+            vfs_scenarios)
 
 
 class TestTestScenarioApplier(TestCase):
@@ -993,6 +973,15 @@ class TestTestResult(TestCase):
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
+
+
+class TestUnicodeFilenameFeature(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilenameFeature._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        tests.UnicodeFilenameFeature._probe()
 
 
 class TestRunner(TestCase):
@@ -1694,6 +1683,16 @@ class TestSelftestFiltering(TestCase):
         re_filtered = filter_suite_by_re(self.suite, my_pattern)
         self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
+    def test_condition_id_startswith(self):
+        klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        start = klass + 'test_condition_id_starts'
+        test_names = [klass + 'test_condition_id_startswith']
+        filtered_suite = filter_suite_by_condition(
+            self.suite, tests.condition_id_startswith(start))
+        my_pattern = 'TestSelftestFiltering.*test_condition_id_startswith'
+        re_filtered = filter_suite_by_re(self.suite, my_pattern)
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
+
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
@@ -1748,6 +1747,19 @@ class TestSelftestFiltering(TestCase):
             filtered_names,
             ['bzrlib.tests.test_selftest.'
              'TestSelftestFiltering.test_filter_suite_by_id_list'])
+
+    def test_filter_suite_by_id_startswith(self):
+        # By design this test may fail if another test is added whose name also
+        # begins with the start value used.
+        klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        start = klass + 'test_filter_suite_by_id_starts'
+        test_list = [klass + 'test_filter_suite_by_id_startswith']
+        filtered_suite = tests.filter_suite_by_id_startswith(self.suite, start)
+        filtered_names = _test_ids(filtered_suite)
+        self.assertEqual(
+            filtered_names,
+            ['bzrlib.tests.test_selftest.'
+             'TestSelftestFiltering.test_filter_suite_by_id_startswith'])
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
@@ -2026,6 +2038,36 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals([], _test_ids(suite))
+
+
+class TestFilteredByNameStartTestLoader(tests.TestCase):
+
+    def _create_loader(self, name_start):
+        def needs_module(name):
+            return name.startswith(name_start) or name_start.startswith(name)
+        loader = TestUtil.FilteredByModuleTestLoader(needs_module)
+        return loader
+
+    def test_load_tests(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader('bzrlib.tests.test_samp')
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_load_tests_inside_module(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader('bzrlib.tests.test_sampler.Demo')
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_exclude_tests(self):
+        test_list = ['bogus']
+        loader = self._create_loader('bogus')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))

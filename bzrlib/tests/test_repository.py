@@ -39,9 +39,13 @@ from bzrlib.smart import server
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
+    TestSkipped,
     test_knit,
     )
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    fakenfs,
+    get_transport,
+    )
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.util import bencode
 from bzrlib import (
@@ -819,6 +823,22 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
+
+    def test_fail_obsolete_deletion(self):
+        # failing to delete obsolete packs is not fatal
+        format = self.get_format()
+        server = fakenfs.FakeNFSServer()
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        transport = get_transport(server.get_url())
+        bzrdir = self.get_format().initialize_on_transport(transport)
+        repo = bzrdir.create_repository()
+        repo_transport = bzrdir.get_repository_transport(None)
+        self.assertTrue(repo_transport.has('obsolete_packs'))
+        # these files are in use by another client and typically can't be deleted
+        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
+        repo._pack_collection._clear_obsolete_packs()
+        self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
 
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()

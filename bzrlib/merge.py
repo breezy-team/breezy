@@ -153,12 +153,13 @@ class Merger(object):
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
         revision_graph = tree.branch.repository.get_graph()
-        if (base_revision_id != _mod_revision.NULL_REVISION and
-            revision_graph.is_ancestor(
-            base_revision_id, tree.branch.last_revision())):
-            base_revision_id = None
-        else:
-            warning('Performing cherrypick')
+        if base_revision_id is not None:
+            if (base_revision_id != _mod_revision.NULL_REVISION and
+                revision_graph.is_ancestor(
+                base_revision_id, tree.branch.last_revision())):
+                base_revision_id = None
+            else:
+                warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
                                          base_revision_id, revision_graph=
                                          revision_graph)
@@ -1460,9 +1461,17 @@ class _PlanLCAMerge(_PlanMergeBase):
     def __init__(self, a_rev, b_rev, vf, prefix, graph):
         _PlanMergeBase.__init__(self, a_rev, b_rev, vf, prefix)
         lcas = graph.find_lca(prefix + (a_rev,), prefix + (b_rev,))
-        self.lcas = set(lca[-1] for lca in lcas)
+        self.lcas = set()
+        for lca in lcas:
+            if lca == NULL_REVISION:
+                self.lcas.add(lca)
+            else:
+                self.lcas.add(lca[-1])
         for lca in self.lcas:
-            lca_lines = self.get_lines([lca])[lca]
+            if _mod_revision.is_null(lca):
+                lca_lines = []
+            else:
+                lca_lines = self.get_lines([lca])[lca]
             matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_a,
                                                            lca_lines)
             blocks = list(matcher.get_matching_blocks())

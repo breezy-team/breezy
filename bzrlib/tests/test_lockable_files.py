@@ -27,7 +27,10 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
 from bzrlib.transactions import (PassThroughTransaction,
@@ -44,7 +47,10 @@ from bzrlib.transport import get_transport
 class _TestLockableFiles_mixin(object):
 
     def test_read_write(self):
-        self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            deprecated_in((1, 5, 0)),
+            self.lockable.get, 'foo')
         self.assertRaises(NoSuchFile,
             self.applyDeprecated,
             deprecated_in((1, 5, 0)),
@@ -55,11 +61,20 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
-                              StringIO(unicode_string))
-            self.lockable.put('foo', StringIO(byte_string))
-            self.assertEqual(byte_string,
-                             self.lockable.get('foo').read())
+            self.assertRaises(UnicodeEncodeError,
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put, 'foo',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put,
+                'foo', StringIO(byte_string))
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'foo')
+            self.assertEqual(byte_string, byte_stream.read())
             unicode_stream = self.applyDeprecated(
                 deprecated_in((1, 5, 0)),
                 self.lockable.get_utf8,
@@ -67,29 +82,43 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(unicode_string,
                 unicode_stream.read())
             self.assertRaises(BzrBadParameterNotString,
-                              self.lockable.put_utf8,
-                              'bar',
-                              StringIO(unicode_string)
-                              )
-            self.lockable.put_utf8('bar', unicode_string)
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                unicode_string)
             unicode_stream = self.applyDeprecated(
                 deprecated_in((1, 5, 0)),
                 self.lockable.get_utf8,
                 'bar')
             self.assertEqual(unicode_string,
                 unicode_stream.read())
-            self.assertEqual(byte_string,
-                             self.lockable.get('bar').read())
-            self.lockable.put_bytes('raw', 'raw\xffbytes')
-            self.assertEqual('raw\xffbytes',
-                             self.lockable.get('raw').read())
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'bar')
+            self.assertEqual(byte_string, byte_stream.read())
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_bytes,
+                'raw', 'raw\xffbytes')
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'raw')
+            self.assertEqual('raw\xffbytes', byte_stream.read())
         finally:
             self.lockable.unlock()
 
     def test_locks(self):
         self.lockable.lock_read()
         try:
-            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
+            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo',
                               StringIO('bar\u1234'))
         finally:
             self.lockable.unlock()
@@ -128,7 +157,7 @@ class _TestLockableFiles_mixin(object):
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            return
+            raise TestNotApplicable("%r is not breakable" % (self.lockable,))
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
@@ -151,7 +180,7 @@ class _TestLockableFiles_mixin(object):
             if token is not None:
                 # This test does not apply, because this lockable supports
                 # tokens.
-                return
+                raise TestNotApplicable("%r uses tokens" % (self.lockable,))
             self.assertRaises(errors.TokenLockingNotSupported,
                               self.lockable.lock_write, token='token')
         finally:
@@ -345,7 +374,10 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         super(TestLockableFiles_TransportLock, self).tearDown()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
-        del self.sub_transport
+        try:
+            del self.sub_transport
+        except AttributeError:
+            pass
 
     def get_lockable(self):
         return LockableFiles(self.sub_transport, 'my-lock', TransportLock)

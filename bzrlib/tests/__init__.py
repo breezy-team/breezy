@@ -861,6 +861,10 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
+        if a == b + '\n':
+            message = 'first string is missing a final newline.\n'
+        if a + '\n' == b:
+            message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
         
@@ -2268,6 +2272,18 @@ def condition_id_in_list(id_list):
     return condition
 
 
+def condition_id_startswith(start):
+    """Create a condition filter verifying that test's id starts with a string.
+    
+    :param start: A string.
+    :return: A callable that returns True if the test's id starts with the
+        given string.
+    """
+    def condition(test):
+        return test.id().startswith(start)
+    return condition
+
+
 def exclude_tests_by_condition(suite, condition):
     """Create a test suite which excludes some tests from suite.
 
@@ -2320,6 +2336,18 @@ def filter_suite_by_id_list(suite, test_id_list):
     :returns: the newly created suite
     """
     condition = condition_id_in_list(test_id_list)
+    result_suite = filter_suite_by_condition(suite, condition)
+    return result_suite
+
+
+def filter_suite_by_id_startswith(suite, start):
+    """Create a test suite by filtering another one.
+
+    :param suite: The source suite.
+    :param start: A string the test id must start with.
+    :returns: the newly created suite
+    """
+    condition = condition_id_startswith(start)
     result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
 
@@ -2469,6 +2497,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              strict=False,
              load_list=None,
              debug_flags=None,
+             starting_with=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2492,7 +2521,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
-            suite = test_suite(keep_only)
+            suite = test_suite(keep_only, starting_with)
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
@@ -2612,10 +2641,13 @@ class TestIdList(object):
         return self.tests.has_key(test_id)
 
 
-def test_suite(keep_only=None):
+def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
     :param keep_only: A list of test ids limiting the suite returned.
+
+    :param starting_with: An id limiting the suite returned to the tests
+         starting with it.
 
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
@@ -2713,6 +2745,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.per_repository_reference',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionspec',
@@ -2768,11 +2801,30 @@ def test_suite(keep_only=None):
 
     loader = TestUtil.TestLoader()
 
-    if keep_only is None:
-        loader = TestUtil.TestLoader()
-    else:
+    if starting_with is not None:
+        # We take precedence over keep_only because *at loading time* using
+        # both options means we will load less tests for the same final result.
+        def interesting_module(name):
+            return (
+                # Either the module name starts with the specified string
+                name.startswith(starting_with)
+                # or it may contain tests starting with the specified string
+                or starting_with.startswith(name)
+                )
+        loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
+
+    elif keep_only is not None:
         id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+        def interesting_module(name):
+            return id_filter.refers_to(name)
+
+    else:
+        loader = TestUtil.TestLoader()
+        def interesting_module(name):
+            # No filtering, all modules are interesting
+            return True
+
     suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
@@ -2795,7 +2847,7 @@ def test_suite(keep_only=None):
         ]
 
     for mod in modules_to_doctest:
-        if not (keep_only is None or id_filter.refers_to(mod)):
+        if not interesting_module(mod):
             # No tests to keep here, move along
             continue
         try:
@@ -2807,9 +2859,8 @@ def test_suite(keep_only=None):
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in bzrlib.plugin.plugins().items():
-        if keep_only is not None:
-            if not id_filter.refers_to(plugin.module.__name__):
-                continue
+        if not interesting_module(plugin.module.__name__):
+            continue
         plugin_suite = plugin.test_suite()
         # We used to catch ImportError here and turn it into just a warning,
         # but really if you don't have --no-plugins this should be a failure.
@@ -2825,14 +2876,25 @@ def test_suite(keep_only=None):
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
+    if starting_with is not None:
+        suite = filter_suite_by_id_startswith(suite, starting_with)
+
     if keep_only is not None:
         # Now that the referred modules have loaded their tests, keep only the
         # requested ones.
         suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
-        for id in not_found:
-            bzrlib.trace.warning('"%s" not found in the test suite', id)
+        if starting_with is not None:
+            # The tester has used both keep_only and starting_with, so he is
+            # already aware that some tests are excluded from the list, there
+            # is no need to tell him which.
+            pass
+        else:
+            # Some tests mentioned in the list are not in the test suite. The
+            # list may be out of date, report to the tester.
+            for id in not_found:
+                bzrlib.trace.warning('"%s" not found in the test suite', id)
         for id in duplicates:
             bzrlib.trace.warning('"%s" is used as an id by several tests', id)
 
@@ -2904,14 +2966,14 @@ def multiply_scenarios(scenarios_left, scenarios_right):
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
-        suite.addTests(adapter.adapt(test))
+    tests = loader.loadTestsFromModuleNames(mods_list)
+    adapt_tests(tests, adapter, suite)
 
 
-def adapt_tests(tests_list, adapter, loader, suite):
+def adapt_tests(tests_list, adapter, suite):
     """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in tests_list:
-        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
+    for test in iter_suite_tests(tests_list):
+        suite.addTests(adapter.adapt(test))
 
 
 def _rmtree_temp_dir(dirname):
@@ -2996,6 +3058,26 @@ class _OsFifoFeature(Feature):
         return 'filesystem fifos'
 
 OsFifoFeature = _OsFifoFeature()
+
+
+class _UnicodeFilenameFeature(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
 class TestScenarioApplier(object):

@@ -33,6 +33,7 @@ from bzrlib.osutils import (
         is_inside_any,
         is_inside_or_parent_of_any,
         pathjoin,
+        pumpfile,
         )
 from bzrlib.tests import (
         probe_unicode_in_user_encoding,
@@ -42,7 +43,10 @@ from bzrlib.tests import (
         TestCaseInTempDir,
         TestSkipped,
         )
-
+from bzrlib.tests.file_utils import (
+    FakeReadFile,
+    )
+from cStringIO import StringIO
 
 class TestOSUtils(TestCaseInTempDir):
 
@@ -318,6 +322,119 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
 
+    def test_host_os_dereferences_symlinks(self):
+        osutils.host_os_dereferences_symlinks()
+
+
+class TestPumpFile(TestCase):
+    """Test pumpfile method."""
+    def setUp(self):
+        # create a test datablock
+        self.block_size = 512
+        pattern = '0123456789ABCDEF'
+        self.test_data = pattern * (3 * self.block_size / len(pattern))
+        self.test_data_len = len(self.test_data)
+
+    def test_bracket_block_size(self):
+        """Read data in blocks with the requested read size bracketing the
+        block size."""
+        # make sure test data is larger than max read size
+        self.assertTrue(self.test_data_len > self.block_size)
+
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+
+        # read (max / 2) bytes and verify read size wasn't affected
+        num_bytes_to_read = self.block_size / 2
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
+        self.assertEqual(from_file.get_read_count(), 1)
+
+        # read (max) bytes and verify read size wasn't affected
+        num_bytes_to_read = self.block_size
+        from_file.reset_read_count()
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
+        self.assertEqual(from_file.get_read_count(), 1)
+
+        # read (max + 1) bytes and verify read size was limited
+        num_bytes_to_read = self.block_size + 1
+        from_file.reset_read_count()
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        self.assertEqual(from_file.get_max_read_size(), self.block_size)
+        self.assertEqual(from_file.get_read_count(), 2)
+
+        # finish reading the rest of the data
+        num_bytes_to_read = self.test_data_len - to_file.tell()
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_specified_size(self):
+        """Request a transfer larger than the maximum block size and verify
+        that the maximum read doesn't exceed the block_size."""
+        # make sure test data is larger than max read size
+        self.assertTrue(self.test_data_len > self.block_size)
+
+        # retrieve data in blocks
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file, self.test_data_len, self.block_size)
+
+        # verify read size was equal to the maximum read size
+        self.assertTrue(from_file.get_max_read_size() > 0)
+        self.assertEqual(from_file.get_max_read_size(), self.block_size)
+        self.assertEqual(from_file.get_read_count(), 3)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_to_eof(self):
+        """Read to end-of-file and verify that the reads are not larger than
+        the maximum read size."""
+        # make sure test data is larger than max read size
+        self.assertTrue(self.test_data_len > self.block_size)
+
+        # retrieve data to EOF
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file, -1, self.block_size)
+
+        # verify read size was equal to the maximum read size
+        self.assertEqual(from_file.get_max_read_size(), self.block_size)
+        self.assertEqual(from_file.get_read_count(), 4)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_defaults(self):
+        """Verifies that the default arguments will read to EOF -- this
+        test verifies that any existing usages of pumpfile will not be broken
+        with this new version."""
+        # retrieve data using default (old) pumpfile method
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
 
 class TestSafeUnicode(TestCase):
 

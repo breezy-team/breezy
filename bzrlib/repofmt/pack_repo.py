@@ -600,7 +600,7 @@ class Packer(object):
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
             self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.control_files._file_mode)
+            file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -1561,13 +1561,11 @@ class RepositoryPackCollection(object):
             for key, value in disk_nodes:
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.control_files._file_mode)
+                mode=self.repo.bzrdir._get_file_mode())
             # move the baseline forward
             self._packs_at_load = disk_nodes
-            # now clear out the obsolete packs directory
             if clear_obsolete_packs:
-                self.transport.clone('obsolete_packs').delete_multi(
-                    self.transport.list_dir('obsolete_packs'))
+                self._clear_obsolete_packs()
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
@@ -1599,13 +1597,23 @@ class RepositoryPackCollection(object):
                 self._names[name] = sizes
                 self.get_pack_by_name(name)
 
+    def _clear_obsolete_packs(self):
+        """Delete everything from the obsolete-packs directory.
+        """
+        obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        for filename in obsolete_pack_transport.list_dir('.'):
+            try:
+                obsolete_pack_transport.delete(filename)
+            except (errors.PathError, errors.TransportError), e:
+                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.control_files._file_mode)
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1648,17 +1656,17 @@ class RepositoryPackCollection(object):
 
 
 class KnitPackRepository(KnitRepository):
-    """Experimental graph-knit using repository."""
+    """Repository with knit objects stored inside pack containers."""
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
-        index_transport = control_files._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
-            index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
             _commit_builder_class, _serializer)
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self, self._transport,
+            index_transport,
+            self._transport.clone('upload'),
+            self._transport.clone('packs'))
         self.inventories = KnitVersionedFiles(
             _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
@@ -1753,6 +1761,8 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection.ensure_loaded()
         index = self._pack_collection.revision_index.combined_index
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if _mod_revision.NULL_REVISION in keys:
             keys.discard(_mod_revision.NULL_REVISION)
             found_parents = {_mod_revision.NULL_REVISION:()}

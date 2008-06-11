@@ -293,7 +293,7 @@ class Transport(object):
     _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
-        super(Transport, self).__init__()
+        super(Transport, self).__init__(base=base)
         self.base = base
 
     def _translate_error(self, e, path, raise_generic=True):
@@ -537,7 +537,7 @@ class Transport(object):
         *NOTE*: This only lists *files*, not subdirectories!
         
         As with other listing functions, only some transports implement this,.
-        you may check via is_listable to determine if it will.
+        you may check via listable() to determine if it will.
         """
         raise errors.TransportNotPossible("This transport has not "
                                           "implemented iter_files_recursive "

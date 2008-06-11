@@ -417,6 +417,82 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.ReservedId, vf.get_lines, 'b:')
         self.assertRaises(errors.ReservedId, vf.get_text, 'b:')
 
+    def test_add_unchanged_last_line_noeol_snapshot(self):
+        """Add a text with an unchanged last line with no eol should work."""
+        # Test adding this in a number of chain lengths; because the interface
+        # for VersionedFile does not allow forcing a specific chain length, we
+        # just use a small base to get the first snapshot, then a much longer
+        # first line for the next add (which will make the third add snapshot)
+        # and so on. 20 has been chosen as an aribtrary figure - knits use 200
+        # as a capped delta length, but ideally we would have some way of
+        # tuning the test to the store (e.g. keep going until a snapshot
+        # happens).
+        for length in range(20):
+            version_lines = {}
+            vf = self.get_file('case-%d' % length)
+            prefix = 'step-%d'
+            parents = []
+            for step in range(length):
+                version = prefix % step
+                lines = (['prelude \n'] * step) + ['line']
+                vf.add_lines(version, parents, lines)
+                version_lines[version] = lines
+                parents = [version]
+            vf.add_lines('no-eol', parents, ['line'])
+            vf.get_texts(version_lines.keys())
+            self.assertEqualDiff('line', vf.get_text('no-eol'))
+
+    def test_get_texts_eol_variation(self):
+        # similar to the failure in <http://bugs.launchpad.net/234748>
+        vf = self.get_file()
+        sample_text_nl = ["line\n"]
+        sample_text_no_nl = ["line"]
+        versions = []
+        version_lines = {}
+        parents = []
+        for i in range(4):
+            version = 'v%d' % i
+            if i % 2:
+                lines = sample_text_nl
+            else:
+                lines = sample_text_no_nl
+            # left_matching blocks is an internal api; it operates on the
+            # *internal* representation for a knit, which is with *all* lines
+            # being normalised to end with \n - even the final line in a no_nl
+            # file. Using it here ensures that a broken internal implementation
+            # (which is what this test tests) will generate a correct line
+            # delta (which is to say, an empty delta).
+            vf.add_lines(version, parents, lines,
+                left_matching_blocks=[(0, 0, 1)])
+            parents = [version]
+            versions.append(version)
+            version_lines[version] = lines
+        vf.check()
+        vf.get_texts(versions)
+        vf.get_texts(reversed(versions))
+
+    def test_add_lines_with_matching_blocks_noeol_last_line(self):
+        """Add a text with an unchanged last line with no eol should work."""
+        from bzrlib import multiparent
+        # Hand verified sha1 of the text we're adding.
+        sha1 = '6a1d115ec7b60afb664dc14890b5af5ce3c827a4'
+        # Create a mpdiff which adds a new line before the trailing line, and
+        # reuse the last line unaltered (which can cause annotation reuse).
+        # Test adding this in two situations:
+        # On top of a new insertion
+        vf = self.get_file('fulltext')
+        vf.add_lines('noeol', [], ['line'])
+        vf.add_lines('noeol2', ['noeol'], ['newline\n', 'line'],
+            left_matching_blocks=[(0, 1, 1)])
+        self.assertEqualDiff('newline\nline', vf.get_text('noeol2'))
+        # On top of a delta
+        vf = self.get_file('delta')
+        vf.add_lines('base', [], ['line'])
+        vf.add_lines('noeol', ['base'], ['prelude\n', 'line'])
+        vf.add_lines('noeol2', ['noeol'], ['newline\n', 'line'],
+            left_matching_blocks=[(1, 1, 1)])
+        self.assertEqualDiff('newline\nline', vf.get_text('noeol2'))
+
     def test_make_mpdiffs(self):
         from bzrlib import multiparent
         vf = self.get_file('foo')
@@ -428,6 +504,15 @@ class VersionedFileTestMixIn(object):
                                  vf.get_sha1s([version])[0], mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
+
+    def test_make_mpdiffs_with_ghosts(self):
+        vf = self.get_file('foo')
+        try:
+            vf.add_lines_with_ghosts('text', ['ghost'], ['line\n'])
+        except NotImplementedError:
+            # old Weave formats do not allow ghosts
+            return
+        self.assertRaises(errors.RevisionNotPresent, vf.make_mpdiffs, ['ghost'])
 
     def _setup_for_deltas(self, f):
         self.assertFalse(f.has_version('base'))
