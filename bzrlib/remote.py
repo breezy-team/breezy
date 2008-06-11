@@ -1504,6 +1504,7 @@ class RemoteBranch(branch.Branch):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    @needs_read_lock
     def last_revision_info(self):
         """See Branch.last_revision_info()."""
         if self._last_revision_info_cache is None:
