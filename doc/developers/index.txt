@@ -9,13 +9,25 @@ Overall developer documentation
 ===============================
 
 * `Developer Guide <../en/developer-guide/HACKING.html>`_
-* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
+
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
+  (external link)
+  |--| automatically generated API reference information
+
+* `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
+  (wiki) |--| a guide for writing Python programs that work with Bazaar.
+
+* `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
+  |--| specific advice on writing Bazaar plugins.
 
 Process
 =======
 
-* `Releasing Bazaar <releasing.html>`_ -- How to make a release of Bazaar,
+* `Releasing Bazaar <releasing.html>`_ |--| How to make a release of Bazaar,
   and how to coordinate the monthly development cycle.
+
+* `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
+  your changes to Bazaar integrated into a release.
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
@@ -65,3 +77,6 @@ Data formats
 
 
 .. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai
