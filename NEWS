@@ -31,6 +31,10 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``Branch.pull`` now accepts an ``_override_hook_target`` optional
+      parameter.  If you have a subclass of ``Branch`` that overrides
+      ``pull`` then you should add this parameter.  (Andrew Bennetts)
+
   INTERNALS:
 
 

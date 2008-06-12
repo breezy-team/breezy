@@ -1562,10 +1562,12 @@ class BzrBranch(Branch):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
-            be supplied as the master to push hooks.
+            be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
         """
         result = PullResult()
         result.source_branch = source
