@@ -796,8 +796,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         request = smart.repository.SmartServerRepositoryGatherStats(backing)
         repository = self.make_repository('.')
         stats = repository.gather_stats()
-        size = stats['size']
-        expected_body = 'revisions: 0\nsize: %d\n' % size
+        expected_body = 'revisions: 0\n'
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('', '', 'no'))
 
@@ -816,11 +815,9 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         tree.unlock()
 
         stats = tree.branch.repository.gather_stats()
-        size = stats['size']
         expected_body = ('firstrev: 123456.200 3600\n'
                          'latestrev: 654321.400 0\n'
-                         'revisions: 2\n'
-                         'size: %d\n' % size)
+                         'revisions: 2\n')
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'no'))
@@ -841,12 +838,10 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         tree.unlock()
         stats = tree.branch.repository.gather_stats()
 
-        size = stats['size']
         expected_body = ('committers: 2\n'
                          'firstrev: 123456.200 3600\n'
                          'latestrev: 654321.400 0\n'
-                         'revisions: 2\n'
-                         'size: %d\n' % size)
+                         'revisions: 2\n')
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'yes'))
@@ -936,111 +931,6 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
         response = request.execute('', 'some token')
         self.assertEqual(
             SmartServerResponse(('TokenMismatch',)), response)
-
-
-class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
-
-    def test_repository_tarball(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryTarball(backing)
-        repository = self.make_repository('.')
-        # make some extraneous junk in the repository directory which should
-        # not be copied
-        self.build_tree(['.bzr/repository/extra-junk'])
-        response = request.execute('', 'bz2')
-        self.assertEqual(('ok',), response.args)
-        # body should be a tbz2
-        body_file = StringIO(response.body)
-        body_tar = tarfile.open('body_tar.tbz2', fileobj=body_file,
-            mode='r|bz2')
-        # let's make sure there are some key repository components inside it.
-        # the tarfile returns directories with trailing slashes...
-        names = set([n.rstrip('/') for n in body_tar.getnames()])
-        self.assertTrue('.bzr/repository/lock' in names)
-        self.assertTrue('.bzr/repository/format' in names)
-        self.assertTrue('.bzr/repository/extra-junk' not in names,
-            "extraneous file present in tar file")
-
-
-class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithMemoryTransport):
-
-    def test_fetch_revisions(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        rev_id2_utf8 = u'\xc9'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
-        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
-        tree.unlock()
-
-        response = request.execute('', rev_id2_utf8)
-        self.assertEqual(('ok',), response.args)
-        unpacker = pack.ContainerReader(StringIO(response.body))
-        names = []
-        for [name], read_bytes in unpacker.iter_records():
-            names.append(name)
-            bytes = read_bytes(None)
-            # The bytes should be a valid bencoded string.
-            bencode.bdecode(bytes)
-            # XXX: assert that the bencoded knit records have the right
-            # contents?
-        
-    def test_no_such_revision_error(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
-        repo = self.make_repository('.')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute('', rev_id1_utf8)
-        self.assertEqual(
-            SmartServerResponse(('NoSuchRevision', rev_id1_utf8)),
-            response)
-
-
-class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithMemoryTransport):
-
-    def test_fetch_revisions(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
-            backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        rev_id2_utf8 = u'\xc9'.encode('utf-8')
-        tree.commit('1st commit', rev_id=rev_id1_utf8)
-        tree.commit('2nd commit', rev_id=rev_id2_utf8)
-        tree.unlock()
-
-        response = request.execute('')
-        self.assertEqual(None, response)
-        response = request.do_body("%s\n%s\n1" % (rev_id2_utf8, rev_id1_utf8))
-        self.assertEqual(('ok',), response.args)
-        parser = pack.ContainerPushParser()
-        names = []
-        for stream_bytes in response.body_stream:
-            parser.accept_bytes(stream_bytes)
-            for [name], record_bytes in parser.read_pending_records():
-                names.append(name)
-                # The bytes should be a valid bencoded string.
-                bencode.bdecode(record_bytes)
-                # XXX: assert that the bencoded knit records have the right
-                # contents?
-        
-    def test_no_such_revision_error(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
-            backing)
-        repo = self.make_repository('.')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute('')
-        self.assertEqual(None, response)
-        response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
-        self.assertEqual(
-            FailedSmartServerResponse(('NoSuchRevision', )),
-            response)
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):

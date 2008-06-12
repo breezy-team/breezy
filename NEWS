@@ -10,6 +10,44 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+  IMPROVEMENTS:
+
+    * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
+      to stdout; also ``tar`` and ``tbz2``.
+      (Martin Pool)
+
+  BUGFIXES:
+
+    * You can now compare file revisions in Windows diff programs from 
+      Cygwin Bazaar.
+      (Matt McClure, #209281)
+
+  DOCUMENTATION:
+
+   * Updated developer documentation.
+     (Martin Pool)
+
+  TESTING:
+
+  API CHANGES:
+
+  INTERNALS:
+
+    * New ``versionedfile.KeyMapper`` interface to abstract out the access to
+      underyling .knit/.kndx etc files in repositories with partitioned
+      storage. (Robert Collins)
+
+
+bzr 1.6beta2 2008-06-10
+-----------------------
+
+This release contains further progress towards our 1.6 goals of shallow
+repositories, and contains a fix for some user-affecting bugs in the
+repository layer.  Building working trees during checkout and branch is
+now faster.
+
+  BUG FIXES:
+
     * Avoid KnitCorrupt error extracting inventories from some repositories.
       (The data is not corrupt; an internal check is detecting a problem
       reading from the repository.)
