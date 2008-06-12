@@ -19,6 +19,7 @@ import os.path
 from cStringIO import StringIO
 import errno
 import subprocess
+import sys
 from tempfile import TemporaryFile
 
 from bzrlib import tests
@@ -39,6 +40,23 @@ import bzrlib.patiencediff
 import bzrlib._patiencediff_py
 from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
+
+
+class _AttribFeature(Feature):
+
+    def _probe(self):
+        if (sys.platform not in ('cygwin', 'win32')):
+            return False
+        try:
+            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
+        except OSError, e:
+            return False
+        return (0 == proc.wait())
+
+    def feature_name(self):
+        return 'attrib Windows command-line tool'
+
+AttribFeature = _AttribFeature()
 
 
 class _CompiledPatienceDiffFeature(Feature):
@@ -1278,14 +1296,42 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertEqual('a-tool-which-is-unlikely-to-exist could not be found'
                          ' on this machine', str(e))
 
+    def test_prepare_files_creates_paths_readable_by_windows_tool(self):
+        self.requireFeature(AttribFeature)
+        output = StringIO()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'content')])
+        tree.add('file', 'file-id')
+        tree.commit('old tree')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                tree, tree, output)
+        diff_obj._prepare_files('file-id', 'file', 'file')
+        self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
+        self.assertReadableByAttrib(diff_obj._root, 'new\\file', r'new\\file')
+
+    def assertReadableByAttrib(self, cwd, relpath, regex):
+        proc = subprocess.Popen(['attrib', relpath],
+                                stdout=subprocess.PIPE,
+                                cwd=cwd)
+        proc.wait()
+        result = proc.stdout.read()
+        self.assertContainsRe(result, regex)
+
     def test_prepare_files(self):
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/oldname', 'oldcontent')])
+        self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
         tree.add('oldname', 'file-id')
+        tree.add('oldname2', 'file2-id')
         tree.commit('old tree', timestamp=0)
         tree.rename_one('oldname', 'newname')
+        tree.rename_one('oldname2', 'newname2')
         self.build_tree_contents([('tree/newname', 'newcontent')])
+        self.build_tree_contents([('tree/newname2', 'newcontent2')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
@@ -1303,7 +1349,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertContainsRe(new_path, 'new/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
-        if osutils.has_symlinks():
+        if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
+        diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
