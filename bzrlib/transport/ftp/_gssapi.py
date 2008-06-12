@@ -44,13 +44,14 @@ class SecureFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
     def mic_putcmd(self, line):
         rc = kerberos.authGSSClientWrap(self.vc, 
-            base64.b64encode(line), 'jelmer@VERNSTOK.NL')
+            base64.b64encode(line), kerberos.authGSSClientUserName(self.vc))
         wrapped = kerberos.authGSSClientResponse(self.vc)
         ftplib.FTP.putcmd(self, "MIC " + wrapped)
 
     def mic_getline(self):
         resp = ftplib.FTP.getline(self)
-        assert resp[:4] == '631 '
+        if resp[:4] != '631 ':
+            raise AssertionError
         rc = kerberos.authGSSClientUnwrap(self.vc, resp[4:].strip("\r\n"))
         response = base64.b64decode(kerberos.authGSSClientResponse(self.vc))
         return response
@@ -60,22 +61,21 @@ class SecureFtp(ftplib.FTP):
         resp = self.sendcmd('AUTH GSSAPI')
         if resp[:3] == '334':
             rc, self.vc = kerberos.authGSSClientInit("ftp@%s" % self.host)
-
             if kerberos.authGSSClientStep(self.vc, "") != 1:
                 while resp[:3] in ('334', '335'):
                     authdata = kerberos.authGSSClientResponse(self.vc)
                     resp = self.sendcmd('ADAT ' + authdata)
                     if resp[:9] in ('235 ADAT=', '335 ADAT='):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
-                        assert ((resp[:3] == '235' and rc == 1) or 
-                                (resp[:3] == '335' and rc == 0))
+                        if not ((resp[:3] == '235' and rc == 1) or 
+                                (resp[:3] == '335' and rc == 0)):
+                            raise AssertionError
             info("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
 
             # Monkey patch ftplib
             self.putcmd = self.mic_putcmd
             self.getline = self.mic_getline
-
             self.sendcmd('USER ' + user)
             return resp
 
@@ -136,22 +136,4 @@ def get_test_permutations():
         from bzrlib.tests import ftp_server
         return [(SecureFtpTransport, ftp_server.FTPServer)]
     else:
-        # Dummy server to have the test suite report the number of tests
-        # needing that feature. We raise UnavailableFeature from methods before
-        # the test server is being used. Doing so in the setUp method has bad
-        # side-effects (tearDown is never called).
-        class UnavailableFTPServer(object):
-
-            def setUp(self):
-                pass
-
-            def tearDown(self):
-                pass
-
-            def get_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-            def get_bogus_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-        return [(FtpTransport, UnavailableFTPServer)]
+        return []
