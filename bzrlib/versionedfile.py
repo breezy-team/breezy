@@ -1197,8 +1197,14 @@ class _PlanMergeVersionedFile(VersionedFiles):
         # We create a new provider because a fallback may have been added.
         # If we make fallbacks private we can update a stack list and avoid
         # object creation thrashing.
+        keys = set(keys)
+        result = {}
+        if revision.NULL_REVISION in keys:
+            keys.remove(revision.NULL_REVISION)
+            result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
-        result = _StackedParentsProvider(self._providers).get_parent_map(keys)
+        result.update(
+            _StackedParentsProvider(self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
