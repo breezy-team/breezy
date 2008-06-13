@@ -1,9 +1,3 @@
-* handle PROPFIND in the test server
-
-** handle depths 0, 1, Infinity
-
-** handle prop and allprop for file and directory as apache2
-
 * webdav.py
 
 ** We can detect that the server do not accept "write" operations
@@ -34,7 +28,8 @@
 
 **  A DAV web server can't handle mode on files because:
 
-    - there is nothing in the protocol for that,
+    - there is nothing in the protocol for that (bar some of them
+   via PROPPATCH, but only for apache2 anyway),
 
     - the  server  itself  generally  uses  the mode  for  its  own
       purposes, except  if you  make it run  suid which  is really,
