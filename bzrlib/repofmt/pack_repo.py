@@ -145,7 +145,7 @@ class Pack(object):
         :param text_index: A GraphIndex for determining what file texts
             are present in the pack and accessing the locations of their
             texts/deltas (via (fileid, revisionid) tuples).
-        :param revision_index: A GraphIndex for determining what signatures are
+        :param signature_index: A GraphIndex for determining what signatures are
             present in the Pack and accessing the locations of their texts.
         """
         self.revision_index = revision_index
