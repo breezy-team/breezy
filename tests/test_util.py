@@ -167,6 +167,9 @@ class GetRevisionSnapshotTests(TestCase):
   def test_with_snapshot(self):
     self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
 
+  def test_with_snapshot_plus(self):
+    self.assertEquals("30", get_snapshot_revision("0.4.4+bzr30"))
+
   def test_without_snapshot(self):
     self.assertEquals(None, get_snapshot_revision("0.4.4"))
 

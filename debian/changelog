@@ -1,8 +1,9 @@
 bzr-builddeb (1.0) UNRELEASED; urgency=low
 
-  * NOT RELEASED YET.
+  [ Jelmer Vernooij ]
+  * Support +bzr for snapshots as well as ~bzr.
 
- -- James Westby <james.westby@canonical.com>  Fri, 30 May 2008 00:52:04 +0100
+ -- James Westby <james.westby@canonical.com>  Fri, 13 Jun 2008 15:03:53 +0100
 
 bzr-builddeb (0.95) unstable; urgency=low
 
