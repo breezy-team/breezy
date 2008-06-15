@@ -29,7 +29,7 @@ from bzrlib.trace import mutter
 from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
-import svn.repos, svn.wc
+import svn.core, svn.repos, svn.wc
 from bzrlib.plugins.svn.errors import NoCheckoutSupport
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):

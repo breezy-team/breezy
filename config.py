@@ -21,9 +21,7 @@ from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, 
 import os
 
 from bzrlib.plugins.svn import properties
-
-import svn.core
-from svn.core import SubversionException
+from bzrlib.plugins.svn.core import SubversionException
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 

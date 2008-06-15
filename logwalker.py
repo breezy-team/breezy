@@ -20,13 +20,13 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
-from svn.core import SubversionException, Pool
-from transport import SvnRaTransport
-import svn.core
+from svn.core import Pool
 
 from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.cache import CacheTable
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND
+from bzrlib.plugins.svn.transport import SvnRaTransport
 
 LOG_CHUNK_LIMIT = 0
 

@@ -21,12 +21,13 @@ from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible,
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 
-from svn.core import SubversionException, Pool
+from svn.core import Pool
 import svn.ra
 import svn.core
 import svn.client
 
 from bzrlib.plugins.svn import properties
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
 from bzrlib.plugins.svn.ra import DIRENT_KIND
 import urlparse
@@ -40,7 +41,7 @@ def get_client_string():
 
  
 def create_svn_client(url):
-    from auth import create_auth_baton
+    from bzrlib.plugins.svn.auth import create_auth_baton
     client = svn.client.create_context()
     client.auth_baton = create_auth_baton(url)
     client.config = svn_config

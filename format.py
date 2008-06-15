@@ -52,12 +52,12 @@ class SvnRemoteFormat(BzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         from transport import get_svn_ra_transport
-        import svn.core
+        from bzrlib.plugins.svn import core
         format = klass()
 
         try:
             transport = get_svn_ra_transport(transport)
-        except svn.core.SubversionException, (_, num):
+        except core.SubversionException, (_, num):
             if num in (errors.ERR_RA_ILLEGAL_URL, \
                        errors.ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
                        errors.ERR_BAD_URL):
@@ -66,10 +66,10 @@ class SvnRemoteFormat(BzrDirFormat):
         return format
 
     def _open(self, transport):
-        import svn.core
+        from bzrlib.plugins.svn import core
         try: 
             return remote.SvnRemoteAccess(transport, self)
-        except svn.core.SubversionException, (_, num):
+        except core.SubversionException, (_, num):
             if num == errors.ERR_RA_DAV_REQUEST_FAILED:
                 raise bzr_errors.NotBranchError(transport.base)
             raise
@@ -128,12 +128,13 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     def _open(self, transport):
         import svn.core
         from workingtree import SvnCheckout
+        from bzrlib.plugins.svn import core
         subr_version = svn.core.svn_subr_version()
         if subr_version.major == 1 and subr_version.minor < 4:
             raise errors.NoCheckoutSupport()
         try:
             return SvnCheckout(transport, self)
-        except svn.core.SubversionException, (_, num):
+        except core.SubversionException, (_, num):
             if num in (errors.ERR_RA_LOCAL_REPOS_OPEN_FAILED,):
                 raise errors.NoSvnRepositoryPresent(transport.base)
             raise

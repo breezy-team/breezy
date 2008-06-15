@@ -17,14 +17,14 @@ from bzrlib import osutils, ui
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 from bzrlib.plugins.svn import mapping, properties
+from bzrlib.plugins.svn.core import SubversionException, NODE_DIR
 from bzrlib.plugins.svn.errors import ERR_FS_NOT_DIRECTORY, ERR_FS_NOT_FOUND, ERR_RA_DAV_PATH_NOT_FOUND
 from bzrlib.plugins.svn.layout import RepositoryLayout
 from bzrlib.plugins.svn.mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path, 
                              guess_scheme_from_history, ListBranchingScheme, 
                              parse_list_scheme_text, NoBranchingScheme,
                              TrunkBranchingScheme, ListBranchingScheme)
-import sha, svn
-from svn.core import SubversionException
+import sha
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
@@ -67,7 +67,7 @@ class SchemeDerivedLayout(RepositoryLayout):
 
     def get_branches(self, revnum, project=""):
         def check_path(path):
-            return self.repository.transport.check_path(path, revnum) == svn.core.svn_node_dir
+            return self.repository.transport.check_path(path, revnum) == NODE_DIR
         def find_children(path):
             try:
                 dirents = self.repository.transport.get_dir(path, revnum)[0]

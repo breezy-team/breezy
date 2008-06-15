@@ -26,7 +26,7 @@ from cStringIO import StringIO
 import md5
 
 from svn.core import Pool
-import svn.core
+import svn.delta
 
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.errors import InvalidFileName

@@ -28,7 +28,7 @@ import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.core, svn.wc, svn.delta
+import svn.wc, svn.delta
 from svn.core import Pool
 
 from bzrlib.plugins.svn import errors, properties, core

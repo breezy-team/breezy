@@ -21,7 +21,7 @@ from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset,
                            TransportError, UnexpectedEndOfContainerError)
 
 import urllib
-import svn.core
+from bzrlib.plugins.svn import core
 
 
 class InvalidExternalsDescription(BzrError):
@@ -129,7 +129,7 @@ def convert_svn_error(unbound):
     def convert(*args, **kwargs):
         try:
             return unbound(*args, **kwargs)
-        except svn.core.SubversionException, e:
+        except core.SubversionException, e:
             raise convert_error(e)
 
     convert.__doc__ = unbound.__doc__
