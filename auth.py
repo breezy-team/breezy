@@ -21,7 +21,9 @@ from bzrlib.ui import ui_factory
 from bzrlib.plugins.svn.ra import (get_username_prompt_provider, 
                                    get_simple_prompt_provider,
                                    get_ssl_server_trust_prompt_provider,
-                                   get_ssl_client_cert_pw_prompt_provider)
+                                   get_ssl_client_cert_pw_prompt_provider,
+                                   Auth
+                                   )
 
 import svn.core
 from svn.core import (svn_auth_cred_username_t, 
@@ -32,6 +34,9 @@ from svn.core import (svn_auth_cred_username_t,
                       svn_auth_open)
 import urlparse
 import urllib
+
+AUTH_PARAM_DEFAULT_USERNAME = 'svn:auth:username'
+AUTH_PARAM_DEFAULT_PASSWORD = 'svn:auth:password'
 
 SSL_NOTYETVALID = 0x00000001
 SSL_EXPIRED     = 0x00000002
@@ -192,13 +197,11 @@ def create_auth_baton(url):
         providers += auth_config.get_svn_auth_providers()
         providers += [get_ssl_client_cert_pw_provider(1)]
 
-    auth_baton = svn.core.svn_auth_open(providers)
+    auth_baton = Auth(providers)
     if creds is not None:
-        (auth_baton.user, auth_baton.password) = urllib.splitpasswd(creds)
+        (user, password) = urllib.splitpasswd(creds)
         if auth_baton.user is not None:
-            svn.core.svn_auth_set_parameter(auth_baton, 
-                svn.core.SVN_AUTH_PARAM_DEFAULT_USERNAME, auth_baton.user)
+            auth_baton.set_parameter(AUTH_PARAM_DEFAULT_USERNAME, user)
         if auth_baton.password is not None:
-            svn.core.svn_auth_set_parameter(auth_baton, 
-                svn.core.SVN_AUTH_PARAM_DEFAULT_PASSWORD, auth_baton.password)
-    return auth_baton
+            auth_baton.set_parameter(AUTH_PARAM_DEFAULT_PASSWORD, password)
+    return auth_baton.auth_baton
