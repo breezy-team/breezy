@@ -17,16 +17,18 @@
 
 from bzrlib.config import AuthenticationConfig
 from bzrlib.ui import ui_factory
+
+from bzrlib.plugins.svn.ra import (get_username_prompt_provider, 
+                                   get_simple_prompt_provider,
+                                   get_ssl_server_trust_prompt_provider,
+                                   get_ssl_client_cert_pw_prompt_provider)
+
 import svn.core
 from svn.core import (svn_auth_cred_username_t, 
                       svn_auth_cred_simple_t,
                       svn_auth_cred_ssl_client_cert_t,
                       svn_auth_cred_ssl_client_cert_pw_t,
                       svn_auth_cred_ssl_server_trust_t,
-                      svn_auth_get_username_prompt_provider,
-                      svn_auth_get_simple_prompt_provider,
-                      svn_auth_get_ssl_server_trust_prompt_provider,
-                      svn_auth_get_ssl_client_cert_pw_prompt_provider,
                       svn_auth_open)
 import urlparse
 import urllib
@@ -107,7 +109,7 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         
         :param retries: Number of allowed retries.
         """
-        return svn_auth_get_username_prompt_provider(self.get_svn_username, 
+        return get_username_prompt_provider(self.get_svn_username, 
                                                      retries)
 
     def get_svn_simple_prompt_provider(self, retries):
@@ -116,12 +118,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         
         :param retries: Number of allowed retries.
         """
-        return svn_auth_get_simple_prompt_provider(self.get_svn_simple, retries)
+        return get_simple_prompt_provider(self.get_svn_simple, retries)
 
     def get_svn_ssl_server_trust_prompt_provider(self):
         """Return a Subversion auth provider for checking 
         whether a SSL server is trusted."""
-        return svn_auth_get_ssl_server_trust_prompt_provider(self.get_svn_ssl_server_trust)
+        return get_ssl_server_trust_prompt_provider(self.get_svn_ssl_server_trust)
 
     def get_svn_auth_providers(self):
         """Return a list of auth providers for this authentication file.
@@ -144,7 +146,7 @@ def get_ssl_client_cert_pw(realm, may_save, pool):
 
 
 def get_ssl_client_cert_pw_provider(tries):
-    return svn_auth_get_ssl_client_cert_pw_prompt_provider(
+    return get_ssl_client_cert_pw_prompt_provider(
                 get_ssl_client_cert_pw, tries)
 
 
