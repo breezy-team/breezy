@@ -13,8 +13,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import svn.core
 
-NODE_NONE = 0
-NODE_FILE = 1
-NODE_DIR = 2
-NODE_UNKNOWN = 3
+NODE_NONE = svn.core.svn_node_none
+NODE_FILE = svn.core.svn_node_file
+NODE_DIR = svn.core.svn_node_dir
+NODE_UNKNOWN = svn.core.svn_node_unknown
+
+SubversionException = svn.core.SubversionException
+time_to_cstring = svn.core.svn_time_to_cstring

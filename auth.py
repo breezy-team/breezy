@@ -200,8 +200,8 @@ def create_auth_baton(url):
     auth_baton = Auth(providers)
     if creds is not None:
         (user, password) = urllib.splitpasswd(creds)
-        if auth_baton.user is not None:
+        if user is not None:
             auth_baton.set_parameter(AUTH_PARAM_DEFAULT_USERNAME, user)
-        if auth_baton.password is not None:
+        if password is not None:
             auth_baton.set_parameter(AUTH_PARAM_DEFAULT_PASSWORD, password)
     return auth_baton.auth_baton

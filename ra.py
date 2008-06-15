@@ -13,12 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import svn.core
+import svn.core, svn.delta
 
 get_username_prompt_provider = svn.core.svn_auth_get_username_prompt_provider
 get_simple_prompt_provider = svn.core.svn_auth_get_simple_prompt_provider
 get_ssl_client_cert_pw_prompt_provider = svn.core.svn_auth_get_ssl_client_cert_pw_prompt_provider
 get_ssl_server_trust_prompt_provider = svn.core.svn_auth_get_ssl_server_trust_prompt_provider
+
+txdelta_send_stream = svn.delta.svn_txdelta_send_stream
 
 DIRENT_KIND = 0x0001
 

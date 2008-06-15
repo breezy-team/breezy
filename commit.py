@@ -15,9 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Committing and pushing to Subversion repositories."""
 
-import svn.delta
-from svn.core import Pool, SubversionException, svn_time_to_cstring
-
 from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
@@ -27,14 +24,18 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter, warning
 
-from bzrlib.plugins.svn import core, properties
-
 from cStringIO import StringIO
+
+from svn.core import Pool
+
+from bzrlib.plugins.svn import core, properties
+from bzrlib.plugins.svn.core import SubversionException, time_to_cstring
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
 from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
+from bzrlib.plugins.svn.ra import txdelta_send_stream
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
 
 import urllib
@@ -196,7 +197,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         assert baton is not None
         (txdelta, txbaton) = self.editor.apply_textdelta(baton, None, self.pool)
-        digest = svn.delta.svn_txdelta_send_stream(StringIO(contents), txdelta, txbaton, self.pool)
+        digest = txdelta_send_stream(StringIO(contents), txdelta, txbaton, self.pool)
         if 'validate' in debug.debug_flags:
             from fetch import md5_strings
             assert digest == md5_strings(contents)
