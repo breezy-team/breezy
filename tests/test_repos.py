@@ -31,7 +31,7 @@ from bzrlib.tests import TestCase
 
 import os, sys
 
-import svn.fs, svn
+import svn.fs
 
 from bzrlib.plugins.svn import format
 from bzrlib.plugins.svn.mapping import (escape_svn_path, unescape_svn_path, 

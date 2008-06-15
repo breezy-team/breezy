@@ -20,9 +20,7 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.svn.errors import *
-
-import svn.core
-from svn.core import SubversionException
+from bzrlib.plugins.svn.core import SubversionException
 
 class TestConvertError(TestCase):
     def test_decorator_unknown(self):

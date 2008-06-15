@@ -21,6 +21,7 @@ from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
 from svn.core import Pool
+import svn.delta
 
 from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.cache import CacheTable

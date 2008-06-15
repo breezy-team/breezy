@@ -22,6 +22,11 @@ from bzrlib.plugins.svn.ra import (get_username_prompt_provider,
                                    get_simple_prompt_provider,
                                    get_ssl_server_trust_prompt_provider,
                                    get_ssl_client_cert_pw_prompt_provider,
+                                   get_simple_provider,
+                                   get_username_provider,
+                                   get_ssl_client_cert_file_provider,
+                                   get_ssl_client_cert_pw_file_provider,
+                                   get_ssl_server_trust_file_provider,
                                    Auth
                                    )
 
@@ -30,8 +35,7 @@ from svn.core import (svn_auth_cred_username_t,
                       svn_auth_cred_simple_t,
                       svn_auth_cred_ssl_client_cert_t,
                       svn_auth_cred_ssl_client_cert_pw_t,
-                      svn_auth_cred_ssl_server_trust_t,
-                      svn_auth_open)
+                      svn_auth_cred_ssl_server_trust_t)
 import urlparse
 import urllib
 
@@ -161,11 +165,11 @@ def get_ssl_client_cert_pw_provider(tries):
 
 
 def get_stock_svn_providers():
-    providers = [svn.client.get_simple_provider(),
-            svn.client.get_username_provider(),
-            svn.client.get_ssl_client_cert_file_provider(),
-            svn.client.get_ssl_client_cert_pw_file_provider(),
-            svn.client.get_ssl_server_trust_file_provider(),
+    providers = [get_simple_provider(),
+            get_username_provider(),
+            get_ssl_client_cert_file_provider(),
+            get_ssl_client_cert_pw_file_provider(),
+            get_ssl_server_trust_file_provider(),
             ]
 
     if hasattr(svn.client, 'get_windows_simple_provider'):

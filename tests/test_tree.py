@@ -23,11 +23,12 @@ from bzrlib.tests import TestCase
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import errors
-import os
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.tree import (SvnBasisTree, parse_externals_description, 
                   inventory_add_external)
+
+import os
 import sys
-from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class TestBasisTree(TestCaseWithSubversionRepository):
     def test_executable(self):

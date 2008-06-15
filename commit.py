@@ -525,7 +525,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if properties.PROP_REVISION_AUTHOR in override_svn_revprops:
                 new_revprops[properties.PROP_REVISION_AUTHOR] = self._committer.encode("utf-8")
             if properties.PROP_REVISION_DATE in override_svn_revprops:
-                new_revprops[properties.PROP_REVISION_DATE] = svn_time_to_cstring(1000000*self._timestamp)
+                new_revprops[properties.PROP_REVISION_DATE] = time_to_cstring(1000000*self._timestamp)
             set_svn_revprops(self.repository.transport, self.revision_metadata.revision, new_revprops)
 
         try:

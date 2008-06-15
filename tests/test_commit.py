@@ -25,14 +25,14 @@ from bzrlib.tests import TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.plugins.svn.commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
-from bzrlib.plugins.svn.errors import RevpropChangeFailed
 import os
+
+from bzrlib.plugins.svn.core import time_to_cstring
+from bzrlib.plugins.svn.commit import set_svn_revprops, _revision_id_to_svk_feature
+from bzrlib.plugins.svn.errors import RevpropChangeFailed
 from bzrlib.plugins.svn.transport import SvnRaTransport
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
-
-from svn.core import svn_time_to_cstring
 
 class TestNativeCommit(TestCaseWithSubversionRepository):
     def test_simple_commit(self):
@@ -585,7 +585,7 @@ class RevpropTests(TestCaseWithSubversionRepository):
 
         transport = SvnRaTransport(repos_url)
         set_svn_revprops(transport, 1, {"svn:author": "Somebody", 
-                                        "svn:date": svn_time_to_cstring(1000000*473385600)})
+                                        "svn:date": time_to_cstring(1000000*473385600)})
 
         self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
                           self.client_log(repos_url)[1][1:])
@@ -599,7 +599,7 @@ class RevpropTests(TestCaseWithSubversionRepository):
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
-                lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": svn_time_to_cstring(1000000*473385600)}))
+                lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": time_to_cstring(1000000*473385600)}))
 
 
 class SvkTestCase(TestCase):
