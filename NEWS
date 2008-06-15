@@ -8,8 +8,6 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
-  BUG FIXES:
-
   IMPROVEMENTS:
 
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
@@ -17,6 +15,9 @@ IN DEVELOPMENT
       (Martin Pool)
 
   BUGFIXES:
+
+    * Raise the correct exception when doing ``-rbefore:0`` or ``-c0``.
+      (John Arbash Meinel, #239933)
 
     * You can now compare file revisions in Windows diff programs from 
       Cygwin Bazaar.

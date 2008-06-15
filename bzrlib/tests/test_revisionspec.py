@@ -73,15 +73,27 @@ class TestRevisionSpec(TestCaseWithTransport):
                          ' %r != %r'
                          % (revision_spec, exp_revision_id, rev_info.rev_id))
 
-    def assertInvalid(self, revision_spec, extra=''):
+    def assertInvalid(self, revision_spec, extra='',
+                      invalid_as_revision_id=True):
         try:
             self.get_in_history(revision_spec)
         except errors.InvalidRevisionSpec, e:
             self.assertEqual(revision_spec, e.spec)
             self.assertEqual(extra, e.extra)
         else:
-            self.fail('Expected InvalidRevisionSpec to be raised for %s'
-                      % (revision_spec,))
+            self.fail('Expected InvalidRevisionSpec to be raised for'
+                      ' %r.in_history' % (revision_spec,))
+        if invalid_as_revision_id:
+            try:
+                spec = RevisionSpec.from_string(revision_spec)
+                spec.as_revision_id(self.tree.branch)
+            except errors.InvalidRevisionSpec, e:
+                self.assertEqual(revision_spec, e.spec)
+                self.assertEqual(extra, e.extra)
+            else:
+                self.fail('Expected InvalidRevisionSpec to be raised for'
+                          ' %r.as_revision_id'
+                          % (revision_spec,))
 
     def assertAsRevisionId(self, revision_id, revision_spec):
         """Calling as_revision_id() should return the specified id."""
@@ -299,7 +311,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInHistoryIs(2, 'r2', 'revid:r2')
         
     def test_missing(self):
-        self.assertInvalid('revid:r3')
+        self.assertInvalid('revid:r3', invalid_as_revision_id=False)
 
     def test_merged(self):
         """We can reach revisions in the ancestry"""
@@ -308,7 +320,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
     def test_not_here(self):
         self.tree2.commit('alt third', rev_id='alt_r3')
         # It exists in tree2, but not in tree
-        self.assertInvalid('revid:alt_r3')
+        self.assertInvalid('revid:alt_r3', invalid_as_revision_id=False)
 
     def test_in_repository(self):
         """We can get any revision id in the repository"""
