@@ -33,6 +33,11 @@ from svn.core import (svn_auth_cred_username_t,
 import urlparse
 import urllib
 
+SSL_NOTYETVALID = 0x00000001
+SSL_EXPIRED     = 0x00000002
+SSL_CNMISMATCH  = 0x00000004
+SSL_UNKNOWNCA   = 0x00000008
+SSL_OTHER       = 0x40000000
 
 class SubversionAuthenticationConfig(AuthenticationConfig):
     """Simple extended version of AuthenticationConfig that can provide 
@@ -93,11 +98,11 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
             credentials.has_key("verify_certificates") and 
             credentials["verify_certificates"] == False):
             ssl_server_trust.accepted_failures = (
-                    svn.core.SVN_AUTH_SSL_NOTYETVALID + 
-                    svn.core.SVN_AUTH_SSL_EXPIRED +
-                    svn.core.SVN_AUTH_SSL_CNMISMATCH +
-                    svn.core.SVN_AUTH_SSL_UNKNOWNCA +
-                    svn.core.SVN_AUTH_SSL_OTHER)
+                    SSL_NOTYETVALID + 
+                    SSL_EXPIRED +
+                    SSL_CNMISMATCH +
+                    SSL_UNKNOWNCA +
+                    SSL_OTHER)
         else:
             ssl_server_trust.accepted_failures = 0
         ssl_server_trust.may_save = False
