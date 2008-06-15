@@ -31,7 +31,7 @@ import urllib
 import svn.core, svn.wc, svn.delta
 from svn.core import Pool
 
-from bzrlib.plugins.svn import errors, properties
+from bzrlib.plugins.svn import errors, properties, core
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.
@@ -330,7 +330,7 @@ class SvnBasisTree(RevisionTree):
 
                 assert entry
                 
-                if entry.kind == svn.core.svn_node_dir:
+                if entry.kind == core.NODE_DIR:
                     subwc = svn.wc.adm_open3(wc, 
                             self.workingtree.abspath(subrelpath), 
                                              False, 0, None)

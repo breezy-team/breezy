@@ -25,6 +25,7 @@ from bzrlib.transport.local import LocalTransport
 from svn.core import SubversionException
 import svn.core, svn.repos
 
+from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.errors import NoSvnRepositoryPresent
 from bzrlib.plugins.svn.format import get_rich_root_format, SvnRemoteFormat
 from bzrlib.plugins.svn.repository import SvnRepository
@@ -127,7 +128,7 @@ class SvnRemoteAccess(BzrDir):
             full_branch_url = urlutils.join(repos.transport.base, 
                                             target_branch_path)
             if repos.transport.check_path(target_branch_path,
-                repos.get_latest_revnum()) != svn.core.svn_node_none:
+                repos.get_latest_revnum()) != core.NODE_NONE:
                 raise AlreadyBranchError(full_branch_url)
             push_new(repos, target_branch_path, source, stop_revision)
         finally:

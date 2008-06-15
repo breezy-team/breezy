@@ -27,7 +27,7 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter, warning
 
-from bzrlib.plugins.svn import properties
+from bzrlib.plugins.svn import core, properties
 
 from cStringIO import StringIO
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
@@ -65,7 +65,7 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     for i in range(len(bp_parts), 0, -1):
         current = bp_parts[:i]
         path = "/".join(current).strip("/")
-        if transport.check_path(path, base_rev) == svn.core.svn_node_dir:
+        if transport.check_path(path, base_rev) == core.NODE_DIR:
             return current
     return []
 

@@ -24,8 +24,8 @@ from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
 import svn.core
 
+from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.cache import CacheTable
-from bzrlib.plugins.svn import changes
 from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND
 
 LOG_CHUNK_LIMIT = 0
@@ -397,9 +397,9 @@ class LogWalker(object):
         conn = self._transport.connections.get(self._transport.get_svn_repos_root())
         try:
             ft = conn.check_path(path, revnum)
-            if ft == svn.core.svn_node_file:
+            if ft == core.NODE_FILE:
                 return []
-            assert ft == svn.core.svn_node_dir
+            assert ft == core.NODE_DIR
         finally:
             self._transport.connections.add(conn)
 

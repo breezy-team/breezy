@@ -32,7 +32,7 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
-from bzrlib.plugins.svn import properties
+from bzrlib.plugins.svn import core, properties
 from bzrlib.plugins.svn.branch import SvnBranch
 from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
 from bzrlib.plugins.svn.convert import SvnConverter
@@ -120,7 +120,7 @@ class SvnWorkingTree(WorkingTree):
                     continue
 
                 # Ignore ignores on things that aren't directories
-                if entries[entry].kind != svn.core.svn_node_dir:
+                if entries[entry].kind != core.NODE_DIR:
                     continue
 
                 subprefix = os.path.join(prefix, entry)
@@ -332,7 +332,7 @@ class SvnWorkingTree(WorkingTree):
                 entry = entries[name]
                 assert entry
                 
-                if entry.kind == svn.core.svn_node_dir:
+                if entry.kind == core.NODE_DIR:
                     subwc = svn.wc.adm_open3(wc, self.abspath(subrelpath), 
                                              False, 0, None)
                     try:

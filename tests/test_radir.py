@@ -24,6 +24,7 @@ from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
 
 import svn
 
+from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.format import SvnRemoteFormat
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.transport import SvnRaTransport
@@ -75,7 +76,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         b = x.create_branch()
         self.assertEquals(repos_url+"/trunk", b.base)
         transport = SvnRaTransport(repos_url)
-        self.assertEquals(svn.core.svn_node_dir, 
+        self.assertEquals(core.NODE_DIR, 
                 transport.check_path("trunk", 1))
 
     def test_bad_dir(self):

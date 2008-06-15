@@ -34,9 +34,9 @@ import svn.core
 
 import os
 
+from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.branchprops import PathPropertyProvider
 from bzrlib.plugins.svn.cache import create_cache_dir, sqlite3
-from bzrlib.plugins.svn import changes
 from bzrlib.plugins.svn.changes import changes_path, find_prev_location
 from bzrlib.plugins.svn.config import SvnRepositoryConfig
 from bzrlib.plugins.svn.parents import SqliteCachingParentsProvider
@@ -378,7 +378,7 @@ class SvnRepository(Repository):
             return False
 
         try:
-            return (svn.core.svn_node_dir == self.transport.check_path(path, revnum))
+            return (core.NODE_DIR == self.transport.check_path(path, revnum))
         except SubversionException, (_, num):
             if num == errors.ERR_FS_NO_SUCH_REVISION:
                 return False
