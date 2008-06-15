@@ -28,6 +28,7 @@ import svn.client
 
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
+from bzrlib.plugins.svn.ra import DIRENT_KIND
 import urlparse
 import urllib
 
@@ -330,7 +331,7 @@ class Connection(object):
         if hasattr(svn.ra, 'get_dir2'):
             fields = 0
             if kind:
-                fields += svn.core.SVN_DIRENT_KIND
+                fields += DIRENT_KIND
             return svn.ra.get_dir2(self._ra, path, revnum, fields)
         else:
             return svn.ra.get_dir(self._ra, path, revnum)

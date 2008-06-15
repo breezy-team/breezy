@@ -19,3 +19,5 @@ get_username_prompt_provider = svn.core.svn_auth_get_username_prompt_provider
 get_simple_prompt_provider = svn.core.svn_auth_get_simple_prompt_provider
 get_ssl_client_cert_pw_prompt_provider = svn.core.svn_auth_get_ssl_client_cert_pw_prompt_provider
 get_ssl_server_trust_prompt_provider = svn.core.svn_auth_get_ssl_server_trust_prompt_provider
+
+DIRENT_KIND = 0x0001
