@@ -22,9 +22,6 @@ from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
                            NoWorkingTree, AlreadyBranchError)
 from bzrlib.transport.local import LocalTransport
 
-from svn.core import SubversionException
-import svn.core, svn.repos
-
 from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.errors import NoSvnRepositoryPresent
 from bzrlib.plugins.svn.format import get_rich_root_format, SvnRemoteFormat
