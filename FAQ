@@ -120,7 +120,7 @@ For example::
  All changes applied successfully.
  Pushed up to revision 1075.
 
-If you would like to forbid Bazaar from ever doing these operations, set the 
+If you would like to forbid Bazaar from ever doing these replace operations, set the 
 ``append-revisions-only`` setting to True for the repository you're 
 pushing to.
 
