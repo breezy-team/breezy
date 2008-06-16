@@ -25,9 +25,19 @@ import bzrlib.bzrdir
 import bzrlib.errors as errors
 from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
+from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    adapter = TransportTestProviderAdapter()
+    for test in tests.iter_suite_tests(standard_tests):
+        result.addTests(adapter.adapt(test))
+    return result
 
 
 def create_bundle_file(test_case):

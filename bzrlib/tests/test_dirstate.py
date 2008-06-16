@@ -23,6 +23,7 @@ import time
 from bzrlib import (
     dirstate,
     errors,
+    inventory,
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
@@ -162,7 +163,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         """
         # The state should already be write locked, since we just had to do
         # some operation to get here.
-        assert state._lock_token is not None
+        self.assertTrue(state._lock_token is not None)
         try:
             self.assertEqual(expected_result[0],  state.get_parent_ids())
             # there should be no ghosts in this tree.
@@ -2054,7 +2055,7 @@ class TestBisect(TestCaseWithDirState):
         # the end it would still be fairly arbitrary, and we don't want the
         # extra overhead if we can avoid it. So sort everything to make sure
         # equality is true
-        assert len(map_keys) == len(paths)
+        self.assertEqual(len(map_keys), len(paths))
         expected = {}
         for path, keys in zip(paths, map_keys):
             if keys is None:
@@ -2079,8 +2080,7 @@ class TestBisect(TestCaseWithDirState):
         :param paths: A list of directories
         """
         result = state._bisect_dirblocks(paths)
-        assert len(map_keys) == len(paths)
-
+        self.assertEqual(len(map_keys), len(paths))
         expected = {}
         for path, keys in zip(paths, map_keys):
             if keys is None:
@@ -2515,3 +2515,26 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         state._discard_merge_parents()
         state._validate()
         self.assertEqual(exp_dirblocks, state._dirblocks)
+
+
+class Test_InvEntryToDetails(TestCaseWithDirState):
+
+    def assertDetails(self, expected, inv_entry):
+        details = dirstate.DirState._inv_entry_to_details(inv_entry)
+        self.assertEqual(expected, details)
+        # details should always allow join() and always be a plain str when
+        # finished
+        (minikind, fingerprint, size, executable, tree_data) = details
+        self.assertIsInstance(minikind, str)
+        self.assertIsInstance(fingerprint, str)
+        self.assertIsInstance(tree_data, str)
+
+    def test_unicode_symlink(self):
+        # In general, the code base doesn't support a target that contains
+        # non-ascii characters. So we just assert tha 
+        inv_entry = inventory.InventoryLink('link-file-id', 'name',
+                                            'link-parent-id')
+        inv_entry.revision = 'link-revision-id'
+        inv_entry.symlink_target = u'link-target'
+        details = self.assertDetails(('l', 'link-target', 0, False,
+                                      'link-revision-id'), inv_entry)

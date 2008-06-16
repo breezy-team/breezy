@@ -195,7 +195,6 @@ class KernelLikeInventoryCreator(TreeCreator):
             returns only an in-memory Inventory, so it should always be None.
         :return: An Inventory object.
         """
-        assert root is None, "Cannot create a memory inventory in a on disk."
         cache_dir = self._get_cache_dir()
         if cache_dir is None:
             return self._create_and_return()

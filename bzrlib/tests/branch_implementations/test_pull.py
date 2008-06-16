@@ -81,6 +81,23 @@ class TestPull(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
 
+    def test_pull_returns_result(self):
+        parent = self.make_branch_and_tree('parent')
+        parent.commit('1st post', rev_id='P1')
+        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine.commit('my change', rev_id='M1')
+        result = parent.branch.pull(mine.branch)
+        self.assertIsNot(None, result)
+        self.assertIs(mine.branch, result.source_branch)
+        self.assertIs(parent.branch, result.target_branch)
+        self.assertIs(parent.branch, result.master_branch)
+        self.assertIs(None, result.local_branch)
+        self.assertEqual(1, result.old_revno)
+        self.assertEqual('P1', result.old_revid)
+        self.assertEqual(2, result.new_revno)
+        self.assertEqual('M1', result.new_revid)
+        self.assertEqual(None, result.tag_conflicts)
+
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1')
@@ -130,7 +147,8 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         target.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -158,7 +176,8 @@ class TestPullHook(TestCaseWithBranch):
             local = BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         local.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -177,7 +196,8 @@ class TestPullHook(TestCaseWithBranch):
         sourcedir = target.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         target.branch.pull(source.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.

@@ -21,7 +21,6 @@ import os
 import shutil
 
 from bzrlib import bzrdir
-from bzrlib.add import smart_add
 from bzrlib.benchmarks import Benchmark
 from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle

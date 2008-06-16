@@ -450,13 +450,27 @@ class TestMerge(TestCaseWithTransport):
         finally:
             tree_file.close()
 
+    def test_merge_add_into_deleted_root(self):
+        # Yes, people actually do this.  And report bugs if it breaks.
+        source = self.make_branch_and_tree('source', format='rich-root-pack')
+        self.build_tree(['source/foo/'])
+        source.add('foo', 'foo-id')
+        source.commit('Add foo')
+        target = source.bzrdir.sprout('target').open_workingtree()
+        subtree = target.extract('foo-id')
+        subtree.commit('Delete root')
+        self.build_tree(['source/bar'])
+        source.add('bar', 'bar-id')
+        source.commit('Add bar')
+        subtree.merge_from_branch(source.branch)
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
-        self.vf = knit.KnitVersionedFile('root', self.get_transport(),
-                                         create=True)
+        self.vf = knit.make_file_knit('root', self.get_transport(),
+            create=True)
         self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
                                                                    [self.vf])
 
@@ -628,6 +642,15 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'c\n'),
                           ('conflicted-a', 'd\n'),
                           ('conflicted-b', 'e\n'),
+                         ], list(plan))
+
+    def test_plan_lca_merge_with_null(self):
+        self.add_version('A', [], 'ab')
+        self.add_version('B', [], 'bc')
+        plan = self.plan_merge_vf.plan_lca_merge('A', 'B')
+        self.assertEqual([('new-a', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('new-b', 'c\n'),
                          ], list(plan))
 
 

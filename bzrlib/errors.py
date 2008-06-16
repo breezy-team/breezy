@@ -185,6 +185,13 @@ class AlreadyBuilding(BzrError):
     _fmt = "The tree builder is already building a tree."
 
 
+class BranchError(BzrError):
+    """Base class for concrete 'errors about a branch'."""
+
+    def __init__(self, branch):
+        BzrError.__init__(self, branch=branch)
+
+
 class BzrCheckError(InternalBzrError):
     
     _fmt = "Internal check failed: %(message)s"
@@ -303,6 +310,11 @@ class NoSuchIdInRepository(NoSuchId):
 
     def __init__(self, repository, file_id):
         BzrError.__init__(self, repository=repository, file_id=file_id)
+
+
+class NotStacked(BranchError):
+
+    _fmt = "The branch '%(branch)s' is not stacked."
 
 
 class InventoryModified(InternalBzrError):
@@ -541,11 +553,25 @@ class InvalidURL(PathError):
 
 class InvalidURLJoin(PathError):
 
-    _fmt = 'Invalid URL join request: "%(args)s"%(extra)s'
+    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
-    def __init__(self, msg, base, args):
-        PathError.__init__(self, base, msg)
-        self.args = [base] + list(args)
+    def __init__(self, reason, base, join_args):
+        self.reason = reason
+        self.base = base
+        self.join_args = join_args
+        PathError.__init__(self, base, reason)
+
+
+class UnavailableRepresentation(InternalBzrError):
+
+    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
+        "is encoded as '%(native)s'.")
+
+    def __init__(self, key, wanted, native):
+        InternalBzrError.__init__(self)
+        self.wanted = wanted
+        self.native = native
+        self.key = key
 
 
 class UnknownHook(BzrError):
@@ -564,6 +590,28 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class UnstackableBranchFormat(BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the branch to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
+
+
+class UnstackableRepositoryFormat(BzrError):
+
+    _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the repository to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
 
 
 class ReadError(PathError):
@@ -858,17 +906,6 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
-class ReadOnlyLockError(LockError):
-
-    _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
-
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninetytwo)
-    def __init__(self, fname, msg):
-        LockError.__init__(self, '')
-        self.fname = fname
-        self.msg = msg
-
-
 class LockFailed(LockError):
 
     internal_error = False
@@ -1030,18 +1067,6 @@ class NoSuchRevision(InternalBzrError):
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
-# zero_ninetyone: this exception is no longer raised and should be removed
-class NotLeftParentDescendant(InternalBzrError):
-
-    _fmt = ("Revision %(old_revision)s is not the left parent of"
-            " %(new_revision)s, but branch %(branch_location)s expects this")
-
-    def __init__(self, branch, old_revision, new_revision):
-        BzrError.__init__(self, branch_location=branch.base,
-                          old_revision=old_revision,
-                          new_revision=new_revision)
-
-
 class RangeInChangeOption(BzrError):
 
     _fmt = "Option --change does not accept revision ranges"
@@ -1173,12 +1198,9 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BranchError):
 
     _fmt = "Branch %(branch)s has no commits."
-
-    def __init__(self, branch):
-        BzrError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -1442,6 +1464,30 @@ class SmartProtocolError(TransportError):
     def __init__(self, details):
         self.details = details
 
+
+class UnexpectedProtocolVersionMarker(TransportError):
+
+    _fmt = "Received bad protocol version marker: %(marker)r"
+
+    def __init__(self, marker):
+        self.marker = marker
+
+
+class UnknownSmartMethod(InternalBzrError):
+
+    _fmt = "The server does not recognise the '%(verb)s' request."
+
+    def __init__(self, verb):
+        self.verb = verb
+
+
+class SmartMessageHandlerError(InternalBzrError):
+
+    _fmt = "The message handler raised an exception: %(exc_value)s."
+
+    def __init__(self, exc_info):
+        self.exc_type, self.exc_value, self.tb = exc_info
+        
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
@@ -2033,6 +2079,11 @@ class UpgradeRequired(BzrError):
         self.path = path
 
 
+class RepositoryUpgradeRequired(UpgradeRequired):
+
+    _fmt = "To use this feature you must upgrade your repository at %(path)s."
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
@@ -2202,6 +2253,17 @@ class SSHVendorNotFound(BzrError):
             " Please set BZR_SSH environment variable.")
 
 
+class GhostRevisionsHaveNoRevno(BzrError):
+    """When searching for revnos, if we encounter a ghost, we are stuck"""
+
+    _fmt = ("Could not determine revno for {%(revision_id)s} because"
+            " its ancestry shows a ghost at {%(ghost_revision_id)s}")
+
+    def __init__(self, revision_id, ghost_revision_id):
+        self.revision_id = revision_id
+        self.ghost_revision_id = ghost_revision_id
+
+        
 class GhostRevisionUnusableHere(BzrError):
 
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
@@ -2384,6 +2446,21 @@ class UnexpectedSmartServerResponse(BzrError):
         self.response_tuple = response_tuple
 
 
+class ErrorFromSmartServer(BzrError):
+
+    _fmt = "Error received from smart server: %(error_tuple)r"
+
+    internal_error = True
+
+    def __init__(self, error_tuple):
+        self.error_tuple = error_tuple
+        try:
+            self.error_verb = error_tuple[0]
+        except IndexError:
+            self.error_verb = None
+        self.error_args = error_tuple[1:]
+
+
 class ContainerError(BzrError):
     """Base class of container errors."""
 
@@ -2505,6 +2582,18 @@ class BzrDirError(BzrError):
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
 
+class UnsyncedBranches(BzrDirError):
+
+    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
+            " bzr help sync-for-reconfigure.")
+
+    def __init__(self, bzrdir, target_branch):
+        BzrDirError.__init__(self, bzrdir)
+        import bzrlib.urlutils as urlutils
+        self.target_url = urlutils.unescape_for_display(target_branch.base,
+                                                        'ascii')
+
+
 class AlreadyBranch(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a branch."
@@ -2523,6 +2612,16 @@ class AlreadyCheckout(BzrDirError):
 class AlreadyLightweightCheckout(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
 
 
 class ReconfigurationNotSupported(BzrDirError):
@@ -2583,6 +2682,31 @@ class UnsupportedTimezoneFormat(BzrError):
         self.timezone = timezone
 
 
+class CommandAvailableInPlugin(StandardError):
+    
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+        
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard bzr command. \n' 
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'], 
+                    self.plugin_metadata['url']))
+
+        return _fmt
+
+
+class NoPluginAvailable(BzrError):
+    pass    
+
+
 class NotATerminal(BzrError):
 
     _fmt = 'Unable to ask for a password without real terminal.'
@@ -2597,3 +2721,20 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchAlias(BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        BzrError.__init__(self, alias_name=alias_name)
+
+
+class CannotBindAddress(BzrError):
+
+    _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
+
+    def __init__(self, host, port, orig_error):
+        BzrError.__init__(self, host=host, port=port,
+            orig_error=orig_error[1])

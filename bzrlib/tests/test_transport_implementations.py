@@ -31,6 +31,7 @@ import unittest
 from bzrlib import (
     errors,
     osutils,
+    tests,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
@@ -74,10 +75,9 @@ class TransportTestProviderAdapter(TestScenarioApplier):
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
         if getattr(module, 'get_test_permutations', None) is None:
-            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
-                    % module.__name__)
-            ##warning("transport module %s doesn't provide get_test_permutations()"
-            ##       % module.__name__)
+            raise AssertionError(
+                "transport module %s doesn't provide get_test_permutations()"
+                % module.__name__)
             return []
         return module.get_test_permutations()
 
@@ -99,6 +99,14 @@ class TransportTestProviderAdapter(TestScenarioApplier):
                 pass
         return result
 
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    adapter = TransportTestProviderAdapter()
+    for test in tests.iter_suite_tests(standard_tests):
+        result.addTests(adapter.adapt(test))
+    return result
 
 
 class TransportTests(TestTransportImplementation):
@@ -169,6 +177,11 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_has_root_works(self):
+        from bzrlib.smart import server
+        if self.transport_server is server.SmartTCPServer_for_testing:
+            raise TestNotApplicable(
+                "SmartTCPServer_for_testing intentionally does not allow "
+                "access to /.")
         current_transport = self.get_transport()
         self.assertTrue(current_transport.has('/'))
         root = current_transport.clone('/')
@@ -938,14 +951,14 @@ class TransportTests(TestTransportImplementation):
         except TransportNotPossible:
             # ok, this transport does not support delete_tree
             return
-        
+
         # did it delete that trivial case?
         self.assertRaises(NoSuchFile, t.stat, 'adir')
 
         self.build_tree(['adir/',
-                         'adir/file', 
-                         'adir/subdir/', 
-                         'adir/subdir/file', 
+                         'adir/file',
+                         'adir/subdir/',
+                         'adir/subdir/file',
                          'adir/subdir2/',
                          'adir/subdir2/file',
                          ], transport=t)
@@ -1032,7 +1045,7 @@ class TransportTests(TestTransportImplementation):
             return
 
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
-        sizes = [14, 0, 16, 0, 18] 
+        sizes = [14, 0, 16, 0, 18]
         self.build_tree(paths, transport=t, line_endings='binary')
 
         for path, size in zip(paths, sizes):
@@ -1060,7 +1073,7 @@ class TransportTests(TestTransportImplementation):
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()
-        
+
         if not t.listable():
             self.assertRaises(TransportNotPossible, t.list_dir, '.')
             return
@@ -1096,7 +1109,7 @@ class TransportTests(TestTransportImplementation):
         else:
             os.unlink('c/d')
             os.unlink('b')
-            
+
         self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.', t))
         self.assertEqual(['e'], sorted_list('c', t))
 
@@ -1113,7 +1126,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(['a/', 'a/%'], transport=t)
         else:
             self.build_tree(['a/', 'a/%'])
-        
+
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
         self.assertIsInstance(names[0], str)
@@ -1584,6 +1597,9 @@ class TransportTests(TestTransportImplementation):
             self.assertTrue(result[0][0] <= 400)
             self.assertTrue(result[0][0] + data_len >= 1034)
             check_result_data(result)
+
+    def test_readv_with_adjust_for_latency_with_big_file(self):
+        transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
             file('a', 'w').write('a'*1024*1024)

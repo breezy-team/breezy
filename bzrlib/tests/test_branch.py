@@ -53,6 +53,7 @@ from bzrlib.errors import (NotBranchError,
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
+
 class TestDefaultFormat(TestCase):
 
     def test_default_format(self):
@@ -294,6 +295,7 @@ class TestBranch6(TestCaseWithTransport):
         self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
                          'locations.conf')
 
+
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
@@ -334,6 +336,8 @@ class TestHooks(TestCase):
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
+        self.assertTrue("post_change_branch_tip" in hooks,
+                        "post_change_branch_tip not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
