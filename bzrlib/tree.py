@@ -93,11 +93,15 @@ class Tree(object):
             want_unversioned=want_unversioned,
             )
 
-    def _iter_changes(self, from_tree, include_unchanged=False,
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
+    def _iter_changes(self, *args, **kwargs):
+        return self.iter_changes(*args, **kwargs)
+
+    def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(include_unchanged, specific_files, pb,
+        return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)
     
     def conflicts(self):
@@ -250,6 +254,15 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_mtime)
 
+    def get_file_size(self, file_id):
+        """Return the size of a file in bytes.
+
+        This applies only to regular files.  If invoked on directories or
+        symlinks, it will return None.
+        :param file_id: The file-id of the file
+        """
+        raise NotImplementedError(self.get_file_size)
+
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 
@@ -293,13 +306,17 @@ class Tree(object):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
         :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
         """
         raise NotImplementedError(self.annotate_iter)
 
@@ -511,7 +528,6 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        assert self._inventory[file_id].kind == "directory"
         return "directory"
 
     def list_files(self, include_root=False):
@@ -560,7 +576,6 @@ def file_status(filename, old_tree, new_tree):
         # what happened to the file that used to have
         # this name.  There are two possibilities: either it was
         # deleted entirely, or renamed.
-        assert old_id
         if new_inv.has_id(old_id):
             return 'X', old_inv.id2path(old_id), new_inv.id2path(old_id)
         else:
@@ -718,7 +733,7 @@ class InterTree(InterObject):
             require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
@@ -887,17 +902,3 @@ class InterTree(InterObject):
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
-
-
-# This was deprecated before 0.12, but did not have an official warning
-@symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
-def RevisionTree(*args, **kwargs):
-    """RevisionTree has moved to bzrlib.revisiontree.RevisionTree()
-
-    Accessing it as bzrlib.tree.RevisionTree has been deprecated as of
-    bzr 0.12.
-    """
-    from bzrlib.revisiontree import RevisionTree as _RevisionTree
-    return _RevisionTree(*args, **kwargs)
- 
-

@@ -151,6 +151,7 @@ class Config(object):
             mail_client_class = {
                 None: mail_client.DefaultMail,
                 # Specific clients
+                'emacsclient': mail_client.EmacsMail,
                 'evolution': mail_client.Evolution,
                 'kmail': mail_client.KMail,
                 'mutt': mail_client.Mutt,
@@ -439,13 +440,36 @@ class GlobalConfig(IniBasedConfig):
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
+        self._set_option(option, value, 'DEFAULT')
+
+    def get_aliases(self):
+        """Return the aliases section."""
+        if 'ALIASES' in self._get_parser():
+            return self._get_parser()['ALIASES']
+        else:
+            return {}
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the configuration."""
+        self._set_option(alias_name, alias_command, 'ALIASES')
+
+    def unset_alias(self, alias_name):
+        """Unset an existing alias."""
+        aliases = self._get_parser().get('ALIASES')
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
+        del aliases[alias_name]
+        self._write_config_file()
+
+    def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if 'DEFAULT' not in self._get_parser():
-            self._get_parser()['DEFAULT'] = {}
-        self._get_parser()['DEFAULT'][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
+        self._write_config_file()
+
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
@@ -569,9 +593,11 @@ class LocationConfig(IniBasedConfig):
 
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
-        assert store in [STORE_LOCATION,
+        if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
-                         STORE_LOCATION_APPENDPATH], 'bad storage policy'
+                         STORE_LOCATION_APPENDPATH]:
+            raise ValueError('bad storage policy %r for %r' %
+                (store, option))
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
@@ -638,12 +664,11 @@ class BranchConfig(Config):
     def _get_user_id(self):
         """Return the full user id for the branch.
     
-        e.g. "John Hacker <jhacker@foo.org>"
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email") 
-                    .read()
+            return (self.branch._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -890,9 +915,13 @@ def extract_email_address(e):
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+
     def __init__(self, branch):
-        transport = branch.control_files._transport
-        self._config = TransportConfig(transport, 'branch.conf')
+        # XXX: Really this should be asking the branch for its configuration
+        # data, rather than relying on a Transport, so that it can work 
+        # more cleanly with a RemoteBranch that has no transport.
+        self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
@@ -990,6 +1019,9 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
+            if type(auth_def) is not configobj.Section:
+                raise ValueError("%s defined outside a section" % auth_def_name)
+
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ['scheme', 'host', 'user', 'path'])
 
@@ -1027,7 +1059,8 @@ class AuthenticationConfig(object):
                 # Can't find a user
                 continue
             credentials = dict(name=auth_def_name,
-                               user=a_user, password=auth_def['password'],
+                               user=a_user,
+                               password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
@@ -1082,12 +1115,17 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
+            if password is not None and scheme is 'ssh':
+                trace.warning('password ignored in section [%s],'
+                              ' use an ssh agent instead'
+                              % credentials['name'])
+                password = None
         else:
             password = None
         # Prompt user only if we could't find a password
         if password is None:
             if prompt is None:
-                # Create a default prompt suitable for most of the cases
+                # Create a default prompt suitable for most cases
                 prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
@@ -1103,7 +1141,7 @@ class AuthenticationConfig(object):
 
 
 class TransportConfig(object):
-    """A configuration representation that stores data on a Transport.
+    """A Config that reads/writes a config file on a Transport.
 
     It is a low-level object that considers config data to be name/value pairs
     that may be associated with a section.  Assigning meaning to the these

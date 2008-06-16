@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -43,8 +43,6 @@ from bzrlib.tests import (
                           multiply_scenarios,
                           multiply_tests_from_modules,
                           TestScenarioApplier,
-                          TestLoader,
-                          TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
@@ -54,7 +52,8 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
     vfs_transport_factory=None):
     """Transform the input formats to a list of scenarios.
 
-    :param formats: A list of (repository_format, bzrdir_format).
+    :param formats: A list of (scenario_name, scenario_info)
+        where the scenario_info is a dict that controls the test.
     """
     result = []
     for repository_format, bzrdir_format in formats:
@@ -73,7 +72,11 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
 
 
 def all_repository_format_scenarios():
-    """Return a list of test scenarios for parameterising repository tests."""
+    """Return a list of test scenarios for parameterising repository tests.
+    
+    :param formats: A list of (scenario_name, scenario_info)
+        where the scenario_info is a dict that controls the test.
+    """
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
@@ -839,7 +842,10 @@ all_broken_scenario_classes = [
     ]
 
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
     prefix = 'bzrlib.tests.repository_implementations.'
     test_repository_modules = [
         'test_add_fallback_repository',
@@ -851,6 +857,7 @@ def test_suite():
         'test_fileid_involved',
         'test_find_text_key_references',
         'test__generate_text_key_index',
+        'test_get_parent_map',
         'test_has_same_location',
         'test_has_revisions',
         'test_is_write_locked',
@@ -865,9 +872,13 @@ def test_suite():
     module_name_list = [prefix + module_name
                         for module_name in test_repository_modules]
 
+    # add the tests for the sub modules
+
     # Parameterize repository_implementations test modules by format.
     format_scenarios = all_repository_format_scenarios()
-    result = multiply_tests_from_modules(module_name_list, format_scenarios)
+    result.addTests(multiply_tests_from_modules(module_name_list,
+                                                format_scenarios,
+                                                loader))
 
     # test_check_reconcile needs to be parameterized by format *and* by broken
     # repository scenario.
@@ -877,7 +888,6 @@ def test_suite():
         format_scenarios, broken_scenarios)
     broken_scenario_applier = TestScenarioApplier()
     broken_scenario_applier.scenarios = broken_scenarios_for_all_formats
-    loader = TestLoader()
     adapt_modules(
         [prefix + 'test_check_reconcile'],
         broken_scenario_applier, loader, result)

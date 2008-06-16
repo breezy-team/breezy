@@ -8,8 +8,8 @@
 
 
 :Authors: `Michael Foord`_, `Nicola Larosa`_, `Mark Andrews`_
-:Version: Validate 0.3.1
-:Date: 2008/02/05
+:Version: Validate 0.3.2
+:Date: 2008/02/24
 :Homepage: `Validate Homepage`_
 :License: `BSD License`_
 :Support: `Mailing List`_
@@ -68,7 +68,7 @@ For support and bug reports please use the ConfigObj `Mailing List`_.
 Downloading
 ===========
 
-The current version is **0.3.1**, dated 5th February 2008. 
+The current version is **0.3.2**, dated 24th February 2008. 
 
 You can get obtain validate in the following ways :
 
@@ -103,7 +103,7 @@ various other useful helper modules, and is required by many of the `Voidspace
 Python Projects`_.
 
 .. _configobj.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj.py
-.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.5.1.zip
+.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.5.2.zip
 .. _validate.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=validate.py
 .. _Subversion Repository: http://svn.pythonutils.python-hosting.com/trunk/pythonutils/
 .. _Sourceforge: http://sourceforge.net/projects/configobj
@@ -288,7 +288,7 @@ same effect as the following code :
 
     {-coloring}
 
-``vtor.functions``is just a dictionary that maps names to functions, so we
+``vtor.functions`` is just a dictionary that maps names to functions, so we
 could also have called ``vtor.functions.update(fdict)``.
 
 
@@ -596,8 +596,7 @@ TODO
 ====
 
 * A regex check function ?
-* A timestamp check function ? (Using the ``parse`` function from ``DateUtil``).
-* Allow triple quotes ? (getting a bit heavy for a regex)
+* A timestamp check function ? (Using the ``parse`` function from ``DateUtil`` perhaps).
 
 
 ISSUES
@@ -614,6 +613,11 @@ to specify arguments for 'mixed_lists'.
 
 CHANGELOG
 =========
+
+2008/02/24 - Version 0.3.2
+--------------------------
+
+BUGFIX: Handling of None as default value fixed.
 
 
 2008/02/05 - Version 0.3.1

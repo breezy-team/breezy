@@ -287,6 +287,8 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def _translate_path(self, path):
         """Translate a /-separated PATH to the local filename syntax.
 
+        Note that we're translating http URLs here, not file URLs.
+        The URL root location is the server's startup directory.
         Components that mean special things to the local file system
         (e.g. drive or directory names) are ignored.  (XXX They should
         probably be diagnosed.)
@@ -296,43 +298,17 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         # abandon query parameters
         path = urlparse.urlparse(path)[2]
         path = posixpath.normpath(urllib.unquote(path))
+        path = path.decode('utf-8')
         words = path.split('/')
         words = filter(None, words)
         path = self._cwd
-        for word in words:
-            drive, word = os.path.splitdrive(word)
+        for num, word in enumerate(words):
+            if num == 0:
+                drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
             if word in (os.curdir, os.pardir): continue
             path = os.path.join(path, word)
         return path
-
-    if sys.platform == 'win32':
-        # On win32 you cannot access non-ascii filenames without
-        # decoding them into unicode first.
-        # However, under Linux, you can access bytestream paths
-        # without any problems. If this function was always active
-        # it would probably break tests when LANG=C was set
-        def _translate_path(self, path):
-            """Translate a /-separated PATH to the local filename syntax.
-
-            For bzr, all url paths are considered to be utf8 paths.
-            On Linux, you can access these paths directly over the bytestream
-            request, but on win32, you must decode them, and access them
-            as Unicode files.
-            """
-            # abandon query parameters
-            path = urlparse.urlparse(path)[2]
-            path = posixpath.normpath(urllib.unquote(path))
-            path = path.decode('utf-8')
-            words = path.split('/')
-            words = filter(None, words)
-            path = self._cwd
-            for word in words:
-                drive, word = os.path.splitdrive(word)
-                head, word = os.path.split(word)
-                if word in (os.curdir, os.pardir): continue
-                path = os.path.join(path, word)
-            return path
 
 
 class TestingHTTPServerMixin:
@@ -517,10 +493,11 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        assert backing_transport_server is None or \
-            isinstance(backing_transport_server, local.LocalURLServer), \
-            "HTTPServer currently assumes local transport, got %s" % \
-            backing_transport_server
+        if not (backing_transport_server is None or \
+                isinstance(backing_transport_server, local.LocalURLServer)):
+            raise AssertionError(
+                "HTTPServer currently assumes local transport, got %s" % \
+                backing_transport_server)
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_base_url = None
