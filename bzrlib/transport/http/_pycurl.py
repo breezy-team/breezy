@@ -278,7 +278,8 @@ class PyCurlTransport(HttpTransportBase):
         # requests
         if code == 403:
             raise errors.TransportError(
-                'Server refuses to fullfil the request for: %s' % url)
+                'Server refuses to fulfill the request (403 Forbidden)'
+                ' for %s' % url)
         else:
             if info is None:
                 msg = ''

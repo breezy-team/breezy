@@ -53,6 +53,7 @@ from bzrlib.errors import (NotBranchError,
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
+
 class TestDefaultFormat(TestCase):
 
     def test_default_format(self):
@@ -357,10 +358,6 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         branch = self.make_branch('a', format=self.get_format_name())
         self.assertRaises(errors.NotStacked, branch.get_stacked_on)
 
-    def test_stacked_location_file(self):
-        branch = self.make_branch('a', format=self.get_format_name())
-        self.assertFileEqual('\n', 'a/.bzr/branch/stacked-on')
-
     def test_stack_and_unstack(self):
         branch = self.make_branch('a', format=self.get_format_name())
         target = self.make_branch_and_tree('b', format=self.get_format_name())
@@ -421,6 +418,8 @@ class TestHooks(TestCase):
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
+        self.assertTrue("post_change_branch_tip" in hooks,
+                        "post_change_branch_tip not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""

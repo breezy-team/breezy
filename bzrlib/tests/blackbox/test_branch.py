@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,8 +43,9 @@ class TestBranch(ExternalBase):
         self.example_branch('a')
         self.run_bzr('branch a b')
         b = branch.Branch.open('b')
-        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.run_bzr('branch a c -r 1')
+        # previously was erroneously created by branching
+        self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
     def test_branch_only_copies_history(self):
@@ -97,22 +98,22 @@ class TestBranch(ExternalBase):
         self.assertEqual(source_stat, target_stat)
 
     def assertShallow(self, branch_revid, stacked_on):
-        """Assert that the branch 'published' has been published correctly."""
+        """Assert that the branch 'newbranch' has been published correctly."""
         new_branch = branch.Branch.open('newbranch')
         # The branch refers to the mainline
         self.assertEqual(stacked_on, new_branch.get_stacked_on())
         # and the branch's work was pushed
         self.assertTrue(new_branch.repository.has_revision(branch_revid))
-        # but the mainlines was not included
+        # but the mainline's was not included
         repo = new_branch.bzrdir.open_repository()
         self.assertEqual(1, len(repo.all_revision_ids()))
 
-    def test_branch_shallow_branch_also_shallow_same_reference(self):
+    def test_branch_stacked_branch_also_stacked_same_reference(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
             format='development')
         trunk_tree.commit('mainline')
-        # and a branch from it which is shallow
+        # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
             format='development')
         branch_tree.branch.set_stacked_on(trunk_tree.branch.base)
@@ -122,20 +123,21 @@ class TestBranch(ExternalBase):
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
-        self.assertEqual('Created new shallow branch referring to %s.\n' %
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
             trunk_tree.branch.base, err)
         self.assertShallow(branch_tree.last_revision(),
             trunk_tree.branch.base)
 
-    def test_branch_shallow(self):
+    def test_branch_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline',
             format='development')
         trunk_tree.commit('mainline')
-        # and make branch from it which is shallow
-        out, err = self.run_bzr(['branch', '--shallow', 'mainline', 'newbranch'])
+        # and a branch from it which is stacked
+        out, err = self.run_bzr(['branch', '--stacked', 'mainline',
+            'newbranch'])
         self.assertEqual('', out)
-        self.assertEqual('Created new shallow branch referring to %s.\n' %
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
             trunk_tree.branch.base, err)
         new_tree = WorkingTree.open('newbranch')
         new_revid = new_tree.commit('new work')

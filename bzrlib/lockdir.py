@@ -167,8 +167,6 @@ class LockDir(object):
         :param path: Path to the lock within the base directory of the 
             transport.
         """
-        assert isinstance(transport, Transport), \
-            ("not a transport: %r" % transport)
         self.transport = transport
         self.path = path
         self._lock_held = False
@@ -417,8 +415,6 @@ class LockDir(object):
         try:
             info = self._read_info_file(self._held_info_path)
             self._trace("peek -> held")
-            assert isinstance(info, dict), \
-                    "bad parse result %r" % info
             return info
         except NoSuchFile, e:
             self._trace("peek -> not held")
@@ -510,15 +506,20 @@ class LockDir(object):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
+                lock_url = self.transport.abspath(self.path)
                 self._report_function('%s %s\n'
                                       '%s\n' # held by
                                       '%s\n' # locked ... ago
-                                      'Will continue to try until %s\n',
+                                      'Will continue to try until %s, unless '
+                                      'you press Ctrl-C\n'
+                                      'If you\'re sure that it\'s not being '
+                                      'modified, use bzr break-lock %s',
                                       start,
                                       formatted_info[0],
                                       formatted_info[1],
                                       formatted_info[2],
-                                      deadline_str)
+                                      deadline_str,
+                                      lock_url)
 
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")

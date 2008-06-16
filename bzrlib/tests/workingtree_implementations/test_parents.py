@@ -51,9 +51,6 @@ class TestParents(TestCaseWithWorkingTree):
                              _mod_revision.ensure_null(tree.last_revision()))
         else:
             self.assertEqual(expected[0], tree.last_revision())
-        self.assertEqual(expected[1:],
-            self.applyDeprecated(symbol_versioning.zero_eleven,
-                tree.pending_merges))
 
 
 class TestGetParents(TestParents):
@@ -163,6 +160,73 @@ class TestSetParents(TestParents):
         self.assertConsistentParents(
             [first_revision, second_revision, third_revision], t)
 
+    def test_set_duplicate_parent_ids(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        rev2 = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        rev3 = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        t.set_parent_ids([rev1, rev2, rev2, rev3])
+        # We strip the duplicate, but preserve the ordering
+        self.assertConsistentParents([rev1, rev2, rev3], t)
+
+    def test_set_duplicate_parent_trees(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        rev2 = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        rev3 = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        rev_tree1 = t.branch.repository.revision_tree(rev1)
+        rev_tree2 = t.branch.repository.revision_tree(rev2)
+        rev_tree3 = t.branch.repository.revision_tree(rev3)
+        t.set_parent_trees([(rev1, rev_tree1), (rev2, rev_tree2),
+                            (rev2, rev_tree2), (rev3, rev_tree3)])
+        # We strip the duplicate, but preserve the ordering
+        self.assertConsistentParents([rev1, rev2, rev3], t)
+
+    def test_set_parent_ids_in_ancestry(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        rev2 = t.commit('second post')
+        rev3 = t.commit('third post')
+        # Reset the tree, back to rev1
+        t.set_parent_ids([rev1])
+        t.branch.set_last_revision_info(1, rev1)
+        self.assertConsistentParents([rev1], t)
+        t.set_parent_ids([rev1, rev2, rev3])
+        # rev2 is in the ancestry of rev3, so it will be filtered out
+        self.assertConsistentParents([rev1, rev3], t)
+        # Order should be preserved, and the first revision should always be
+        # kept
+        t.set_parent_ids([rev2, rev3, rev1])
+        self.assertConsistentParents([rev2, rev3], t)
+
+    def test_set_parent_trees_in_ancestry(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        rev2 = t.commit('second post')
+        rev3 = t.commit('third post')
+        # Reset the tree, back to rev1
+        t.set_parent_ids([rev1])
+        t.branch.set_last_revision_info(1, rev1)
+        self.assertConsistentParents([rev1], t)
+        rev_tree1 = t.branch.repository.revision_tree(rev1)
+        rev_tree2 = t.branch.repository.revision_tree(rev2)
+        rev_tree3 = t.branch.repository.revision_tree(rev3)
+        t.set_parent_trees([(rev1, rev_tree1), (rev2, rev_tree2),
+                            (rev3, rev_tree3)])
+        # rev2 is in the ancestry of rev3, so it will be filtered out
+        self.assertConsistentParents([rev1, rev3], t)
+        # Order should be preserved, and the first revision should always be
+        # kept
+        t.set_parent_trees([(rev2, rev_tree2), (rev1, rev_tree1),
+                            (rev3, rev_tree3)])
+        self.assertConsistentParents([rev2, rev3], t)
+
 
 class TestAddParent(TestParents):
 
@@ -249,7 +313,7 @@ class TestAddParent(TestParents):
         self.assertConsistentParents([first_revision, 'second'], tree)
 
 
-class UpdateToOneParentViaDeltaTests(TestParents):
+class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     """Tests for the update_basis_by_delta call.
     
     This is intuitively defined as 'apply an inventory delta to the basis and
@@ -511,6 +575,36 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
         self.add_dir(new_shape, new_revid, 'dir-id-A', 'dir-id-B', 'B')
         self.add_link(new_shape, new_revid, 'link-id-C', 'dir-id-A', 'C', 'C')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_parent_deleted_child_renamed(self):
+        # test a A->None and A/B->A.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_new_root(new_shape, old_revid, new_revid)
+        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
+        self.add_link(new_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_dir_to_root(self):
+        # test a A->''.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_link(basis_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_dir(new_shape, new_revid, 'dir-id-A', None, '')
+        self.add_link(new_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
