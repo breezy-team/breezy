@@ -22,3 +22,4 @@ NODE_UNKNOWN = svn.core.svn_node_unknown
 
 SubversionException = svn.core.SubversionException
 time_to_cstring = svn.core.svn_time_to_cstring
+get_config = svn.core.svn_config_get_config

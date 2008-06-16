@@ -33,7 +33,8 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.repository import SvnRepository
-from bzrlib.plugins.svn.transport import bzr_to_svn_url, create_svn_client
+from bzrlib.plugins.svn.ra import create_svn_client
+from bzrlib.plugins.svn.transport import bzr_to_svn_url
 
 
 class FakeControlFiles(object):
