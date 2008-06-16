@@ -92,8 +92,7 @@ class TestRevisionSpec(TestCaseWithTransport):
                 self.assertEqual(extra, e.extra)
             else:
                 self.fail('Expected InvalidRevisionSpec to be raised for'
-                          ' %r.as_revision_id'
-                          % (revision_spec,))
+                          ' %r.as_revision_id' % (revision_spec,))
 
     def assertAsRevisionId(self, revision_id, revision_spec):
         """Calling as_revision_id() should return the specified id."""
