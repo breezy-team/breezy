@@ -16,6 +16,12 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
+      ``unlock`` if there was an error in the original function. This helps
+      most when there is a failure with a smart server action, since often the
+      connection closes and we cannot unlock.
+      (Andrew Bennetts, John Arbash Meinel, #125784)
+
     * Raise the correct exception when doing ``-rbefore:0`` or ``-c0``.
       (John Arbash Meinel, #239933)
 
@@ -25,8 +31,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
-   * Updated developer documentation.
-     (Martin Pool)
+    * Updated developer documentation.
+      (Martin Pool)
 
   TESTING:
 
@@ -49,6 +55,9 @@ now faster.
       (The data is not corrupt; an internal check is detecting a problem
       reading from the repository.)
       (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
+
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
 
     * Fix infinite loop consuming 100% CPU when a connection is lost while
       reading a response body via the smart protocol v1 or v2.
@@ -81,11 +90,6 @@ now faster.
 
     * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
       (Ian Clatworthy, Aaron Bentley)
-
-  BUGFIXES:
-
-    * ``bzr status`` was breaking if you merged the same revision twice.
-      (John Arbash Meinel, #235407)
 
   DOCUMENTATION:
 
