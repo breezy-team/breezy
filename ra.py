@@ -17,7 +17,7 @@ import svn.core, svn.client, svn.delta, svn.ra
 
 from bzrlib import debug, urlutils
 from bzrlib.trace import mutter
-from bzrlib.errors import InvalidURL
+from bzrlib.errors import InvalidURL, NoSuchFile, FileExists
 
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.core import get_config, SubversionException

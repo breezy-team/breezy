@@ -41,10 +41,11 @@ from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoCheckoutSupport
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                      escape_svn_path, generate_revision_metadata)
+from bzrlib.plugins.svn.ra import create_svn_client
 from bzrlib.plugins.svn.remote import SvnRemoteAccess
 from bzrlib.plugins.svn.repository import SvnRepository
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
-from bzrlib.plugins.svn.transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
+from bzrlib.plugins.svn.transport import (SvnRaTransport, bzr_to_svn_url, 
                        svn_config) 
 from bzrlib.plugins.svn.tree import SvnBasisTree
 
