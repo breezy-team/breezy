@@ -16,6 +16,12 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
+      ``unlock`` if there was an error in the original function. This helps
+      most when there is a failure with a smart server action, since often the
+      connection closes and we cannot unlock.
+      (Andrew Bennetts, John Arbash Meinel, #125784)
+
     * Raise the correct exception when doing ``-rbefore:0`` or ``-c0``.
       (John Arbash Meinel, #239933)
 
@@ -678,12 +684,6 @@ bzr 1.4rc1 2008-04-11
 
     * Merges that add files to deleted root directories complete.  They
       do create conflicts.  (Aaron Bentley, #210092)
-
-    * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
-      ``unlock`` if there was an error in the original function. This helps
-      most when there is a failure with a smart server action, since often the
-      connection closes and we cannot unlock.
-      (Andrew Bennetts, John Arbash Meinel, #125784)
 
     * vsftp's return ``550 RNFR command failed.`` supported.
       (Marcus Trautwig, #129786)
