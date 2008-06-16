@@ -156,7 +156,8 @@ class BzrDir(object):
                 format.get_format_description(),
                 basedir)
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
         """Clone this bzrdir and its contents to url verbatim.
 
         If url's last component does not exist, it will be created.
@@ -168,7 +169,8 @@ class BzrDir(object):
         """
         return self.clone_on_transport(get_transport(url),
                                        revision_id=revision_id,
-                                       force_new_repo=force_new_repo)
+                                       force_new_repo=force_new_repo,
+                                       preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False):
@@ -197,7 +199,6 @@ class BzrDir(object):
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
-            result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -218,7 +219,7 @@ class BzrDir(object):
                             errors.UnstackableRepositoryFormat,
                             errors.NotStacked):
                         pass
-                result_branch.repository.fetch(local_repo,
+                result_branch.repository.fetch(local_branch.repository,
                                                revision_id=revision_id)
         try:
             result_repo = result.find_repository()
@@ -2760,7 +2761,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
     """A policy of creating a new repository"""
 
     def __init__(self, bzrdir, stack_on=None):
-        RepositoryPolicy.__init__(self, stack_on)
+        RepositoryAcquisitionPolicy.__init__(self, stack_on)
         self._bzrdir = bzrdir
 
     def acquire_repository(self, make_working_trees=None, shared=False):
@@ -2778,7 +2779,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
     """A policy of reusing an existing repository"""
 
     def __init__(self, repository, stack_on=None):
-        RepositoryPolicy.__init__(self, stack_on)
+        RepositoryAcquisitionPolicy.__init__(self, stack_on)
         self._repository = repository
 
     def acquire_repository(self, make_working_trees=None, shared=False):
