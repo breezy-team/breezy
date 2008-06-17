@@ -446,13 +446,38 @@ class Repository(object):
     revisions and file history.  It's normally accessed only by the Branch,
     which views a particular line of development through that history.
 
-    The Repository builds on top of Stores and a Transport, which respectively 
-    describe the disk data format and the way of accessing the (possibly 
+    The Repository builds on top of some byte storage facilies (the revisions,
+    signatures, inventories and texts attributes) and a Transport, which
+    respectively provide byte storage and a means to access the (possibly
     remote) disk.
+
+    The byte storage facilities are addressed via tuples, which we refer to
+    as 'keys' throughout the code base. Revision_keys, inventory_keys and
+    signature_keys are all 1-tuples: (revision_id,). text_keys are two-tuples:
+    (file_id, revision_id). We use this interface because it allows low
+    friction with the underlying code that implements disk indices, network
+    encoding and other parts of bzrlib.
 
     :ivar revisions: A bzrlib.versionedfile.VersionedFiles instance containing
         the serialised revisions for the repository. This can be used to obtain
         revision graph information or to access raw serialised revisions.
+        The result of trying to insert data into the repository via this store
+        is undefined: it should be considered read-only except for implementors
+        of repositories.
+    :ivar signatures: A bzrlib.versionedfile.VersionedFiles instance containing
+        the serialised signatures for the repository. This can be used to
+        obtain access to raw serialised signatures.  The result of trying to
+        insert data into the repository via this store is undefined: it should
+        be considered read-only except for implementors of repositories.
+    :ivar inventories: A bzrlib.versionedfile.VersionedFiles instance containing
+        the serialised inventories for the repository. This can be used to
+        obtain unserialised inventories.  The result of trying to insert data
+        into the repository via this store is undefined: it should be
+        considered read-only except for implementors of repositories.
+    :ivar texts: A bzrlib.versionedfile.VersionedFiles instance containing the
+        texts of files and directories for the repository. This can be used to
+        obtain file texts or file graphs. Note that Repository.iter_file_bytes
+        is usually a better interface for accessing file texts.
         The result of trying to insert data into the repository via this store
         is undefined: it should be considered read-only except for implementors
         of repositories.

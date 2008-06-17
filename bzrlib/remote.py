@@ -782,11 +782,6 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.get_ancestry(revision_id, topo_sorted)
 
-    @property
-    def inventories(self):
-        self._ensure_real()
-        return self._real_repository.inventories
-
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)

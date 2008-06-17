@@ -678,6 +678,15 @@ class VersionedFiles(object):
 
     Currently no implementation allows the graph of different key prefixes to
     intersect, but the API does allow such implementations in the future.
+
+    The keyspace is expressed via simple tuples. Any instance of VersionedFiles
+    may have a different length key-size, but that size will be constant for
+    all texts added to or retrieved from it. For instance, bzrlib uses
+    instances with a key-size of 2 for storing user files in a repository, with
+    the first element the fileid, and the second the version of that file.
+
+    The use of tuples allows a single code base to support several different
+    uses with only the mapping logic changing from instance to instance.
     """
 
     def add_lines(self, key, parents, lines, parent_texts=None,
