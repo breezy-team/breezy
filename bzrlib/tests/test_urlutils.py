@@ -614,3 +614,44 @@ class TestDeriveToLocation(TestCase):
         self.assertEqual("bar", derive("http://foo/bar"))
         self.assertEqual("bar", derive("bzr+ssh://foo/bar"))
         self.assertEqual("foo-bar", derive("lp:foo-bar"))
+
+
+class TestRebaseURL(TestCase):
+    """Test the behavior of rebase_url."""
+
+    def test_non_relative(self):
+        result = urlutils.rebase_url('file://foo', 'file://foo',
+                                     'file://foo/bar')
+        self.assertEqual('file://foo', result)
+        result = urlutils.rebase_url('/foo', 'file://foo',
+                                     'file://foo/bar')
+        self.assertEqual('/foo', result)
+
+    def test_unrelated_urls(self):
+        e = self.assertRaises(ValueError, urlutils.rebase_url, 'foo',
+                              'http://bar', 'http://baz')
+        self.assertEqual(str(e), 'URLs cannot have relative paths: http://bar'
+                         ' http://baz')
+
+    def test_rebase_success(self):
+        self.assertEqual('../bar', urlutils.rebase_url('bar', 'http://baz/',
+                         'http://baz/qux'))
+        self.assertEqual('qux/bar', urlutils.rebase_url('bar',
+                         'http://baz/qux', 'http://baz/'))
+        self.assertEqual('../foo', urlutils.rebase_url('foo',
+                         'http://bar/', 'http://bar/baz/'))
+        self.assertEqual('.', urlutils.rebase_url('foo',
+                         'http://bar/', 'http://bar/foo/'))
+
+    def test_determine_relative_path(self):
+        self.assertEqual('../../baz/bar',
+                         urlutils.determine_relative_path(
+                         '/qux/quxx', '/baz/bar'))
+        self.assertEqual('..',
+                         urlutils.determine_relative_path(
+                         '/bar/baz', '/bar'))
+        self.assertEqual('baz',
+                         urlutils.determine_relative_path(
+                         '/bar', '/bar/baz'))
+        self.assertEqual('.', urlutils.determine_relative_path(
+                         '/bar', '/bar'))
