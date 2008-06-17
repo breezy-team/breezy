@@ -136,7 +136,7 @@ class SvnRevisionTree(RevisionTree):
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
         reporter = repository.transport.do_switch(
-                self.revnum, True, 
+                self.revnum, "", True, 
                 urlutils.join(root_repos, self.branch_path), editor)
         reporter.set_path("", 0, True, None)
         reporter.finish()

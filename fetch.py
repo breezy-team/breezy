@@ -635,7 +635,7 @@ class InterFromSvnRepository(InterRepository):
                                                        editor.branch_path)
 
                             conn = self.source.transport.connections.get(branch_url)
-                            reporter = conn.do_update(editor.revnum, True, 
+                            reporter = conn.do_update(editor.revnum, "", True, 
                                                            editor)
 
                             try:
@@ -650,11 +650,11 @@ class InterFromSvnRepository(InterRepository):
                             conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
 
                             if parent_branch != editor.branch_path:
-                                reporter = conn.do_switch(editor.revnum, True, 
+                                reporter = conn.do_switch(editor.revnum, "", True, 
                                     urlutils.join(repos_root, editor.branch_path), 
                                     editor)
                             else:
-                                reporter = conn.do_update(editor.revnum, True, editor)
+                                reporter = conn.do_update(editor.revnum, "", True, editor)
 
                             try:
                                 # Report status of existing paths

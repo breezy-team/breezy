@@ -449,7 +449,7 @@ class LogWalker(object):
         editor = TreeLister(path)
         try:
             conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
-            reporter = conn.do_update(revnum, True, editor)
+            reporter = conn.do_update(revnum, "", True, editor)
             reporter.set_path("", revnum, True, None)
             reporter.finish()
         finally:

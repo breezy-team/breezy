@@ -46,7 +46,7 @@ class Editor(object):
         self.recent_baton = []
         self._connection = connection
 
-    def open_root(self, base_revnum):
+    def open_root(self, base_revnum=-1):
         assert self.recent_baton == [], "root already opened"
         baton = svn.delta.editor_invoke_open_root(self.editor, 
                 self.editor_baton, base_revnum)
@@ -112,8 +112,6 @@ class Editor(object):
             parent_baton, *args, **kwargs)
         self.recent_baton.append(baton)
         return baton
-
-
 
 
 class Auth:
@@ -251,11 +249,11 @@ class RemoteAccess(object):
         self._edit_baton = edit_baton
         return self._edit, self._edit_baton
 
-    def do_switch(self, switch_rev, recurse, switch_url, editor):
+    def do_switch(self, switch_rev, path, recurse, switch_url, editor):
         self.mutter('svn switch -r %d -> %r', switch_rev, switch_url)
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor)
-        return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", 
+        return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, path,
                              recurse, switch_url, edit, edit_baton, None))
 
     def change_rev_prop(self, revnum, name, value):
@@ -312,11 +310,11 @@ class RemoteAccess(object):
         svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
                       edit, edit_baton, None)
 
-    def do_update(self, revnum, recurse, editor):
+    def do_update(self, revnum, recurse, path, editor):
         self.mutter('svn update -r %r', revnum)
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor)
-        return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
+        return self.Reporter(self, svn.ra.do_update(self._ra, revnum, path,
                              recurse, edit, edit_baton, None))
 
     def has_capability(self, cap):
