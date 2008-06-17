@@ -45,6 +45,22 @@ class TestStacking(TestCaseWithBranch):
         branch.set_stacked_on(None)
         self.assertRaises(errors.NotStacked, branch.get_stacked_on)
 
+    def test_get_set_stacked_on_relative(self):
+        # Branches can be stacked on other branches using relative paths.
+        branch = self.make_branch('branch')
+        target = self.make_branch('target')
+        old_format_errors = (
+            errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat,
+            )
+        try:
+            branch.set_stacked_on('../target')
+        except old_format_errors:
+            # if the set failed, so must the get
+            self.assertRaises(old_format_errors, branch.get_stacked_on)
+            return
+        self.assertEqual('../target', branch.get_stacked_on())
+
     def test_set_stacked_on_fetches(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline')
