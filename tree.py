@@ -29,7 +29,6 @@ from cStringIO import StringIO
 import urllib
 
 import svn.wc, svn.delta
-from svn.core import Pool
 
 from bzrlib.plugins.svn import errors, properties, core
 
@@ -101,21 +100,21 @@ def inventory_add_external(inv, parent_id, path, revid, ref_revnum, url):
 # slightly different).
 
 if hasattr(svn.delta, 'tx_invoke_window_handler'):
-    def apply_txdelta_handler(src_stream, target_stream, pool):
+    def apply_txdelta_handler(src_stream, target_stream):
         assert hasattr(src_stream, 'read')
         assert hasattr(target_stream, 'write')
         window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
-                                                   None, pool)
+                                                   None)
 
         def wrapper(window):
             window_handler(window, baton)
 
         return wrapper
 else:
-    def apply_txdelta_handler(src_stream, target_stream, pool):
+    def apply_txdelta_handler(src_stream, target_stream):
         assert hasattr(src_stream, 'read')
         assert hasattr(target_stream, 'write')
-        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None, pool)
+        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None)
 
         def wrapper(window):
             svn.delta.invoke_txdelta_window_handler(
@@ -129,20 +128,18 @@ class SvnRevisionTree(RevisionTree):
     def __init__(self, repository, revision_id):
         self._repository = repository
         self._revision_id = revision_id
-        pool = Pool()
         (self.branch_path, self.revnum, mapping) = repository.lookup_revision_id(revision_id)
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
                                                 mapping)
-        editor = TreeBuildEditor(self, pool)
+        editor = TreeBuildEditor(self)
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
         reporter = repository.transport.do_switch(
                 self.revnum, True, 
-                urlutils.join(root_repos, self.branch_path), editor, pool)
-        reporter.set_path("", 0, True, None, pool)
-        reporter.finish_report(pool)
-        pool.destroy()
+                urlutils.join(root_repos, self.branch_path), editor)
+        reporter.set_path("", 0, True, None)
+        reporter.finish()
 
     def get_file_lines(self, file_id):
         return osutils.split_lines(self.file_data[file_id])
@@ -150,13 +147,12 @@ class SvnRevisionTree(RevisionTree):
 
 class TreeBuildEditor(svn.delta.Editor):
     """Builds a tree given Subversion tree transform calls."""
-    def __init__(self, tree, pool):
+    def __init__(self, tree):
         self.tree = tree
         self.repository = tree._repository
         self.last_revnum = {}
         self.dir_revnum = {}
         self.dir_ignores = {}
-        self.pool = pool
 
     def set_target_revision(self, revnum):
         self.revnum = revnum
@@ -261,7 +257,7 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def apply_textdelta(self, file_id, base_checksum):
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(""), self.file_stream, self.pool)
+        return apply_txdelta_handler(StringIO(""), self.file_stream)
 
 
 class SvnBasisTree(RevisionTree):

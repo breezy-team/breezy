@@ -20,7 +20,6 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
-from svn.core import Pool
 import svn.delta
 
 from bzrlib.plugins.svn import changes, core
@@ -447,13 +446,12 @@ class LogWalker(object):
             def apply_textdelta(self, file_id, base_checksum):
                 pass
 
-        pool = Pool()
         editor = TreeLister(path)
         try:
             conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
-            reporter = conn.do_update(revnum, True, editor, pool)
-            reporter.set_path("", revnum, True, None, pool)
-            reporter.finish_report(pool)
+            reporter = conn.do_update(revnum, True, editor)
+            reporter.set_path("", revnum, True, None)
+            reporter.finish()
         finally:
             self._transport.connections.add(conn)
         return editor.files

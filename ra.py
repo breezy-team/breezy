@@ -68,10 +68,10 @@ class Editor(object):
         return svn.delta.editor_invoke_apply_textdelta(self.editor, baton,
                 *args, **kwargs)
 
-    def change_dir_prop(self, baton, name, value, pool=None):
+    def change_dir_prop(self, baton, name, value):
         assert self.recent_baton[-1] == baton
         return svn.delta.editor_invoke_change_dir_prop(self.editor, baton, 
-                                                       name, value, pool)
+                                                       name, value, None)
 
     def delete_entry(self, *args, **kwargs):
         return svn.delta.editor_invoke_delete_entry(self.editor, *args, **kwargs)
@@ -90,10 +90,10 @@ class Editor(object):
         self.recent_baton.append(baton)
         return baton
 
-    def change_file_prop(self, baton, name, value, pool=None):
+    def change_file_prop(self, baton, name, value):
         assert self.recent_baton[-1] == baton
         svn.delta.editor_invoke_change_file_prop(self.editor, baton, name, 
-                                                 value, pool)
+                                                 value, None)
 
     def close_file(self, baton, *args, **kwargs):
         assert self.recent_baton.pop() == baton
@@ -180,31 +180,30 @@ class RemoteAccess(object):
             self._baton = report_baton
             self._connection = connection
 
-        def set_path(self, path, revnum, start_empty, lock_token, pool=None):
+        def set_path(self, path, revnum, start_empty, lock_token):
             svn.ra.reporter2_invoke_set_path(self._reporter, self._baton, 
-                        path, revnum, start_empty, lock_token, pool)
+                        path, revnum, start_empty, lock_token, None)
 
-        def delete_path(self, path, pool=None):
+        def delete_path(self, path):
             svn.ra.reporter2_invoke_delete_path(self._reporter, self._baton,
-                    path, pool)
+                    path, None)
 
-        def link_path(self, path, url, revision, start_empty, lock_token, 
-                      pool=None):
+        def link_path(self, path, url, revision, start_empty, lock_token):
             svn.ra.reporter2_invoke_link_path(self._reporter, self._baton,
                     path, url, revision, start_empty, lock_token,
-                    pool)
+                    None)
 
-        def finish_report(self, pool=None):
+        def finish(self):
             try:
                 svn.ra.reporter2_invoke_finish_report(self._reporter, 
-                        self._baton, pool)
+                        self._baton, None)
             finally:
                 self._connection._unmark_busy()
 
-        def abort_report(self, pool=None):
+        def abort(self):
             try:
                 svn.ra.reporter2_invoke_abort_report(self._reporter, 
-                        self._baton, pool)
+                        self._baton, None)
             finally:
                 self._connection._unmark_busy()
 
@@ -246,20 +245,20 @@ class RemoteAccess(object):
         self.mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
-    def _make_editor(self, editor, pool=None):
-        edit, edit_baton = svn.delta.make_editor(editor, pool)
+    def _make_editor(self, editor):
+        edit, edit_baton = svn.delta.make_editor(editor, None)
         self._edit = edit
         self._edit_baton = edit_baton
         return self._edit, self._edit_baton
 
-    def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
+    def do_switch(self, switch_rev, recurse, switch_url, editor):
         self.mutter('svn switch -r %d -> %r', switch_rev, switch_url)
         self._mark_busy()
-        edit, edit_baton = self._make_editor(editor, pool)
+        edit, edit_baton = self._make_editor(editor)
         return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", 
-                             recurse, switch_url, edit, edit_baton, pool))
+                             recurse, switch_url, edit, edit_baton, None))
 
-    def change_rev_prop(self, revnum, name, value, pool=None):
+    def change_rev_prop(self, revnum, name, value):
         self.mutter('svn revprop -r%d --set %s=%s', revnum, name, value)
         svn.ra.change_rev_prop(self._ra, revnum, name, value)
 
@@ -274,7 +273,7 @@ class RemoteAccess(object):
         return svn.ra.unlock(self._ra, locks, break_lock, lock_cb)
  
     @needs_busy
-    def get_dir(self, path, revnum, pool=None, kind=False):
+    def get_dir(self, path, revnum, kind=False):
         self.mutter("svn ls -r %d '%r'", revnum, path)
         assert len(path) == 0 or path[0] != "/"
         # ra_dav backends fail with strange errors if the path starts with a 
@@ -306,26 +305,26 @@ class RemoteAccess(object):
                 raise FileExists(path)
             raise
 
-    def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
+    def replay(self, revision, low_water_mark, send_deltas, editor):
         self.mutter('svn replay -r%r:%r', low_water_mark, revision)
         self._mark_busy()
-        edit, edit_baton = self._make_editor(editor, pool)
+        edit, edit_baton = self._make_editor(editor)
         svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
-                      edit, edit_baton, pool)
+                      edit, edit_baton, None)
 
-    def do_update(self, revnum, recurse, editor, pool=None):
+    def do_update(self, revnum, recurse, editor):
         self.mutter('svn update -r %r', revnum)
         self._mark_busy()
-        edit, edit_baton = self._make_editor(editor, pool)
+        edit, edit_baton = self._make_editor(editor)
         return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
-                             recurse, edit, edit_baton, pool))
+                             recurse, edit, edit_baton, None))
 
     def has_capability(self, cap):
         return svn.ra.has_capability(self._ra, cap)
 
-    def revprop_list(self, revnum, pool=None):
+    def revprop_list(self, revnum):
         self.mutter('svn revprop-list -r %r', revnum)
-        return svn.ra.rev_proplist(self._ra, revnum, pool)
+        return svn.ra.rev_proplist(self._ra, revnum, None)
 
     def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
         self._mark_busy()
@@ -363,8 +362,7 @@ class RemoteAccess(object):
 
     @needs_busy
     def get_log(self, paths, from_revnum, to_revnum, limit, 
-                discover_changed_paths, strict_node_history, revprops, rcvr, 
-                pool=None):
+                discover_changed_paths, strict_node_history, revprops, rcvr):
         # No paths starting with slash, please
         assert paths is None or all([not p.startswith("/") for p in paths])
         if (paths is None and 
@@ -376,7 +374,7 @@ class RemoteAccess(object):
             return svn.ra.get_log2(self._ra, paths, 
                            from_revnum, to_revnum, limit, 
                            discover_changed_paths, strict_node_history, False, 
-                           revprops, rcvr, pool)
+                           revprops, rcvr, None)
 
         class LogEntry(object):
             def __init__(self, changed_paths, rev, author, date, message):
@@ -398,7 +396,7 @@ class RemoteAccess(object):
 
         return svn.ra.get_log(self._ra, paths, 
                               from_revnum, to_revnum, limit, discover_changed_paths, 
-                              strict_node_history, rcvr_convert, pool)
+                              strict_node_history, rcvr_convert, None)
 
     @needs_busy
     def reparent(self, url):

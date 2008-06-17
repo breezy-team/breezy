@@ -25,7 +25,6 @@ from bzrlib.trace import mutter
 from cStringIO import StringIO
 import md5
 
-from svn.core import Pool
 import svn.delta
 
 from bzrlib.plugins.svn import properties
@@ -103,7 +102,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.dir_baserev = {}
         self._revinfo = None
         self._premature_deletes = set()
-        self.pool = Pool()
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
         self._start_revision()
@@ -385,7 +383,6 @@ class RevisionBuildEditor(svn.delta.Editor):
     def close_edit(self):
         assert len(self._premature_deletes) == 0
         self._finish_commit()
-        self.pool.destroy()
 
     def apply_textdelta(self, file_id, base_checksum):
         actual_checksum = md5.new(self.file_data).hexdigest(),
@@ -394,7 +391,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                                                   actual_checksum))
         self.file_stream = StringIO()
         return apply_txdelta_handler(StringIO(self.file_data), 
-                                     self.file_stream, self.pool)
+                                     self.file_stream)
 
     def _store_file(self, file_id, lines, parents):
         raise NotImplementedError(self._store_file)
@@ -645,7 +642,7 @@ class InterFromSvnRepository(InterRepository):
                                 # Report status of existing paths
                                 reporter.set_path("", editor.revnum, True, None)
                             except:
-                                reporter.abort_report()
+                                reporter.abort()
                                 raise
                         else:
                             (parent_branch, parent_revnum, mapping) = \
@@ -663,13 +660,14 @@ class InterFromSvnRepository(InterRepository):
                                 # Report status of existing paths
                                 reporter.set_path("", parent_revnum, False, None)
                             except:
-                                reporter.abort_report()
+                                reporter.abort()
                                 raise
 
-                        reporter.finish_report()
+                        reporter.finish()
                     finally:
                         if conn is not None:
-                            self.source.transport.add_connection(conn)
+                            if not conn.is_busy():
+                                self.source.transport.add_connection(conn)
                 except:
                     editor.abort_edit()
                     raise
