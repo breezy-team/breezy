@@ -379,6 +379,9 @@ class BzrDir(object):
             if config is not None:
                 stack_on = config.get_default_stack_on()
                 if stack_on is not None:
+                    stack_on = urlutils.rebase_url(stack_on,
+                        found_bzrdir.root_transport.base,
+                        self.root_transport.base)
                     stop = True
             # does it have a repository ?
             try:

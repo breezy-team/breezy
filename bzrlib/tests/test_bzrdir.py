@@ -430,6 +430,13 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         repo_policy = child_bzrdir.determine_repository_policy()
         self.assertEqual('http://example.org', repo_policy._stack_on)
 
+    def test_determine_stacking_policy_relative(self):
+        parent_bzrdir = self.make_bzrdir('.')
+        child_bzrdir = self.make_bzrdir('child')
+        parent_bzrdir.get_config().set_default_stack_on('child2')
+        repo_policy = child_bzrdir.determine_repository_policy()
+        self.assertEqual('../child2', repo_policy._stack_on)
+
     def test_clone_on_transport_obeys_stacking_policy(self):
         parent_bzrdir = self.make_bzrdir('.')
         child_branch = self.make_branch('child', format='development1')
