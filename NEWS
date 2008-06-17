@@ -16,6 +16,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Clearer message about how to set the PYTHONPATH if bzrlib can't be
+      loaded. 
+      (Martin Pool, #205230)
+
     * Errors about missing libraries are now shown without a traceback,
       and with a suggestion to install the library.  The full traceback is 
       still in ``.bzr.log`` and can be shown with ``-Derror``.
