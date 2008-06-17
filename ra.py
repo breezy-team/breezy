@@ -38,6 +38,74 @@ txdelta_send_stream = svn.delta.svn_txdelta_send_stream
 
 DIRENT_KIND = 0x0001
 
+class FileEditor(object):
+    def __init__(self, base_editor, baton):
+        self.base_editor = base_editor
+        self.baton = baton
+
+    def apply_textdelta(self, base_checksum=None):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        return svn.delta.editor_invoke_apply_textdelta(self.base_editor.editor, self.baton,
+                base_checksum)
+
+    def change_prop(self, name, value):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        svn.delta.editor_invoke_change_file_prop(self.base_editor.editor, self.baton, name, 
+                                                 value, None)
+
+    def close(self, checksum=None):
+        assert self.base_editor.recent_baton.pop() == self.baton
+        svn.delta.editor_invoke_close_file(self.base_editor.editor, self.baton, checksum)
+
+
+class DirEditor(object):
+    def __init__(self, base_editor, baton):
+        self.base_editor = base_editor
+        self.baton = baton
+
+    def close(self):
+        assert self.base_editor.recent_baton.pop() == self.baton, \
+                "only most recently opened baton can be closed"
+        svn.delta.editor_invoke_close_directory(self.base_editor.editor, self.baton)
+
+    def change_prop(self, name, value):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        return svn.delta.editor_invoke_change_dir_prop(self.base_editor.editor, self.baton, 
+                                                       name, value, None)
+
+    def delete_entry(self, path, revnum):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        return svn.delta.editor_invoke_delete_entry(self.base_editor.editor, path, revnum, self.baton, None)
+
+    def add_file(self, path, copy_path=None, copy_revision=-1):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        baton = svn.delta.editor_invoke_add_file(self.base_editor.editor, path, 
+            self.baton, copy_path, copy_revision)
+        self.base_editor.recent_baton.append(baton)
+        return FileEditor(self.base_editor, baton)
+
+    def open_file(self, path, base_revision=-1):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        baton = svn.delta.editor_invoke_open_file(self.base_editor.editor, path, self.baton,
+                                                 base_revision)
+        self.base_editor.recent_baton.append(baton)
+        return FileEditor(self.base_editor, baton)
+
+    def add_directory(self, path, copy_path=None, copy_revision=-1):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        baton = svn.delta.editor_invoke_add_directory(self.base_editor.editor, path, 
+            self.baton, copy_path, copy_revision)
+        self.base_editor.recent_baton.append(baton)
+        return DirEditor(self.base_editor, baton)
+
+    def open_directory(self, path, base_revision=-1):
+        assert self.base_editor.recent_baton[-1] == self.baton
+        baton = svn.delta.editor_invoke_open_directory(self.base_editor.editor, path, 
+            self.baton, base_revision)
+        self.base_editor.recent_baton.append(baton)
+        return DirEditor(self.base_editor, baton)
+
+
 class Editor(object):
     """Simple object wrapper around the Subversion delta editor interface."""
     def __init__(self, connection, (editor, editor_baton)):
@@ -51,67 +119,12 @@ class Editor(object):
         baton = svn.delta.editor_invoke_open_root(self.editor, 
                 self.editor_baton, base_revnum)
         self.recent_baton.append(baton)
-        return baton
-
-    def close_directory(self, baton, *args, **kwargs):
-        assert self.recent_baton.pop() == baton, \
-                "only most recently opened baton can be closed"
-        svn.delta.editor_invoke_close_directory(self.editor, baton, *args, **kwargs)
+        return DirEditor(self, baton)
 
     def close(self):
         assert self.recent_baton == []
         svn.delta.editor_invoke_close_edit(self.editor, self.editor_baton)
         self._connection._unmark_busy()
-
-    def apply_textdelta(self, baton, *args, **kwargs):
-        assert self.recent_baton[-1] == baton
-        return svn.delta.editor_invoke_apply_textdelta(self.editor, baton,
-                *args, **kwargs)
-
-    def change_dir_prop(self, baton, name, value):
-        assert self.recent_baton[-1] == baton
-        return svn.delta.editor_invoke_change_dir_prop(self.editor, baton, 
-                                                       name, value, None)
-
-    def delete_entry(self, *args, **kwargs):
-        return svn.delta.editor_invoke_delete_entry(self.editor, *args, **kwargs)
-
-    def add_file(self, path, parent_baton, *args, **kwargs):
-        assert self.recent_baton[-1] == parent_baton
-        baton = svn.delta.editor_invoke_add_file(self.editor, path, 
-            parent_baton, *args, **kwargs)
-        self.recent_baton.append(baton)
-        return baton
-
-    def open_file(self, path, parent_baton, *args, **kwargs):
-        assert self.recent_baton[-1] == parent_baton
-        baton = svn.delta.editor_invoke_open_file(self.editor, path, 
-                                                 parent_baton, *args, **kwargs)
-        self.recent_baton.append(baton)
-        return baton
-
-    def change_file_prop(self, baton, name, value):
-        assert self.recent_baton[-1] == baton
-        svn.delta.editor_invoke_change_file_prop(self.editor, baton, name, 
-                                                 value, None)
-
-    def close_file(self, baton, *args, **kwargs):
-        assert self.recent_baton.pop() == baton
-        svn.delta.editor_invoke_close_file(self.editor, baton, *args, **kwargs)
-
-    def add_directory(self, path, parent_baton, *args, **kwargs):
-        assert self.recent_baton[-1] == parent_baton
-        baton = svn.delta.editor_invoke_add_directory(self.editor, path, 
-            parent_baton, *args, **kwargs)
-        self.recent_baton.append(baton)
-        return baton
-
-    def open_directory(self, path, parent_baton, *args, **kwargs):
-        assert self.recent_baton[-1] == parent_baton
-        baton = svn.delta.editor_invoke_open_directory(self.editor, path, 
-            parent_baton, *args, **kwargs)
-        self.recent_baton.append(baton)
-        return baton
 
 
 class Auth:
@@ -310,7 +323,7 @@ class RemoteAccess(object):
         svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
                       edit, edit_baton, None)
 
-    def do_update(self, revnum, recurse, path, editor):
+    def do_update(self, revnum, path, recurse, editor):
         self.mutter('svn update -r %r', revnum)
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor)
@@ -324,7 +337,7 @@ class RemoteAccess(object):
         self.mutter('svn revprop-list -r %r', revnum)
         return svn.ra.rev_proplist(self._ra, revnum, None)
 
-    def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
+    def get_commit_editor(self, revprops, done_cb=None, lock_token=None, keep_locks=False):
         self._mark_busy()
         try:
             if hasattr(svn.ra, 'get_commit_editor3'):

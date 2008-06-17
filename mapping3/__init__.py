@@ -122,10 +122,10 @@ def set_property_scheme(repository, scheme):
     editor = repository.transport.get_commit_editor(
             {properties.PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
             done, None, False)
-    root = editor.open_root(-1)
-    editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
+    root = editor.open_root()
+    root.change_prop(SVN_PROP_BZR_BRANCHING_SCHEME, 
             "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
-    editor.close_directory(root)
+    root.close()
     editor.close()
 
 

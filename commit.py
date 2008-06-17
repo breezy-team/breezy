@@ -193,7 +193,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param baton: Baton under which the file is known to the editor.
         """
         assert baton is not None
-        (txdelta, txbaton) = self.editor.apply_textdelta(baton, None)
+        (txdelta, txbaton) = baton.apply_textdelta(None)
         digest = txdelta_send_stream(StringIO(contents), txdelta, txbaton)
         if 'validate' in debug.debug_flags:
             from fetch import md5_strings
@@ -222,9 +222,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                     # ... name changed
                     self.new_inventory[child_ie.file_id].name != child_name):
                     self.mutter('removing %r(%r)', (child_name, child_ie.file_id))
-                    self.editor.delete_entry(
+                    baton.delete_entry(
                         urlutils.join(self.branch.get_branch_path(), path, child_name), 
-                        self.base_revnum, baton)
+                        self.base_revnum)
 
         # Loop over file children of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -240,8 +240,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding %s %r', child_ie.kind, new_child_path)
-                child_baton = self.editor.add_file(
-                    full_new_child_path, baton, None, -1)
+                child_baton = baton.add_file(
+                    full_new_child_path, None, -1)
 
 
             # copy if they existed at different location
@@ -250,8 +250,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter('copy %s %r -> %r', child_ie.kind, 
                                   self.old_inv.id2path(child_ie.file_id), 
                                   new_child_path)
-                child_baton = self.editor.add_file(
-                        full_new_child_path, baton,
+                child_baton = baton.add_file(
+                        full_new_child_path, 
                     urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
                     self.base_revnum)
 
@@ -259,8 +259,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             elif child_ie.revision is None:
                 self.mutter('open %s %r', child_ie.kind, new_child_path)
 
-                child_baton = self.editor.open_file(
-                        full_new_child_path, baton, self.base_revnum)
+                child_baton = baton.open_file(
+                        full_new_child_path, self.base_revnum)
 
             else:
                 # Old copy of the file was retained. No need to send changes
@@ -280,7 +280,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                         value = properties.PROP_EXECUTABLE_VALUE
                     else:
                         value = None
-                    self.editor.change_file_prop(child_baton, 
+                    child_baton.change_prop(
                             properties.PROP_EXECUTABLE, value)
 
                 if old_special != (child_ie.kind == 'symlink'):
@@ -289,7 +289,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     else:
                         value = None
 
-                    self.editor.change_file_prop(child_baton, 
+                    child_baton.change_prop(
                             properties.PROP_SPECIAL, value)
 
             # handle the file
@@ -298,7 +298,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.modified_files[child_ie.file_id], child_baton)
 
             if child_baton is not None:
-                self.editor.close_file(child_baton, None)
+                child_baton.close(None)
 
         # Loop over subdirectories of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -310,17 +310,16 @@ class SvnCommitBuilder(RootCommitBuilder):
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding dir %r', child_ie.name)
-                child_baton = self.editor.add_directory(
+                child_baton = baton.add_directory(
                     urlutils.join(self.branch.get_branch_path(), 
-                                  new_child_path), baton, None, -1)
+                                  new_child_path), None, -1)
 
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != new_child_path:
                 old_child_path = self.old_inv.id2path(child_ie.file_id)
                 self.mutter('copy dir %r -> %r', old_child_path, new_child_path)
-                child_baton = self.editor.add_directory(
+                child_baton = baton.add_directory(
                     urlutils.join(self.branch.get_branch_path(), new_child_path),
-                    baton, 
                     urlutils.join(self.repository.transport.svn_url, self.base_path, old_child_path), self.base_revnum)
 
             # open if they existed at the same location and 
@@ -328,9 +327,9 @@ class SvnCommitBuilder(RootCommitBuilder):
             elif self.new_inventory[child_ie.file_id].revision is None:
                 self.mutter('open dir %r', new_child_path)
 
-                child_baton = self.editor.open_directory(
+                child_baton = baton.open_directory(
                         urlutils.join(self.branch.get_branch_path(), new_child_path), 
-                        baton, self.base_revnum)
+                        self.base_revnum)
             else:
                 assert child_ie.file_id not in self.modified_dirs
                 continue
@@ -339,7 +338,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if child_ie.file_id in self.modified_dirs:
                 self._dir_process(new_child_path, child_ie.file_id, child_baton)
 
-            self.editor.close_directory(child_baton)
+            child_baton.close()
 
     def open_branch_batons(self, root, elements, existing_elements, 
                            base_path, base_rev, replace_existing):
@@ -360,8 +359,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         # Open paths leading up to branch
         for i in range(0, len(elements)-1):
             # Does directory already exist?
-            ret.append(self.editor.open_directory(
-                "/".join(existing_elements[0:i+1]), ret[-1], -1))
+            ret.append(ret[-1].open_directory(
+                "/".join(existing_elements[0:i+1]), -1))
 
         if (len(existing_elements) != len(elements) and
             len(existing_elements)+1 != len(elements)):
@@ -374,8 +373,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         # branch_path.
         if (len(existing_elements) == len(elements) and 
             not replace_existing):
-            ret.append(self.editor.open_directory(
-                "/".join(elements), ret[-1], base_rev))
+            ret.append(ret[-1].open_directory(
+                "/".join(elements), base_rev))
         else: # Branch has to be created
             # Already exists, old copy needs to be removed
             name = "/".join(elements)
@@ -383,14 +382,14 @@ class SvnCommitBuilder(RootCommitBuilder):
                 if name == "":
                     raise ChangesRootLHSHistory()
                 self.mutter("removing branch dir %r", name)
-                self.editor.delete_entry(name, -1, ret[-1])
+                ret[-1].delete_entry(name, -1)
             if base_path is not None:
                 base_url = urlutils.join(self.repository.transport.svn_url, base_path)
             else:
                 base_url = None
             self.mutter("adding branch dir %r", name)
-            ret.append(self.editor.add_directory(
-                name, ret[-1], base_url, base_rev))
+            ret.append(ret[-1].add_directory(
+                name, base_url, base_rev))
 
         return ret
 
@@ -493,11 +492,11 @@ class SvnCommitBuilder(RootCommitBuilder):
                     warning("Setting property %r with invalid characters in name", prop)
                 if value is not None:
                     value = value.encode('utf-8')
-                self.editor.change_dir_prop(branch_batons[-1], prop, value)
+                branch_batons[-1].change_prop(prop, value)
                 self.mutter("Setting root file property %r -> %r", prop, value)
 
             for baton in reversed(branch_batons):
-                self.editor.close_directory(baton)
+                baton.close()
 
             self.editor.close()
         finally:
