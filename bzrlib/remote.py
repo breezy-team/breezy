@@ -840,7 +840,7 @@ class RemoteRepository(object):
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
-        if not medium._is_remote_at_least((1, 2)):
+        if medium._is_remote_before((1, 2)):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
@@ -1080,7 +1080,7 @@ class RemoteRepository(object):
 
     def get_data_stream_for_search(self, search):
         medium = self._client._medium
-        if not medium._is_remote_at_least((1, 2)):
+        if medium._is_remote_before((1, 2)):
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
