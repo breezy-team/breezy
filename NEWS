@@ -16,6 +16,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Errors about missing libraries are now shown without a traceback,
+      and with a suggestion to install the library.  The full traceback is 
+      still in ``.bzr.log`` and can be shown with ``-Derror``.
+      (Martin Pool, #240161)
+
     * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
       ``unlock`` if there was an error in the original function. This helps
       most when there is a failure with a smart server action, since often the
