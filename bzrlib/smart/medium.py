@@ -457,17 +457,17 @@ class SmartClientMedium(object):
                 try:
                     do_1_2_rpc()
                 except UnknownSmartMethod:
-                    medium._remote_is_not(needed_version)
+                    medium._remember_remote_is_before(needed_version)
                     fallback_to_pre_1_2_rpc()
 
-        :seealso: _remote_is_not
+        :seealso: _remember_remote_is_before
         """
         if self._remote_version_is_less_than is None:
             # So far, the remote side seems to support everything
             return True
         return version_tuple < self._remote_version_is_less_than
 
-    def _remote_is_not(self, version_tuple):
+    def _remember_remote_is_before(self, version_tuple):
         """Tell this medium that the remote side is older the given version.
 
         :seealso: _is_remote_at_least
@@ -475,8 +475,8 @@ class SmartClientMedium(object):
         if (self._remote_version_is_less_than is not None and
             version_tuple > self._remote_version_is_less_than):
             raise AssertionError, (
-                "_remote_is_not(%r) called, but _remote_is_not(%r) was called "
-                "previously."
+                "_remember_remote_is_before(%r) called, but "
+                "_remember_remote_is_before(%r) was called previously."
                 % (version_tuple, self._remote_version_is_less_than))
         self._remote_version_is_less_than = version_tuple
 

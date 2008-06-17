@@ -919,7 +919,7 @@ class RemoteRepository(object):
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
-            medium._remote_is_not((1, 2))
+            medium._remember_remote_is_before((1, 2))
             return self.get_revision_graph(None)
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
@@ -1101,7 +1101,7 @@ class RemoteRepository(object):
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand this remote method.
-            medium._remote_is_not((1, 2))
+            medium._remember_remote_is_before((1, 2))
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
 
