@@ -23,8 +23,7 @@ from bzrlib.lockable_files import TransportLock
 import os
 
 lazy_import(globals(), """
-from bzrlib.plugins.svn import errors
-from bzrlib.plugins.svn import remote
+from bzrlib.plugins.svn import errors, remote
 
 from bzrlib import errors as bzr_errors
 """)
@@ -84,7 +83,7 @@ class SvnRemoteFormat(BzrDirFormat):
         """See BzrDir.initialize_on_transport()."""
         from transport import get_svn_ra_transport
         from bzrlib.transport.local import LocalTransport
-        import svn.repos
+        from svn import repos
 
         if not isinstance(transport, LocalTransport):
             raise NotImplementedError(self.initialize, 
@@ -92,7 +91,7 @@ class SvnRemoteFormat(BzrDirFormat):
                 "non-local transports")
 
         local_path = transport._local_base.rstrip("/")
-        svn.repos.create(local_path, '', '', None, None)
+        repos.create(local_path, '', '', None, None)
         # All revision property changes
         revprop_hook = os.path.join(local_path, "hooks", "pre-revprop-change")
         open(revprop_hook, 'w').write("#!/bin/sh")

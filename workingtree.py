@@ -16,7 +16,7 @@
 """Checkouts and working trees (working copies)."""
 
 import bzrlib, bzrlib.add
-from bzrlib import urlutils
+from bzrlib import osutils, urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
@@ -25,7 +25,6 @@ from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import file_kind, fingerprint_file, supports_executable
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
@@ -252,7 +251,7 @@ class SvnWorkingTree(WorkingTree):
                 file = InventoryFile(id, os.path.basename(relpath), parent_id)
                 file.revision = revid
                 try:
-                    data = fingerprint_file(open(self.abspath(relpath)))
+                    data = osutils.fingerprint_file(open(self.abspath(relpath)))
                     file.text_sha1 = data['sha1']
                     file.text_size = data['size']
                     file.executable = self.is_executable(id, relpath)
@@ -504,7 +503,7 @@ class SvnWorkingTree(WorkingTree):
                         mutter('adding %r', file_path)
                         svn.wc.add2(file_path, wc, None, 0, None, None, None)
                     added.append(file_path)
-                if recurse and file_kind(file_path) == 'directory':
+                if recurse and osutils.file_kind(file_path) == 'directory':
                     # Filter out ignored files and update ignored
                     for c in os.listdir(file_path):
                         if self.is_control_filename(c):
@@ -578,7 +577,7 @@ class SvnWorkingTree(WorkingTree):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return fingerprint_file(open(self.abspath(path)))['sha1']
+        return osutils.fingerprint_file(open(self.abspath(path)))['sha1']
 
     def _change_fileid_mapping(self, id, path, wc=None):
         if wc is None:
@@ -690,7 +689,7 @@ class SvnWorkingTree(WorkingTree):
         finally:
             self.branch.unlock()
 
-    if not supports_executable():
+    if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             inv = self.basis_tree()._inventory
             if file_id in inv:

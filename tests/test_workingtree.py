@@ -26,7 +26,7 @@ from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-import svn.wc
+from svn import wc
 
 from bzrlib.plugins.svn.transport import svn_config
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
@@ -208,13 +208,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_get_ignore_list_empty(self):
         self.make_client('a', 'dc')
         tree = self.open_checkout("dc")
-        self.assertEqual(set([".svn"] + svn.wc.get_default_ignores(svn_config)), tree.get_ignore_list())
+        self.assertEqual(set([".svn"] + wc.get_default_ignores(svn_config)), tree.get_ignore_list())
 
     def test_get_ignore_list_onelevel(self):
         self.make_client('a', 'dc')
         self.client_set_prop("dc", "svn:ignore", "*.d\n*.c\n")
         tree = self.open_checkout("dc")
-        self.assertEqual(set([".svn"] + svn.wc.get_default_ignores(svn_config) + ["./*.d", "./*.c"]), tree.get_ignore_list())
+        self.assertEqual(set([".svn"] + wc.get_default_ignores(svn_config) + ["./*.d", "./*.c"]), tree.get_ignore_list())
 
     def test_get_ignore_list_morelevel(self):
         self.make_client('a', 'dc')
@@ -223,7 +223,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/x")
         self.client_set_prop("dc/x", "svn:ignore", "*.e\n")
         tree = self.open_checkout("dc")
-        self.assertEqual(set([".svn"] + svn.wc.get_default_ignores(svn_config) + ["./*.d", "./*.c", "./x/*.e"]), tree.get_ignore_list())
+        self.assertEqual(set([".svn"] + wc.get_default_ignores(svn_config) + ["./*.d", "./*.c", "./x/*.e"]), tree.get_ignore_list())
 
     def test_add_reopen(self):
         self.make_client('a', 'dc')
