@@ -3355,20 +3355,6 @@ class cmd_shell_complete(Command):
         shellcomplete.shellcomplete(context)
 
 
-class cmd_fetch(Command):
-    """Copy in history from another branch but don't merge it.
-
-    This is an internal method used for pull and merge.
-    """
-    hidden = True
-    takes_args = ['from_branch', 'to_branch']
-    def run(self, from_branch, to_branch):
-        from bzrlib.fetch import Fetcher
-        from_b = Branch.open(from_branch)
-        to_b = Branch.open(to_branch)
-        Fetcher(to_b, from_b)
-
-
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
     
