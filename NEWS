@@ -29,6 +29,9 @@ IN DEVELOPMENT
       Cygwin Bazaar.
       (Matt McClure, #209281)
 
+    * revision_history now tolerates mainline ghosts for Branch format 6.
+      (Aaron Bentley, #235055)
+
   DOCUMENTATION:
 
     * Updated developer documentation.
