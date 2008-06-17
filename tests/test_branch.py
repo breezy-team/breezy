@@ -596,7 +596,6 @@ foohosts""")
         repos_url = self.make_repository('d')
 
         dc = self.commit_editor(repos_url)
-
         dc.add_dir("trunk")
         dc.add_file("trunk/hosts")
         dc.done()

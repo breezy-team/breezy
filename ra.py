@@ -338,6 +338,10 @@ class RemoteAccess(object):
         return svn.ra.rev_proplist(self._ra, revnum, None)
 
     def get_commit_editor(self, revprops, done_cb=None, lock_token=None, keep_locks=False):
+        def dummy_done(meta, pool):
+            pass
+        if done_cb is None:
+            done_cb = dummy_done
         self._mark_busy()
         try:
             if hasattr(svn.ra, 'get_commit_editor3'):

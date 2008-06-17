@@ -65,10 +65,10 @@ class SvnRemoteFormat(BzrDirFormat):
         return format
 
     def _open(self, transport):
-        from bzrlib.plugins.svn import core
+        from bzrlib.plugins.svn.core import SubversionException
         try: 
             return remote.SvnRemoteAccess(transport, self)
-        except core.SubversionException, (_, num):
+        except SubversionException, (_, num):
             if num == errors.ERR_RA_DAV_REQUEST_FAILED:
                 raise bzr_errors.NotBranchError(transport.base)
             raise
@@ -114,12 +114,12 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
     @classmethod
     def probe_transport(klass, transport):
-        import svn
         from bzrlib.transport.local import LocalTransport
+        from svn import wc
         format = klass()
 
         if isinstance(transport, LocalTransport) and \
-            transport.has(svn.wc.get_adm_dir()):
+            transport.has(wc.get_adm_dir()):
             return format
 
         raise bzr_errors.NotBranchError(path=transport.base)

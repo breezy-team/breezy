@@ -28,6 +28,7 @@ import md5
 import svn.delta
 
 from bzrlib.plugins.svn import properties
+from bzrlib.plugins.svn.delta import apply_txdelta_handler
 from bzrlib.plugins.svn.errors import InvalidFileName
 from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE, 
@@ -38,7 +39,7 @@ from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE,
                      parse_revision_metadata)
 from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
-from bzrlib.plugins.svn.tree import (apply_txdelta_handler, parse_externals_description, 
+from bzrlib.plugins.svn.tree import (parse_externals_description, 
                   inventory_add_external)
 
 
@@ -390,8 +391,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             "base checksum mismatch: %r != %r" % (base_checksum, 
                                                   actual_checksum))
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(self.file_data), 
-                                     self.file_stream)
+        return apply_txdelta_handler(self.file_data, self.file_stream)
 
     def _store_file(self, file_id, lines, parents):
         raise NotImplementedError(self._store_file)

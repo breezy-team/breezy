@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2008 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,17 +18,18 @@
 from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.inventory import Inventory, InventoryDirectory, TreeReference
-
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
+
+from bzrlib.plugins.svn.delta import apply_txdelta_handler
 
 import os
 import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.wc, svn.delta
+import svn.wc
 
 from bzrlib.plugins.svn import errors, properties, core
 
@@ -96,33 +97,6 @@ def inventory_add_external(inv, parent_id, path, revid, ref_revnum, url):
     inv.add(ie)
 
 
-# Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
-# slightly different).
-
-if hasattr(svn.delta, 'tx_invoke_window_handler'):
-    def apply_txdelta_handler(src_stream, target_stream):
-        assert hasattr(src_stream, 'read')
-        assert hasattr(target_stream, 'write')
-        window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
-                                                   None)
-
-        def wrapper(window):
-            window_handler(window, baton)
-
-        return wrapper
-else:
-    def apply_txdelta_handler(src_stream, target_stream):
-        assert hasattr(src_stream, 'read')
-        assert hasattr(target_stream, 'write')
-        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None)
-
-        def wrapper(window):
-            svn.delta.invoke_txdelta_window_handler(
-                ret[1], window, ret[2])
-
-        return wrapper
-
-
 class SvnRevisionTree(RevisionTree):
     """A tree that existed in a historical Subversion revision."""
     def __init__(self, repository, revision_id):
@@ -146,14 +120,12 @@ class SvnRevisionTree(RevisionTree):
         return osutils.split_lines(self.file_data[file_id])
 
 
-class TreeBuildEditor(svn.delta.Editor):
+class TreeBuildEditor:
     """Builds a tree given Subversion tree transform calls."""
     def __init__(self, tree):
         self.tree = tree
         self.repository = tree._repository
         self.last_revnum = {}
-        self.dir_revnum = {}
-        self.dir_ignores = {}
 
     def set_target_revision(self, revnum):
         self.revnum = revnum
@@ -173,15 +145,13 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        if name == properties.PROP_ENTRY_COMMITTED_REV:
-            self.dir_revnum[id] = int(value)
-        elif name == properties.PROP_IGNORE:
-            self.dir_ignores[id] = value
-        elif name in (properties.PROP_ENTRY_COMMITTED_DATE,
-                      properties.PROP_ENTRY_LAST_AUTHOR,
-                      properties.PROP_ENTRY_LOCK_TOKEN,
-                      properties.PROP_ENTRY_UUID,
-                      properties.PROP_EXECUTABLE):
+        if name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                    properties.PROP_ENTRY_LAST_AUTHOR,
+                    properties.PROP_ENTRY_LOCK_TOKEN,
+                    properties.PROP_ENTRY_COMMITTED_REV,
+                    properties.PROP_ENTRY_UUID,
+                    properties.PROP_IGNORE,
+                    properties.PROP_EXECUTABLE):
             pass
         elif name.startswith(properties.PROP_WC_PREFIX):
             pass
@@ -215,8 +185,7 @@ class TreeBuildEditor(svn.delta.Editor):
         return path
 
     def close_dir(self, id):
-        if id in self.tree._inventory and self.dir_ignores.has_key(id):
-            self.tree._inventory[id].ignores = self.dir_ignores[id]
+        pass
 
     def close_file(self, path, checksum):
         file_id, revision_id = self.tree.id_map[path]
@@ -258,7 +227,7 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def apply_textdelta(self, file_id, base_checksum):
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(""), self.file_stream)
+        return apply_txdelta_handler("", self.file_stream)
 
 
 class SvnBasisTree(RevisionTree):

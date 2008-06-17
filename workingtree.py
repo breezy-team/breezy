@@ -72,7 +72,8 @@ def generate_ignore_list(ignore_map):
 class SvnWorkingTree(WorkingTree):
     """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
-        self._format = SvnWorkingTreeFormat()
+        version = wc.check_wc(local_path)
+        self._format = SvnWorkingTreeFormat(version)
         self.basedir = local_path
         assert isinstance(self.basedir, unicode)
         self.bzrdir = bzrdir
@@ -700,16 +701,19 @@ class SvnWorkingTree(WorkingTree):
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     """Subversion working copy format."""
+    def __init__(self, version):
+        self.version = version
+
     def __get_matchingbzrdir(self):
         return SvnWorkingTreeDirFormat()
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
     def get_format_description(self):
-        return "Subversion Working Copy"
+        return "Subversion Working Copy Version %d" % self.version
 
     def get_format_string(self):
-        return "Subversion Working Copy Format"
+        raise NotImplementedError
 
     def initialize(self, a_bzrdir, revision_id=None):
         raise NotImplementedError(self.initialize)
