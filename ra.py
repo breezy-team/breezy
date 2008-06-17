@@ -168,7 +168,7 @@ class RemoteAccess(object):
                     self._client)
         except SubversionException, (_, num):
             if num == svn_errors.ERR_RA_SVN_REPOS_NOT_FOUND:
-                raise NoSvnRepositoryPresent(url=url)
+                raise svn_errors.NoSvnRepositoryPresent(url=url)
             if num == svn_errors.ERR_BAD_URL:
                 raise InvalidURL(url)
             raise

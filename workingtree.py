@@ -653,7 +653,7 @@ class SvnWorkingTree(WorkingTree):
         merges.append(revid)
         self.set_pending_merges(merges)
 
-    def pending_merges(self):
+    def get_parent_ids(self):
         merged = self._get_bzr_merges(self._get_base_branch_props()).splitlines()
         wc = self._get_wc()
         try:
@@ -670,9 +670,9 @@ class SvnWorkingTree(WorkingTree):
                len(merged)+1 == len(set_merged))
 
         if len(set_merged) > len(merged):
-            return set_merged[-1].split("\t")
+            return [self.base_revid] + set_merged[-1].split("\t")
 
-        return []
+        return [self.base_revid]
 
     def _reset_data(self):
         pass
