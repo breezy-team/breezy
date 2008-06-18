@@ -1167,8 +1167,8 @@ class _PlanMergeVersionedFile(VersionedFiles):
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
         """
-        if type(key) != tuple:
-            import pdb;pdb.set_trace()
+        if type(key) is not tuple:
+            raise TypeError(key)
         if not revision.is_reserved_id(key[-1]):
             raise ValueError('Only reserved ids may be used')
         if parents is None:
