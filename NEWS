@@ -31,11 +31,20 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * Removed ``Repository.text_store``, ``control_store``, etc.  Instead,
+      there are new attributes ``texts, inventories, revisions,
+      signatures``, each of which is a ``VersionedFiles``.  See the
+      Repository docstring for more details.
+      (Robert Collins)
+
   INTERNALS:
 
     * New ``versionedfile.KeyMapper`` interface to abstract out the access to
-      underyling .knit/.kndx etc files in repositories with partitioned
+      underlying .knit/.kndx etc files in repositories with partitioned
       storage. (Robert Collins)
+
+    * Obsolete developer-use command ``weave-join`` has been removed.
+      (Robert Collins)
 
 
 bzr 1.6beta2 2008-06-10
