@@ -63,7 +63,6 @@ from bzrlib.osutils import (
     )
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart import protocol
-from bzrlib.repofmt.weaverepo import TextRevisionStore, RevisionTextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
@@ -2057,6 +2056,7 @@ class ConvertBzrDir4To5(Converter):
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
         from bzrlib.xml5 import serializer_v5
+        from bzrlib.repofmt.weaverepo import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
             serializer_v5, False, versionedfile.PrefixMapper(),
             lambda:True, lambda:True)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1425,7 +1425,7 @@ class DirStateRevisionTree(Tree):
         """See Tree.annotate_iter"""
         text_key = (file_id, self.inventory[file_id].revision)
         annotations = self._repository.texts.annotate(text_key)
-        return [(key[-1], line) for key, line in annotations]
+        return [(key[-1], line) for (key, line) in annotations]
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,

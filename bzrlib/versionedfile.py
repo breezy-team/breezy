@@ -542,7 +542,7 @@ class RecordingVersionedFilesDecorator(object):
 
 
 class KeyMapper(object):
-    """KeyMappers map between keys and underlying paritioned storage."""
+    """KeyMappers map between keys and underlying partitioned storage."""
 
     def map(self, key):
         """Map key to an underlying storage identifier.
@@ -557,7 +557,7 @@ class KeyMapper(object):
         """Map a partitioned storage id back to a key prefix.
         
         :param partition_id: The underlying partition id.
-        :return: As much of a key (or prefix) as is derivable from the parition
+        :return: As much of a key (or prefix) as is derivable from the partition
             id.
         """
         raise NotImplementedError(self.unmap)

@@ -638,7 +638,6 @@ class Repository(object):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-        :param revisions: The revisions store for the repository.
 
         In the future we will have a single api for all stores for
         getting file texts, inventories and revisions, then
@@ -787,6 +786,8 @@ class Repository(object):
         # XXX: This is available for many repos regardless of listability.
         if self.bzrdir.root_transport.listable():
             # XXX: do we want to __define len__() ?
+            # Maybe the versionedfiles object should provide a different
+            # method to get the number of keys.
             result['revisions'] = len(self.revisions.keys())
             # result['size'] = t
         return result
