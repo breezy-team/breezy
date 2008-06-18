@@ -93,6 +93,28 @@ class TestTrace(TestCase):
         self.assertTrue(len(msg) > 0)
         self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: \"wibble\".\n')
 
+    def test_report_external_import_error(self):
+        """Short friendly message for missing system modules."""
+        try:
+            import ImaginaryModule
+        except ImportError, e:
+            pass
+        else:
+            self.fail("somehow succeeded in importing %r" % ImaginaryModule)
+        msg = _format_exception()
+        self.assertEqual(msg,
+            'bzr: ERROR: No module named ImaginaryModule\n'
+            'You may need to install this Python library separately.\n')
+
+    def test_report_import_syntax_error(self):
+        try:
+            raise ImportError("syntax error")
+        except ImportError, e:
+            pass
+        msg = _format_exception()
+        self.assertContainsRe(msg,
+            r"Traceback \(most recent call last\)")
+
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')

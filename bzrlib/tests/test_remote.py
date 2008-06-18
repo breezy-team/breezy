@@ -261,22 +261,24 @@ class Test_ClientMedium_remote_is_at_least(tests.TestCase):
         versions.
         """
         client_medium = medium.SmartClientMedium('dummy base')
-        self.assertTrue(client_medium._is_remote_at_least((99, 99)))
+        self.assertFalse(client_medium._is_remote_before((99, 99)))
     
-    def test__remote_is_not(self):
-        """Calling _remote_is_not ratchets down the known remote version."""
+    def test__remember_remote_is_before(self):
+        """Calling _remember_remote_is_before ratchets down the known remote
+        version.
+        """
         client_medium = medium.SmartClientMedium('dummy base')
         # Mark the remote side as being less than 1.6.  The remote side may
         # still be 1.5.
-        client_medium._remote_is_not((1, 6))
-        self.assertFalse(client_medium._is_remote_at_least((1, 6)))
-        self.assertTrue(client_medium._is_remote_at_least((1, 5)))
-        # Calling _remote_is_not again with a lower value works.
-        client_medium._remote_is_not((1, 5))
-        self.assertFalse(client_medium._is_remote_at_least((1, 5)))
-        # You cannot call _remote_is_not with a larger value.
+        client_medium._remember_remote_is_before((1, 6))
+        self.assertTrue(client_medium._is_remote_before((1, 6)))
+        self.assertFalse(client_medium._is_remote_before((1, 5)))
+        # Calling _remember_remote_is_before again with a lower value works.
+        client_medium._remember_remote_is_before((1, 5))
+        self.assertTrue(client_medium._is_remote_before((1, 5)))
+        # You cannot call _remember_remote_is_before with a larger value.
         self.assertRaises(
-            AssertionError, client_medium._remote_is_not, (1, 9))
+            AssertionError, client_medium._remember_remote_is_before, (1, 9))
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -924,7 +926,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_unknown_method_response('Repository,get_parent_map')
         client.add_success_response_with_body('', 'ok')
-        self.assertTrue(client._medium._is_remote_at_least((1, 2)))
+        self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
         expected_deprecations = [
             'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
@@ -939,7 +941,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
               ('quack/', ''))],
             client._calls)
         # The medium is now marked as being connected to an older server
-        self.assertFalse(client._medium._is_remote_at_least((1, 2)))
+        self.assertTrue(client._medium._is_remote_before((1, 2)))
 
     def test_get_parent_map_fallback_parentless_node(self):
         """get_parent_map falls back to get_revision_graph on old servers.  The
@@ -956,7 +958,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(rev_id, 'ok')
-        client._medium._remote_is_not((1, 2))
+        client._medium._remember_remote_is_before((1, 2))
         expected_deprecations = [
             'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
             'in version 1.4.']

@@ -1971,7 +1971,8 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        self._extend_partial_history()
+        last_revno, last_revision = self.last_revision_info()
+        self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
 
     def _extend_partial_history(self, stop_index=None, stop_revision=None):

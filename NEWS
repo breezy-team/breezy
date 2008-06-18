@@ -8,8 +8,6 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
-  BUG FIXES:
-
   IMPROVEMENTS:
 
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
@@ -18,16 +16,45 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Clearer message about how to set the PYTHONPATH if bzrlib can't be
+      loaded. 
+      (Martin Pool, #205230)
+
+    * Errors about missing libraries are now shown without a traceback,
+      and with a suggestion to install the library.  The full traceback is 
+      still in ``.bzr.log`` and can be shown with ``-Derror``.
+      (Martin Pool, #240161)
+
+    * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
+      ``unlock`` if there was an error in the original function. This helps
+      most when there is a failure with a smart server action, since often the
+      connection closes and we cannot unlock.
+      (Andrew Bennetts, John Arbash Meinel, #125784)
+
+    * Obsolete hidden command ``bzr fetch`` removed.
+      (Martin Pool, #172870)
+
+    * Raise the correct exception when doing ``-rbefore:0`` or ``-c0``.
+      (John Arbash Meinel, #239933)
+
     * You can now compare file revisions in Windows diff programs from 
       Cygwin Bazaar.
       (Matt McClure, #209281)
 
+    * revision_history now tolerates mainline ghosts for Branch format 6.
+      (Aaron Bentley, #235055)
+
   DOCUMENTATION:
 
-   * Updated developer documentation.
-     (Martin Pool)
+    * Updated developer documentation.
+      (Martin Pool)
 
   TESTING:
+
+   * ``TestCaseWithTransport.make_branch_and_tree`` tries harder to return
+     a tree with a ``branch`` attribute of the right format.  This was
+     preventing some ``RemoteBranch`` tests from actually running with
+     ``RemoteBranch`` instances.  (Andrew Bennetts)
 
   API CHANGES:
 
@@ -52,6 +79,9 @@ now faster.
       (The data is not corrupt; an internal check is detecting a problem
       reading from the repository.)
       (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
+
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
 
     * Fix infinite loop consuming 100% CPU when a connection is lost while
       reading a response body via the smart protocol v1 or v2.
@@ -84,11 +114,6 @@ now faster.
 
     * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
       (Ian Clatworthy, Aaron Bentley)
-
-  BUGFIXES:
-
-    * ``bzr status`` was breaking if you merged the same revision twice.
-      (John Arbash Meinel, #235407)
 
   DOCUMENTATION:
 
