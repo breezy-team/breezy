@@ -2155,13 +2155,54 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.check_changes(up_rev_tree2.changes_from(up_rev_tree1),
                 modified=["README"])
 
+    def test_import_native(self):
+        version = Version("1.0")
+        builder = SourcePackageBuilder("package", version, native=True)
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 1)
+        self.assertEqual(len(up_rh1), 0)
+
+    def test_import_native_two(self):
+        version1 = Version("1.0")
+        version2 = Version("1.1")
+        builder = SourcePackageBuilder("package", version1, native=True)
+        builder.add_debian_file("COPYING", "don't do it\n")
+        builder.add_debian_file("README")
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.new_version(version2)
+        builder.remove_debian_file("README")
+        builder.add_debian_file("COPYING", "do it\n")
+        builder.add_debian_file("NEWS")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 2)
+        self.assertEqual(len(up_rh1), 0)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[0])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[1])
+        self.assertEqual(rev_tree1.get_parent_ids(), [])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[0]])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                added=["NEWS"], removed=["README"],
+                modified=["debian/changelog", "COPYING"])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+
 
 class SourcePackageBuilder(object):
 
-    def __init__(self, name, version):
+    def __init__(self, name, version, native=False):
         self.upstream_files = {}
         self.debian_files = {}
         self.name = name
+        self.native = native
         cl = Changelog()
         cl.new_block(package=name, version=version,
                 distributions="unstable", urgency="low",
@@ -2201,13 +2242,6 @@ class SourcePackageBuilder(object):
                 date="Wed, 19 Mar 2008 21:27:37 +0000")
         self._cl.add_change("  * foo")
 
-    def orig_name(self):
-        v_num = str(self._cl.version.upstream_version)
-        return "%s_%s.orig.tar.gz" % (self.name, v_num)
-
-    def diff_name(self):
-        return "%s_%s.diff.gz" % (self.name, str(self._cl.version))
-
     def dsc_name(self):
         return "%s_%s.dsc" % (self.name, str(self._cl.version))
 
@@ -2236,12 +2270,16 @@ class SourcePackageBuilder(object):
 
     def build(self):
         basedir = self._make_base()
-        orig_basedir = basedir + ".orig"
-        shutil.copytree(basedir, orig_basedir)
+        if not self.native:
+            orig_basedir = basedir + ".orig"
+            shutil.copytree(basedir, orig_basedir)
+            cmd = "dpkg-source -sa -b %s" % (basedir)
+        else:
+            cmd = "dpkg-source -sn -b %s" % (basedir)
         self._make_files(self.debian_files, basedir)
         self._make_files({"debian/changelog": str(self._cl)}, basedir)
-        proc = subprocess.Popen("dpkg-source -sa -b %s" % (basedir),
-                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
         ret = proc.wait()
         assert ret == 0, "dpkg-source failed, output:\n%s\n%s" % \
                 (proc.stdout.read(), proc.stderr.read())

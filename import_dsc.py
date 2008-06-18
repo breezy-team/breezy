@@ -1343,7 +1343,7 @@ class DistributionBranch(object):
         self.tree.branch.fetch(self.upstream_tree.branch,
                 last_revision=pull_revision)
 
-    def pull_version_from_branch(self, pull_branch, version):
+    def pull_version_from_branch(self, pull_branch, version, native=False):
         """Pull a version from a particular branch.
 
         Given a DistributionBranch and a version number this method
@@ -1361,6 +1361,8 @@ class DistributionBranch(object):
 
         :param pull_branch: the DistributionBranch to pull from.
         :param version: the Version to pull.
+        :param native: whether it is a native version that is being
+            imported.
         """
         pull_revision = pull_branch.revid_of_version(version)
         mutter("%s already has version %s so pulling from revision %s"
@@ -1368,11 +1370,13 @@ class DistributionBranch(object):
         self.tree.pull(pull_branch.tree.branch,
                 stop_revision=pull_revision)
         self.tag_version(version)
-        if not self.has_upstream_version(version):
+        if not native and not self.has_upstream_version(version):
             if pull_branch.has_upstream_version(version):
                 self.pull_upstream_from_branch(pull_branch, version)
             else:
                 assert False, "Can't find the needed upstream part"
+        elif native:
+            mutter("Not checking for upstream as it is a native package")
         else:
             mutter("Not importing the upstream part as it is already "
                     "present in the upstream branch")
@@ -1550,6 +1554,18 @@ class DistributionBranch(object):
         """
         return self._get_dsc_part(dsc, ".diff.gz")
 
+    def get_native_part(self, dsc):
+        """Gets the information about the native part from the dsc.
+
+        :param dsc: a deb822.Dsc object to take the information from.
+        :return: a tuple (path, md5), both strings, the former being
+            the path to the .tar.gz, the latter being the md5 reported
+            for it. If there is not native part both will be None.
+        """
+        (path, md5) = self._get_dsc_part(dsc, ".tar.gz")
+        assert not path.endswith(".orig.tar.gz")
+        return (path, md5)
+
     def _init_upstream_from_other(self, versions):
         parents = self.get_parents(versions)
         if len(parents) > 0:
@@ -1609,6 +1625,21 @@ class DistributionBranch(object):
             # Now we have the list of parents we need to import the .diff.gz
             self.import_debian(debian_part, version, parents, md5)
 
+    def get_native_parents(self, version, versions):
+        last_contained_version = self.last_contained_version(versions)
+        if last_contained_version is None:
+            return []
+        else:
+            return [self.revid_of_version(last_contained_version)]
+
+    def _import_native_package(self, version, versions, debian_part, md5):
+        pull_branch = self.branch_to_pull_version_from(version, md5)
+        if pull_branch is not None:
+            self.pull_version_from_branch(pull_branch, version, native=True)
+        else:
+            parents = self.get_native_parents(version, versions)
+            self.import_debian(debian_part, version, parents, md5)
+
     def import_package(self, dsc_filename):
         """Import a source package.
 
@@ -1622,13 +1653,18 @@ class DistributionBranch(object):
         tempdir = self.extract_dsc(dsc_filename)
         try:
             # TODO: make more robust against strange .dsc files.
-            (upstream_part, upstream_md5) = self.get_upstream_part(dsc)
-            (diff_filename, md5) = self.get_diff_part(dsc)
             upstream_part = os.path.join(tempdir,
                     "%s-%s.orig" % (name, str(version.upstream_version)))
             debian_part = os.path.join(tempdir,
                     "%s-%s" % (name, str(version.upstream_version)))
-            assert os.path.exists(upstream_part)
+            native = False
+            if not os.path.exists(upstream_part):
+                mutter("It's a native package")
+                native = True
+                (_, md5) = self.get_native_part(dsc)
+            else:
+                (_, upstream_md5) = self.get_upstream_part(dsc)
+                (_, md5) = self.get_diff_part(dsc)
             cl = self.get_changelog_from_source(debian_part)
             versions = cl.versions
             assert not self.has_version(version), \
@@ -1636,8 +1672,12 @@ class DistributionBranch(object):
             #TODO: check that the versions list is correctly ordered,
             # as some methods assume that, and it's not clear what
             # should happen if it isn't.
-            self._do_import_package(version, versions, debian_part, md5,
-                    upstream_part, upstream_md5)
+            if not native:
+                self._do_import_package(version, versions, debian_part, md5,
+                        upstream_part, upstream_md5)
+            else:
+                self._import_native_package(version, versions, debian_part,
+                        md5)
         finally:
             shutil.rmtree(tempdir)
 
