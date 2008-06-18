@@ -22,6 +22,9 @@ IN DEVELOPMENT
       connection closes and we cannot unlock.
       (Andrew Bennetts, John Arbash Meinel, #125784)
 
+    * Obsolete hidden command ``bzr fetch`` removed.
+      (Martin Pool, #172870)
+
     * Raise the correct exception when doing ``-rbefore:0`` or ``-c0``.
       (John Arbash Meinel, #239933)
 
