@@ -522,7 +522,7 @@ class RevisionSpec_before(RevisionSpec):
         base_revspec = RevisionSpec.from_string(self.spec)
         base_revision_id = base_revspec.as_revision_id(context_branch)
         if base_revision_id == revision.NULL_REVISION:
-            raise errors.InvalidRevisionSpec(self.user_spec, branch,
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
                                          'cannot go before the null: revision')
         context_repo = context_branch.repository
         context_repo.lock_read()
