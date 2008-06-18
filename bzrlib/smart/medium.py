@@ -441,44 +441,44 @@ class SmartClientMedium(object):
         self._done_hello = False
         # Be optimistic: we assume the remote end can accept new remote
         # requests until we get an error saying otherwise.
-        # _remote_version_is_less_than tracks the bzr version the remote side
+        # _remote_version_is_before tracks the bzr version the remote side
         # can be based on what we've seen so far.
-        self._remote_version_is_less_than = None
+        self._remote_version_is_before = None
 
-    def _is_remote_at_least(self, version_tuple):
+    def _is_remote_before(self, version_tuple):
         """Is it possible the remote side is supports RPCs for a given version?
 
         Typical use::
 
             needed_version = (1, 2)
-            if not medium._is_remote_at_least(needed_version):
+            if medium._is_remote_before(needed_version):
                 fallback_to_pre_1_2_rpc()
             else:
                 try:
                     do_1_2_rpc()
                 except UnknownSmartMethod:
-                    medium._remote_is_not(needed_version)
+                    medium._remember_remote_is_before(needed_version)
                     fallback_to_pre_1_2_rpc()
 
-        :seealso: _remote_is_not
+        :seealso: _remember_remote_is_before
         """
-        if self._remote_version_is_less_than is None:
+        if self._remote_version_is_before is None:
             # So far, the remote side seems to support everything
-            return True
-        return version_tuple < self._remote_version_is_less_than
+            return False
+        return version_tuple >= self._remote_version_is_before
 
-    def _remote_is_not(self, version_tuple):
+    def _remember_remote_is_before(self, version_tuple):
         """Tell this medium that the remote side is older the given version.
 
-        :seealso: _is_remote_at_least
+        :seealso: _is_remote_before
         """
-        if (self._remote_version_is_less_than is not None and
-            version_tuple > self._remote_version_is_less_than):
+        if (self._remote_version_is_before is not None and
+            version_tuple > self._remote_version_is_before):
             raise AssertionError, (
-                "_remote_is_not(%r) called, but _remote_is_not(%r) was called "
-                "previously."
-                % (version_tuple, self._remote_version_is_less_than))
-        self._remote_version_is_less_than = version_tuple
+                "_remember_remote_is_before(%r) called, but "
+                "_remember_remote_is_before(%r) was called previously."
+                % (version_tuple, self._remote_version_is_before))
+        self._remote_version_is_before = version_tuple
 
     def protocol_version(self):
         """Find out if 'hello' smart request works."""
