@@ -29,6 +29,11 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * ``TestCaseWithTransport.make_branch_and_tree`` tries harder to return
+     a tree with a ``branch`` attribute of the right format.  This was
+     preventing some ``RemoteBranch`` tests from actually running with
+     ``RemoteBranch`` instances.  (Andrew Bennetts)
+
   API CHANGES:
 
     * ``Branch.pull`` now accepts an ``_override_hook_target`` optional
