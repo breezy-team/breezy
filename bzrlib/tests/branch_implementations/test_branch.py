@@ -165,7 +165,7 @@ class TestBranch(TestCaseWithBranch):
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
 
-        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.bzrdir.sprout('b', revision_id='1').open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 

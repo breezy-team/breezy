@@ -528,7 +528,7 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None,
-             possible_transports=None):
+             possible_transports=None, _override_hook_target=None):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
@@ -1557,18 +1557,24 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             _hook_master=None, run_hooks=True, possible_transports=None):
+             _hook_master=None, run_hooks=True, possible_transports=None,
+             _override_hook_target=None):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
-            be supplied as the master to push hooks.
+            be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
         """
         result = PullResult()
         result.source_branch = source
-        result.target_branch = self
+        if _override_hook_target is None:
+            result.target_branch = self
+        else:
+            result.target_branch = _override_hook_target
         source.lock_read()
         try:
             # We assume that during 'pull' the local repository is closer than
@@ -1581,9 +1587,9 @@ class BzrBranch(Branch):
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master
-                result.local_branch = self
+                result.local_branch = result.target_branch
             else:
-                result.master_branch = self
+                result.master_branch = result.target_branch
                 result.local_branch = None
             if run_hooks:
                 for hook in Branch.hooks['post_pull']:
@@ -1753,7 +1759,8 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             run_hooks=True, possible_transports=None):
+             run_hooks=True, possible_transports=None,
+             _override_hook_target=None):
         """Pull from source into self, updating my master if any.
         
         :param run_hooks: Private parameter - if false, this branch
@@ -1773,7 +1780,8 @@ class BzrBranch5(BzrBranch):
                     run_hooks=False)
             return super(BzrBranch5, self).pull(source, overwrite,
                 stop_revision, _hook_master=master_branch,
-                run_hooks=run_hooks)
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target)
         finally:
             if master_branch:
                 master_branch.unlock()

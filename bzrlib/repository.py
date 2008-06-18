@@ -834,6 +834,7 @@ class Repository(object):
         Is it a substitute for fetch? 
         Should it manage its own write group ?
         """
+        revisions_inserted = 0
         for item_key, bytes in stream:
             if item_key[0] == 'file':
                 (file_id,) = item_key[1:]
@@ -844,6 +845,7 @@ class Repository(object):
             elif item_key == ('revisions',):
                 knit = self._revision_store.get_revision_file(
                     self.get_transaction())
+                revisions_inserted += 1
             elif item_key == ('signatures',):
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
@@ -865,6 +867,7 @@ class Repository(object):
                     return buffer.read(count)
             knit.insert_data_stream(
                 (format, data_list, reader_func))
+        return revisions_inserted
 
     @needs_read_lock
     def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
