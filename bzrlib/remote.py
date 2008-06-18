@@ -1641,13 +1641,13 @@ class RemoteBranch(branch.Branch):
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
         medium = self._client._medium
-        if medium._is_remote_at_least((1, 6)):
+        if not medium._is_remote_before((1, 6)):
             try:
                 self._set_last_revision_descendant(revision_id, other_branch,
                     allow_diverged=True, do_not_overwrite_descendant=False)
                 return
             except errors.UnknownSmartMethod:
-                medium._remote_is_not((1, 6))
+                medium._remember_remote_is_before((1, 6))
         self._clear_cached_state()
         self._ensure_real()
         self._real_branch.generate_revision_history(
@@ -1681,12 +1681,12 @@ class RemoteBranch(branch.Branch):
                 self._set_last_revision(stop_revision)
             else:
                 medium = self._client._medium
-                if medium._is_remote_at_least((1, 6)):
+                if not medium._is_remote_before((1, 6)):
                     try:
                         self._set_last_revision_descendant(stop_revision, other)
                         return
                     except errors.UnknownSmartMethod:
-                        medium._remote_is_not((1, 6))
+                        medium._remember_remote_is_before((1, 6))
                 # Fallback for pre-1.6 servers: check for divergence
                 # client-side, then do _set_last_revision.
                 last_rev = revision.ensure_null(self.last_revision())

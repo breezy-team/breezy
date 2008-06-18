@@ -147,7 +147,7 @@ class SmartServerBranchRequestSetLastRevisionDescendant(SmartServerLockedBranchR
             new_revno = graph.find_distance_to_null(
                 new_last_revision_id, [(last_rev, last_revno)])
             branch.set_last_revision_info(new_revno, new_last_revision_id)
-        except errors.NoSuchRevision:
+        except errors.GhostRevisionsHaveNoRevno:
             return FailedSmartServerResponse(
                 ('NoSuchRevision', new_last_revision_id))
         return SuccessfulSmartServerResponse(

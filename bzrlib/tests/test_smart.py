@@ -397,10 +397,10 @@ class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithMemoryTranspor
             request.execute(''))
 
 
-class SetLastRevisionCommonTests(object):
-    """Mixin class for tests common to Branch.set_last_revision* variants."""
+class TestSmartServerBranchRequestSetLastRevision(
+    tests.TestCaseWithMemoryTransport):
 
-    request_class = None
+    request_class = smart.branch.SmartServerBranchRequestSetLastRevision
 
     def test_not_present_revision_id(self):
         backing = self.get_transport()
@@ -418,12 +418,6 @@ class SetLastRevisionCommonTests(object):
                     revision_id))
         finally:
             b.unlock()
-
-
-class TestSmartServerBranchRequestSetLastRevision(
-    tests.TestCaseWithMemoryTransport, SetLastRevisionCommonTests):
-
-    request_class = smart.branch.SmartServerBranchRequestSetLastRevision
 
     def test_revision_id_present2(self):
         backing = self.get_transport()
@@ -475,7 +469,7 @@ class TestSmartServerBranchRequestSetLastRevision(
 
 
 class TestSmartServerBranchRequestSetLastRevisionDescendant(
-    tests.TestCaseWithMemoryTransport, SetLastRevisionCommonTests):
+    tests.TestCaseWithMemoryTransport):
 
     request_class = \
         smart.branch.SmartServerBranchRequestSetLastRevisionDescendant
@@ -488,14 +482,13 @@ class TestSmartServerBranchRequestSetLastRevisionDescendant(
         repo_token = b.repository.lock_write()
         b.repository.unlock()
         try:
-            self.assertEqual(SmartServerResponse(('ok',)),
+            self.assertEqual(SuccessfulSmartServerResponse(('ok', 0, 'null:')),
                 request.execute(
-                    '', branch_token, repo_token,
-                    'null:'))
+                    '', branch_token, repo_token, 'null:', 0, 0))
         finally:
             b.unlock()
 
-    def test_empty(self):
+    def test_not_present_revision_id(self):
         backing = self.get_transport()
         request = self.request_class(backing)
         b = self.make_branch('.')
@@ -503,13 +496,13 @@ class TestSmartServerBranchRequestSetLastRevisionDescendant(
         repo_token = b.repository.lock_write()
         b.repository.unlock()
         try:
-            self.assertEqual(SmartServerResponse(('ok', 0)),
+            revision_id = 'non-existent revision'
+            self.assertEqual(
+                SmartServerResponse(('NoSuchRevision', revision_id)),
                 request.execute(
-                    '', branch_token, repo_token,
-                    'null:'))
+                    '', branch_token, repo_token, revision_id, 0, 0))
         finally:
             b.unlock()
-
     def test_revision_id_present2(self):
         backing = self.get_transport()
         request = self.request_class(backing)
@@ -526,34 +519,10 @@ class TestSmartServerBranchRequestSetLastRevisionDescendant(
         tree.branch.repository.unlock()
         try:
             self.assertEqual(
-                SuccessfulSmartServerResponse(('ok', 1)),
+                SuccessfulSmartServerResponse(('ok', 1, rev_id_utf8)),
                 request.execute(
-                    '', branch_token, repo_token,
-                    rev_id_utf8))
+                    '', branch_token, repo_token, rev_id_utf8, 0, 0))
             self.assertEqual([rev_id_utf8], tree.branch.revision_history())
-        finally:
-            tree.branch.unlock()
-
-    def test_revision_id_previous(self):
-        backing = self.get_transport()
-        request = self.request_class(backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
-        r2 = tree.commit('2nd commit', rev_id='second-rev')
-        tree.unlock()
-        branch_token = tree.branch.lock_write()
-        repo_token = tree.branch.repository.lock_write()
-        tree.branch.repository.unlock()
-        try:
-            self.assertEqual(
-                FailedSmartServerResponse(('NotDescendant',)),
-                request.execute(
-                    '', branch_token, repo_token,
-                    rev_id_utf8))
-            self.assertEqual('second-rev', tree.branch.last_revision())
         finally:
             tree.branch.unlock()
 
@@ -578,10 +547,9 @@ class TestSmartServerBranchRequestSetLastRevisionDescendant(
         tree.branch.repository.unlock()
         try:
             self.assertEqual(
-                FailedSmartServerResponse(('NotDescendant',)),
+                FailedSmartServerResponse(('Diverged',)),
                 request.execute(
-                    '', branch_token, repo_token,
-                    'child-1'))
+                    '', branch_token, repo_token, 'child-1', 0, 0))
             self.assertEqual('child-2', tree.branch.last_revision())
         finally:
             tree.branch.unlock()
