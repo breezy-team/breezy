@@ -2774,7 +2774,7 @@ class TestSmartClientUnicode(tests.TestCase):
         self.assertCallDoesNotBreakMedium('method', ('args',), u'body')
 
 
-class MockMedium(object):
+class MockMedium(medium.SmartClientMedium):
     """A mock medium that can be used to test _SmartClient.
     
     It can be given a series of requests to expect (and responses it should
@@ -2791,10 +2791,9 @@ class MockMedium(object):
     """
 
     def __init__(self):
-        self.base = 'dummy base'
+        super(MockMedium, self).__init__('dummy base')
         self._mock_request = _MockMediumRequest(self)
         self._expected_events = []
-        self._protocol_version = None
         
     def expect_request(self, request_bytes, response_bytes,
                        allow_partial_read=False):
@@ -2931,6 +2930,9 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         # medium, and the smart_client returns the response from the server.
         self.assertEqual(('response value',), result)
         self.assertEqual([], medium._expected_events)
+        # Also, the v3 works then the server should be assumed to support RPCs
+        # introduced in 1.6.
+        self.assertFalse(medium._is_remote_before((1, 6)))
 
     def test_version_two_server(self):
         """If the server only speaks protocol 2, the client will first try
@@ -2968,6 +2970,10 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         result = smart_client.call('another-method')
         self.assertEqual(('another response',), result)
         self.assertEqual([], medium._expected_events)
+
+        # Also, because v3 is not supported, the client medium should assume
+        # that RPCs introduced in 1.6 aren't supported either.
+        self.assertTrue(medium._is_remote_before((1, 6)))
 
     def test_unknown_version(self):
         """If the server does not use any known (or at least supported)
