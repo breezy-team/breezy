@@ -25,8 +25,6 @@ from bzrlib.trace import mutter
 from cStringIO import StringIO
 import md5
 
-import svn.delta
-
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
 from bzrlib.plugins.svn.errors import InvalidFileName
@@ -42,6 +40,7 @@ from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
 from bzrlib.plugins.svn.tree import (parse_externals_description, 
                   inventory_add_external)
 
+import svn.delta
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
@@ -86,7 +85,7 @@ def check_filename(path):
         raise InvalidFileName(path)
 
 
-class RevisionBuildEditor(svn.delta.Editor):
+class RevisionBuildEditor:
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar revision.
     """
@@ -94,6 +93,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.target = target
         self.source = source
         self.transact = target.get_transaction()
+
+    def set_target_revision(self, revnum):
+        assert self.revnum == revnum
 
     def start_revision(self, revid, prev_inventory, revmeta):
         self.revid = revid

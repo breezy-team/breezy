@@ -298,7 +298,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.modified_files[child_ie.file_id], child_editor)
 
             if child_editor is not None:
-                child_editor.close(None)
+                child_editor.close()
 
         # Loop over subdirectories of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:

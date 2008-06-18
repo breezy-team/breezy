@@ -184,7 +184,7 @@ class TreeBuildEditor:
         self.is_executable = False
         return path
 
-    def close_dir(self, id):
+    def close_directory(self, id):
         pass
 
     def close_file(self, path, checksum):

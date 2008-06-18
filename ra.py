@@ -24,15 +24,46 @@ from bzrlib.plugins.svn.core import get_config, SubversionException
 
 import bzrlib.plugins.svn.errors as svn_errors
 
-get_username_prompt_provider = svn.core.svn_auth_get_username_prompt_provider
-get_simple_prompt_provider = svn.core.svn_auth_get_simple_prompt_provider
-get_ssl_client_cert_pw_prompt_provider = svn.core.svn_auth_get_ssl_client_cert_pw_prompt_provider
-get_ssl_server_trust_prompt_provider = svn.core.svn_auth_get_ssl_server_trust_prompt_provider
+def get_username_prompt_provider(fn, retries):
+    def wrap_fn(realm, may_save, pool):
+        username_cred = svn.core.svn_auth_cred_username_t()
+        (username_cred.username, username_cred.may_save) = fn(realm, may_save)
+        return username_cred
+    return svn.core.svn_auth_get_username_prompt_provider(wrap_fn, retries)
+
+def get_simple_prompt_provider(fn, retries):
+    def wrap_fn(realm, username, may_save, pool):
+        simple_cred = svn.core.svn_auth_cred_simple_t()
+        (simple_cred.username, simple_cred.password, simple_cred.may_save) = \
+                fn(realm, username, may_save)
+        return simple_cred
+    return svn.core.svn_auth_get_simple_prompt_provider(wrap_fn, retries)
+
+def get_ssl_server_trust_prompt_provider(fn):
+    def wrap_fn(realm, failures, cert_info, may_save, pool):
+        ssl_server_trust = svn.core.svn_auth_cred_ssl_server_trust_t()
+        (ssl_server_trust.accepted_failures, ssl_server_trust.may_save) = fn(realm, failures, cert_info, may_save)
+        return ssl_server_trust
+    return svn.core.svn_auth_get_ssl_server_trust_prompt_provider(wrap_fn)
+
+def get_ssl_client_cert_pw_prompt_provider(fn, retries):
+    def wrap_fn(realm, may_save, pool):
+        ssl_cred_pw = svn.core.svn_auth_cred_ssl_client_cert_pw_t()
+        (ssl_cred_pw.password, ssl_cred_pw.may_save) = fn(realm, may_save)
+        return ssl_cred_pw
+    return svn.core.svn_auth_get_ssl_client_cert_pw_prompt_provider(wrap_fn, retries)
+
 get_simple_provider = svn.client.get_simple_provider
 get_username_provider = svn.client.get_username_provider
 get_ssl_client_cert_file_provider = svn.client.get_ssl_client_cert_file_provider
 get_ssl_client_cert_pw_file_provider = svn.client.get_ssl_client_cert_pw_file_provider
 get_ssl_server_trust_file_provider = svn.client.get_ssl_server_trust_file_provider
+if hasattr(svn.client, 'get_windows_simple_provider'):
+    get_windows_simple_provider = svn.client.get_windows_simple_provider
+if hasattr(svn.client, 'get_keychain_simple_provider'):
+    get_keychain_simple_provider = svn.client.get_keychain_simple_provider
+if hasattr(svn.client, 'get_windows_ssl_server_trust_provider'):
+    get_windows_ssl_server_trust_provider = svn.client.get_windows_ssl_server_trust_provider
 
 txdelta_send_stream = svn.delta.svn_txdelta_send_stream
 
@@ -114,6 +145,9 @@ class Editor(object):
         self.recent_baton = []
         self._connection = connection
 
+    def set_target_revision(self, revnum):
+        svn.delta.editor_invoke_set_target_revision(self.editor, self.editor_baton, revnum)        
+
     def open_root(self, base_revnum=-1):
         assert self.recent_baton == [], "root already opened"
         baton = svn.delta.editor_invoke_open_root(self.editor, 
@@ -163,6 +197,59 @@ def create_svn_client(url):
     client.auth_baton = create_auth_baton(url)
     client.config = get_config(None)
     return client
+
+
+class WrappedEditor:
+    def __init__(self, actual):
+        self.actual = actual
+
+    def set_target_revision(self, revision):
+        if getattr(self.actual, "set_target_revision", None) is not None:
+            self.actual.set_target_revision(revision)
+
+    def open_root(self, base_revision):
+        if getattr(self.actual, "open_root", None) is not None:
+            return self.actual.open_root(base_revision)
+        return None
+
+    def add_directory(self, path, baton, copyfrom_path, copyfrom_rev):
+        if baton is not None and getattr(baton, "add_directory", None) is not None:
+            return baton.add_directory(path, copyfrom_path, copyfrom_rev)
+        return None
+
+    def open_directory(self, path, baton, base_rev):
+        if baton is not None and getattr(baton, "open_directory", None) is not None:
+            return baton.open_directory(path, base_rev)
+        return None
+
+    def close_directory(self, baton):
+        if baton is not None and getattr(baton, "close", None) is not None:
+            return baton.close()
+
+    def change_file_prop(self, baton, name, value):
+        if baton is not None and getattr(baton, "change_prop", None) is not None:
+            return baton.change_prop(name, value)
+
+    def change_dir_prop(self, baton, name, value):
+        if baton is not None and getattr(baton, "change_prop", None) is not None:
+            return baton.change_prop(name, value)
+
+    def apply_textdelta(self, baton, checksum):
+        if baton is not None and getattr(baton, "apply_textdelta", None) is not None:
+            return baton.apply_textdelta(checksum)
+
+    def close_file(self, baton, checksum):
+        if baton is not None and getattr(baton, "close", None) is not None:
+            return baton.close(checksum)
+
+    def open_file(self, path, baton, base_rev):
+        if baton is not None and getattr(self.actual, "open_file", None) is not None:
+            return baton.open_file(path, base_rev)
+        return None
+
+    def close_edit(self):
+        if getattr(self.actual, "close_edit", None) is not None:
+            self.actual.close_edit()
 
 
 class RemoteAccess(object):
@@ -338,10 +425,6 @@ class RemoteAccess(object):
         return svn.ra.rev_proplist(self._ra, revnum, None)
 
     def get_commit_editor(self, revprops, done_cb=None, lock_token=None, keep_locks=False):
-        def dummy_done(meta, pool):
-            pass
-        if done_cb is None:
-            done_cb = dummy_done
         self._mark_busy()
         try:
             if hasattr(svn.ra, 'get_commit_editor3'):

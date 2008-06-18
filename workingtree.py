@@ -72,7 +72,7 @@ def generate_ignore_list(ignore_map):
 class SvnWorkingTree(WorkingTree):
     """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
-        version = wc.check_wc(local_path)
+        version = svn.wc.check_wc(local_path)
         self._format = SvnWorkingTreeFormat(version)
         self.basedir = local_path
         assert isinstance(self.basedir, unicode)
