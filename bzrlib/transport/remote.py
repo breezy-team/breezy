@@ -486,7 +486,7 @@ class RemoteTCPTransportV2Only(RemoteTransport):
         client_medium = medium.SmartTCPClientMedium(
             self._host, self._port, self.base)
         client_medium._protocol_version = 2
-        client_medium._remote_is_not((1, 6))
+        client_medium._remember_remote_is_before((1, 6))
         return client_medium, None
 
 
