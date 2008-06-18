@@ -25,20 +25,21 @@ from bzrlib.trace import mutter
 from cStringIO import StringIO
 import md5
 
-from svn.core import Pool
-import svn.core
+import svn.delta
 
+from bzrlib.plugins.svn import properties
+from bzrlib.plugins.svn.delta import apply_txdelta_handler
 from bzrlib.plugins.svn.errors import InvalidFileName
-from logwalker import lazy_dict
+from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_REVISION_ID,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
                      parse_merge_property,
                      parse_revision_metadata)
-from repository import SvnRepository, SvnRepositoryFormat
-from svk import SVN_PROP_SVK_MERGE
-from tree import (apply_txdelta_handler, parse_externals_description, 
+from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
+from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
+from bzrlib.plugins.svn.tree import (parse_externals_description, 
                   inventory_add_external)
 
 
@@ -102,7 +103,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.dir_baserev = {}
         self._revinfo = None
         self._premature_deletes = set()
-        self.pool = Pool()
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
         self._start_revision()
@@ -173,7 +173,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         ret = self._get_id_map().get(new_path)
         if ret is not None:
             return ret
-        return self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, new_path)
+        return self.mapping.generate_file_id(self.source.uuid, self.revnum, 
+                                             self.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, path):
         assert isinstance(path, unicode)
@@ -194,7 +195,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                 if p.startswith("%s/" % path):
                     self._premature_deletes.remove(p)
         else:
-            self.inventory.remove_recursive_id(self._get_old_id(new_parent_id, path))
+            self.inventory.remove_recursive_id(self._get_old_id(old_parent_id, path))
 
     def close_directory(self, (old_id, new_id)):
         self.inventory[new_id].revision = self.revid
@@ -216,7 +217,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             if copyfrom_path is None:
                 # This should ideally never happen!
                 copyfrom_path = self.old_inventory.id2path(file_id)
-                mutter('no copyfrom path set, assuming %r' % copyfrom_path)
+                mutter('no copyfrom path set, assuming %r', copyfrom_path)
             assert copyfrom_path == self.old_inventory.id2path(file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
@@ -261,42 +262,42 @@ class RevisionBuildEditor(svn.delta.Editor):
                 self.revmeta.fileprops = {}
             self.revmeta.fileprops[name] = value
 
-        if name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
-                      svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
-                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
-                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
-                      svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_EXECUTABLE):
+        if name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                    properties.PROP_ENTRY_COMMITTED_REV,
+                    properties.PROP_ENTRY_LAST_AUTHOR,
+                    properties.PROP_ENTRY_LOCK_TOKEN,
+                    properties.PROP_ENTRY_UUID,
+                    properties.PROP_EXECUTABLE):
             pass
-        elif (name.startswith(svn.core.SVN_PROP_WC_PREFIX)):
+        elif (name.startswith(properties.PROP_WC_PREFIX)):
             pass
-        elif name.startswith(svn.core.SVN_PROP_PREFIX):
-            mutter('unsupported dir property %r' % name)
+        elif name.startswith(properties.PROP_PREFIX):
+            mutter('unsupported dir property %r', name)
 
     def change_file_prop(self, id, name, value, pool):
-        if name == svn.core.SVN_PROP_EXECUTABLE: 
+        if name == properties.PROP_EXECUTABLE: 
             # You'd expect executable to match 
-            # svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not 
+            # properties.PROP_EXECUTABLE_VALUE, but that's not 
             # how SVN behaves. It appears to consider the presence 
             # of the property sufficient to mark it executable.
             self.is_executable = (value != None)
-        elif (name == svn.core.SVN_PROP_SPECIAL):
+        elif (name == properties.PROP_SPECIAL):
             self.is_symlink = (value != None)
-        elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+        elif name == properties.PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
-        elif name == svn.core.SVN_PROP_EXTERNALS:
+        elif name == properties.PROP_EXTERNALS:
             mutter('svn:externals property on file!')
-        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
-                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
-                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
-                      svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_MIME_TYPE):
+        elif name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                      properties.PROP_ENTRY_LAST_AUTHOR,
+                      properties.PROP_ENTRY_LOCK_TOKEN,
+                      properties.PROP_ENTRY_UUID,
+                      properties.PROP_MIME_TYPE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+        elif name.startswith(properties.PROP_WC_PREFIX):
             pass
-        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
+        elif (name.startswith(properties.PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
-            mutter('unsupported file property %r' % name)
+            mutter('unsupported file property %r', name)
 
     def add_file(self, path, (old_parent_id, new_parent_id), copyfrom_path, copyfrom_revnum, baton):
         assert isinstance(path, str)
@@ -314,7 +315,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             if copyfrom_path is None:
                 # This should ideally never happen
                 copyfrom_path = self.old_inventory.id2path(self.file_id)
-                mutter('no copyfrom path set, assuming %r' % copyfrom_path)
+                mutter('no copyfrom path set, assuming %r', copyfrom_path)
             assert copyfrom_path == self.old_inventory.id2path(self.file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
@@ -383,7 +384,6 @@ class RevisionBuildEditor(svn.delta.Editor):
     def close_edit(self):
         assert len(self._premature_deletes) == 0
         self._finish_commit()
-        self.pool.destroy()
 
     def apply_textdelta(self, file_id, base_checksum):
         actual_checksum = md5.new(self.file_data).hexdigest(),
@@ -391,8 +391,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             "base checksum mismatch: %r != %r" % (base_checksum, 
                                                   actual_checksum))
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(self.file_data), 
-                                     self.file_stream, self.pool)
+        return apply_txdelta_handler(self.file_data, self.file_stream)
 
     def _store_file(self, file_id, lines, parents):
         raise NotImplementedError(self._store_file)
@@ -636,14 +635,14 @@ class InterFromSvnRepository(InterRepository):
                                                        editor.branch_path)
 
                             conn = self.source.transport.connections.get(branch_url)
-                            reporter = conn.do_update(editor.revnum, True, 
+                            reporter = conn.do_update(editor.revnum, "", True, 
                                                            editor)
 
                             try:
                                 # Report status of existing paths
                                 reporter.set_path("", editor.revnum, True, None)
                             except:
-                                reporter.abort_report()
+                                reporter.abort()
                                 raise
                         else:
                             (parent_branch, parent_revnum, mapping) = \
@@ -651,23 +650,24 @@ class InterFromSvnRepository(InterRepository):
                             conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
 
                             if parent_branch != editor.branch_path:
-                                reporter = conn.do_switch(editor.revnum, True, 
+                                reporter = conn.do_switch(editor.revnum, "", True, 
                                     urlutils.join(repos_root, editor.branch_path), 
                                     editor)
                             else:
-                                reporter = conn.do_update(editor.revnum, True, editor)
+                                reporter = conn.do_update(editor.revnum, "", True, editor)
 
                             try:
                                 # Report status of existing paths
                                 reporter.set_path("", parent_revnum, False, None)
                             except:
-                                reporter.abort_report()
+                                reporter.abort()
                                 raise
 
-                        reporter.finish_report()
+                        reporter.finish()
                     finally:
                         if conn is not None:
-                            self.source.transport.add_connection(conn)
+                            if not conn.is_busy():
+                                self.source.transport.add_connection(conn)
                 except:
                     editor.abort_edit()
                     raise

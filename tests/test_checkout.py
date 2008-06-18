@@ -21,18 +21,18 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, UninitializableFormat
 from bzrlib.tests import TestCase
 
-from convert import SvnConverter
+from bzrlib.plugins.svn.convert import SvnConverter
 from bzrlib.plugins.svn.workingtree import SvnWorkingTreeFormat
 from bzrlib.plugins.svn.format import SvnWorkingTreeDirFormat
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class TestWorkingTreeFormat(TestCase):
     def setUp(self):
         super(TestWorkingTreeFormat, self).setUp()
-        self.format = SvnWorkingTreeFormat()
+        self.format = SvnWorkingTreeFormat(4)
 
     def test_get_format_desc(self):
-        self.assertEqual("Subversion Working Copy", 
+        self.assertEqual("Subversion Working Copy Version 4", 
                          self.format.get_format_description())
 
     def test_initialize(self):
@@ -94,8 +94,11 @@ class TestCheckout(TestCaseWithSubversionRepository):
 
     def test_checkout_branch(self):
         repos_url = self.make_client("d", "dc")
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "msg")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.done()
+
+        self.client_update("dc")
         x = self.open_checkout_bzrdir("dc/trunk")
         self.assertEquals(repos_url+"/trunk", x.open_branch().base)

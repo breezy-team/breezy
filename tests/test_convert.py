@@ -25,11 +25,11 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os, sys
-from convert import convert_repository, NotDumpFile, load_dumpfile
-from format import get_rich_root_format
-from mapping3 import set_branching_scheme
-from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.convert import convert_repository, NotDumpFile, load_dumpfile
+from bzrlib.plugins.svn.format import get_rich_root_format
+from bzrlib.plugins.svn.mapping3 import set_branching_scheme
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 import svn.repos
 
@@ -66,13 +66,22 @@ PROPS-END
 class TestConversion(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestConversion, self).setUp()
-        self.repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/file': 'data', 'dc/branches/abranch/anotherfile': 'data2'})
-        self.client_add("dc/trunk")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "create repos")
-        self.build_tree({'dc/trunk/file': 'otherdata'})
-        self.client_commit("dc", "change")
+        self.repos_url = self.make_repository('d')
+
+        dc = self.commit_editor()
+        dc.add_dir("trunk")
+        dc.add_file("trunk/file", "data")
+        dc.add_dir("branches")
+        dc.add_dir("branches/abranch")
+        dc.add_file("branches/abranch/anotherfile", "data2")
+        dc.done()
+
+        dc = self.commit_editor()
+        dc.change_file("trunk/file", "otherdata")
+        dc.done()
+
+    def commit_editor(self):
+        return super(TestConversion,self).commit_editor(self.repos_url)
 
     def test_sets_parent_urls(self):
         convert_repository(Repository.open(self.repos_url), "e", 
@@ -84,12 +93,15 @@ class TestConversion(TestCaseWithSubversionRepository):
                 Branch.open("e/branches/abranch").get_parent())
 
     def test_fetch_alive(self):
-        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
-        self.client_add("dc/branches/somebranch")
-        self.client_commit("dc", "add a branch")
-        self.client_update("dc")
-        self.client_delete("dc/branches/somebranch")
-        self.client_commit("dc", "remove branch")
+        dc = self.commit_editor()
+        dc.add_dir("branches/somebranch")
+        dc.add_file("branches/somebranch/somefile", 'data')
+        dc.done()
+
+        dc = self.commit_editor()
+        dc.delete("branches/somebranch")
+        dc.done()
+
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", 
                            TrunkBranchingScheme(), 
@@ -99,9 +111,10 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filebranch(self):
-        self.build_tree({'dc/branches/somebranch': 'data'})
-        self.client_add("dc/branches/somebranch")
-        self.client_commit("dc", "add a branch")
+        dc = self.commit_editor()
+        dc.add_file("branches/somebranch", 'data')
+        dc.done()
+
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme())
         newrepos = Repository.open("e")
@@ -109,11 +122,15 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_dead(self):
-        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
-        self.client_add("dc/branches/somebranch")
-        self.client_commit("dc", "add a branch")
-        self.client_delete("dc/branches/somebranch")
-        self.client_commit("dc", "remove branch")
+        dc = self.commit_editor()
+        dc.add_dir("branches/somebranch")
+        dc.add_file("branches/somebranch/somefile", 'data')
+        dc.done()
+
+        dc = self.commit_editor()
+        dc.delete("branches/somebranch")
+        dc.done()
+
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
                            all=True, create_shared_repo=True)
@@ -122,12 +139,16 @@ class TestConversion(TestCaseWithSubversionRepository):
             oldrepos.generate_revision_id(3, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filter(self):
-        self.build_tree({'dc/branches/somebranch/somefile': 'data',
-                         'dc/branches/anotherbranch/somefile': 'data'})
-        self.client_add("dc/branches/somebranch")
-        self.client_commit("dc", "add a branch")
-        self.client_add("dc/branches/anotherbranch")
-        self.client_commit("dc", "add another branch")
+        dc = self.commit_editor()
+        dc.add_dir("branches/somebranch")
+        dc.add_file("branches/somebranch/somefile", 'data')
+        dc.done()
+
+        dc = self.commit_editor()
+        dc.add_dir("branches/anotherbranch")
+        dc.add_file("branches/anotherbranch/somefile", 'data')
+        dc.done()
+
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
             create_shared_repo=True,
@@ -148,12 +169,16 @@ class TestConversion(TestCaseWithSubversionRepository):
     def test_shared_import_continue_remove(self):
         convert_repository(Repository.open(self.repos_url), "e", 
                 TrunkBranchingScheme(), create_shared_repo=True)
-        self.client_update("dc")
-        self.client_delete("dc/trunk")
-        self.client_commit("dc", "blafoo")
-        self.build_tree({'dc/trunk/file': 'otherdata'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "change")
+
+        dc = self.commit_editor()
+        dc.delete("trunk")
+        dc.done()
+
+        dc = self.commit_editor()
+        dc.add_dir("trunk")
+        dc.add_file("trunk/file")
+        dc.done()
+
         convert_repository(Repository.open(self.repos_url), "e", 
                            TrunkBranchingScheme(), create_shared_repo=True)
 
@@ -208,8 +233,9 @@ class TestConversion(TestCaseWithSubversionRepository):
 
         mapping = oldrepos.get_mapping()
 
-        self.build_tree({'dc/trunk/file': 'foodata'})
-        self.client_commit("dc", "msg")
+        dc = self.commit_editor()
+        dc.change_file("trunk/file")
+        dc.done()
 
         self.assertEqual(
                 Repository.open(self.repos_url).generate_revision_id(2, "trunk", mapping), 

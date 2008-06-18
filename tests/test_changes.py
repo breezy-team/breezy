@@ -13,10 +13,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-def is_valid_property_name(prop):
-    if not prop[0].isalnum() and not prop[0] in ":_":
-        return False
-    for c in prop[1:]:
-        if not c.isalnum() and not c in "-:._":
-            return False
-    return True
+from bzrlib.tests import TestCase
+from bzrlib.plugins.svn.changes import path_is_child, find_prev_location, changes_path
+
+class PathIsChildTests(TestCase):
+    def test_both_empty(self):
+        self.assertTrue(path_is_child("", ""))
+
+    def test_child_path(self):
+        self.assertTrue(path_is_child("trunk", "trunk/bar"))
+
+    def test_self(self):
+        self.assertTrue(path_is_child("trunk", "trunk"))
+
+    def test_child_empty_bp(self):
+        self.assertTrue(path_is_child("", "bar"))
+
+    def test_unrelated(self):
+        self.assertFalse(path_is_child("bla", "bar"))

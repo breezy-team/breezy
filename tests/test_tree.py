@@ -22,20 +22,25 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
 from bzrlib.workingtree import WorkingTree
 
-import errors
-import os
-from tree import (SvnBasisTree, parse_externals_description, 
+from bzrlib.plugins.svn import errors
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.tree import (SvnBasisTree, parse_externals_description, 
                   inventory_add_external)
+
+import os
 import sys
-from tests import TestCaseWithSubversionRepository
 
 class TestBasisTree(TestCaseWithSubversionRepository):
     def test_executable(self):
-        self.make_client("d", "dc")
-        self.build_tree({"dc/file": "x"})
-        self.client_add("dc/file")
-        self.client_set_prop("dc/file", "svn:executable", "*")
-        self.client_commit("dc", "executable")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("file", "x")
+        dc.change_file_prop("file", "svn:executable", "*")
+        dc.done()
+
+        self.client_update("dc")
+
         tree = SvnBasisTree(self.open_checkout("dc"))
         self.assertTrue(tree.inventory[tree.inventory.path2id("file")].executable)
 
@@ -81,6 +86,17 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].kind)
         self.assertEqual("target",
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
+
+    def test_annotate_iter(self):
+        self.make_client("d", "dc")
+        self.build_tree({"dc/file": "x\n"})
+        self.client_add("dc/file")
+        self.client_commit("dc", "change")
+        self.client_update("dc")
+        self.build_tree({"dc/file": "x\n\y\n"})
+        self.client_commit("dc", "change")
+        tree = SvnBasisTree(self.open_checkout("dc"))
+        self.assertRaises(NotImplementedError, tree.annotate_iter, tree.path2id("file"))
 
     def test_executable_link(self):
         if not has_symlinks():

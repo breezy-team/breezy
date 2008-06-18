@@ -29,13 +29,13 @@ from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 import os
-import format
-import svn.core
-from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
 from time import sleep
-from commit import push
-from mapping import SVN_PROP_BZR_REVISION_ID
-from tests import TestCaseWithSubversionRepository
+
+from bzrlib.plugins.svn import format
+from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
+from bzrlib.plugins.svn.commit import push
+from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):

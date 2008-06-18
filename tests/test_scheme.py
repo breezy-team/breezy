@@ -19,7 +19,7 @@
 from bzrlib.errors import NotBranchError, BzrError
 
 from bzrlib.tests import TestCase
-from mapping3.scheme import (ListBranchingScheme, NoBranchingScheme, 
+from bzrlib.plugins.svn.mapping3.scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
                     SingleBranchingSchemev0, 
                     SingleBranchingScheme, 

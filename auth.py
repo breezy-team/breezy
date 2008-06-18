@@ -17,20 +17,36 @@
 
 from bzrlib.config import AuthenticationConfig
 from bzrlib.ui import ui_factory
+
+from bzrlib.plugins.svn.ra import (get_username_prompt_provider, 
+                                   get_simple_prompt_provider,
+                                   get_ssl_server_trust_prompt_provider,
+                                   get_ssl_client_cert_pw_prompt_provider,
+                                   get_simple_provider,
+                                   get_username_provider,
+                                   get_ssl_client_cert_file_provider,
+                                   get_ssl_client_cert_pw_file_provider,
+                                   get_ssl_server_trust_file_provider,
+                                   Auth
+                                   )
+
 import svn.core
 from svn.core import (svn_auth_cred_username_t, 
                       svn_auth_cred_simple_t,
                       svn_auth_cred_ssl_client_cert_t,
                       svn_auth_cred_ssl_client_cert_pw_t,
-                      svn_auth_cred_ssl_server_trust_t,
-                      svn_auth_get_username_prompt_provider,
-                      svn_auth_get_simple_prompt_provider,
-                      svn_auth_get_ssl_server_trust_prompt_provider,
-                      svn_auth_get_ssl_client_cert_pw_prompt_provider,
-                      svn_auth_open)
+                      svn_auth_cred_ssl_server_trust_t)
 import urlparse
 import urllib
 
+AUTH_PARAM_DEFAULT_USERNAME = 'svn:auth:username'
+AUTH_PARAM_DEFAULT_PASSWORD = 'svn:auth:password'
+
+SSL_NOTYETVALID = 0x00000001
+SSL_EXPIRED     = 0x00000002
+SSL_CNMISMATCH  = 0x00000004
+SSL_UNKNOWNCA   = 0x00000008
+SSL_OTHER       = 0x40000000
 
 class SubversionAuthenticationConfig(AuthenticationConfig):
     """Simple extended version of AuthenticationConfig that can provide 
@@ -91,11 +107,11 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
             credentials.has_key("verify_certificates") and 
             credentials["verify_certificates"] == False):
             ssl_server_trust.accepted_failures = (
-                    svn.core.SVN_AUTH_SSL_NOTYETVALID + 
-                    svn.core.SVN_AUTH_SSL_EXPIRED +
-                    svn.core.SVN_AUTH_SSL_CNMISMATCH +
-                    svn.core.SVN_AUTH_SSL_UNKNOWNCA +
-                    svn.core.SVN_AUTH_SSL_OTHER)
+                    SSL_NOTYETVALID + 
+                    SSL_EXPIRED +
+                    SSL_CNMISMATCH +
+                    SSL_UNKNOWNCA +
+                    SSL_OTHER)
         else:
             ssl_server_trust.accepted_failures = 0
         ssl_server_trust.may_save = False
@@ -107,7 +123,7 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         
         :param retries: Number of allowed retries.
         """
-        return svn_auth_get_username_prompt_provider(self.get_svn_username, 
+        return get_username_prompt_provider(self.get_svn_username, 
                                                      retries)
 
     def get_svn_simple_prompt_provider(self, retries):
@@ -116,12 +132,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         
         :param retries: Number of allowed retries.
         """
-        return svn_auth_get_simple_prompt_provider(self.get_svn_simple, retries)
+        return get_simple_prompt_provider(self.get_svn_simple, retries)
 
     def get_svn_ssl_server_trust_prompt_provider(self):
         """Return a Subversion auth provider for checking 
         whether a SSL server is trusted."""
-        return svn_auth_get_ssl_server_trust_prompt_provider(self.get_svn_ssl_server_trust)
+        return get_ssl_server_trust_prompt_provider(self.get_svn_ssl_server_trust)
 
     def get_svn_auth_providers(self):
         """Return a list of auth providers for this authentication file.
@@ -144,16 +160,16 @@ def get_ssl_client_cert_pw(realm, may_save, pool):
 
 
 def get_ssl_client_cert_pw_provider(tries):
-    return svn_auth_get_ssl_client_cert_pw_prompt_provider(
+    return get_ssl_client_cert_pw_prompt_provider(
                 get_ssl_client_cert_pw, tries)
 
 
 def get_stock_svn_providers():
-    providers = [svn.client.get_simple_provider(),
-            svn.client.get_username_provider(),
-            svn.client.get_ssl_client_cert_file_provider(),
-            svn.client.get_ssl_client_cert_pw_file_provider(),
-            svn.client.get_ssl_server_trust_file_provider(),
+    providers = [get_simple_provider(),
+            get_username_provider(),
+            get_ssl_client_cert_file_provider(),
+            get_ssl_client_cert_pw_file_provider(),
+            get_ssl_server_trust_file_provider(),
             ]
 
     if hasattr(svn.client, 'get_windows_simple_provider'):
@@ -185,13 +201,11 @@ def create_auth_baton(url):
         providers += auth_config.get_svn_auth_providers()
         providers += [get_ssl_client_cert_pw_provider(1)]
 
-    auth_baton = svn.core.svn_auth_open(providers)
+    auth_baton = Auth(providers)
     if creds is not None:
-        (auth_baton.user, auth_baton.password) = urllib.splitpasswd(creds)
-        if auth_baton.user is not None:
-            svn.core.svn_auth_set_parameter(auth_baton, 
-                svn.core.SVN_AUTH_PARAM_DEFAULT_USERNAME, auth_baton.user)
-        if auth_baton.password is not None:
-            svn.core.svn_auth_set_parameter(auth_baton, 
-                svn.core.SVN_AUTH_PARAM_DEFAULT_PASSWORD, auth_baton.password)
-    return auth_baton
+        (user, password) = urllib.splitpasswd(creds)
+        if user is not None:
+            auth_baton.set_parameter(AUTH_PARAM_DEFAULT_USERNAME, user)
+        if password is not None:
+            auth_baton.set_parameter(AUTH_PARAM_DEFAULT_PASSWORD, password)
+    return auth_baton.auth_baton

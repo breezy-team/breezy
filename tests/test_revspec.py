@@ -23,7 +23,7 @@ from bzrlib.errors import BzrError, InvalidRevisionSpec
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.tests import TestCase
 
-from tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
 
 class TestRevSpec(TestCase):
@@ -40,14 +40,15 @@ class TestRevSpec(TestCase):
 class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
     def test_by_single_revno(self):
         revspec = RevisionSpec.from_string("svn:2")
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({"dc/foo": "foo"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "msg")
+        repos_url = self.make_repository("a")
 
-        self.build_tree({"dc/bar": "bar"})
-        self.client_add("dc/bar")
-        self.client_commit("dc", "msg2")
+        dc = self.commit_editor(repos_url)
+        dc.add_file("foo")
+        dc.done()
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("bar")
+        dc.done()
 
         branch = Branch.open(repos_url)
         revinfo = revspec._match_on(branch, None)
@@ -56,10 +57,11 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
 
     def test_invalid_revnum(self):
         revspec = RevisionSpec.from_string("svn:foo")
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({"dc/bar": "bar"})
-        self.client_add("dc/bar")
-        self.client_commit("dc", "msg2")
+        repos_url = self.make_repository("a")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("bar")
+        dc.done()
 
         branch = Branch.open(repos_url)
 
@@ -68,10 +70,11 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
     def test_oor_revnum(self):
         """Out-of-range revnum."""
         revspec = RevisionSpec.from_string("svn:24")
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({"dc/bar": "bar"})
-        self.client_add("dc/bar")
-        self.client_commit("dc", "msg2")
+        repos_url = self.make_repository("a")
+
+        dc = self.commit_editor(repos_url)
+        dc.add_file("bar")
+        dc.done()
 
         branch = Branch.open(repos_url)
 

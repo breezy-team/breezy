@@ -20,14 +20,13 @@ from bzrlib import debug
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 from bzrlib.trace import mutter
 
-import svn.core
-
-from cache import CacheTable
-from errors import InvalidPropertyValue
+from bzrlib.plugins.svn.cache import CacheTable
+from bzrlib.plugins.svn.core import SubversionException
+from bzrlib.plugins.svn.errors import InvalidPropertyValue, ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_DIRECTORY
 from bzrlib.plugins.svn.mapping import (parse_revision_id, BzrSvnMapping, 
                      SVN_PROP_BZR_REVISION_ID, parse_revid_property)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
-from mapping3.scheme import BranchingScheme
+from bzrlib.plugins.svn.mapping3.scheme import BranchingScheme
 
 class RevidMap(object):
     def __init__(self, repos):
@@ -37,8 +36,8 @@ class RevidMap(object):
         # See if there is a bzr:revision-id revprop set
         try:
             (bzr_revno, revid) = mapping.get_revision_id(path, revprops, fileprops)
-        except svn.core.SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+        except SubversionException, (_, num):
+            if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(path, revnum)
             raise
 
@@ -85,7 +84,7 @@ class RevidMap(object):
                             revids.add((parse_revid_property(line), scheme))
                         except InvalidPropertyValue, ie:
                             mutter(str(ie))
-            except svn.core.SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+            except SubversionException, (_, ERR_FS_NOT_DIRECTORY):
                     continue
 
             # If there are any new entries that are not yet in the cache, 
@@ -217,7 +216,7 @@ class RevisionIdMapCache(CacheTable):
         :param layout: Repository layout.
         :return: Last revision number checked or 0.
         """
-        self.mutter("last revnum checked %r" % layout)
+        self.mutter("last revnum checked %r", layout)
         ret = self.cachedb.execute(
             "select max_revnum from revids_seen where scheme = ?", (layout,)).fetchone()
         if ret is None:
@@ -232,7 +231,7 @@ class RevisionIdMapCache(CacheTable):
             branching scheme.
         """
         assert isinstance(revid, str)
-        self.mutter("lookup revid %r" % revid)
+        self.mutter("lookup revid %r", revid)
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:
@@ -246,7 +245,7 @@ class RevisionIdMapCache(CacheTable):
         :param path: Subversion branch path.
         :param scheme: Branching scheme name
         """
-        self.mutter("lookup branch,revnum %r:%r" % (path, revnum))
+        self.mutter("lookup branch,revnum %r:%r", path, revnum)
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert isinstance(scheme, str)
@@ -272,7 +271,7 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(scheme, str)
         assert isinstance(branch, str)
         assert isinstance(min_revnum, int) and isinstance(max_revnum, int)
-        self.mutter("insert revid %r:%r-%r -> %r" % (branch, min_revnum, max_revnum, revid))
+        self.mutter("insert revid %r:%r-%r -> %r", branch, min_revnum, max_revnum, revid)
         cursor = self.cachedb.execute(
             "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))

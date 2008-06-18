@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2008 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,23 +15,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Access to stored Subversion basis trees."""
 
-from bzrlib import urlutils
+from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.inventory import Inventory, InventoryDirectory, TreeReference
-
-from bzrlib import osutils, urlutils
+from bzrlib.revision import CURRENT_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
+
+from bzrlib.plugins.svn.delta import apply_txdelta_handler
 
 import os
 import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.core, svn.wc, svn.delta
-from svn.core import Pool
+import svn.wc
 
-import errors
+from bzrlib.plugins.svn import errors, properties, core
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.
@@ -97,65 +97,35 @@ def inventory_add_external(inv, parent_id, path, revid, ref_revnum, url):
     inv.add(ie)
 
 
-# Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
-# slightly different).
-
-if hasattr(svn.delta, 'tx_invoke_window_handler'):
-    def apply_txdelta_handler(src_stream, target_stream, pool):
-        assert hasattr(src_stream, 'read')
-        assert hasattr(target_stream, 'write')
-        window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
-                                                   None, pool)
-
-        def wrapper(window):
-            window_handler(window, baton)
-
-        return wrapper
-else:
-    def apply_txdelta_handler(src_stream, target_stream, pool):
-        assert hasattr(src_stream, 'read')
-        assert hasattr(target_stream, 'write')
-        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None, pool)
-
-        def wrapper(window):
-            svn.delta.invoke_txdelta_window_handler(
-                ret[1], window, ret[2])
-
-        return wrapper
-
 class SvnRevisionTree(RevisionTree):
     """A tree that existed in a historical Subversion revision."""
     def __init__(self, repository, revision_id):
         self._repository = repository
         self._revision_id = revision_id
-        pool = Pool()
         (self.branch_path, self.revnum, mapping) = repository.lookup_revision_id(revision_id)
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
                                                 mapping)
-        editor = TreeBuildEditor(self, pool)
+        editor = TreeBuildEditor(self)
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
-        reporter = repository.transport.do_switch(
-                self.revnum, True, 
-                urlutils.join(root_repos, self.branch_path), editor, pool)
-        reporter.set_path("", 0, True, None, pool)
-        reporter.finish_report(pool)
-        pool.destroy()
+        conn = repository.transport.get_connection()
+        reporter = conn.do_switch(
+                self.revnum, "", True, 
+                urlutils.join(root_repos, self.branch_path), editor)
+        reporter.set_path("", 0, True, None)
+        reporter.finish()
 
     def get_file_lines(self, file_id):
         return osutils.split_lines(self.file_data[file_id])
 
 
-class TreeBuildEditor(svn.delta.Editor):
+class TreeBuildEditor:
     """Builds a tree given Subversion tree transform calls."""
-    def __init__(self, tree, pool):
+    def __init__(self, tree):
         self.tree = tree
         self.repository = tree._repository
         self.last_revnum = {}
-        self.dir_revnum = {}
-        self.dir_ignores = {}
-        self.pool = pool
 
     def set_target_revision(self, revnum):
         self.revnum = revnum
@@ -175,40 +145,38 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
-            self.dir_revnum[id] = int(value)
-        elif name == svn.core.SVN_PROP_IGNORE:
-            self.dir_ignores[id] = value
-        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
-                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
-                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
-                      svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_EXECUTABLE):
+        if name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                    properties.PROP_ENTRY_LAST_AUTHOR,
+                    properties.PROP_ENTRY_LOCK_TOKEN,
+                    properties.PROP_ENTRY_COMMITTED_REV,
+                    properties.PROP_ENTRY_UUID,
+                    properties.PROP_IGNORE,
+                    properties.PROP_EXECUTABLE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+        elif name.startswith(properties.PROP_WC_PREFIX):
             pass
-        elif name.startswith(svn.core.SVN_PROP_PREFIX):
-            mutter('unsupported dir property %r' % name)
+        elif name.startswith(properties.PROP_PREFIX):
+            mutter('unsupported dir property %r', name)
 
     def change_file_prop(self, id, name, value, pool):
-        if name == svn.core.SVN_PROP_EXECUTABLE:
+        if name == properties.PROP_EXECUTABLE:
             self.is_executable = (value != None)
-        elif name == svn.core.SVN_PROP_SPECIAL:
+        elif name == properties.PROP_SPECIAL:
             self.is_symlink = (value != None)
-        elif name == svn.core.SVN_PROP_EXTERNALS:
-            mutter('%r property on file!' % name)
-        elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+        elif name == properties.PROP_EXTERNALS:
+            mutter('%r property on file!', name)
+        elif name == properties.PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
-        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
-                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
-                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
-                      svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_MIME_TYPE):
+        elif name in (properties.PROP_ENTRY_COMMITTED_DATE,
+                      properties.PROP_ENTRY_LAST_AUTHOR,
+                      properties.PROP_ENTRY_LOCK_TOKEN,
+                      properties.PROP_ENTRY_UUID,
+                      properties.PROP_MIME_TYPE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+        elif name.startswith(properties.PROP_WC_PREFIX):
             pass
-        elif name.startswith(svn.core.SVN_PROP_PREFIX):
-            mutter('unsupported file property %r' % name)
+        elif name.startswith(properties.PROP_PREFIX):
+            mutter('unsupported file property %r', name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
         path = path.decode("utf-8")
@@ -217,8 +185,7 @@ class TreeBuildEditor(svn.delta.Editor):
         return path
 
     def close_dir(self, id):
-        if id in self.tree._inventory and self.dir_ignores.has_key(id):
-            self.tree._inventory[id].ignores = self.dir_ignores[id]
+        pass
 
     def close_file(self, path, checksum):
         file_id, revision_id = self.tree.id_map[path]
@@ -260,7 +227,7 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def apply_textdelta(self, file_id, base_checksum):
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(""), self.file_stream, self.pool)
+        return apply_txdelta_handler("", self.file_stream)
 
 
 class SvnBasisTree(RevisionTree):
@@ -280,7 +247,7 @@ class SvnBasisTree(RevisionTree):
             props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"), wc)
             if isinstance(props, list): # Subversion 1.5
                 props = props[1]
-            if props.has_key(svn.core.SVN_PROP_SPECIAL):
+            if props.has_key(properties.PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
                 ie.text_sha1 = None
@@ -292,7 +259,7 @@ class SvnBasisTree(RevisionTree):
                 data = osutils.fingerprint_file(open(self._abspath(relpath)))
                 ie.text_sha1 = data['sha1']
                 ie.text_size = data['size']
-                ie.executable = props.has_key(svn.core.SVN_PROP_EXECUTABLE)
+                ie.executable = props.has_key(properties.PROP_EXECUTABLE)
             ie.revision = revid
             return ie
 
@@ -329,7 +296,7 @@ class SvnBasisTree(RevisionTree):
 
                 assert entry
                 
-                if entry.kind == svn.core.svn_node_dir:
+                if entry.kind == core.NODE_DIR:
                     subwc = svn.wc.adm_open3(wc, 
                             self.workingtree.abspath(subrelpath), 
                                              False, 0, None)
@@ -355,3 +322,6 @@ class SvnBasisTree(RevisionTree):
         base_copy = self._abspath(self.id2path(file_id))
         return osutils.split_lines(open(base_copy).read())
 
+    def annotate_iter(self, file_id,
+                      default_revision=CURRENT_REVISION):
+        raise NotImplementedError(self.annotate_iter)

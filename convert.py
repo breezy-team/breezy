@@ -18,14 +18,16 @@ from bzrlib import ui, urlutils
 from bzrlib.bzrdir import BzrDir, Converter
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
-                           NoRepositoryPresent, NoSuchRevision)
+                           NoRepositoryPresent, NoSuchRevision) 
 from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null
 from bzrlib.transport import get_transport
 
-from format import get_rich_root_format
+from bzrlib.plugins.svn.errors import ERR_STREAM_MALFORMED_DATA
+from bzrlib.plugins.svn.format import get_rich_root_format
 
 import svn.core, svn.repos
+from svn.core import SubversionException
 
 def transport_makedirs(transport, location_url):
     """Create missing directories.
@@ -73,8 +75,8 @@ def load_dumpfile(dumpfile, outputdir):
     try:
         svn.repos.load_fs2(repos, file, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
-    except svn.core.SubversionException, (_, num):
-        if num == svn.core.SVN_ERR_STREAM_MALFORMED_DATA:
+    except SubversionException, (_, num):
+        if num == ERR_STREAM_MALFORMED_DATA:
             raise NotDumpFile(dumpfile)
         raise
     return repos

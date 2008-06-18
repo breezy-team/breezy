@@ -15,19 +15,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion BzrDir formats."""
 
+import bzrlib
 from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
                            NoWorkingTree, AlreadyBranchError)
 from bzrlib.transport.local import LocalTransport
 
-from svn.core import SubversionException
-import svn.core, svn.repos
-
-from errors import NoSvnRepositoryPresent
-from format import get_rich_root_format, SvnRemoteFormat
-from repository import SvnRepository
-from transport import bzr_to_svn_url, get_svn_ra_transport
+from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn.errors import NoSvnRepositoryPresent
+from bzrlib.plugins.svn.format import get_rich_root_format, SvnRemoteFormat
+from bzrlib.plugins.svn.repository import SvnRepository
+from bzrlib.plugins.svn.transport import bzr_to_svn_url, get_svn_ra_transport
 
 
 class SvnRemoteAccess(BzrDir):
@@ -59,29 +58,6 @@ class SvnRemoteAccess(BzrDir):
         """
         raise NotImplementedError(SvnRemoteAccess.clone)
 
-    def sprout(self, url, revision_id=None, force_new_repo=False,
-            recurse='down', possible_transports=None, accelerator_tree=None,
-            hardlink=False):
-        """See BzrDir.sprout()."""
-        # FIXME: Use possible_transports
-        # FIXME: Use recurse
-        format = get_rich_root_format()
-        result = format.initialize(url)
-        repo = self.find_repository()
-        if force_new_repo:
-            result_repo = repo.clone(result, revision_id)
-        else:
-            try:
-                result_repo = result.find_repository()
-                result_repo.fetch(repo, revision_id=revision_id)
-            except NoRepositoryPresent:
-                result_repo = repo.clone(result, revision_id)
-        branch = self.open_branch()
-        result_branch = branch.sprout(result, revision_id)
-        if result_branch.repository.make_working_trees():
-            result.create_workingtree(hardlink=hardlink)
-        return result
-
     def open_repository(self, _unsupported=False):
         """Open the repository associated with this BzrDir.
         
@@ -100,6 +76,10 @@ class SvnRemoteAccess(BzrDir):
         if self.root_url != transport.base:
             transport = transport.clone_root()
         return SvnRepository(self, transport, self.branch_path)
+
+    def cloning_metadir(self):
+        """Produce a metadir suitable for cloning with."""
+        return bzrlib.bzrdir.format_registry.make_bzrdir("rich-root-pack")
 
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
@@ -145,7 +125,7 @@ class SvnRemoteAccess(BzrDir):
             full_branch_url = urlutils.join(repos.transport.base, 
                                             target_branch_path)
             if repos.transport.check_path(target_branch_path,
-                repos.get_latest_revnum()) != svn.core.svn_node_none:
+                repos.get_latest_revnum()) != core.NODE_NONE:
                 raise AlreadyBranchError(full_branch_url)
             push_new(repos, target_branch_path, source, stop_revision)
         finally:

@@ -23,7 +23,7 @@ from bzrlib.errors import NotBranchError
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from bzrlib.plugins.svn.errors import InvalidSvnBranchPath
-import util
+from bzrlib.plugins.svn import properties
 import bz2
 import urllib
 
@@ -338,7 +338,7 @@ class SingleBranchingScheme(ListBranchingScheme):
                 path[len(self.path):].strip("/"))
 
     def __str__(self):
-        if util.is_valid_property_name(self.path):
+        if properties.is_valid_property_name(self.path):
             return "single-%s" % self.path
         else:
             return "single1-%s" % prop_name_quote(self.path)

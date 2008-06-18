@@ -6,9 +6,9 @@ PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
 RST2HTML ?= rst2html
-TESTS ?= svn
+TESTS ?= 
 
-all:: build README.html FAQ.html AUTHORS.html
+all:: build build-inplace README.html FAQ.html AUTHORS.html
 
 build::
 	$(SETUP) build
@@ -21,6 +21,7 @@ install::
 
 clean::
 	$(SETUP) clean
+	rm -f *.so
 
 TMP_PLUGINS_DIR = $(shell pwd)/.plugins
 
@@ -31,13 +32,22 @@ $(TMP_PLUGINS_DIR)/svn: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
 check:: build-inplace $(TMP_PLUGINS_DIR)/svn 
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(BZR) selftest $(TEST_OPTIONS) $(TESTS)
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.svn $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
 
 check-one::
 	$(MAKE) check TEST_OPTIONS=--one
+
+check-random::
+	$(MAKE) check TEST_OPTIONS="--random=now --verbose --one"
+
+valgrind-check:: 
+	$(MAKE) check DEBUGGER="valgrind --suppressions=/usr/lib/valgrind/python.supp $(VALGRIND_OPTIONS)"
+
+gdb-check::
+	$(MAKE) check DEBUGGER="gdb --args $(GDB_OPTIONS)"
 
 show-plugins::
 	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(BZR) plugins

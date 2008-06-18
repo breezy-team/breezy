@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from cache import CacheTable
+from bzrlib.plugins.svn.cache import CacheTable
 
 class SqliteCachingParentsProvider(object):
     def __init__(self, actual, cachedb=None):
@@ -42,12 +42,12 @@ class ParentsCache(CacheTable):
         """)
 
     def insert_parents(self, revid, parents):
-        self.mutter('insert parents: %r -> %r' % (revid, parents))
+        self.mutter('insert parents: %r -> %r', revid, parents)
         for parent in parents:
             self.cachedb.execute("insert into parent (revision, parent) VALUES (?, ?)", (revid, parent))
 
     def lookup_parents(self, revid):
-        self.mutter('lookup parents: %r' % (revid,))
+        self.mutter('lookup parents: %r', revid)
         ret = []
         for row in self.cachedb.execute("select parent from parent where revision = ?", (revid,)).fetchall():
             ret.append(row[0])

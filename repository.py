@@ -29,28 +29,24 @@ from bzrlib.revision import Revision, NULL_REVISION, ensure_null
 from bzrlib.transport import Transport, get_transport
 from bzrlib.trace import info, mutter
 
-from svn.core import SubversionException
-import svn.core
-
 import os
 
-from branchprops import PathPropertyProvider
-from cache import create_cache_dir, sqlite3
-import changes
-from changes import changes_path, find_prev_location
-from config import SvnRepositoryConfig
-from parents import SqliteCachingParentsProvider
-import errors
-import logwalker
+from bzrlib.plugins.svn import changes, core, errors, logwalker
+from bzrlib.plugins.svn.branchprops import PathPropertyProvider
+from bzrlib.plugins.svn.cache import create_cache_dir, sqlite3
+from bzrlib.plugins.svn.changes import changes_path, find_prev_location
+from bzrlib.plugins.svn.config import SvnRepositoryConfig
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
                      get_default_mapping, parse_revision_id)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
-from revids import CachingRevidMap, RevidMap
-from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
+from bzrlib.plugins.svn.parents import SqliteCachingParentsProvider
+from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
+from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
-from tree import SvnRevisionTree
+from bzrlib.plugins.svn.tree import SvnRevisionTree
 import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
@@ -68,6 +64,9 @@ class RevisionMetadata(object):
         self.revnum = revnum
         self.revprops = revprops
         self.fileprops = fileprops
+
+    def __repr__(self):
+        return "<RevisionMetadata for revision %d in repository %s>" % (self.revnum, self.repository.uuid)
 
     def get_revision_id(self, mapping):
         return self.repository.generate_revision_id(self.revnum, self.branch_path, mapping, self.revprops, self.fileprops)
@@ -375,9 +374,9 @@ class SvnRepository(Repository):
             return False
 
         try:
-            return (svn.core.svn_node_dir == self.transport.check_path(path, revnum))
+            return (core.NODE_DIR == self.transport.check_path(path, revnum))
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+            if num == errors.ERR_FS_NO_SUCH_REVISION:
                 return False
             raise
 
@@ -442,15 +441,25 @@ class SvnRepository(Repository):
         for revision_id in revids:
             if revision_id == NULL_REVISION:
                 parent_map[revision_id] = ()
-            else:
-                try:
-                    parents = self.revision_parents(revision_id)
-                except NoSuchRevision:
-                    pass
-                else:
-                    if len(parents) == 0:
-                        parents = (NULL_REVISION,)
-                    parent_map[revision_id] = parents
+                continue
+
+            try:
+                (branch, revnum, mapping) = self.lookup_revision_id(ensure_null(revision_id))
+            except NoSuchRevision:
+                continue
+
+            mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
+            parent_ids = (mainline_parent,)
+            
+            if mainline_parent != NULL_REVISION:
+
+                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
+                svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+                revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
+
+                parent_ids += revmeta.get_rhs_parents(mapping)
+
+            parent_map[revision_id] = parent_ids
         return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
@@ -471,23 +480,6 @@ class SvnRepository(Repository):
             revid = svk_feature_to_revision_id(feature, mapping)
             if revid is not None:
                 yield revid
-
-    def revision_parents(self, revision_id):
-        """See Repository.revision_parents()."""
-        (branch, revnum, mapping) = self.lookup_revision_id(ensure_null(revision_id))
-        mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
-        if mainline_parent == NULL_REVISION:
-            return ()
-
-        parent_ids = (mainline_parent,)
-
-        svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-        svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
-        revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
-
-        parent_ids += revmeta.get_rhs_parents(mapping)
-
-        return parent_ids
 
     def get_revision(self, revision_id):
         """See Repository.get_revision."""
@@ -661,29 +653,6 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         self.transport.change_rev_prop(revnum, SVN_REVPROP_BZR_SIGNATURE, signature)
 
-    def get_revision_graph(self, revision_id=None):
-        """See Repository.get_revision_graph()."""
-        graph = self.get_graph()
-
-        if revision_id is None:
-            revision_ids = self.all_revision_ids(self.get_layout(), self.get_mapping())
-        else:
-            revision_ids = [revision_id]
-
-        ret = {}
-        for (revid, parents) in graph.iter_ancestry(revision_ids):
-            if revid == NULL_REVISION:
-                continue
-            if (NULL_REVISION,) == parents:
-                ret[revid] = ()
-            else:
-                ret[revid] = parents
-
-        if revision_id is not None and revision_id != NULL_REVISION and ret[revision_id] is None:
-            raise NoSuchRevision(self, revision_id)
-
-        return ret
-
     def find_branches(self, using=False, layout=None):
         """Find branches underneath this repository.
 
@@ -761,7 +730,7 @@ class SvnRepository(Repository):
                                         elif (layout.is_branch_parent(n) or 
                                               layout.is_tag_parent(n)):
                                             parents.append(n)
-                                except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
+                                except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
                                     pass
         finally:
             pb.finished()

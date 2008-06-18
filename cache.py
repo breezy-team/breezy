@@ -87,6 +87,6 @@ class CacheTable(object):
     def _create_table(self):
         pass
 
-    def mutter(self, text):
+    def mutter(self, text, *args):
         if "cache" in debug.debug_flags:
-            mutter(text)
+            mutter(text, *args)

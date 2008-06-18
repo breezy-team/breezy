@@ -120,7 +120,7 @@ For example::
  All changes applied successfully.
  Pushed up to revision 1075.
 
-If you would like to forbid Bazaar from ever doing these operations, set the 
+If you would like to forbid Bazaar from ever doing these replace operations, set the 
 ``append-revisions-only`` setting to True for the repository you're 
 pushing to.
 
@@ -144,7 +144,7 @@ properties also depends on Subversion 1.5 on the server or modification of the
 default repository hooks.
 
 If you are using trac, you can get it to ignore these file properties by 
-setting	the "hide_properties" setting in the browser section of your 
+setting	the ``hide_properties`` setting in the browser section of your 
 configuration to a list of properties that should not be displayed by trac, 
 e.g.::
 
@@ -154,7 +154,7 @@ e.g.::
 Is it possible to not use the on-disk cache?
 --------------------------------------------
 
-Yes, simply set "use-cache = False" for the repository in question in ~/.bazaar/subversion.conf. 
+Yes, simply set ``use-cache = False`` for the repository in question in ~/.bazaar/subversion.conf. 
 This will of course have some consequences for the performance of bzr-svn since it 
 will have to re-fetch data.
 

@@ -1,6 +1,23 @@
 bzr-svn 0.4.11	UNRELEASED
 
+  CHANGES
+
+   * Now uses absolute imports and no longer adds plugin directory to the system path.
+
   BUG FIXES
+
+   * More efficient use of mutter.
+
+   * Remember parent branch correctly during sprout. (#237174)
+
+   * Raise appropriate errors when using annotate.
+
+   * Fix compatibility with Bazaar 1.6.
+
+   * Fix case insensitive handling of paths in 
+     CachingLogWalker.find_latest_change(). (#233964)
+
+   * Fix compatibility with newer versions of Subversion. (#229419)
 
    * Deal with parent branch changing name in Repository.iter_changes().
      (#229410)
@@ -14,6 +31,10 @@ bzr-svn 0.4.11	UNRELEASED
    * Fix modifying branching scheme from the command-line. (#230529)
 
    * Cope with kind changes better. (#191576)
+
+   * Fix dealing with strange remove during replace operation. (#232196)
+
+   * Deal with missing branches/tags directories when using webdav. (#235301)
 
 bzr-svn 0.4.10  2008-05-12
 

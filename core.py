@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2008 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
  
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,19 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib.tests import TestCase
-from bzrlib.plugins.svn.svk import parse_svk_feature, parse_svk_features
+import svn.core
 
-class SvkTests(TestCase):
-    def test_parse_svk_feature_root(self):
-        self.assertEqual(("auuid", "", 6), 
-                 parse_svk_feature("auuid:/:6"))
+NODE_NONE = svn.core.svn_node_none
+NODE_FILE = svn.core.svn_node_file
+NODE_DIR = svn.core.svn_node_dir
+NODE_UNKNOWN = svn.core.svn_node_unknown
 
-    def test_svk_revid_map_nested(self):
-        self.assertEqual(("auuid", "bp", 6),
-                         parse_svk_feature("auuid:/bp:6"))
-
-    def test_parse_erroneous_svk_feature_root(self):
-        self.assertEqual(set(["auuid:/bp:6"]),
-                 parse_svk_features("auuid:/bp:6\n::"))
-
+SubversionException = svn.core.SubversionException
+time_to_cstring = svn.core.svn_time_to_cstring
+get_config = svn.core.svn_config_get_config

@@ -19,12 +19,8 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
                            UnexpectedEndOfContainerError)
 from bzrlib.tests import TestCase
 
-from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
-                    NotSvnBranchPath, InvalidSvnBranchPath,
-                    SVN_ERR_UNKNOWN_HOSTNAME)
-
-import svn.core
-from svn.core import SubversionException
+from bzrlib.plugins.svn.errors import *
+from bzrlib.plugins.svn.core import SubversionException
 
 class TestConvertError(TestCase):
     def test_decorator_unknown(self):
@@ -37,7 +33,7 @@ class TestConvertError(TestCase):
     def test_decorator_known(self):
         @convert_svn_error
         def test_throws_svn():
-            raise SubversionException("Connection closed", svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED)
+            raise SubversionException("Connection closed", ERR_RA_SVN_CONNECTION_CLOSED)
 
         self.assertRaises(ConnectionReset, test_throws_svn)
 
@@ -50,25 +46,25 @@ class TestConvertError(TestCase):
                 SubversionException)
 
     def test_convert_malformed(self):
-        self.assertIsInstance(convert_error(SubversionException("foo", svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA)), TransportError)
+        self.assertIsInstance(convert_error(SubversionException("foo", ERR_RA_SVN_MALFORMED_DATA)), TransportError)
 
     def test_convert_error_reset(self):
-        self.assertIsInstance(convert_error(SubversionException("Connection closed", svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED)), ConnectionReset)
+        self.assertIsInstance(convert_error(SubversionException("Connection closed", ERR_RA_SVN_CONNECTION_CLOSED)), ConnectionReset)
 
     def test_convert_error_lock(self):
-        self.assertIsInstance(convert_error(SubversionException("Working copy locked", svn.core.SVN_ERR_WC_LOCKED)), LockError)
+        self.assertIsInstance(convert_error(SubversionException("Working copy locked", ERR_WC_LOCKED)), LockError)
 
     def test_convert_perm_denied(self):
-        self.assertIsInstance(convert_error(SubversionException("Permission Denied", svn.core.SVN_ERR_RA_NOT_AUTHORIZED)), PermissionDenied)
+        self.assertIsInstance(convert_error(SubversionException("Permission Denied", ERR_RA_NOT_AUTHORIZED)), PermissionDenied)
 
     def test_convert_unexpected_end(self):
-        self.assertIsInstance(convert_error(SubversionException("Unexpected end of stream", svn.core.SVN_ERR_INCOMPLETE_DATA)), UnexpectedEndOfContainerError)
+        self.assertIsInstance(convert_error(SubversionException("Unexpected end of stream", ERR_INCOMPLETE_DATA)), UnexpectedEndOfContainerError)
 
     def test_convert_unknown_hostname(self):
-        self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", SVN_ERR_UNKNOWN_HOSTNAME)), ConnectionError)
+        self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", ERR_UNKNOWN_HOSTNAME)), ConnectionError)
 
     def test_not_implemented(self):
-        self.assertIsInstance(convert_error(SubversionException("Remote server doesn't support ...", svn.core.SVN_ERR_RA_NOT_IMPLEMENTED)), NotImplementedError)
+        self.assertIsInstance(convert_error(SubversionException("Remote server doesn't support ...", ERR_RA_NOT_IMPLEMENTED)), NotImplementedError)
 
     def test_decorator_nothrow(self):
         @convert_svn_error

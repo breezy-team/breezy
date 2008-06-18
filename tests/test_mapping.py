@@ -17,19 +17,20 @@
 
 import sha
 
-from errors import InvalidPropertyValue
-from mapping import (generate_revision_metadata, parse_revision_metadata, 
+from bzrlib.errors import InvalidRevisionId
+from bzrlib.tests import TestCase, adapt_tests, TestNotApplicable
+from bzrlib.revision import Revision
+from bzrlib.trace import mutter
+
+from bzrlib.plugins.svn.errors import InvalidPropertyValue
+from bzrlib.plugins.svn.mapping import (generate_revision_metadata, parse_revision_metadata, 
                      parse_revid_property, parse_merge_property, 
                      BzrSvnMappingv1, BzrSvnMappingv2, 
                      BzrSvnMappingv4, parse_revision_id)
-from mapping3 import (BzrSvnMappingv3FileProps, BzrSvnMappingv3RevProps, 
+from bzrlib.plugins.svn.mapping3 import (BzrSvnMappingv3FileProps, BzrSvnMappingv3RevProps, 
                       BzrSvnMappingv3Hybrid)
-from mapping3.scheme import NoBranchingScheme
+from bzrlib.plugins.svn.mapping3.scheme import NoBranchingScheme
 
-from bzrlib.errors import InvalidRevisionId
-from bzrlib.tests import (TestCase, adapt_tests, TestNotApplicable)
-from bzrlib.revision import Revision
-from bzrlib.trace import mutter
 
 class MetadataMarshallerTests(TestCase):
     def test_generate_revision_metadata_none(self):

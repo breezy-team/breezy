@@ -15,8 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Checkouts and working trees (working copies)."""
 
-import bzrlib
-from bzrlib import urlutils
+import bzrlib, bzrlib.add
+from bzrlib import osutils, urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
@@ -25,36 +25,35 @@ from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import file_kind, fingerprint_file, supports_executable
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
-from branch import SvnBranch
-from commit import _revision_id_to_svk_feature
-from convert import SvnConverter
-from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
+from bzrlib.plugins.svn import core, properties
+from bzrlib.plugins.svn.branch import SvnBranch
+from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
+from bzrlib.plugins.svn.convert import SvnConverter
+from bzrlib.plugins.svn.core import SubversionException, time_to_cstring
+from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoCheckoutSupport, NoSvnRepositoryPresent, ERR_FS_TXN_OUT_OF_DATE, ERR_ENTRY_EXISTS, ERR_WC_PATH_NOT_FOUND, ERR_WC_NOT_DIRECTORY
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
-                     generate_revision_metadata)
-from remote import SvnRemoteAccess
-from repository import SvnRepository
-from svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
-from bzrlib.plugins.svn.mapping import escape_svn_path
-from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
+                     escape_svn_path, generate_revision_metadata)
+from bzrlib.plugins.svn.ra import create_svn_client
+from bzrlib.plugins.svn.remote import SvnRemoteAccess
+from bzrlib.plugins.svn.repository import SvnRepository
+from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
+from bzrlib.plugins.svn.transport import (SvnRaTransport, bzr_to_svn_url, 
                        svn_config) 
-from tree import SvnBasisTree
+from bzrlib.plugins.svn.tree import SvnBasisTree
 
 import os
 import urllib
 
 import svn.core, svn.wc
-from svn.core import SubversionException
 
-from errors import NoCheckoutSupport
-from format import get_rich_root_format
+from bzrlib.plugins.svn.format import get_rich_root_format
 
 def generate_ignore_list(ignore_map):
     """Create a list of ignores, ordered by directory.
@@ -73,7 +72,8 @@ def generate_ignore_list(ignore_map):
 class SvnWorkingTree(WorkingTree):
     """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
-        self._format = SvnWorkingTreeFormat()
+        version = wc.check_wc(local_path)
+        self._format = SvnWorkingTreeFormat(version)
         self.basedir = local_path
         assert isinstance(self.basedir, unicode)
         self.bzrdir = bzrdir
@@ -107,7 +107,7 @@ class SvnWorkingTree(WorkingTree):
         ignores.update(svn.wc.get_default_ignores(svn_config))
 
         def dir_add(wc, prefix, patprefix):
-            ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
+            ignorestr = svn.wc.prop_get(properties.PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
@@ -119,7 +119,7 @@ class SvnWorkingTree(WorkingTree):
                     continue
 
                 # Ignore ignores on things that aren't directories
-                if entries[entry].kind != svn.core.svn_node_dir:
+                if entries[entry].kind != core.NODE_DIR:
                     continue
 
                 subprefix = os.path.join(prefix, entry)
@@ -252,7 +252,7 @@ class SvnWorkingTree(WorkingTree):
                 file = InventoryFile(id, os.path.basename(relpath), parent_id)
                 file.revision = revid
                 try:
-                    data = fingerprint_file(open(self.abspath(relpath)))
+                    data = osutils.fingerprint_file(open(self.abspath(relpath)))
                     file.text_sha1 = data['sha1']
                     file.text_size = data['size']
                     file.executable = self.is_executable(id, relpath)
@@ -312,7 +312,7 @@ class SvnWorkingTree(WorkingTree):
                     "%r is not a string" % parent_id
             (id, revid) = find_ids(entry, rootwc)
             if id is None:
-                mutter('no id for %r' % entry.url)
+                mutter('no id for %r', entry.url)
                 return
             assert revid is None or isinstance(revid, str), "%r is not a string" % revid
             assert isinstance(id, str), "%r is not a string" % id
@@ -331,7 +331,7 @@ class SvnWorkingTree(WorkingTree):
                 entry = entries[name]
                 assert entry
                 
-                if entry.kind == svn.core.svn_node_dir:
+                if entry.kind == core.NODE_DIR:
                     subwc = svn.wc.adm_open3(wc, self.abspath(subrelpath), 
                                              False, 0, None)
                     try:
@@ -343,7 +343,7 @@ class SvnWorkingTree(WorkingTree):
                     if subid:
                         add_file_to_inv(subrelpath, subid, subrevid, id)
                     else:
-                        mutter('no id for %r' % entry.url)
+                        mutter('no id for %r', entry.url)
 
         rootwc = self._get_wc() 
         try:
@@ -355,7 +355,7 @@ class SvnWorkingTree(WorkingTree):
         return inv
 
     def set_last_revision(self, revid):
-        mutter('setting last revision to %r' % revid)
+        mutter('setting last revision to %r', revid)
         if revid is None or revid == NULL_REVISION:
             self.base_revid = revid
             self.base_revnum = 0
@@ -373,13 +373,13 @@ class SvnWorkingTree(WorkingTree):
 
         def update_settings(wc, path):
             id = newrevtree.inventory.path2id(path)
-            mutter("Updating settings for %r" % id)
+            mutter("Updating settings for %r", id)
             revnum = self.branch.lookup_revision_id(
                     newrevtree.inventory[id].revision)
 
             svn.wc.process_committed2(self.abspath(path).rstrip("/"), wc, 
                           False, revnum, 
-                          svn.core.svn_time_to_cstring(newrev.timestamp), 
+                          time_to_cstring(newrev.timestamp), 
                           newrev.committer, None, False)
 
             if newrevtree.inventory[id].kind != 'directory':
@@ -456,7 +456,7 @@ class SvnWorkingTree(WorkingTree):
                 commit_info = svn.client.commit3(specific_files, True, False, 
                                                  self.client_ctx)
             except SubversionException, (_, num):
-                if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+                if num == ERR_FS_TXN_OUT_OF_DATE:
                     raise OutOfDateTree(self)
                 raise
         except:
@@ -501,10 +501,10 @@ class SvnWorkingTree(WorkingTree):
             try:
                 if not self.inventory.has_filename(f):
                     if save:
-                        mutter('adding %r' % file_path)
+                        mutter('adding %r', file_path)
                         svn.wc.add2(file_path, wc, None, 0, None, None, None)
                     added.append(file_path)
-                if recurse and file_kind(file_path) == 'directory':
+                if recurse and osutils.file_kind(file_path) == 'directory':
                     # Filter out ignored files and update ignored
                     for c in os.listdir(file_path):
                         if self.is_control_filename(c):
@@ -540,9 +540,9 @@ class SvnWorkingTree(WorkingTree):
                     if ids is not None:
                         self._change_fileid_mapping(ids.next(), f, wc)
                 except SubversionException, (_, num):
-                    if num == svn.core.SVN_ERR_ENTRY_EXISTS:
+                    if num == ERR_ENTRY_EXISTS:
                         continue
-                    elif num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
+                    elif num == ERR_WC_PATH_NOT_FOUND:
                         raise NoSuchFile(path=f)
                     raise
             finally:
@@ -578,7 +578,7 @@ class SvnWorkingTree(WorkingTree):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return fingerprint_file(open(self.abspath(path)))['sha1']
+        return osutils.fingerprint_file(open(self.abspath(path)))['sha1']
 
     def _change_fileid_mapping(self, id, path, wc=None):
         if wc is None:
@@ -653,6 +653,9 @@ class SvnWorkingTree(WorkingTree):
         merges.append(revid)
         self.set_pending_merges(merges)
 
+    def get_parent_ids(self):
+        return [self.base_revid] + self.pending_merges()
+
     def pending_merges(self):
         merged = self._get_bzr_merges(self._get_base_branch_props()).splitlines()
         wc = self._get_wc()
@@ -687,7 +690,7 @@ class SvnWorkingTree(WorkingTree):
         finally:
             self.branch.unlock()
 
-    if not supports_executable():
+    if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             inv = self.basis_tree()._inventory
             if file_id in inv:
@@ -698,16 +701,19 @@ class SvnWorkingTree(WorkingTree):
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     """Subversion working copy format."""
+    def __init__(self, version):
+        self.version = version
+
     def __get_matchingbzrdir(self):
         return SvnWorkingTreeDirFormat()
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
     def get_format_description(self):
-        return "Subversion Working Copy"
+        return "Subversion Working Copy Version %d" % self.version
 
     def get_format_string(self):
-        return "Subversion Working Copy Format"
+        raise NotImplementedError
 
     def initialize(self, a_bzrdir, revision_id=None):
         raise NotImplementedError(self.initialize)
@@ -789,7 +795,7 @@ class SvnCheckout(BzrDir):
             branch = SvnBranch(self.remote_transport.base, repos, 
                                self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
+            if num == ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)
             raise
 

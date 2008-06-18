@@ -25,8 +25,8 @@ from bzrlib.revisionspec import SPEC_TYPES
 from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 
-import format
-import revspec
+from bzrlib.plugins.svn import format
+from bzrlib.plugins.svn import revspec
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
@@ -39,7 +39,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(1, 4), (1, 5)]
+COMPATIBLE_BZR_VERSIONS = [(1, 4), (1, 5), (1, 6)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -59,8 +59,8 @@ def check_bzrlib_version(desired):
         raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
     else:
         warning('bzr-svn is not up to date with installed bzr version %s.'
-                ' \nThere should be a newer version of bzr-svn available.' 
-                % (bzrlib.__version__))
+                ' \nThere should be a newer version of bzr-svn available.',
+                bzrlib.__version__)
         if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
             raise BzrError('Version mismatch')
 
@@ -80,7 +80,11 @@ def check_subversion_version():
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
     import svn.core
-    mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % (svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__))
+    if (svn.core.SVN_VER_MINOR >= 5 and 
+            27729 <= svn.core.SVN_VER_REVISION < 31470):
+        warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
+
+    mutter("bzr-svn: using Subversion %d.%d.%d (%s)", svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__)
 
 
 def check_rebase_version(min_version):
@@ -152,8 +156,7 @@ def lazy_register_optimizers():
     if optimizers_registered:
         return
     from bzrlib.repository import InterRepository
-    import commit
-    import fetch
+    from bzrlib.plugins.svn import commit, fetch
     optimizers_registered = True
     InterRepository.register_optimiser(fetch.InterFromSvnRepository)
     InterRepository.register_optimiser(commit.InterToSvnRepository)
@@ -166,7 +169,7 @@ def get_scheme(schemename):
     """
     if isinstance(schemename, unicode):
         schemename = schemename.encode("ascii")
-    from mapping3.scheme import BranchingScheme
+    from bzrlib.plugins.svn.mapping3.scheme import BranchingScheme
     from bzrlib.errors import BzrCommandError
     
     ret = BranchingScheme.find_scheme(schemename)
@@ -200,8 +203,8 @@ class cmd_svn_import(Command):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoRepositoryPresent, NotBranchError
         from bzrlib import urlutils
-        from convert import convert_repository
-        from repository import SvnRepository
+        from bzrlib.plugins.svn.convert import convert_repository
+        from bzrlib.plugins.svn.repository import SvnRepository
         import os
 
         if to_location is None:
@@ -213,7 +216,7 @@ class cmd_svn_import(Command):
             standalone = False
 
         if os.path.isfile(from_location):
-            from convert import load_dumpfile
+            from bzrlib.plugins.svn.convert import load_dumpfile
             import tempfile
             tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
             load_dumpfile(from_location, tmp_repos)
@@ -270,7 +273,7 @@ class cmd_svn_upgrade(Command):
 
     @display_command
     def run(self, from_repository=None, verbose=False):
-        from upgrade import upgrade_branch, upgrade_workingtree
+        from bzrlib.plugins.svn.upgrade import upgrade_branch, upgrade_workingtree
         from bzrlib.branch import Branch
         from bzrlib.errors import NoWorkingTree, BzrCommandError
         from bzrlib.repository import Repository
@@ -458,9 +461,9 @@ class cmd_svn_branching_scheme(Command):
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.repository import Repository
         from bzrlib.trace import info
-        from repository import SvnRepository
-        from mapping3.scheme import scheme_from_branch_list
-        from mapping3 import config_set_scheme, get_property_scheme, set_property_scheme
+        from bzrlib.plugins.svn.repository import SvnRepository
+        from bzrlib.plugins.svn.mapping3.scheme import scheme_from_branch_list
+        from bzrlib.plugins.svn.mapping3 import config_set_scheme, get_property_scheme, set_property_scheme
         def scheme_str(scheme):
             if scheme is None:
                 return ""
@@ -510,7 +513,7 @@ register_command(cmd_svn_set_revprops)
 def test_suite():
     """Returns the testsuite for bzr-svn."""
     from unittest import TestSuite
-    import tests
+    from bzrlib.plugins.svn import tests
     suite = TestSuite()
     suite.addTest(tests.test_suite())
     return suite
@@ -522,6 +525,3 @@ if __name__ == '__main__':
 elif __name__ != 'bzrlib.plugins.svn':
     raise ImportError('The Subversion plugin must be installed as'
                       ' bzrlib.plugins.svn not %s' % __name__)
-else:
-    import os, sys
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))

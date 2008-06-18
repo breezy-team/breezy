@@ -19,20 +19,22 @@ from bzrlib import ui
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
-                           NotBranchError)
+                           NotBranchError, UnstackableBranchFormat)
 from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
-from svn.core import SubversionException
 
-from commit import push
-from config import BranchConfig
-from errors import NotSvnBranchPath
-from format import get_rich_root_format
-from repository import SvnRepository
-from transport import bzr_to_svn_url, create_svn_client
+from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn.commit import push
+from bzrlib.plugins.svn.config import BranchConfig
+from bzrlib.plugins.svn.core import SubversionException
+from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
+from bzrlib.plugins.svn.format import get_rich_root_format
+from bzrlib.plugins.svn.repository import SvnRepository
+from bzrlib.plugins.svn.ra import create_svn_client
+from bzrlib.plugins.svn.transport import bzr_to_svn_url
 
 
 class FakeControlFiles(object):
@@ -78,10 +80,10 @@ class SvnBranch(Branch):
             if revnum is None:
                 raise NotBranchError(self.base)
             if self.repository.transport.check_path(branch_path.strip("/"), 
-                revnum) != svn.core.svn_node_dir:
+                revnum) != core.NODE_DIR:
                 raise NotBranchError(self.base)
         except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+            if num == ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
         if not self.mapping.is_branch(branch_path):
@@ -340,16 +342,21 @@ class SvnBranch(Branch):
             revno = self.revision_id_to_revno(revision_id)
         destination.set_last_revision_info(revno, revision_id)
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False, 
+                         graph=None):
         """See Branch.update_revisions()."""
+        if overwrite:
+            raise NotImplementedError("overwrite not supported for Subversion branches")
         if stop_revision is None:
             stop_revision = ensure_null(other.last_revision())
         if (self.last_revision() == stop_revision or
             self.last_revision() == other.last_revision()):
             return
+        if graph is None:
+            graph = self.repository.get_graph()
         if not other.repository.get_graph().is_ancestor(self.last_revision(), 
                                                         stop_revision):
-            if self.repository.get_graph().is_ancestor(stop_revision, 
+            if graph.is_ancestor(stop_revision, 
                                                        self.last_revision()):
                 return
             raise DivergedBranches(self, other)
@@ -421,7 +428,11 @@ class SvnBranch(Branch):
         """See Branch.sprout()."""
         result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
+        result.set_parent(self.bzrdir.root_transport.base)
         return result
+
+    def get_stacked_on(self):
+        raise UnstackableBranchFormat(self._format, self.base)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)

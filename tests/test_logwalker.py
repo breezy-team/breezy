@@ -19,10 +19,11 @@
 from bzrlib.errors import NoSuchRevision
 
 import os
-import logwalker
 from bzrlib import debug
-from tests import TestCaseWithSubversionRepository
-from transport import SvnRaTransport
+
+from bzrlib.plugins.svn import logwalker
+from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+from bzrlib.plugins.svn.transport import SvnRaTransport
 
 class TestLogWalker(TestCaseWithSubversionRepository):
     def setUp(self):
@@ -33,52 +34,51 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         return logwalker.LogWalker(transport)
 
     def test_create(self):
-        repos_url = self.make_client("a", "ac")
+        repos_url = self.make_repository("a")
         self.get_log_walker(transport=SvnRaTransport(repos_url))
 
     def test_get_branch_log(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("foo")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, len(list(walker.iter_changes(None, 1))))
 
     def test_get_branch_follow_branch(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/foo': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_update("dc")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.done()
 
-        os.mkdir("dc/branches")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "Add branches")
-        self.client_update("dc")
-
-        self.client_copy("dc/trunk", "dc/branches/foo")
-        self.client_commit("dc", "Copy")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
+        
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches/foo", "trunk")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, len(list(walker.iter_changes(["branches/foo"], 3))))
 
     def test_get_branch_follow_branch_changing_parent(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/foo': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_update("dc")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/foo")
+        cb.done()
 
-        os.mkdir("dc/branches")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "Add branches")
-        self.client_update("dc")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
 
-        self.client_copy("dc/trunk", "dc/branches/abranch")
-        self.client_commit("dc", "Copy")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches/abranch", "trunk")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -89,52 +89,53 @@ class TestLogWalker(TestCaseWithSubversionRepository):
             ], [l[:2] for l in walker.iter_changes(["branches/abranch/foo"], 3)])
 
     def test_get_revision_paths(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("foo")
+        cb.done()
         walker = self.get_log_walker(SvnRaTransport(repos_url))
-        self.assertEqual({"foo": ('A', None, -1)}, walker.get_revision_paths(1))
         self.assertEqual({"foo": ('A', None, -1)}, walker.get_revision_paths(1))
         self.assertEqual({"": ('A', None, -1)}, walker.get_revision_paths(0))
 
     def test_get_revision_paths_zero(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         walker = self.get_log_walker(SvnRaTransport(repos_url))
         self.assertEqual({'': ('A', None, -1)}, walker.get_revision_paths(0))
 
     def test_get_revision_paths_invalid(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         walker = self.get_log_walker(SvnRaTransport(repos_url))
         self.assertRaises(NoSuchRevision, lambda: walker.get_revision_paths(42))
 
     def test_get_branch_invalid_revision(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertRaises(NoSuchRevision, list, 
                           walker.iter_changes(["/"], 20))
 
     def test_branch_log_all(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
-        self.client_add("dc/trunk")
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/file")
+        cb.add_dir("foo")
+        cb.add_file("foo/file")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, len(list(walker.iter_changes([""], 1))))
 
     def test_branch_log_specific(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({
-            'dc/branches': None,
-            'dc/branches/brancha': None,
-            'dc/branches/branchab': None,
-            'dc/branches/brancha/data': "data", 
-            "dc/branches/branchab/data":"data"})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_dir("branches/brancha")
+        cb.add_dir("branches/branchb")
+        cb.add_dir("branches/branchab")
+        cb.add_file("branches/brancha/data")
+        cb.add_file("branches/branchab/data")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -142,19 +143,17 @@ class TestLogWalker(TestCaseWithSubversionRepository):
             1))))
 
     def test_iter_changes_ignore_unchanged(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.build_tree({
-            'dc/branches/brancha': None,
-            'dc/branches/branchab': None,
-            'dc/branches/brancha/data': "data", 
-            "dc/branches/branchab/data":"data"})
-        self.client_add("dc/branches/brancha")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_dir("branches/brancha")
+        cb.add_dir("branches/branchab")
+        cb.add_file("branches/brancha/data")
+        cb.done()
 
-        self.client_add("dc/branches/branchab")
-        self.client_commit("dc", "My Message2")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("branches/branchab/data")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -162,75 +161,108 @@ class TestLogWalker(TestCaseWithSubversionRepository):
             2))))
 
     def test_find_latest_none(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, walker.find_latest_change("", 1))
     
     def test_find_latest_children_root(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': "bla"})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("branches")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, 
             walker.find_latest_change("", 1))
 
+    def test_find_latest_case(self):
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_file("branches/child")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("BRANCHES")
+        cb.add_file("BRANCHES/child")
+        cb.done()
+
+        walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(1, 
+            walker.find_latest_change("branches", 2))
+
     def test_find_latest_parent(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches/tmp/foo': None, 'dc/tags': None})
-        self.client_add("dc/branches")
-        self.client_add("dc/tags")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/branches/tmp", "dc/tags/tmp")
-        self.client_commit("dc", "My Message2")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_dir("tags")
+        cb.add_dir("branches/tmp")
+        cb.add_dir("branches/tmp/foo")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("tags/tmp", "branches/tmp")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 2))
 
     def test_find_latest_parent_just_modify(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches/tmp/foo': None, 'dc/tags': None})
-        self.client_add("dc/branches")
-        self.client_add("dc/tags")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/branches/tmp", "dc/tags/tmp")
-        self.client_commit("dc", "My Message2")
-        self.client_update("dc")
-        self.client_set_prop("dc/tags", "myprop", "mydata")
-        self.client_commit("dc", "My Message3")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_dir("branches/tmp")
+        cb.add_dir("branches/tmp/foo")
+        cb.add_dir("tags")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("tags/tmp", "branches/tmp")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("tags", "myprop", "mydata")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 3))
 
     def test_find_latest_parentmoved(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches/tmp': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
 
-        self.client_copy("dc/branches", "dc/bla")
-        self.client_commit("dc", "My Message")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_dir("branches/tmp")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("bla", "branches")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertIs(2, walker.find_latest_change("bla/tmp", 2))
 
     def test_find_latest_nonexistant(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches/tmp': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
 
-        self.client_copy("dc/branches", "dc/bla")
-        self.client_commit("dc", "My Message")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.add_dir("branches/tmp")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("bla", "branches")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -238,86 +270,104 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertIs(None, walker.find_latest_change("bloe/bla", 2))
 
     def test_find_latest_change(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, walker.find_latest_change("branches", 1))
 
     def test_find_latest_change_children(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/branches/foo': 'data'})
-        self.client_add("dc/branches/foo")
-        self.client_commit("dc", "My Message2")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_file("branches/foo")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, walker.find_latest_change("branches", 2))
 
     def test_find_latest_change_prop(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/branches/foo': 'data'})
-        self.client_set_prop("dc/branches", "myprop", "mydata")
-        self.client_commit("dc", "propchange")
-        self.client_add("dc/branches/foo")
-        self.client_commit("dc", "My Message2")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("branches", "myprop", "mydata")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_file("branches/foo")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(3, walker.find_latest_change("branches", 3))
 
     def test_find_latest_change_file(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/branches/foo': 'data'})
-        self.client_add("dc/branches/foo")
-        self.client_commit("dc", "propchange")
-        self.build_tree({'dc/branches/foo': 'data4'})
-        self.client_commit("dc", "My Message2")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_file("branches/foo")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_file("branches/foo")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(3, walker.find_latest_change("branches/foo", 3))
 
     def test_find_latest_change_newer(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/branches/foo': 'data'})
-        self.client_add("dc/branches/foo")
-        self.client_commit("dc", "propchange")
-        self.build_tree({'dc/branches/foo': 'data4'})
-        self.client_commit("dc", "My Message2")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_file("branches/foo")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_file("branches/foo")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, walker.find_latest_change("branches/foo", 2))
 
     def test_follow_history_branch_replace(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
-        self.build_tree({'dc/trunk/data': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Cm1")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/data")
+        cb.done()
+        
+        cb = self.commit_editor(repos_url)
+        cb.delete("trunk")
+        cb.done()
 
-        self.client_delete("dc/trunk")
-        self.client_commit("dc", "Cm1")
-
-        self.build_tree({'dc/trunk/data': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Cm1")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/data")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEqual([({"trunk/data": ('A', None, -1),
@@ -325,31 +375,31 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                                      [l[:2] for l in walker.iter_changes(["trunk"], 3)])
 
     def test_follow_history(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("foo")
+        cb.done()
 
         for (paths, rev, revprops) in walker.iter_changes([""], 1):
             self.assertTrue(rev == 0 or paths.has_key("foo"))
             self.assertTrue(rev in (0,1))
 
     def test_follow_history_nohist(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual([({'': ('A', None, -1)}, 0)], [l[:2] for l in walker.iter_changes([""], 0)])
 
     def test_later_update(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        cb = self.commit_editor(repos_url)
+        cb.add_file("foo")
+        cb.done()
 
         for (paths, rev, revprops) in walker.iter_changes([""], 1):
             self.assertTrue(rev == 0 or paths.has_key("foo"))
@@ -359,14 +409,16 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, list, iter)
 
     def test_get_branch_log_follow(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})
-        self.client_add("dc/trunk")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_dir("branches")
+        cb.add_file("trunk/afile")
+        cb.done()
 
-        self.client_copy("dc/trunk", "dc/branches/abranch")
-        self.client_commit("dc", "Create branch")
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("branches/abranch", "trunk")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -377,75 +429,94 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                                      'trunk': (u'A', None, -1)}, 1)], items)
 
     def test_get_previous_root(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual((None, -1), walker.get_previous("", 0))
 
     def test_get_previous_simple(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/trunk/afile': "data2"})
-        self.client_set_prop("dc/trunk", "myprop", "mydata")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/file")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_file("trunk/afile")
+        cb.change_dir_prop("trunk", "myprop", "mydata")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(("trunk", 1), walker.get_previous("trunk", 2))
 
     def test_get_previous_added(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/trunk/afile': "data2"})
-        self.client_set_prop("dc/trunk", "myprop", "mydata")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/afile")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_file("trunk/afile")
+        cb.change_dir_prop("trunk", "myprop", "mydata")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual((None, -1), walker.get_previous("trunk", 1))
 
     def test_get_previous_copy(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/trunk", "dc/anotherfile")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/afile")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("anotherfile", "trunk")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(("trunk", 1), walker.get_previous("anotherfile", 2))
 
     def test_find_children_empty(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk': None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual([], list(walker.find_children("trunk", 1)))
 
     def test_find_children_one(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/data': 'foo'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/data")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(['trunk/data'], list(walker.find_children("trunk", 1)))
 
     def test_find_children_nested(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/data/bla': 'foo', 'dc/trunk/file': 'bla'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_dir("trunk/data")
+        cb.add_file("trunk/data/bla")
+        cb.add_file("trunk/file")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -454,14 +525,18 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                 set(walker.find_children("trunk", 1)))
 
     def test_find_children_later(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/data/bla': 'foo'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/trunk/file': 'bla'})
-        self.client_add("dc/trunk/file")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
 
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_dir("trunk/data")
+        cb.add_file("trunk/data/bla")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_file("trunk/file")
+        cb.done()
+        
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(set(['trunk/data', 'trunk/data/bla']), 
@@ -470,14 +545,20 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                 set(walker.find_children("trunk", 2)))
 
     def test_find_children_copy(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/data/bla': 'foo',
-                         'dc/trunk/db/f1': 'bloe',
-                         'dc/trunk/db/f2': 'bla'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/trunk/db", "dc/trunk/data/fg")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_dir("trunk/data")
+        cb.add_dir("trunk/db")
+        cb.add_file("trunk/data/bla")
+        cb.add_file("trunk/db/f1")
+        cb.add_file("trunk/db/f2")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk/data/fg", "trunk/db")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -488,16 +569,24 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                 set(walker.find_children("trunk", 2)))
 
     def test_find_children_copy_del(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/data/bla': 'foo',
-                         'dc/trunk/db/f1': 'bloe',
-                         'dc/trunk/db/f2': 'bla'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/trunk/db", "dc/trunk/data/fg")
-        self.client_commit("dc", "My Message")
-        self.client_delete("dc/trunk/data/fg/f2")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_dir("trunk/data")
+        cb.add_file("trunk/data/bla")
+        cb.add_dir("trunk/db")
+        cb.add_file("trunk/db/f1")
+        cb.add_file("trunk/db/f2")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk/data/fg", "trunk/db")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.delete("trunk/data/fg/f2")
+        cb.done()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -507,30 +596,48 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                 set(walker.find_children("trunk", 3)))
 
     def test_fetch_property_change_only_trunk(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/bla': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_set_prop("dc/trunk", "some:property", "some data\n")
-        self.client_commit("dc", "My 3")
-        self.client_set_prop("dc/trunk", "some2:property", "some data\n")
-        self.client_commit("dc", "My 2")
-        self.client_set_prop("dc/trunk", "some:property", "some data4\n")
-        self.client_commit("dc", "My 4")
+        repos_url = self.make_repository('d')
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/bla")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("trunk", "some:property", "some data\n")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("trunk", "some2:property", "some data\n")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("trunk", "some:property", "some data4\n")
+        cb.done()
+
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEquals({'trunk': ('M', None, -1)}, walker.get_revision_paths(3))
 
     def test_iter_changes_property_change(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/bla': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.client_set_prop("dc/trunk", "some:property", "some data\n")
-        self.client_commit("dc", "My 3")
-        self.client_set_prop("dc/trunk", "some2:property", "some data\n")
-        self.client_commit("dc", "My 2")
-        self.client_set_prop("dc/trunk", "some:property", "some other data\n")
-        self.client_commit("dc", "My 4")
+        repos_url = self.make_repository('d')
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.add_file("trunk/bla")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("trunk", "some:property", "some data\n")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("trunk", "some2:property", "some data\n")
+        cb.done()
+
+        cb = self.commit_editor(repos_url)
+        cb.change_dir_prop("trunk", "some:property", "some other data\n")
+        cb.done()
+
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEquals([({'trunk': (u'M', None, -1)}, 3), 
                            ({'trunk': (u'M', None, -1)}, 2), 
