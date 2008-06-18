@@ -2932,7 +2932,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         self.assertEqual([], medium._expected_events)
         # Also, the v3 works then the server should be assumed to support RPCs
         # introduced in 1.6.
-        self.assertTrue(medium._is_remote_at_least((1, 6)))
+        self.assertFalse(medium._is_remote_before((1, 6)))
 
     def test_version_two_server(self):
         """If the server only speaks protocol 2, the client will first try
@@ -2973,7 +2973,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
 
         # Also, because v3 is not supported, the client medium should assume
         # that RPCs introduced in 1.6 aren't supported either.
-        self.assertFalse(medium._is_remote_at_least((1, 6)))
+        self.assertTrue(medium._is_remote_before((1, 6)))
 
     def test_unknown_version(self):
         """If the server does not use any known (or at least supported)
