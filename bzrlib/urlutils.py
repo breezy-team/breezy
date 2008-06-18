@@ -237,6 +237,9 @@ def _posix_local_path_to_url(path):
 
 def _win32_local_path_from_url(url):
     """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
+    if url == 'file://':
+        return ''
+
     if not url.startswith('file://'):
         raise errors.InvalidURL(url, 'local urls must start with file:///, '
                                      'UNC path urls must start with file://')
@@ -270,6 +273,9 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
+    if path == '/':
+        return 'file://'
+
     win32_path = osutils._win32_abspath(path)
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):

@@ -316,6 +316,7 @@ class TestUrlToPath(TestCase):
         #     to_url('C:/path/to/foo '))
         self.assertEqual('file:///C:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
+        self.assertEqual('file://', to_url('/'))
 
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
@@ -348,6 +349,7 @@ class TestUrlToPath(TestCase):
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+        self.assertEqual('', from_url('file://'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
