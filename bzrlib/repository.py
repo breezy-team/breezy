@@ -3003,8 +3003,8 @@ class InterPackToRemotePack(InterPackRepo):
     """A specialisation of InterPackRepo for a target that is a
     RemoteRepository.
 
-    The only difference at the moment is that it will use the get_parent_map
-    RPC rather than plain readvs.
+    This will use the get_parent_map RPC rather than plain readvs, and also
+    uses RPCs for Packer._check_references and for autopacking.
     """
 
     _walk_to_common_revisions_batch_size = 50
