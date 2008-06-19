@@ -549,6 +549,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         target_transport = a_dir.root_transport.clone('..').clone('target')
         target_bzrdir = a_dir.clone_on_transport(target_transport)
         target_repo = target_bzrdir.open_repository()
+        source_branch = bzrlib.branch.Branch.open(
+            self.get_vfs_only_url('source'))
         self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):
