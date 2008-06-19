@@ -143,13 +143,13 @@ def get_stock_svn_providers():
             ra.get_ssl_server_trust_file_provider(),
             ]
 
-    if hasattr(ra, 'get_windows_simple_provider'):
+    if getattr(ra, 'get_windows_simple_provider', None):
         providers.append(ra.get_windows_simple_provider())
 
-    if hasattr(ra, 'get_keychain_simple_provider'):
+    if getattr(ra, 'get_keychain_simple_provider', None):
         providers.append(ra.get_keychain_simple_provider())
 
-    if hasattr(ra, 'get_windows_ssl_server_trust_provider'):
+    if getattr(ra, 'get_windows_ssl_server_trust_provider', None):
         providers.append(ra.get_windows_ssl_server_trust_provider())
 
     return providers

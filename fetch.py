@@ -135,17 +135,17 @@ class RevisionBuildEditor:
 
         return (rev, signature)
 
-    def open_root(self, base_revnum, baton):
+    def open_root(self, base_revnum):
         if self.old_inventory.root is None:
             # First time the root is set
             old_file_id = None
             file_id = self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, u"")
-            self.dir_baserev[file_id] = []
+            file_parents = []
         else:
             assert self.old_inventory.root.revision is not None
             old_file_id = self.old_inventory.root.file_id
             file_id = self._get_id_map().get("", old_file_id)
-            self.dir_baserev[file_id] = [self.old_inventory.root.revision]
+            file_parents = [self.old_inventory.root.revision]
 
         if self.inventory.root is not None and \
                 file_id == self.inventory.root.file_id:
@@ -153,7 +153,28 @@ class RevisionBuildEditor:
         else:
             ie = self.inventory.add_path("", 'directory', file_id)
         ie.revision = self.revid
-        return (old_file_id, file_id)
+        return DirectoryBuildEditor(self, old_file_id, file_id, file_parents)
+
+    def close(self):
+        pass
+
+    def _store_directory(self, file_id, parents):
+        raise NotImplementedError(self._store_directory)
+
+    def _get_file_data(self, file_id, revid):
+        raise NotImplementedError(self._get_file_data)
+
+    def _finish_commit(self):
+        raise NotImplementedError(self._finish_commit)
+
+    def abort(self):
+        pass
+
+    def _start_revision(self):
+        pass
+
+    def _store_file(self, file_id, lines, parents):
+        raise NotImplementedError(self._store_file)
 
     def _get_existing_id(self, old_parent_id, new_parent_id, path):
         assert isinstance(path, unicode)
@@ -187,82 +208,81 @@ class RevisionBuildEditor:
             return
         self.inventory.rename(file_id, parent_id, urlutils.basename(path))
 
-    def delete_entry(self, path, revnum, (old_parent_id, new_parent_id), pool):
-        assert isinstance(path, str)
-        path = path.decode("utf-8")
-        if path in self._premature_deletes:
-            # Delete recursively
-            self._premature_deletes.remove(path)
-            for p in self._premature_deletes.copy():
-                if p.startswith("%s/" % path):
-                    self._premature_deletes.remove(p)
-        else:
-            self.inventory.remove_recursive_id(self._get_old_id(old_parent_id, path))
 
-    def close_directory(self, (old_id, new_id)):
-        self.inventory[new_id].revision = self.revid
+class DirectoryBuildEditor:
+    def __init__(self, editor, old_id, new_id, parent_revids=[]):
+        self.editor = editor
+        self.old_id = old_id
+        self.new_id = new_id
+        self.parent_revids = parent_revids
+
+    def close(self):
+        self.editor.inventory[self.new_id].revision = self.editor.revid
 
         # Only record root if the target repository supports it
-        self._store_directory(new_id, self.dir_baserev[new_id])
+        self.editor._store_directory(self.new_id, self.parent_revids)
 
-    def add_directory(self, path, (old_parent_id, new_parent_id), copyfrom_path, copyfrom_revnum, 
-                      pool):
+        if self.new_id == self.editor.inventory.root.file_id:
+            assert len(self.editor._premature_deletes) == 0
+            self.editor._finish_commit()
+
+    def add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
         assert isinstance(path, str)
         path = path.decode("utf-8")
         check_filename(path)
-        file_id = self._get_new_id(new_parent_id, path)
+        file_id = self.editor._get_new_id(self.new_id, path)
 
-        self.dir_baserev[file_id] = []
-        if file_id in self.inventory:
+        if file_id in self.editor.inventory:
             # This directory was moved here from somewhere else, but the 
             # other location hasn't been removed yet. 
             if copyfrom_path is None:
                 # This should ideally never happen!
-                copyfrom_path = self.old_inventory.id2path(file_id)
+                copyfrom_path = self.editor.old_inventory.id2path(file_id)
                 mutter('no copyfrom path set, assuming %r', copyfrom_path)
-            assert copyfrom_path == self.old_inventory.id2path(file_id)
-            assert copyfrom_path not in self._premature_deletes
-            self._premature_deletes.add(copyfrom_path)
-            self._rename(file_id, new_parent_id, path)
-            ie = self.inventory[file_id]
+            assert copyfrom_path == self.editor.old_inventory.id2path(file_id)
+            assert copyfrom_path not in self.editor._premature_deletes
+            self.editor._premature_deletes.add(copyfrom_path)
+            self.editor._rename(file_id, self.new_id, path)
+            ie = self.editor.inventory[file_id]
             old_file_id = file_id
         else:
             old_file_id = None
-            ie = self.inventory.add_path(path, 'directory', file_id)
-        ie.revision = self.revid
+            ie = self.editor.inventory.add_path(path, 'directory', file_id)
+        ie.revision = self.editor.revid
 
-        return (old_file_id, file_id)
+        return DirectoryBuildEditor(self.editor, old_file_id, file_id)
 
-    def open_directory(self, path, (old_parent_id, new_parent_id), base_revnum, pool):
+    def open_directory(self, path, base_revnum):
         assert isinstance(path, str)
         path = path.decode("utf-8")
         assert base_revnum >= 0
-        base_file_id = self._get_old_id(old_parent_id, path)
-        base_revid = self.old_inventory[base_file_id].revision
-        file_id = self._get_existing_id(old_parent_id, new_parent_id, path)
+        base_file_id = self.editor._get_old_id(self.old_id, path)
+        base_revid = self.editor.old_inventory[base_file_id].revision
+        file_id = self.editor._get_existing_id(self.old_id, self.new_id, path)
         if file_id == base_file_id:
-            self.dir_baserev[file_id] = [base_revid]
-            ie = self.inventory[file_id]
+            file_parents = [base_revid]
+            ie = self.editor.inventory[file_id]
         else:
             # Replace if original was inside this branch
             # change id of base_file_id to file_id
-            ie = self.inventory[base_file_id]
+            ie = self.editor.inventory[base_file_id]
             for name in ie.children:
                 ie.children[name].parent_id = file_id
             # FIXME: Don't touch inventory internals
-            del self.inventory._byid[base_file_id]
-            self.inventory._byid[file_id] = ie
+            del self.editor.inventory._byid[base_file_id]
+            self.editor.inventory._byid[file_id] = ie
             ie.file_id = file_id
-            self.dir_baserev[file_id] = []
-        ie.revision = self.revid
-        return (base_file_id, file_id)
+            file_parents = []
+        ie.revision = self.editor.revid
+        return DirectoryBuildEditor(self.editor, base_file_id, file_id, 
+                                    file_parents)
 
-    def change_dir_prop(self, (old_id, new_id), name, value, pool):
-        if new_id == self.inventory.root.file_id:
+    def change_prop(self, name, value):
+        if self.new_id == self.editor.inventory.root.file_id:
             # Replay lazy_dict, since it may be more expensive
-            if type(self.revmeta.fileprops) != dict:
-                self.revmeta.fileprops = {}
-            self.revmeta.fileprops[name] = value
+            if type(self.editor.revmeta.fileprops) != dict:
+                self.editor.revmeta.fileprops = {}
+            self.editor.revmeta.fileprops[name] = value
 
         if name in (properties.PROP_ENTRY_COMMITTED_DATE,
                     properties.PROP_ENTRY_COMMITTED_REV,
@@ -276,7 +296,76 @@ class RevisionBuildEditor:
         elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported dir property %r', name)
 
-    def change_file_prop(self, id, name, value, pool):
+    def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
+        assert isinstance(path, str)
+        path = path.decode("utf-8")
+        check_filename(path)
+        file_id = self.editor._get_new_id(self.new_id, path)
+        if file_id in self.editor.inventory:
+            # This file was moved here from somewhere else, but the 
+            # other location hasn't been removed yet. 
+            if copyfrom_path is None:
+                # This should ideally never happen
+                copyfrom_path = self.editor.old_inventory.id2path(file_id)
+                mutter('no copyfrom path set, assuming %r', copyfrom_path)
+            assert copyfrom_path == self.editor.old_inventory.id2path(file_id)
+            assert copyfrom_path not in self.editor._premature_deletes
+            self.editor._premature_deletes.add(copyfrom_path)
+            # No need to rename if it's already in the right spot
+            self.editor._rename(file_id, self.new_id, path)
+        return FileBuildEditor(self.editor, path, file_id)
+
+    def open_file(self, path, base_revnum):
+        assert isinstance(path, str)
+        path = path.decode("utf-8")
+        base_file_id = self.editor._get_old_id(self.old_id, path)
+        base_revid = self.editor.old_inventory[base_file_id].revision
+        file_id = self.editor._get_existing_id(self.old_id, self.new_id, path)
+        is_symlink = (self.editor.inventory[base_file_id].kind == 'symlink')
+        file_data = self.editor._get_file_data(base_file_id, base_revid)
+        if file_id == base_file_id:
+            file_parents = [base_revid]
+        else:
+            # Replace
+            del self.editor.inventory[base_file_id]
+            file_parents = []
+        return FileBuildEditor(self.editor, path, file_id, 
+                               file_parents, file_data, is_symlink=is_symlink)
+
+    def delete_entry(self, path, revnum):
+        assert isinstance(path, str)
+        path = path.decode("utf-8")
+        if path in self.editor._premature_deletes:
+            # Delete recursively
+            self.editor._premature_deletes.remove(path)
+            for p in self.editor._premature_deletes.copy():
+                if p.startswith("%s/" % path):
+                    self.editor._premature_deletes.remove(p)
+        else:
+            self.editor.inventory.remove_recursive_id(self.editor._get_old_id(self.old_id, path))
+
+
+class FileBuildEditor:
+    def __init__(self, editor, path, file_id, file_parents=[], data="", 
+                 is_symlink=False):
+        self.path = path
+        self.editor = editor
+        self.file_id = file_id
+        self.file_data = data
+        self.is_symlink = is_symlink
+        self.file_parents = file_parents
+        self.is_executable = None
+        self.file_stream = None
+
+    def apply_textdelta(self, base_checksum=None):
+        actual_checksum = md5.new(self.file_data).hexdigest()
+        assert (base_checksum is None or base_checksum == actual_checksum,
+            "base checksum mismatch: %r != %r" % (base_checksum, 
+                                                  actual_checksum))
+        self.file_stream = StringIO()
+        return apply_txdelta_handler(self.file_data, self.file_stream)
+
+    def change_prop(self, name, value):
         if name == properties.PROP_EXECUTABLE: 
             # You'd expect executable to match 
             # properties.PROP_EXECUTABLE_VALUE, but that's not 
@@ -301,50 +390,8 @@ class RevisionBuildEditor:
               name.startswith(SVN_PROP_BZR_PREFIX)):
             mutter('unsupported file property %r', name)
 
-    def add_file(self, path, (old_parent_id, new_parent_id), copyfrom_path, copyfrom_revnum, baton):
-        assert isinstance(path, str)
-        path = path.decode("utf-8")
-        check_filename(path)
-        self.is_symlink = False
-        self.is_executable = None
-        self.file_data = ""
-        self.file_parents = []
-        self.file_stream = None
-        self.file_id = self._get_new_id(new_parent_id, path)
-        if self.file_id in self.inventory:
-            # This file was moved here from somewhere else, but the 
-            # other location hasn't been removed yet. 
-            if copyfrom_path is None:
-                # This should ideally never happen
-                copyfrom_path = self.old_inventory.id2path(self.file_id)
-                mutter('no copyfrom path set, assuming %r', copyfrom_path)
-            assert copyfrom_path == self.old_inventory.id2path(self.file_id)
-            assert copyfrom_path not in self._premature_deletes
-            self._premature_deletes.add(copyfrom_path)
-            # No need to rename if it's already in the right spot
-            self._rename(self.file_id, new_parent_id, path)
-        return path
-
-    def open_file(self, path, (old_parent_id, new_parent_id), base_revnum, pool):
-        assert isinstance(path, str)
-        path = path.decode("utf-8")
-        base_file_id = self._get_old_id(old_parent_id, path)
-        base_revid = self.old_inventory[base_file_id].revision
-        self.file_id = self._get_existing_id(old_parent_id, new_parent_id, path)
-        self.is_executable = None
-        self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
-        self.file_data = self._get_file_data(base_file_id, base_revid)
-        self.file_stream = None
-        if self.file_id == base_file_id:
-            self.file_parents = [base_revid]
-        else:
-            # Replace
-            del self.inventory[base_file_id]
-            self.file_parents = []
-        return path
-
-    def close_file(self, path, checksum):
-        assert isinstance(path, unicode)
+    def close(self, checksum=None):
+        assert isinstance(self.path, unicode)
         if self.file_stream is not None:
             self.file_stream.seek(0)
             lines = osutils.split_lines(self.file_stream.read())
@@ -355,23 +402,23 @@ class RevisionBuildEditor:
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        self._store_file(self.file_id, lines, self.file_parents)
+        self.editor._store_file(self.file_id, lines, self.file_parents)
 
         assert self.is_symlink in (True, False)
 
-        if self.file_id in self.inventory:
-            del self.inventory[self.file_id]
+        if self.file_id in self.editor.inventory:
+            del self.editor.inventory[self.file_id]
 
         if self.is_symlink:
-            ie = self.inventory.add_path(path, 'symlink', self.file_id)
+            ie = self.editor.inventory.add_path(self.path, 'symlink', self.file_id)
             ie.symlink_target = lines[0][len("link "):]
             ie.text_sha1 = None
             ie.text_size = None
             ie.executable = False
-            ie.revision = self.revid
+            ie.revision = self.editor.revid
         else:
-            ie = self.inventory.add_path(path, 'file', self.file_id)
-            ie.revision = self.revid
+            ie = self.editor.inventory.add_path(self.path, 'file', self.file_id)
+            ie.revision = self.editor.revid
             ie.kind = 'file'
             ie.symlink_target = None
             ie.text_sha1 = osutils.sha_strings(lines)
@@ -380,39 +427,7 @@ class RevisionBuildEditor:
             if self.is_executable is not None:
                 ie.executable = self.is_executable
 
-
         self.file_stream = None
-
-    def close_edit(self):
-        assert len(self._premature_deletes) == 0
-        self._finish_commit()
-
-    def apply_textdelta(self, file_id, base_checksum):
-        actual_checksum = md5.new(self.file_data).hexdigest(),
-        assert (base_checksum is None or base_checksum == actual_checksum,
-            "base checksum mismatch: %r != %r" % (base_checksum, 
-                                                  actual_checksum))
-        self.file_stream = StringIO()
-        return apply_txdelta_handler(self.file_data, self.file_stream)
-
-    def _store_file(self, file_id, lines, parents):
-        raise NotImplementedError(self._store_file)
-
-    def _store_directory(self, file_id, parents):
-        raise NotImplementedError(self._store_directory)
-
-    def _get_file_data(self, file_id, revid):
-        raise NotImplementedError(self._get_file_data)
-
-    def _finish_commit(self):
-        raise NotImplementedError(self._finish_commit)
-
-    def abort_edit(self):
-        pass
-
-    def _start_revision(self):
-        pass
-
 
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
@@ -451,7 +466,7 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         self.target.commit_write_group()
         self._write_group_active = False
 
-    def abort_edit(self):
+    def abort(self):
         if self._write_group_active:
             self.target.abort_write_group()
             self._write_group_active = False
@@ -489,7 +504,7 @@ def get_revision_build_editor(repository):
     :param repository: Repository to obtain the buildeditor for.
     :return: Class object of class descending from RevisionBuildEditor
     """
-    if hasattr(repository, '_packs'):
+    if getattr(repository, '_packs', None):
         return PackRevisionBuildEditor
     return WeaveRevisionBuildEditor
 
@@ -671,7 +686,7 @@ class InterFromSvnRepository(InterRepository):
                             if not conn.is_busy():
                                 self.source.transport.add_connection(conn)
                 except:
-                    editor.abort_edit()
+                    editor.abort()
                     raise
 
                 prev_inv = editor.inventory

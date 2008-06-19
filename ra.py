@@ -58,11 +58,11 @@ get_username_provider = svn.client.get_username_provider
 get_ssl_client_cert_file_provider = svn.client.get_ssl_client_cert_file_provider
 get_ssl_client_cert_pw_file_provider = svn.client.get_ssl_client_cert_pw_file_provider
 get_ssl_server_trust_file_provider = svn.client.get_ssl_server_trust_file_provider
-if hasattr(svn.client, 'get_windows_simple_provider'):
+if getattr(svn.client, 'get_windows_simple_provider', None):
     get_windows_simple_provider = svn.client.get_windows_simple_provider
-if hasattr(svn.client, 'get_keychain_simple_provider'):
+if getattr(svn.client, 'get_keychain_simple_provider', None):
     get_keychain_simple_provider = svn.client.get_keychain_simple_provider
-if hasattr(svn.client, 'get_windows_ssl_server_trust_provider'):
+if getattr(svn.client, 'get_windows_ssl_server_trust_provider', None):
     get_windows_ssl_server_trust_provider = svn.client.get_windows_ssl_server_trust_provider
 
 txdelta_send_stream = svn.delta.svn_txdelta_send_stream
@@ -117,8 +117,7 @@ class DirEditor(object):
 
     def open_file(self, path, base_revision=-1):
         assert self.base_editor.recent_baton[-1] == self.baton
-        baton = svn.delta.editor_invoke_open_file(self.base_editor.editor, path, self.baton,
-                                                 base_revision)
+        baton = svn.delta.editor_invoke_open_file(self.base_editor.editor, path, self.baton, base_revision)
         self.base_editor.recent_baton.append(baton)
         return FileEditor(self.base_editor, baton)
 
@@ -204,52 +203,61 @@ class WrappedEditor:
         self.actual = actual
 
     def set_target_revision(self, revision):
-        if getattr(self.actual, "set_target_revision", None) is not None:
-            self.actual.set_target_revision(revision)
+        self.actual.set_target_revision(revision)
 
-    def open_root(self, base_revision):
-        if getattr(self.actual, "open_root", None) is not None:
-            return self.actual.open_root(base_revision)
-        return None
+    def open_root(self, base_revision, pool):
+        return self.actual.open_root(base_revision)
 
-    def add_directory(self, path, baton, copyfrom_path, copyfrom_rev):
-        if baton is not None and getattr(baton, "add_directory", None) is not None:
+    def add_directory(self, path, baton, copyfrom_path, copyfrom_rev, pool):
+        if baton is not None:
             return baton.add_directory(path, copyfrom_path, copyfrom_rev)
         return None
 
-    def open_directory(self, path, baton, base_rev):
-        if baton is not None and getattr(baton, "open_directory", None) is not None:
+    def add_file(self, path, baton, copyfrom_path, copyfrom_rev, pool):
+        if baton is not None:
+            return baton.add_file(path, copyfrom_path, copyfrom_rev)
+        return None
+
+    def delete_entry(self, path, revnum, baton, pool):
+        if baton is not None:
+            return baton.delete_entry(path, revnum)
+        return None
+
+    def open_directory(self, path, baton, base_rev, pool):
+        if baton is not None:
             return baton.open_directory(path, base_rev)
         return None
 
     def close_directory(self, baton):
-        if baton is not None and getattr(baton, "close", None) is not None:
+        if baton is not None:
             return baton.close()
 
-    def change_file_prop(self, baton, name, value):
-        if baton is not None and getattr(baton, "change_prop", None) is not None:
+    def change_file_prop(self, baton, name, value, pool):
+        if baton is not None:
             return baton.change_prop(name, value)
 
-    def change_dir_prop(self, baton, name, value):
-        if baton is not None and getattr(baton, "change_prop", None) is not None:
+    def change_dir_prop(self, baton, name, value, pool):
+        if baton is not None:
             return baton.change_prop(name, value)
 
     def apply_textdelta(self, baton, checksum):
-        if baton is not None and getattr(baton, "apply_textdelta", None) is not None:
+        if baton is not None:
             return baton.apply_textdelta(checksum)
 
     def close_file(self, baton, checksum):
-        if baton is not None and getattr(baton, "close", None) is not None:
+        if baton is not None:
             return baton.close(checksum)
 
-    def open_file(self, path, baton, base_rev):
-        if baton is not None and getattr(self.actual, "open_file", None) is not None:
+    def open_file(self, path, baton, base_rev, pool):
+        if baton is not None:
             return baton.open_file(path, base_rev)
         return None
 
     def close_edit(self):
-        if getattr(self.actual, "close_edit", None) is not None:
-            self.actual.close_edit()
+        self.actual.close()
+
+    def abort_edit(self):
+        self.actual.abort()
 
 
 class RemoteAccess(object):
@@ -344,7 +352,9 @@ class RemoteAccess(object):
         return svn.ra.get_latest_revnum(self._ra)
 
     def _make_editor(self, editor):
-        edit, edit_baton = svn.delta.make_editor(editor, None)
+        global cureditor # svn.delta.make_editor() doesn't increment the reference counter
+        cureditor = WrappedEditor(editor)
+        edit, edit_baton = svn.delta.make_editor(cureditor, None)
         self._edit = edit
         self._edit_baton = edit_baton
         return self._edit, self._edit_baton
@@ -376,7 +386,7 @@ class RemoteAccess(object):
         assert len(path) == 0 or path[0] != "/"
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
-        if hasattr(svn.ra, 'get_dir2'):
+        if getattr(svn.ra, 'get_dir2', None):
             fields = 0
             if kind:
                 fields += DIRENT_KIND
@@ -427,7 +437,7 @@ class RemoteAccess(object):
     def get_commit_editor(self, revprops, done_cb=None, lock_token=None, keep_locks=False):
         self._mark_busy()
         try:
-            if hasattr(svn.ra, 'get_commit_editor3'):
+            if getattr(svn.ra, 'get_commit_editor3', None):
                 editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
                                                   lock_token, keep_locks)
             elif revprops.keys() != [properties.PROP_REVISION_LOG]:
@@ -468,7 +478,7 @@ class RemoteAccess(object):
              svn.core.SVN_VER_REVISION < 31470 and svn.core.SVN_VER_REVISION != 0))):
             paths = ["/"]
         self.mutter('svn log %r:%r %r (limit: %r)', from_revnum, to_revnum, paths, limit)
-        if hasattr(svn.ra, 'get_log2'):
+        if getattr(svn.ra, 'get_log2', None):
             return svn.ra.get_log2(self._ra, paths, 
                            from_revnum, to_revnum, limit, 
                            discover_changed_paths, strict_node_history, False, 
@@ -500,7 +510,7 @@ class RemoteAccess(object):
     def reparent(self, url):
         if self.url == url:
             return
-        if hasattr(svn.ra, 'reparent'):
+        if getattr(svn.ra, 'reparent', None):
             self.mutter('svn reparent %r', url)
             svn.ra.reparent(self._ra, url)
             self.url = url

@@ -19,11 +19,11 @@
 from cStringIO import StringIO
 import svn.delta
 
-if hasattr(svn.delta, 'tx_invoke_window_handler'):
+if getattr(svn.delta, 'tx_invoke_window_handler', None):
     def apply_txdelta_handler(sbuf, target_stream):
         src_stream = StringIO(sbuf)
-        assert hasattr(src_stream, 'read')
-        assert hasattr(target_stream, 'write')
+        assert getattr(src_stream, 'read', None) is not None
+        assert getattr(target_stream, 'write', None) is not None
         window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
                                                    None)
 
@@ -34,8 +34,8 @@ if hasattr(svn.delta, 'tx_invoke_window_handler'):
 else:
     def apply_txdelta_handler(sbuf, target_stream):
         src_stream = StringIO(sbuf)
-        assert hasattr(src_stream, 'read')
-        assert hasattr(target_stream, 'write')
+        assert getattr(src_stream, 'read', None) is not None
+        assert getattr(target_stream, 'write', None) is not None
         ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None)
 
         def wrapper(window):

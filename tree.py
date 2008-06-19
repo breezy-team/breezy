@@ -130,21 +130,33 @@ class TreeBuildEditor:
     def set_target_revision(self, revnum):
         self.revnum = revnum
 
-    def open_root(self, revnum, baton):
+    def open_root(self, revnum):
         file_id, revision_id = self.tree.id_map[""]
         ie = self.tree._inventory.add_path("", 'directory', file_id)
         ie.revision = revision_id
         self.tree._inventory.revision_id = revision_id
-        return file_id
+        return DirectoryTreeEditor(self.tree, file_id)
 
-    def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+    def close(self):
+        pass
+
+    def abort(self):
+        pass
+
+
+class DirectoryTreeEditor:
+    def __init__(self, tree, file_id):
+        self.tree = tree
+        self.file_id = file_id
+
+    def add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
         path = path.decode("utf-8")
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
-        return file_id
+        return DirectoryTreeEditor(self.tree, file_id)
 
-    def change_dir_prop(self, id, name, value, pool):
+    def change_prop(self, name, value):
         if name in (properties.PROP_ENTRY_COMMITTED_DATE,
                     properties.PROP_ENTRY_LAST_AUTHOR,
                     properties.PROP_ENTRY_LOCK_TOKEN,
@@ -158,7 +170,25 @@ class TreeBuildEditor:
         elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported dir property %r', name)
 
-    def change_file_prop(self, id, name, value, pool):
+    def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
+        path = path.decode("utf-8")
+        self.is_symlink = False
+        self.is_executable = False
+        return FileTreeEditor(self.tree, path)
+
+    def close(self):
+        pass
+
+
+class FileTreeEditor:
+    def __init__(self, tree, path):
+        self.tree = tree
+        self.path = path
+        self.is_executable = False
+        self.is_symlink = False
+        self.last_file_rev = None
+
+    def change_prop(self, name, value):
         if name == properties.PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == properties.PROP_SPECIAL:
@@ -178,21 +208,12 @@ class TreeBuildEditor:
         elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported file property %r', name)
 
-    def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
-        path = path.decode("utf-8")
-        self.is_symlink = False
-        self.is_executable = False
-        return path
-
-    def close_directory(self, id):
-        pass
-
-    def close_file(self, path, checksum):
-        file_id, revision_id = self.tree.id_map[path]
+    def close(self, checksum=None):
+        file_id, revision_id = self.tree.id_map[self.path]
         if self.is_symlink:
-            ie = self.tree._inventory.add_path(path, 'symlink', file_id)
+            ie = self.tree._inventory.add_path(self.path, 'symlink', file_id)
         else:
-            ie = self.tree._inventory.add_path(path, 'file', file_id)
+            ie = self.tree._inventory.add_path(self.path, 'file', file_id)
         ie.revision = revision_id
 
         if self.file_stream:
@@ -219,13 +240,7 @@ class TreeBuildEditor:
 
         self.file_stream = None
 
-    def close_edit(self):
-        pass
-
-    def abort_edit(self):
-        pass
-
-    def apply_textdelta(self, file_id, base_checksum):
+    def apply_textdelta(self, base_checksum):
         self.file_stream = StringIO()
         return apply_txdelta_handler("", self.file_stream)
 
