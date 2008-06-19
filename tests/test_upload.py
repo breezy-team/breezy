@@ -184,8 +184,11 @@ class TestUploadMixin(object):
         self.tree.commit('change %s from dir to file' % name)
 
     def transform_file_into_dir(self, name, base=branch_dir):
-        osutils.delete_any(base + name)
+        # bzr can't handle that kind change in a single commit without an
+        # intervening bzr status (see bug #205636).
+        self.tree.remove([name], keep_files=False)
         os.mkdir(base + name)
+        self.tree.add(name)
         self.tree.commit('change %s from file to dir' % name)
 
     def _get_cmd_upload(self):
@@ -217,6 +220,7 @@ class TestUploadMixin(object):
         self.make_local_branch()
         self.do_full_upload()
         self.add_file('hello', 'foo')
+
         self.do_upload()
 
         self.assertUpFileEqual('foo', 'hello')
@@ -228,7 +232,9 @@ class TestUploadMixin(object):
         self.add_file('dir/goodbye', 'baz')
 
         self.failIfUpFileExists('dir/goodbye')
+
         self.do_upload()
+
         self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_modify_file(self):
@@ -238,7 +244,9 @@ class TestUploadMixin(object):
         self.modify_file('hello', 'bar')
 
         self.assertUpFileEqual('foo', 'hello')
+
         self.do_upload()
+
         self.assertUpFileEqual('bar', 'hello')
 
     def test_rename_one_file(self):
@@ -248,7 +256,9 @@ class TestUploadMixin(object):
         self.rename_any('hello', 'goodbye')
 
         self.assertUpFileEqual('foo', 'hello')
+
         self.do_upload()
+
         self.assertUpFileEqual('foo', 'goodbye')
 
     def test_rename_two_files(self):
@@ -263,7 +273,9 @@ class TestUploadMixin(object):
 
         self.assertUpFileEqual('foo', 'a')
         self.assertUpFileEqual('qux', 'b')
+
         self.do_upload()
+
         self.assertUpFileEqual('foo', 'b')
         self.assertUpFileEqual('qux', 'c')
 
@@ -274,17 +286,20 @@ class TestUploadMixin(object):
         self.modify_file('hello', 'bar') # rev3
 
         self.failIfUpFileExists('hello')
+
         revspec = revisionspec.RevisionSpec.from_string('2')
         self.do_upload(revision=[revspec])
+
         self.assertUpFileEqual('foo', 'hello')
 
-    def test_upload_when_changes(self):
+    def test_no_upload_when_changes(self):
         self.make_local_branch()
         self.add_file('a', 'foo')
         self.set_file_content('a', 'bar')
+
         self.assertRaises(errors.UncommittedChanges, self.do_upload)
 
-    def test_upload_when_conflicts(self):
+    def test_no_upload_when_conflicts(self):
         self.make_local_branch()
         self.add_file('a', 'foo')
         self.run_bzr('branch branch other')
@@ -292,8 +307,37 @@ class TestUploadMixin(object):
         other_tree = workingtree.WorkingTree.open('other')
         self.set_file_content('a', 'baz', 'other/')
         other_tree.commit('modify file a')
+
         self.run_bzr('merge -d branch other', retcode=1)
+
         self.assertRaises(errors.UncommittedChanges, self.do_upload)
+
+    def test_change_file_into_dir(self):
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.do_full_upload()
+        self.transform_file_into_dir('hello')
+        self.add_file('hello/file', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('bar', 'hello/file')
+
+    def test_change_dir_into_file(self):
+        self.make_local_branch()
+        self.add_dir('hello')
+        self.add_file('hello/file', 'foo')
+        self.do_full_upload()
+        self.delete_any('hello/file')
+        self.transform_dir_into_file('hello', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello/file')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('bar', 'hello')
 
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
@@ -329,7 +373,9 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.delete_any('hello')
 
         self.assertUpFileEqual('foo', 'hello')
+
         self.do_upload()
+
         self.failIfUpFileExists('hello')
 
     def test_delete_dir_and_subdir(self):
@@ -343,7 +389,9 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.delete_any('dir')
 
         self.assertUpFileEqual('foo', 'dir/subdir/a')
+
         self.do_upload()
+
         self.failIfUpFileExists('dir/subdir/a')
         self.failIfUpFileExists('dir/subdir')
         self.failIfUpFileExists('dir')
@@ -358,7 +406,9 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.rename_any('b', 'a')
 
         self.assertUpFileEqual('foo', 'a')
+
         self.do_upload()
+
         self.failIfUpFileExists('b')
         self.assertUpFileEqual('bar', 'a')
 
@@ -371,43 +421,21 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.delete_any('dir')
 
         self.assertUpFileEqual('foo', 'dir/a')
+
         self.do_upload()
+
         self.failIfUpFileExists('dir/a')
         self.failIfUpFileExists('dir')
         self.assertUpFileEqual('foo', 'a')
-
-    # XXX: full upload doesn't handle kind changes
-
-    def test_change_file_into_dir(self):
-        raise tests.KnownFailure('bug 205636')
-        self.make_local_branch()
-        self.add_file('hello', 'foo')
-        self.do_full_upload()
-        self.transform_file_into_dir('hello')
-        self.add_file('hello/file', 'bar')
-
-        self.assertUpFileEqual('foo', 'hello')
-        self.do_upload()
-        self.assertUpFileEqual('bar', 'hello/file')
-
-    def test_change_dir_into_file(self):
-        self.make_local_branch()
-        self.add_dir('hello')
-        self.add_file('hello/file', 'foo')
-        self.do_full_upload()
-        self.delete_any('hello/file')
-        self.transform_dir_into_file('hello', 'bar')
-
-        self.assertUpFileEqual('foo', 'hello/file')
-        self.do_upload()
-        self.assertUpFileEqual('bar', 'hello')
 
     def test_upload_for_the_first_time_do_a_full_upload(self):
         self.make_local_branch()
         self.add_file('hello', 'bar')
 
         self.failIfUpFileExists(cmd_upload.bzr_upload_revid_file_name)
+
         self.do_upload()
+
         self.assertUpFileEqual('bar', 'hello')
 
 

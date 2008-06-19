@@ -35,6 +35,9 @@ Known limitations:
 # chmod bits but don't provide an ftp server that support them, well, better
 # find another provider ;-)
 
+# TODO: The message emitted in verbose mode displays local paths. That may be
+# scary for the user when we say 'Deleting <path>' and are referring to
+# remote files...
 
 from bzrlib import (
     commands,
@@ -42,11 +45,14 @@ from bzrlib import (
     option,
     )
 lazy_import.lazy_import(globals(), """
+import stat
+
 from bzrlib import (
     branch,
     errors,
     revisionspec,
     transport,
+    osutils,
     urlutils,
     workingtree,
     )
@@ -84,7 +90,7 @@ class cmd_upload(commands.Command):
 
         wt = workingtree.WorkingTree.open(directory)
         changes = wt.changes_from(wt.basis_tree())
-        
+
         if revision is None and  changes.has_changed():
                 raise errors.UncommittedChanges(wt)
 
@@ -146,9 +152,45 @@ class cmd_upload(commands.Command):
             self.outf.write('Uploading %s\n' % relpath)
         self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
+    def upload_file_robustly(self, relpath, id):
+        """Upload a file, clearing the way on the remote side.
+
+        When doing a full upload, it may happen that a directory exists where
+        we want to put our file.
+        """
+        try:
+            st = self.to_transport.stat(relpath)
+            if stat.S_ISDIR(st.st_mode):
+                # A simple rmdir may not be enough
+                if not self.quiet:
+                    self.outf.write('Clearing %s/%s\n' % (
+                            self.to_transport.external_url(), relpath))
+                self.to_transport.delete_tree(relpath)
+        except errors.PathError:
+            pass
+        self.upload_file(relpath, id)
+
     def make_remote_dir(self, relpath):
         # XXX: handle mode
         self.to_transport.mkdir(relpath)
+
+    def make_remote_dir_robustly(self, relpath):
+        """Create a remote directory, clearing the way on the remote side.
+
+        When doing a full upload, it may happen that a file exists where we
+        want to create our directory.
+        """
+        # XXX: handle mode
+        try:
+            st = self.to_transport.stat(relpath)
+            if not stat.S_ISDIR(st.st_mode):
+                if not self.quiet:
+                    self.outf.write('Deleting %s/%s\n' % (
+                            self.to_transport.external_url(), relpath))
+                self.to_transport.delete(relpath)
+        except errors.PathError:
+            pass
+        self.make_remote_dir(relpath)
 
     def delete_remote_file(self, relpath):
         if not self.quiet:
@@ -213,23 +255,16 @@ class cmd_upload(commands.Command):
                                         # --create-prefix option ?)
         self.tree.lock_read()
         try:
-            for dp, ie in self.tree.inventory.iter_entries():
-                if dp in ('', '.bzrignore'):
+            for relpath, ie in self.tree.inventory.iter_entries():
+                if relpath in ('', '.bzrignore'):
                     # skip root ('')
                     # .bzrignore has no meaning outside of a working tree
                     # so do not upload it
                     continue
-                # XXX: We need to be more robust in case we upload on top of an
-                # existing tree which may contains existing files or dirs whose
-                # names will make attempts to upload dirs or files fail.
                 if ie.kind == 'file':
-                    self.upload_file(dp, ie.file_id)
+                    self.upload_file_robustly(relpath, ie.file_id)
                 elif ie.kind == 'directory':
-                    try:
-                        self.make_remote_dir(dp)
-                    except errors.FileExists:
-                        # The directory existed before the upload
-                        pass
+                    self.make_remote_dir_robustly(relpath)
                 else:
                     raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
