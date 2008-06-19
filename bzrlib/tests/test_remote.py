@@ -862,21 +862,7 @@ class TestRepositoryGetGraph(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
-        self.assertEqual(graph._real_graph._parents_provider, repo)
-
-    def test_heads(self):
-        transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        graph = repo.get_graph()
-        client.add_success_response('revision-a', 'revision-b')
-        heads = graph.heads(['revision-a', 'revision-b', 'revision-c'])
-        self.assertEqual(
-            [('call', 'Repository.graph_heads',
-              ('quack/', 'revision-a', 'revision-b', 'revision-c'))],
-            client._calls)
-        self.assertEqual(set(['revision-a', 'revision-b']), heads)
-
-
+        self.assertEqual(graph._parents_provider, repo)
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):

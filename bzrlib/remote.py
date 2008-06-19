@@ -263,58 +263,6 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
                 'Does not support nested trees', target_format)
 
 
-class RemoteGraph(object):
-
-    def __init__(self, real_graph, remote_repo):
-        self._real_graph = real_graph
-        self._remote_repo = remote_repo
-
-    def heads(self, keys):
-        client = self._remote_repo._client
-        path = self._remote_repo.bzrdir._path_for_remote_call(client)
-        return set(client.call('Repository.graph_heads', path, *keys))
-
-    # All other Graph methods delegate to _real_graph
-
-    def find_lca(self, *revisions):
-        return self._real_graph.find_lca(*revisions)
-
-    def find_difference(self, left_revision, right_revision):
-        return self._real_graph.find_difference(left_revision, right_revision)
-
-    def find_distance_to_null(self, target_revision_id, known_revision_ids):
-        return self._real_graph.find_distance_to_null(
-            target_revision_id, known_revision_ids)
-        
-    def find_unique_ancestors(self, unique_revision, common_revisions):
-        return self._real_graph.find_unique_ancestors(
-            unique_revision, common_revisions)
-
-    def find_unique_lca(self, left_revision, right_revision,
-                        count_steps=False):
-        return self._real_graph.find_unique_lca(
-            left_revision, right_revision, count_steps=count_steps)
-        
-    def get_parents(self, revisions):
-        return self._real_graph.get_parents(revisions)
-
-    def get_parent_map(self, revisions):
-        return self._remote_repo.get_parent_map(revisions)
-
-    def is_ancestor(self, candidate_ancestor, candidate_descendant):
-        return self._real_graph.is_ancestor(
-            candidate_ancestor, candidate_descendant)
-
-    def iter_ancestry(self, revision_ids):
-        return self._real_graph.iter_ancestry(revision_ids)
-
-    def iter_topo_order(self, revisions):
-        return self._real_graph.iter_topo_order(revisions)
-
-    def _make_breadth_first_searcher(self, revisions):
-        return self._real_graph._make_breadth_first_searcher(revisions)
-
-
 class RemoteRepository(object):
     """Repository accessed over rpc.
 
@@ -490,8 +438,7 @@ class RemoteRepository(object):
             self.bzrdir.transport.base):
             parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
-        real_graph = graph.Graph(parents_provider)
-        return RemoteGraph(real_graph, self)
+        return graph.Graph(parents_provider)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
