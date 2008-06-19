@@ -180,7 +180,7 @@ class BzrDir(object):
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target 
+        :param force_new_repo: Do not use a shared repository for the target,
                                even if one is available.
         :param preserve_stacking: When cloning a stacked branch, stack the
             new branch on top of the other branch's stacked-on branch.
@@ -377,6 +377,13 @@ class BzrDir(object):
 
         This controls whether a new repository is created, or a shared
         repository used instead.
+
+        If stack_on is supplied, will not seek a containing shared repo.
+        :param force_new_repo: If True, require a new repository to be created.
+        :param stack_on: If supplied, the location to stack on.  If not
+            supplied, a default_stack_on location may be used.
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
         """
         def repository_policy(found_bzrdir):
             stack_on = None
@@ -2723,6 +2730,12 @@ class RepositoryAcquisitionPolicy(object):
     whether to create a new repository or use an existing one.
     """
     def __init__(self, stack_on, stack_on_pwd):
+        """Constructor.
+
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        """
         self._stack_on = stack_on
         self._stack_on_pwd = stack_on_pwd
 
@@ -2745,6 +2758,7 @@ class RepositoryAcquisitionPolicy(object):
         branch.set_stacked_on(stack_on)
 
     def _get_full_stack_on(self):
+        """Get a fully-qualified URL for the stack_on location."""
         if self._stack_on is None:
             return None
         if self._stack_on_pwd is None:
@@ -2753,6 +2767,7 @@ class RepositoryAcquisitionPolicy(object):
             return urlutils.join(self._stack_on_pwd, self._stack_on)
 
     def _add_fallback(self, repository):
+        """Add a fallback to the supplied repository, if stacking is set."""
         stack_on = self._get_full_stack_on()
         if stack_on is None:
             return
@@ -2780,6 +2795,13 @@ class CreateRepository(RepositoryAcquisitionPolicy):
     """A policy of creating a new repository"""
 
     def __init__(self, bzrdir, stack_on=None, stack_on_pwd=None):
+        """
+        Constructor.
+        :param bzrdir: The bzrdir to create the repository on.
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        """
         RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd)
         self._bzrdir = bzrdir
 
@@ -2799,6 +2821,13 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
     """A policy of reusing an existing repository"""
 
     def __init__(self, repository, stack_on=None, stack_on_pwd=None):
+        """Constructor.
+
+        :param repository: The repository to use.
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        """
         RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd)
         self._repository = repository
 

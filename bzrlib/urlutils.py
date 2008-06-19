@@ -638,8 +638,10 @@ def derive_to_location(from_location):
         else:
             return from_location
 
+
 def _is_absolute(url):
     return (osutils.pathjoin('/foo', url) == url)
+
 
 def rebase_url(url, old_base, new_base):
     """Convert a relative path from an old base URL to a new base URL.
