@@ -549,6 +549,10 @@ class RecordingVersionedFilesDecorator(object):
         self.calls.append(("get_sha1s", copy(keys)))
         return self._backing_vf.get_sha1s(keys)
 
+    def keys(self):
+        self.calls.append(("keys",))
+        return self._backing_vf.keys()
+
 
 class KeyMapper(object):
     """KeyMappers map between keys and underlying paritioned storage."""

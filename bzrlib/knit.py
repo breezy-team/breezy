@@ -1527,7 +1527,12 @@ class KnitVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        return self._index.keys()
+        sources = [self._index] + self._fallback_vfs
+        result = set()
+        for source in sources:
+            result.update(source.keys())
+        return result
+
 
 
 class _KndxIndex(object):

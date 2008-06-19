@@ -1456,7 +1456,27 @@ class TestStacking(KnitTests):
         pass
 
     def test_keys(self):
-        pass
+        key1 = ('foo1',)
+        key2 = ('foo2',)
+        # all sources are asked for keys:
+        basis, test = self.get_basis_and_test_knit()
+        keys = test.keys()
+        self.assertEqual(set(), set(keys))
+        self.assertEqual([("keys",)], basis.calls)
+        # keys from a basis are returned:
+        basis.add_lines(key1, (), [])
+        basis.calls = []
+        keys = test.keys()
+        self.assertEqual(set([key1]), set(keys))
+        self.assertEqual([("keys",)], basis.calls)
+        # keys in both are not duplicated:
+        test.add_lines(key2, (), [])
+        basis.add_lines(key2, (), [])
+        basis.calls = []
+        keys = test.keys()
+        self.assertEqual(2, len(keys))
+        self.assertEqual(set([key1, key2]), set(keys))
+        self.assertEqual([("keys",)], basis.calls)
 
     def test_add_mpdiffs(self):
         pass
