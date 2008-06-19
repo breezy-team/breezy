@@ -1053,7 +1053,8 @@ class BzrDir(object):
             # source_repository.copy_content_into(result_repo,
             #                                     revision_id=revision_id)
             # so we can override the copy method
-            result_repo.fetch(source_repository, revision_id=revision_id)
+            if source_repository is not None:
+                result_repo.fetch(source_repository, revision_id=revision_id)
 
         # Create/update the result branch
         if source_branch is not None:
