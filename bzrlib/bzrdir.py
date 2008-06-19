@@ -388,6 +388,8 @@ class BzrDir(object):
                 if stack_on is not None:
                     stack_on_pwd = found_bzrdir.root_transport.base
                     stop = True
+                    note('Using default stacking branch %s at %s', stack_on,
+                         stack_on_pwd)
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
