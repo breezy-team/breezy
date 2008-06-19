@@ -188,43 +188,48 @@ class BzrDir(object):
         transport.ensure_base()
         result = self.cloning_metadir().initialize_on_transport(transport)
         repository_policy = None
+        stack_on = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
+        try:
+            local_branch = self.open_branch()
+        except errors.NotBranchError:
+            local_branch = None
+        else:
+            # enable fallbacks when branch is not a branch reference
+            if local_branch.repository.has_same_location(local_repo):
+                local_repo = local_branch.repository
+            if preserve_stacking:
+                try:
+                    stack_on = local_branch.get_stacked_on()
+                except (errors.UnstackableBranchFormat,
+                        errors.UnstackableRepositoryFormat,
+                        errors.NotStacked):
+                    pass
+
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo)
+                force_new_repo, stack_on)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
+            result_repo.fetch(local_repo, revision_id=revision_id)
+        else:
+            result_repo = None
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
         try:
             local_branch = self.open_branch()
         except errors.NotBranchError:
-            if repository_policy is not None:
-                result_repo.fetch(local_repo, revision_id=revision_id)
+            pass
         else:
             result_branch = local_branch.clone(result, revision_id=revision_id)
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
-                if preserve_stacking:
-                    try:
-                        result_branch.set_stacked_on(
-                            local_branch.get_stacked_on())
-                    except (errors.UnstackableBranchFormat,
-                            errors.UnstackableRepositoryFormat,
-                            errors.NotStacked):
-                        pass
-                result_branch.repository.fetch(local_branch.repository,
-                                               revision_id=revision_id)
-        try:
-            result_repo = result.find_repository()
-        except errors.NoRepositoryPresent:
-            result_repo = None
         if result_repo is None or result_repo.make_working_trees():
             try:
                 self.open_workingtree().clone(result)
@@ -366,7 +371,7 @@ class BzrDir(object):
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
-    def determine_repository_policy(self, force_new_repo=False):
+    def determine_repository_policy(self, force_new_repo=False, stack_on=None):
         """Return an object representing a policy to use.
 
         This controls whether a new repository is created, or a shared
@@ -402,10 +407,17 @@ class BzrDir(object):
                 return CreateRepository(self, stack_on), True
 
         if not force_new_repo:
-            policy = self._find_containing(repository_policy)
-            if policy is not None:
-                return policy
-        return CreateRepository(self)
+            if stack_on is None:
+                policy = self._find_containing(repository_policy)
+                if policy is not None:
+                    return policy
+            else:
+                try:
+                    return UseExistingRepository(self.open_repository(),
+                                                 stack_on)
+                except errors.NoRepositoryPresent:
+                    pass
+        return CreateRepository(self, stack_on)
 
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
@@ -1021,8 +1033,7 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 source_repository = None
             stacked_branch_url = None
-        repository_policy = result.determine_repository_policy(
-            force_new_repo)
+        repository_policy = result.determine_repository_policy(force_new_repo)
         result_repo = repository_policy.acquire_repository()
         if stacked_branch_url is not None:
             stacked_dir = BzrDir.open(stacked_branch_url)
@@ -1031,7 +1042,12 @@ class BzrDir(object):
             except errors.NotBranchError:
                 stacked_repo = stacked_dir.open_repository()
             result_repo.add_fallback_repository(stacked_repo)
-        if source_repository is not None:
+            result_repo.fetch(source_repository, revision_id=revision_id)
+        elif result_repo is None:
+            # have source, and want to make a new target repo
+            result_repo = source_repository.sprout(result,
+                                                   revision_id=revision_id)
+        else:
             # Fetch needed content into target.
             # Would rather do it this way ...
             # source_repository.copy_content_into(result_repo,
@@ -2732,6 +2748,16 @@ class RepositoryAcquisitionPolicy(object):
         if self._stack_on:
             branch.set_stacked_on(self._stack_on)
 
+    def _add_fallback(self, repository):
+        if self._stack_on is None:
+            return
+        stacked_dir = BzrDir.open(self._stack_on)
+        try:
+            stacked_repo = stacked_dir.open_branch().repository
+        except errors.NotBranchError:
+            stacked_repo = stacked_dir.open_repository()
+        repository.add_fallback_repository(stacked_repo)
+
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Acquire a repository for this bzrdir.
 
@@ -2758,6 +2784,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         Creates the desired repository in the bzrdir we already have.
         """
         repository = self._bzrdir.create_repository(shared=shared)
+        self._add_fallback(repository)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
@@ -2775,6 +2802,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
         Returns an existing repository to use
         """
+        self._add_fallback(self._repository)
         return self._repository
 
 
