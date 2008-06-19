@@ -19,6 +19,7 @@
 
 """Versioned text file storage api."""
 
+from copy import copy
 from cStringIO import StringIO
 import os
 import urllib
@@ -533,6 +534,18 @@ class RecordingVersionedFilesDecorator(object):
         """
         self._backing_vf = backing_vf
         self.calls = []
+
+    def add_lines(self, key, parents, lines, parent_texts=None,
+        left_matching_blocks=None, nostore_sha=None, random_id=False,
+        check_content=True):
+        self.calls.append(("add_lines", key, parents, lines, parent_texts,
+            left_matching_blocks, nostore_sha, random_id, check_content))
+        return self._backing_vf.add_lines(key, parents, lines, parent_texts,
+            left_matching_blocks, nostore_sha, random_id, check_content)
+
+    def get_parent_map(self, keys):
+        self.calls.append(("get_parent_map", copy(keys)))
+        return self._backing_vf.get_parent_map(keys)
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         self.calls.append(("get_record_stream", keys, sort_order,

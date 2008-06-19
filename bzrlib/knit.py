@@ -1025,7 +1025,16 @@ class KnitVersionedFiles(VersionedFiles):
         :return: A mapping from keys to parents. Absent keys are absent from
             the mapping.
         """
-        return self._index.get_parent_map(keys)
+        result = {}
+        sources = [self._index] + self._fallback_vfs
+        missing = set(keys)
+        for source in sources:
+            if not missing:
+                break
+            new_result = source.get_parent_map(missing)
+            result.update(new_result)
+            missing.difference_update(set(new_result))
+        return result
 
     def _get_record_map(self, keys):
         """Produce a dictionary of knit records.

@@ -58,7 +58,10 @@ from bzrlib.tests import (
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tuned_gzip import GzipFile
-from bzrlib.versionedfile import ConstantMapper
+from bzrlib.versionedfile import (
+    ConstantMapper,
+    RecordingVersionedFilesDecorator,
+    )
 
 
 class _CompiledKnitFeature(Feature):
@@ -1377,6 +1380,7 @@ class TestStacking(KnitTests):
 
     def get_basis_and_test_knit(self):
         basis = self.make_test_knit(name='basis')
+        basis = RecordingVersionedFilesDecorator(basis)
         test = self.make_test_knit(name='test')
         test.add_fallback_versioned_files(basis)
         return basis, test
@@ -1401,7 +1405,23 @@ class TestStacking(KnitTests):
         test.check()
 
     def test_get_parent_map(self):
-        pass
+        # parents in the test knit are answered without asking the basis
+        basis, test = self.get_basis_and_test_knit()
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_missing = ('missing',)
+        test.add_lines(key, (), [])
+        parent_map = test.get_parent_map([key])
+        self.assertEqual({key: ()}, parent_map)
+        self.assertEqual([], basis.calls)
+        # But parents that are not in the test knit are looked for in the basis
+        basis.add_lines(key_basis, (), [])
+        basis.calls = []
+        parent_map = test.get_parent_map([key, key_basis, key_missing])
+        self.assertEqual({key: (),
+            key_basis: ()}, parent_map)
+        self.assertEqual([("get_parent_map", set([key_basis, key_missing]))],
+            basis.calls)
 
     def test_get_record_stream(self):
         pass
