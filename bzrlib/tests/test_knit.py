@@ -1453,7 +1453,25 @@ class TestStacking(KnitTests):
         pass
 
     def test_iter_lines_added_or_present_in_keys(self):
-        pass
+        # Lines from the basis are returned, and lines for a given key are only
+        # returned once. 
+        key1 = ('foo1',)
+        key2 = ('foo2',)
+        # all sources are asked for keys:
+        basis, test = self.get_basis_and_test_knit()
+        basis.add_lines(key1, (), ["foo"])
+        basis.calls = []
+        lines = list(test.iter_lines_added_or_present_in_keys([key1]))
+        self.assertEqual([("foo\n", key1)], lines)
+        self.assertEqual([("iter_lines_added_or_present_in_keys", set([key1]))],
+            basis.calls)
+        # keys in both are not duplicated:
+        test.add_lines(key2, (), ["bar\n"])
+        basis.add_lines(key2, (), ["bar\n"])
+        basis.calls = []
+        lines = list(test.iter_lines_added_or_present_in_keys([key2]))
+        self.assertEqual([("bar\n", key2)], lines)
+        self.assertEqual([], basis.calls)
 
     def test_keys(self):
         key1 = ('foo1',)

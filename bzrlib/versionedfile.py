@@ -549,6 +549,10 @@ class RecordingVersionedFilesDecorator(object):
         self.calls.append(("get_sha1s", copy(keys)))
         return self._backing_vf.get_sha1s(keys)
 
+    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        self.calls.append(("iter_lines_added_or_present_in_keys", copy(keys)))
+        return self._backing_vf.iter_lines_added_or_present_in_keys(keys)
+
     def keys(self):
         self.calls.append(("keys",))
         return self._backing_vf.keys()

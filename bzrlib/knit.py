@@ -1300,19 +1300,16 @@ class KnitVersionedFiles(VersionedFiles):
         if pb is None:
             pb = progress.DummyProgress()
         keys = set(keys)
-        # filter for available keys
-        parent_map = self.get_parent_map(keys)
-        if len(parent_map) != len(keys):
-            missing = set(parent_map) - requested_keys
-            raise RevisionNotPresent(key, self.filename)
+        total = len(keys)
         # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need key, position, length
         key_records = []
         build_details = self._index.get_build_details(keys)
-        for key in keys:
-            key_records.append((key, build_details[key][0]))
-        total = len(key_records)
+        for key, details in build_details.iteritems():
+            if key in keys:
+                key_records.append((key, details[0]))
+                keys.remove(key)
         for key_idx, (key, data, sha_value) in \
             enumerate(self._read_records_iter(key_records)):
             pb.update('Walking content.', key_idx, total)
@@ -1328,6 +1325,16 @@ class KnitVersionedFiles(VersionedFiles):
             # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
                 yield line, key
+        for source in self._fallback_vfs:
+            if not keys:
+                break
+            source_keys = set()
+            for line, key in source.iter_lines_added_or_present_in_keys(keys):
+                source_keys.add(key)
+                yield line, key
+            keys.difference_update(source_keys)
+        if keys:
+            raise RevisionNotPresent(keys, self.filename)
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
