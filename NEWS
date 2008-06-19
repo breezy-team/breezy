@@ -16,6 +16,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Handle urls such as ftp://user@host.com@www.host.com where the user
+      name contains an @.
+      (Neil Martinsen-Burrell, #228058)
+
     * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
       ``unlock`` if there was an error in the original function. This helps
       most when there is a failure with a smart server action, since often the

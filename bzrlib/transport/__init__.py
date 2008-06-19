@@ -1311,7 +1311,7 @@ class ConnectedTransport(Transport):
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         user = password = host = port = None
         if '@' in netloc:
-            user, host = netloc.split('@', 1)
+            user, host = netloc.rsplit('@', 1)
             if ':' in user:
                 user, password = user.split(':', 1)
                 password = urllib.unquote(password)
