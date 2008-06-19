@@ -44,6 +44,7 @@ from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
+
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
 class RemoteBzrDir(BzrDir):
@@ -839,7 +840,7 @@ class RemoteRepository(object):
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
-        if not medium._remote_is_at_least_1_2:
+        if medium._is_remote_before((1, 2)):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
@@ -918,7 +919,7 @@ class RemoteRepository(object):
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
-            medium._remote_is_at_least_1_2 = False
+            medium._remember_remote_is_before((1, 2))
             return self.get_revision_graph(None)
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
@@ -1079,7 +1080,7 @@ class RemoteRepository(object):
 
     def get_data_stream_for_search(self, search):
         medium = self._client._medium
-        if not medium._remote_is_at_least_1_2:
+        if medium._is_remote_before((1, 2)):
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
@@ -1100,7 +1101,7 @@ class RemoteRepository(object):
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand this remote method.
-            medium._remote_is_at_least_1_2 = False
+            medium._remember_remote_is_before((1, 2))
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
 
@@ -1259,6 +1260,7 @@ class RemoteBranch(branch.Branch):
         # And the parent's __init__ doesn't do much anyway.
         self._revision_id_to_revno_cache = None
         self._revision_history_cache = None
+        self._last_revision_info_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
@@ -1287,12 +1289,12 @@ class RemoteBranch(branch.Branch):
         self._lock_count = 0
         self._leave_lock = False
 
-    def _ensure_real_transport(self):
+    def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
         self._ensure_real()
         return self._real_branch._transport
 
-    _transport = property(_ensure_real_transport)
+    _transport = property(_get_real_transport)
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -1322,6 +1324,12 @@ class RemoteBranch(branch.Branch):
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
 
+    def _clear_cached_state(self):
+        super(RemoteBranch, self)._clear_cached_state()
+        self._last_revision_info_cache = None
+        if self._real_branch is not None:
+            self._real_branch._clear_cached_state()
+        
     @property
     def control_files(self):
         # Defer actually creating RemoteBranchLockableFiles until its needed,
@@ -1473,8 +1481,14 @@ class RemoteBranch(branch.Branch):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    @needs_read_lock
     def last_revision_info(self):
         """See Branch.last_revision_info()."""
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+    
+    def _last_revision_info(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.last_revision_info', path)
         if response[0] != 'ok':
@@ -1496,25 +1510,48 @@ class RemoteBranch(branch.Branch):
         return result
 
     @needs_write_lock
+    def _set_last_revision_descendant(self, revision_id, other_branch,
+            allow_diverged=False, do_not_overwrite_descendant=True):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('Branch.set_last_revision_ex',
+                path, self._lock_token, self._repo_lock_token, revision_id,
+                int(allow_diverged), int(do_not_overwrite_descendant))
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, revision_id)
+            elif err.error_verb == 'Diverged':
+                raise errors.DivergedBranches(self, other_branch)
+            raise
+        self._clear_cached_state()
+        if len(response) != 3 and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        new_revno, new_revision_id = response[1:]
+        self._last_revision_info_cache = new_revno, new_revision_id
+
+    def _set_last_revision(self, revision_id):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        self._clear_cached_state()
+        try:
+            response = self._client.call('Branch.set_last_revision',
+                path, self._lock_token, self._repo_lock_token, revision_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, revision_id)
+            raise
+        if response != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    @needs_write_lock
     def set_revision_history(self, rev_history):
         # Send just the tip revision of the history; the server will generate
         # the full history from that.  If the revision doesn't exist in this
         # branch, NoSuchRevision will be raised.
-        path = self.bzrdir._path_for_remote_call(self._client)
         if rev_history == []:
             rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
-        self._clear_cached_state()
-        try:
-            response = self._client.call('Branch.set_last_revision',
-                path, self._lock_token, self._repo_lock_token, rev_id)
-        except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'NoSuchRevision':
-                raise NoSuchRevision(self, rev_id)
-            raise
-        if response != ('ok',):
-            raise errors.UnexpectedSmartServerResponse(response)
+        self._set_last_revision(rev_id)
         self._cache_revision_history(rev_history)
 
     def get_parent(self):
@@ -1539,15 +1576,11 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
-        # FIXME: This asks the real branch to run the hooks, which means
-        # they're called with the wrong target branch parameter. 
-        # The test suite specifically allows this at present but it should be
-        # fixed.  It should get a _override_hook_target branch,
-        # as push does.  -- mbp 20070405
+        self._clear_cached_state()
         self._ensure_real()
-        self._real_branch.pull(
+        return self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
-            **kwargs)
+            _override_hook_target=self, **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
@@ -1569,20 +1602,32 @@ class RemoteBranch(branch.Branch):
         except errors.UnknownSmartMethod:
             self._ensure_real()
             self._clear_cached_state()
-            return self._real_branch.set_last_revision_info(revno, revision_id)
+            self._real_branch.set_last_revision_info(revno, revision_id)
+            self._last_revision_info_cache = revno, revision_id
+            return
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'NoSuchRevision':
                 raise NoSuchRevision(self, err.error_args[0])
             raise
         if response == ('ok',):
             self._clear_cached_state()
+            self._last_revision_info_cache = revno, revision_id
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
+        medium = self._client._medium
+        if not medium._is_remote_before((1, 6)):
+            try:
+                self._set_last_revision_descendant(revision_id, other_branch,
+                    allow_diverged=True, do_not_overwrite_descendant=False)
+                return
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before((1, 6))
+        self._clear_cached_state()
         self._ensure_real()
-        return self._real_branch.generate_revision_history(
+        self._real_branch.generate_revision_history(
             revision_id, last_rev=last_rev, other_branch=other_branch)
 
     @property
@@ -1594,10 +1639,44 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None, overwrite=False):
-        self._ensure_real()
-        return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision, overwrite=overwrite)
+    @needs_write_lock
+    def update_revisions(self, other, stop_revision=None, overwrite=False,
+                         graph=None):
+        """See Branch.update_revisions."""
+        other.lock_read()
+        try:
+            if stop_revision is None:
+                stop_revision = other.last_revision()
+                if revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+            self.fetch(other, stop_revision)
+
+            if overwrite:
+                # Just unconditionally set the new revision.  We don't care if
+                # the branches have diverged.
+                self._set_last_revision(stop_revision)
+            else:
+                medium = self._client._medium
+                if not medium._is_remote_before((1, 6)):
+                    try:
+                        self._set_last_revision_descendant(stop_revision, other)
+                        return
+                    except errors.UnknownSmartMethod:
+                        medium._remember_remote_is_before((1, 6))
+                # Fallback for pre-1.6 servers: check for divergence
+                # client-side, then do _set_last_revision.
+                last_rev = revision.ensure_null(self.last_revision())
+                if graph is None:
+                    graph = self.repository.get_graph()
+                if self._ensure_not_diverged(
+                        stop_revision, last_rev, graph, other):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+                self._set_last_revision(stop_revision)
+        finally:
+            other.unlock()
 
 
 def _extract_tar(tar, to_dir):

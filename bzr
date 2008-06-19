@@ -64,9 +64,9 @@ try:
     import bzrlib
 except ImportError, e:
     sys.stderr.write("bzr: ERROR: "
-                     "Couldn't import bzrlib and dependencies.\n"
-                     "Please check bzrlib is on your PYTHONPATH.\n"
-                     "\n")
+        "Couldn't import bzrlib and dependencies.\n"
+        "Please check the directory containing bzrlib is on your PYTHONPATH.\n"
+        "\n")
     raise
 
 if bzrlib.version_info[:3] != _script_version:

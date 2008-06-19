@@ -537,7 +537,7 @@ class Transport(object):
         *NOTE*: This only lists *files*, not subdirectories!
         
         As with other listing functions, only some transports implement this,.
-        you may check via is_listable to determine if it will.
+        you may check via listable() to determine if it will.
         """
         raise errors.TransportNotPossible("This transport has not "
                                           "implemented iter_files_recursive "
@@ -1772,6 +1772,10 @@ register_transport_proto('bzr://',
 
 register_lazy_transport('bzr://', 'bzrlib.transport.remote',
                         'RemoteTCPTransport')
+register_transport_proto('bzr-v2://', register_netloc=True)
+
+register_lazy_transport('bzr-v2://', 'bzrlib.transport.remote',
+                        'RemoteTCPTransportV2Only')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
                          register_netloc=True)

@@ -44,7 +44,7 @@ class BzrDirTestProviderAdapter(TestScenarioApplier):
     """
 
     def __init__(self, vfs_factory, transport_server, transport_readonly_server,
-        formats):
+        formats, name_suffix=''):
         """Create an object to adapt tests.
 
         :param vfs_server: A factory to create a Transport Server which has
@@ -53,6 +53,7 @@ class BzrDirTestProviderAdapter(TestScenarioApplier):
         self._vfs_factory = vfs_factory
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
+        self._name_suffix = name_suffix
         self.scenarios = self.formats_to_scenarios(formats)
     
     def formats_to_scenarios(self, formats):
@@ -62,7 +63,9 @@ class BzrDirTestProviderAdapter(TestScenarioApplier):
         """
         result = []
         for format in formats:
-            scenario = (format.__class__.__name__, {
+            scenario_name = format.__class__.__name__
+            scenario_name += self._name_suffix
+            scenario = (scenario_name, {
                 "vfs_transport_factory":self._vfs_factory,
                 "transport_server":self._transport_server,
                 "transport_readonly_server":self._transport_readonly_server,
@@ -112,8 +115,10 @@ def load_tests(basic_tests, module, loader):
     # This will always add the tests for smart server transport, regardless of
     # the --transport option the user specified to 'bzr selftest'.
     from bzrlib.smart.server import (
-        SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        SmartTCPServer_for_testing,
+        SmartTCPServer_for_testing_v2_only,
         )
     from bzrlib.remote import RemoteBzrDirFormat
 
@@ -123,7 +128,18 @@ def load_tests(basic_tests, module, loader):
         MemoryServer,
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
-        [(RemoteBzrDirFormat())])
+        [(RemoteBzrDirFormat())],
+        name_suffix='-default')
+    adapt_modules(test_bzrdir_implementations,
+                  adapt_to_smart_server,
+                  loader,
+                  smart_server_suite)
+    adapt_to_smart_server = BzrDirTestProviderAdapter(
+        MemoryServer,
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        [(RemoteBzrDirFormat())],
+        name_suffix='-v2')
     adapt_modules(test_bzrdir_implementations,
                   adapt_to_smart_server,
                   loader,

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -33,8 +33,10 @@ from bzrlib.repofmt import (
     )
 from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
 from bzrlib.smart.server import (
-    SmartTCPServer_for_testing,
     ReadonlySmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing_v2_only,
+    SmartTCPServer_for_testing,
+    SmartTCPServer_for_testing_v2_only,
     )
 from bzrlib.tests import (
                           adapt_modules,
@@ -48,42 +50,56 @@ from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
-class RepositoryTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing multiple repository formats at once.
+def formats_to_scenarios(formats, transport_server, transport_readonly_server,
+    vfs_transport_factory=None):
+    """Transform the input formats to a list of scenarios.
 
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and bzrdir_format and
-    repository_format classes into each copy. Each copy is also given a new id()
-    to make it easy to identify.
+    :param formats: A list of (scenario_name_suffix, repo_format, bzrdir_format)
+        where the scenario_info is a dict that controls the test.
     """
+    result = []
+    for scenario_name_suffix, repository_format, bzrdir_format in formats:
+        scenario_name = repository_format.__class__.__name__
+        scenario_name += scenario_name_suffix
+        scenario = (scenario_name,
+            {"transport_server":transport_server,
+             "transport_readonly_server":transport_readonly_server,
+             "bzrdir_format":bzrdir_format,
+             "repository_format":repository_format,
+             })
+        # Only override the test's vfs_transport_factory if one was
+        # specified, otherwise just leave the default in place.
+        if vfs_transport_factory:
+            scenario[1]['vfs_transport_factory'] = vfs_transport_factory
+        result.append(scenario)
+    return result
 
-    def __init__(self, transport_server, transport_readonly_server, formats,
-                 vfs_transport_factory=None):
-        TestScenarioApplier.__init__(self)
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._vfs_transport_factory = vfs_transport_factory
-        self.scenarios = self.formats_to_scenarios(formats)
-    
-    def formats_to_scenarios(self, formats):
-        """Transform the input formats to a list of scenarios.
 
-        :param formats: A list of (repository_format, bzrdir_format).
-        """
-        result = []
-        for repository_format, bzrdir_format in formats:
-            scenario = (repository_format.__class__.__name__,
-                {"transport_server":self._transport_server,
-                 "transport_readonly_server":self._transport_readonly_server,
-                 "bzrdir_format":bzrdir_format,
-                 "repository_format":repository_format,
-                 })
-            # Only override the test's vfs_transport_factory if one was
-            # specified, otherwise just leave the default in place.
-            if self._vfs_transport_factory:
-                scenario[1]['vfs_transport_factory'] = self._vfs_transport_factory
-            result.append(scenario)
-        return result
+def all_repository_format_scenarios():
+    """Return a list of test scenarios for parameterising repository tests.
+    """
+    registry = repository.format_registry
+    all_formats = [registry.get(k) for k in registry.keys()]
+    all_formats.extend(weaverepo._legacy_formats)
+    # format_scenarios is all the implementations of Repository; i.e. all disk
+    # formats plus RemoteRepository.
+    format_scenarios = formats_to_scenarios(
+        [('', format, format._matchingbzrdir) for format in all_formats],
+        default_transport,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None)
+    format_scenarios.extend(formats_to_scenarios(
+        [('-default', RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        MemoryServer))
+    format_scenarios.extend(formats_to_scenarios(
+        [('-v2', RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        MemoryServer))
+    return format_scenarios
 
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
@@ -830,35 +846,12 @@ all_broken_scenario_classes = [
     IncorrectlyOrderedParentsScenario,
     UnreferencedFileParentsFromNoOpMergeScenario,
     ]
-    
+
 
 def load_tests(basic_tests, module, loader):
     result = loader.suiteClass()
     # add the tests for this module
     result.addTests(basic_tests)
-
-    registry = repository.format_registry
-    all_formats = [registry.get(k) for k in registry.keys()]
-    all_formats.extend(weaverepo._legacy_formats)
-    disk_format_adapter = RepositoryTestProviderAdapter(
-        default_transport,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        [(format, format._matchingbzrdir) for format in all_formats])
-
-    remote_repo_adapter = RepositoryTestProviderAdapter(
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
-        [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
-        MemoryServer
-        )
-
-    # format_scenarios is all the implementations of Repository; i.e. all disk
-    # formats plus RemoteRepository.
-    format_scenarios = (disk_format_adapter.scenarios +
-                        remote_repo_adapter.scenarios)
-
     prefix = 'bzrlib.tests.repository_implementations.'
     test_repository_modules = [
         'test_break_lock',
@@ -887,6 +880,7 @@ def load_tests(basic_tests, module, loader):
     # add the tests for the sub modules
 
     # Parameterize repository_implementations test modules by format.
+    format_scenarios = all_repository_format_scenarios()
     result.addTests(multiply_tests_from_modules(module_name_list,
                                                 format_scenarios,
                                                 loader))
