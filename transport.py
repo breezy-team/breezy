@@ -82,7 +82,7 @@ class ConnectionPool(object):
     def get(self, url):
         # Check if there is an existing connection we can use
         for c in self.connections:
-            assert not c.is_busy(), "busy connection in pool"
+            assert not c.busy, "busy connection in pool"
             if c.url == url:
                 self.connections.remove(c)
                 return c
@@ -101,7 +101,7 @@ class ConnectionPool(object):
             raise
 
     def add(self, connection):
-        assert not connection.is_busy(), "adding busy connection in pool"
+        assert not connection.busy, "adding busy connection in pool"
         self.connections.add(connection)
     
 

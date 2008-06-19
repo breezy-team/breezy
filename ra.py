@@ -315,6 +315,8 @@ class RemoteAccess(object):
 
     def is_busy(self):
         return self._busy
+    
+    busy = property(is_busy)
 
     def _mark_busy(self):
         assert not self._busy, "already busy"
