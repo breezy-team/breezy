@@ -23,11 +23,12 @@ from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null
 from bzrlib.transport import get_transport
 
+from bzrlib.plugins.svn import repos
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_STREAM_MALFORMED_DATA
 from bzrlib.plugins.svn.format import get_rich_root_format
 
-import svn.core, svn.repos
-from svn.core import SubversionException
+import svn.core
 
 def transport_makedirs(transport, location_url):
     """Create missing directories.
@@ -63,7 +64,7 @@ def load_dumpfile(dumpfile, outputdir):
         created.
     """
     from cStringIO import StringIO
-    repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
+    r = repos.create(outputdir)
     if dumpfile.endswith(".gz"):
         import gzip
         file = gzip.GzipFile(dumpfile)
@@ -73,8 +74,7 @@ def load_dumpfile(dumpfile, outputdir):
     else:
         file = open(dumpfile)
     try:
-        svn.repos.load_fs2(repos, file, StringIO(), 
-                svn.repos.load_uuid_default, '', 0, 0, None)
+        r.load_fs(file, StringIO(), repos.LOAD_UUID_DEFAULT)
     except SubversionException, (_, num):
         if num == ERR_STREAM_MALFORMED_DATA:
             raise NotDumpFile(dumpfile)

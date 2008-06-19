@@ -42,6 +42,8 @@ setup(name='bzr-svn',
                 'bzrlib.plugins.svn.mapping3', 
                 'bzrlib.plugins.svn.tests'],
       ext_modules=[
+          Extension("repos", ["repos.c", "util.c"], libraries=["svn_repos-1"], 
+                    include_dirs=[apr_include_dir(), svn_include_dir()]), 
           Extension("wc", ["wc.c", "util.c", "editor.c"], libraries=["svn_wc-1"],
                      include_dirs=[apr_include_dir(), svn_include_dir()])],
       )

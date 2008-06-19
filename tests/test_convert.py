@@ -25,13 +25,13 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os, sys
+
+from bzrlib.plugins.svn import repos
 from bzrlib.plugins.svn.convert import convert_repository, NotDumpFile, load_dumpfile
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.mapping3 import set_branching_scheme
 from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
-
-import svn.repos
 
 class TestLoadDumpfile(TestCaseInTempDir):
     def test_loaddumpfile(self):
@@ -52,10 +52,9 @@ V 27
 PROPS-END
 """)
         load_dumpfile(dumpfile, "d")
-        repos = svn.repos.open("d")
-        fs = svn.repos.fs(repos)
+        fs = repos.Repository("d").fs()
         self.assertEqual("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 
-                svn.fs.get_uuid(fs))
+                fs.get_uuid())
 
     def test_loaddumpfile_invalid(self):
         dumpfile = os.path.join(self.test_dir, "dumpfile")
