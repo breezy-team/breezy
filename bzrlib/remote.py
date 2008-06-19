@@ -830,7 +830,7 @@ class RemoteRepository(object):
                         len(parent_map))
             ancestry.update(parent_map)
         present_keys = [k for k in keys if k in ancestry]
-        if 'hpss' in debug.debug_flags and False:
+        if 'hpss' in debug.debug_flags:
             if self._requested_parents is not None and len(ancestry) != 0:
                 self._requested_parents.update(present_keys)
                 mutter('Current RemoteRepository graph hit rate: %d%%',
