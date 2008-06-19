@@ -31,8 +31,6 @@ from bzrlib.tests import TestCase
 
 import os, sys
 
-import svn.fs
-
 from bzrlib.plugins.svn import format
 from bzrlib.plugins.svn.mapping import (escape_svn_path, unescape_svn_path, 
                      SVN_PROP_BZR_REVISION_ID)
@@ -500,7 +498,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(isinstance(bzrdir, BzrDir))
         repository = bzrdir._find_repository()
         fs = self.open_fs('c')
-        self.assertEqual(svn.fs.get_uuid(fs), repository.uuid)
+        self.assertEqual(fs.get_uuid(), repository.uuid)
 
     def test_get_inventory_weave(self):
         bzrdir = self.make_client_and_bzrdir('d', 'dc')

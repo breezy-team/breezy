@@ -48,9 +48,9 @@ static PyObject *repos_create(PyObject *self, PyObject *args)
     pool = Pool();
 	if (pool == NULL)
 		return NULL;
-    hash_config = NULL; /* FIXME */
-    hash_fs_config = NULL; /* FIXME */
-    RUN_SVN_WITH_POOL(pool, svn_repos_create(&repos, path, "", "", 
+    hash_config = apr_hash_make(pool); /* FIXME */
+    hash_fs_config = apr_hash_make(pool); /* FIXME */
+    RUN_SVN_WITH_POOL(pool, svn_repos_create(&repos, path, NULL, NULL, 
                 hash_config, hash_fs_config, pool));
 
 	ret = PyObject_New(RepositoryObject, &Repository_Type);
@@ -109,6 +109,11 @@ static PyObject *repos_fs(PyObject *self)
 	svn_fs_t *fs;
 
 	fs = svn_repos_fs(reposobj->repos);
+
+	if (fs == NULL) {
+		PyErr_SetString(PyExc_RuntimeError, "Unable to obtain fs handle");
+		return NULL;
+	}
 
 	ret = PyObject_New(FileSystemObject, &FileSystem_Type);
 	if (ret == NULL)
@@ -227,6 +232,7 @@ void initrepos(void)
 	pool = Pool();
 	if (pool == NULL)
 		return;
+
 	svn_fs_initialize(pool);
 
 	mod = Py_InitModule3("repos", repos_module_methods, "Local repository management");
