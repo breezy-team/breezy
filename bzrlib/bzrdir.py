@@ -371,7 +371,8 @@ class BzrDir(object):
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
-    def determine_repository_policy(self, force_new_repo=False, stack_on=None):
+    def determine_repository_policy(self, force_new_repo=False, stack_on=None,
+                                    stack_on_pwd=None):
         """Return an object representing a policy to use.
 
         This controls whether a new repository is created, or a shared
@@ -379,14 +380,13 @@ class BzrDir(object):
         """
         def repository_policy(found_bzrdir):
             stack_on = None
+            stack_on_pwd = None
             config = found_bzrdir.get_config()
             stop = False
             if config is not None:
                 stack_on = config.get_default_stack_on()
                 if stack_on is not None:
-                    stack_on = urlutils.rebase_url(stack_on,
-                        found_bzrdir.root_transport.base,
-                        self.root_transport.base)
+                    stack_on_pwd = found_bzrdir.root_transport.base
                     stop = True
             # does it have a repository ?
             try:
@@ -402,9 +402,10 @@ class BzrDir(object):
             if not stop:
                 return None, False
             if repository:
-                return UseExistingRepository(repository, stack_on), True
+                return UseExistingRepository(repository, stack_on,
+                                             stack_on_pwd), True
             else:
-                return CreateRepository(self, stack_on), True
+                return CreateRepository(self, stack_on, stack_on_pwd), True
 
         if not force_new_repo:
             if stack_on is None:
@@ -414,10 +415,10 @@ class BzrDir(object):
             else:
                 try:
                     return UseExistingRepository(self.open_repository(),
-                                                 stack_on)
+                                                 stack_on, stack_on_pwd)
                 except errors.NoRepositoryPresent:
                     pass
-        return CreateRepository(self, stack_on)
+        return CreateRepository(self, stack_on, stack_on_pwd)
 
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
@@ -1033,28 +1034,11 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 source_repository = None
             stacked_branch_url = None
-        repository_policy = result.determine_repository_policy(force_new_repo)
+        repository_policy = result.determine_repository_policy(
+            force_new_repo, stacked_branch_url)
         result_repo = repository_policy.acquire_repository()
-        if stacked_branch_url is not None:
-            stacked_dir = BzrDir.open(stacked_branch_url)
-            try:
-                stacked_repo = stacked_dir.open_branch().repository
-            except errors.NotBranchError:
-                stacked_repo = stacked_dir.open_repository()
-            result_repo.add_fallback_repository(stacked_repo)
+        if source_repository is not None:
             result_repo.fetch(source_repository, revision_id=revision_id)
-        elif result_repo is None:
-            # have source, and want to make a new target repo
-            result_repo = source_repository.sprout(result,
-                                                   revision_id=revision_id)
-        else:
-            # Fetch needed content into target.
-            # Would rather do it this way ...
-            # source_repository.copy_content_into(result_repo,
-            #                                     revision_id=revision_id)
-            # so we can override the copy method
-            if source_repository is not None:
-                result_repo.fetch(source_repository, revision_id=revision_id)
 
         # Create/update the result branch
         if source_branch is not None:
@@ -1063,8 +1047,6 @@ class BzrDir(object):
         else:
             result_branch = result.create_branch()
         repository_policy.configure_branch(result_branch)
-        if stacked_branch_url is not None:
-            result_branch.set_stacked_on(stacked_branch_url)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (
@@ -2738,16 +2720,23 @@ class RepositoryAcquisitionPolicy(object):
     for a branch that is being created.  The most basic policy decision is
     whether to create a new repository or use an existing one.
     """
-    def __init__(self, stack_on):
+    def __init__(self, stack_on, stack_on_pwd):
         self._stack_on = stack_on
+        self._stack_on_pwd = stack_on_pwd
 
     def configure_branch(self, branch):
         """Apply any configuration data from this policy to the branch.
 
         Default implementation sets repository stacking.
         """
-        if self._stack_on:
-            branch.set_stacked_on(self._stack_on)
+        if self._stack_on is not None:
+            if self._stack_on_pwd is None:
+                stack_on = self._stack_on
+            else:
+                stack_on = urlutils.rebase_url(self._stack_on,
+                    self._stack_on_pwd,
+                    branch.bzrdir.root_transport.base)
+            branch.set_stacked_on(stack_on)
 
     def _add_fallback(self, repository):
         if self._stack_on is None:
@@ -2775,8 +2764,8 @@ class RepositoryAcquisitionPolicy(object):
 class CreateRepository(RepositoryAcquisitionPolicy):
     """A policy of creating a new repository"""
 
-    def __init__(self, bzrdir, stack_on=None):
-        RepositoryAcquisitionPolicy.__init__(self, stack_on)
+    def __init__(self, bzrdir, stack_on=None, stack_on_pwd=None):
+        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd)
         self._bzrdir = bzrdir
 
     def acquire_repository(self, make_working_trees=None, shared=False):
@@ -2794,8 +2783,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 class UseExistingRepository(RepositoryAcquisitionPolicy):
     """A policy of reusing an existing repository"""
 
-    def __init__(self, repository, stack_on=None):
-        RepositoryAcquisitionPolicy.__init__(self, stack_on)
+    def __init__(self, repository, stack_on=None, stack_on_pwd=None):
+        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd)
         self._repository = repository
 
     def acquire_repository(self, make_working_trees=None, shared=False):

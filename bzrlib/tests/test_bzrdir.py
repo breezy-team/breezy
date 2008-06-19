@@ -435,7 +435,9 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         child_bzrdir = self.make_bzrdir('child')
         parent_bzrdir.get_config().set_default_stack_on('child2')
         repo_policy = child_bzrdir.determine_repository_policy()
-        self.assertEqual('../child2', repo_policy._stack_on)
+        self.assertEqual('child2', repo_policy._stack_on)
+        self.assertEqual(parent_bzrdir.root_transport.base,
+                         repo_policy._stack_on_pwd)
 
     def prepare_default_stacking(self):
         parent_bzrdir = self.make_bzrdir('.')
