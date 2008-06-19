@@ -386,8 +386,8 @@ request_handlers.register_lazy(
     'Branch.set_last_revision_info', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionInfo')
 request_handlers.register_lazy(
-    'Branch.set_last_revision_descendant', 'bzrlib.smart.branch',
-    'SmartServerBranchRequestSetLastRevisionDescendant')
+    'Branch.set_last_revision_ex', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetLastRevisionEx')
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(

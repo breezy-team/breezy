@@ -468,11 +468,10 @@ class TestSmartServerBranchRequestSetLastRevision(
             tree.branch.unlock()
 
 
-class TestSmartServerBranchRequestSetLastRevisionDescendant(
+class TestSmartServerBranchRequestSetLastRevisionEx(
     tests.TestCaseWithMemoryTransport):
 
-    request_class = \
-        smart.branch.SmartServerBranchRequestSetLastRevisionDescendant
+    request_class = smart.branch.SmartServerBranchRequestSetLastRevisionEx
 
     def test_empty(self):
         backing = self.get_transport()

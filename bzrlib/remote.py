@@ -1484,7 +1484,7 @@ class RemoteBranch(branch.Branch):
             allow_diverged=False, do_not_overwrite_descendant=True):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            response = self._client.call('Branch.set_last_revision_descendant',
+            response = self._client.call('Branch.set_last_revision_ex',
                 path, self._lock_token, self._repo_lock_token, revision_id,
                 int(allow_diverged), int(do_not_overwrite_descendant))
         except errors.ErrorFromSmartServer, err:

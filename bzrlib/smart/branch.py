@@ -128,11 +128,30 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
-class SmartServerBranchRequestSetLastRevisionDescendant(SmartServerLockedBranchRequest):
-    """New in 1.6."""
+class SmartServerBranchRequestSetLastRevisionEx(SmartServerLockedBranchRequest):
     
     def do_with_locked_branch(self, branch, new_last_revision_id,
             allow_divergence, do_not_overwrite_descendant):
+        """Set the last revision of the branch.
+
+        New in 1.6.
+        
+        :param new_last_revision_id: the revision ID to set as the last
+            revision of the branch.
+        :param allow_divergence: A flag.  If non-zero, change the revision ID
+            even if the new_last_revision_id's ancestry has diverged from the
+            current last revision.  If zero, a 'Diverged' error will be
+            returned if new_last_revision_id is not a descendant of the current
+            last revision.
+        :param do_not_overwrite_descendant:  A flag.  If non-zero and
+            new_last_revision_id is not a descendant of the current last
+            revision, then the last revision will not be changed.
+
+        :returns: on success, a tuple of ('ok', revno, revision_id), where
+            revno and revision_id are the new values of the current last
+            revision info.  The revision_id might be different to the
+            new_last_revision_id if do_not_overwrite_descendant was set.
+        """
         try:
             last_revno, last_rev = branch.last_revision_info()
             graph = branch.repository.get_graph()
