@@ -1036,7 +1036,7 @@ class KnitVersionedFiles(VersionedFiles):
             missing.difference_update(set(new_result))
         return result
 
-    def _get_record_map(self, keys):
+    def _get_record_map(self, keys, allow_missing=False):
         """Produce a dictionary of knit records.
         
         :return: {key:(record, record_details, digest, next)}
@@ -1049,8 +1049,12 @@ class KnitVersionedFiles(VersionedFiles):
             next
                 build-parent of the version, i.e. the leftmost ancestor.
                 Will be None if the record is not a delta.
+        :param keys: The keys to build a map for
+        :param allow_missing: If some records are missing, rather than 
+            error, just return the data that could be generated.
         """
-        position_map = self._get_components_positions(keys)
+        position_map = self._get_components_positions(keys,
+            noraise=allow_missing)
         # key = component_id, r = record_details, i_m = index_memo, n = next
         records = [(key, i_m) for key, (r, i_m, n)
                              in position_map.iteritems()]
@@ -1142,9 +1146,22 @@ class KnitVersionedFiles(VersionedFiles):
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
-        record_map = self._get_record_map(keys)
-        # record entry 2 is the 'digest'.
-        return [record_map[key][2] for key in keys]
+        missing = set(keys)
+        record_map = self._get_record_map(missing, allow_missing=True)
+        result = {}
+        for key, details in record_map.iteritems():
+            if key not in missing:
+                continue
+            # record entry 2 is the 'digest'.
+            result[key] = details[2]
+        missing.difference_update(set(result))
+        for source in self._fallback_vfs:
+            if not missing:
+                break
+            new_result = source.get_sha1s(missing)
+            result.update(new_result)
+            missing.difference_update(set(new_result))
+        return result
 
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.

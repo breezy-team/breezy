@@ -373,18 +373,10 @@ class VersionedFile(object):
                     parent_ids, lines, vf_parents,
                     left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
-        for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
-             zip(records, self.get_sha1s(versions)):
-            if expected_sha1 != sha1:
+        sha1s = self.get_sha1s(versions)
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            if expected_sha1 != sha1s[version]:
                 raise errors.VersionedFileInvalidChecksum(version)
-
-    def get_sha1s(self, version_ids):
-        """Get the stored sha1 sums for the given revisions.
-
-        :param version_ids: The names of the versions to lookup
-        :return: a list of sha1s in order according to the version_ids
-        """
-        raise NotImplementedError(self.get_sha1s)
 
     def get_text(self, version_id):
         """Return version contents as a text string.
@@ -552,6 +544,10 @@ class RecordingVersionedFilesDecorator(object):
             include_delta_closure))
         return self._backing_vf.get_record_stream(keys, sort_order,
             include_delta_closure)
+
+    def get_sha1s(self, keys):
+        self.calls.append(("get_sha1s", copy(keys)))
+        return self._backing_vf.get_sha1s(keys)
 
 
 class KeyMapper(object):
@@ -823,7 +819,9 @@ class VersionedFiles(object):
         """Get the sha1's of the texts for the given keys.
 
         :param keys: The names of the keys to lookup
-        :return: a list of sha1s matching keys.
+        :return: a dict from key to sha1 digest. Keys of texts which are not
+            present in the store are not not present in the returned
+            dictionary.
         """
         raise NotImplementedError(self.get_sha1s)
 
@@ -1055,9 +1053,9 @@ class ThunkedVersionedFiles(VersionedFiles):
         sha1s = {}
         for prefix,suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
-            for suffix, sha1 in zip(suffixes, vf.get_sha1s(suffixes)):
+            for suffix, sha1 in vf_sha1s.iteritems():
                 sha1s[prefix + (suffix,)] = sha1
-        return [sha1s[key] for key in keys]
+        return sha1s
 
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.

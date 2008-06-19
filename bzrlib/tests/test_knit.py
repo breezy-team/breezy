@@ -1427,7 +1427,27 @@ class TestStacking(KnitTests):
         pass
 
     def test_get_sha1s(self):
-        pass
+        # sha1's in the test knit are answered without asking the basis
+        basis, test = self.get_basis_and_test_knit()
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_missing = ('missing',)
+        test.add_lines(key, (), ['foo\n'])
+        key_sha1sum = sha.new('foo\n').hexdigest()
+        sha1s = test.get_sha1s([key])
+        self.assertEqual({key: key_sha1sum}, sha1s)
+        self.assertEqual([], basis.calls)
+        # But texts that are not in the test knit are looked for in the basis
+        # directly (rather than via text reconstruction) so that remote servers
+        # etc don't have to answer with full content.
+        basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
+        basis_sha1sum = sha.new('foo\nbar\n').hexdigest()
+        basis.calls = []
+        sha1s = test.get_sha1s([key, key_missing, key_basis])
+        self.assertEqual({key: key_sha1sum,
+            key_basis: basis_sha1sum}, sha1s)
+        self.assertEqual([("get_sha1s", set([key_basis, key_missing]))],
+            basis.calls)
 
     def test_insert_record_stream(self):
         pass
