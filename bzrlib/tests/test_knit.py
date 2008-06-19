@@ -1371,3 +1371,55 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), []),
              (('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
+
+
+class TestStacking(KnitTests):
+
+    def get_basis_and_test_knit(self):
+        basis = self.make_test_knit(name='basis')
+        test = self.make_test_knit(name='test')
+        test.add_fallback_versioned_files(basis)
+        return basis, test
+
+    def test_add_fallback_versioned_files(self):
+        basis = self.make_test_knit(name='basis')
+        test = self.make_test_knit(name='test')
+        # It must not error; other tests test that the fallback is referred to
+        # when accessing data.
+        test.add_fallback_versioned_files(basis)
+
+    def test_add_lines(self):
+        pass
+
+    def test_annotate(self):
+        pass
+
+    def test_check(self):
+        # check() must not check the fallback files, its none of its business.
+        basis, test = self.get_basis_and_test_knit()
+        basis.check = None
+        test.check()
+
+    def test_get_parent_map(self):
+        pass
+
+    def test_get_record_stream(self):
+        pass
+
+    def test_get_sha1s(self):
+        pass
+
+    def test_insert_record_stream(self):
+        pass
+
+    def test_iter_lines_added_or_present_in_keys(self):
+        pass
+
+    def test_keys(self):
+        pass
+
+    def test_add_mpdiffs(self):
+        pass
+
+    def test_make_mpdiffs(self):
+        pass

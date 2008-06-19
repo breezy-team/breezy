@@ -725,6 +725,14 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitAnnotateFactory()
         else:
             self._factory = KnitPlainFactory()
+        self._fallback_vfs = []
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        self._fallback_vfs.append(a_versioned_files)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
