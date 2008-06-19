@@ -16,7 +16,7 @@
 """Checkouts and working trees (working copies)."""
 
 import bzrlib, bzrlib.add
-from bzrlib import urlutils
+from bzrlib import osutils, urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
@@ -25,7 +25,6 @@ from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import file_kind, fingerprint_file, supports_executable
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
@@ -74,7 +73,8 @@ def generate_ignore_list(ignore_map):
 class SvnWorkingTree(WorkingTree):
     """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
-        self._format = SvnWorkingTreeFormat()
+        version = svn.wc.check_wc(local_path)
+        self._format = SvnWorkingTreeFormat(version)
         self.basedir = local_path
         assert isinstance(self.basedir, unicode)
         self.bzrdir = bzrdir
@@ -251,7 +251,7 @@ class SvnWorkingTree(WorkingTree):
                 file = InventoryFile(id, os.path.basename(relpath), parent_id)
                 file.revision = revid
                 try:
-                    data = fingerprint_file(open(self.abspath(relpath)))
+                    data = osutils.fingerprint_file(open(self.abspath(relpath)))
                     file.text_sha1 = data['sha1']
                     file.text_size = data['size']
                     file.executable = self.is_executable(id, relpath)
@@ -502,7 +502,7 @@ class SvnWorkingTree(WorkingTree):
                         mutter('adding %r', file_path)
                         wc.add(file_path)
                     added.append(file_path)
-                if recurse and file_kind(file_path) == 'directory':
+                if recurse and osutils.file_kind(file_path) == 'directory':
                     # Filter out ignored files and update ignored
                     for c in os.listdir(file_path):
                         if self.is_control_filename(c):
@@ -575,7 +575,7 @@ class SvnWorkingTree(WorkingTree):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return fingerprint_file(open(self.abspath(path)))['sha1']
+        return osutils.fingerprint_file(open(self.abspath(path)))['sha1']
 
     def _change_fileid_mapping(self, id, path, wc=None):
         if wc is None:
@@ -650,6 +650,9 @@ class SvnWorkingTree(WorkingTree):
         self.set_pending_merges(merges)
 
     def get_parent_ids(self):
+        return [self.base_revid] + self.pending_merges()
+
+    def pending_merges(self):
         merged = self._get_bzr_merges(self._get_base_branch_props()).splitlines()
         wc = self._get_wc()
         try:
@@ -666,9 +669,9 @@ class SvnWorkingTree(WorkingTree):
                len(merged)+1 == len(set_merged))
 
         if len(set_merged) > len(merged):
-            return [self.base_revid] + set_merged[-1].split("\t")
+            return set_merged[-1].split("\t")
 
-        return [self.base_revid]
+        return []
 
     def _reset_data(self):
         pass
@@ -683,7 +686,7 @@ class SvnWorkingTree(WorkingTree):
         finally:
             self.branch.unlock()
 
-    if not supports_executable():
+    if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             inv = self.basis_tree()._inventory
             if file_id in inv:
@@ -694,16 +697,19 @@ class SvnWorkingTree(WorkingTree):
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     """Subversion working copy format."""
+    def __init__(self, version):
+        self.version = version
+
     def __get_matchingbzrdir(self):
         return SvnWorkingTreeDirFormat()
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
     def get_format_description(self):
-        return "Subversion Working Copy"
+        return "Subversion Working Copy Version %d" % self.version
 
     def get_format_string(self):
-        return "Subversion Working Copy Format"
+        raise NotImplementedError
 
     def initialize(self, a_bzrdir, revision_id=None):
         raise NotImplementedError(self.initialize)

@@ -16,6 +16,7 @@
 from bzrlib import osutils, ui
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
+
 from bzrlib.plugins.svn import mapping, properties
 from bzrlib.plugins.svn.core import SubversionException, NODE_DIR
 from bzrlib.plugins.svn.errors import ERR_FS_NOT_DIRECTORY, ERR_FS_NOT_FOUND, ERR_RA_DAV_PATH_NOT_FOUND
@@ -117,15 +118,13 @@ def get_property_scheme(repository, revnum=None):
 
 
 def set_property_scheme(repository, scheme):
-    def done(revmetadata, pool):
-        pass
     editor = repository.transport.get_commit_editor(
             {properties.PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
-            done, None, False)
-    root = editor.open_root(-1)
-    editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
+            None, None, False)
+    root = editor.open_root()
+    root.change_prop(SVN_PROP_BZR_BRANCHING_SCHEME, 
             "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
-    editor.close_directory(root)
+    root.close()
     editor.close()
 
 

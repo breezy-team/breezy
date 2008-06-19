@@ -141,7 +141,7 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
         if all:
             inter.fetch()
         elif (target_repos.is_shared() and 
-              hasattr(inter, '_supports_branches') and 
+              getattr(inter, '_supports_branches', None) and 
               inter._supports_branches):
             inter.fetch(branches=[branch.last_revision() for branch in existing_branches])
 

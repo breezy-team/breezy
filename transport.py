@@ -21,8 +21,6 @@ from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible,
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 
-from svn.core import Pool
-
 from bzrlib.plugins.svn.core import SubversionException, get_config
 from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
 from bzrlib.plugins.svn.ra import DIRENT_KIND, RemoteAccess
@@ -84,7 +82,7 @@ class ConnectionPool(object):
     def get(self, url):
         # Check if there is an existing connection we can use
         for c in self.connections:
-            assert not c.is_busy(), "busy connection in pool"
+            assert not c.busy, "busy connection in pool"
             if c.url == url:
                 self.connections.remove(c)
                 return c
@@ -103,7 +101,7 @@ class ConnectionPool(object):
             raise
 
     def add(self, connection):
-        assert not connection.is_busy(), "adding busy connection in pool"
+        assert not connection.busy, "adding busy connection in pool"
         self.connections.add(connection)
     
 
@@ -114,7 +112,6 @@ class SvnRaTransport(Transport):
     to fool Bazaar. """
     @convert_svn_error
     def __init__(self, url="", _backing_url=None, pool=None):
-        self.pool = Pool()
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
         # _backing_url is an evil hack so the root directory of a repository 
@@ -185,10 +182,10 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
-    def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
+    def do_switch(self, switch_rev, path, recurse, switch_url, editor):
         conn = self._open_real_transport()
         conn.set_unbusy_handler(lambda: self.add_connection(conn))
-        return conn.do_switch(switch_rev, recurse, switch_url, editor, pool)
+        return conn.do_switch(switch_rev, path, recurse, switch_url, editor)
 
     def iter_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, revprops):
@@ -242,7 +239,7 @@ class SvnRaTransport(Transport):
         return iter(fetcher.next, None)
 
     def get_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
-                strict_node_history, revprops, rcvr, pool=None):
+                strict_node_history, revprops, rcvr):
         assert paths is None or isinstance(paths, list), "Invalid paths"
         assert paths is None or all([isinstance(x, str) for x in paths])
 
@@ -256,7 +253,7 @@ class SvnRaTransport(Transport):
             return conn.get_log(newpaths, 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
-                    revprops, rcvr, pool)
+                    revprops, rcvr)
         finally:
             self.add_connection(conn)
 
@@ -265,18 +262,18 @@ class SvnRaTransport(Transport):
             return self.connections.get(self.svn_url)
         return self.get_connection()
 
-    def change_rev_prop(self, revnum, name, value, pool=None):
+    def change_rev_prop(self, revnum, name, value):
         conn = self.get_connection()
         try:
-            return conn.change_rev_prop(revnum, name, value, pool)
+            return conn.change_rev_prop(revnum, name, value)
         finally:
             self.add_connection(conn)
 
-    def get_dir(self, path, revnum, pool=None, kind=False):
+    def get_dir(self, path, revnum, kind=False):
         path = self._request_path(path)
         conn = self.get_connection()
         try:
-            return conn.get_dir(path, revnum, pool, kind)
+            return conn.get_dir(path, revnum, kind)
         finally:
             self.add_connection(conn)
 
@@ -321,18 +318,18 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
-    def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
+    def replay(self, revision, low_water_mark, send_deltas, editor):
         conn = self._open_real_transport()
         try:
             return conn.replay(revision, low_water_mark, 
-                                             send_deltas, editor, pool)
+                                             send_deltas, editor)
         finally:
             self.add_connection(conn)
 
-    def do_update(self, revnum, recurse, editor, pool=None):
+    def do_update(self, revnum, path, recurse, editor):
         conn = self._open_real_transport()
         conn.set_unbusy_handler(lambda: self.add_connection(conn))
-        return conn.do_update(revnum, recurse, editor, pool)
+        return conn.do_update(revnum, path, recurse, editor)
 
     def has_capability(self, cap):
         conn = self.get_connection()
@@ -341,10 +338,10 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
-    def revprop_list(self, revnum, pool=None):
+    def revprop_list(self, revnum):
         conn = self.get_connection()
         try:
-            return conn.revprop_list(revnum, pool)
+            return conn.revprop_list(revnum)
         finally:
             self.add_connection(conn)
 

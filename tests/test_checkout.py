@@ -29,10 +29,10 @@ from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 class TestWorkingTreeFormat(TestCase):
     def setUp(self):
         super(TestWorkingTreeFormat, self).setUp()
-        self.format = SvnWorkingTreeFormat()
+        self.format = SvnWorkingTreeFormat(4)
 
     def test_get_format_desc(self):
-        self.assertEqual("Subversion Working Copy", 
+        self.assertEqual("Subversion Working Copy Version 4", 
                          self.format.get_format_description())
 
     def test_initialize(self):

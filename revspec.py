@@ -34,7 +34,7 @@ class RevisionSpec_svn(RevisionSpec):
 
     def _match_on(self, branch, revs):
         loc = self.spec.find(':')
-        if not hasattr(branch.repository, 'uuid'):
+        if not getattr(branch.repository, 'uuid', None):
             raise BzrError("the svn: revisionspec can only be used with Subversion branches")
         try:
             return RevisionInfo.from_revision_id(branch, branch.generate_revision_id(int(self.spec[loc+1:])), branch.revision_history())
