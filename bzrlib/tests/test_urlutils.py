@@ -22,7 +22,7 @@ import sys
 
 from bzrlib import osutils, urlutils, win32utils
 import bzrlib
-from bzrlib.errors import InvalidURL, InvalidURLJoin
+from bzrlib.errors import InvalidURL, InvalidURLJoin, InvalidRebaseURLs
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -628,10 +628,10 @@ class TestRebaseURL(TestCase):
         self.assertEqual('/foo', result)
 
     def test_unrelated_urls(self):
-        e = self.assertRaises(ValueError, urlutils.rebase_url, 'foo',
-                              'http://bar', 'http://baz')
-        self.assertEqual(str(e), 'URLs cannot have relative paths: http://bar'
-                         ' http://baz')
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar', 'http://baz')
+        self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
+                         " and 'http://baz'")
 
     def test_rebase_success(self):
         self.assertEqual('../bar', urlutils.rebase_url('bar', 'http://baz/',

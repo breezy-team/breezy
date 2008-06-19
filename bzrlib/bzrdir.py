@@ -2729,19 +2729,32 @@ class RepositoryAcquisitionPolicy(object):
 
         Default implementation sets repository stacking.
         """
-        if self._stack_on is not None:
-            if self._stack_on_pwd is None:
-                stack_on = self._stack_on
-            else:
+        if self._stack_on is None:
+            return
+        if self._stack_on_pwd is None:
+            stack_on = self._stack_on
+        else:
+            try:
                 stack_on = urlutils.rebase_url(self._stack_on,
                     self._stack_on_pwd,
                     branch.bzrdir.root_transport.base)
-            branch.set_stacked_on(stack_on)
+            except errors.InvalidRebaseURLs:
+                stack_on = self._get_full_stack_on()
+        branch.set_stacked_on(stack_on)
+
+    def _get_full_stack_on(self):
+        if self._stack_on is None:
+            return None
+        if self._stack_on_pwd is None:
+            return self._stack_on
+        else:
+            return urlutils.join(self._stack_on_pwd, self._stack_on)
 
     def _add_fallback(self, repository):
-        if self._stack_on is None:
+        stack_on = self._get_full_stack_on()
+        if stack_on is None:
             return
-        stacked_dir = BzrDir.open(self._stack_on)
+        stacked_dir = BzrDir.open(stack_on)
         try:
             stacked_repo = stacked_dir.open_branch().repository
         except errors.NotBranchError:

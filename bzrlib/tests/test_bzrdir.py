@@ -458,6 +458,35 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(child_branch.base,
                          new_child.open_branch().get_stacked_on())
 
+    def test_add_fallback_repo_handles_absolute_urls(self):
+        stack_on = self.make_branch('stack_on', format='development1')
+        repo = self.make_repository('repo', format='development1')
+        policy = bzrdir.UseExistingRepository(repo, stack_on.base)
+        policy._add_fallback(repo)
+
+    def test_add_fallback_repo_handles_relative_urls(self):
+        stack_on = self.make_branch('stack_on', format='development1')
+        repo = self.make_repository('repo', format='development1')
+        policy = bzrdir.UseExistingRepository(repo, '.', stack_on.base)
+        policy._add_fallback(repo)
+
+    def test_configure_relative_branch_stacking_url(self):
+        stack_on = self.make_branch('stack_on', format='development1')
+        stacked = self.make_branch('stack_on/stacked', format='development1')
+        policy = bzrdir.UseExistingRepository(stacked.repository,
+            '.', stack_on.base)
+        policy.configure_branch(stacked)
+        self.assertEqual('..', stacked.get_stacked_on())
+
+    def test_relative_branch_stacking_to_absolute(self):
+        stack_on = self.make_branch('stack_on', format='development1')
+        stacked = self.make_branch('stack_on/stacked', format='development1')
+        policy = bzrdir.UseExistingRepository(stacked.repository,
+            '.', self.get_readonly_url('stack_on'))
+        policy.configure_branch(stacked)
+        self.assertEqual(self.get_readonly_url('stack_on'),
+                         stacked.get_stacked_on())
+
 
 class ChrootedTests(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.

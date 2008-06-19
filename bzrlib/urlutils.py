@@ -655,8 +655,7 @@ def rebase_url(url, old_base, new_base):
     old_parsed = urlparse.urlparse(old_base)
     new_parsed = urlparse.urlparse(new_base)
     if (old_parsed[:2]) != (new_parsed[:2]):
-        raise ValueError('URLs cannot have relative paths: %s %s' %
-                         (old_base, new_base))
+        raise errors.InvalidRebaseURLs(old_base, new_base)
     return determine_relative_path(new_parsed.path,
                                    osutils.pathjoin(old_parsed.path, url))
 
