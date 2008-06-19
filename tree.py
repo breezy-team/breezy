@@ -257,7 +257,7 @@ class SvnBasisTree(RevisionTree):
         self._repository = workingtree.branch.repository
 
         def add_file_to_inv(relpath, id, revid, adm):
-            props = adm.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"))
+            (propchanges, props) = adm.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"))
             if props.has_key(properties.PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
