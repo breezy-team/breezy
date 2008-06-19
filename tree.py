@@ -29,9 +29,7 @@ import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.wc
-
-from bzrlib.plugins.svn import errors, properties, core
+from bzrlib.plugins.svn import errors, properties, core, wc
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.
@@ -258,10 +256,8 @@ class SvnBasisTree(RevisionTree):
         self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 
-        def add_file_to_inv(relpath, id, revid, wc):
-            props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"), wc)
-            if isinstance(props, list): # Subversion 1.5
-                props = props[1]
+        def add_file_to_inv(relpath, id, revid, adm):
+            (propchanges, props) = adm.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"))
             if props.has_key(properties.PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
@@ -280,14 +276,14 @@ class SvnBasisTree(RevisionTree):
 
         def find_ids(entry):
             relpath = urllib.unquote(entry.url[len(entry.repos):].strip("/"))
-            if entry.schedule in (svn.wc.schedule_normal, 
-                                  svn.wc.schedule_delete, 
-                                  svn.wc.schedule_replace):
+            if entry.schedule in (wc.SCHEDULE_NORMAL, 
+                                  wc.SCHEDULE_DELETE, 
+                                  wc.SCHEDULE_REPLACE):
                 return self.id_map[workingtree.branch.unprefix(relpath.decode("utf-8"))]
             return (None, None)
 
-        def add_dir_to_inv(relpath, wc, parent_id):
-            entries = svn.wc.entries_read(wc, False)
+        def add_dir_to_inv(relpath, adm, parent_id):
+            entries = adm.entries_read(False)
             entry = entries[""]
             (id, revid) = find_ids(entry)
             if id == None:
@@ -312,26 +308,25 @@ class SvnBasisTree(RevisionTree):
                 assert entry
                 
                 if entry.kind == core.NODE_DIR:
-                    subwc = svn.wc.adm_open3(wc, 
-                            self.workingtree.abspath(subrelpath), 
-                                             False, 0, None)
+                    subwc = wc.WorkingCopy(adm, 
+                            self.workingtree.abspath(subrelpath))
                     try:
                         add_dir_to_inv(subrelpath, subwc, id)
                     finally:
-                        svn.wc.adm_close(subwc)
+                        subwc.close()
                 else:
                     (subid, subrevid) = find_ids(entry)
                     if subid is not None:
-                        add_file_to_inv(subrelpath, subid, subrevid, wc)
+                        add_file_to_inv(subrelpath, subid, subrevid, adm)
 
-        wc = workingtree._get_wc() 
+        adm = workingtree._get_wc() 
         try:
-            add_dir_to_inv(u"", wc, None)
+            add_dir_to_inv(u"", adm, None)
         finally:
-            svn.wc.adm_close(wc)
+            adm.close()
 
     def _abspath(self, relpath):
-        return svn.wc.get_pristine_copy_path(self.workingtree.abspath(relpath).encode("utf-8"))
+        return wc.get_pristine_copy_path(self.workingtree.abspath(relpath).encode("utf-8"))
 
     def get_file_lines(self, file_id):
         base_copy = self._abspath(self.id2path(file_id))
