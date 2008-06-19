@@ -88,6 +88,10 @@ class RemoteBzrDir(BzrDir):
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
 
+    def cloning_metadir(self):
+        self._ensure_real()
+        return self._real_bzrdir.cloning_metadir()
+
     def create_repository(self, shared=False):
         self._ensure_real()
         self._real_bzrdir.create_repository(shared=shared)

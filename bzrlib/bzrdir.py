@@ -1002,6 +1002,7 @@ class BzrDir(object):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
+        repository_policy = None
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
@@ -1020,34 +1021,17 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 source_repository = None
             stacked_branch_url = None
-        if force_new_repo:
-            result_repo = None
-        else:
-            try:
-                result_repo = result.find_repository()
-            except errors.NoRepositoryPresent:
-                result_repo = None
-
-        # Create/update the result repository as required
-        if source_repository is None:
-            if result_repo is None:
-                # no repo available, make a new one
-                result.create_repository()
-        elif stacked_branch_url is not None:
-            if result_repo is None:
-                result_repo = source_repository._format.initialize(result)
+        repository_policy = result.determine_repository_policy(
+            force_new_repo)
+        result_repo = repository_policy.acquire_repository()
+        if stacked_branch_url is not None:
             stacked_dir = BzrDir.open(stacked_branch_url)
             try:
                 stacked_repo = stacked_dir.open_branch().repository
             except errors.NotBranchError:
                 stacked_repo = stacked_dir.open_repository()
             result_repo.add_fallback_repository(stacked_repo)
-            result_repo.fetch(source_repository, revision_id=revision_id)
-        elif result_repo is None:
-            # have source, and want to make a new target repo
-            result_repo = source_repository.sprout(result,
-                                                   revision_id=revision_id)
-        else:
+        if source_repository is not None:
             # Fetch needed content into target.
             # Would rather do it this way ...
             # source_repository.copy_content_into(result_repo,
@@ -1061,6 +1045,7 @@ class BzrDir(object):
                 revision_id=revision_id)
         else:
             result_branch = result.create_branch()
+        repository_policy.configure_branch(result_branch)
         if stacked_branch_url is not None:
             result_branch.set_stacked_on(stacked_branch_url)
 
