@@ -1,3 +1,4 @@
+
 # Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
  
 # This program is free software; you can redistribute it and/or modify
@@ -160,7 +161,7 @@ class Editor(object):
         self._connection._unmark_busy()
 
 
-class Auth:
+class Auth(object):
     def __init__(self, providers=[]):
         self.providers = providers
         self.auth_baton = svn.core.svn_auth_open(self.providers)
@@ -198,7 +199,7 @@ def create_svn_client(url):
     return client
 
 
-class WrappedEditor:
+class WrappedEditor(object):
     def __init__(self, actual):
         self.actual = actual
 
