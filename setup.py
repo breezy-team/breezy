@@ -23,6 +23,7 @@ setup(name='bzr-upload',
       version='0.1.0',
       url='http://launchpad.net/bzr-upload',
       download_url='http://launchpad.net/bzr-upload',
+      author='Vincent Ladeuil, Martin Albisetti'
       license='GPL',
       long_description="""
       Web sites are often hosted on servers where bzr can't be installed. In
