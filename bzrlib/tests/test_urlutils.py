@@ -627,19 +627,29 @@ class TestRebaseURL(TestCase):
                                      'file://foo/bar')
         self.assertEqual('/foo', result)
 
-    def test_unrelated_urls(self):
+    def test_different_ports(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar:80', 'http://bar:81')
+        self.assertEqual(str(e), "URLs differ by more than path:"
+                         " 'http://bar:80' and 'http://bar:81'")
+
+    def test_different_hosts(self):
         e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
                               'foo', 'http://bar', 'http://baz')
         self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
                          " and 'http://baz'")
+
+    def test_different_protocol(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar', 'ftp://bar')
+        self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
+                         " and 'ftp://bar'")
 
     def test_rebase_success(self):
         self.assertEqual('../bar', urlutils.rebase_url('bar', 'http://baz/',
                          'http://baz/qux'))
         self.assertEqual('qux/bar', urlutils.rebase_url('bar',
                          'http://baz/qux', 'http://baz/'))
-        self.assertEqual('../foo', urlutils.rebase_url('foo',
-                         'http://bar/', 'http://bar/baz/'))
         self.assertEqual('.', urlutils.rebase_url('foo',
                          'http://bar/', 'http://bar/foo/'))
 

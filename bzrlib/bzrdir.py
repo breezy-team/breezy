@@ -160,12 +160,15 @@ class BzrDir(object):
               preserve_stacking=False):
         """Clone this bzrdir and its contents to url verbatim.
 
-        If url's last component does not exist, it will be created.
-
-        if revision_id is not None, then the clone operation may tune
+        :param url: The url create the clone at.  If url's last component does
+            not exist, it will be created.
+        :param revision_id: The tip revision-id to use for any branch or
+            working tree.  If not None, then the clone operation may tune
             itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target 
+        :param force_new_repo: Do not use a shared repository for the target
                                even if one is available.
+        :param preserve_stacking: When cloning a stacked branch, stack the
+            new branch on top of the other branch's stacked-on branch.
         """
         return self.clone_on_transport(get_transport(url),
                                        revision_id=revision_id,
@@ -176,9 +179,10 @@ class BzrDir(object):
                            force_new_repo=False, preserve_stacking=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
-        If the target directory does not exist, it will be created.
-
-        if revision_id is not None, then the clone operation may tune
+        :param transport: The transport for the location to produce the clone
+            at.  If the target directory does not exist, it will be created.
+        :param revision_id: The tip revision-id to use for any branch or
+            working tree.  If not None, then the clone operation may tune
             itself to download less data.
         :param force_new_repo: Do not use a shared repository for the target,
                                even if one is available.
