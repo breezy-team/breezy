@@ -186,8 +186,8 @@ class BzrFastExporter:
             for old, new in renamed.iteritems():
                 # If a previous rename is found in this rename, we should
                 # adjust the path
-                if re.match(old, oldpath):
-                    oldpath = re.sub(old + "/", new + "/", oldpath) 
+                if old in oldpath:
+                    oldpath = oldpath.replace(old + "/", new + "/") 
                     self.debug("Fixing recursive rename for %s" % oldpath)
 
             renamed[oldpath] = newpath
