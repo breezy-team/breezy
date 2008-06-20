@@ -641,6 +641,11 @@ class TestConnectedTransport(TestCase):
 
         self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 
+    def test_parse_url_with_at_in_user(self):
+        # Bug 228058
+        t = ConnectedTransport('ftp://user@host.com@www.host.com/')
+        self.assertEquals(t._user, 'user@host.com')
+
     def test_parse_quoted_url(self):
         t = ConnectedTransport('http://ro%62ey:h%40t@ex%41mple.com:2222/path')
         self.assertEquals(t._host, 'exAmple.com')
