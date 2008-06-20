@@ -140,13 +140,15 @@ class BzrFastExporter:
         message = revobj.message.encode('utf-8')
         stream += 'data %d\n%s\n' % (len(message), revobj.message)
 
+        didFirstParent = False
         for p in revobj.parent_ids:
             if self.revid_to_mark[p] == -1:
                 self.debug("This is a merge with a ghost-commit. Skipping second parent.")
                 continue
 
-            if p == parent:
+            if p == parent and not didFirstParent:
                 s = "from"
+                didFirstParent = True
             else:
                 s = "merge"
             stream += '%s :%d\n' % (s, self.revid_to_mark[p])
