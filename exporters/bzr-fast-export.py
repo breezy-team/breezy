@@ -88,7 +88,24 @@ class BzrFastExporter:
 
     def debug(self, message):
         sys.stderr.write("*** BzrFastExport: %s\n" % message)
-            
+    
+    def is_empty_dir(self, tree, path):
+        path_id = tree.path2id(path)
+        if path_id == None:
+            sys.stderr.write("Skipping empty_dir detection, could not find path_id...\n")
+            return False
+
+        # Continue if path is not a directory
+        if tree.kind(path_id) != 'directory':
+            return False
+
+        # Use treewalk to find the contents of our directory
+        contents = list(tree.walkdirs(prefix=path))[0]
+        if len(contents[1]) == 0:
+            return True
+        else:
+            return False
+
     def emit_commit(self, revid, git_branch):
         if revid in self.revid_to_mark:
             return
@@ -183,6 +200,11 @@ class BzrFastExporter:
         renamed = {}
         for (oldpath, newpath, id_, kind,
                 text_modified, meta_modified) in changes.renamed:
+            
+            if (self.is_empty_dir(tree_old, oldpath)):
+                sys.stderr.write("Skipping empty dir %s in rev %s\n" % (oldpath, revobj.revision_id))
+                continue
+
             for old, new in renamed.iteritems():
                 # If a previous rename is found in this rename, we should
                 # adjust the path
