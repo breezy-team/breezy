@@ -56,7 +56,6 @@ ERR_CANCELLED = 200015
 ERR_WC_UNSUPPORTED_FORMAT = 155021
 
 
-
 class NotSvnBranchPath(NotBranchError):
     """Error raised when a path was specified that did not exist."""
     _fmt = """%(path)s is not a valid Subversion branch path. 

@@ -20,7 +20,6 @@ from bzrlib.ui import ui_factory
 
 from bzrlib.plugins.svn import ra
 
-import svn.core
 import urlparse
 import urllib
 
@@ -168,7 +167,8 @@ def create_auth_baton(url):
     # rather than prompting the user.
     providers = get_stock_svn_providers()
 
-    if svn.core.SVN_VER_MAJOR == 1 and svn.core.SVN_VER_MINOR >= 5:
+    (major, minor, patch, tag) = ra.version()
+    if major == 1 and minor >= 5:
         providers += auth_config.get_svn_auth_providers()
         providers += [get_ssl_client_cert_pw_provider(1)]
 

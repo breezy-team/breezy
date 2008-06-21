@@ -28,7 +28,6 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_STREAM_MALFORMED_DATA
 from bzrlib.plugins.svn.format import get_rich_root_format
 
-import svn.core
 
 def transport_makedirs(transport, location_url):
     """Create missing directories.
@@ -79,7 +78,7 @@ def load_dumpfile(dumpfile, outputdir):
         if num == ERR_STREAM_MALFORMED_DATA:
             raise NotDumpFile(dumpfile)
         raise
-    return repos
+    return r
 
 
 def convert_repository(source_repos, output_url, scheme=None, layout=None,
