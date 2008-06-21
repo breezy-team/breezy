@@ -520,4 +520,7 @@ class RemoteAccess(object):
             raise NotImplementedError(self.reparent)
 
 
+def version():
+    ver = svn.ra.svn_ra_version()
+    return (ver.major, ver.minor, ver.patch, ver.tag)
 
