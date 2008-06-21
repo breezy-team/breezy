@@ -176,16 +176,12 @@ class SvnBranch(Branch):
         :param revision_id: Tip of the checkout.
         :return: WorkingTree object of the checkout.
         """
-        peg_rev = svn.core.svn_opt_revision_t()
-        peg_rev.kind = svn.core.svn_opt_revision_head
+        peg_rev = "HEAD"
 
-        rev = svn.core.svn_opt_revision_t()
         if revision_id is None:
-            rev.kind = svn.core.svn_opt_revision_head
+            rev = "HEAD"
         else:
-            revnum = self.lookup_revision_id(revision_id)
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
+            rev = self.lookup_revision_id(revision_id)
 
         svn_url = bzr_to_svn_url(self.base)
         client_ctx = Client(svn_url)

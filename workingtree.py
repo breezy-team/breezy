@@ -144,9 +144,7 @@ class SvnWorkingTree(WorkingTree):
         raise NotImplementedError(self.apply_inventory_delta)
 
     def update(self, change_reporter=None):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-        self.client_ctx.update(self.basedir, rev, True)
+        self.client_ctx.update(self.basedir, "HEAD", True)
 
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument
@@ -175,8 +173,6 @@ class SvnWorkingTree(WorkingTree):
     def move(self, from_paths, to_dir=None, after=False, **kwargs):
         # FIXME: Use after argument
         assert after != True
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_working
         for entry in from_paths:
             try:
                 to_wc = self._get_wc(to_dir, write_lock=True)
@@ -197,8 +193,6 @@ class SvnWorkingTree(WorkingTree):
     def rename_one(self, from_rel, to_rel, after=False):
         # FIXME: Use after
         assert after != True
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_unspecified
         (to_wc, to_file) = self._get_rel_wc(to_rel, write_lock=True)
         if os.path.dirname(from_rel) == os.path.dirname(to_rel):
             # Prevent lock contention
@@ -560,9 +554,7 @@ class SvnWorkingTree(WorkingTree):
         (result.old_revno, result.old_revid) = self.branch.last_revision_info()
         if stop_revision is None:
             stop_revision = self.branch.last_revision()
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = self.branch.lookup_revision_id(stop_revision)
+        rev = self.branch.lookup_revision_id(stop_revision)
         fetched = self.client_ctx.update(self.basedir, rev, True)
         self.base_revid = self.branch.generate_revision_id(fetched)
         result.new_revid = self.base_revid

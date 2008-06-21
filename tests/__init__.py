@@ -33,7 +33,7 @@ import svn.core
 
 from bzrlib.plugins.svn import repos
 from bzrlib.plugins.svn.client import Client
-from bzrlib.plugins.svn.ra import RemoteAccess
+from bzrlib.plugins.svn.ra import RemoteAccess, txdelta_send_stream
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -42,7 +42,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithSubversionRepository, self).setUp()
         self.client_ctx = Client()
-        self.client_ctx.client_ctx.log_msg_baton2 = self.log_message_func
+        self.client_ctx.log_msg_func = self.log_message_func
 
     def log_message_func(self, items, pool):
         return self.next_message
@@ -89,9 +89,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         return self.open_local_bzrdir(repos_url, relpath)
 
     def make_checkout(self, repos_url, relpath):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-        self.client_ctx.checkout(repos_url, relpath, rev) 
+        self.client_ctx.checkout(repos_url, relpath, "HEAD") 
 
     @staticmethod
     def create_checkout(branch, path, revision_id=None, lightweight=False):
@@ -116,13 +114,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         self.client_ctx.propset(name, value, path, False, True)
 
     def client_get_prop(self, path, name, revnum=None, recursive=False):
-        rev = svn.core.svn_opt_revision_t()
-
         if revnum is None:
-            rev.kind = svn.core.svn_opt_revision_working
+            rev = "WORKING"
         else:
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
+            rev = revnum
         ret = self.client_ctx.propget(name, path, rev, recursive)
         if recursive:
             return ret
@@ -130,16 +125,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             return ret.values()[0]
 
     def client_get_revprop(self, url, revnum, name):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = revnum
-        return self.client_ctx.revprop_get(name, url, rev)[0]
+        return self.client_ctx.revprop_get(name, url, revnum)[0]
 
     def client_set_revprop(self, url, revnum, name, value):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = revnum
-        self.client_ctx.revprop_set(name, value, url, rev, True)
+        self.client_ctx.revprop_set(name, value, url, revnum, True)
         
     def client_commit(self, dir, message=None, recursive=True):
         """Commit current changes in specified working copy.
@@ -162,13 +151,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         self.client_ctx.add(relpath, recursive, False, False)
 
     def revnum_to_opt_rev(self, revnum):
-        rev = svn.core.svn_opt_revision_t()
         if revnum is None:
-            rev.kind = svn.core.svn_opt_revision_head
+            rev = "HEAD"
         else:
             assert isinstance(revnum, int)
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
+            rev = revnum
         return rev
 
     def client_log(self, path, start_revnum=None, stop_revnum=None):
@@ -194,18 +181,14 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :param oldpath: Relative path to original file.
         :param newpath: Relative path to new file.
         """
-        rev = svn.core.svn_opt_revision_t()
         if revnum is None:
-            rev.kind = svn.core.svn_opt_revision_head
+            rev = "HEAD"
         else:
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
+            rev = revnum
         self.client_ctx.copy(oldpath, rev, newpath)
 
     def client_update(self, path):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-        self.client_ctx.update(path, rev, True)
+        self.client_ctx.update(path, "HEAD", True)
 
     def build_tree(self, files):
         """Create a directory tree.
@@ -345,8 +328,8 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                         else:
                             child_baton = dir_baton.open_file(subpath)
                         if isinstance(contents, str):
-                            (txdelta, txbaton) = child_baton.apply_textdelta()
-                            svn.delta.svn_txdelta_send_stream(StringIO(contents), txdelta, txbaton)
+                            txdelta = child_baton.apply_textdelta()
+                            txdelta_send_stream(StringIO(contents), txdelta)
                         if subpath in self.props:
                             for k, v in self.props[subpath].items():
                                 child_baton.change_prop(k, v)
