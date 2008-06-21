@@ -177,8 +177,6 @@ class SvnBranch(Branch):
         :param revision_id: Tip of the checkout.
         :return: WorkingTree object of the checkout.
         """
-        peg_rev = "HEAD"
-
         if revision_id is None:
             rev = "HEAD"
         else:
@@ -186,7 +184,7 @@ class SvnBranch(Branch):
 
         svn_url = bzr_to_svn_url(self.base)
         client_ctx = Client(auth=create_auth_baton(svn_url))
-        client_ctx.checkout(svn_url, to_location, rev, True)
+        client_ctx.checkout(svn_url, to_location, rev, "HEAD", True)
 
         return WorkingTree.open(to_location)
 
