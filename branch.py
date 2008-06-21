@@ -27,6 +27,7 @@ from bzrlib.workingtree import WorkingTree
 import svn.core
 
 from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.commit import push
 from bzrlib.plugins.svn.config import BranchConfig
@@ -184,7 +185,7 @@ class SvnBranch(Branch):
             rev = self.lookup_revision_id(revision_id)
 
         svn_url = bzr_to_svn_url(self.base)
-        client_ctx = Client(svn_url)
+        client_ctx = Client(auth=create_auth_baton(svn_url))
         client_ctx.checkout(svn_url, to_location, rev, True)
 
         return WorkingTree.open(to_location)

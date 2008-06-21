@@ -31,9 +31,9 @@ from bzrlib.workingtree import WorkingTree
 
 import svn.core
 
-from bzrlib.plugins.svn import repos
+from bzrlib.plugins.svn import ra, repos
 from bzrlib.plugins.svn.client import Client
-from bzrlib.plugins.svn.ra import RemoteAccess, txdelta_send_stream
+from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -42,6 +42,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithSubversionRepository, self).setUp()
         self.client_ctx = Client()
+        self.client_ctx.auth = Auth([ra.get_simple_provider(), 
+                                     ra.get_username_provider(),
+                                     ra.get_ssl_client_cert_file_provider(),
+                                     ra.get_ssl_client_cert_pw_file_provider(),
+                                     ra.get_ssl_server_trust_file_provider()])
         self.client_ctx.log_msg_func = self.log_message_func
 
     def log_message_func(self, items, pool):
@@ -188,7 +193,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         self.client_ctx.copy(oldpath, rev, newpath)
 
     def client_update(self, path):
-        self.client_ctx.update(path, "HEAD", True)
+        self.client_ctx.update([path], "HEAD", True)
 
     def build_tree(self, files):
         """Create a directory tree.

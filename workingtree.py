@@ -53,6 +53,7 @@ import urllib
 
 import svn.core
 
+from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.format import get_rich_root_format
 
@@ -80,7 +81,7 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
-        self.client_ctx = Client(bzrdir.svn_url)
+        self.client_ctx = Client(auth=create_auth_baton(bzrdir.svn_url))
 
         self._get_wc()
         max_rev = revision_status(self.basedir, None, True)[1]

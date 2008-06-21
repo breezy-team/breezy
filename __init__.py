@@ -68,23 +68,12 @@ def check_subversion_version():
     """Check that Subversion is compatible.
 
     """
-    try:
-        import svn.delta
-    except ImportError:
-        warning('No Python bindings for Subversion installed. See the '
-                'bzr-svn README for details.')
-        raise bzrlib.errors.BzrError("missing python subversion bindings")
-    if (not getattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler', None) and 
-        not getattr(svn.delta, 'tx_invoke_window_handler', None)):
-        warning('Installed Subversion version does not have updated Python '
-                'bindings. See the bzr-svn README for details.')
-        raise bzrlib.errors.BzrError("incompatible python subversion bindings")
-    import svn.core
-    if (svn.core.SVN_VER_MINOR >= 5 and 
-            27729 <= svn.core.SVN_VER_REVISION < 31470):
+    from bzrlib.plugins.svn.ra import version
+    ra_version = version()
+    if (ra_version[0] >= 5 and getattr(ra, 'SVN_REVISION', None) and 27729 <= ra.SVN_REVISION < 31470):
         warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
 
-    mutter("bzr-svn: using Subversion %d.%d.%d (%s)", svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__)
+    mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % ra_version)
 
 
 def check_rebase_version(min_version):
