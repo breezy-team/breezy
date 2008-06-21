@@ -394,11 +394,14 @@ class EmacsMail(ExternalMailClient):
         # Try to attach a MIME attachment using our wrapper function
         if attach_path is not None:
             # Do not create a file if there is no attachment
-            lmmform = '(load "%s")' % self._prepare_send_function()
+            elisp = self._prepare_send_function()
+            lmmform = '(load "%s")' % elisp
             mmform  = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')
+            rmform = '(delete-file "%s")' % elisp
             commandline.append(lmmform)
             commandline.append(mmform)
+            commandline.append(rmform)
 
         return commandline
 
