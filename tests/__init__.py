@@ -29,7 +29,8 @@ from bzrlib.trace import mutter
 from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
-import svn.core, svn.repos
+import svn.core
+from bzrlib.plugins.svn import repos
 from bzrlib.plugins.svn.ra import RemoteAccess
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
@@ -52,7 +53,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         abspath = os.path.join(self.test_dir, relpath)
 
-        svn.repos.create(abspath, '', '', None, None)
+        repos.create(abspath)
 
         if allow_revprop_changes:
             if sys.platform == 'win32':
@@ -260,9 +261,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         :return: FS.
         """
-        repos = svn.repos.open(relpath)
-
-        return svn.repos.fs(repos)
+        return repos.Repository(relpath).fs()
 
     def commit_editor(self, url, message="Test commit"):
         ra = RemoteAccess(url.encode('utf8'))

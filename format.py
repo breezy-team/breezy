@@ -83,7 +83,7 @@ class SvnRemoteFormat(BzrDirFormat):
         """See BzrDir.initialize_on_transport()."""
         from transport import get_svn_ra_transport
         from bzrlib.transport.local import LocalTransport
-        from svn import repos
+        from bzrlib.plugins.svn import repos
 
         if not isinstance(transport, LocalTransport):
             raise NotImplementedError(self.initialize, 
@@ -91,7 +91,7 @@ class SvnRemoteFormat(BzrDirFormat):
                 "non-local transports")
 
         local_path = transport._local_base.rstrip("/")
-        repos.create(local_path, '', '', None, None)
+        repos.create(local_path)
         # All revision property changes
         revprop_hook = os.path.join(local_path, "hooks", "pre-revprop-change")
         open(revprop_hook, 'w').write("#!/bin/sh")
