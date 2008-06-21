@@ -379,9 +379,10 @@ class EmacsMail(ExternalMailClient):
         _subject = "nil"
 
         if to is not None:
-            _to = ("\"%s\"" % self._encode_safe(to))
+            _to = ("\"%s\"" % self._encode_safe(to).replace('"', '\\"'))
         if subject is not None:
-            _subject = ("\"%s\"" % self._encode_safe(subject))
+            _subject = ("\"%s\"" %
+                        self._encode_safe(subject).replace('"', '\\"'))
 
         # Funcall the default mail composition function
         # This will work with any mail mode including default mail-mode
