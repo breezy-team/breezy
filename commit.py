@@ -240,9 +240,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding %s %r', child_ie.kind, new_child_path)
-                child_editor = dir_editor.add_file(
-                    full_new_child_path, None, -1)
-
+                child_editor = dir_editor.add_file(full_new_child_path)
 
             # copy if they existed at different location
             elif (self.old_inv.id2path(child_ie.file_id) != new_child_path or
@@ -312,7 +310,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter('adding dir %r', child_ie.name)
                 child_editor = dir_editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), 
-                                  new_child_path), None, -1)
+                                  new_child_path))
 
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != new_child_path:

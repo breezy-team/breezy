@@ -270,8 +270,8 @@ static PyObject *py_dir_editor_absent_directory(PyObject *self, PyObject *args)
 static PyObject *py_dir_editor_add_file(PyObject *self, PyObject *args)
 {
 	char *path, *copy_path=NULL;
-	int copy_rev=-1;
-	void *file_baton;
+	long copy_rev=-1;
+	void *file_baton = NULL;
 	EditorObject *editor = (EditorObject *)self;
 
 	if (!DirectoryEditor_Check(self)) {
