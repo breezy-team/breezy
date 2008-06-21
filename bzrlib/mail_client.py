@@ -341,16 +341,24 @@ class EmacsMail(ExternalMailClient):
         """
 
         _defun = r"""(defun bzr-add-mime-att (file)
-  "Attach FILe to a mail buffer as a MIME attachment."
+  "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
-    (mail-text)
-    (newline)
     (if (and file (file-exists-p file))
         (cond
          ((eq agent 'sendmail-user-agent)
-          (etach-attach file))
+          (progn
+	    (mail-text)
+	    (newline)
+	    (etach-attach file)))
          ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
-          (mml-attach-file file "text/x-patch" "BZR merge" "attachment"))
+          (progn
+	    (mail-text)
+	    (newline)
+	    (mml-attach-file file "text/x-patch" "BZR merge" "attachment")))
+	 ((eq agent 'mew-user-agent)
+	  (progn
+	    (mew-draft-prepare-attachments)
+	    (mew-attach-link file (file-name-nondirectory file))))
          (t
           (message "Unhandled MUA")))
       (error "File %s does not exist." file))))
