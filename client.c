@@ -243,7 +243,7 @@ static PyObject *client_add(PyObject *self, PyObject *args, PyObject *kwargs)
 static PyObject *client_checkout(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     ClientObject *client = (ClientObject *)self;
-    char *kwnames[] = { "url", "path", "peg_rev", "rev", "recurse", "ignore_externals", NULL };
+    char *kwnames[] = { "url", "path", "rev", "peg_rev", "recurse", "ignore_externals", NULL };
     svn_revnum_t result_rev;
     svn_opt_revision_t c_peg_rev, c_rev;
     char *url, *path; 
@@ -251,7 +251,7 @@ static PyObject *client_checkout(PyObject *self, PyObject *args, PyObject *kwarg
     PyObject *peg_rev=Py_None, *rev=Py_None;
     bool recurse=true, ignore_externals=false;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|OObb", kwnames, &url, &path, &peg_rev, &rev, &recurse, &ignore_externals))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|OObb", kwnames, &url, &path, &rev, &peg_rev, &recurse, &ignore_externals))
         return NULL;
 
     if (!to_opt_revision(peg_rev, &c_peg_rev))
