@@ -616,6 +616,7 @@ static PyObject *ra_reparent(PyObject *self, PyObject *args)
 	if (temp_pool == NULL)
 		return NULL;
 	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_reparent(ra->ra, url, temp_pool));
+	ra->url = apr_pstrdup(ra->pool, url);
 	apr_pool_destroy(temp_pool);
 	Py_RETURN_NONE;
 }
