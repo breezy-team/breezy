@@ -26,21 +26,14 @@
 
 #include "editor.h"
 #include "util.h"
+#include "ra.h"
 
 static PyObject *busy_exc;
 
 PyAPI_DATA(PyTypeObject) Reporter_Type;
 PyAPI_DATA(PyTypeObject) RemoteAccess_Type;
-PyAPI_DATA(PyTypeObject) Auth_Type;
 PyAPI_DATA(PyTypeObject) AuthProvider_Type;
 PyAPI_DATA(PyTypeObject) TxDeltaWindowHandler_Type;
-
-typedef struct {
-	PyObject_HEAD
-    svn_auth_baton_t *auth_baton;
-    apr_pool_t *pool;
-    PyObject *providers;
-} AuthObject;
 
 static svn_error_t *py_commit_callback(const svn_commit_info_t *commit_info, void *baton, apr_pool_t *pool)
 {
@@ -1666,4 +1659,8 @@ void initra(void)
     PyModule_AddIntConstant(mod, "DIRENT_TIME", SVN_DIRENT_TIME);
     PyModule_AddIntConstant(mod, "DIRENT_LAST_AUTHOR", SVN_DIRENT_LAST_AUTHOR);
     PyModule_AddIntConstant(mod, "DIRENT_ALL", SVN_DIRENT_ALL);
+
+#ifdef SVN_VER_REVISION
+	PyModule_AddIntConstant(mod, "SVN_REVISION", SVN_VER_REVISION);
+#endif
 }

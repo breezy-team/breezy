@@ -24,8 +24,11 @@
 #include <svn_config.h>
 
 #include "util.h"
+#include "ra.h"
 
 PyAPI_DATA(PyTypeObject) Client_Type;
+
+static int client_set_auth(PyObject *self, PyObject *auth, void *closure);
 
 static bool to_opt_revision(PyObject *arg, svn_opt_revision_t *ret)
 {
@@ -134,13 +137,13 @@ typedef struct {
     svn_client_ctx_t *client;
     apr_pool_t *pool;
     PyObject *callbacks;
+	PyObject *py_auth;
 } ClientObject;
 
 static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
     ClientObject *ret;
 	PyObject *config = Py_None, *auth = Py_None;
-	apr_array_header_t *auth_providers;
     char *kwnames[] = { "config", "auth", NULL };
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwnames, &config, &auth))
         return NULL;
@@ -166,18 +169,8 @@ static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs
 		return NULL;
 	}
 
-	if (auth != Py_None) {
-		PyErr_SetString(PyExc_NotImplementedError, "custom auth not supported yet");
-		return NULL;
-	}
-
-    auth_providers = apr_array_make(ret->pool, 0, 4);
-	if (auth_providers == NULL) {
-		PyErr_NoMemory();
-		return NULL;
-	}
-	svn_auth_open(&ret->client->auth_baton, auth_providers, ret->pool);
-
+	ret->py_auth = NULL;
+	client_set_auth((PyObject *)ret, auth, NULL);
     return (PyObject *)ret;
 }
 
@@ -187,6 +180,7 @@ static void client_dealloc(PyObject *self)
 	if (client->client->log_msg_func2 != NULL) {
 		Py_DECREF((PyObject *)client->client->log_msg_baton2);
 	}
+	Py_XDECREF(client->py_auth);
     apr_pool_destroy(client->pool);
 	PyObject_Del(self);
 }
@@ -216,6 +210,31 @@ static int client_set_log_msg_func(PyObject *self, PyObject *func, void *closure
     Py_INCREF(func);
     return 0;
 }
+
+static int client_set_auth(PyObject *self, PyObject *auth, void *closure)
+{
+	ClientObject *client = (ClientObject *)self;
+	apr_array_header_t *auth_providers;
+
+	Py_XDECREF(client->py_auth);
+
+	if (auth == Py_None) {
+		auth_providers = apr_array_make(client->pool, 0, 4);
+		if (auth_providers == NULL) {
+			PyErr_NoMemory();
+			return 1;
+		}
+		svn_auth_open(&client->client->auth_baton, auth_providers, client->pool);
+	} else {
+		client->client->auth_baton = ((AuthObject *)auth)->auth_baton;
+	}
+
+	client->py_auth = auth;
+	Py_INCREF(auth);
+
+	return 0;
+}
+
 
 static PyObject *client_add(PyObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -575,6 +594,7 @@ static PyMethodDef client_methods[] = {
 
 static PyGetSetDef client_getset[] = {
 	{ "log_msg_func", client_get_log_msg_func, client_set_log_msg_func, NULL },
+	{ "auth", NULL, client_set_auth, NULL },
 	{ NULL, }
 };
 
