@@ -26,8 +26,7 @@ from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from svn import wc
-
+from bzrlib.plugins.svn import wc
 from bzrlib.plugins.svn.transport import svn_config
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.workingtree import generate_ignore_list

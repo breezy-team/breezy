@@ -115,7 +115,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         from bzrlib.transport.local import LocalTransport
-        from svn import wc
+        from bzrlib.plugins.svn import wc
         format = klass()
 
         if isinstance(transport, LocalTransport) and \
