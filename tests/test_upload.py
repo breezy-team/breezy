@@ -393,6 +393,19 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertRaises(errors.BzrCommandError,
                           self.do_incremental_upload, revision=[rev1, rev2])
 
+    def test_create_remote_dir_twice(self):
+        self.make_local_branch()
+        self.add_dir('dir')
+        self.do_full_upload()
+        self.add_file('dir/goodbye', 'baz')
+
+        self.failIfUpFileExists('dir/goodbye')
+
+        self.do_full_upload()
+
+        self.assertUpFileEqual('baz', 'dir/goodbye')
+        self.assertUpPathModeEqual('dir', 0775)
+
 
 class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 

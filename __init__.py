@@ -193,9 +193,11 @@ class cmd_upload(commands.Command):
                     self.outf.write('Deleting %s/%s\n' % (
                             self.to_transport.external_url(), relpath))
                 self.to_transport.delete(relpath)
+            else:
+                # Ok the remote dir already exists, nothing to do
+                return
         except errors.PathError:
             pass
-        # FIXME: Errr, what if the remote dir already exists ?
         self.make_remote_dir(relpath, mode)
 
     def delete_remote_file(self, relpath):
