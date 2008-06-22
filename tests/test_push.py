@@ -323,11 +323,11 @@ class TestPush(TestCaseWithSubversionRepository):
              wt.branch.revision_history()[-2])
         mutter('log %r' % self.client_log("sc/trunk")[4][0])
         self.assertEquals('M',
-            self.client_log("sc/trunk")[4][0]['/trunk'].action)
+            self.client_log("sc/trunk")[4][0]['/trunk'][0])
         push(Branch.open("sc/trunk"), wt.branch, wt.branch.last_revision())
         mutter('log %r' % self.client_log("sc/trunk")[5][0])
         self.assertEquals("/branches/mybranch", 
-            self.client_log("sc/trunk")[5][0]['/trunk'].copyfrom_path)
+            self.client_log("sc/trunk")[5][0]['/trunk'][1])
 
 class PushNewBranchTests(TestCaseWithSubversionRepository):
     def test_single_revision(self):

@@ -40,8 +40,6 @@ from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
 from bzrlib.plugins.svn.tree import (parse_externals_description, 
                   inventory_add_external)
 
-import svn.delta
-
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
     if message is None:
@@ -85,7 +83,7 @@ def check_filename(path):
         raise InvalidFileName(path)
 
 
-class RevisionBuildEditor:
+class RevisionBuildEditor(object):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar revision.
     """
@@ -209,7 +207,7 @@ class RevisionBuildEditor:
         self.inventory.rename(file_id, parent_id, urlutils.basename(path))
 
 
-class DirectoryBuildEditor:
+class DirectoryBuildEditor(object):
     def __init__(self, editor, old_id, new_id, parent_revids=[]):
         self.editor = editor
         self.old_id = old_id
@@ -345,7 +343,7 @@ class DirectoryBuildEditor:
             self.editor.inventory.remove_recursive_id(self.editor._get_old_id(self.old_id, path))
 
 
-class FileBuildEditor:
+class FileBuildEditor(object):
     def __init__(self, editor, path, file_id, file_parents=[], data="", 
                  is_symlink=False):
         self.path = path

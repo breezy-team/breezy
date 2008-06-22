@@ -1549,9 +1549,7 @@ Node-copyfrom-path: x
         self.client_add("dc/mylink")
         self.client_commit("dc", "My Message")
         ra = SvnRaTransport(repos_url)
-        def done(info, pool):
-            pass
-        editor = ra.get_commit_editor({"svn:log": "msg"}, done, None, False)
+        editor = ra.get_commit_editor({"svn:log": "msg"}, None, None, False)
         root_baton = editor.open_root(1)
         baton = root_baton.open_file("mylink", 1)
         baton.change_prop("svn:special", "*")
