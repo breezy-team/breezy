@@ -390,6 +390,7 @@ def test_suite():
             'test_transport',
             'test_tree',
             'test_upgrade',
+            'test_wc',
             'test_workingtree',
             'test_blackbox']
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
