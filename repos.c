@@ -45,7 +45,7 @@ static PyObject *repos_create(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s|OO", &path, &config, &fs_config))
 		return NULL;
 
-    pool = Pool();
+    pool = Pool(NULL);
 	if (pool == NULL)
 		return NULL;
     hash_config = apr_hash_make(pool); /* FIXME */
@@ -83,7 +83,7 @@ static PyObject *repos_init(PyTypeObject *type, PyObject *args, PyObject *kwargs
 	if (ret == NULL)
 		return NULL;
 
-	ret->pool = Pool();
+	ret->pool = Pool(NULL);
 	if (ret->pool == NULL)
 		return NULL;
     if (!check_error(svn_repos_open(&ret->repos, path, ret->pool))) {
@@ -134,7 +134,7 @@ static PyObject *fs_get_uuid(PyObject *self)
 	PyObject *ret;
 	apr_pool_t *temp_pool;
 
-	temp_pool = Pool();
+	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
 	RUN_SVN_WITH_POOL(temp_pool, svn_fs_get_uuid(fsobj->fs, &uuid, temp_pool));
@@ -184,7 +184,7 @@ static PyObject *repos_load_fs(PyObject *self, PyObject *args, PyObject *kwargs)
 								&cancel_func))
 		return NULL;
 
-	temp_pool = Pool();
+	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
 	RUN_SVN_WITH_POOL(temp_pool, svn_repos_load_fs2(reposobj->repos, 
@@ -229,7 +229,7 @@ void initrepos(void)
 		return;
 
 	apr_initialize();
-	pool = Pool();
+	pool = Pool(NULL);
 	if (pool == NULL)
 		return;
 
