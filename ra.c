@@ -480,6 +480,8 @@ static void ra_done_handler(void *_ra)
 	RemoteAccessObject *ra = (RemoteAccessObject *)_ra;
 
 	ra->busy = false;
+
+	Py_XDECREF(ra);
 }
 
 #define RUN_RA_WITH_POOL(pool, ra, cmd)  \
@@ -745,6 +747,7 @@ static PyObject *ra_do_update(PyObject *self, PyObject *args)
 	ret->reporter = reporter;
 	ret->report_baton = report_baton;
 	ret->pool = temp_pool;
+	Py_INCREF(ra);
 	ret->done_cb = ra_done_handler;
 	ret->done_baton = ra;
 	return (PyObject *)ret;
@@ -788,6 +791,7 @@ static PyObject *ra_do_switch(PyObject *self, PyObject *args)
 	ret->reporter = reporter;
 	ret->report_baton = report_baton;
 	ret->pool = temp_pool;
+	Py_INCREF(ra);
 	ret->done_cb = ra_done_handler;
 	ret->done_baton = ra;
 	return (PyObject *)ret;
@@ -890,6 +894,8 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		ra->busy = false;
 		return NULL;
 	}
+
+	Py_INCREF(ra);
 	return new_editor_object(editor, edit_baton, pool, 
 								  &Editor_Type, ra_done_handler, ra);
 }
