@@ -337,6 +337,8 @@ static svn_error_t *py_txdelta_window_handler(svn_txdelta_window_t *window, void
         return NULL;
 	}
     ops = PyList_New(window->num_ops);
+	if (ops == NULL)
+		return NULL;
 	for (i = 0; i < window->num_ops; i++) {
 		PyList_SetItem(ops, i, Py_BuildValue("(iII)", window->ops[i].action_code, 
 					window->ops[i].offset, 
@@ -755,8 +757,12 @@ static PyObject *ra_get_log(PyObject *self, PyObject *args, PyObject *kwargs)
 	}
 
 #if SVN_VER_MAJOR <= 1 && SVN_VER_MINOR < 5
-	if (revprops == NULL) {
+	if (revprops == Py_None) {
 		PyErr_SetString(PyExc_NotImplementedError, "fetching all revision properties not supported");	
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	} else if (!PyList_Check(revprops)) {
+		PyErr_SetString(PyExc_TypeError, "revprops should be a list");
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	} else {
@@ -1459,13 +1465,23 @@ static PyObject *auth_init(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	if (ret == NULL)
 		return NULL;
 
+	if (!PyList_Check(providers)) {
+		PyErr_SetString(PyExc_TypeError, "Auth providers should be list");
+		return NULL;
+	}
+
 	ret->pool = Pool(NULL);
 	if (ret->pool == NULL)
 		return NULL;
+
 	ret->providers = providers;
 	Py_INCREF(providers);
 
     c_providers = apr_array_make(ret->pool, PyList_Size(providers), 4);
+	if (c_providers == NULL) {
+		PyErr_NoMemory();
+		return NULL;
+	}
 	for (i = 0; i < PyList_Size(providers); i++) {
 		AuthProviderObject *provider;
     	el = (svn_auth_provider_object_t **)apr_array_push(c_providers);
@@ -1497,7 +1513,7 @@ static PyObject *auth_set_parameter(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-    svn_auth_set_parameter(auth->auth_baton, name, (char *)value);
+    svn_auth_set_parameter(auth->auth_baton, name, (char *)vvalue);
 
 	Py_RETURN_NONE;
 }
@@ -1515,6 +1531,9 @@ static PyObject *auth_get_parameter(PyObject *self, PyObject *args)
 
 	if (!strcmp(name, SVN_AUTH_PARAM_SSL_SERVER_FAILURES)) {
 		return PyInt_FromLong(*((apr_uint32_t *)value));
+	} else if (!strcmp(name, SVN_AUTH_PARAM_DEFAULT_USERNAME) ||
+			   !strcmp(name, SVN_AUTH_PARAM_DEFAULT_PASSWORD)) {
+		return PyString_FromString((const char *)value);
 	} else {
 		PyErr_Format(PyExc_TypeError, "Unsupported auth parameter %s", name);
 		return NULL;
