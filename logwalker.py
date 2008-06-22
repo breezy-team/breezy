@@ -259,7 +259,9 @@ class CachingLogWalker(CacheTable):
 
         if revnum > 0:
             has_all_revprops = self.cachedb.execute("SELECT all_revprops FROM revinfo WHERE rev=?", (revnum,)).fetchone()[0]
-            known_revprops = dict(self.cachedb.execute("select name, value from revprop where rev="+str(revnum)))
+            known_revprops = {}
+            for k,v in self.cachedb.execute("select name, value from revprop where rev="+str(revnum)):
+                known_revprops[k.encode("utf-8")] = v.encode("utf-8")
         else:
             has_all_revprops = False
             known_revprops = {}
