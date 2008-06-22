@@ -183,6 +183,8 @@ static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs
 
 	ret->py_auth = NULL;
 	ret->py_config = NULL;
+	ret->client->notify_func2 = NULL;
+	ret->client->notify_baton2 = NULL;
 	client_set_config((PyObject *)ret, config, NULL);
 	client_set_auth((PyObject *)ret, auth, NULL);
     return (PyObject *)ret;

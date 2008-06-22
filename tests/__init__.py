@@ -46,7 +46,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                                      ra.get_ssl_client_cert_pw_file_provider(),
                                      ra.get_ssl_server_trust_file_provider()])
         self.client_ctx.log_msg_func = self.log_message_func
-        self.client_ctx.notify_func = lambda err: mutter("Error: %s" % err)
+        #self.client_ctx.notify_func = lambda err: mutter("Error: %s" % err)
 
     def log_message_func(self, items):
         return self.next_message
