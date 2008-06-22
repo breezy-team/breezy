@@ -414,16 +414,16 @@ class SvnWorkingTree(WorkingTree):
             specific_files = [self.basedir.encode('utf8')]
 
         if message_callback is not None:
-            def log_message_func(items, pool):
+            def log_message_func(items):
                 """ Simple log message provider for unit tests. """
                 return message_callback(self).encode("utf-8")
         else:
             assert isinstance(message, basestring)
-            def log_message_func(items, pool):
+            def log_message_func(items):
                 """ Simple log message provider for unit tests. """
                 return message.encode("utf-8")
 
-        self.client_ctx.client_ctx.log_msg_baton2 = log_message_func
+        self.client_ctx.log_msg_func = log_message_func
         if rev_id is not None:
             extra = "%d %s\n" % (self.branch.revno()+1, rev_id)
         else:
@@ -444,7 +444,7 @@ class SvnWorkingTree(WorkingTree):
 
         try:
             try:
-                commit_info = self.client_ctx.commit(specific_files, True, False)
+                (revision, _, _) = self.client_ctx.commit(specific_files, True, False)
             except SubversionException, (_, num):
                 if num == ERR_FS_TXN_OUT_OF_DATE:
                     raise OutOfDateTree(self)
@@ -462,12 +462,12 @@ class SvnWorkingTree(WorkingTree):
             wc.close()
             raise
 
-        self.client_ctx.client_ctx.log_msg_baton2 = None
+        self.client_ctx.log_msg_func = None
 
-        revid = self.branch.generate_revision_id(commit_info.revision)
+        revid = self.branch.generate_revision_id(revision)
 
         self.base_revid = revid
-        self.base_revnum = commit_info.revision
+        self.base_revnum = revision
         self.base_tree = SvnBasisTree(self)
 
         return revid

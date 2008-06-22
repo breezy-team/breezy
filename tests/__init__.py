@@ -31,7 +31,7 @@ from bzrlib.workingtree import WorkingTree
 
 import svn.core
 
-from bzrlib.plugins.svn import ra, repos
+from bzrlib.plugins.svn import properties, ra, repos
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream
 
@@ -49,7 +49,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                                      ra.get_ssl_server_trust_file_provider()])
         self.client_ctx.log_msg_func = self.log_message_func
 
-    def log_message_func(self, items, pool):
+    def log_message_func(self, items):
         return self.next_message
 
     def make_repository(self, relpath, allow_revprop_changes=True):
@@ -146,7 +146,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         info = self.client_ctx.commit(["."], recursive, False)
         os.chdir(olddir)
         assert info is not None
-        return (info.revision, info.date, info.author)
+        return info
 
     def client_add(self, relpath, recursive=True):
         """Add specified files to working copy.
@@ -166,11 +166,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def client_log(self, path, start_revnum=None, stop_revnum=None):
         assert isinstance(path, str)
         ret = {}
-        def rcvr(orig_paths, rev, author, date, message, pool):
-            ret[rev] = (orig_paths, author, date, message)
-        self.client_ctx.log([path], self.revnum_to_opt_rev(start_revnum),
-                       self.revnum_to_opt_rev(stop_revnum),
-                       True, True, rcvr)
+        def rcvr(orig_paths, rev, revprops):
+            ret[rev] = (orig_paths, revprops[properties.PROP_REVISION_AUTHOR], revprops[properties.PROP_REVISION_DATE], revprops[properties.PROP_REVISION_LOG])
+        self.client_ctx.log([path], rcvr, self.revnum_to_opt_rev(start_revnum),
+                       self.revnum_to_opt_rev(stop_revnum), 0,
+                       True, True)
         return ret
 
     def client_delete(self, relpath):
@@ -190,7 +190,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             rev = "HEAD"
         else:
             rev = revnum
-        self.client_ctx.copy(oldpath, rev, newpath)
+        self.client_ctx.copy(oldpath, newpath, rev)
 
     def client_update(self, path):
         self.client_ctx.update([path], "HEAD", True)
