@@ -19,7 +19,7 @@ from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import version_info, errors, properties
+from bzrlib.plugins.svn import core, errors, properties, version_info
 import calendar
 import svn
 import time
@@ -151,7 +151,7 @@ def parse_svn_revprops(svn_revprops, rev):
             pass
 
     if svn_revprops.has_key(properties.PROP_REVISION_DATE):
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[properties.PROP_REVISION_DATE], None)
+        rev.timestamp = core.time_from_cstring(svn_revprops[properties.PROP_REVISION_DATE]) / 1000000.0
     else:
         rev.timestamp = 0.0 # FIXME: Obtain repository creation time
     rev.timezone = None
