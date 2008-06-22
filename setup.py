@@ -15,7 +15,7 @@ def apr_build_data():
     includedir = apr_config("--includedir")
     if not os.path.isdir(includedir):
         raise Exception("APR development headers not found")
-    ldflags = apr_config("--ldflags")
+    ldflags = filter(lambda x: x != "", apr_config("--ldflags").split(" "))
     return (includedir, ldflags)
 
 def svn_build_data():
@@ -33,7 +33,7 @@ def svn_build_data():
 def SvnExtension(*args, **kwargs):
     kwargs["include_dirs"] = [apr_includedir, svn_includedir]
     kwargs["library_dirs"] = [svn_libdir]
-    kwargs["extra_link_args"] = [apr_ldflags]
+    kwargs["extra_link_args"] = apr_ldflags
     return Extension(*args, **kwargs)
 
 
