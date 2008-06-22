@@ -454,7 +454,7 @@ class SvnRepository(Repository):
             if mainline_parent != NULL_REVISION:
 
                 svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-                svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+                svn_revprops = self._log.revprop_list(revnum)
                 revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
 
                 parent_ids += revmeta.get_rhs_parents(mapping)
@@ -488,7 +488,7 @@ class SvnRepository(Repository):
 
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
-        svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+        svn_revprops = self._log.revprop_list(revnum)
         svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
 
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
@@ -522,7 +522,7 @@ class SvnRepository(Repository):
         assert isinstance(mapping, BzrSvnMapping)
 
         if revprops is None:
-            revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+            revprops = self._log.revprop_list(revnum)
 
         if changed_fileprops is None:
             changed_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
@@ -632,7 +632,7 @@ class SvnRepository(Repository):
             (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         except NoSuchRevision:
             return False
-        revprops = self.transport.revprop_list(revnum)
+        revprops = self._log.revprop_list(revnum)
         return revprops.has_key(SVN_REVPROP_BZR_SIGNATURE)
 
     def get_signature_text(self, revision_id):
@@ -643,7 +643,7 @@ class SvnRepository(Repository):
         :raises NoSuchRevision: Always
         """
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        revprops = self.transport.revprop_list(revnum)
+        revprops = self._log.revprop_list(revnum)
         try:
             return revprops[SVN_REVPROP_BZR_SIGNATURE]
         except KeyError:
