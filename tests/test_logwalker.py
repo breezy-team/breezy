@@ -544,6 +544,21 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertEqual(set(['trunk/data', 'trunk/data/bla', 'trunk/file']), 
                 set(walker.find_children("trunk", 2)))
 
+    def test_revprop_list(self):
+        repos_url = self.make_repository("a")
+
+        cb = self.commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.done()
+
+        walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
+
+        props = walker.revprop_list(1)
+        self.assertEquals(set(["svn:date", "svn:author", "svn:log"]), set(props.keys()))
+
+        props = walker.revprop_list(0)
+        self.assertEquals(set(["svn:date"]), set(props.keys()))
+
     def test_find_children_copy(self):
         repos_url = self.make_repository("a")
 

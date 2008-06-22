@@ -149,10 +149,8 @@ def parse_svn_revprops(svn_revprops, rev):
         except UnicodeDecodeError:
             pass
 
-    if svn_revprops.has_key(properties.PROP_REVISION_DATE):
-        rev.timestamp = properties.time_from_cstring(svn_revprops[properties.PROP_REVISION_DATE]) / 1000000.0
-    else:
-        rev.timestamp = 0.0 # FIXME: Obtain repository creation time
+    assert svn_revprops.has_key(properties.PROP_REVISION_DATE)
+    rev.timestamp = properties.time_from_cstring(svn_revprops[properties.PROP_REVISION_DATE]) / 1000000.0
     rev.timezone = None
     rev.properties = {}
 
