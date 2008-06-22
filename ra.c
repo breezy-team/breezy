@@ -476,6 +476,7 @@ typedef struct {
     PyObject *progress_func;
 	AuthObject *auth;
 	bool busy;
+	PyObject *client_string_func;
 } RemoteAccessObject;
 
 static void ra_done_handler(void *_ra)
@@ -505,6 +506,26 @@ static bool ra_check_busy(RemoteAccessObject *raobj)
 	return false;
 }
 
+static svn_error_t *py_get_client_string(void *baton, const char **name, apr_pool_t *pool)
+{
+	RemoteAccessObject *self = (RemoteAccessObject *)baton;
+	PyObject *ret;
+
+	if (self->client_string_func == Py_None) {
+		*name = NULL;
+		return NULL;
+	}
+
+	ret = PyObject_CallFunction(self->client_string_func, "");
+
+	if (ret == NULL)
+		return py_svn_error();
+
+	*name = apr_pstrdup(pool, PyString_AsString(ret));
+
+	return NULL;
+}
+
 static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 									 apr_pool_t *pool)
 {
@@ -517,17 +538,19 @@ static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 
 static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-	char *kwnames[] = { "url", "progress_cb", "auth", "config", NULL };
+	char *kwnames[] = { "url", "progress_cb", "auth", "config", "client_string_func", NULL };
 	char *url;
 	PyObject *progress_cb = Py_None;
 	AuthObject *auth = (AuthObject *)Py_None;
 	PyObject *config = Py_None;
+	PyObject *client_string_func = Py_None;
 	RemoteAccessObject *ret;
 	apr_hash_t *config_hash;
 	svn_ra_callbacks2_t *callbacks2;
 	svn_auth_baton_t *auth_baton;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|OOO", kwnames, &url, &progress_cb, (PyObject **)&auth, &config))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|OOOO", kwnames, &url, &progress_cb, 
+									 (PyObject **)&auth, &config, &client_string_func))
 		return NULL;
 
 	ret = PyObject_New(RemoteAccessObject, &RemoteAccess_Type);
@@ -554,11 +577,17 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 		return NULL;
 	}
 
+	ret->client_string_func = client_string_func;
+	Py_INCREF(client_string_func);
 	callbacks2->progress_func = py_progress_func;
 	callbacks2->auth_baton = auth_baton;
 	callbacks2->open_tmp_file = py_open_tmp_file;
 	ret->progress_func = progress_cb;
 	callbacks2->progress_baton = (void *)ret->progress_func;
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+	callbacks2->get_client_string = py_get_client_string;
+#endif
+	Py_INCREF(config);
 	config_hash = config_hash_from_object(config, ret->pool);
 	if (config_hash == NULL) {
 		apr_pool_destroy(ret->pool);
