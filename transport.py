@@ -155,6 +155,8 @@ class SvnRaTransport(Transport):
         else:
             self.connections = pool
 
+        self.capabilities = {}
+
         from bzrlib.plugins.svn import lazy_check_versions
         lazy_check_versions()
 
@@ -387,10 +389,13 @@ class SvnRaTransport(Transport):
         return conn.do_update(revnum, path, recurse, editor)
 
     def has_capability(self, cap):
+        if cap in self.capabilities:
+            return self.capabilities[cap]
         conn = self.get_connection()
         self.mutter('svn has-capability %s' % (cap,))
         try:
-            return conn.has_capability(cap)
+            self.capabilities[cap] = conn.has_capability(cap)
+            return self.capabilities[cap]
         finally:
             self.add_connection(conn)
 

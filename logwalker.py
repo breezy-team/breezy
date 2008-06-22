@@ -346,14 +346,15 @@ class LogWalker(object):
 
         try:
             # Subversion 1.4 clients and servers can only deliver a limited set of revprops
+            todo_revprops = ["svn:author", "svn:log", "svn:date"]
             try:
-                iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
-                                                    True, False, False, revprops=None)
-                has_all_revprops = True
+                if self._transport.has_capability("log-revprops"):
+                    todo_revprops = None
             except NotImplementedError:
-                iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
-                        True, False, False, revprops=["svn:author", "svn:log", "svn:date"])
-                has_all_revprops = False
+                pass
+
+            iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
+                                                    True, False, False, revprops=todo_revprops)
 
             for (changed_paths, revnum, known_revprops, has_children) in iterator:
                 if pb is not None:
@@ -363,7 +364,7 @@ class LogWalker(object):
                 else:
                     assert isinstance(changed_paths, dict), "invalid paths %r in %r" % (changed_paths, revnum)
                     revpaths = struct_revpaths_to_tuples(changed_paths)
-                if has_all_revprops:
+                if todo_revprops is None:
                     revprops = known_revprops
                 else:
                     revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
