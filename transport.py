@@ -217,7 +217,7 @@ class SvnRaTransport(Transport):
         return conn.do_switch(switch_rev, path, recurse, switch_url, editor)
 
     def iter_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
-                 strict_node_history, revprops):
+                 strict_node_history, include_merged_revisions, revprops):
         assert paths is None or isinstance(paths, list)
         assert paths is None or all([isinstance(x, str) for x in paths])
         assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
@@ -263,12 +263,12 @@ class SvnRaTransport(Transport):
         else:
             newpaths = [self._request_path(path) for path in paths]
         
-        fetcher = logfetcher(self, paths=newpaths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, revprops=revprops)
+        fetcher = logfetcher(self, paths=newpaths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions,revprops=revprops)
         fetcher.start()
         return iter(fetcher.next, None)
 
     def get_log(self, rcvr, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
-                strict_node_history, revprops):
+                strict_node_history, include_merged_revisions, revprops):
         assert paths is None or isinstance(paths, list), "Invalid paths"
         assert paths is None or all([isinstance(x, str) for x in paths])
 
@@ -284,6 +284,7 @@ class SvnRaTransport(Transport):
             return conn.get_log(rcvr, newpaths, 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
+                    include_merged_revisions,
                     revprops)
         finally:
             self.add_connection(conn)

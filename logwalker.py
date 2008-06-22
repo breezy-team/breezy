@@ -262,7 +262,7 @@ class CachingLogWalker(CacheTable):
 
         pb = ui.ui_factory.nested_progress_bar()
 
-        def rcvr(orig_paths, revision, revprops):
+        def rcvr(orig_paths, revision, revprops, has_children):
             pb.update('fetching svn revision info', revision, to_revnum)
             if orig_paths is None:
                 orig_paths = {}
@@ -280,7 +280,7 @@ class CachingLogWalker(CacheTable):
 
         try:
             try:
-                self.actual._transport.get_log(rcvr, None, self.saved_revnum, to_revnum, 0, True, True, [])
+                self.actual._transport.get_log(rcvr, None, self.saved_revnum, to_revnum, 0, True, True, False, [])
             except SubversionException, (_, num):
                 if num == ERR_FS_NO_SUCH_REVISION:
                     raise NoSuchRevision(branch=self, 
@@ -324,7 +324,7 @@ class LogWalker(object):
         assert isinstance(revnum, int) and revnum >= 0
 
         try:
-            return self._transport.iter_log([path], revnum, 0, 2, True, False, []).next()[1]
+            return self._transport.iter_log([path], revnum, 0, 2, True, False, False, []).next()[1]
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -345,7 +345,16 @@ class LogWalker(object):
         assert from_revnum >= 0 and to_revnum >= 0
 
         try:
-            for (changed_paths, revnum, known_revprops) in self._transport.iter_log(paths, from_revnum, to_revnum, limit, True, False, []):
+            try:
+                iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
+                                                    True, False, False, revprops=None)
+                has_all_revprops = True
+            except NotImplementedError:
+                iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
+                        True, False, False, revprops=["svn:author", "svn:log", "svn:date"])
+                has_all_revprops = False
+
+            for (changed_paths, revnum, known_revprops, has_children) in iterator:
                 if pb is not None:
                     pb.update("determining changes", from_revnum-revnum, from_revnum)
                 if revnum == 0 and changed_paths is None:
@@ -353,7 +362,10 @@ class LogWalker(object):
                 else:
                     assert isinstance(changed_paths, dict), "invalid paths %r in %r" % (changed_paths, revnum)
                     revpaths = struct_revpaths_to_tuples(changed_paths)
-                revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
+                if has_all_revprops:
+                    revprops = known_revprops
+                else:
+                    revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
                 yield (revpaths, revnum, revprops)
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
@@ -374,7 +386,7 @@ class LogWalker(object):
 
         try:
             return struct_revpaths_to_tuples(
-                self._transport.iter_log(None, revnum, revnum, 1, True, True, []).next()[0])
+                self._transport.iter_log(None, revnum, revnum, 1, True, True, False, []).next()[0])
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -421,7 +433,7 @@ class LogWalker(object):
             return (None, -1)
 
         try:
-            paths = struct_revpaths_to_tuples(self._transport.iter_log([path], revnum, revnum, 1, True, False, []).next()[0])
+            paths = struct_revpaths_to_tuples(self._transport.iter_log([path], revnum, revnum, 1, True, False, False, []).next()[0])
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 

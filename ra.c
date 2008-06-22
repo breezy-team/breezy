@@ -721,7 +721,7 @@ static PyObject *ra_get_latest_revnum(PyObject *self)
 static PyObject *ra_get_log(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	char *kwnames[] = { "callback", "paths", "start", "end", "limit",
-		"discover_changed_paths", "strict_node_history", "revprops", NULL };
+		"discover_changed_paths", "strict_node_history", "include_merged_revisions", "revprops", NULL };
 	PyObject *callback, *paths;
 	svn_revnum_t start = 0, end = 0;
 	int limit=0; 
