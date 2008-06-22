@@ -392,7 +392,7 @@ class LogWalker(object):
         finally:
             self._transport.connections.add(conn)
 
-        class FileTreeLister(object)
+        class FileTreeLister(object):
             def change_prop(self, name, value): pass
             def close(self): pass
             def apply_textdelta(self, checksum=None): pass
