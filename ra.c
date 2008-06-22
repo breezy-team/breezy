@@ -1489,6 +1489,9 @@ static PyObject *auth_set_parameter(PyObject *self, PyObject *args)
 	if (!strcmp(name, SVN_AUTH_PARAM_SSL_SERVER_FAILURES)) {
 		vvalue = apr_pcalloc(auth->pool, sizeof(apr_uint32_t));
 		*((apr_uint32_t *)vvalue) = PyInt_AsLong(value);
+	} else if (!strcmp(name, SVN_AUTH_PARAM_DEFAULT_USERNAME) || 
+			   !strcmp(name, SVN_AUTH_PARAM_DEFAULT_PASSWORD)) {
+		vvalue = apr_pstrdup(auth->pool, PyString_AsString(value));
 	} else {
 		PyErr_Format(PyExc_TypeError, "Unsupported auth parameter %s", name);
 		return NULL;
