@@ -371,6 +371,7 @@ def test_suite():
             'test_branchprops', 
             'test_changes',
             'test_checkout',
+            'test_client',
             'test_commit',
             'test_config',
             'test_convert',
