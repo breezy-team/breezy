@@ -46,6 +46,8 @@ setup(name='bzr-svn',
                     include_dirs=[apr_include_dir(), svn_include_dir()]), 
           Extension("ra", ["ra.c", "util.c", "editor.c"], libraries=["svn_ra-1"], 
                     include_dirs=[apr_include_dir(), svn_include_dir()]), 
+          Extension("repos", ["repos.c", "util.c"], libraries=["svn_repos-1"], 
+                    include_dirs=[apr_include_dir(), svn_include_dir()]), 
           Extension("wc", ["wc.c", "util.c", "editor.c"], libraries=["svn_wc-1"],
                      include_dirs=[apr_include_dir(), svn_include_dir()])],
       )

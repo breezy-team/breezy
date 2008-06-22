@@ -25,6 +25,7 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os, sys
+
 from bzrlib.plugins.svn import repos
 from bzrlib.plugins.svn.convert import convert_repository, NotDumpFile, load_dumpfile
 from bzrlib.plugins.svn.format import get_rich_root_format
