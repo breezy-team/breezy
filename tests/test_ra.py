@@ -137,6 +137,19 @@ class AuthTests(TestCase):
         self.assertEquals(("filename", 0), creds.next())
         self.assertRaises(StopIteration, creds.next)
 
+    def test_client_cert_pw(self):
+        auth = ra.Auth([ra.get_ssl_client_cert_pw_prompt_provider(lambda realm, may_save: ("supergeheim", 0), 0)])
+        creds = auth.credentials("svn.ssl.client-passphrase", "MyRealm")
+        self.assertEquals(("supergeheim", 0), creds.next())
+        self.assertRaises(StopIteration, creds.next)
+
+    def test_server_trust(self):
+        auth = ra.Auth([ra.get_ssl_server_trust_prompt_provider(lambda realm, failures, certinfo, may_save: (42, 0))])
+        auth.set_parameter("svn:auth:ssl:failures", 23)
+        creds = auth.credentials("svn.ssl.server", "MyRealm")
+        self.assertEquals((42, 0), creds.next())
+        self.assertRaises(StopIteration, creds.next)
+
     def test_retry(self):
         self.i = 0
         def inc_foo(realm, may_save):

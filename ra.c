@@ -1388,10 +1388,21 @@ static PyObject *auth_init(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 static PyObject *auth_set_parameter(PyObject *self, PyObject *args)
 {
 	AuthObject *auth = (AuthObject *)self;
-	char *name, *value;
-	if (!PyArg_ParseTuple(args, "ss", &name, &value)) {
-        svn_auth_set_parameter(auth->auth_baton, name, (char *)value);
+	char *name;
+	PyObject *value;
+	void *vvalue;
+	if (!PyArg_ParseTuple(args, "sO", &name, &value))
+		return NULL;
+
+	if (!strcmp(name, SVN_AUTH_PARAM_SSL_SERVER_FAILURES)) {
+		vvalue = apr_pcalloc(auth->pool, sizeof(apr_uint32_t));
+		*((apr_uint32_t *)vvalue) = PyInt_AsLong(value);
+	} else {
+		PyErr_Format(PyExc_TypeError, "Unsupported auth parameter %s", name);
+		return NULL;
 	}
+
+    svn_auth_set_parameter(auth->auth_baton, name, (char *)value);
 
 	Py_RETURN_NONE;
 }
@@ -1399,12 +1410,20 @@ static PyObject *auth_set_parameter(PyObject *self, PyObject *args)
 static PyObject *auth_get_parameter(PyObject *self, PyObject *args)
 {
 	char *name;
+	const void *value;
 	AuthObject *auth = (AuthObject *)self;
 
 	if (!PyArg_ParseTuple(args, "s", &name))
 		return NULL;
 
-	return PyString_FromString(svn_auth_get_parameter(auth->auth_baton, name));
+	value = svn_auth_get_parameter(auth->auth_baton, name);
+
+	if (!strcmp(name, SVN_AUTH_PARAM_SSL_SERVER_FAILURES)) {
+		return PyInt_FromLong(*((apr_uint32_t *)value));
+	} else {
+		PyErr_Format(PyExc_TypeError, "Unsupported auth parameter %s", name);
+		return NULL;
+	}
 }
 
 typedef struct { 
@@ -1472,6 +1491,12 @@ static PyObject *credentials_iter_next(CredentialsIterObject *iterator)
 	} else if (!strcmp(iterator->cred_kind, SVN_AUTH_CRED_SSL_CLIENT_CERT)) {
 		svn_auth_cred_ssl_client_cert_t *ccert = iterator->credentials;
 		ret = Py_BuildValue("(zb)", ccert->cert_file, ccert->may_save);
+	} else if (!strcmp(iterator->cred_kind, SVN_AUTH_CRED_SSL_CLIENT_CERT_PW)) {
+		svn_auth_cred_ssl_client_cert_pw_t *ccert = iterator->credentials;
+		ret = Py_BuildValue("(zb)", ccert->password, ccert->may_save);
+	} else if (!strcmp(iterator->cred_kind, SVN_AUTH_CRED_SSL_SERVER_TRUST)) {
+		svn_auth_cred_ssl_server_trust_t *ccert = iterator->credentials;
+		ret = Py_BuildValue("(ib)", ccert->accepted_failures, ccert->may_save);
 	} else {
 		PyErr_Format(PyExc_RuntimeError, "Unknown cred kind %s", iterator->cred_kind);
 		return NULL;
@@ -1521,6 +1546,12 @@ static svn_error_t *py_username_prompt(svn_auth_cred_username_t **cred, void *ba
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL)
 		return py_svn_error();
+
+	if (!PyTuple_Check(ret)) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple with username credentials");
+		return py_svn_error();
+	}
+
 	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->username = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
@@ -1583,20 +1614,29 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 {
     PyObject *fn = (PyObject *)baton;
 	PyObject *ret;
+	PyObject *py_cert;
 
-	ret = PyObject_CallFunction(fn, "sl(ssssss)b", realm, failures, 
-						  cert_info->hostname, cert_info->fingerprint, 
+	if (cert_info == NULL) {
+		py_cert = Py_None;
+	} else {
+		py_cert = Py_BuildValue("(sssss)", cert_info->hostname, cert_info->fingerprint, 
 						  cert_info->valid_from, cert_info->valid_until, 
-						  cert_info->issuer_dname, cert_info->ascii_cert, 
-						  may_save);
+						  cert_info->issuer_dname, cert_info->ascii_cert);
+	}
+
+	ret = PyObject_CallFunction(fn, "slOb", realm, failures, py_cert, may_save);
 	if (ret == NULL)
 		return py_svn_error();
 
 	/* FIXME: Check that ret is a tuple of size 2 */
+	if (!PyTuple_Check(ret)) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple with server trust credentials");
+		return py_svn_error();
+	}
 	
 	*cred = apr_pcalloc(pool, sizeof(**cred));
-	(*cred)->may_save = (PyTuple_GetItem(ret, 0) == Py_True);
-	(*cred)->accepted_failures = PyLong_AsLong(PyTuple_GetItem(ret, 1));
+	(*cred)->accepted_failures = PyInt_AsLong(PyTuple_GetItem(ret, 0));
+	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
 
     return NULL;
 }
