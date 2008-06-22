@@ -218,7 +218,7 @@ class SvnWorkingTree(WorkingTree):
         assert isinstance(path, str)
 
         rp = self.branch.unprefix(path)
-        entry = self.base_tree.id_map[rp]
+        entry = self.basis_tree().id_map[rp]
         assert entry[0] is not None
         assert isinstance(entry[0], str), "fileid %r for %r is not a string" % (entry[0], path)
         return entry
@@ -660,6 +660,32 @@ class SvnWorkingTree(WorkingTree):
 
         return []
 
+    def path_content_summary(self, path, _lstat=os.lstat,
+        _mapper=osutils.file_kind_from_stat_mode):
+        """See Tree.path_content_summary."""
+        abspath = self.abspath(path)
+        try:
+            stat_result = _lstat(abspath)
+        except OSError, e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                # no file.
+                return ('missing', None, None, None)
+            # propagate other errors
+            raise
+        kind = _mapper(stat_result.st_mode)
+        if kind == 'file':
+            size = stat_result.st_size
+            # try for a stat cache lookup
+            executable = self._is_executable_from_path_and_stat(path, stat_result)
+            return (kind, size, executable, self._sha_from_stat(
+                path, stat_result))
+        elif kind == 'directory':
+            return kind, None, None, None
+        elif kind == 'symlink':
+            return ('symlink', None, None, os.readlink(abspath))
+        else:
+            return (kind, None, None, None)
+
     def _reset_data(self):
         pass
 
@@ -713,7 +739,10 @@ class SvnCheckout(BzrDir):
         self.local_path = transport.local_abspath(".")
         
         # Open related remote repository + branch
-        wc = WorkingCopy(None, self.local_path)
+        try:
+            wc = WorkingCopy(None, self.local_path)
+        except SubversionException, (msg, ERR_WC_UNSUPPORTED_FORMAT):
+            raise UnsupportedFormatError(msg, kind='workingtree')
         try:
             self.svn_url = wc.entry(self.local_path, True).url
         finally:

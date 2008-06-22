@@ -71,6 +71,7 @@ class SchemeDerivedLayout(RepositoryLayout):
             return self.repository.transport.check_path(path, revnum) == NODE_DIR
         def find_children(path):
             try:
+                assert not path.startswith("/")
                 dirents = self.repository.transport.get_dir(path, revnum)[0]
             except SubversionException, (msg, num):
                 if num in (ERR_FS_NOT_DIRECTORY, ERR_FS_NOT_FOUND, ERR_RA_DAV_PATH_NOT_FOUND):

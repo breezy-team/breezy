@@ -19,8 +19,8 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
                            UnexpectedEndOfContainerError)
 from bzrlib.tests import TestCase
 
-from bzrlib.plugins.svn.errors import *
 from bzrlib.plugins.svn.core import SubversionException
+from bzrlib.plugins.svn.errors import *
 
 class TestConvertError(TestCase):
     def test_decorator_unknown(self):
