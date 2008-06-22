@@ -34,6 +34,7 @@ static PyObject *busy_exc;
 PyAPI_DATA(PyTypeObject) Reporter_Type;
 PyAPI_DATA(PyTypeObject) RemoteAccess_Type;
 PyAPI_DATA(PyTypeObject) AuthProvider_Type;
+PyAPI_DATA(PyTypeObject) CredentialsIter_Type;
 PyAPI_DATA(PyTypeObject) TxDeltaWindowHandler_Type;
 
 static svn_error_t *py_commit_callback(const svn_commit_info_t *commit_info, void *baton, apr_pool_t *pool)
@@ -1406,9 +1407,95 @@ static PyObject *auth_get_parameter(PyObject *self, PyObject *args)
 	return PyString_FromString(svn_auth_get_parameter(auth->auth_baton, name));
 }
 
+typedef struct { 
+	PyObject_HEAD
+    apr_pool_t *pool;
+	char *cred_kind;
+    svn_auth_iterstate_t *state;
+	void *credentials;
+} CredentialsIterObject;
+
+static PyObject *auth_first_credentials(PyObject *self, PyObject *args)
+{
+	char *cred_kind;
+	char *realmstring;
+	AuthObject *auth = (AuthObject *)self;
+	void *creds;
+	apr_pool_t *pool;
+	CredentialsIterObject *ret;
+	svn_auth_iterstate_t *state;
+	
+	if (!PyArg_ParseTuple(args, "ss", &cred_kind, &realmstring))
+		return NULL;
+
+	pool = Pool(NULL);
+	if (pool == NULL)
+		return NULL;
+
+	RUN_SVN_WITH_POOL(pool, 
+					  svn_auth_first_credentials(&creds, &state, cred_kind, realmstring, auth->auth_baton, pool));
+
+	ret = PyObject_New(CredentialsIterObject, &CredentialsIter_Type);
+	if (ret == NULL)
+		return NULL;
+
+	ret->pool = pool;
+	ret->cred_kind = apr_pstrdup(pool, cred_kind);
+	ret->state = state;
+	ret->credentials = creds;
+
+	return (PyObject *)ret;
+}
+
+static void credentials_iter_dealloc(PyObject *self)
+{
+	CredentialsIterObject *credsiter = (CredentialsIterObject *)self;
+	apr_pool_destroy(credsiter->pool);
+	PyObject_Del(self);
+}
+
+static PyObject *credentials_iter_next(CredentialsIterObject *iterator)
+{
+	PyObject *ret;
+
+	if (iterator->credentials == NULL) {
+		PyErr_SetString(PyExc_StopIteration, "No more credentials available");
+		return NULL;
+	}
+
+	if (!strcmp(iterator->cred_kind, SVN_AUTH_CRED_SIMPLE)) {
+		svn_auth_cred_simple_t *simple = iterator->credentials;
+		ret = Py_BuildValue("(zzb)", simple->username, simple->password, simple->may_save);
+	} else if (!strcmp(iterator->cred_kind, SVN_AUTH_CRED_USERNAME)) {
+		svn_auth_cred_username_t *uname = iterator->credentials;
+		ret = Py_BuildValue("(zb)", uname->username, uname->may_save);
+	} else if (!strcmp(iterator->cred_kind, SVN_AUTH_CRED_SSL_CLIENT_CERT)) {
+		svn_auth_cred_ssl_client_cert_t *ccert = iterator->credentials;
+		ret = Py_BuildValue("(zb)", ccert->cert_file, ccert->may_save);
+	} else {
+		PyErr_Format(PyExc_RuntimeError, "Unknown cred kind %s", iterator->cred_kind);
+		return NULL;
+	}
+
+	RUN_SVN_WITH_POOL(iterator->pool, 
+					  svn_auth_next_credentials(&iterator->credentials, iterator->state, iterator->pool));
+
+	return ret;
+}
+
+PyTypeObject CredentialsIter_Type = {
+	PyObject_HEAD_INIT(&PyType_Type) 0,
+	.tp_basicsize = sizeof(CredentialsIterObject),
+	.tp_dealloc = (destructor)credentials_iter_dealloc,
+	.tp_name = "ra.CredentialsIter",
+	.tp_iter = PyObject_SelfIter,
+	.tp_iternext = (iternextfunc)credentials_iter_next,
+};
+
 static PyMethodDef auth_methods[] = {
 	{ "set_parameter", auth_set_parameter, METH_VARARGS, NULL },
 	{ "get_parameter", auth_get_parameter, METH_VARARGS, NULL },
+	{ "credentials", auth_first_credentials, METH_VARARGS, NULL },
 	{ NULL, }
 };
 
@@ -1434,6 +1521,7 @@ static svn_error_t *py_username_prompt(svn_auth_cred_username_t **cred, void *ba
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL)
 		return py_svn_error();
+	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->username = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
     return NULL;
@@ -1461,7 +1549,12 @@ static svn_error_t *py_simple_prompt(svn_auth_cred_simple_t **cred, void *baton,
 	ret = PyObject_CallFunction(fn, "ssb", realm, username, may_save);
 	if (ret == NULL)
 		return py_svn_error();
+	if (!PyTuple_Check(ret)) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple with simple credentials");
+		return py_svn_error();
+	}
 	/* FIXME: Check type of ret */
+	*cred = apr_pcalloc(pool, sizeof(**cred));
     (*cred)->username = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
     (*cred)->password = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 1)));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 2) == Py_True);
@@ -1500,7 +1593,8 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 		return py_svn_error();
 
 	/* FIXME: Check that ret is a tuple of size 2 */
-
+	
+	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 0) == Py_True);
 	(*cred)->accepted_failures = PyLong_AsLong(PyTuple_GetItem(ret, 1));
 
@@ -1533,10 +1627,26 @@ static svn_error_t *py_ssl_client_cert_pw_prompt(svn_auth_cred_ssl_client_cert_p
 	if (ret == NULL) 
 		return py_svn_error();
 	/* FIXME: Check ret is a tuple of size 2 */
+	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->password = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
     return NULL;
 }
+
+static svn_error_t *py_ssl_client_cert_prompt(svn_auth_cred_ssl_client_cert_t **cred, void *baton, const char *realm, svn_boolean_t may_save, apr_pool_t *pool)
+{
+    PyObject *fn = (PyObject *)baton, *ret;
+	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
+	if (ret == NULL) 
+		return py_svn_error();
+	/* FIXME: Check ret is a tuple of size 2 */
+	*cred = apr_pcalloc(pool, sizeof(**cred));
+	(*cred)->cert_file = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
+	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
+    return NULL;
+}
+
+
 
 static PyObject *get_ssl_client_cert_pw_prompt_provider(PyObject *self, PyObject *args)
 {
@@ -1555,6 +1665,26 @@ static PyObject *get_ssl_client_cert_pw_prompt_provider(PyObject *self, PyObject
 		return NULL;
 	Py_INCREF(prompt_func);
     svn_auth_get_ssl_client_cert_pw_prompt_provider (&auth->provider, py_ssl_client_cert_pw_prompt, (void *)prompt_func, retry_limit, auth->pool);
+    return (PyObject *)auth;
+}
+
+static PyObject *get_ssl_client_cert_prompt_provider(PyObject *self, PyObject *args)
+{
+	PyObject *prompt_func;
+	int retry_limit;
+    AuthProviderObject *auth;
+
+	if (!PyArg_ParseTuple(args, "Oi", &prompt_func, &retry_limit))
+		return NULL;
+
+    auth = PyObject_New(AuthProviderObject, &AuthProvider_Type);
+	if (auth == NULL)
+		return NULL;
+    auth->pool = Pool(NULL);
+	if (auth->pool == NULL)
+		return NULL;
+	Py_INCREF(prompt_func);
+    svn_auth_get_ssl_client_cert_prompt_provider (&auth->provider, py_ssl_client_cert_prompt, (void *)prompt_func, retry_limit, auth->pool);
     return (PyObject *)auth;
 }
 
@@ -1645,6 +1775,7 @@ static PyMethodDef ra_module_methods[] = {
 	{ "get_username_prompt_provider", (PyCFunction)get_username_prompt_provider, METH_VARARGS, NULL },
 	{ "get_simple_prompt_provider", (PyCFunction)get_simple_prompt_provider, METH_VARARGS, NULL },
 	{ "get_ssl_server_trust_prompt_provider", (PyCFunction)get_ssl_server_trust_prompt_provider, METH_VARARGS, NULL },
+	{ "get_ssl_client_cert_prompt_provider", (PyCFunction)get_ssl_client_cert_prompt_provider, METH_VARARGS, NULL },
 	{ "get_ssl_client_cert_pw_prompt_provider", (PyCFunction)get_ssl_client_cert_pw_prompt_provider, METH_VARARGS, NULL },
 	{ "get_username_provider", (PyCFunction)get_username_provider, METH_NOARGS, NULL },
 	{ NULL, }
@@ -1674,6 +1805,9 @@ void initra(void)
 		return;
 
 	if (PyType_Ready(&Auth_Type) < 0)
+		return;
+
+	if (PyType_Ready(&CredentialsIter_Type) < 0)
 		return;
 
 	if (PyType_Ready(&AuthProvider_Type) < 0)

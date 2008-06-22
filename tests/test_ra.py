@@ -113,3 +113,38 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         dir.close()
         editor.close()
 
+
+class AuthTests(TestCase):
+    def test_not_registered(self):
+        auth = ra.Auth([])
+        self.assertRaises(core.SubversionException, auth.credentials, "svn.simple", "MyRealm")
+
+    def test_simple(self):
+        auth = ra.Auth([ra.get_simple_prompt_provider(lambda realm, uname, may_save: ('foo', "geheim", 0), 0)])
+        creds = auth.credentials("svn.simple", "MyRealm")
+        self.assertEquals(("foo", "geheim", 0), creds.next())
+        self.assertRaises(StopIteration, creds.next)
+
+    def test_username(self):
+        auth = ra.Auth([ra.get_username_prompt_provider(lambda realm, may_save: ("somebody", 0), 0)])
+        creds = auth.credentials("svn.username", "MyRealm")
+        self.assertEquals(("somebody", 0), creds.next())
+        self.assertRaises(StopIteration, creds.next)
+
+    def test_client_cert(self):
+        auth = ra.Auth([ra.get_ssl_client_cert_prompt_provider(lambda realm, may_save: ("filename", 0), 0)])
+        creds = auth.credentials("svn.ssl.client-cert", "MyRealm")
+        self.assertEquals(("filename", 0), creds.next())
+        self.assertRaises(StopIteration, creds.next)
+
+    def test_retry(self):
+        self.i = 0
+        def inc_foo(realm, may_save):
+            self.i += 1
+            return ("somebody%d" % self.i, 0)
+        auth = ra.Auth([ra.get_username_prompt_provider(inc_foo, 2)])
+        creds = auth.credentials("svn.username", "MyRealm")
+        self.assertEquals(("somebody1", 0), creds.next())
+        self.assertEquals(("somebody2", 0), creds.next())
+        self.assertEquals(("somebody3", 0), creds.next())
+        self.assertRaises(StopIteration, creds.next)
