@@ -24,8 +24,6 @@ from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
-import svn.core
-
 from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client, get_config

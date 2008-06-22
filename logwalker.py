@@ -20,8 +20,6 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
-import svn.delta
-
 from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.cache import CacheTable
 from bzrlib.plugins.svn.core import SubversionException

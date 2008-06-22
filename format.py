@@ -125,12 +125,8 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         raise bzr_errors.NotBranchError(path=transport.base)
 
     def _open(self, transport):
-        import svn.core
         from workingtree import SvnCheckout
         from bzrlib.plugins.svn import core
-        subr_version = svn.core.svn_subr_version()
-        if subr_version.major == 1 and subr_version.minor < 4:
-            raise errors.NoCheckoutSupport()
         try:
             return SvnCheckout(transport, self)
         except core.SubversionException, (_, num):

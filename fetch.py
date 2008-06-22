@@ -40,8 +40,6 @@ from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
 from bzrlib.plugins.svn.tree import (parse_externals_description, 
                   inventory_add_external)
 
-import svn.delta
-
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
     if message is None:
