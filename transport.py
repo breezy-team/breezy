@@ -17,7 +17,7 @@
 
 import bzrlib
 from bzrlib import debug, urlutils
-from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
+from bzrlib.errors import (NoSuchFile, TransportNotPossible, 
                            FileExists, NotLocalUrl, InvalidURL)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport

@@ -345,6 +345,7 @@ class LogWalker(object):
         assert from_revnum >= 0 and to_revnum >= 0
 
         try:
+            # Subversion 1.4 clients and servers can only deliver a limited set of revprops
             try:
                 iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
                                                     True, False, False, revprops=None)
