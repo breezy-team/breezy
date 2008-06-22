@@ -23,7 +23,7 @@ def create(path):
     r = svn.repos.create(path, '', '', None, None)
     return Repository(path, r)
 
-class Repository:
+class Repository(object):
     def __init__(self, local_path, _repos=None):
         if _repos is not None:
             self.repos = _repos
