@@ -23,7 +23,8 @@ import bzrlib.ui as ui
 from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.cache import CacheTable
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND
+from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
+from bzrlib.plugins.svn.ra import DIRENT_KIND
 from bzrlib.plugins.svn.transport import SvnRaTransport
 
 class lazy_dict(object):
@@ -389,67 +390,25 @@ class LogWalker(object):
         assert isinstance(path, str), "invalid path"
         path = path.strip("/")
         conn = self._transport.connections.get(self._transport.get_svn_repos_root())
+        results = []
+        unchecked_dirs = set([path])
         try:
-            ft = conn.check_path(path, revnum)
-            if ft == core.NODE_FILE:
-                return []
-            assert ft == core.NODE_DIR
+            while len(unchecked_dirs) > 0:
+                nextp = unchecked_dirs.pop()
+                try:
+                    dirents = conn.get_dir(nextp, revnum, DIRENT_KIND)[0]
+                except SubversionException, (_, num):
+                    if num == ERR_FS_NOT_DIRECTORY:
+                        continue
+                    raise
+                for k,v in dirents.items():
+                    childp = urlutils.join(nextp, k)
+                    if v['kind'] == core.NODE_DIR:
+                        unchecked_dirs.add(childp)
+                    results.append(childp)
         finally:
             self._transport.connections.add(conn)
-
-        class FileTreeLister(object):
-            def change_prop(self, name, value): pass
-            def close(self): pass
-            def apply_textdelta(self, checksum=None): pass
-
-
-        class DirTreeLister(object):
-            def __init__(self, tree, path):
-                self.tree = tree
-                self.path = path
-
-            def change_prop(self, name, value):
-                pass
-
-            def close(self):
-                pass
-
-            def add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
-                """See Editor.add_directory()."""
-                self.tree.files.append(urlutils.join(self.tree.base, path))
-                return DirTreeLister(self.tree, path)
-
-            def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
-                self.tree.files.append(urlutils.join(self.tree.base, path))
-                return FileTreeLister()
-
-        class TreeLister(object):
-            def __init__(self, base):
-                self.files = []
-                self.base = base
-
-            def set_target_revision(self, rev):
-                pass
-
-            def open_root(self, revnum):
-                """See Editor.open_root()."""
-                return DirTreeLister(self, path)
-
-            def close(self):
-                pass
-
-            def abort(self):
-                pass
-
-        editor = TreeLister(path)
-        try:
-            conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
-            reporter = conn.do_update(revnum, "", True, editor)
-            reporter.set_path("", revnum, True, None)
-            reporter.finish()
-        finally:
-            self._transport.connections.add(conn)
-        return editor.files
+        return results
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.
