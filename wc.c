@@ -120,9 +120,16 @@ static svn_wc_entry_callbacks_t py_wc_entry_callbacks = {
 	.found_entry = py_wc_found_entry
 };
 
-static void py_wc_notify_func(void *baton, const svn_wc_notify_t *notify, apr_pool_t *pool)
+void py_wc_notify_func(void *baton, const svn_wc_notify_t *notify, apr_pool_t *pool)
 {
-    /* FIXME */
+	PyObject *func = baton;
+	if (func == Py_None)
+		return;
+
+	if (notify->err != NULL) {
+		PyObject_CallFunction(func, "O", PyErr_NewSubversionException(notify->err));
+		/* FIXME: Use return value */
+	}
 }
 
 typedef struct {

@@ -25,6 +25,7 @@
 
 #include "util.h"
 #include "ra.h"
+#include "wc.h"
 
 PyAPI_DATA(PyTypeObject) Client_Type;
 
@@ -183,9 +184,8 @@ static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs
 static void client_dealloc(PyObject *self)
 {
     ClientObject *client = (ClientObject *)self;
-	if (client->client->log_msg_func2 != NULL) {
-		Py_DECREF((PyObject *)client->client->log_msg_baton2);
-	}
+	Py_XDECREF((PyObject *)client->client->notify_baton2);
+	Py_XDECREF((PyObject *)client->client->log_msg_baton2);
 	Py_XDECREF(client->py_auth);
     apr_pool_destroy(client->pool);
 	PyObject_Del(self);
@@ -212,6 +212,32 @@ static int client_set_log_msg_func(PyObject *self, PyObject *func, void *closure
 	} else {
 		client->client->log_msg_func2 = py_log_msg_func2;
 		client->client->log_msg_baton2 = (void *)func;
+	}
+    Py_INCREF(func);
+    return 0;
+}
+
+static PyObject *client_get_notify_func(PyObject *self, void *closure)
+{
+    ClientObject *client = (ClientObject *)self;
+    if (client->client->notify_func2 == NULL)
+		Py_RETURN_NONE;
+	return client->client->notify_baton2;
+}
+
+static int client_set_notify_func(PyObject *self, PyObject *func, void *closure)
+{
+    ClientObject *client = (ClientObject *)self;
+
+	if (client->client->notify_baton2 != NULL) {
+		Py_DECREF((PyObject *)client->client->notify_baton2);
+	}
+	if (func == Py_None) {
+		client->client->notify_func2 = NULL;
+		client->client->notify_baton2 = Py_None;
+	} else {
+		client->client->notify_func2 = py_wc_notify_func;
+		client->client->notify_baton2 = (void *)func;
 	}
     Py_INCREF(func);
     return 0;
@@ -600,6 +626,7 @@ static PyMethodDef client_methods[] = {
 
 static PyGetSetDef client_getset[] = {
 	{ "log_msg_func", client_get_log_msg_func, client_set_log_msg_func, NULL },
+	{ "notify_func", client_get_notify_func, client_set_notify_func, NULL },
 	{ "auth", NULL, client_set_auth, NULL },
 	{ NULL, }
 };
