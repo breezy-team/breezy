@@ -10,6 +10,10 @@ bzr-svn 0.4.11    UNRELEASED
      the Subversion development libraries and should be possible by 
      simply running ``make`` from the plugin directory. 
 
+	 This fixes some existing bzr-svn related bugs caused by Python-Subversion:
+
+     * KeyboardInterrupts are now no longer swallowed.  (#242217)
+
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
   BUG FIXES
