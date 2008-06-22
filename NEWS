@@ -8,7 +8,7 @@ bzr-svn 0.4.11    UNRELEASED
 
      It does however mean the extensions have to be built. This requires 
      the Subversion development libraries and should be possible by 
-     simply running ``make`` from the plugin directory.
+     simply running ``make`` from the plugin directory. 
 
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
@@ -43,6 +43,8 @@ bzr-svn 0.4.11    UNRELEASED
    * Fix dealing with strange remove during replace operation. (#232196)
 
    * Deal with missing branches/tags directories when using webdav. (#235301)
+
+   * Remove endless loop in logwalker. (#235776)
 
 bzr-svn 0.4.10  2008-05-12
 
