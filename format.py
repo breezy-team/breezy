@@ -19,6 +19,7 @@ from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import UninitializableFormat
 from bzrlib.lazy_import import lazy_import
 from bzrlib.lockable_files import TransportLock
+from bzrlib.trace import mutter
 
 import os
 
@@ -56,10 +57,12 @@ class SvnRemoteFormat(BzrDirFormat):
 
         try:
             transport = get_svn_ra_transport(transport)
-        except core.SubversionException, (_, num):
+        except core.SubversionException, (msg, num):
             if num in (errors.ERR_RA_ILLEGAL_URL, \
                        errors.ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
                        errors.ERR_BAD_URL):
+                mutter("Unable to open %r with Subversion: %s", 
+                        transport, msg)
                 raise bzr_errors.NotBranchError(path=transport.base)
 
         return format
