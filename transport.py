@@ -81,7 +81,8 @@ def Connection(url):
     try:
         mutter('opening SVN RA connection to %r' % url)
         ret = ra.RemoteAccess(url.encode('utf8'), 
-                auth=create_auth_baton(url))
+                auth=create_auth_baton(url),
+                client_string_func=get_client_string)
         # FIXME: Callbacks
     except SubversionException, (_, num):
         if num in (ERR_RA_SVN_REPOS_NOT_FOUND,):
@@ -110,14 +111,14 @@ class ConnectionPool(object):
                 return c
         # Nothing available? Just pick an existing one and reparent:
         if len(self.connections) == 0:
-            return RemoteAccess(url)
+            return Connection(url)
         c = self.connections.pop()
         try:
             c.reparent(url)
             return c
         except NotImplementedError:
             self.connections.add(c)
-            return RemoteAccess(url)
+            return Connection(url)
         except:
             self.connections.add(c)
             raise
@@ -346,16 +347,24 @@ class SvnRaTransport(Transport):
         self.mutter('svn mkdir %s' % (relpath,))
         try:
             ce = conn.get_commit_editor({"svn:log": message})
-            node = ce.open_root(-1)
-            batons = relpath.split("/")
-            toclose = [node]
-            for i in range(len(batons)):
-                node = node.open_directory("/".join(batons[:i]), -1)
-                toclose.append(node)
-            toclose.append(node.add_directory(relpath, None, -1))
-            for c in reversed(toclose):
-                c.close()
-            ce.close()
+            try:
+                node = ce.open_root(-1)
+                batons = relpath.split("/")
+                toclose = [node]
+                for i in range(len(batons)):
+                    node = node.open_directory("/".join(batons[:i]), -1)
+                    toclose.append(node)
+                toclose.append(node.add_directory(relpath, None, -1))
+                for c in reversed(toclose):
+                    c.close()
+                ce.close()
+            except SubversionException, (msg, num):
+                ce.abort()
+                if num == ERR_FS_NOT_DIRECTORY:
+                    raise NoSuchFile(msg)
+                if num == ERR_FS_ALREADY_EXISTS:
+                    raise FileExists(msg)
+                raise
         finally:
             self.add_connection(conn)
 

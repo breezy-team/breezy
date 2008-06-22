@@ -23,6 +23,7 @@
 #include <svn_io.h>
 #include <apr_errno.h>
 #include <svn_error_codes.h>
+#include <svn_config.h>
 
 #include "util.h"
 
@@ -30,13 +31,13 @@
 								  (50 * SVN_ERR_CATEGORY_SIZE))
 
 
-apr_pool_t *Pool()
+apr_pool_t *Pool(apr_pool_t *parent)
 {
     apr_status_t status;
     apr_pool_t *ret;
     char errmsg[1024];
     ret = NULL;
-    status = apr_pool_create(&ret, NULL);
+    status = apr_pool_create(&ret, parent);
     if (status != 0) {
         PyErr_SetString(PyExc_Exception, 
 						apr_strerror(status, errmsg, sizeof(errmsg)));
@@ -96,7 +97,7 @@ bool string_list_to_apr_array(apr_pool_t *pool, PyObject *l, apr_array_header_t 
 	for (i = 0; i < PyList_GET_SIZE(l); i++) {
 		PyObject *item = PyList_GET_ITEM(l, i);
 		if (!PyString_Check(item)) {
-			PyErr_SetString(PyExc_TypeError, "Expected list of strings");
+			PyErr_Format(PyExc_TypeError, "Expected list of strings, item was %s", item->ob_type->tp_name);
 			return false;
 		}
 		APR_ARRAY_PUSH(*ret, char *) = apr_pstrdup(pool, PyString_AsString(item));
@@ -115,7 +116,7 @@ PyObject *prop_hash_to_dict(apr_hash_t *props)
     if (props == NULL) {
         Py_RETURN_NONE;
 	}
-    pool = Pool();
+    pool = Pool(NULL);
 	if (pool == NULL)
 		return NULL;
     py_props = PyDict_New();
@@ -166,7 +167,7 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long rev
         PyDict_SetItemString(revprops, SVN_PROP_REVISION_DATE, 
 							 PyString_FromString(date));
 	}
-    ret = PyObject_CallFunction((PyObject *)baton, "OiO", py_changed_paths, 
+    ret = PyObject_CallFunction((PyObject *)baton, "OlO", py_changed_paths, 
 								 revision, revprops);
 	if (ret == NULL)
 		return py_svn_error();
@@ -256,6 +257,39 @@ svn_error_t *py_cancel_func(void *cancel_baton)
 		}
 	}
     return NULL;
+}
+
+apr_hash_t *config_hash_from_object(PyObject *config, apr_pool_t *pool)
+{
+	Py_ssize_t idx = 0;
+	PyObject *key, *value;
+	apr_hash_t *config_hash;
+	PyObject *dict;
+	if (config == Py_None) {
+		RUN_SVN_WITH_POOL(pool, 
+					  svn_config_get_config(&config_hash, NULL, pool));
+		return config_hash;
+	}
+
+	config_hash = apr_hash_make(pool);
+
+	if (PyDict_Check(config)) {
+		dict = config;
+	} else {
+		dict = PyObject_GetAttrString(config, "__dict__");
+	}
+	
+	if (!PyDict_Check(dict)) {
+		PyErr_Format(PyExc_TypeError, "Expected dictionary for config, got %s", dict->ob_type->tp_name);
+		return NULL;
+	}
+
+	while (PyDict_Next(dict, &idx, &key, &value)) {
+		apr_hash_set(config_hash, apr_pstrdup(pool, PyString_AsString(key)), 
+					 PyString_Size(key), apr_pstrdup(pool, PyString_AsString(value)));
+	}
+
+	return config_hash;
 }
 
 

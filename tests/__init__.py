@@ -29,11 +29,9 @@ from bzrlib.trace import mutter
 from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
-import svn.core
-
-from bzrlib.plugins.svn import repos
+from bzrlib.plugins.svn import properties, ra, repos
 from bzrlib.plugins.svn.client import Client
-from bzrlib.plugins.svn.ra import RemoteAccess, txdelta_send_stream
+from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -42,9 +40,15 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithSubversionRepository, self).setUp()
         self.client_ctx = Client()
+        self.client_ctx.auth = Auth([ra.get_simple_provider(), 
+                                     ra.get_username_provider(),
+                                     ra.get_ssl_client_cert_file_provider(),
+                                     ra.get_ssl_client_cert_pw_file_provider(),
+                                     ra.get_ssl_server_trust_file_provider()])
         self.client_ctx.log_msg_func = self.log_message_func
+        #self.client_ctx.notify_func = lambda err: mutter("Error: %s" % err)
 
-    def log_message_func(self, items, pool):
+    def log_message_func(self, items):
         return self.next_message
 
     def make_repository(self, relpath, allow_revprop_changes=True):
@@ -118,7 +122,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             rev = "WORKING"
         else:
             rev = revnum
-        ret = self.client_ctx.propget(name, path, rev, recursive)
+        ret = self.client_ctx.propget(name, path, rev, rev, recursive)
         if recursive:
             return ret
         else:
@@ -141,7 +145,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         info = self.client_ctx.commit(["."], recursive, False)
         os.chdir(olddir)
         assert info is not None
-        return (info.revision, info.date, info.author)
+        return info
 
     def client_add(self, relpath, recursive=True):
         """Add specified files to working copy.
@@ -161,11 +165,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def client_log(self, path, start_revnum=None, stop_revnum=None):
         assert isinstance(path, str)
         ret = {}
-        def rcvr(orig_paths, rev, author, date, message, pool):
-            ret[rev] = (orig_paths, author, date, message)
-        self.client_ctx.log([path], self.revnum_to_opt_rev(start_revnum),
-                       self.revnum_to_opt_rev(stop_revnum),
-                       True, True, rcvr)
+        def rcvr(orig_paths, rev, revprops):
+            ret[rev] = (orig_paths, revprops.get(properties.PROP_REVISION_AUTHOR), revprops.get(properties.PROP_REVISION_DATE), revprops.get(properties.PROP_REVISION_LOG))
+        self.client_ctx.log([path], rcvr, None, self.revnum_to_opt_rev(start_revnum),
+                       self.revnum_to_opt_rev(stop_revnum), 0,
+                       True, True)
         return ret
 
     def client_delete(self, relpath):
@@ -185,10 +189,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             rev = "HEAD"
         else:
             rev = revnum
-        self.client_ctx.copy(oldpath, rev, newpath)
+        self.client_ctx.copy(oldpath, newpath, rev)
 
     def client_update(self, path):
-        self.client_ctx.update(path, "HEAD", True)
+        self.client_ctx.update([path], "HEAD", True)
 
     def build_tree(self, files):
         """Create a directory tree.

@@ -28,8 +28,6 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND
 from bzrlib.plugins.svn.transport import SvnRaTransport
 
-LOG_CHUNK_LIMIT = 0
-
 class lazy_dict(object):
     def __init__(self, initial, create_fn, *args):
         self.initial = initial
@@ -260,24 +258,23 @@ class CachingLogWalker(CacheTable):
 
         try:
             try:
-                while self.saved_revnum < to_revnum:
-                    for (orig_paths, revision, revprops) in self.actual._transport.iter_log(None, self.saved_revnum, 
-                                             to_revnum, self.actual._limit, True, 
-                                             True, []):
-                        pb.update('fetching svn revision info', revision, to_revnum)
-                        if orig_paths is None:
-                            orig_paths = {}
-                        for p in orig_paths:
-                            copyfrom_path = orig_paths[p][1]
-                            if copyfrom_path is not None:
-                                copyfrom_path = copyfrom_path.strip("/")
+                for (orig_paths, revision, revprops) in self.actual._transport.iter_log(None, self.saved_revnum, 
+                                         to_revnum, 0, True, 
+                                         True, []):
+                    pb.update('fetching svn revision info', revision, to_revnum)
+                    if orig_paths is None:
+                        orig_paths = {}
+                    for p in orig_paths:
+                        copyfrom_path = orig_paths[p][1]
+                        if copyfrom_path is not None:
+                            copyfrom_path = copyfrom_path.strip("/")
 
-                            self.cachedb.execute(
-                                 "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                                 (revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2]))
-                        self.saved_revnum = revision
-                        if self.saved_revnum % 1000 == 0:
-                            self.cachedb.commit()
+                        self.cachedb.execute(
+                             "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
+                             (revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2]))
+                    self.saved_revnum = revision
+                    if self.saved_revnum % 1000 == 0:
+                        self.cachedb.commit()
             finally:
                 pb.finished()
         except SubversionException, (_, num):
@@ -291,12 +288,12 @@ class CachingLogWalker(CacheTable):
 def struct_revpaths_to_tuples(changed_paths):
     assert isinstance(changed_paths, dict)
     revpaths = {}
-    for k,v in changed_paths.items():
-        if v.copyfrom_path is None:
+    for k,(action, copyfrom_path, copyfrom_rev) in changed_paths.items():
+        if copyfrom_path is None:
             copyfrom_path = None
         else:
-            copyfrom_path = v.copyfrom_path.strip("/")
-        revpaths[k.strip("/")] = (v.action, copyfrom_path, v.copyfrom_rev)
+            copyfrom_path = copyfrom_path.strip("/")
+        revpaths[k.strip("/")] = (action, copyfrom_path, copyfrom_rev)
     return revpaths
 
 
@@ -310,11 +307,6 @@ class LogWalker(object):
         assert isinstance(transport, SvnRaTransport)
 
         self._transport = transport
-
-        if limit is not None:
-            self._limit = limit
-        else:
-            self._limit = LOG_CHUNK_LIMIT
 
     def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
@@ -400,6 +392,12 @@ class LogWalker(object):
         finally:
             self._transport.connections.add(conn)
 
+        class FileTreeLister(object)
+            def change_prop(self, name, value): pass
+            def close(self): pass
+            def apply_textdelta(self, checksum=None): pass
+
+
         class DirTreeLister(object):
             def __init__(self, tree, path):
                 self.tree = tree
@@ -418,7 +416,7 @@ class LogWalker(object):
 
             def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
                 self.tree.files.append(urlutils.join(self.tree.base, path))
-                return None
+                return FileTreeLister()
 
         class TreeLister(object):
             def __init__(self, base):

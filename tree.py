@@ -22,14 +22,14 @@ from bzrlib.revision import CURRENT_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
-from bzrlib.plugins.svn.delta import apply_txdelta_handler
-
 import os
 import md5
 from cStringIO import StringIO
 import urllib
 
 from bzrlib.plugins.svn import errors, properties, core, wc
+from bzrlib.plugins.svn.delta import apply_txdelta_handler
+
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.

@@ -32,11 +32,14 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from bzrlib.plugins.svn import core, properties
+from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.branch import SvnBranch
+from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
 from bzrlib.plugins.svn.convert import SvnConverter
 from bzrlib.plugins.svn.core import SubversionException, time_to_cstring
 from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoSvnRepositoryPresent, ERR_FS_TXN_OUT_OF_DATE, ERR_ENTRY_EXISTS, ERR_WC_PATH_NOT_FOUND, ERR_WC_NOT_DIRECTORY
+from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                      escape_svn_path, generate_revision_metadata)
@@ -50,11 +53,6 @@ from bzrlib.plugins.svn.wc import *
 
 import os
 import urllib
-
-import svn.core
-
-from bzrlib.plugins.svn.client import Client
-from bzrlib.plugins.svn.format import get_rich_root_format
 
 def generate_ignore_list(ignore_map):
     """Create a list of ignores, ordered by directory.
@@ -80,7 +78,7 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
-        self.client_ctx = Client(bzrdir.svn_url)
+        self.client_ctx = Client(auth=create_auth_baton(bzrdir.svn_url))
 
         self._get_wc()
         max_rev = revision_status(self.basedir, None, True)[1]
@@ -103,7 +101,7 @@ class SvnWorkingTree(WorkingTree):
 
     def get_ignore_list(self):
         ignores = set([get_adm_dir()])
-        ignores.update(get_default_ignores(svn_config))
+        ignores.update(svn_config.get_default_ignores())
 
         def dir_add(wc, prefix, patprefix):
             ignorestr = wc.prop_get(properties.PROP_IGNORE, 
@@ -144,7 +142,7 @@ class SvnWorkingTree(WorkingTree):
         raise NotImplementedError(self.apply_inventory_delta)
 
     def update(self, change_reporter=None):
-        self.client_ctx.update(self.basedir, "HEAD", True)
+        self.client_ctx.update([self.basedir.encode("utf-8")], "HEAD", True)
 
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument
@@ -413,16 +411,16 @@ class SvnWorkingTree(WorkingTree):
             specific_files = [self.basedir.encode('utf8')]
 
         if message_callback is not None:
-            def log_message_func(items, pool):
+            def log_message_func(items):
                 """ Simple log message provider for unit tests. """
                 return message_callback(self).encode("utf-8")
         else:
             assert isinstance(message, basestring)
-            def log_message_func(items, pool):
+            def log_message_func(items):
                 """ Simple log message provider for unit tests. """
                 return message.encode("utf-8")
 
-        self.client_ctx.client_ctx.log_msg_baton2 = log_message_func
+        self.client_ctx.log_msg_func = log_message_func
         if rev_id is not None:
             extra = "%d %s\n" % (self.branch.revno()+1, rev_id)
         else:
@@ -443,7 +441,7 @@ class SvnWorkingTree(WorkingTree):
 
         try:
             try:
-                commit_info = self.client_ctx.commit(specific_files, True, False)
+                (revision, _, _) = self.client_ctx.commit(specific_files, True, False)
             except SubversionException, (_, num):
                 if num == ERR_FS_TXN_OUT_OF_DATE:
                     raise OutOfDateTree(self)
@@ -461,12 +459,12 @@ class SvnWorkingTree(WorkingTree):
             wc.close()
             raise
 
-        self.client_ctx.client_ctx.log_msg_baton2 = None
+        self.client_ctx.log_msg_func = None
 
-        revid = self.branch.generate_revision_id(commit_info.revision)
+        revid = self.branch.generate_revision_id(revision)
 
         self.base_revid = revid
-        self.base_revnum = commit_info.revision
+        self.base_revnum = revision
         self.base_tree = SvnBasisTree(self)
 
         return revid

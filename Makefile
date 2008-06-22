@@ -16,6 +16,9 @@ build::
 build-inplace::
 	$(SETUP) build_ext --inplace
 
+build-inplace-debug::
+	$(SETUP) build_ext --inplace --debug
+
 install::
 	$(SETUP) install
 
@@ -43,10 +46,10 @@ check-one::
 check-random::
 	$(MAKE) check TEST_OPTIONS="--random=now --verbose --one"
 
-valgrind-check:: 
+valgrind-check:: build-inplace-debug
 	$(MAKE) check DEBUGGER="valgrind --suppressions=/usr/lib/valgrind/python.supp $(VALGRIND_OPTIONS)"
 
-gdb-check::
+gdb-check:: build-inplace-debug
 	$(MAKE) check DEBUGGER="gdb --args $(GDB_OPTIONS)"
 
 strace-check::

@@ -42,7 +42,7 @@ setup(name='bzr-svn',
                 'bzrlib.plugins.svn.mapping3', 
                 'bzrlib.plugins.svn.tests'],
       ext_modules=[
-          Extension("client", ["client.c", "util.c"], libraries=["svn_client-1"], 
+          Extension("client", ["client.c", "util.c", "ra.c", "editor.c", "wc.c"], libraries=["svn_client-1"], 
                     include_dirs=[apr_include_dir(), svn_include_dir()]), 
           Extension("ra", ["ra.c", "util.c", "editor.c"], libraries=["svn_ra-1"], 
                     include_dirs=[apr_include_dir(), svn_include_dir()]), 
