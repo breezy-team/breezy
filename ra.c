@@ -20,6 +20,7 @@
 #include <apr_general.h>
 #include <svn_types.h>
 #include <svn_ra.h>
+#include <svn_path.h>
 #include <apr_file_io.h>
 
 #include <structmember.h>
@@ -468,7 +469,7 @@ typedef struct {
 	PyObject_HEAD
 	svn_ra_session_t *ra;
     apr_pool_t *pool;
-    char *url;
+    const char *url;
     PyObject *progress_func;
 	AuthObject *auth;
 	bool busy;
@@ -615,8 +616,8 @@ static PyObject *ra_reparent(PyObject *self, PyObject *args)
 	temp_pool = Pool();
 	if (temp_pool == NULL)
 		return NULL;
-	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_reparent(ra->ra, url, temp_pool));
-	ra->url = apr_pstrdup(ra->pool, url);
+	ra->url = svn_path_canonicalize(url, ra->pool);
+	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_reparent(ra->ra, ra->url, temp_pool));
 	apr_pool_destroy(temp_pool);
 	Py_RETURN_NONE;
 }
