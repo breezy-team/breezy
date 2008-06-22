@@ -23,6 +23,14 @@ def create(path):
     r = svn.repos.create(path, '', '', None, None)
     return Repository(path, r)
 
+class Fs(object):
+    def __init__(self, fs):
+        self.fs = fs
+
+    def get_uuid(self):
+        return svn.fs.get_uuid(self.fs)
+
+
 class Repository(object):
     def __init__(self, local_path, _repos=None):
         if _repos is not None:
@@ -31,7 +39,7 @@ class Repository(object):
             self.repos = svn.repos.svn_repos_open(local_path)
 
     def fs(self):
-        return svn.repos.fs(self.repos)
+        return Fs(svn.repos.fs(self.repos))
 
     def load_fs(self, dumpstream, feedback_stream, uuid_action=LOAD_UUID_DEFAULT,
                 parent_dir="", use_pre_commit_hook=False, use_post_commit_hook=False, 
