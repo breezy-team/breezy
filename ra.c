@@ -525,8 +525,6 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	RemoteAccessObject *ret;
 	apr_hash_t *config_hash;
 	svn_ra_callbacks2_t *callbacks2;
-	Py_ssize_t idx = 0;
-	PyObject *key, *value;
 	svn_auth_baton_t *auth_baton;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|OOO", kwnames, &url, &progress_cb, (PyObject **)&auth, &config))
@@ -561,14 +559,8 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	callbacks2->open_tmp_file = py_open_tmp_file;
 	ret->progress_func = progress_cb;
 	callbacks2->progress_baton = (void *)ret->progress_func;
-	config_hash = apr_hash_make(ret->pool);
-	if (PyDict_Check(config)) {
-		while (PyDict_Next(config, &idx, &key, &value)) {
-			apr_hash_set(config_hash, apr_pstrdup(ret->pool, PyString_AsString(key)), 
-						 PyString_Size(key), apr_pstrdup(ret->pool, PyString_AsString(value)));
-		}
-	} else if (config != Py_None) {
-		PyErr_SetString(PyExc_TypeError, "Expected dictionary for config");
+	config_hash = config_hash_from_object(config, ret->pool);
+	if (config_hash == NULL) {
 		apr_pool_destroy(ret->pool);
 		PyObject_Del(ret);
 		return NULL;

@@ -29,8 +29,6 @@ from bzrlib.trace import mutter
 from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
-import svn.core
-
 from bzrlib.plugins.svn import properties, ra, repos
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream

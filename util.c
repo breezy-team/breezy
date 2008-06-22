@@ -23,6 +23,7 @@
 #include <svn_io.h>
 #include <apr_errno.h>
 #include <svn_error_codes.h>
+#include <svn_config.h>
 
 #include "util.h"
 
@@ -256,6 +257,39 @@ svn_error_t *py_cancel_func(void *cancel_baton)
 		}
 	}
     return NULL;
+}
+
+apr_hash_t *config_hash_from_object(PyObject *config, apr_pool_t *pool)
+{
+	Py_ssize_t idx = 0;
+	PyObject *key, *value;
+	apr_hash_t *config_hash;
+	PyObject *dict;
+	if (config == Py_None) {
+		RUN_SVN_WITH_POOL(pool, 
+					  svn_config_get_config(&config_hash, NULL, pool));
+		return config_hash;
+	}
+
+	config_hash = apr_hash_make(pool);
+
+	if (PyDict_Check(config)) {
+		dict = config;
+	} else {
+		dict = PyObject_GetAttrString(config, "__dict__");
+	}
+	
+	if (!PyDict_Check(dict)) {
+		PyErr_Format(PyExc_TypeError, "Expected dictionary for config, got %s", dict->ob_type->tp_name);
+		return NULL;
+	}
+
+	while (PyDict_Next(dict, &idx, &key, &value)) {
+		apr_hash_set(config_hash, apr_pstrdup(pool, PyString_AsString(key)), 
+					 PyString_Size(key), apr_pstrdup(pool, PyString_AsString(value)));
+	}
+
+	return config_hash;
 }
 
 

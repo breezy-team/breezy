@@ -28,6 +28,8 @@
 #include "wc.h"
 
 PyAPI_DATA(PyTypeObject) Client_Type;
+PyAPI_DATA(PyTypeObject) Config_Type;
+PyAPI_DATA(PyTypeObject) ConfigItem_Type;
 
 typedef struct {
 	PyObject_HEAD
@@ -35,7 +37,14 @@ typedef struct {
 	apr_pool_t *pool;
 } ConfigObject;
 
+typedef struct {
+	PyObject_HEAD
+	svn_config_t *item;
+	PyObject *parent;
+} ConfigItemObject;
+
 static int client_set_auth(PyObject *self, PyObject *auth, void *closure);
+static int client_set_config(PyObject *self, PyObject *auth, void *closure);
 
 static bool to_opt_revision(PyObject *arg, svn_opt_revision_t *ret)
 {
@@ -145,6 +154,7 @@ typedef struct {
     apr_pool_t *pool;
     PyObject *callbacks;
 	PyObject *py_auth;
+	PyObject *py_config;
 } ClientObject;
 
 static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
@@ -171,12 +181,9 @@ static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs
         return NULL;
 	}
 
-	if (config != Py_None) {
-		PyErr_SetString(PyExc_NotImplementedError, "custom config not supported yet");
-		return NULL;
-	}
-
 	ret->py_auth = NULL;
+	ret->py_config = NULL;
+	client_set_config((PyObject *)ret, config, NULL);
 	client_set_auth((PyObject *)ret, auth, NULL);
     return (PyObject *)ret;
 }
@@ -263,6 +270,20 @@ static int client_set_auth(PyObject *self, PyObject *auth, void *closure)
 
 	client->py_auth = auth;
 	Py_INCREF(auth);
+
+	return 0;
+}
+
+static int client_set_config(PyObject *self, PyObject *config, void *closure)
+{
+	ClientObject *client = (ClientObject *)self;
+
+	Py_XDECREF(client->py_config);
+
+	client->client->config = config_hash_from_object(config, client->pool);
+
+	client->py_config = config;
+	Py_INCREF(config);
 
 	return 0;
 }
@@ -628,6 +649,7 @@ static PyGetSetDef client_getset[] = {
 	{ "log_msg_func", client_get_log_msg_func, client_set_log_msg_func, NULL },
 	{ "notify_func", client_get_notify_func, client_set_notify_func, NULL },
 	{ "auth", NULL, client_set_auth, NULL },
+	{ "config", NULL, client_set_config, NULL },
 	{ NULL, }
 };
 
@@ -651,6 +673,38 @@ static PyObject *get_default_ignores(PyObject *self)
     return ret;
 }
 
+static PyObject *config_get_dict(PyObject *self, void *closure)
+{
+	ConfigObject *config = (ConfigObject *)self;
+	apr_pool_t *pool;
+	PyObject *ret;
+    apr_hash_index_t *idx;
+    const char *key;
+    svn_config_t *val;
+    apr_ssize_t klen;
+
+	pool = Pool(NULL);
+	if (pool == NULL)
+		return NULL;
+
+    ret = PyDict_New();
+    for (idx = apr_hash_first(pool, config->config); idx != NULL; 
+		 idx = apr_hash_next(idx)) {
+		ConfigItemObject *data;
+        apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
+		data = PyObject_New(ConfigItemObject, &ConfigItem_Type);
+		data->item = val;
+        PyDict_SetItemString(ret, key, (PyObject *)data);
+	}
+
+	return ret;
+}
+
+static PyGetSetDef config_getset[] = {
+	{ "__dict__", config_get_dict, NULL, NULL },
+	{ NULL }
+};
+
 static PyMethodDef config_methods[] = {
 	{ "get_default_ignores", (PyCFunction)get_default_ignores, METH_NOARGS, NULL },
 	{ NULL }
@@ -668,8 +722,25 @@ PyTypeObject Config_Type = {
 	.tp_name = "client.Config",
 	.tp_basicsize = sizeof(ConfigObject),
 	.tp_methods = config_methods,
+	.tp_getset = config_getset,
 	.tp_dealloc = (destructor)config_dealloc,
 };
+
+static void configitem_dealloc(PyObject *self)
+{
+	ConfigItemObject *item = (ConfigItemObject *)self;
+
+	Py_XDECREF(item->parent);
+	PyObject_Del(item);
+}
+
+PyTypeObject ConfigItem_Type = {
+	PyObject_HEAD_INIT(NULL) 0,
+	.tp_name = "client.ConfigItem",
+	.tp_basicsize = sizeof(ConfigItemObject),
+	.tp_dealloc = (destructor)configitem_dealloc,
+};
+
 
 
 
@@ -718,6 +789,9 @@ void initclient(void)
         return;
 
     if (PyType_Ready(&Config_Type) < 0)
+        return;
+
+	if (PyType_Ready(&ConfigItem_Type) < 0)
         return;
 
 	/* Make sure APR is initialized */
