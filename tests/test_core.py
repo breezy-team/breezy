@@ -25,9 +25,6 @@ class TestCore(TestCase):
     def test_exc(self):
         self.assertIsInstance(core.SubversionException("foo", 1), Exception)
 
-    def test_get_config(self):
-        self.assertIsInstance(core.get_config(), dict)
-
     def test_time_from_cstring(self):
         self.assertEquals(1225704780716938L, core.time_from_cstring("2008-11-03T09:33:00.716938Z"))
 

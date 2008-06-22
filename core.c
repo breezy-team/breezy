@@ -73,42 +73,7 @@ PyTypeObject Config_Type = {
 	.tp_dealloc = (destructor)PyObject_Del,
 };
 
-static PyObject *get_config(PyObject *self, PyObject *args)
-{
-    apr_pool_t *pool;
-    apr_hash_t *cfg_hash = NULL;
-    apr_hash_index_t *idx;
-    const char *key;
-    svn_config_t *val;
-    apr_ssize_t klen;
-	char *config_dir = NULL;
-	PyObject *ret;
-
-	if (!PyArg_ParseTuple(args, "|z", &config_dir))
-		return NULL;
-
-    pool = Pool(NULL);
-	if (pool == NULL)
-		return NULL;
-
-    RUN_SVN_WITH_POOL(pool, 
-					  svn_config_get_config(&cfg_hash, config_dir, pool));
-    ret = PyDict_New();
-    for (idx = apr_hash_first(pool, cfg_hash); idx != NULL; 
-		 idx = apr_hash_next(idx)) {
-		ConfigObject *data;
-        apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
-		data = PyObject_New(ConfigObject, &Config_Type);
-		data->item = val;
-        PyDict_SetItemString(ret, key, (PyObject *)data);
-	}
-    apr_pool_destroy(pool);
-    return ret;
-}
-
-
 static PyMethodDef core_methods[] = {
-	{ "get_config", get_config, METH_VARARGS, NULL },
 	{ "time_from_cstring", time_from_cstring, METH_VARARGS, NULL },
 	{ "time_to_cstring", time_to_cstring, METH_VARARGS, NULL },
 	{ NULL, }

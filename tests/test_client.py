@@ -28,3 +28,7 @@ class TestClient(TestCaseWithSubversionRepository):
     def test_add(self):
         self.build_tree({"dc/foo": None})
         self.client.add("dc/foo")
+
+    def test_get_config(self):
+        self.assertIsInstance(client.get_config().__dict__, dict)
+

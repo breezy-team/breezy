@@ -15,16 +15,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Simple transport for accessing Subversion smart servers."""
 
+import bzrlib
 from bzrlib import debug, urlutils
 from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
                            FileExists, NotLocalUrl, InvalidURL)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 
+import bzrlib.plugins.svn
 from bzrlib.plugins.svn import core, properties, ra
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.auth import create_auth_baton
-from bzrlib.plugins.svn.core import SubversionException, get_config
+from bzrlib.plugins.svn.client import get_config
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
 from bzrlib.plugins.svn.ra import DIRENT_KIND, RemoteAccess
 import urlparse
