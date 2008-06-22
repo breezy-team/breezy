@@ -141,6 +141,7 @@ class MappingTestAdapter(object):
         fileprops = {}
         fileids = {"": "some-id", "bla/blie": "other-id"}
         self.mapping.export_fileid_map(fileids, revprops, fileprops)
+        revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
         self.assertEquals(fileids, 
                 self.mapping.import_fileid_map(revprops, fileprops))
 
@@ -149,6 +150,7 @@ class MappingTestAdapter(object):
             raise TestNotApplicable
         (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
                                      {"arevprop": "val"}, "arevid", 4, ["merge1"], dict())
+        revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
         try:
             self.mapping.export_message("My Commit message", revprops, fileprops)
         except NotImplementedError:
@@ -161,8 +163,9 @@ class MappingTestAdapter(object):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
         (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
-                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict())
+                                     {"arevprop": "val" }, "arevid", 4, ["merge1"], dict())
         targetrev = Revision(None)
+        revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
         self.mapping.import_revision(revprops, fileprops, targetrev)
         self.assertEquals(targetrev.committer, "somebody")
         self.assertEquals(targetrev.properties, {"arevprop": "val"})
