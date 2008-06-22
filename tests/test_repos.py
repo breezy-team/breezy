@@ -27,7 +27,7 @@ from bzrlib.inventory import Inventory
 from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION, Revision
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 import os, sys
 
@@ -973,6 +973,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                    [(l.branch_path, l.paths, l.revnum) for l in oldrepos.iter_reverse_branch_changes("trunk", 3, TrunkBranchingScheme())])
 
     def test_control_code_msg(self):
+        if ra.version()[1] >= 5:
+            raise TestSkipped("Test not runnable with Subversion >= 1.5")
         repos_url = self.make_client('d', 'dc')
 
         self.build_tree({'dc/trunk': None})
