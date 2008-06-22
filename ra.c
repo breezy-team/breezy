@@ -75,20 +75,6 @@ static svn_error_t *py_lock_func (void *baton, const char *path, int do_lock,
 	return NULL;
 }
 
-static void py_progress_func(apr_off_t progress, apr_off_t total, void *baton, apr_pool_t *pool)
-{
-    PyObject *fn = (PyObject *)baton, *ret;
-    if (fn == Py_None) {
-        return;
-	}
-	ret = PyObject_CallFunction(fn, "ll", progress, total);
-	/* TODO: What to do with exceptions raised here ? */
-	if (ret == NULL)
-		return;
-	Py_DECREF(ret);
-}
-
-
 typedef struct {
 	PyObject_HEAD
     const svn_ra_reporter2_t *reporter;
@@ -538,6 +524,18 @@ static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 	return py_svn_error(); /* FIXME */
 }
 
+static void py_progress_func(apr_off_t progress, apr_off_t total, void *baton, apr_pool_t *pool)
+{
+	RemoteAccessObject *ra = (RemoteAccessObject *)baton;
+    PyObject *fn = (PyObject *)ra->progress_func, *ret;
+    if (fn == Py_None) {
+        return;
+	}
+	ret = PyObject_CallFunction(fn, "ll", progress, total);
+	/* TODO: What to do with exceptions raised here ? */
+	Py_XDECREF(ret);
+}
+
 static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
 	char *kwnames[] = { "url", "progress_cb", "auth", "config", "client_string_func", NULL };
@@ -585,7 +583,7 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	callbacks2->auth_baton = auth_baton;
 	callbacks2->open_tmp_file = py_open_tmp_file;
 	ret->progress_func = progress_cb;
-	callbacks2->progress_baton = (void *)ret->progress_func;
+	callbacks2->progress_baton = (void *)ret;
 #if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
 	callbacks2->get_client_string = py_get_client_string;
 #endif
@@ -1264,6 +1262,7 @@ static PyObject *ra_get_file_revs(PyObject *self, PyObject *args)
 static void ra_dealloc(PyObject *self)
 {
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+	Py_XDECREF(ra->progress_func);
 	apr_pool_destroy(ra->pool);
 	Py_XDECREF(ra->auth);
 	PyObject_Del(self);
@@ -1274,6 +1273,20 @@ static PyObject *ra_repr(PyObject *self)
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
 	return PyString_FromFormat("RemoteAccess(%s)", ra->url);
 }
+
+static int ra_set_progress_func(PyObject *self, PyObject *value, void *closure)
+{
+	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+	Py_XDECREF(ra->progress_func);
+	ra->progress_func = value;
+	Py_INCREF(ra->progress_func);
+	return 0;
+}
+
+static PyGetSetDef ra_getsetters[] = { 
+	{ "progress_func", NULL, ra_set_progress_func, NULL },
+	{ NULL }
+};
 
 static PyMethodDef ra_methods[] = {
 	{ "get_file_revs", ra_get_file_revs, METH_VARARGS, NULL },
@@ -1313,6 +1326,7 @@ PyTypeObject RemoteAccess_Type = {
 	.tp_dealloc = ra_dealloc,
 	.tp_repr = ra_repr,
 	.tp_methods = ra_methods,
+	.tp_getset = ra_getsetters,
 	.tp_members = ra_members,
 };
 
