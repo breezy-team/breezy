@@ -213,11 +213,6 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
-    def do_switch(self, switch_rev, path, recurse, switch_url, editor):
-        conn = self._open_real_transport()
-        self.mutter('svn do-switch -r%d %s' % (switch_rev, switch_url))
-        return conn.do_switch(switch_rev, path, recurse, switch_url, editor)
-
     def iter_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, include_merged_revisions, revprops):
         assert paths is None or isinstance(paths, list)
@@ -373,20 +368,6 @@ class SvnRaTransport(Transport):
                 raise
         finally:
             self.add_connection(conn)
-
-    def replay(self, revision, low_water_mark, send_deltas, editor):
-        conn = self._open_real_transport()
-        self.mutter('svn replay -r%d:%d' % (low_water_mark,revision))
-        try:
-            return conn.replay(revision, low_water_mark, 
-                                             send_deltas, editor)
-        finally:
-            self.add_connection(conn)
-
-    def do_update(self, revnum, path, recurse, editor):
-        conn = self._open_real_transport()
-        self.mutter('svn do-update -r%d' % (revnum,))
-        return conn.do_update(revnum, path, recurse, editor)
 
     def has_capability(self, cap):
         if cap in self.capabilities:
