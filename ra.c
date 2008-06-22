@@ -506,6 +506,7 @@ static bool ra_check_busy(RemoteAccessObject *raobj)
 	return false;
 }
 
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
 static svn_error_t *py_get_client_string(void *baton, const char **name, apr_pool_t *pool)
 {
 	RemoteAccessObject *self = (RemoteAccessObject *)baton;
@@ -525,6 +526,7 @@ static svn_error_t *py_get_client_string(void *baton, const char **name, apr_poo
 
 	return NULL;
 }
+#endif
 
 static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 									 apr_pool_t *pool)
@@ -1434,6 +1436,7 @@ static PyObject *get_username_prompt_provider(PyObject *self, PyObject *args)
     auth->pool = Pool(NULL);
 	if (auth->pool == NULL)
 		return NULL;
+	Py_INCREF(prompt_func);
     svn_auth_get_username_prompt_provider(&auth->provider, py_username_prompt, (void *)prompt_func, retry_limit, auth->pool);
     return (PyObject *)auth;
 }
@@ -1464,6 +1467,7 @@ static PyObject *get_simple_prompt_provider(PyObject *self, PyObject *args)
     auth->pool = Pool(NULL);
 	if (auth->pool == NULL)
 		return NULL;
+	Py_INCREF(prompt_func);
     svn_auth_get_simple_prompt_provider (&auth->provider, py_simple_prompt, (void *)prompt_func, retry_limit, auth->pool);
     return (PyObject *)auth;
 }
@@ -1503,6 +1507,7 @@ static PyObject *get_ssl_server_trust_prompt_provider(PyObject *self, PyObject *
     auth->pool = Pool(NULL);
 	if (auth->pool == NULL)
 		return NULL;
+	Py_INCREF(prompt_func);
     svn_auth_get_ssl_server_trust_prompt_provider (&auth->provider, py_ssl_server_trust_prompt, (void *)prompt_func, auth->pool);
     return (PyObject *)auth;
 }
@@ -1534,6 +1539,7 @@ static PyObject *get_ssl_client_cert_pw_prompt_provider(PyObject *self, PyObject
     auth->pool = Pool(NULL);
 	if (auth->pool == NULL)
 		return NULL;
+	Py_INCREF(prompt_func);
     svn_auth_get_ssl_client_cert_pw_prompt_provider (&auth->provider, py_ssl_client_cert_pw_prompt, (void *)prompt_func, retry_limit, auth->pool);
     return (PyObject *)auth;
 }
