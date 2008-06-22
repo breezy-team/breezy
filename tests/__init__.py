@@ -383,6 +383,7 @@ def test_suite():
             'test_push',
             'test_radir',
             'test_repos', 
+            'test_repository', 
             'test_revids',
             'test_revspec',
             'test_scheme', 
