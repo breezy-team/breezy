@@ -374,6 +374,7 @@ def test_suite():
             'test_commit',
             'test_config',
             'test_convert',
+            'test_core',
             'test_errors',
             'test_fetch',
             'test_fileids', 
