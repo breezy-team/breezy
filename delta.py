@@ -1,8 +1,8 @@
-# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
- 
+# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
+# the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -11,36 +11,32 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Subversion delta operations."""
 
-# Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
-# slightly different).
+def apply_txdelta_handler(sbuf, target_stream):
+    def apply_window(window):
+        (sview_offset, sview_len, tview_len, src_ops, ops, new_data) = window
+        sview = sbuf[sview_offset:sview_offset+sview_len]
+        tview = txdelta_apply_ops(src_ops, ops, new_data, sview)
+        assert len(tview) == tview_len
+        target_stream.write(tview)
+    return apply_window
 
-from cStringIO import StringIO
-import svn.delta
 
-if getattr(svn.delta, 'tx_invoke_window_handler', None):
-    def apply_txdelta_handler(sbuf, target_stream):
-        src_stream = StringIO(sbuf)
-        assert getattr(src_stream, 'read', None) is not None
-        assert getattr(target_stream, 'write', None) is not None
-        window_handler, baton = svn.delta.tx_apply(src_stream, target_stream, 
-                                                   None)
+def txdelta_apply_ops(src_ops, ops, new_data, sview):
+    tview = ""
+    for (action, offset, length) in ops:
+        if action == 0:
+            # Copy from source area.
+            tview += sview[offset:offset+length]
+        elif action == 1:
+            for i in xrange(length):
+                tview += tview[offset+i]
+        elif action == 2:
+            tview += new_data[offset:offset+length]
+        else:
+            raise Exception("Invalid delta instruction code")
 
-        def wrapper(window):
-            window_handler(window, baton)
-
-        return wrapper
-else:
-    def apply_txdelta_handler(sbuf, target_stream):
-        src_stream = StringIO(sbuf)
-        assert getattr(src_stream, 'read', None) is not None
-        assert getattr(target_stream, 'write', None) is not None
-        ret = svn.delta.svn_txdelta_apply(src_stream, target_stream, None)
-
-        def wrapper(window):
-            svn.delta.invoke_txdelta_window_handler(
-                ret[1], window, ret[2])
-
-        return wrapper
-
+    return tview

@@ -40,7 +40,6 @@ from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoSvnRepositoryPr
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                      escape_svn_path, generate_revision_metadata)
-from bzrlib.plugins.svn.ra import create_svn_client
 from bzrlib.plugins.svn.remote import SvnRemoteAccess
 from bzrlib.plugins.svn.repository import SvnRepository
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
@@ -54,6 +53,7 @@ import urllib
 
 import svn.core
 
+from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.format import get_rich_root_format
 
 def generate_ignore_list(ignore_map):
@@ -80,9 +80,7 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
-        self.client_ctx = create_svn_client(bzrdir.svn_url)
-        self.client_ctx.log_msg_func2 = \
-                svn.client.svn_swig_py_get_commit_log_func
+        self.client_ctx = Client(bzrdir.svn_url)
 
         self._get_wc()
         max_rev = revision_status(self.basedir, None, True)[1]
@@ -146,9 +144,7 @@ class SvnWorkingTree(WorkingTree):
         raise NotImplementedError(self.apply_inventory_delta)
 
     def update(self, change_reporter=None):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-        svn.client.update(self.basedir, rev, True, self.client_ctx)
+        self.client_ctx.update(self.basedir, "HEAD", True)
 
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument
@@ -177,8 +173,6 @@ class SvnWorkingTree(WorkingTree):
     def move(self, from_paths, to_dir=None, after=False, **kwargs):
         # FIXME: Use after argument
         assert after != True
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_working
         for entry in from_paths:
             try:
                 to_wc = self._get_wc(to_dir, write_lock=True)
@@ -199,8 +193,6 @@ class SvnWorkingTree(WorkingTree):
     def rename_one(self, from_rel, to_rel, after=False):
         # FIXME: Use after
         assert after != True
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_unspecified
         (to_wc, to_file) = self._get_rel_wc(to_rel, write_lock=True)
         if os.path.dirname(from_rel) == os.path.dirname(to_rel):
             # Prevent lock contention
@@ -430,7 +422,7 @@ class SvnWorkingTree(WorkingTree):
                 """ Simple log message provider for unit tests. """
                 return message.encode("utf-8")
 
-        self.client_ctx.log_msg_baton2 = log_message_func
+        self.client_ctx.client_ctx.log_msg_baton2 = log_message_func
         if rev_id is not None:
             extra = "%d %s\n" % (self.branch.revno()+1, rev_id)
         else:
@@ -451,8 +443,7 @@ class SvnWorkingTree(WorkingTree):
 
         try:
             try:
-                commit_info = svn.client.commit3(specific_files, True, False, 
-                                                 self.client_ctx)
+                commit_info = self.client_ctx.commit(specific_files, True, False)
             except SubversionException, (_, num):
                 if num == ERR_FS_TXN_OUT_OF_DATE:
                     raise OutOfDateTree(self)
@@ -470,7 +461,7 @@ class SvnWorkingTree(WorkingTree):
             wc.close()
             raise
 
-        self.client_ctx.log_msg_baton2 = None
+        self.client_ctx.client_ctx.log_msg_baton2 = None
 
         revid = self.branch.generate_revision_id(commit_info.revision)
 
@@ -563,10 +554,8 @@ class SvnWorkingTree(WorkingTree):
         (result.old_revno, result.old_revid) = self.branch.last_revision_info()
         if stop_revision is None:
             stop_revision = self.branch.last_revision()
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = self.branch.lookup_revision_id(stop_revision)
-        fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
+        rev = self.branch.lookup_revision_id(stop_revision)
+        fetched = self.client_ctx.update(self.basedir, rev, True)
         self.base_revid = self.branch.generate_revision_id(fetched)
         result.new_revid = self.base_revid
         result.new_revno = self.branch.revision_id_to_revno(result.new_revid)

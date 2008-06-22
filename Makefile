@@ -49,6 +49,9 @@ valgrind-check::
 gdb-check::
 	$(MAKE) check DEBUGGER="gdb --args $(GDB_OPTIONS)"
 
+strace-check::
+	$(MAKE) check DEBUGGER="strace $(STRACE_OPTIONS)"
+
 show-plugins::
 	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(BZR) plugins
 

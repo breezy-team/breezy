@@ -24,16 +24,16 @@ from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
-import svn.client, svn.core
+import svn.core
 
 from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.commit import push
 from bzrlib.plugins.svn.config import BranchConfig
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.repository import SvnRepository
-from bzrlib.plugins.svn.ra import create_svn_client
 from bzrlib.plugins.svn.transport import bzr_to_svn_url
 
 
@@ -176,21 +176,16 @@ class SvnBranch(Branch):
         :param revision_id: Tip of the checkout.
         :return: WorkingTree object of the checkout.
         """
-        peg_rev = svn.core.svn_opt_revision_t()
-        peg_rev.kind = svn.core.svn_opt_revision_head
+        peg_rev = "HEAD"
 
-        rev = svn.core.svn_opt_revision_t()
         if revision_id is None:
-            rev.kind = svn.core.svn_opt_revision_head
+            rev = "HEAD"
         else:
-            revnum = self.lookup_revision_id(revision_id)
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
+            rev = self.lookup_revision_id(revision_id)
 
         svn_url = bzr_to_svn_url(self.base)
-        client_ctx = create_svn_client(svn_url)
-        svn.client.checkout(svn_url, to_location, rev, 
-                            True, client_ctx)
+        client_ctx = Client(svn_url)
+        client_ctx.checkout(svn_url, to_location, rev, True)
 
         return WorkingTree.open(to_location)
 

@@ -429,6 +429,7 @@ class FileBuildEditor(object):
 
         self.file_stream = None
 
+
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
     """
