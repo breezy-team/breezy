@@ -27,22 +27,6 @@
 
 #include "util.h"
 
-/** Convert a UNIX timestamp to a Subversion CString. */
-static PyObject *time_to_cstring(PyObject *self, PyObject *args)
-{
-	PyObject *ret;
-    apr_pool_t *pool;
-	apr_time_t when;
-	if (!PyArg_ParseTuple(args, "L", &when))
-		return NULL;
-    pool = Pool(NULL);
-	if (pool == NULL)
-		return NULL;
-    ret = PyString_FromString(svn_time_to_cstring(when, pool));
-    apr_pool_destroy(pool);
-    return ret;
-}
-
 /** Parse a Subversion time string and return a UNIX timestamp. */
 static PyObject *time_from_cstring(PyObject *self, PyObject *args)
 {
@@ -75,7 +59,6 @@ PyTypeObject Config_Type = {
 
 static PyMethodDef core_methods[] = {
 	{ "time_from_cstring", time_from_cstring, METH_VARARGS, NULL },
-	{ "time_to_cstring", time_to_cstring, METH_VARARGS, NULL },
 	{ NULL, }
 };
 

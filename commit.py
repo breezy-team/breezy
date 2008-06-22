@@ -27,7 +27,7 @@ from bzrlib.trace import mutter, warning
 from cStringIO import StringIO
 
 from bzrlib.plugins.svn import core, properties
-from bzrlib.plugins.svn.core import SubversionException, time_to_cstring
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
 from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
@@ -520,7 +520,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if properties.PROP_REVISION_AUTHOR in override_svn_revprops:
                 new_revprops[properties.PROP_REVISION_AUTHOR] = self._committer.encode("utf-8")
             if properties.PROP_REVISION_DATE in override_svn_revprops:
-                new_revprops[properties.PROP_REVISION_DATE] = time_to_cstring(1000000*self._timestamp)
+                new_revprops[properties.PROP_REVISION_DATE] = properties.time_to_cstring(1000000*self._timestamp)
             set_svn_revprops(self.repository.transport, result_revision, new_revprops)
 
         try:

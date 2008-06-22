@@ -37,7 +37,7 @@ from bzrlib.plugins.svn.branch import SvnBranch
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
 from bzrlib.plugins.svn.convert import SvnConverter
-from bzrlib.plugins.svn.core import SubversionException, time_to_cstring
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoSvnRepositoryPresent, ERR_FS_TXN_OUT_OF_DATE, ERR_ENTRY_EXISTS, ERR_WC_PATH_NOT_FOUND, ERR_WC_NOT_DIRECTORY
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
@@ -367,7 +367,7 @@ class SvnWorkingTree(WorkingTree):
 
             wc.process_committed(self.abspath(path).rstrip("/"), 
                           False, revnum, 
-                          time_to_cstring(newrev.timestamp), 
+                          properties.time_to_cstring(newrev.timestamp), 
                           newrev.committer)
 
             if newrevtree.inventory[id].kind != 'directory':

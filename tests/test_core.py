@@ -16,7 +16,7 @@
 """Subversion core library tests."""
 
 from bzrlib.tests import TestCase
-from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn import core, properties
 
 class TestCore(TestCase):
     def setUp(self):
@@ -29,5 +29,5 @@ class TestCore(TestCase):
         self.assertEquals(1225704780716938L, core.time_from_cstring("2008-11-03T09:33:00.716938Z"))
 
     def test_time_to_cstring(self):
-        self.assertEquals("2008-11-03T09:33:00.716938Z", core.time_to_cstring(1225704780716938L))
+        self.assertEquals("2008-11-03T09:33:00.716938Z", properties.time_to_cstring(1225704780716938L))
 
