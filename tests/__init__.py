@@ -123,7 +123,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             rev = "WORKING"
         else:
             rev = revnum
-        ret = self.client_ctx.propget(name, path, rev, recursive)
+        ret = self.client_ctx.propget(name, path, rev, rev, recursive)
         if recursive:
             return ret
         else:
@@ -167,8 +167,8 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         assert isinstance(path, str)
         ret = {}
         def rcvr(orig_paths, rev, revprops):
-            ret[rev] = (orig_paths, revprops[properties.PROP_REVISION_AUTHOR], revprops[properties.PROP_REVISION_DATE], revprops[properties.PROP_REVISION_LOG])
-        self.client_ctx.log([path], rcvr, self.revnum_to_opt_rev(start_revnum),
+            ret[rev] = (orig_paths, revprops.get(properties.PROP_REVISION_AUTHOR), revprops.get(properties.PROP_REVISION_DATE), revprops.get(properties.PROP_REVISION_LOG))
+        self.client_ctx.log([path], rcvr, None, self.revnum_to_opt_rev(start_revnum),
                        self.revnum_to_opt_rev(stop_revnum), 0,
                        True, True)
         return ret

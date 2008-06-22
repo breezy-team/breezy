@@ -30,13 +30,13 @@
 								  (50 * SVN_ERR_CATEGORY_SIZE))
 
 
-apr_pool_t *Pool()
+apr_pool_t *Pool(apr_pool_t *parent)
 {
     apr_status_t status;
     apr_pool_t *ret;
     char errmsg[1024];
     ret = NULL;
-    status = apr_pool_create(&ret, NULL);
+    status = apr_pool_create(&ret, parent);
     if (status != 0) {
         PyErr_SetString(PyExc_Exception, 
 						apr_strerror(status, errmsg, sizeof(errmsg)));
@@ -96,7 +96,7 @@ bool string_list_to_apr_array(apr_pool_t *pool, PyObject *l, apr_array_header_t 
 	for (i = 0; i < PyList_GET_SIZE(l); i++) {
 		PyObject *item = PyList_GET_ITEM(l, i);
 		if (!PyString_Check(item)) {
-			PyErr_SetString(PyExc_TypeError, "Expected list of strings");
+			PyErr_Format(PyExc_TypeError, "Expected list of strings, item was %s", item->ob_type->tp_name);
 			return false;
 		}
 		APR_ARRAY_PUSH(*ret, char *) = apr_pstrdup(pool, PyString_AsString(item));
@@ -115,7 +115,7 @@ PyObject *prop_hash_to_dict(apr_hash_t *props)
     if (props == NULL) {
         Py_RETURN_NONE;
 	}
-    pool = Pool();
+    pool = Pool(NULL);
 	if (pool == NULL)
 		return NULL;
     py_props = PyDict_New();
@@ -166,7 +166,7 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long rev
         PyDict_SetItemString(revprops, SVN_PROP_REVISION_DATE, 
 							 PyString_FromString(date));
 	}
-    ret = PyObject_CallFunction((PyObject *)baton, "OiO", py_changed_paths, 
+    ret = PyObject_CallFunction((PyObject *)baton, "OlO", py_changed_paths, 
 								 revision, revprops);
 	if (ret == NULL)
 		return py_svn_error();

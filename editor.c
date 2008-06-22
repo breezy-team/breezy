@@ -405,11 +405,11 @@ static PyObject *py_editor_close(PyObject *self)
 		return NULL;
 	}
 
-	if (editor->done_cb != NULL)
-		editor->done_cb(editor->done_baton);
-
 	if (!check_error(editor->editor->close_edit(editor->baton, editor->pool)))
 		return NULL;
+
+	if (editor->done_cb != NULL)
+		editor->done_cb(editor->done_baton);
 
 	Py_RETURN_NONE;
 }
@@ -423,12 +423,12 @@ static PyObject *py_editor_abort(PyObject *self)
 		return NULL;
 	}
 
-	if (editor->done_cb != NULL)
-		editor->done_cb(editor->done_baton);
-	
 	if (!check_error(editor->editor->abort_edit(editor->baton, editor->pool)))
 		return NULL;
 
+	if (editor->done_cb != NULL)
+		editor->done_cb(editor->done_baton);
+	
 	Py_RETURN_NONE;
 }
 

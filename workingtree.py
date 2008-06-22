@@ -104,7 +104,7 @@ class SvnWorkingTree(WorkingTree):
 
     def get_ignore_list(self):
         ignores = set([get_adm_dir()])
-        ignores.update(get_default_ignores(svn_config))
+        ignores.update(svn_config.get_default_ignores())
 
         def dir_add(wc, prefix, patprefix):
             ignorestr = wc.prop_get(properties.PROP_IGNORE, 
@@ -145,7 +145,7 @@ class SvnWorkingTree(WorkingTree):
         raise NotImplementedError(self.apply_inventory_delta)
 
     def update(self, change_reporter=None):
-        self.client_ctx.update(self.basedir, "HEAD", True)
+        self.client_ctx.update([self.basedir.encode("utf-8")], "HEAD", True)
 
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument

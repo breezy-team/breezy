@@ -33,7 +33,7 @@ import os, sys
 
 import svn.fs
 
-from bzrlib.plugins.svn import format
+from bzrlib.plugins.svn import format, ra
 from bzrlib.plugins.svn.mapping import (escape_svn_path, unescape_svn_path, 
                      SVN_PROP_BZR_REVISION_ID)
 from bzrlib.plugins.svn.mapping3 import (SVN_PROP_BZR_BRANCHING_SCHEME, set_branching_scheme,
@@ -193,7 +193,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
-        self.assertEquals([
+        results = [(l.branch_path, l.paths, l.revnum) for l in repos.iter_reverse_branch_changes("pygments/trunk", 3, TrunkBranchingScheme(1))]
+
+        # Results differ per Subversion version
+        # For <= 1.4:
+        if ra.version()[1] <= 4:
+            self.assertEquals([
             ('pygments/trunk', {'pygments': (u'A', 'pykleur', 1),
                                 'pygments/trunk': (u'R', 'pykleur/trunk', 2),
                                 'pykleur': (u'D', None, -1)}, 3),
@@ -202,8 +207,16 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                     {'pykleur': (u'A', None, -1),
                      'pykleur/trunk': (u'A', None, -1),
                      'pykleur/trunk/pykleur': (u'A', None, -1)},
-             1)],
-            [(l.branch_path, l.paths, l.revnum) for l in repos.iter_reverse_branch_changes("pygments/trunk", 3, TrunkBranchingScheme(1))])
+             1)], results
+            )
+        else:
+            self.assertEquals(
+               [('pygments/trunk', {'pygments': (u'A', 'pykleur', 1), 'pykleur': (u'D', None, -1)}, 3),
+                ('pykleur/trunk', {'pykleur': (u'A', None, -1), 
+                                   'pykleur/trunk': (u'A', None, -1), 
+                                   'pykleur/trunk/pykleur': (u'A', None, -1)}, 
+                1)], results
+            )
 
     def test_follow_branch_move_single(self):
         repos_url = self.make_client('a', 'dc')

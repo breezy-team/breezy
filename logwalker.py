@@ -288,12 +288,12 @@ class CachingLogWalker(CacheTable):
 def struct_revpaths_to_tuples(changed_paths):
     assert isinstance(changed_paths, dict)
     revpaths = {}
-    for k,v in changed_paths.items():
-        if v.copyfrom_path is None:
+    for k,(action, copyfrom_path, copyfrom_rev) in changed_paths.items():
+        if copyfrom_path is None:
             copyfrom_path = None
         else:
-            copyfrom_path = v.copyfrom_path.strip("/")
-        revpaths[k.strip("/")] = (v.action, copyfrom_path, v.copyfrom_rev)
+            copyfrom_path = copyfrom_path.strip("/")
+        revpaths[k.strip("/")] = (action, copyfrom_path, copyfrom_rev)
     return revpaths
 
 
@@ -392,6 +392,12 @@ class LogWalker(object):
         finally:
             self._transport.connections.add(conn)
 
+        class FileTreeLister:
+            def change_prop(self, name, value): pass
+            def close(self): pass
+            def apply_textdelta(self, checksum=None): pass
+
+
         class DirTreeLister:
             def __init__(self, tree, path):
                 self.tree = tree
@@ -410,7 +416,7 @@ class LogWalker(object):
 
             def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
                 self.tree.files.append(urlutils.join(self.tree.base, path))
-                return None
+                return FileTreeLister()
 
         class TreeLister:
             def __init__(self, base):
