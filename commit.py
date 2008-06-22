@@ -193,8 +193,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param file_editor: Subversion FileEditor object.
         """
         assert file_editor is not None
-        (txdelta, txbaton) = file_editor.apply_textdelta(None)
-        digest = txdelta_send_stream(StringIO(contents), txdelta, txbaton)
+        txdelta = file_editor.apply_textdelta()
+        digest = txdelta_send_stream(StringIO(contents), txdelta)
         if 'validate' in debug.debug_flags:
             from fetch import md5_strings
             assert digest == md5_strings(contents)
@@ -395,13 +395,13 @@ class SvnCommitBuilder(RootCommitBuilder):
         """Finish the commit.
 
         """
-        def done(revision_data, pool):
+        def done(*args):
             """Callback that is called by the Subversion commit editor 
             once the commit finishes.
 
             :param revision_data: Revision metadata
             """
-            self.revision_metadata = revision_data
+            self.revision_metadata = args
         
         bp_parts = self.branch.get_branch_path().split("/")
         repository_latest_revnum = self.repository.get_latest_revnum()
@@ -504,13 +504,15 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.repository._clear_cached_state()
 
-        revid = self.branch.generate_revision_id(self.revision_metadata.revision)
+        (result_revision, result_date, result_author) = self.revision_metadata
+
+        revid = self.branch.generate_revision_id(result_revision)
 
         assert self._new_revision_id is None or self._new_revision_id == revid
 
         self.mutter('commit %d finished. author: %r, date: %r, revid: %r',
-               self.revision_metadata.revision, self.revision_metadata.author, 
-                   self.revision_metadata.date, revid)
+               result_revision, result_author, 
+                   result_date, revid)
 
         override_svn_revprops = self._config.get_override_svn_revprops()
         if override_svn_revprops is not None:
@@ -519,10 +521,10 @@ class SvnCommitBuilder(RootCommitBuilder):
                 new_revprops[properties.PROP_REVISION_AUTHOR] = self._committer.encode("utf-8")
             if properties.PROP_REVISION_DATE in override_svn_revprops:
                 new_revprops[properties.PROP_REVISION_DATE] = time_to_cstring(1000000*self._timestamp)
-            set_svn_revprops(self.repository.transport, self.revision_metadata.revision, new_revprops)
+            set_svn_revprops(self.repository.transport, result_revision, new_revprops)
 
         try:
-            set_svn_revprops(self.repository.transport, self.revision_metadata.revision, 
+            set_svn_revprops(self.repository.transport, result_revision, 
                          self._svn_revprops) 
         except RevpropChangeFailed:
             pass # Ignore for now
