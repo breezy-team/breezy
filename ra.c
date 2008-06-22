@@ -22,6 +22,7 @@
 #include <svn_ra.h>
 #include <svn_path.h>
 #include <apr_file_io.h>
+#include <apr_portable.h>
 
 #include <structmember.h>
 
@@ -464,6 +465,7 @@ typedef struct {
 	AuthObject *auth;
 	bool busy;
 	PyObject *client_string_func;
+	PyObject *open_tmp_file_func;
 } RemoteAccessObject;
 
 static void ra_done_handler(void *_ra)
@@ -515,14 +517,55 @@ static svn_error_t *py_get_client_string(void *baton, const char **name, apr_poo
 }
 #endif
 
+/* Based on svn_swig_py_make_file() from Subversion */
 static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 									 apr_pool_t *pool)
 {
 	RemoteAccessObject *self = (RemoteAccessObject *)callback;
+	PyObject *ret;
+	apr_status_t status;
 
-	PyErr_SetString(PyExc_NotImplementedError, "open_tmp_file not wrapped yet");
+	if (self->open_tmp_file_func == Py_None) {
+		const char *path;
+
+		SVN_ERR (svn_io_temp_dir (&path, pool));
+		path = svn_path_join (path, "tempfile", pool);
+		SVN_ERR (svn_io_open_unique_file (fp, NULL, path, ".tmp", TRUE, pool));
+
+		return NULL;
+	}
+
+	ret = PyObject_CallFunction(self->open_tmp_file_func, "");
+
+	if (ret == NULL) 
+		return py_svn_error();
 	
-	return py_svn_error(); /* FIXME */
+	if (PyString_Check(ret)) {
+		char* fname = PyString_AsString(ret);
+		status = apr_file_open(fp, fname, APR_CREATE | APR_READ | APR_WRITE, APR_OS_DEFAULT, 
+								pool);
+		if (status) {
+			PyErr_SetAprStatus(status);
+			return NULL;
+		}
+	} else if (PyFile_Check(ret)) {
+		FILE *file;
+		apr_os_file_t osfile;
+
+		file = PyFile_AsFile(ret);
+#ifdef WIN32
+		osfile = (apr_os_file_t)_get_osfhandle(_fileno(file));
+#else
+		osfile = (apr_os_file_t)fileno(file);
+#endif
+		status = apr_os_file_put(fp, &osfile, O_CREAT | O_WRONLY, pool);
+		if (status) {
+			PyErr_SetAprStatus(status);
+			return NULL;
+		}
+	}
+
+	return NULL;
 }
 
 static void py_progress_func(apr_off_t progress, apr_off_t total, void *baton, apr_pool_t *pool)
@@ -539,19 +582,21 @@ static void py_progress_func(apr_off_t progress, apr_off_t total, void *baton, a
 
 static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-	char *kwnames[] = { "url", "progress_cb", "auth", "config", "client_string_func", NULL };
+	char *kwnames[] = { "url", "progress_cb", "auth", "config", "client_string_func", 
+		                "open_tmp_file_func", NULL };
 	char *url;
 	PyObject *progress_cb = Py_None;
 	AuthObject *auth = (AuthObject *)Py_None;
 	PyObject *config = Py_None;
-	PyObject *client_string_func = Py_None;
+	PyObject *client_string_func = Py_None, *open_tmp_file_func = Py_None;
 	RemoteAccessObject *ret;
 	apr_hash_t *config_hash;
 	svn_ra_callbacks2_t *callbacks2;
 	svn_auth_baton_t *auth_baton;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|OOOO", kwnames, &url, &progress_cb, 
-									 (PyObject **)&auth, &config, &client_string_func))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|OOOOO", kwnames, &url, &progress_cb, 
+									 (PyObject **)&auth, &config, &client_string_func,
+									 &open_tmp_file_func))
 		return NULL;
 
 	ret = PyObject_New(RemoteAccessObject, &RemoteAccess_Type);
@@ -579,6 +624,7 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	}
 
 	ret->client_string_func = client_string_func;
+	ret->open_tmp_file_func = open_tmp_file_func;
 	Py_INCREF(client_string_func);
 	callbacks2->progress_func = py_progress_func;
 	callbacks2->auth_baton = auth_baton;

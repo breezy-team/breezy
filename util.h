@@ -45,6 +45,7 @@ svn_stream_t *new_py_stream(apr_pool_t *pool, PyObject *py);
 PyObject *PyErr_NewSubversionException(svn_error_t *error);
 svn_error_t *py_cancel_func(void *cancel_baton);
 apr_hash_t *config_hash_from_object(PyObject *config, apr_pool_t *pool);
+void PyErr_SetAprStatus(apr_status_t status);
 
 #pragma GCC visibility pop
 

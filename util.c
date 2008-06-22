@@ -30,17 +30,23 @@
 #define BZR_SVN_APR_ERROR_OFFSET (APR_OS_START_USERERR + \
 								  (50 * SVN_ERR_CATEGORY_SIZE))
 
+void PyErr_SetAprStatus(apr_status_t status)
+{
+    char errmsg[1024];
+
+	PyErr_SetString(PyExc_Exception, 
+		apr_strerror(status, errmsg, sizeof(errmsg)));
+}
+
 
 apr_pool_t *Pool(apr_pool_t *parent)
 {
     apr_status_t status;
     apr_pool_t *ret;
-    char errmsg[1024];
     ret = NULL;
     status = apr_pool_create(&ret, parent);
     if (status != 0) {
-        PyErr_SetString(PyExc_Exception, 
-						apr_strerror(status, errmsg, sizeof(errmsg)));
+		PyErr_SetAprStatus(status);
 		return NULL;
 	}
     return ret;
