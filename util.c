@@ -24,6 +24,7 @@
 #include <apr_errno.h>
 #include <svn_error_codes.h>
 #include <svn_config.h>
+#include <svn_version.h>
 
 #include "util.h"
 
@@ -83,6 +84,11 @@ bool check_error(svn_error_t *error)
 	if (error->apr_err == BZR_SVN_APR_ERROR_OFFSET)
 		return false; /* Just let Python deal with it */
 
+	if (error->apr_err == SVN_ERR_RA_NOT_IMPLEMENTED) {
+		PyErr_SetString(PyExc_NotImplementedError, error->message);
+		return false;
+	}
+
 	PyErr_SetSubversionException(error);
 	return false;
 }
@@ -140,13 +146,13 @@ PyObject *prop_hash_to_dict(apr_hash_t *props)
     return py_props;
 }
 
-svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long revision, const char *author, const char *date, const char *message, apr_pool_t *pool)
+static PyObject *pyify_changed_paths(apr_hash_t *changed_paths, apr_pool_t *pool)
 {
+	PyObject *py_changed_paths;
     apr_hash_index_t *idx;
     const char *key;
     apr_ssize_t klen;
     svn_log_changed_path_t *val;
-	PyObject *revprops, *py_changed_paths, *ret;
 
     if (changed_paths == NULL) {
         py_changed_paths = Py_None;
@@ -160,6 +166,50 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long rev
                                          val->copyfrom_rev));
 		}
 	}
+
+	return py_changed_paths;
+}
+
+#if SVN_VER_MAJOR == 1 && SVN_VER_MINOR >= 5
+svn_error_t *py_svn_log_entry_receiver(void *baton, svn_log_entry_t *log_entry, apr_pool_t *pool)
+{
+	PyObject *revprops, *py_changed_paths, *ret;
+    apr_hash_index_t *idx;
+    const char *key;
+    apr_ssize_t klen;
+	char *val;
+
+	py_changed_paths = pyify_changed_paths(log_entry->changed_paths, pool);
+	if (py_changed_paths == NULL)
+		return py_svn_error();
+
+	revprops = PyDict_New();
+	if (log_entry->revprops != NULL) {
+		 for (idx = apr_hash_first(pool, log_entry->revprops); idx != NULL;
+             idx = apr_hash_next(idx)) {
+            apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
+			PyDict_SetItemString(revprops, key, PyString_FromString(val));
+		}
+	}
+
+    ret = PyObject_CallFunction((PyObject *)baton, "OlOb", py_changed_paths, 
+								 log_entry->revision, revprops, log_entry->has_children);
+	Py_DECREF(py_changed_paths);
+	Py_DECREF(revprops);
+	if (ret == NULL)
+		return py_svn_error();
+	return NULL;
+}
+#endif
+
+svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long revision, const char *author, const char *date, const char *message, apr_pool_t *pool)
+{
+	PyObject *revprops, *py_changed_paths, *ret;
+
+	py_changed_paths = pyify_changed_paths(changed_paths, pool);
+	if (py_changed_paths == NULL)
+		return py_svn_error();
+
     revprops = PyDict_New();
     if (message != NULL) {
         PyDict_SetItemString(revprops, SVN_PROP_REVISION_LOG, 
@@ -173,8 +223,10 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long rev
         PyDict_SetItemString(revprops, SVN_PROP_REVISION_DATE, 
 							 PyString_FromString(date));
 	}
-    ret = PyObject_CallFunction((PyObject *)baton, "OlO", py_changed_paths, 
-								 revision, revprops);
+    ret = PyObject_CallFunction((PyObject *)baton, "OlOb", py_changed_paths, 
+								 revision, revprops, FALSE);
+	Py_DECREF(py_changed_paths);
+	Py_DECREF(revprops);
 	if (ret == NULL)
 		return py_svn_error();
 	return NULL;

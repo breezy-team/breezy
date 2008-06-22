@@ -379,7 +379,7 @@ static PyObject *adm_get_prop_diffs(PyObject *self, PyObject *args)
 	}
 	py_orig_props = prop_hash_to_dict(original_props);
 	apr_pool_destroy(temp_pool);
-	return Py_BuildValue("(OO)", py_propchanges, py_orig_props);
+	return Py_BuildValue("(NN)", py_propchanges, py_orig_props);
 }
 
 static PyObject *adm_add(PyObject *self, PyObject *args)

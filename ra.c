@@ -349,6 +349,8 @@ static svn_error_t *py_txdelta_window_handler(svn_txdelta_window_t *window, void
 	}
 	py_window = Py_BuildValue("((LIIiOO))", window->sview_offset, window->sview_len, window->tview_len, 
 								window->src_ops, ops, py_new_data);
+	Py_DECREF(ops);
+	Py_DECREF(py_new_data);
 	ret = PyObject_CallFunction(fn, "O", py_window);
 	Py_DECREF(py_window);
 	if (ret == NULL)
@@ -723,16 +725,17 @@ static PyObject *ra_get_log(PyObject *self, PyObject *args, PyObject *kwargs)
 	PyObject *callback, *paths;
 	svn_revnum_t start = 0, end = 0;
 	int limit=0; 
-	bool discover_changed_paths=false, strict_node_history=true;
+	bool discover_changed_paths=false, strict_node_history=true,include_merged_revisions=false;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
 	PyObject *revprops = Py_None;
     apr_pool_t *temp_pool;
 	apr_array_header_t *apr_paths;
+	apr_array_header_t *apr_revprops;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOll|ibbO:get_log", kwnames, 
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOll|ibbbO:get_log", kwnames, 
 						 &callback, &paths, &start, &end, &limit,
 						 &discover_changed_paths, &strict_node_history,
-						 &revprops))
+						 &include_merged_revisions, &revprops))
 		return NULL;
 
 	if (ra_check_busy(ra))
@@ -750,10 +753,53 @@ static PyObject *ra_get_log(PyObject *self, PyObject *args, PyObject *kwargs)
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
+
+#if SVN_VER_MAJOR <= 1 && SVN_VER_MINOR < 5
+	if (revprops == NULL) {
+		PyErr_SetString(PyExc_NotImplementedError, "fetching all revision properties not supported");	
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	} else {
+		int i;
+		for (i = 0; i < PyList_Size(revprops); i++) {
+			const char *n = PyString_AsString(PyList_GetItem(revprops, i));
+			if (strcmp(SVN_PROP_REVISION_LOG, n) && 
+				strcmp(SVN_PROP_REVISION_AUTHOR, n) &&
+				strcmp(SVN_PROP_REVISION_DATE, n)) {
+				PyErr_SetString(PyExc_NotImplementedError, 
+								"fetching custom revision properties not supported");	
+				apr_pool_destroy(temp_pool);
+				return NULL;
+			}
+		}
+	}
+
+	if (include_merged_revisions) {
+		PyErr_SetString(PyExc_NotImplementedError, "include_merged_revisions not supported in Subversion 1.4");
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	}
+#endif
+
+	if (!string_list_to_apr_array(temp_pool, revprops, &apr_revprops)) {
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	}
+
+#if SVN_VER_MAJOR == 1 && SVN_VER_MINOR >= 5
+	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_get_log2(ra->ra, 
+            apr_paths, start, end, limit,
+            discover_changed_paths, strict_node_history, 
+			include_merged_revisions,
+			apr_revprops,
+			py_svn_log_entry_receiver, 
+            callback, temp_pool));
+#else
 	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_get_log(ra->ra, 
             apr_paths, start, end, limit,
             discover_changed_paths, strict_node_history, py_svn_log_wrapper, 
             callback, temp_pool));
+#endif
     apr_pool_destroy(temp_pool);
 	Py_RETURN_NONE;
 }
@@ -1063,7 +1109,7 @@ static PyObject *ra_get_dir(PyObject *self, PyObject *args)
 
 	py_props = prop_hash_to_dict(props);
 	apr_pool_destroy(temp_pool);
-	return Py_BuildValue("(OlO)", py_dirents, fetch_rev, py_props);
+	return Py_BuildValue("(NlN)", py_dirents, fetch_rev, py_props);
 }
 
 static PyObject *ra_get_lock(PyObject *self, PyObject *args)
@@ -1671,6 +1717,7 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 	}
 
 	ret = PyObject_CallFunction(fn, "slOb", realm, failures, py_cert, may_save);
+	Py_DECREF(py_cert);
 	if (ret == NULL)
 		return py_svn_error();
 

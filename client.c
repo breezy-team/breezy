@@ -95,7 +95,7 @@ static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
 		else
 			copyfrom = Py_None;
 
-		item = Py_BuildValue("(szlOi)", 
+		item = Py_BuildValue("(szlNi)", 
 							 /* commit_item->path */ "foo",
 							 commit_item->url, commit_item->revision, 
 							 copyfrom,

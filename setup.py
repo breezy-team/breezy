@@ -20,7 +20,7 @@ def apr_build_data():
 
 def svn_build_data():
     """Determine the Subversion header file location."""
-    basedirs = ["/usr", "/usr/local", "/usr"]
+    basedirs = ["/usr/local", "/usr"]
     for basedir in basedirs:
         includedir = os.path.join(basedir, "include/subversion-1")
         if os.path.isdir(includedir):
