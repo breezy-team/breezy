@@ -849,7 +849,7 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		NULL };
 	PyObject *revprops, *commit_callback = Py_None, *lock_tokens = Py_None;
 	bool keep_locks = false;
-	apr_pool_t *temp_pool, *pool;
+	apr_pool_t *pool;
 	const svn_delta_editor_t *editor;
 	void *edit_baton;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
@@ -858,15 +858,15 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOb", kwnames, &revprops, &commit_callback, &lock_tokens, &keep_locks))
 		return NULL;
 
-	temp_pool = Pool();
-	if (temp_pool == NULL)
+	pool = Pool();
+	if (pool == NULL)
 		return NULL;
 	if (lock_tokens == Py_None) {
 		hash_lock_tokens = NULL;
 	} else {
 		Py_ssize_t idx = 0;
 		PyObject *k, *v;
-		hash_lock_tokens = apr_hash_make(temp_pool);
+		hash_lock_tokens = apr_hash_make(pool);
 		while (PyDict_Next(lock_tokens, &idx, &k, &v)) {
 			apr_hash_set(hash_lock_tokens, PyString_AsString(k), 
 						 PyString_Size(k), PyString_AsString(v));
@@ -874,14 +874,10 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	}
 
 	if (!PyDict_Check(revprops)) {
-		apr_pool_destroy(temp_pool);
+		apr_pool_destroy(pool);
 		PyErr_SetString(PyExc_TypeError, "Expected dictionary with revision properties");
 		return NULL;
 	}
-
-	pool = Pool();
-	if (pool == NULL)
-		return NULL;
 
 	if (ra_check_busy(ra))
 		return NULL;
@@ -891,11 +887,9 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		PyString_AsString(PyDict_GetItemString(revprops, SVN_PROP_REVISION_LOG)), py_commit_callback, 
 		commit_callback, hash_lock_tokens, keep_locks, pool))) {
 		apr_pool_destroy(pool);
-		apr_pool_destroy(temp_pool);
 		ra->busy = false;
 		return NULL;
 	}
-	apr_pool_destroy(temp_pool);
 	return new_editor_object(editor, edit_baton, pool, 
 								  &Editor_Type, ra_done_handler, ra);
 }
