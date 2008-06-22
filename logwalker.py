@@ -400,7 +400,7 @@ class LogWalker(object):
         finally:
             self._transport.connections.add(conn)
 
-        class DirTreeLister:
+        class DirTreeLister(object):
             def __init__(self, tree, path):
                 self.tree = tree
                 self.path = path
@@ -420,7 +420,7 @@ class LogWalker(object):
                 self.tree.files.append(urlutils.join(self.tree.base, path))
                 return None
 
-        class TreeLister:
+        class TreeLister(object):
             def __init__(self, base):
                 self.files = []
                 self.base = base

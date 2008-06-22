@@ -15,7 +15,7 @@
 
 from bzrlib.errors import NotBranchError
 
-class RepositoryLayout:
+class RepositoryLayout(object):
     """Describes a repository layout."""
     def get_tag_path(self, name, project=""):
         """Return the path at which the tag with specified name should be found.
