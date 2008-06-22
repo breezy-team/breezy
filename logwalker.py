@@ -262,32 +262,32 @@ class CachingLogWalker(CacheTable):
 
         pb = ui.ui_factory.nested_progress_bar()
 
+        def rcvr(orig_paths, revision, revprops):
+            pb.update('fetching svn revision info', revision, to_revnum)
+            if orig_paths is None:
+                orig_paths = {}
+            for p in orig_paths:
+                copyfrom_path = orig_paths[p][1]
+                if copyfrom_path is not None:
+                    copyfrom_path = copyfrom_path.strip("/")
+
+                self.cachedb.execute(
+                     "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
+                     (revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2]))
+            self.saved_revnum = revision
+            if self.saved_revnum % 1000 == 0:
+                self.cachedb.commit()
+
         try:
             try:
-                for (orig_paths, revision, revprops) in self.actual._transport.iter_log(None, self.saved_revnum, 
-                                         to_revnum, 0, True, 
-                                         True, []):
-                    pb.update('fetching svn revision info', revision, to_revnum)
-                    if orig_paths is None:
-                        orig_paths = {}
-                    for p in orig_paths:
-                        copyfrom_path = orig_paths[p][1]
-                        if copyfrom_path is not None:
-                            copyfrom_path = copyfrom_path.strip("/")
-
-                        self.cachedb.execute(
-                             "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                             (revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2]))
-                    self.saved_revnum = revision
-                    if self.saved_revnum % 1000 == 0:
-                        self.cachedb.commit()
-            finally:
-                pb.finished()
-        except SubversionException, (_, num):
-            if num == ERR_FS_NO_SUCH_REVISION:
-                raise NoSuchRevision(branch=self, 
-                    revision="Revision number %d" % to_revnum)
-            raise
+                self.actual._transport.get_log(rcvr, None, self.saved_revnum, to_revnum, 0, True, True, [])
+            except SubversionException, (_, num):
+                if num == ERR_FS_NO_SUCH_REVISION:
+                    raise NoSuchRevision(branch=self, 
+                        revision="Revision number %d" % to_revnum)
+                raise
+        finally:
+            pb.finished()
         self.cachedb.commit()
 
 
