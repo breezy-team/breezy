@@ -150,7 +150,7 @@ def parse_svn_revprops(svn_revprops, rev):
             pass
 
     if svn_revprops.has_key(properties.PROP_REVISION_DATE):
-        rev.timestamp = core.time_from_cstring(svn_revprops[properties.PROP_REVISION_DATE]) / 1000000.0
+        rev.timestamp = properties.time_from_cstring(svn_revprops[properties.PROP_REVISION_DATE]) / 1000000.0
     else:
         rev.timestamp = 0.0 # FIXME: Obtain repository creation time
     rev.timezone = None

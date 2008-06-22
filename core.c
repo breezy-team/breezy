@@ -27,48 +27,10 @@
 
 #include "util.h"
 
-/** Parse a Subversion time string and return a UNIX timestamp. */
-static PyObject *time_from_cstring(PyObject *self, PyObject *args)
-{
-    apr_time_t when;
-    apr_pool_t *pool;
-	char *data;
-
-	if (!PyArg_ParseTuple(args, "s", &data))
-		return NULL;
-
-    pool = Pool(NULL);
-	if (pool == NULL)
-		return NULL;
-    RUN_SVN_WITH_POOL(pool, svn_time_from_cstring(&when, data, pool));
-    apr_pool_destroy(pool);
-    return PyLong_FromLongLong(when);
-}
-
-typedef struct {
-	PyObject_HEAD
-	svn_config_t *item;
-} ConfigObject;
-
-PyTypeObject Config_Type = {
-	PyObject_HEAD_INIT(NULL) 0,
-	.tp_name = "core.Config",
-	.tp_basicsize = sizeof(ConfigObject),
-	.tp_dealloc = (destructor)PyObject_Del,
-};
-
-static PyMethodDef core_methods[] = {
-	{ "time_from_cstring", time_from_cstring, METH_VARARGS, NULL },
-	{ NULL, }
-};
-
 void initcore(void)
 {
 	static apr_pool_t *pool;
 	PyObject *mod;
-
-	if (PyType_Ready(&Config_Type) < 0)
-		return;
 
 	apr_initialize();
 	pool = Pool(NULL);
@@ -76,7 +38,7 @@ void initcore(void)
 		return;
 	svn_utf_initialize(pool);
 
-	mod = Py_InitModule3("core", core_methods, "Core functions");
+	mod = Py_InitModule3("core", NULL, "Core functions");
 	if (mod == NULL)
 		return;
 
