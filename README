@@ -165,17 +165,13 @@ SQLite
 
 If you are using Python 2.4, you will need to have the pysqlite module installed. Python 2.5 and higher have sqlite support built in. 
 
-Python-Subversion >= 1.5
-~~~~~~~~~~~~~~~~~~~~~~~~
+Subversion development files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You need the Subversion libraries, including the development files. This should
+be readily packaged for most platforms. The package name for Debian 
+and Debian-based distributions is ``libsvn-dev``.
  
-You also need a fairly recent version of the official Python bindings to the 
-Subversion libraries. At the moment, the svn plugin only works with 
-Subversion 1.5. The python-subversion (not python-svn!) package 
-in Ubuntu since Feisty and Debian since Etch also contain the 
-required changes. 
-
-The plugin requires a couple of fixes to the Python bindings for Subversion that are only available in Subversion 1.5 and higher. Subversion 1.5 has not been released yet, but packages with the appropriate patches applied to older versions are available for some platforms.
-
 bzr-rebase
 ~~~~~~~~~~
 
@@ -198,7 +194,7 @@ Installation
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr. Make sure the directory 
-name is 'svn'.
+name is 'svn'. The plugin has to be built as well by running ``make``.
 
 Development
 -----------
