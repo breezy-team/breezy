@@ -257,8 +257,13 @@ class CachingLogWalker(CacheTable):
 
         self.fetch_revisions(revnum)
 
-        has_all_revprops = self.cachedb.execute("SELECT all_revprops FROM revinfo WHERE rev=?", (revnum,)).fetchone()[0]
-        known_revprops = dict(self.cachedb.execute("select name, value from revprop where rev="+str(revnum)))
+        if revnum > 0:
+            has_all_revprops = self.cachedb.execute("SELECT all_revprops FROM revinfo WHERE rev=?", (revnum,)).fetchone()[0]
+            known_revprops = dict(self.cachedb.execute("select name, value from revprop where rev="+str(revnum)))
+        else:
+            has_all_revprops = False
+            known_revprops = {}
+
         if has_all_revprops:
             return known_revprops
 
