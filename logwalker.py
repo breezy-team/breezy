@@ -346,12 +346,10 @@ class LogWalker(object):
 
         try:
             # Subversion 1.4 clients and servers can only deliver a limited set of revprops
-            todo_revprops = ["svn:author", "svn:log", "svn:date"]
-            try:
-                if self._transport.has_capability("log-revprops"):
-                    todo_revprops = None
-            except NotImplementedError:
-                pass
+            if self._transport.has_capability("log-revprops"):
+                todo_revprops = None
+            else:
+                todo_revprops = ["svn:author", "svn:log", "svn:date"]
 
             iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
                                                     True, False, False, revprops=todo_revprops)

@@ -449,11 +449,11 @@ class SvnCommitBuilder(RootCommitBuilder):
             for prop in self._svn_revprops:
                 if not properties.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name", prop)
-            try:
+            if self.repository.transport.has_capability("commit-revprops"):
                 self.editor = self.repository.transport.get_commit_editor(
                         self._svn_revprops, done, None, False)
                 self._svn_revprops = {}
-            except NotImplementedError:
+            else:
                 if set_revprops:
                     raise
                 # Try without bzr: revprops

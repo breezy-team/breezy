@@ -394,7 +394,10 @@ class SvnRaTransport(Transport):
         conn = self.get_connection()
         self.mutter('svn has-capability %s' % (cap,))
         try:
-            self.capabilities[cap] = conn.has_capability(cap)
+            try:
+                self.capabilities[cap] = conn.has_capability(cap)
+            except NotImplementedError:
+                self.capabilities[cap] = False # Assume the worst
             return self.capabilities[cap]
         finally:
             self.add_connection(conn)
