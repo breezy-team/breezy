@@ -92,7 +92,7 @@ class cmd_upload(commands.Command):
         changes = wt.changes_from(wt.basis_tree())
 
         if revision is None and  changes.has_changed():
-                raise errors.UncommittedChanges(wt)
+            raise errors.UncommittedChanges(wt)
 
         self.branch = wt.branch
 
@@ -147,12 +147,17 @@ class cmd_upload(commands.Command):
     def get_uploaded_revid(self):
         return self.to_transport.get_bytes(self.bzr_upload_revid_file_name)
 
-    def upload_file(self, relpath, id):
+    def upload_file(self, relpath, id, mode=None):
+        if mode is None:
+            if self.tree.is_executable(id):
+                mode = 0775
+            else:
+                mode = 0664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % relpath)
-        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
+        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id), mode)
 
-    def upload_file_robustly(self, relpath, id):
+    def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.
 
         When doing a full upload, it may happen that a directory exists where
@@ -168,19 +173,19 @@ class cmd_upload(commands.Command):
                 self.to_transport.delete_tree(relpath)
         except errors.PathError:
             pass
-        self.upload_file(relpath, id)
+        self.upload_file(relpath, id, mode)
 
-    def make_remote_dir(self, relpath):
-        # XXX: handle mode
-        self.to_transport.mkdir(relpath)
+    def make_remote_dir(self, relpath, mode=None):
+        if mode is None:
+            mode = 0775
+        self.to_transport.mkdir(relpath, mode)
 
-    def make_remote_dir_robustly(self, relpath):
+    def make_remote_dir_robustly(self, relpath, mode=None):
         """Create a remote directory, clearing the way on the remote side.
 
         When doing a full upload, it may happen that a file exists where we
         want to create our directory.
         """
-        # XXX: handle mode
         try:
             st = self.to_transport.stat(relpath)
             if not stat.S_ISDIR(st.st_mode):
@@ -190,7 +195,8 @@ class cmd_upload(commands.Command):
                 self.to_transport.delete(relpath)
         except errors.PathError:
             pass
-        self.make_remote_dir(relpath)
+        # FIXME: Errr, what if the remote dir already exists ?
+        self.make_remote_dir(relpath, mode)
 
     def delete_remote_file(self, relpath):
         if not self.quiet:

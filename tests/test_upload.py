@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import stat
 import sys
 
 
@@ -143,6 +144,20 @@ class TestUploadMixin(object):
     def assertUpFileEqual(self, content, path, base=upload_dir):
         self.assertFileEqual(content, base + path)
 
+    def assertUpPathModeEqual(self, path, expected_mode, base=upload_dir):
+        # FIXME: the tests needing that assertion should depend on the server
+        # ability to handle chmod so that they don't fail (or be skipped)
+        # against servers that can't. Note that some bzrlib transports define
+        # _can_roundtrip_unix_modebits in a incomplete way, this property
+        # should depend on both the client and the server, not the client only.
+        st = os.stat(base + path)
+        mode = st.st_mode & 0777
+        if expected_mode == mode:
+            return
+        raise AssertionError(
+            'For path %s, mode is %s not %s' %
+            (base + path, oct(mode), oct(expected_mode)))
+
     def failIfUpFileExists(self, path, base=upload_dir):
         self.failIfExists(base + path)
 
@@ -164,6 +179,11 @@ class TestUploadMixin(object):
     def modify_file(self, name, content, base=branch_dir):
         self.set_file_content(name, content, base)
         self.tree.commit('modify file %s' % name)
+
+    def chmod_file(self, name, mode, base=branch_dir):
+        path = base + name
+        os.chmod(path, mode)
+        self.tree.commit('change file %s mode to %s' % (name, oct(mode)))
 
     def delete_any(self, name, base=branch_dir):
         self.tree.remove([name], keep_files=False)
@@ -236,6 +256,7 @@ class TestUploadMixin(object):
         self.do_upload()
 
         self.assertUpFileEqual('baz', 'dir/goodbye')
+        self.assertUpPathModeEqual('dir', 0775)
 
     def test_modify_file(self):
         self.make_local_branch()
@@ -338,6 +359,19 @@ class TestUploadMixin(object):
         self.do_upload()
 
         self.assertUpFileEqual('bar', 'hello')
+
+    def test_make_file_executable(self):
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.chmod_file('hello', 0664)
+        self.do_full_upload()
+        self.chmod_file('hello', 0755)
+
+        self.assertUpPathModeEqual('hello', 0664)
+
+        self.do_upload()
+
+        self.assertUpPathModeEqual('hello', 0775)
 
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
