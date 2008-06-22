@@ -381,6 +381,7 @@ def test_suite():
             'test_logwalker',
             'test_mapping',
             'test_push',
+            'test_ra',
             'test_radir',
             'test_repos', 
             'test_repository', 
