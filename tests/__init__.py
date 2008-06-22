@@ -243,7 +243,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
     def commit_editor(self, url, message="Test commit"):
         ra = RemoteAccess(url.encode('utf8'))
-        class CommitEditor:
+        class CommitEditor(object):
             def __init__(self, ra, editor, base_revnum, base_url):
                 self._used = False
                 self.ra = ra
