@@ -69,10 +69,9 @@ def check_subversion_version():
 
     """
     try:
-        from bzrlib.plugins.svn import core
+        from bzrlib.plugins.svn.ra import version
     except:
         warning("Unable to load bzr-svn extensions - did you build it?")
-    from bzrlib.plugins.svn.ra import version
     ra_version = version()
     if (ra_version[0] >= 5 and getattr(ra, 'SVN_REVISION', None) and 27729 <= ra.SVN_REVISION < 31470):
         warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
