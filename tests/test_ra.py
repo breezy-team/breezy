@@ -27,13 +27,16 @@ class VersionTest(TestCase):
 class TestRemoteAccess(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestRemoteAccess, self).setUp()
-        self.repos_url = self.make_client("d", "dc")
+        self.repos_url = self.make_repository("d")
         self.ra = ra.RemoteAccess(self.repos_url)
 
+    def commit_editor(self):
+        return self.get_commit_editor(self.repos_url)
+
     def do_commit(self):
-        self.build_tree({'dc/foo': None})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "msg")
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("foo")
+        dc.close()
 
     def test_repr(self):
         self.assertEquals("RemoteAccess(%s)" % self.repos_url,
@@ -112,6 +115,30 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         subdir.close()
         dir.close()
         editor.close()
+    
+    def test_get_file_revs(self):
+        cb = self.commit_editor()
+        cb.add_file("bar").modify("a")
+        cb.close()
+
+        cb = self.commit_editor()
+        f = cb.open_file("bar")
+        f.modify("b")
+        f.change_prop("bla", "bloe")
+        cb.close()
+        
+        rets = []
+
+        def handle(path, rev, props):
+            rets.append((path, rev, props))
+
+        self.ra.get_file_revs("bar", 1, 2, handle)
+
+        self.assertEquals(2, len(rets))
+        self.assertEquals(1, rets[0][1])
+        self.assertEquals(2, rets[1][1])
+        self.assertEquals("/bar", rets[0][0])
+        self.assertEquals("/bar", rets[1][0])
 
 
 class AuthTests(TestCase):
