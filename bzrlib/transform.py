@@ -34,8 +34,15 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.inventory import InventoryEntry
-from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
-                            delete_any, has_symlinks)
+from bzrlib.osutils import (
+    delete_any,
+    file_kind,
+    has_symlinks,
+    lexists,
+    pathjoin,
+    splitpath,
+    supports_executable,
+)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
@@ -1463,7 +1470,37 @@ class _PreviewTree(tree.Tree):
         return result
 
     def path2id(self, path):
-        return self._transform._tree.path2id(path)
+        by_parent = self._transform.by_parent()
+        segments = list(reversed(splitpath(path)))
+        cur_parent = self._transform.root
+        while len(segments) > 0:
+            cur_segment = segments.pop()
+            for child in by_parent.get(cur_parent, []):
+                if self._transform.final_name(child) == cur_segment:
+                    cur_parent = child
+                    break
+            else:
+                segments.append(cur_segment)
+                break
+        if len(segments) == 0:
+            return self._transform.final_file_id(cur_parent)
+        parent_path = self._transform._tree_id_paths[cur_parent]
+        tree_path = pathjoin(*reversed(segments + [parent_path]))
+        tree_file_id = self._transform._tree.path2id(tree_path)
+        cur_file_id = tree_file_id
+        cur_trans_id = self._transform._tree_path_ids.get(tree_path)
+        while cur_trans_id != cur_parent:
+            if cur_trans_id is not None:
+                # If there was an entry for this file, and the path was
+                # correct we would have handled it already.  So the path must
+                # be wrong.
+                if cur_trans_id in self._transform._new_parent:
+                    return None
+            cur_file_id = self._transform._tree.iter_entries_by_dir(
+                [cur_file_id]).next()[1].parent_id
+            tree_path = self._transform._tree.id2path(cur_file_id)
+            cur_trans_id = self._transform._tree_path_ids.get(tree_path)
+        return tree_file_id
 
     def id2path(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)

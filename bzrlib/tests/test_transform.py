@@ -2045,3 +2045,53 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree = preview.get_preview_tree()
         self.assertEqual(set(['a-id', 'c-id', tree.get_root_id()]),
                          preview_tree.all_file_ids())
+
+    def test_path2id_deleted_unchanged(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unchanged', 'tree/deleted'])
+        tree.add(['unchanged', 'deleted'], ['unchanged-id', 'deleted-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.unversion_file(preview.trans_id_file_id('deleted-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('unchanged-id', preview_tree.path2id('unchanged'))
+        self.assertIs(None, preview_tree.path2id('deleted'))
+
+    def test_path2id_created(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unchanged'])
+        tree.add(['unchanged'], ['unchanged-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('new', preview.trans_id_file_id('unchanged-id'),
+            'contents', 'new-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('new-id', preview_tree.path2id('unchanged/new'))
+
+    def test_path2id_moved(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/old_parent/', 'tree/old_parent/child'])
+        tree.add(['old_parent', 'old_parent/child'],
+                 ['old_parent-id', 'child-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        new_parent = preview.new_directory('new_parent', preview.root,
+                                           'new_parent-id')
+        preview.adjust_path('child', new_parent,
+                            preview.trans_id_file_id('child-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertIs(None, preview_tree.path2id('old_parent/child'))
+        self.assertEqual('child-id', preview_tree.path2id('new_parent/child'))
+
+    def test_path2id_renamed_parent(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/old_name/', 'tree/old_name/child'])
+        tree.add(['old_name', 'old_name/child'],
+                 ['parent-id', 'child-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.adjust_path('new_name', preview.root,
+                            preview.trans_id_file_id('parent-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertIs(None, preview_tree.path2id('old_name/child'))
+        self.assertEqual('child-id', preview_tree.path2id('new_name/child'))
