@@ -1025,16 +1025,30 @@ class KnitVersionedFiles(VersionedFiles):
         :return: A mapping from keys to parents. Absent keys are absent from
             the mapping.
         """
+        return self._get_parent_map(keys)[0]
+
+    def _get_parent_map(self, keys):
+        """Get a map of the parents of keys.
+
+        :param keys: The keys to look up parents for.
+        :return: A tuple. The first element is a mapping from keys to parents.
+            Absent keys are absent from the mapping. The second element is a
+            list with the locations each key was found in. The first element
+            is the in-this-knit parents, the second the first fallback source,
+            and so on.
+        """
         result = {}
         sources = [self._index] + self._fallback_vfs
+        source_results = []
         missing = set(keys)
         for source in sources:
             if not missing:
                 break
             new_result = source.get_parent_map(missing)
+            source_results.append(new_result)
             result.update(new_result)
             missing.difference_update(set(new_result))
-        return result
+        return result, source_results
 
     def _get_record_map(self, keys, allow_missing=False):
         """Produce a dictionary of knit records.
@@ -1079,6 +1093,8 @@ class KnitVersionedFiles(VersionedFiles):
         """
         # keys might be a generator
         keys = set(keys)
+        if not keys:
+            return
         if not self._index.has_graph:
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
@@ -1092,6 +1108,7 @@ class KnitVersionedFiles(VersionedFiles):
         # There may be more absent keys : if we're missing the basis component
         # and are trying to include the delta closure.
         if include_delta_closure:
+            needed_from_fallback = set()
             # key:True means key can be reconstructed
             checked_keys = {}
             for key in keys:
@@ -1099,7 +1116,7 @@ class KnitVersionedFiles(VersionedFiles):
                 try:
                     chain = [key, positions[key][2]]
                 except KeyError:
-                    absent_keys.add(key)
+                    needed_from_fallback.add(key)
                     continue
                 result = True
                 while chain[-1] is not None:
@@ -1116,33 +1133,64 @@ class KnitVersionedFiles(VersionedFiles):
                 for chain_key in chain[:-1]:
                     checked_keys[chain_key] = result
                 if not result:
-                    absent_keys.add(key)
+                    needed_from_fallback.add(key)
+        # Double index lookups here : need a unified api ?
+        global_map, parent_maps = self._get_parent_map(keys)
+        if ordering == 'topological':
+            # Global topological sort
+            present_keys = topo_sort(global_map)
+            # Now group by source:
+            source_keys = []
+            current_source = None
+            for key in present_keys:
+                for parent_map in parent_maps:
+                    if key in parent_map:
+                        key_source = parent_map
+                        break
+                if current_source is not key_source:
+                    source_keys.append((key_source, []))
+                    current_source = key_source
+                source_keys[-1][1].append(key)
+        else:
+            # Just group by source; remote sources first.
+            present_keys = []
+            source_keys = []
+            for parent_map in reversed(parent_maps):
+                source_keys.append((parent_map, []))
+                for key in parent_map:
+                    present_keys.append(key)
+                    source_keys[-1][1].append(key)
+        absent_keys = keys - set(global_map)
         for key in absent_keys:
             yield AbsentContentFactory(key)
         # restrict our view to the keys we can answer.
-        keys = keys - absent_keys
-        # Double index lookups here : need a unified api ?
-        parent_map = self.get_parent_map(keys)
-        if ordering == 'topological':
-            present_keys = topo_sort(parent_map)
-        else:
-            present_keys = keys
+        our_keys = parent_maps[0]
+        # keys - needed_from_fallback
+        # keys = keys - absent_keys
         # XXX: Memory: TODO: batch data here to cap buffered data at (say) 1MB.
-        # XXX: At that point we need to consider double reads by utilising
-        # components multiple times.
+        # XXX: At that point we need to consider the impact of double reads by
+        # utilising components multiple times.
         if include_delta_closure:
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
             text_map, _ = self._get_content_maps(present_keys)
             for key in present_keys:
-                yield FulltextContentFactory(key, parent_map[key], None,
+                yield FulltextContentFactory(key, global_map[key], None,
                     ''.join(text_map[key]))
         else:
-            records = [(key, positions[key][1]) for key in present_keys]
-            for key, raw_data, sha1 in self._read_records_iter_raw(records):
-                (record_details, index_memo, _) = positions[key]
-                yield KnitContentFactory(key, parent_map[key],
-                    record_details, sha1, raw_data, self._factory.annotated, None)
+            for source, keys in source_keys:
+                if source is parent_maps[0]:
+                    # this KnitVersionedFiles
+                    records = [(key, positions[key][1]) for key in keys]
+                    for key, raw_data, sha1 in self._read_records_iter_raw(records):
+                        (record_details, index_memo, _) = positions[key]
+                        yield KnitContentFactory(key, global_map[key],
+                            record_details, sha1, raw_data, self._factory.annotated, None)
+                else:
+                    vf = self._fallback_vfs[parent_maps.index(source) - 1]
+                    for record in vf.get_record_stream(keys, ordering,
+                        include_delta_closure):
+                        yield record
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
