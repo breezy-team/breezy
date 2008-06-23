@@ -200,7 +200,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             ('pygments/trunk', {'pygments': (u'A', 'pykleur', 1),
                                 'pygments/trunk': (u'R', 'pykleur/trunk', 2),
                                 'pykleur': (u'D', None, -1)}, 3),
-            ('pykleur/trunk', {'pykleur/trunk/pykleur/afile': (u'A', None, -1)}, 2),
             ('pykleur/trunk',
                     {'pykleur': (u'A', None, -1),
                      'pykleur/trunk': (u'A', None, -1),
@@ -209,7 +208,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             )
         else:
             self.assertEquals(
-               [('pygments/trunk', {'pygments': (u'A', 'pykleur', 1), 'pykleur': (u'D', None, -1)}, 3),
+               [
                 ('pykleur/trunk', {'pykleur': (u'A', None, -1), 
                                    'pykleur/trunk': (u'A', None, -1), 
                                    'pykleur/trunk/pykleur': (u'A', None, -1)}, 
@@ -1108,16 +1107,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         mapping = repos.get_mapping()
         self.assertEquals(repos.generate_revision_id(1, "py/trunk", mapping), \
                 repos.lhs_revision_parent("de/trunk", 3, mapping))
-
-    def test_mainline_revision_missing(self):
-        repos_url = self.make_client('d', 'dc')
-        repos = Repository.open(repos_url)
-        self.build_tree({'dc/py/trunk/adir/afile': "data", 
-                         'dc/py/trunk/adir/stationary': None})
-        self.client_add("dc/py")
-        self.client_commit("dc", "Initial commit")
-        self.assertRaises(NoSuchRevision, 
-                lambda: repos.lhs_revision_parent("trunk", 2, repos.get_mapping()))
 
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):

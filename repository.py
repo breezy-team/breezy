@@ -348,7 +348,8 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb, limit=limit):
+        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb, 
+                                                        limit=limit):
             yield revmeta.get_revision_id(mapping)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -408,33 +409,15 @@ class SvnRepository(Repository):
         assert isinstance(path, str)
         assert isinstance(revnum, int)
 
-        if not mapping.is_branch(path) and \
-           not mapping.is_tag(path):
-            raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, mapping))
-
-        # Make sure the specified revision actually exists
-        changes = self._log.get_revision_paths(revnum)
-        if not changes_path(changes, path):
-            # the specified revno should be changing the branch or 
-            # otherwise it is invalid
-            raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, mapping))
-
-        while True:
-            next = find_prev_location(changes, path, revnum)
-            if next is None:
-                break
-            (path, revnum) = next
-            changes = self._log.get_revision_paths(revnum)
-
-            if changes_path(changes, path):
-                revid = self.generate_revision_id(revnum, path, mapping)
-                if not mapping.is_branch(path) and \
-                   not mapping.is_tag(path):
-                       return NULL_REVISION
-                return revid
-        return NULL_REVISION
+        iterator = self.iter_reverse_branch_changes(path, revnum, mapping=mapping, 
+                                                    limit=2)
+        revmeta = iterator.next()
+        assert revmeta.branch_path == path
+        assert revmeta.revnum == revnum
+        try:
+            return iterator.next().get_revision_id(mapping)
+        except StopIteration:
+            return NULL_REVISION
 
     def get_parent_map(self, revids):
         parent_map = {}
@@ -488,7 +471,7 @@ class SvnRepository(Repository):
 
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
-        svn_revprops = self._log.revprop_list(revnum)
+        svn_revprops = self.transport.revprop_list(revnum)
         svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
 
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
@@ -578,8 +561,13 @@ class SvnRepository(Repository):
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
         bp = branch_path
+        i = 0
 
-        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb, limit=limit):
+        # Limit can't be passed on directly to LogWalker.iter_changes() 
+        # because we're skipping some revs
+        # TODO: Rather than fetching everything if limit == 2, maybe just 
+        # set specify an extra X revs just to be sure?
+        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb):
             assert bp is not None
             next = find_prev_location(paths, bp, revnum)
             assert revnum > 0 or bp == ""
@@ -595,7 +583,11 @@ class SvnRepository(Repository):
                 yield (bp, lazypaths, revnum, revprops)
                 return
                      
-            yield (bp, paths, revnum, revprops)
+            if changes_path(paths, bp, False):
+                yield (bp, paths, revnum, revprops)
+                i += 1
+                if limit != 0 and limit == i:
+                    break
 
             if next is None:
                 bp = None
