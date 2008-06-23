@@ -52,6 +52,8 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         """
         mutter("Obtaining username for SVN connection")
         username = self.get_user(self.scheme, host=self.host, path=self.path, realm=realm)
+        if username is None:
+            return None
         return (username, False)
 
     def get_svn_simple(self, realm, username, may_save):

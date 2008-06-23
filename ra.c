@@ -1664,18 +1664,38 @@ PyTypeObject Auth_Type = {
 static svn_error_t *py_username_prompt(svn_auth_cred_username_t **cred, void *baton, const char *realm, int may_save, apr_pool_t *pool)
 {
     PyObject *fn = (PyObject *)baton, *ret;
+	PyObject *py_username, *py_may_save;
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL)
 		return py_svn_error();
+
+	if (ret == Py_None)
+		return NULL;
 
 	if (!PyTuple_Check(ret)) {
 		PyErr_SetString(PyExc_TypeError, "expected tuple with username credentials");
 		return py_svn_error();
 	}
 
+	if (PyTuple_Size(ret) != 2) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple with username credentials to be size 2");
+		return py_svn_error();
+	}
+
+	py_may_save = PyTuple_GetItem(ret, 1);
+	if (!PyBool_Check(py_may_save)) {
+		PyErr_SetString(PyExc_TypeError, "may_save should be boolean");
+		return py_svn_error();
+	}
+	py_username = PyTuple_GetItem(ret, 0);
+	if (!PyString_Check(py_username)) {
+		PyErr_SetString(PyExc_TypeError, "username hsould be string");
+		return py_svn_error();
+	}
+
 	*cred = apr_pcalloc(pool, sizeof(**cred));
-	(*cred)->username = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
-	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
+	(*cred)->username = apr_pstrdup(pool, PyString_AsString(py_username));
+	(*cred)->may_save = (py_may_save == Py_True);
     return NULL;
 }
 
