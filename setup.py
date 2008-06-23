@@ -58,7 +58,7 @@ setup(name='bzr-svn',
                 'bzrlib.plugins.svn.tests'],
       ext_modules=[
           SvnExtension("client", ["client.c", "editor.c", "util.c", "ra.c", "wc.c"], libraries=["svn_client-1"]), 
-          SvnExtension("ra", ["ra.c", "util.c", "editor.c"], libraries=["svn_ra-1"]),
+          SvnExtension("ra", ["ra.c", "util.c", "editor.c"], libraries=["svn_ra-1", "svn_delta-1"]),
           SvnExtension("repos", ["repos.c", "util.c"], libraries=["svn_repos-1"]),
           SvnExtension("wc", ["wc.c", "util.c", "editor.c"], libraries=["svn_wc-1"]),
           ]
