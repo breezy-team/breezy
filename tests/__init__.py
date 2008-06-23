@@ -315,13 +315,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         self.make_checkout(repos_url, clientpath)
         return repos_url
 
-    def dumpfile(self, repos):
-        """Create a dumpfile for the specified repository.
-
-        :return: File name of the dumpfile.
-        """
-        raise NotImplementedError(self.dumpfile)
-
     def open_fs(self, relpath):
         """Open a fs.
 
@@ -333,117 +326,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         ra = RemoteAccess(url.encode("utf-8"))
         revnum = ra.get_latest_revnum()
         return TestCommitEditor(ra.get_commit_editor({"svn:log": message}), ra.url, revnum)
-
-    def commit_editor(self, url, message="Test commit"):
-        ra = RemoteAccess(url.encode('utf8'))
-        class CommitEditor(object):
-            def __init__(self, ra, editor, base_revnum, base_url):
-                self._used = False
-                self.ra = ra
-                self.base_revnum = base_revnum
-                self.editor = editor
-                self.data = {}
-                self.create = set()
-                self.props = {}
-                self.copyfrom = {}
-                self.base_url = base_url
-
-            def _parts(self, path):
-                return path.strip("/").split("/")
-
-            def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
-                self.create.add(path)
-                if copyfrom_path is not None:
-                    if copyfrom_rev == -1:
-                        copyfrom_rev = self.base_revnum
-                    copyfrom_path = os.path.join(self.base_url, copyfrom_path)
-                self.copyfrom[path] = (copyfrom_path, copyfrom_rev)
-                self.open_dir(path)
-
-            def open_dir(self, path):
-                x = self.data
-                for p in self._parts(path):
-                    if not p in x:
-                        x[p] = {}
-                    x = x[p]
-                return x
-
-            def add_file(self, path, contents=None):
-                self.create.add(path)
-                self.change_file(path, contents)
-                
-            def change_file(self, path, contents=None):
-                parts = self._parts(path)
-                x = self.open_dir("/".join(parts[:-1]))
-                if contents is None:
-                    contents = osutils.rand_chars(100)
-                x[parts[-1]] = contents
-
-            def delete(self, path):
-                parts = self._parts(path)
-                x = self.open_dir("/".join(parts[:-1]))
-                x[parts[-1]] = None
-                
-            def change_dir_prop(self, path, propname, propval):
-                self.open_dir(path)
-                if not path in self.props:
-                    self.props[path] = {}
-                self.props[path][propname] = propval
-
-            def change_file_prop(self, path, propname, propval):
-                parts = self._parts(path)
-                x = self.open_dir("/".join(parts[:-1]))
-                x[parts[-1]] = ()
-                if not path in self.props:
-                    self.props[path] = {}
-                self.props[path][propname] = propval
-
-            def _process_dir(self, dir_baton, dir_dict, path):
-                for name, contents in dir_dict.items():
-                    subpath = urlutils.join(path, name).strip("/")
-                    if contents is None:
-                        dir_baton.delete_entry(subpath, -1)
-                    elif isinstance(contents, dict):
-                        if subpath in self.create:
-                            child_baton = dir_baton.add_directory(subpath, self.copyfrom[subpath][0], self.copyfrom[subpath][1])
-                        else:
-                            child_baton = dir_baton.open_directory(subpath, -1)
-                        if subpath in self.props:
-                            for k, v in self.props[subpath].items():
-                                child_baton.change_prop(k, v)
-
-                        self._process_dir(child_baton, dir_dict[name], subpath)
-
-                        child_baton.close()
-                    else:
-                        if subpath in self.create:
-                            child_baton = dir_baton.add_file(subpath, None, -1)
-                        else:
-                            child_baton = dir_baton.open_file(subpath)
-                        if isinstance(contents, str):
-                            txdelta = child_baton.apply_textdelta()
-                            txdelta_send_stream(StringIO(contents), txdelta)
-                        if subpath in self.props:
-                            for k, v in self.props[subpath].items():
-                                child_baton.change_prop(k, v)
-                        child_baton.close()
-
-            def done(self):
-                assert self._used == False
-                self._used = True
-                root_baton = self.editor.open_root(self.base_revnum)
-                self._process_dir(root_baton, self.data, "")
-                root_baton.close()
-                self.editor.close()
-
-                my_revnum = ra.get_latest_revnum()
-                assert my_revnum > self.base_revnum
-
-                return my_revnum
-
-        base_revnum = ra.get_latest_revnum()
-        editor = ra.get_commit_editor({"svn:log": message})
-        return CommitEditor(ra, editor, base_revnum, url)
 
 
 def test_suite():

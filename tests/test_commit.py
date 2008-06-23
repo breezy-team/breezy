@@ -579,9 +579,9 @@ class RevpropTests(TestCaseWithSubversionRepository):
     def test_change_revprops(self):
         repos_url = self.make_repository("d")
 
-        dc = self.commit_editor(repos_url, message="My commit")
-        dc.add_file("foo.txt")
-        dc.done()
+        dc = self.get_commit_editor(repos_url, message="My commit")
+        dc.add_file("foo.txt").modify()
+        dc.close()
 
         transport = SvnRaTransport(repos_url)
         set_svn_revprops(transport, 1, {"svn:author": "Somebody", 
@@ -593,9 +593,9 @@ class RevpropTests(TestCaseWithSubversionRepository):
     def test_change_revprops_disallowed(self):
         repos_url = self.make_repository("d", allow_revprop_changes=False)
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo.txt")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo.txt").modify()
+        dc.close()
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
