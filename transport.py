@@ -234,8 +234,9 @@ class SvnRaTransport(Transport):
                 self.args = args
                 self.kwargs = kwargs
                 self.pending = []
-                self.conn = None
+                self.conn = self.transport.get_connection()
                 self.semaphore = Semaphore(0)
+                self.busy = False
 
             def next(self):
                 self.semaphore.acquire()
@@ -248,11 +249,11 @@ class SvnRaTransport(Transport):
                 return ret
 
             def run(self):
-                assert self.conn is None, "already running"
+                assert not self.busy, "already running"
+                self.busy = True
                 def rcvr(*args):
                     self.pending.append(args)
                     self.semaphore.release()
-                self.conn = self.transport.get_connection()
                 try:
                     self.conn.get_log(callback=rcvr, *self.args, **self.kwargs)
                     self.pending.append(None)
