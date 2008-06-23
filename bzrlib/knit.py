@@ -895,7 +895,11 @@ class KnitVersionedFiles(VersionedFiles):
         fulltext_size = None
         for count in xrange(self._max_delta_chain):
             # XXX: Collapse these two queries:
-            method = self._index.get_method(parent)
+            try:
+                method = self._index.get_method(parent)
+            except RevisionNotPresent:
+                # Some basis is not locally present: always delta
+                return False
             index, pos, size = self._index.get_position(parent)
             if method == 'fulltext':
                 fulltext_size = size
@@ -1832,7 +1836,10 @@ class _KndxIndex(object):
         """
         prefix, suffix = self._split_key(key)
         self._load_prefixes([prefix])
-        return self._kndx_cache[prefix][0][suffix][1]
+        try:
+            return self._kndx_cache[prefix][0][suffix][1]
+        except KeyError:
+            raise RevisionNotPresent(key, self)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.

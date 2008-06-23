@@ -1395,7 +1395,26 @@ class TestStacking(KnitTests):
         test.add_fallback_versioned_files(basis)
 
     def test_add_lines(self):
-        pass
+        # lines added to the test are not added to the basis
+        basis, test = self.get_basis_and_test_knit()
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_cross_border = ('quux',)
+        key_delta = ('zaphod',)
+        test.add_lines(key, (), ['foo\n'])
+        self.assertEqual({}, basis.get_parent_map([key]))
+        # lines added to the test that reference across the stack do a
+        # fulltext.
+        basis.add_lines(key_basis, (), ['foo\n'])
+        basis.calls = []
+        test.add_lines(key_cross_border, (key_basis,), ['foo\n'])
+        self.assertEqual('fulltext', test._index.get_method(key_cross_border))
+        self.assertEqual([("get_parent_map", set([key_basis]))], basis.calls)
+        basis.calls = []
+        # Subsequent adds do delta.
+        test.add_lines(key_delta, (key_cross_border,), ['foo\n'])
+        self.assertEqual('line-delta', test._index.get_method(key_delta))
+        self.assertEqual([], basis.calls)
 
     def test_annotate(self):
         # annotations from the test knit are answered without asking the basis
