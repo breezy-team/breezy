@@ -56,6 +56,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * New function for finding path children that's faster and more correct. (#240954)
 
+   * Support cloning bzr-svn branches (will clone to rich-root-pack). (#229819)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
