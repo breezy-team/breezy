@@ -41,11 +41,11 @@ class RebasePlanReadWriterTests(TestCase):
 1 bla
 oldrev newrev newparent1 newparent2
 """, marshall_rebase_plan((1, "bla"), 
-                          {"oldrev": ("newrev", ["newparent1", "newparent2"])}))
+                          {"oldrev": ("newrev", ("newparent1", "newparent2"))}))
 
     def test_simple_unmarshall_rebase_plan(self):
         self.assertEquals(((1, "bla"), 
-                          {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
+                          {"oldrev": ("newrev", ("newparent1", "newparent2"))}),
                          unmarshall_rebase_plan("""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
@@ -293,7 +293,7 @@ oldrev newrev newparent1 newparent2
 oldrev newrev newparent1 newparent2
 """)
         self.assertEquals(((1, "bla"), 
-            {"oldrev": ("newrev", ["newparent1", "newparent2"])}),
+            {"oldrev": ("newrev", ("newparent1", "newparent2"))}),
             read_rebase_plan(wt))
 
 

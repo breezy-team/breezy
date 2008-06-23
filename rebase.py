@@ -110,7 +110,7 @@ def unmarshall_rebase_plan(text):
             # Skip empty lines
             continue
         pts = l.split(" ")
-        replace_map[pts[0]] = (pts[1], pts[2:])
+        replace_map[pts[0]] = (pts[1], tuple(pts[2:]))
     return (last_revision_info, replace_map)
 
 
