@@ -89,6 +89,28 @@ default_build_dir = '../build-area'
 default_orig_dir = '../tarballs'
 
 
+def debuild_config(tree, working_tree, no_user_config):
+  """Obtain the Debuild configuration object.
+
+  :param tree: A Tree object, can be a WorkingTree or RevisionTree.
+  :param working_tree: Whether the tree is a working tree.
+  :param no_user_config: Whether to skip the user configuration
+  """
+  config_files = []
+  user_config = None
+  if (working_tree and 
+      tree.has_filename(local_conf) and tree.path2id(local_conf) is None):
+    config_files.append((tree.get_file_byname(local_conf), True))
+  if not no_user_config:
+    config_files.append((global_conf, True))
+    user_config = global_conf
+  if tree.path2id(default_conf):
+    config_files.append((tree.get_file(tree.path2id(default_conf)), False))
+  config = DebBuildConfig(config_files)
+  config.set_user_config(user_config)
+  return config
+
+
 class cmd_builddeb(Command):
   """Builds a Debian package from a branch.
 
@@ -201,18 +223,7 @@ class cmd_builddeb(Command):
       tree = branch.repository.revision_tree(revid)
       working_tree = False
 
-    config_files = []
-    user_config = None
-    if (working_tree and 
-        tree.has_filename(local_conf) and tree.path2id(local_conf) is None):
-      config_files.append((tree.get_file_byname(local_conf), True))
-    if not no_user_config:
-      config_files.append((global_conf, True))
-      user_config = global_conf
-    if tree.path2id(default_conf):
-      config_files.append((tree.get_file(tree.path2id(default_conf)), False))
-    config = DebBuildConfig(config_files)
-    config.set_user_config(user_config)
+    config = debuild_config(tree, working_tree, no_user_config)
 
     if reuse:
       info("Reusing existing build dir")
