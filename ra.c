@@ -1718,6 +1718,7 @@ static PyObject *get_username_prompt_provider(PyObject *self, PyObject *args)
 static svn_error_t *py_simple_prompt(svn_auth_cred_simple_t **cred, void *baton, const char *realm, const char *username, int may_save, apr_pool_t *pool)
 {
     PyObject *fn = (PyObject *)baton, *ret;
+	PyObject *py_may_save, *py_username, *py_password;
 	ret = PyObject_CallFunction(fn, "ssb", realm, username, may_save);
 	if (ret == NULL)
 		return py_svn_error();
@@ -1725,14 +1726,34 @@ static svn_error_t *py_simple_prompt(svn_auth_cred_simple_t **cred, void *baton,
 		PyErr_SetString(PyExc_TypeError, "expected tuple with simple credentials");
 		return py_svn_error();
 	}
-	if (PyTuple_Size(ret) == 3) {
+	if (PyTuple_Size(ret) != 3) {
 		PyErr_SetString(PyExc_TypeError, "expected tuple of size 3");
 		return py_svn_error();
 	}
+
+	py_may_save = PyTuple_GetItem(ret, 2);
+
+	if (!PyBool_Check(py_may_save)) {
+		PyErr_SetString(PyExc_TypeError, "may_save should be boolean");
+		return py_svn_error();
+	}
+	
+	py_username = PyTuple_GetItem(ret, 0);
+	if (!PyString_Check(py_username)) {
+		PyErr_SetString(PyExc_TypeError, "username should be string");
+		return py_svn_error();
+	}
+
+	py_password = PyTuple_GetItem(ret, 1);
+	if (!PyString_Check(py_password)) {
+		PyErr_SetString(PyExc_TypeError, "password should be string");
+		return py_svn_error();
+	}
+
 	*cred = apr_pcalloc(pool, sizeof(**cred));
-    (*cred)->username = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
-    (*cred)->password = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 1)));
-	(*cred)->may_save = (PyTuple_GetItem(ret, 2) == Py_True);
+    (*cred)->username = apr_pstrdup(pool, PyString_AsString(py_username));
+    (*cred)->password = apr_pstrdup(pool, PyString_AsString(py_password));
+	(*cred)->may_save = (py_may_save == Py_True);
     return NULL;
 }
 
@@ -1758,7 +1779,7 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 {
     PyObject *fn = (PyObject *)baton;
 	PyObject *ret;
-	PyObject *py_cert;
+	PyObject *py_cert, *py_may_save, *py_accepted_failures;
 
 	if (cert_info == NULL) {
 		py_cert = Py_None;
@@ -1777,14 +1798,26 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 		PyErr_SetString(PyExc_TypeError, "expected tuple with server trust credentials");
 		return py_svn_error();
 	}
-	if (PyTuple_Size(ret) == 2) {
+	if (PyTuple_Size(ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "expected tuple of size 2");
+		return py_svn_error();
+	}
+
+	py_accepted_failures = PyTuple_GetItem(ret, 0);
+	if (!PyInt_Check(py_accepted_failures)) {
+		PyErr_SetString(PyExc_TypeError, "accepted_failures should be integer");
+		return py_svn_error();
+	}
+
+	py_may_save = PyTuple_GetItem(ret, 1);
+	if (!PyBool_Check(py_may_save)) {
+		PyErr_SetString(PyExc_TypeError, "may_save should be boolean");
 		return py_svn_error();
 	}
 	
 	*cred = apr_pcalloc(pool, sizeof(**cred));
-	(*cred)->accepted_failures = PyInt_AsLong(PyTuple_GetItem(ret, 0));
-	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
+	(*cred)->accepted_failures = PyInt_AsLong(py_accepted_failures);
+	(*cred)->may_save = (py_may_save == Py_True);
 
     return NULL;
 }
@@ -1810,7 +1843,7 @@ static PyObject *get_ssl_server_trust_prompt_provider(PyObject *self, PyObject *
 
 static svn_error_t *py_ssl_client_cert_pw_prompt(svn_auth_cred_ssl_client_cert_pw_t **cred, void *baton, const char *realm, svn_boolean_t may_save, apr_pool_t *pool)
 {
-    PyObject *fn = (PyObject *)baton, *ret;
+    PyObject *fn = (PyObject *)baton, *ret, *py_may_save, *py_password;
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL) 
 		return py_svn_error();
@@ -1819,19 +1852,29 @@ static svn_error_t *py_ssl_client_cert_pw_prompt(svn_auth_cred_ssl_client_cert_p
 		return py_svn_error();
 	}
 
-	if (PyTuple_Size(ret) == 2) {
+	if (PyTuple_Size(ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "expected tuple of size 2");
 		return py_svn_error();
 	}
+	py_may_save = PyTuple_GetItem(ret, 1);
+	if (!PyBool_Check(py_may_save)) {
+		PyErr_SetString(PyExc_TypeError, "may_save should be boolean");
+		return py_svn_error();
+	}
+	py_password = PyTuple_GetItem(ret, 0);
+	if (!PyString_Check(py_password)) {
+		PyErr_SetString(PyExc_TypeError, "password should be string");
+		return py_svn_error();
+	}
 	*cred = apr_pcalloc(pool, sizeof(**cred));
-	(*cred)->password = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
-	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
+	(*cred)->password = apr_pstrdup(pool, PyString_AsString(py_password));
+	(*cred)->may_save = (py_may_save == Py_True);
     return NULL;
 }
 
 static svn_error_t *py_ssl_client_cert_prompt(svn_auth_cred_ssl_client_cert_t **cred, void *baton, const char *realm, svn_boolean_t may_save, apr_pool_t *pool)
 {
-    PyObject *fn = (PyObject *)baton, *ret;
+    PyObject *fn = (PyObject *)baton, *ret, *py_may_save, *py_cert_file;
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL) 
 		return py_svn_error();
@@ -1841,13 +1884,25 @@ static svn_error_t *py_ssl_client_cert_prompt(svn_auth_cred_ssl_client_cert_t **
 		return py_svn_error();
 	}
 
-	if (PyTuple_Size(ret) == 2) {
+	if (PyTuple_Size(ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "expected tuple of size 2");
 		return py_svn_error();
 	}
+	py_may_save = PyTuple_GetItem(ret, 1);
+	if (!PyBool_Check(py_may_save)) {
+		PyErr_SetString(PyExc_TypeError, "may_save should be boolean");
+		return py_svn_error();
+	}
+
+	py_cert_file = PyTuple_GetItem(ret, 0);
+	if (!PyString_Check(py_cert_file)) {
+		PyErr_SetString(PyExc_TypeError, "cert_file should be string");
+		return py_svn_error();
+	}
+
 	*cred = apr_pcalloc(pool, sizeof(**cred));
-	(*cred)->cert_file = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
-	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
+	(*cred)->cert_file = apr_pstrdup(pool, PyString_AsString(py_cert_file));
+	(*cred)->may_save = (py_may_save == Py_True);
     return NULL;
 }
 
