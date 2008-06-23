@@ -58,7 +58,7 @@ class TestCheckoutFormat(TestCase):
 class TestCheckout(TestCaseWithSubversionRepository):
     def test_not_for_writing(self):
         self.make_client("d", "dc")
-        x = self.create_branch_convenience("dc/foo")
+        x = BzrDir.create_branch_convenience("dc/foo")
         self.assertFalse(hasattr(x.repository, "uuid"))
 
     def test_open_repository(self):

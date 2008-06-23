@@ -155,26 +155,14 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         return local_path_to_url(abspath)
 
-    def make_remote_bzrdir(self, relpath):
-        """Create a repository."""
-
-        repos_url = self.make_repository(relpath)
-
-        return BzrDir.open("svn+%s" % repos_url)
-
-    def open_local_bzrdir(self, repos_url, relpath):
-        """Open a local BzrDir."""
-
-        self.make_checkout(repos_url, relpath)
-
-        return BzrDir.open(relpath)
-
     def make_local_bzrdir(self, repos_path, relpath):
         """Create a repository and checkout."""
 
         repos_url = self.make_repository(repos_path)
 
-        return self.open_local_bzrdir(repos_url, relpath)
+        self.make_checkout(repos_url, relpath)
+
+        return BzrDir.open(relpath)
 
     def make_checkout(self, repos_url, relpath):
         self.client_ctx.checkout(repos_url, relpath, "HEAD") 
@@ -191,10 +179,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     @staticmethod
     def open_checkout_bzrdir(url):
         return BzrDir.open(url)
-
-    @staticmethod
-    def create_branch_convenience(url):
-        return BzrDir.create_branch_convenience(url)
 
     def client_set_prop(self, path, name, value):
         if value is None:
