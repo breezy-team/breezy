@@ -265,7 +265,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dc.close()
 
         dc = self.get_commit_editor(repos_url)
-        trunk = dc.add_dir("trunk")
+        trunk = dc.open_dir("trunk")
         trunk.add_file(u'trunk/IöC/bar'.encode("utf-8")).modify("more data")
         dc.close()
 
@@ -300,14 +300,13 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dc = self.get_commit_editor(repos_url)
         trunk = dc.open_dir("trunk")
         dc.open_file(u"trunk/€\x2c".encode("utf-8")).modify("bar")
-        revno = dc.close()
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
-        self.assertEquals(2, revno)
 
     def test_fetch_delete(self):
         repos_url = self.make_client('d', 'dc')
