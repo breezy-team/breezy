@@ -51,6 +51,7 @@ from bzrlib.osutils import split_lines
 from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import (
     Feature,
+    KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
@@ -1397,7 +1398,24 @@ class TestStacking(KnitTests):
         pass
 
     def test_annotate(self):
-        pass
+        # annotations from the test knit are answered without asking the basis
+        basis, test = self.get_basis_and_test_knit()
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_missing = ('missing',)
+        test.add_lines(key, (), ['foo\n'])
+        details = test.annotate(key)
+        self.assertEqual([(key, 'foo\n')], details)
+        self.assertEqual([], basis.calls)
+        # But texts that are not in the test knit are looked for in the basis
+        # directly.
+        basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
+        basis.calls = []
+        self.assertRaises(RevisionNotPresent, test.annotate, key_basis)
+        raise KnownFailure("Annotation on stacked knits currently fails.")
+        details = test.annotate(key_basis)
+        self.assertEqual([(key_basis, 'foo\n'), (key_basis, 'bar\n')], details)
+        self.assertEqual([("annotate", key_basis)], basis.calls)
 
     def test_check(self):
         # check() must not check the fallback files, its none of its business.
