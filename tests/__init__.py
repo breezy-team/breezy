@@ -36,6 +36,7 @@ from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream
 class TestFileEditor(object):
     def __init__(self, file):
         self.file = file
+        self.is_closed = False
 
     def change_prop(self, name, value):
         self.file.change_prop(name, value)
@@ -43,10 +44,11 @@ class TestFileEditor(object):
     def modify(self, contents=None):
         if contents is None:
             contents = osutils.rand_chars(100)
-        txdelta = self.apply_textdelta()
+        txdelta = self.file.apply_textdelta()
         txdelta_send_stream(StringIO(contents), txdelta)
 
     def close(self):
+        self.is_closed = True
         self.file.close()
 
 
@@ -55,31 +57,45 @@ class TestDirEditor(object):
         self.dir = dir
         self.baseurl = baseurl
         self.revnum = revnum
+        self.is_closed = False
+        self.children = []
 
     def close(self):
+        self.is_closed = True
+        for c in reversed(self.children):
+            if not c.is_closed:
+                c.close()
         self.dir.close()
 
     def change_prop(self, name, value):
         self.dir.change_prop(name, value)
 
     def open_dir(self, path):
-        return TestDirEditor(self.dir.open_directory(path, -1), self.baseurl, self.revnum)
+        child = TestDirEditor(self.dir.open_directory(path, -1), self.baseurl, self.revnum)
+        self.children.append(child)
+        return child
 
     def open_file(self, path):
-        return TestFileEditor(self.dir.open_file(path, -1))
+        child = TestFileEditor(self.dir.open_file(path, -1))
+        self.children.append(child)
+        return child
 
     def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
         if copyfrom_path is not None:
             copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
         if copyfrom_path is not None and copyfrom_rev == -1:
             copyfrom_rev = self.revnum
-        return TestDirEditor(self.dir.add_directory(path, copyfrom_path, copyfrom_rev), self.baseurl, self.revnum)
+        child = TestDirEditor(self.dir.add_directory(path, copyfrom_path, copyfrom_rev), self.baseurl, self.revnum)
+        self.children.append(child)
+        return child
 
     def add_file(self, path, copyfrom_path=None, copyfrom_rev=-1):
-        return TestFileEditor(self.dir.add_file(path, copyfrom_path, copyfrom_rev))
+        child = TestFileEditor(self.dir.add_file(path, copyfrom_path, copyfrom_rev))
+        self.children.append(child)
+        return child
 
     def delete(self, path):
-        self.dir.delete_path(path)
+        self.dir.delete_entry(path)
 
 
 class TestCommitEditor(TestDirEditor):
