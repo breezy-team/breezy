@@ -1424,6 +1424,92 @@ class TestStacking(KnitTests):
         self.assertEqual([("get_parent_map", set([key_basis, key_missing]))],
             basis.calls)
 
+    def test_get_record_stream_unordered_fulltexts(self):
+        # records from the test knit are answered without asking the basis:
+        basis, test = self.get_basis_and_test_knit()
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_missing = ('missing',)
+        test.add_lines(key, (), ['foo\n'])
+        records = list(test.get_record_stream([key], 'unordered', True))
+        self.assertEqual(1, len(records))
+        self.assertEqual([], basis.calls)
+        # Missing (from test knit) objects are retrieved from the basis:
+        basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
+        basis.calls = []
+        records = list(test.get_record_stream([key_basis, key_missing],
+            'unordered', True))
+        self.assertEqual(2, len(records))
+        calls = list(basis.calls)
+        for record in records:
+            self.assertSubset([record.key], (key_basis, key_missing))
+            if record.key == key_missing:
+                self.assertIsInstance(record, AbsentContentFactory)
+            else:
+                reference = list(basis.get_record_stream([key_basis],
+                    'unordered', True))[0]
+                self.assertEqual(reference.key, record.key)
+                self.assertEqual(reference.sha1, record.sha1)
+                self.assertEqual(reference.storage_kind, record.storage_kind)
+                self.assertEqual(reference.get_bytes_as(reference.storage_kind),
+                    record.get_bytes_as(record.storage_kind))
+                self.assertEqual(reference.get_bytes_as('fulltext'),
+                    record.get_bytes_as('fulltext'))
+        # Its not strictly minimal, but it seems reasonable for now for it to
+        # ask which fallbacks have which parents.
+        self.assertEqual([
+            ("get_parent_map", set([key_basis, key_missing])),
+            ("get_record_stream", [key_basis], 'unordered', True)],
+            calls)
+
+    def test_get_record_stream_ordered_fulltexts(self):
+        # ordering is preserved down into the fallback store.
+        basis, test = self.get_basis_and_test_knit()
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_basis_2 = ('quux',)
+        key_missing = ('missing',)
+        test.add_lines(key, (key_basis,), ['foo\n'])
+        # Missing (from test knit) objects are retrieved from the basis:
+        basis.add_lines(key_basis, (key_basis_2,), ['foo\n', 'bar\n'])
+        basis.add_lines(key_basis_2, (), ['quux\n'])
+        basis.calls = []
+        # ask for in non-topological order
+        records = list(test.get_record_stream(
+            [key, key_basis, key_missing, key_basis_2], 'topological', True))
+        self.assertEqual(4, len(records))
+        results = []
+        for record in records:
+            self.assertSubset([record.key],
+                (key_basis, key_missing, key_basis_2, key))
+            if record.key == key_missing:
+                self.assertIsInstance(record, AbsentContentFactory)
+            else:
+                results.append((record.key, record.sha1, record.storage_kind,
+                    record.get_bytes_as('fulltext')))
+        calls = list(basis.calls)
+        order = [record[0] for record in results]
+        self.assertEqual([key_basis_2, key_basis, key], order)
+        for result in results:
+            if result[0] == key:
+                source = test
+            else:
+                source = basis
+            record = source.get_record_stream([result[0]], 'unordered',
+                True).next()
+            self.assertEqual(record.key, result[0])
+            self.assertEqual(record.sha1, result[1])
+            self.assertEqual(record.storage_kind, result[2])
+            self.assertEqual(record.get_bytes_as('fulltext'), result[3])
+        # Its not strictly minimal, but it seems reasonable for now for it to
+        # ask which fallbacks have which parents.
+        self.assertEqual([
+            ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
+            # unordered is asked for by the underlying worker as it still
+            # buffers everything while answering - which is a problem!
+            ("get_record_stream", [key_basis_2, key_basis], 'unordered', True)],
+            calls)
+
     def test_get_record_stream_unordered_deltas(self):
         # records from the test knit are answered without asking the basis:
         basis, test = self.get_basis_and_test_knit()

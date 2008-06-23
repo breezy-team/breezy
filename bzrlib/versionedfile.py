@@ -540,7 +540,7 @@ class RecordingVersionedFilesDecorator(object):
         return self._backing_vf.get_parent_map(keys)
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
-        self.calls.append(("get_record_stream", keys, sort_order,
+        self.calls.append(("get_record_stream", list(keys), sort_order,
             include_delta_closure))
         return self._backing_vf.get_record_stream(keys, sort_order,
             include_delta_closure)

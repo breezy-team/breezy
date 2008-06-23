@@ -964,9 +964,13 @@ class KnitVersionedFiles(VersionedFiles):
         text_map, contents_map = self._get_content_maps([key])
         return contents_map[key]
 
-    def _get_content_maps(self, keys):
+    def _get_content_maps(self, keys, nonlocal_keys=None):
         """Produce maps of text and KnitContents
         
+        :param keys: The keys to produce content maps for.
+        :param nonlocal_keys: An iterable of keys(possibly intersecting keys)
+            which are known to not be in this knit, but rather in one of the
+            fallback knits.
         :return: (text_map, content_map) where text_map contains the texts for
         the requested versions and content_map contains the KnitContents.
         """
@@ -976,12 +980,32 @@ class KnitVersionedFiles(VersionedFiles):
         # final output.
         keys = list(keys)
         multiple_versions = len(keys) != 1
-        record_map = self._get_record_map(keys)
+        record_map = self._get_record_map(keys, allow_missing=True)
 
         text_map = {}
         content_map = {}
         final_content = {}
+        if nonlocal_keys is None:
+            nonlocal_keys = set()
+        else:
+            nonlocal_keys = frozenset(nonlocal_keys)
+        missing_keys = set(nonlocal_keys)
+        for source in self._fallback_vfs:
+            if not missing_keys:
+                break
+            for record in source.get_record_stream(missing_keys,
+                'unordered', True):
+                if record.storage_kind == 'absent':
+                    continue
+                missing_keys.remove(record.key)
+                bytes = record.get_bytes_as('fulltext')
+                lines = split_lines(record.get_bytes_as('fulltext'))
+                text_map[record.key] = lines
+                final_content[record.key] = PlainKnitContent(lines, record.key)
         for key in keys:
+            if key in nonlocal_keys:
+                # already handled
+                continue
             components = []
             cursor = key
             while cursor is not None:
@@ -1173,7 +1197,8 @@ class KnitVersionedFiles(VersionedFiles):
         if include_delta_closure:
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
-            text_map, _ = self._get_content_maps(present_keys)
+            text_map, _ = self._get_content_maps(present_keys,
+                needed_from_fallback - absent_keys)
             for key in present_keys:
                 yield FulltextContentFactory(key, global_map[key], None,
                     ''.join(text_map[key]))
