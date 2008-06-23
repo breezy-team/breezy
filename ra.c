@@ -470,6 +470,7 @@ typedef struct {
 	bool busy;
 	PyObject *client_string_func;
 	PyObject *open_tmp_file_func;
+	char *root;
 } RemoteAccessObject;
 
 static void ra_done_handler(void *_ra)
@@ -617,6 +618,7 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 		auth_baton = ret->auth->auth_baton;
 	}
 
+	ret->root = NULL;
     ret->pool = Pool(NULL);
 	if (ret->pool == NULL)
 		return NULL;
@@ -818,17 +820,21 @@ static PyObject *ra_get_repos_root(PyObject *self)
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
 	const char *root;
     apr_pool_t *temp_pool;
-	
-	if (ra_check_busy(ra))
-		return NULL;
 
-	temp_pool = Pool(NULL);
-	if (temp_pool == NULL)
-		return NULL;
-	RUN_RA_WITH_POOL(temp_pool, ra,
-					  svn_ra_get_repos_root(ra->ra, &root, temp_pool));
-	apr_pool_destroy(temp_pool);
-	return PyString_FromString(root);
+	if (ra->root == NULL) {
+		if (ra_check_busy(ra))
+			return NULL;
+
+		temp_pool = Pool(NULL);
+		if (temp_pool == NULL)
+			return NULL;
+		RUN_RA_WITH_POOL(temp_pool, ra,
+						  svn_ra_get_repos_root(ra->ra, &root, temp_pool));
+		ra->root = apr_pstrdup(ra->pool, root);
+		apr_pool_destroy(temp_pool);
+	}
+
+	return PyString_FromString(ra->root);
 }
 
 static PyObject *ra_do_update(PyObject *self, PyObject *args)
