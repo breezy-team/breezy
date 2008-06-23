@@ -33,6 +33,65 @@ from bzrlib.plugins.svn import properties, ra, repos
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream
 
+class TestFileEditor(object):
+    def __init__(self, file):
+        self.file = file
+
+    def change_prop(self, name, value):
+        self.file.change_prop(name, value)
+
+    def modify(self, contents=None):
+        if contents is None:
+            contents = osutils.rand_chars(100)
+        txdelta = self.apply_textdelta()
+        txdelta_send_stream(StringIO(contents), txdelta)
+
+    def close(self):
+        self.file.close()
+
+
+class TestDirEditor(object):
+    def __init__(self, dir, baseurl, revnum):
+        self.dir = dir
+        self.baseurl = baseurl
+        self.revnum = revnum
+
+    def close(self):
+        self.dir.close()
+
+    def change_prop(self, name, value):
+        self.dir.change_prop(name, value)
+
+    def open_dir(self, path):
+        return TestDirEditor(self.dir.open_directory(path, -1), self.baseurl, self.revnum)
+
+    def open_file(self, path):
+        return TestFileEditor(self.dir.open_file(path, -1))
+
+    def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
+        if copyfrom_path is not None:
+            copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
+        if copyfrom_path is not None and copyfrom_rev == -1:
+            copyfrom_rev = self.revnum
+        return TestDirEditor(self.dir.add_directory(path, copyfrom_path, copyfrom_rev), self.baseurl, self.revnum)
+
+    def add_file(self, path, copyfrom_path=None, copyfrom_rev=-1):
+        return TestFileEditor(self.dir.add_file(path, copyfrom_path, copyfrom_rev))
+
+    def delete(self, path):
+        self.dir.delete_path(path)
+
+
+class TestCommitEditor(TestDirEditor):
+    def __init__(self, editor, baseurl, revnum):
+        self.editor = editor
+        TestDirEditor.__init__(self, self.editor.open_root(), baseurl, revnum)
+
+    def close(self):
+        TestDirEditor.close(self)
+        self.editor.close()
+
+
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
     repositories."""
@@ -244,6 +303,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :return: FS.
         """
         return repos.Repository(relpath).fs()
+
+    def get_commit_editor(self, url, message="Test commit"):
+        ra = RemoteAccess(url.encode("utf-8"))
+        revnum = ra.get_latest_revnum()
+        return TestCommitEditor(ra.get_commit_editor({"svn:log": message}), ra.url, revnum)
 
     def commit_editor(self, url, message="Test commit"):
         ra = RemoteAccess(url.encode('utf8'))

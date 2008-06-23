@@ -39,9 +39,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_get_branch_log(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
-        cb.add_file("foo")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_file("foo").close()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -49,17 +49,17 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_get_branch_follow_branch(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_dir("trunk").close()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_dir("branches").close()
+        cb.close()
         
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches/foo", "trunk")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_dir("branches/foo", "trunk").close()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -67,18 +67,19 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_get_branch_follow_branch_changing_parent(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/foo")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        d = cb.add_dir("trunk")
+        d.add_file("trunk/foo").close()
+        d.close()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_dir("branches").close()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches/abranch", "trunk")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_dir("branches/abranch", "trunk").close()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
