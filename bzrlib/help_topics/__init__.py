@@ -292,7 +292,6 @@ development.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dmerge           Emit information for debugging merges.
 -Dpack            Emit information about pack operations.
--Dselftest_debug  Do not disable all debug flags when running selftest.
 """
 
 _standard_options = \

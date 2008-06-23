@@ -323,7 +323,7 @@ class TestRepository(TestCaseWithRepository):
         repo = tree.branch.repository
         revision_ids = ['a-rev', 'b-rev', 'c-rev']
         revisions = repo.get_revisions(revision_ids)
-        assert len(revisions) == 3, repr(revisions)
+        self.assertEqual(len(revisions), 3)
         zipped = zip(revisions, revision_ids)
         self.assertEqual(len(zipped), 3)
         for revision, revision_id in zipped:
@@ -335,36 +335,6 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('message', rev_id='rev_id')
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
-
-    def DISABLED_DELETE_OR_FIX_BEFORE_MERGE_test_create_basis_inventory(self):
-        # Needs testing here because differences between repo and working tree
-        # basis inventory formats can lead to bugs.
-        t = self.make_branch_and_tree('.')
-        b = t.branch
-        open('a', 'wb').write('a\n')
-        t.add('a')
-        t.commit('a', rev_id='r1')
-
-        t._control_files.get_utf8('basis-inventory-cache')
-
-        basis_inv = t.basis_tree().inventory
-        self.assertEquals('r1', basis_inv.revision_id)
-        
-        store_inv = b.repository.get_inventory('r1')
-        self.assertEquals(store_inv._byid, basis_inv._byid)
-
-        open('b', 'wb').write('b\n')
-        t.add('b')
-        t.commit('b', rev_id='r2')
-
-        t._control_files.get_utf8('basis-inventory-cache')
-
-        basis_inv_txt = t.read_basis_inventory()
-        basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
-        self.assertEquals('r2', basis_inv.revision_id)
-        store_inv = b.repository.get_inventory('r2')
-
-        self.assertEquals(store_inv._byid, basis_inv._byid)
 
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
@@ -919,9 +889,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.addCleanup(repository.unlock)
         trees1 = list(repository.revision_trees(revision_ids))
         trees2 = [repository.revision_tree(t) for t in revision_ids]
-        assert len(trees1) == len(trees2)
+        self.assertEqual(len(trees1), len(trees2))
         for tree1, tree2 in zip(trees1, trees2):
-            assert not tree2.changes_from(tree1).has_changed()
+            self.assertFalse(tree2.changes_from(tree1).has_changed())
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()
@@ -932,7 +902,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
         deltas2 = [repository.get_revision_delta(r.revision_id) for r in
                    revisions]
-        assert deltas1 == deltas2
+        self.assertEqual(deltas1, deltas2)
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
@@ -949,64 +919,6 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repo = self.bzrdir.open_repository()
         self.assertEqual(set(repo.get_ancestry('rev3')),
                          set(repo.get_ancestry('rev3', topo_sorted=False)))
-
-    def test_get_revision_graph(self):
-        # we can get a mapping of id->parents for the entire revision graph or bits thereof.
-        self.assertEqual({'rev1':(),
-                          'rev2':('rev1', ),
-                          'rev3':('rev2', ),
-                          'rev4':('rev3', ),
-                          },
-            self.applyDeprecated(one_four,
-                self.bzrdir.open_repository().get_revision_graph, None))
-        self.assertEqual({'rev1':()},
-            self.applyDeprecated(one_four,
-                self.bzrdir.open_repository().get_revision_graph, 'rev1'))
-        self.assertEqual({'rev1':(),
-                          'rev2':('rev1', )},
-            self.applyDeprecated(one_four,
-                self.bzrdir.open_repository().get_revision_graph, 'rev2'))
-        self.assertRaises(errors.NoSuchRevision, self.applyDeprecated, one_four,
-            self.bzrdir.open_repository().get_revision_graph, 'orphan')
-        # and ghosts are not mentioned
-        self.assertEqual({'rev1':(),
-                          'rev2':('rev1', ),
-                          'rev3':('rev2', ),
-                          },
-            self.applyDeprecated(one_four,
-                self.bzrdir.open_repository().get_revision_graph, 'rev3'))
-        # and we can ask for the NULLREVISION graph
-        self.assertEqual({},
-            self.applyDeprecated(one_four,
-                self.bzrdir.open_repository().get_revision_graph, NULL_REVISION))
-
-    def test_get_revision_graph_with_ghosts(self):
-        # we can get a graph object with roots, ghosts, ancestors and
-        # descendants.
-        repo = self.bzrdir.open_repository()
-        graph = self.applyDeprecated(one_three,
-                                     repo.get_revision_graph_with_ghosts, [])
-        self.assertEqual(set(['rev1']), graph.roots)
-        self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
-        self.assertEqual({'rev1':[],
-                          'rev2':['rev1'],
-                          'rev3':['rev2', 'ghost1'],
-                          'rev4':['rev3', 'ghost1', 'ghost2'],
-                          },
-                          graph.get_ancestors())
-        self.assertEqual({'ghost1':{'rev3':1, 'rev4':1},
-                          'ghost2':{'rev4':1},
-                          'rev1':{'rev2':1},
-                          'rev2':{'rev3':1},
-                          'rev3':{'rev4':1},
-                          'rev4':{},
-                          },
-                          graph.get_descendants())
-        # and we can ask for the NULLREVISION graph
-        graph = self.applyDeprecated(one_three, 
-                    repo.get_revision_graph_with_ghosts, [NULL_REVISION])
-        self.assertEqual({}, graph.get_ancestors())
-        self.assertEqual({}, graph.get_descendants())
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')

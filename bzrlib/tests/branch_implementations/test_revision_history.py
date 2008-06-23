@@ -203,4 +203,12 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
             branch.unlock()
 
 
+class TestRevisionHistory(TestCaseWithBranch):
 
+    def test_parent_ghost(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.add_parent_tree_id('ghost-revision',
+                                allow_leftmost_as_ghost=True)
+        tree.commit('first non-ghost commit', rev_id='non-ghost-revision')
+        self.assertEqual(['non-ghost-revision'],
+                         tree.branch.revision_history())
