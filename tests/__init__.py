@@ -48,6 +48,7 @@ class TestFileEditor(object):
         txdelta_send_stream(StringIO(contents), txdelta)
 
     def close(self):
+        assert not self.is_closed
         self.is_closed = True
         self.file.close()
 
@@ -60,27 +61,34 @@ class TestDirEditor(object):
         self.is_closed = False
         self.children = []
 
-    def close(self):
-        self.is_closed = True
+    def close_children(self):
         for c in reversed(self.children):
             if not c.is_closed:
                 c.close()
+
+    def close(self):
+        assert not self.is_closed
+        self.is_closed = True
+        self.close_children()
         self.dir.close()
 
     def change_prop(self, name, value):
         self.dir.change_prop(name, value)
 
     def open_dir(self, path):
+        self.close_children()
         child = TestDirEditor(self.dir.open_directory(path, -1), self.baseurl, self.revnum)
         self.children.append(child)
         return child
 
     def open_file(self, path):
+        self.close_children()
         child = TestFileEditor(self.dir.open_file(path, -1))
         self.children.append(child)
         return child
 
     def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
+        self.close_children()
         if copyfrom_path is not None:
             copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
         if copyfrom_path is not None and copyfrom_rev == -1:
@@ -90,6 +98,7 @@ class TestDirEditor(object):
         return child
 
     def add_file(self, path, copyfrom_path=None, copyfrom_rev=-1):
+        self.close_children()
         child = TestFileEditor(self.dir.add_file(path, copyfrom_path, copyfrom_rev))
         self.children.append(child)
         return child

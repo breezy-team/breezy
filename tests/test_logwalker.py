@@ -165,9 +165,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_find_latest_none(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("branches")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -203,16 +203,17 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_find_latest_parent(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches")
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("tags")
-        cb.add_dir("branches/tmp")
-        cb.add_dir("branches/tmp/foo")
-        cb.done()
+        b = cb.add_dir("branches")
+        bt = b.add_dir("branches/tmp")
+        bt.add_dir("branches/tmp/foo")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("tags/tmp", "branches/tmp")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("tags")
+        t.add_dir("tags/tmp", "branches/tmp")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -221,20 +222,22 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_latest_parent_just_modify(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches")
-        cb.add_dir("branches/tmp")
-        cb.add_dir("branches/tmp/foo")
+        cb = self.get_commit_editor(repos_url)
+        b = cb.add_dir("branches")
+        bt = b.add_dir("branches/tmp")
+        bt.add_dir("branches/tmp/foo")
         cb.add_dir("tags")
-        cb.done()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("tags/tmp", "branches/tmp")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("tags")
+        t.add_dir("tags/tmp", "branches/tmp")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("tags", "myprop", "mydata")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("tags")
+        t.change_prop("myprop", "mydata")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 3))
@@ -242,14 +245,14 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_latest_parentmoved(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches")
-        cb.add_dir("branches/tmp")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        b = cb.add_dir("branches")
+        b.add_dir("branches/tmp")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("bla", "branches")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -258,14 +261,14 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_latest_nonexistant(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches")
-        cb.add_dir("branches/tmp")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        b = cb.add_dir("branches")
+        b.add_dir("branches/tmp")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("bla", "branches")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -275,9 +278,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_latest_change(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("branches")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -387,9 +390,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         repos_url = self.make_repository("a")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_file("foo")
-        cb.done()
+        cb.close()
 
         for (paths, rev, revprops) in walker.iter_changes([""], 1):
             self.assertTrue(rev == 0 or paths.has_key("foo"))
@@ -406,9 +409,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_file("foo")
-        cb.done()
+        cb.close()
 
         for (paths, rev, revprops) in walker.iter_changes([""], 1):
             self.assertTrue(rev == 0 or paths.has_key("foo"))
@@ -419,15 +422,16 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_get_branch_log_follow(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/afile")
         cb.add_dir("branches")
-        cb.add_file("trunk/afile")
-        cb.done()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("branches/abranch", "trunk")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        b = cb.open_dir("branches")
+        b.add_dir("branches/abranch", "trunk")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -447,15 +451,16 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_get_previous_simple(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/file")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/file").modify()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_file("trunk/afile")
-        cb.change_dir_prop("trunk", "myprop", "mydata")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.add_file("trunk/afile").modify()
+        t.change_prop("myprop", "mydata")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -464,15 +469,16 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_get_previous_added(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/afile")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/afile").modify()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_file("trunk/afile")
-        cb.change_dir_prop("trunk", "myprop", "mydata")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.open_file("trunk/afile").modify()
+        t.change_prop("myprop", "mydata")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -481,14 +487,14 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_get_previous_copy(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/afile")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/afile")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("anotherfile", "trunk")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -497,9 +503,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_children_empty(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("trunk")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -508,10 +514,10 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_children_one(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/data")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/data")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -520,12 +526,12 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_children_nested(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_dir("trunk/data")
-        cb.add_file("trunk/data/bla")
-        cb.add_file("trunk/file")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        td = t.add_dir("trunk/data")
+        td.add_file("trunk/data/bla")
+        t.add_file("trunk/file")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -536,15 +542,16 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_children_later(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_dir("trunk/data")
-        cb.add_file("trunk/data/bla")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        td = t.add_dir("trunk/data")
+        td.add_file("trunk/data/bla")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_file("trunk/file")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.add_file("trunk/file")
+        cb.close()
         
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -556,9 +563,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_revprop_list(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
+        cb = self.get_commit_editor(repos_url)
         cb.add_dir("trunk")
-        cb.done()
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -571,18 +578,20 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_children_copy(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_dir("trunk/data")
-        cb.add_dir("trunk/db")
-        cb.add_file("trunk/data/bla")
-        cb.add_file("trunk/db/f1")
-        cb.add_file("trunk/db/f2")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        td = t.add_dir("trunk/data")
+        td.add_file("trunk/data/bla").modify()
+        db = t.add_dir("trunk/db")
+        db.add_file("trunk/db/f1").modify()
+        db.add_file("trunk/db/f2").modify()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk/data/fg", "trunk/db")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        td = t.open_dir("trunk/data")
+        td.add_dir("trunk/data/fg", "trunk/db")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -595,22 +604,27 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_find_children_copy_del(self):
         repos_url = self.make_repository("a")
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_dir("trunk/data")
-        cb.add_file("trunk/data/bla")
-        cb.add_dir("trunk/db")
-        cb.add_file("trunk/db/f1")
-        cb.add_file("trunk/db/f2")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        td = t.add_dir("trunk/data")
+        td.add_file("trunk/data/bla")
+        db = t.add_dir("trunk/db")
+        db.add_file("trunk/db/f1")
+        db.add_file("trunk/db/f2")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk/data/fg", "trunk/db")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        td = t.open_dir("trunk/data")
+        td.add_dir("trunk/data/fg", "trunk/db")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.delete("trunk/data/fg/f2")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        td = t.open_dir("trunk/data")
+        fg = td.open_dir("trunk/data/fg")
+        fg.delete("trunk/data/fg/f2")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -622,22 +636,25 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_fetch_property_change_only_trunk(self):
         repos_url = self.make_repository('d')
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/bla")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/bla").modify()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("trunk", "some:property", "some data\n")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.change_prop("some:property", "some data\n")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("trunk", "some2:property", "some data\n")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.change_prop("some2:property", "some data\n")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("trunk", "some:property", "some data4\n")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.change_prop("some:property", "some data4\n")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEquals({'trunk': ('M', None, -1)}, walker.get_revision_paths(3))
@@ -645,22 +662,25 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_iter_changes_property_change(self):
         repos_url = self.make_repository('d')
 
-        cb = self.commit_editor(repos_url)
-        cb.add_dir("trunk")
-        cb.add_file("trunk/bla")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.add_dir("trunk")
+        t.add_file("trunk/bla").modify()
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("trunk", "some:property", "some data\n")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.change_prop("some:property", "some data\n")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("trunk", "some2:property", "some data\n")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.change_prop("some2:property", "some data\n")
+        cb.close()
 
-        cb = self.commit_editor(repos_url)
-        cb.change_dir_prop("trunk", "some:property", "some other data\n")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        t = cb.open_dir("trunk")
+        t.change_prop("some:property", "some other data\n")
+        cb.close()
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEquals([({'trunk': (u'M', None, -1)}, 3), 
