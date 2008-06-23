@@ -6,7 +6,9 @@
 
  BUG FIXES
 
-  * Fix compatibility with Bazaar 1.6.
+  * Fix compatibility with Bazaar 1.6. 
+
+  * Fixed overactive assertion. (#242245)
 
  ENHANCEMENTS
 
