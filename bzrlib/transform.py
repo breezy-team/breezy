@@ -1953,12 +1953,16 @@ def revert(working_tree, target_tree, filenames, backups=False,
 
 
 def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
-                              backups, pp):
+                              backups, pp, basis_tree=None,
+                              merge_modified=None):
     pp.next_phase()
     child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
+        if merge_modified is None:
+            merge_modified = working_tree.merge_modified()
         merge_modified = _alter_files(working_tree, target_tree, tt,
-                                      child_pb, filenames, backups)
+                                      child_pb, filenames, backups,
+                                      merge_modified, basis_tree)
     finally:
         child_pb.finished()
     pp.next_phase()
@@ -1973,15 +1977,13 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
 
 
 def _alter_files(working_tree, target_tree, tt, pb, specific_files,
-                 backups):
-    merge_modified = working_tree.merge_modified()
+                 backups, merge_modified, basis_tree=None):
     change_list = target_tree.iter_changes(working_tree,
         specific_files=specific_files, pb=pb)
     if target_tree.inventory.root is None:
         skip_root = True
     else:
         skip_root = False
-    basis_tree = None
     try:
         deferred_files = []
         for id_num, (file_id, path, changed_content, versioned, parent, name,
