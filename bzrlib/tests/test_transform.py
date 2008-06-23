@@ -2031,3 +2031,17 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree = preview.get_preview_tree()
         self.assertEqual('target',
                          preview_tree.get_symlink_target('symlink-id'))
+
+    def test_all_file_ids(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/c'])
+        tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.unversion_file(preview.trans_id_file_id('b-id'))
+        c_trans_id = preview.trans_id_file_id('c-id')
+        preview.unversion_file(c_trans_id)
+        preview.version_file('c-id', c_trans_id)
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(set(['a-id', 'c-id', tree.get_root_id()]),
+                         preview_tree.all_file_ids())

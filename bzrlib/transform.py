@@ -1440,7 +1440,11 @@ class _PreviewTree(tree.Tree):
         return self._transform.final_file_id(self._transform.root)
 
     def all_file_ids(self):
-        return self._transform._tree.all_file_ids()
+        tree_ids = set(self._transform._tree.all_file_ids())
+        tree_ids.difference_update(self._transform.tree_file_id(t)
+                                   for t in self._transform._removed_id)
+        tree_ids.update(self._transform._new_id.values())
+        return tree_ids
 
     def __iter__(self):
         return iter(self.all_file_ids())
