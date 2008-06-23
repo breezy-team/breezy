@@ -99,4 +99,20 @@ class TestStacking(TestCaseWithBranch):
         cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
                                                        preserve_stacking=False)
         unstacked_branch = cloned_unstacked_bzrdir.open_branch()
-        self.assertRaises(errors.NotStacked, unstacked_branch.get_stacked_on)
+        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+                          unstacked_branch.get_stacked_on)
+
+    def test_no_op_preserve_stacking(self):
+        """With no stacking, preserve_stacking should be a no-op."""
+        branch = self.make_branch('source')
+        cloned_bzrdir = branch.bzrdir.clone('cloned', preserve_stacking=True)
+        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+                          cloned_bzrdir.open_branch().get_stacked_on)
+
+    def test_sprout_stacking_policy_handling(self):
+        """Obey policy where possible, ignore otherwise."""
+        stack_on = self.make_branch('stack-on')
+        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir.get_config().set_default_stack_on('stack-on')
+        source = self.make_branch('source')
+        target = source.bzrdir.sprout('target').open_branch()

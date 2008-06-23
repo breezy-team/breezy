@@ -226,11 +226,7 @@ class BzrDir(object):
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
-        try:
-            local_branch = self.open_branch()
-        except errors.NotBranchError:
-            pass
-        else:
+        if local_branch is not None:
             result_branch = local_branch.clone(result, revision_id=revision_id)
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
@@ -1028,7 +1024,6 @@ class BzrDir(object):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
-        repository_policy = None
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
@@ -1122,8 +1117,15 @@ class BzrDirPreSplitOut(BzrDir):
         """Produce a metadir suitable for cloning with."""
         return self._format.__class__()
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
-        """See BzrDir.clone()."""
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
+        """See BzrDir.clone().
+
+        force_new_repo has no effect, since this family of formats always
+        require a new repository.
+        preserve_stacking has no effect, since no source branch using this
+        family of formats can be stacked, so there is no stacking to preserve.
+        """
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
@@ -2759,7 +2761,10 @@ class RepositoryAcquisitionPolicy(object):
                     branch.bzrdir.root_transport.base)
             except errors.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
-        branch.set_stacked_on(stack_on)
+        try:
+            branch.set_stacked_on(stack_on)
+        except errors.UnstackableBranchFormat:
+            pass
 
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
@@ -2780,7 +2785,10 @@ class RepositoryAcquisitionPolicy(object):
             stacked_repo = stacked_dir.open_branch().repository
         except errors.NotBranchError:
             stacked_repo = stacked_dir.open_repository()
-        repository.add_fallback_repository(stacked_repo)
+        try:
+            repository.add_fallback_repository(stacked_repo)
+        except errors.UnstackableRepositoryFormat:
+            pass
 
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Acquire a repository for this bzrdir.

@@ -1631,9 +1631,6 @@ class TestBreakLock(TestCaseWithBzrDir):
 
 class TestTransportConfig(TestCaseWithBzrDir):
 
-    def setUp(self):
-        TestCaseWithBzrDir.setUp(self)
-
     def test_get_config(self):
         my_dir = self.make_bzrdir('.')
         config = my_dir.get_config()

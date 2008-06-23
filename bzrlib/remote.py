@@ -220,10 +220,11 @@ class RemoteBzrDir(BzrDir):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
         self._ensure_real()
         return self._real_bzrdir.clone(url, revision_id=revision_id,
-            force_new_repo=force_new_repo)
+            force_new_repo=force_new_repo, preserve_stacking=preserve_stacking)
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
