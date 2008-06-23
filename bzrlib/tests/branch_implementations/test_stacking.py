@@ -116,3 +116,19 @@ class TestStacking(TestCaseWithBranch):
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
         source = self.make_branch('source')
         target = source.bzrdir.sprout('target').open_branch()
+        try:
+            self.assertEqual('../stack-on', target.get_stacked_on())
+        except errors.UnstackableBranchFormat:
+            pass
+
+    def test_clone_stacking_policy_handling(self):
+        """Obey policy where possible, ignore otherwise."""
+        stack_on = self.make_branch('stack-on')
+        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir.get_config().set_default_stack_on('stack-on')
+        source = self.make_branch('source')
+        target = source.bzrdir.clone('target').open_branch()
+        try:
+            self.assertEqual('../stack-on', target.get_stacked_on())
+        except errors.UnstackableBranchFormat:
+            pass
