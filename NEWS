@@ -52,6 +52,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Remove endless loop in logwalker. (#235776)
 
+   * Convert redirect requests received from Subversion. (#229848)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES

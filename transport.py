@@ -28,7 +28,7 @@ from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import get_config
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
+from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED
 from bzrlib.plugins.svn.ra import DIRENT_KIND, RemoteAccess
 import urlparse
 import urllib
@@ -51,7 +51,12 @@ def get_svn_ra_transport(bzr_transport):
     if isinstance(bzr_transport, SvnRaTransport):
         return bzr_transport
 
-    return SvnRaTransport(bzr_transport.base)
+    try:
+        return SvnRaTransport(bzr_transport.base)
+    except SubversionException, (msg, num):
+        if num == ERR_RA_DAV_RELOCATED:
+            raise RedirectRequested(url, msg.split("'")[1], is_permanent=True)
+        raise
 
 
 def _url_unescape_uri(url):
@@ -87,7 +92,7 @@ def Connection(url):
                 auth=create_auth_baton(url),
                 client_string_func=get_client_string)
         # FIXME: Callbacks
-    except SubversionException, (_, num):
+    except SubversionException, (msg, num):
         if num in (ERR_RA_SVN_REPOS_NOT_FOUND,):
             raise NoSvnRepositoryPresent(url=url)
         if num == ERR_BAD_URL:
