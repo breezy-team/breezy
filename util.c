@@ -174,23 +174,14 @@ static PyObject *pyify_changed_paths(apr_hash_t *changed_paths, apr_pool_t *pool
 svn_error_t *py_svn_log_entry_receiver(void *baton, svn_log_entry_t *log_entry, apr_pool_t *pool)
 {
 	PyObject *revprops, *py_changed_paths, *ret;
-    apr_hash_index_t *idx;
-    const char *key;
-    apr_ssize_t klen;
-	char *val;
 
 	py_changed_paths = pyify_changed_paths(log_entry->changed_paths, pool);
 	if (py_changed_paths == NULL)
 		return py_svn_error();
 
-	revprops = PyDict_New();
-	if (log_entry->revprops != NULL) {
-		 for (idx = apr_hash_first(pool, log_entry->revprops); idx != NULL;
-             idx = apr_hash_next(idx)) {
-            apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
-			PyDict_SetItemString(revprops, key, PyString_FromString(val));
-		}
-	}
+	revprops = prop_hash_to_dict(log_entry->revprops);
+	if (revprops == NULL)
+		return py_svn_error();
 
     ret = PyObject_CallFunction((PyObject *)baton, "OlOb", py_changed_paths, 
 								 log_entry->revision, revprops, log_entry->has_children);

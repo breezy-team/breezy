@@ -313,7 +313,7 @@ class CachingLogWalker(CacheTable):
 
         try:
             try:
-                self.actual._transport.get_log(rcvr, None, self.saved_revnum, to_revnum, 0, True, True, False, [])
+                self.actual._transport.get_log(rcvr, None, self.saved_revnum, to_revnum, 0, True, True, False, todo_revprops)
             except SubversionException, (_, num):
                 if num == ERR_FS_NO_SUCH_REVISION:
                     raise NoSuchRevision(branch=self, 
