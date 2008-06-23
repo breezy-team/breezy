@@ -221,7 +221,7 @@ class CachingLogWalker(CacheTable):
         if row is None:
             return (None, -1)
         if row[2] == -1:
-            if row[0] == 'A':
+            if row[0] in ('A','R'):
                 return (None, -1)
             return (path, revnum-1)
         return (row[1], row[2])
@@ -480,7 +480,7 @@ class LogWalker(object):
             return (None, -1)
 
         if paths[path][2] == -1:
-            if paths[path][0] == 'A':
+            if paths[path][0] in ('A', 'R'):
                 return (None, -1)
             return (path, revnum-1)
 

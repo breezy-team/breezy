@@ -500,6 +500,22 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual(("trunk", 1), walker.get_previous("anotherfile", 2))
 
+    def test_get_previous_replace(self):
+        repos_url = self.make_repository("a")
+
+        cb = self.get_commit_editor(repos_url)
+        cb.add_dir("trunk")
+        cb.close()
+
+        cb = self.get_commit_editor(repos_url)
+        cb.delete("trunk")
+        cb.add_dir("trunk")
+        cb.close()
+
+        walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual((None, -1), walker.get_previous("trunk", 2))
+
     def test_find_children_empty(self):
         repos_url = self.make_repository("a")
 
