@@ -14,6 +14,8 @@ bzr-svn 0.4.11    UNRELEASED
 
      * KeyboardInterrupts are now no longer swallowed.  (#242217)
 
+     * Crash bug trying to access sites that use self-signed certificates. (#238529)
+
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
   BUG FIXES

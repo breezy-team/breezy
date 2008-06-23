@@ -16,6 +16,7 @@
 """Authentication token retrieval."""
 
 from bzrlib.config import AuthenticationConfig
+from bzrlib.trace import mutter
 from bzrlib.ui import ui_factory
 
 from bzrlib.plugins.svn import ra
@@ -75,6 +76,7 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param cert_info: Certificate information
         :param may_save: Whether this information may be stored.
         """
+        mutter("Verifying SSL server: %s", realm)
         credentials = self.get_credentials(self.scheme, host=self.host)
         if (credentials is not None and 
             credentials.has_key("verify_certificates") and 
@@ -117,6 +119,7 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         return [self.get_svn_username_prompt_provider(1),
                 self.get_svn_simple_prompt_provider(1),
                 self.get_svn_ssl_server_trust_prompt_provider()]
+
 
 def get_ssl_client_cert_pw(realm, may_save):
     """Simple SSL client certificate password prompter.
@@ -165,9 +168,9 @@ def create_auth_baton(url):
 
     # Specify Subversion providers first, because they use file data
     # rather than prompting the user.
-    providers = get_stock_svn_providers()
-    providers += auth_config.get_svn_auth_providers()
+    providers = auth_config.get_svn_auth_providers()
     providers += [get_ssl_client_cert_pw_provider(1)]
+    providers += get_stock_svn_providers()
 
     auth_baton = ra.Auth(providers)
     if creds is not None:
