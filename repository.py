@@ -682,9 +682,8 @@ class SvnRepository(Repository):
 
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i in xrange(from_revnum, to_revnum+1):
-                pb.update("finding branches", i, to_revnum+1)
-                paths = self._log.get_revision_paths(i)
+            for (paths, i, revprops) in self._log.iter_changes([""], from_revnum, to_revnum):
+                pb.update("finding branches", i, to_revnum)
                 for p in sorted(paths.keys()):
                     if layout.is_branch(p) or layout.is_tag(p):
                         if paths[p][0] in ('R', 'D') and p in created_branches:
