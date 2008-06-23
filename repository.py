@@ -624,7 +624,7 @@ class SvnRepository(Repository):
             (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         except NoSuchRevision:
             return False
-        revprops = self._log.revprop_list(revnum)
+        revprops = self.transport.revprop_list(revnum)
         return revprops.has_key(SVN_REVPROP_BZR_SIGNATURE)
 
     def get_signature_text(self, revision_id):

@@ -154,9 +154,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_set_signature(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
-        self.build_tree({"dc/foo": "bar"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "msg")
+        cb = self.get_commit_editor(repos_url)
+        cb.add_file("foo").modify("bar")
+        cb.close()
         revid = repos.get_mapping().generate_revision_id(repos.uuid, 1, "")
         repos.add_signature_text(revid, "TEXT")
         self.assertTrue(repos.has_signature_for_revision_id(revid))
