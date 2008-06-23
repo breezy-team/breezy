@@ -33,13 +33,23 @@ SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 SCHEME_GUESS_SAMPLE_SIZE = 2000
 
 def expand_branch_pattern(begin, todo, check_path, get_children):
+    """Find the paths in the repository that match the expected branch pattern.
+
+    :param begin: List of path elements currently opened.
+    :param todo: List of path elements to still evaluate (including wildcards)
+    :param check_path: Function for checking a path exists
+    :param get_children: Function for retrieving the children of a path
+    """
+    mutter('expand branches: %r, %r', begin, todo)
     path = "/".join(begin)
+    # If all elements have already been handled, just check the path exists
     if len(todo) == 0:
         if check_path(path):
             return [path]
         else:
             return []
-    if not "*" in todo[0]:
+    # Not a wildcard? Just expand next bits
+    if todo[0] != "*":
         return expand_branch_pattern(begin+[todo[0]], todo[1:], check_path, get_children)
     children = get_children(path)
     if children is None:
@@ -47,6 +57,7 @@ def expand_branch_pattern(begin, todo, check_path, get_children):
     ret = []
     for c in children:
         if len(todo) == 1:
+            # Last path element, so return directly
             ret.append("/".join(begin+[c]))
         else:
             ret += expand_branch_pattern(begin+[c], todo[1:], check_path, get_children)

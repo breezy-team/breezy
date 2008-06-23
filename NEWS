@@ -54,6 +54,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Convert redirect requests received from Subversion. (#229848)
 
+   * New function for finding path children that's faster and more correct. (#240954)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
