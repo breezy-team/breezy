@@ -34,10 +34,11 @@ class TestBasisTree(TestCaseWithSubversionRepository):
     def test_executable(self):
         repos_url = self.make_client("d", "dc")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("file", "x")
-        dc.change_file_prop("file", "svn:executable", "*")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        f = dc.add_file("file").modify("x")
+        f.modify()
+        f.change_prop("svn:executable", "*")
+        dc.close()
 
         self.client_update("dc")
 

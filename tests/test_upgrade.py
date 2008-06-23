@@ -63,9 +63,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_no_custom(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -88,9 +88,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_single_custom(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -118,9 +118,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_single_keep_parent_fileid(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -147,10 +147,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_single_custom_continue(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.add_file("b", "c")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.add_file("b").modify("c")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -194,9 +194,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_more_custom(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -233,9 +233,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_more_custom_branch(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -262,9 +262,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_workingtree(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -292,9 +292,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_branch_none(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("a", "b")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("a").modify("b")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())
@@ -317,9 +317,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
     def test_raise_incompat(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("d", "e")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("d").modify("e")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format=get_rich_root_format())

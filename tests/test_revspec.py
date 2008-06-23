@@ -42,13 +42,13 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
         revspec = RevisionSpec.from_string("svn:2")
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("bar")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bar").modify()
+        dc.close()
 
         branch = Branch.open(repos_url)
         revinfo = revspec._match_on(branch, None)
@@ -59,9 +59,9 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
         revspec = RevisionSpec.from_string("svn:foo")
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("bar")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bar").modify()
+        dc.close()
 
         branch = Branch.open(repos_url)
 
@@ -72,9 +72,9 @@ class TestRevSpecsBySubversion(TestCaseWithSubversionRepository):
         revspec = RevisionSpec.from_string("svn:24")
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("bar")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bar").modify()
+        dc.close()
 
         branch = Branch.open(repos_url)
 

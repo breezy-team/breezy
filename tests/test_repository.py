@@ -55,9 +55,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_get_branch_log(self):
         repos_url = self.make_repository("a")
-        cb = self.commit_editor(repos_url)
-        cb.add_file("foo")
-        cb.done()
+        cb = self.get_commit_editor(repos_url)
+        cb.add_file("foo").modify()
+        cb.close()
 
         repos = Repository.open(repos_url)
 

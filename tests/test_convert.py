@@ -67,20 +67,21 @@ class TestConversion(TestCaseWithSubversionRepository):
         super(TestConversion, self).setUp()
         self.repos_url = self.make_repository('d')
 
-        dc = self.commit_editor()
-        dc.add_dir("trunk")
-        dc.add_file("trunk/file", "data")
-        dc.add_dir("branches")
-        dc.add_dir("branches/abranch")
-        dc.add_file("branches/abranch/anotherfile", "data2")
-        dc.done()
+        dc = self.get_commit_editor()
+        t = dc.add_dir("trunk")
+        t.add_file("trunk/file").modify("data")
+        bs = dc.add_dir("branches")
+        ab = bs.add_dir("branches/abranch")
+        ab.add_file("branches/abranch/anotherfile").modify("data2")
+        dc.close()
 
-        dc = self.commit_editor()
-        dc.change_file("trunk/file", "otherdata")
-        dc.done()
+        dc = self.get_commit_editor()
+        t = dc.open_dir("trunk")
+        t.open_file("trunk/file").modify("otherdata")
+        dc.close()
 
-    def commit_editor(self):
-        return super(TestConversion,self).commit_editor(self.repos_url)
+    def get_commit_editor(self):
+        return super(TestConversion,self).get_commit_editor(self.repos_url)
 
     def test_sets_parent_urls(self):
         convert_repository(Repository.open(self.repos_url), "e", 
@@ -92,14 +93,16 @@ class TestConversion(TestCaseWithSubversionRepository):
                 Branch.open("e/branches/abranch").get_parent())
 
     def test_fetch_alive(self):
-        dc = self.commit_editor()
-        dc.add_dir("branches/somebranch")
-        dc.add_file("branches/somebranch/somefile", 'data')
-        dc.done()
+        dc = self.get_commit_editor()
+        bs = dc.open_dir("branches")
+        sb = bs.add_dir("branches/somebranch")
+        sb.add_file("branches/somebranch/somefile").modify('data')
+        dc.close()
 
-        dc = self.commit_editor()
-        dc.delete("branches/somebranch")
-        dc.done()
+        dc = self.get_commit_editor()
+        bs = dc.open_dir("branches")
+        bs.delete("branches/somebranch")
+        dc.close()
 
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", 
@@ -110,9 +113,10 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filebranch(self):
-        dc = self.commit_editor()
-        dc.add_file("branches/somebranch", 'data')
-        dc.done()
+        dc = self.get_commit_editor()
+        bs = dc.open_dir("branches")
+        bs.add_file("branches/somebranch").modify('data')
+        dc.close()
 
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme())
@@ -121,14 +125,16 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_dead(self):
-        dc = self.commit_editor()
-        dc.add_dir("branches/somebranch")
-        dc.add_file("branches/somebranch/somefile", 'data')
-        dc.done()
+        dc = self.get_commit_editor()
+        bs = dc.open_dir("branches")
+        sb = bs.add_dir("branches/somebranch")
+        sb.add_file("branches/somebranch/somefile").modify('data')
+        dc.close()
 
-        dc = self.commit_editor()
-        dc.delete("branches/somebranch")
-        dc.done()
+        dc = self.get_commit_editor()
+        bs = dc.open_dir("branches")
+        bs.delete("branches/somebranch")
+        dc.close()
 
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
@@ -138,15 +144,17 @@ class TestConversion(TestCaseWithSubversionRepository):
             oldrepos.generate_revision_id(3, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filter(self):
-        dc = self.commit_editor()
+        dc = self.get_commit_editor()
+        branches = dc.open_dir("branches")
         dc.add_dir("branches/somebranch")
-        dc.add_file("branches/somebranch/somefile", 'data')
-        dc.done()
+        dc.add_file("branches/somebranch/somefile").modify('data')
+        dc.close()
 
-        dc = self.commit_editor()
-        dc.add_dir("branches/anotherbranch")
-        dc.add_file("branches/anotherbranch/somefile", 'data')
-        dc.done()
+        dc = self.get_commit_editor()
+        branches = dc.open_dir("branches")
+        ab = branches.add_dir("branches/anotherbranch")
+        ab.add_file("branches/anotherbranch/somefile").modify('data')
+        dc.close()
 
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
@@ -169,14 +177,14 @@ class TestConversion(TestCaseWithSubversionRepository):
         convert_repository(Repository.open(self.repos_url), "e", 
                 TrunkBranchingScheme(), create_shared_repo=True)
 
-        dc = self.commit_editor()
+        dc = self.get_commit_editor()
         dc.delete("trunk")
-        dc.done()
+        dc.close()
 
-        dc = self.commit_editor()
-        dc.add_dir("trunk")
-        dc.add_file("trunk/file")
-        dc.done()
+        dc = self.get_commit_editor()
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/file").modify()
+        dc.close()
 
         convert_repository(Repository.open(self.repos_url), "e", 
                            TrunkBranchingScheme(), create_shared_repo=True)
@@ -232,9 +240,10 @@ class TestConversion(TestCaseWithSubversionRepository):
 
         mapping = oldrepos.get_mapping()
 
-        dc = self.commit_editor()
-        dc.change_file("trunk/file")
-        dc.done()
+        dc = self.get_commit_editor()
+        trunk = dc.open_dir("trunk")
+        trunk.open_file("trunk/file").modify()
+        dc.close()
 
         self.assertEqual(
                 Repository.open(self.repos_url).generate_revision_id(2, "trunk", mapping), 
