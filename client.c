@@ -82,7 +82,7 @@ static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
 	if (ret == NULL)
 		return NULL;
 
-	assert(commit_items->elt_size == sizeof(svn_client_commit_item_2_t *));
+	assert(commit_items->elt_size == sizeof(svn_client_commit_item2_t *));
 
 	for (i = 0; i < commit_items->nelts; i++) {
 		svn_client_commit_item2_t *commit_item = 
