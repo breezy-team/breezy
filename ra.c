@@ -450,12 +450,13 @@ static svn_error_t *py_file_rev_handler(void *baton, const char *path, svn_revnu
 	if (py_rev_props == NULL)
 		return py_svn_error();
 
-	/* FIXME: delta handler */
 	ret = PyObject_CallFunction(fn, "slO", path, rev, py_rev_props);
 	Py_DECREF(py_rev_props);
 	if (ret == NULL)
 		return py_svn_error();
-	Py_DECREF(ret);
+
+    *delta_baton = (void *)ret;
+    *delta_handler = py_txdelta_window_handler;
     return NULL;
 }
 
@@ -1704,7 +1705,10 @@ static svn_error_t *py_simple_prompt(svn_auth_cred_simple_t **cred, void *baton,
 		PyErr_SetString(PyExc_TypeError, "expected tuple with simple credentials");
 		return py_svn_error();
 	}
-	/* FIXME: Check type of ret */
+	if (PyTuple_Size(ret) == 3) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple of size 3");
+		return py_svn_error();
+	}
 	*cred = apr_pcalloc(pool, sizeof(**cred));
     (*cred)->username = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
     (*cred)->password = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 1)));
@@ -1749,9 +1753,12 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 	if (ret == NULL)
 		return py_svn_error();
 
-	/* FIXME: Check that ret is a tuple of size 2 */
 	if (!PyTuple_Check(ret)) {
 		PyErr_SetString(PyExc_TypeError, "expected tuple with server trust credentials");
+		return py_svn_error();
+	}
+	if (PyTuple_Size(ret) == 2) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple of size 2");
 		return py_svn_error();
 	}
 	
@@ -1787,7 +1794,15 @@ static svn_error_t *py_ssl_client_cert_pw_prompt(svn_auth_cred_ssl_client_cert_p
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL) 
 		return py_svn_error();
-	/* FIXME: Check ret is a tuple of size 2 */
+	if (!PyTuple_Check(ret)) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple with client cert pw credentials");
+		return py_svn_error();
+	}
+
+	if (PyTuple_Size(ret) == 2) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple of size 2");
+		return py_svn_error();
+	}
 	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->password = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
@@ -1800,7 +1815,16 @@ static svn_error_t *py_ssl_client_cert_prompt(svn_auth_cred_ssl_client_cert_t **
 	ret = PyObject_CallFunction(fn, "sb", realm, may_save);
 	if (ret == NULL) 
 		return py_svn_error();
-	/* FIXME: Check ret is a tuple of size 2 */
+
+	if (!PyTuple_Check(ret)) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple with client cert credentials");
+		return py_svn_error();
+	}
+
+	if (PyTuple_Size(ret) == 2) {
+		PyErr_SetString(PyExc_TypeError, "expected tuple of size 2");
+		return py_svn_error();
+	}
 	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->cert_file = apr_pstrdup(pool, PyString_AsString(PyTuple_GetItem(ret, 0)));
 	(*cred)->may_save = (PyTuple_GetItem(ret, 1) == Py_True);
