@@ -738,8 +738,9 @@ class KnitVersionedFiles(VersionedFiles):
         self._index._check_write_ok()
         self._check_add(key, lines, random_id, check_content)
         if parents is None:
-            # For no-graph knits, have the public interface use None for
-            # parents.
+            # The caller might pass None if there is no graph data, but kndx
+            # indexes can't directly store that, so we give them
+            # an empty tuple instead.
             parents = ()
         return self._add(key, lines, parents,
             parent_texts, left_matching_blocks, nostore_sha, random_id)
@@ -854,12 +855,10 @@ class KnitVersionedFiles(VersionedFiles):
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
         self.check_not_reserved_id(version_id)
-        # Technically this could be avoided if we are happy to allow duplicate
-        # id insertion when other things than bzr core insert texts, but it
-        # seems useful for folk using the knit api directly to have some safety
-        # blanket that we can disable.
-        ##if not random_id and self.has_version(key):
-        ##    raise RevisionAlreadyPresent(key, self)
+        # TODO: If random_id==False and the key is already present, we should
+        # probably check that the existing content is identical to what is
+        # being inserted, and otherwise raise an exception.  This would make
+        # the bundle code simpler.
         if check_content:
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
@@ -899,8 +898,8 @@ class KnitVersionedFiles(VersionedFiles):
                 fulltext_size = size
                 break
             delta_size += size
-            # No exception here because we stop at first fulltext anyway, an
-            # absent parent indicates a corrupt knit anyway.
+            # We don't explicitly check for presence because this is in an
+            # inner loop, and if it's missing it'll fail anyhow.
             # TODO: This should be asking for compression parent, not graph
             # parent.
             parent = self._index.get_parent_map([parent])[parent][0]
@@ -1071,14 +1070,16 @@ class KnitVersionedFiles(VersionedFiles):
             positions = self._get_components_positions(keys, allow_missing=True)
         else:
             build_details = self._index.get_build_details(keys)
+            # map from key to
+            # (record_details, access_memo, compression_parent_key)
             positions = dict((key, self._build_details_to_components(details))
                 for key, details in build_details.iteritems())
         absent_keys = keys.difference(set(positions))
         # There may be more absent keys : if we're missing the basis component
         # and are trying to include the delta closure.
         if include_delta_closure:
-            # Build up reconstructable_keys dict.  key:True in this dict means the key
-            # can be reconstructed.
+            # Build up reconstructable_keys dict.  key:True in this dict means
+            # the key can be reconstructed.
             reconstructable_keys = {}
             for key in keys:
                 # the delta chain
@@ -1284,6 +1285,7 @@ class KnitVersionedFiles(VersionedFiles):
         key_records = []
         build_details = self._index.get_build_details(keys)
         for key in keys:
+            # [0] is index_memo
             key_records.append((key, build_details[key][0]))
         total = len(key_records)
         records_iter = enumerate(self._read_records_iter(key_records))
@@ -1556,6 +1558,12 @@ class _KndxIndex(object):
     to ensure that records always start on new lines even if the last write was
     interrupted. As a result its normal for the last line in the index to be
     missing a trailing newline. One can be added with no harmful effects.
+
+    :ivar _kndx_cache: dict from prefix to the old state of KnitIndex objects,
+        where prefix is e.g. the (fileid,) for .texts instances or () for
+        constant-mapped things like .revisions, and the old state is
+        tuple(history_vector, cache_dict).  This is used to prevent having an
+        ABI change with the C extension that reads .kndx files.
     """
 
     HEADER = "# bzr knit index 8\n"
