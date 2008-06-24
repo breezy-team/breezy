@@ -1469,7 +1469,7 @@ class _PreviewTree(tree.Tree):
                       trees=[], require_versioned=require_versioned))
         return result
 
-    def path2id(self, path):
+    def _path2id_last_transform_segment(self, path):
         by_parent = self._transform.by_parent()
         segments = list(reversed(splitpath(path)))
         cur_parent = self._transform.root
@@ -1482,25 +1482,52 @@ class _PreviewTree(tree.Tree):
             else:
                 segments.append(cur_segment)
                 break
-        if len(segments) == 0:
-            return self._transform.final_file_id(cur_parent)
-        parent_path = self._transform._tree_id_paths[cur_parent]
-        tree_path = pathjoin(*reversed(segments + [parent_path]))
+        return cur_parent, list(reversed(segments))
+
+    def _candidate_treepath2id(self, trans_segment, segments):
+        parent_path = self._transform._tree_id_paths[trans_segment]
+        tree_path = pathjoin(*([parent_path] + segments))
         tree_file_id = self._transform._tree.path2id(tree_path)
-        cur_file_id = tree_file_id
+        return tree_file_id, tree_path
+
+    def _valid_path2id(self, file_id, tree_path, trans_segment):
+        """Determine whether a file_id corresponds to a path.
+
+        We do by seeing if the trans_segment is actually the last parent that
+        is mentioned in the transform.  If a more recent parent is mentioned,
+        in the transform, it it would be the trans_segment unless it has been
+        renamed.  Therefore, the parent has been renamed and the path is not
+        valid.
+
+        :param file_id: The file_id that may correspond to tree_path
+        :param tree_path: The path of the file_id in the tree
+        :param trans_segment: The last parent of the file which is mentioned
+            in the transform.
+        """
         cur_trans_id = self._transform._tree_path_ids.get(tree_path)
-        while cur_trans_id != cur_parent:
+        while cur_trans_id != trans_segment:
             if cur_trans_id is not None:
                 # If there was an entry for this file, and the path was
                 # correct we would have handled it already.  So the path must
                 # be wrong.
                 if cur_trans_id in self._transform._new_parent:
-                    return None
-            cur_file_id = self._transform._tree.iter_entries_by_dir(
-                [cur_file_id]).next()[1].parent_id
-            tree_path = self._transform._tree.id2path(cur_file_id)
+                    return False
+            file_id = self._transform._tree.iter_entries_by_dir(
+                [file_id]).next()[1].parent_id
+            tree_path = self._transform._tree.id2path(file_id)
             cur_trans_id = self._transform._tree_path_ids.get(tree_path)
-        return tree_file_id
+        return True
+
+    def path2id(self, path):
+        trans_segment, segments = self._path2id_last_transform_segment(path)
+        if len(segments) == 0:
+            return self._transform.final_file_id(trans_segment)
+        tree_file_id, tree_path = self._candidate_treepath2id(trans_segment,
+                                                              segments)
+        if self._valid_path2id(tree_file_id, tree_path, trans_segment):
+            return tree_file_id
+        else:
+            return None
 
     def id2path(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
