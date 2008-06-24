@@ -141,6 +141,7 @@ PyObject *prop_hash_to_dict(apr_hash_t *props)
 		else
 			py_val = PyString_FromStringAndSize(val->data, val->len);
         PyDict_SetItemString(py_props, key, py_val);
+		Py_DECREF(py_val);
 	}
     apr_pool_destroy(pool);
     return py_props;
