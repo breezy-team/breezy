@@ -446,7 +446,7 @@ class SmartClientMedium(object):
         self._remote_version_is_before = None
 
     def _is_remote_before(self, version_tuple):
-        """Is it possible the remote side is supports RPCs for a given version?
+        """Is it possible the remote side supports RPCs for a given version?
 
         Typical use::
 
@@ -474,7 +474,7 @@ class SmartClientMedium(object):
         """
         if (self._remote_version_is_before is not None and
             version_tuple > self._remote_version_is_before):
-            raise AssertionError, (
+            raise AssertionError(
                 "_remember_remote_is_before(%r) called, but "
                 "_remember_remote_is_before(%r) was called previously."
                 % (version_tuple, self._remote_version_is_before))
