@@ -198,6 +198,10 @@ class TreeTransformBase(object):
         previous_name = self._new_name.get(trans_id)
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
+        if parent == ROOT_PARENT:
+            if self._new_root is not None:
+                raise ValueError("Cannot have multiple roots.")
+            self._new_root = trans_id
         if (trans_id in self._limbo_files and
             trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
@@ -1470,7 +1474,7 @@ class _PreviewTree(tree.Tree):
         for (file_id, paths, changed, versioned, parent, name, kind,
              executable) in self._transform.iter_changes():
             if paths[1] in to_find:
-                result.append(file_id)
+                result.add(file_id)
                 to_find.remove(paths[1])
         result.update(self._transform._tree.paths2ids(to_find,
                       trees=[], require_versioned=require_versioned))
