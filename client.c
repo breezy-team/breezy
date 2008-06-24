@@ -261,7 +261,7 @@ static int client_set_auth(PyObject *self, PyObject *auth, void *closure)
 	Py_XDECREF(client->py_auth);
 
 	if (auth == Py_None) {
-		auth_providers = apr_array_make(client->pool, 0, 4);
+		auth_providers = apr_array_make(client->pool, 0, sizeof(svn_auth_provider_object_t *));
 		if (auth_providers == NULL) {
 			PyErr_NoMemory();
 			return 1;
