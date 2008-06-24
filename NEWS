@@ -16,6 +16,8 @@ bzr-svn 0.4.11    UNRELEASED
 
      * Crash bug trying to access sites that use self-signed certificates. (#238529)
 
+     * Username and password prompting will now always work.
+
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
   BUG FIXES
