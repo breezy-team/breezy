@@ -176,10 +176,26 @@ class Tree(object):
     def iter_entries_by_dir(self, specific_file_ids=None):
         """Walk the tree in 'by_dir' order.
 
-        This will yield each entry in the tree as a (path, entry) tuple. The
-        order that they are yielded is: the contents of a directory are 
-        preceeded by the parent of a directory, and all the contents of a 
-        directory are grouped together.
+        This will yield each entry in the tree as a (path, entry) tuple.
+        The order that they are yielded is:
+
+        Directories are walked in a depth-first lexicographical order,
+        however, whenever a directory is reached, all of its direct child
+        nodes are yielded in  lexicographical order before yielding the
+        grandchildren.
+
+        For example, in the tree::
+
+           a/
+             b/
+               c
+             d/
+               e
+           f/
+             g
+
+        The yield order would be::
+          a, f, a/b, a/d, a/b/c, a/d/e, f/g
         """
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids)

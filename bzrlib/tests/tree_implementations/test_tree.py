@@ -69,7 +69,7 @@ class TestReference(TestCaseWithTree):
 
     def skip_if_no_reference(self, tree):
         if not getattr(tree, 'supports_tree_reference', lambda: False)():
-            raise tests.TestSkipped('Tree references not supported')
+            raise tests.TestNotApplicable('Tree references not supported')
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -88,6 +88,8 @@ class TestReference(TestCaseWithTree):
 
     def test_get_reference_revision(self):
         tree = self.create_nested()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1', tree.get_reference_revision('sub-root', path))
 
@@ -96,7 +98,7 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         entry = tree.inventory['sub-root']
-        self.assertEqual([(tree.abspath('subtree'), 'sub-root')],
+        self.assertEqual([(u'subtree', 'sub-root')],
             list(tree.iter_references()))
 
     def test_get_root_id(self):

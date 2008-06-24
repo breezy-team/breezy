@@ -1402,7 +1402,8 @@ class TransformPreview(TreeTransformBase):
         except KeyError:
             return
         file_id = self.tree_file_id(parent_id)
-        for child in self._tree.inventory[file_id].children.iterkeys():
+        children = getattr(self._tree.inventory[file_id], 'children', {})
+        for child in children:
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
 
@@ -1582,13 +1583,15 @@ class _PreviewTree(tree.Tree):
         while len(todo) > 0:
             parent = todo.pop()
             parent_file_id = self._transform.final_file_id(parent)
-            children = self._all_children(parent)
+            children = list(self._all_children(parent))
+            paths = dict(zip(children, self._final_paths.get_paths(children)))
+            children.sort(key=paths.get)
             todo.extend(children)
             for trans_id in children:
                 ordered_ids.append((trans_id, parent_file_id))
         for entry, trans_id in self._make_inv_entries(ordered_ids,
                                                       specific_file_ids):
-            yield self._final_paths.get_path(trans_id), entry
+            yield unicode(self._final_paths.get_path(trans_id)), entry
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
