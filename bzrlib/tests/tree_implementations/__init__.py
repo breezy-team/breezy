@@ -43,7 +43,6 @@ from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
     WorkingTreeTestProviderAdapter,
     )
-from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
@@ -76,17 +75,6 @@ def _dirstate_tree_from_workingtree(testcase, tree):
 def preview_tree_pre(testcase, tree):
     tt = TransformPreview(tree)
     testcase.addCleanup(tt.finalize)
-    return tt.get_preview_tree()
-
-
-def preview_tree_post(testcase, tree):
-    empty = tree.branch.repository.revision_tree(NULL_REVISION)
-    tt = TransformPreview(empty)
-    empty.lock_read()
-    testcase.addCleanup(tt.finalize)
-    pp = progress.ProgressPhase('', 1, progress.DummyProgress())
-    transform._prepare_revert_transform(empty, tree, tt, None, False, pp,
-                                        empty, {})
     return tt.get_preview_tree()
 
 
@@ -334,8 +322,6 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             WorkingTreeFormat4()))
         self.scenarios.append(self.create_tree_scenario('PreviewTree',
             preview_tree_pre))
-        self.scenarios.append(self.create_tree_scenario('PreviewTreePost',
-            preview_tree_post))
 
     def create_tree_scenario(self, name, converter, workingtree_format=None):
         """Create a scenario for the specified converter
