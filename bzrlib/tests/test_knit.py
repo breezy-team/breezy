@@ -1653,7 +1653,25 @@ class TestStacking(KnitTests):
             basis.calls)
 
     def test_insert_record_stream(self):
-        pass
+        # records are inserted as normal; insert_record_stream builds on
+        # add_lines, so a smoke test should be all thats needed:
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_delta = ('zaphod',)
+        basis, test = self.get_basis_and_test_knit()
+        source = self.make_test_knit(name='source')
+        basis.add_lines(key_basis, (), ['foo\n'])
+        basis.calls = []
+        source.add_lines(key_basis, (), ['foo\n'])
+        source.add_lines(key_delta, (key_basis,), ['bar\n'])
+        stream = source.get_record_stream([key_delta], 'unordered', False)
+        test.insert_record_stream(stream)
+        self.assertEqual([("get_parent_map", set([key_basis]))],
+            basis.calls)
+        self.assertEqual({key_delta:(key_basis,)},
+            test.get_parent_map([key_delta]))
+        self.assertEqual('bar\n', test.get_record_stream([key_delta],
+            'unordered', True).next().get_bytes_as('fulltext'))
 
     def test_iter_lines_added_or_present_in_keys(self):
         # Lines from the basis are returned, and lines for a given key are only

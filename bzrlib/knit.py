@@ -1005,7 +1005,9 @@ class KnitVersionedFiles(VersionedFiles):
                 bytes = record.get_bytes_as('fulltext')
                 lines = split_lines(record.get_bytes_as('fulltext'))
                 text_map[record.key] = lines
-                final_content[record.key] = PlainKnitContent(lines, record.key)
+                content_map[record.key] = PlainKnitContent(lines, record.key)
+                if record.key in keys:
+                    final_content[record.key] = content_map[record.key]
         for key in keys:
             if key in nonlocal_keys:
                 # already handled
@@ -1013,11 +1015,16 @@ class KnitVersionedFiles(VersionedFiles):
             components = []
             cursor = key
             while cursor is not None:
-                record, record_details, digest, next = record_map[cursor]
+                try:
+                    record, record_details, digest, next = record_map[cursor]
+                except KeyError:
+                    raise RevisionNotPresent(cursor, self)
                 components.append((cursor, record, record_details, digest))
-                if cursor in content_map:
-                    break
                 cursor = next
+                if cursor in content_map:
+                    # no need to plan further back
+                    components.append((cursor, None, None, None))
+                    break
 
             content = None
             for (component_id, record, record_details,
@@ -1156,7 +1163,8 @@ class KnitVersionedFiles(VersionedFiles):
                             chain.append(positions[chain[-1]][2])
                         except KeyError:
                             # missing basis component
-                            result = False
+                            needed_from_fallback.add(chain[-1])
+                            result = True
                             break
                 for chain_key in chain[:-1]:
                     checked_keys[chain_key] = result
