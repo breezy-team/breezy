@@ -60,6 +60,9 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Support cloning bzr-svn branches (will clone to rich-root-pack). (#229819)
 
+   * Fix inconsistent revision iteration when branches' parents were moved but 
+     not changed. (#237901)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
