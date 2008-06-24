@@ -91,7 +91,6 @@ def Connection(url):
         ret = ra.RemoteAccess(url.encode('utf8'), 
                 auth=create_auth_baton(url),
                 client_string_func=get_client_string)
-        # FIXME: Callbacks
     except SubversionException, (msg, num):
         if num in (ERR_RA_SVN_REPOS_NOT_FOUND,):
             raise NoSvnRepositoryPresent(url=url)

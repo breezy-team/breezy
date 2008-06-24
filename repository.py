@@ -635,7 +635,7 @@ class SvnRepository(Repository):
         :raises NoSuchRevision: Always
         """
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        revprops = self._log.revprop_list(revnum)
+        revprops = self.transport.revprop_list(revnum)
         try:
             return revprops[SVN_REVPROP_BZR_SIGNATURE]
         except KeyError:
