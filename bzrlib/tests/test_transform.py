@@ -2095,3 +2095,51 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree = preview.get_preview_tree()
         self.assertIs(None, preview_tree.path2id('old_name/child'))
         self.assertEqual('child-id', preview_tree.path2id('new_name/child'))
+
+    def assertMatchingIterEntries(self, tt, specific_file_ids=None):
+        preview_tree = tt.get_preview_tree()
+        preview_result = list(preview_tree.iter_entries_by_dir(
+                              specific_file_ids))
+        tree = tt._tree
+        tt.apply()
+        actual_result = list(tree.iter_entries_by_dir(specific_file_ids))
+        self.assertEqual(actual_result, preview_result)
+
+    def test_iter_entries_by_dir_new(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TreeTransform(tree)
+        tt.new_file('new', tt.root, 'contents', 'new-id')
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_deleted(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/deleted'])
+        tree.add('deleted', 'deleted-id')
+        tt = TreeTransform(tree)
+        tt.delete_contents(tt.trans_id_file_id('deleted-id'))
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_unversioned(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/removed'])
+        tree.add('removed', 'removed-id')
+        tt = TreeTransform(tree)
+        tt.unversion_file(tt.trans_id_file_id('removed-id'))
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_moved(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/moved', 'tree/new_parent/'])
+        tree.add(['moved', 'new_parent'], ['moved-id', 'new_parent-id'])
+        tt = TreeTransform(tree)
+        tt.adjust_path('moved', tt.trans_id_file_id('new_parent-id'),
+                       tt.trans_id_file_id('moved-id'))
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_specific_file_ids(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.set_root_id('tree-root-id')
+        self.build_tree(['tree/parent/', 'tree/parent/child'])
+        tree.add(['parent', 'parent/child'], ['parent-id', 'child-id'])
+        tt = TreeTransform(tree)
+        self.assertMatchingIterEntries(tt, ['tree-root-id', 'child-id'])

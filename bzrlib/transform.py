@@ -1409,6 +1409,7 @@ class _PreviewTree(tree.Tree):
     def __init__(self, transform):
         self._transform = transform
         self._final_paths = FinalPaths(transform)
+        self.__by_parent = None
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
@@ -1430,6 +1431,12 @@ class _PreviewTree(tree.Tree):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
+
+    @property
+    def _by_parent(self):
+        if self.__by_parent is None:
+            self.__by_parent = self._transform.by_parent()
+        return self.__by_parent
 
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
@@ -1470,12 +1477,11 @@ class _PreviewTree(tree.Tree):
         return result
 
     def _path2id_last_transform_segment(self, path):
-        by_parent = self._transform.by_parent()
         segments = list(reversed(splitpath(path)))
         cur_parent = self._transform.root
         while len(segments) > 0:
             cur_segment = segments.pop()
-            for child in by_parent.get(cur_parent, []):
+            for child in self._by_parent.get(cur_parent, []):
                 if self._transform.final_name(child) == cur_segment:
                     cur_parent = child
                     break
@@ -1536,8 +1542,49 @@ class _PreviewTree(tree.Tree):
         except NoFinalPath:
             raise errors.NoSuchId(self, file_id)
 
+    def _all_children(self, trans_id):
+        children = set(self._transform.iter_tree_children(trans_id))
+        # children in the _new_parent set are provided by _by_parent.
+        children.difference_update(self._transform._new_parent.keys())
+        children.update(self._by_parent.get(trans_id, []))
+        return children
+
+    def _make_inv_entries(self, ordered_entries, specific_file_ids):
+        for trans_id, parent_file_id in ordered_entries:
+            file_id = self._transform.final_file_id(trans_id)
+            if file_id is None:
+                continue
+            if (specific_file_ids is not None
+                and file_id not in specific_file_ids):
+                continue
+            try:
+                kind = self._transform.final_kind(trans_id)
+            except NoSuchFile:
+                kind = self._transform._tree.stored_kind(file_id)
+            new_entry = inventory.make_entry(
+                kind,
+                self._transform.final_name(trans_id),
+                parent_file_id, file_id)
+            yield new_entry, trans_id
+
     def iter_entries_by_dir(self, specific_file_ids=None):
-        return self._transform._tree.iter_entries_by_dir(specific_file_ids)
+        # This may not be a maximally efficient implementation, but it is
+        # reasonably straightforward.  An implementation that grafts the
+        # TreeTransform changes onto the tree's iter_entries_by_dir results
+        # might be more efficient, but requires tricky inferences about stack
+        # position.
+        todo = [ROOT_PARENT]
+        ordered_ids = []
+        while len(todo) > 0:
+            parent = todo.pop()
+            parent_file_id = self._transform.final_file_id(parent)
+            children = self._all_children(parent)
+            todo.extend(children)
+            for trans_id in children:
+                ordered_ids.append((trans_id, parent_file_id))
+        for entry, trans_id in self._make_inv_entries(ordered_ids,
+                                                      specific_file_ids):
+            yield self._final_paths.get_path(trans_id), entry
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
