@@ -28,7 +28,6 @@ Specific tests for individual variations are in other places such as:
 from bzrlib import (
     errors,
     osutils,
-    progress,
     tests,
     transform,
     )

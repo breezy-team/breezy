@@ -127,11 +127,7 @@ class TreeTransformBase(object):
         # Cache of relpath results, to speed up canonical_path
         self._relpaths = {}
         # The trans_id that will be used as the tree root
-        root_id = tree.get_root_id()
-        if root_id is not None:
-            self._new_root = self.trans_id_tree_file_id(root_id)
-        else:
-            self._new_root = None
+        self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         # Indictor of whether the transform has been applied
         self._done = False
         # A progress bar
@@ -260,8 +256,6 @@ class TreeTransformBase(object):
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
-        if inventory_id is None:
-            raise ValueError('None is not a valid file id')
         path = self._tree.id2path(inventory_id)
         return self.trans_id_tree_path(path)
 
@@ -271,8 +265,6 @@ class TreeTransformBase(object):
         a transaction has been unversioned, it is deliberately still returned.
         (this will likely lead to an unversioned parent conflict.)
         """
-        if file_id is None:
-            raise ValueError('None is not a valid file id')
         if file_id in self._r_new_id and self._r_new_id[file_id] is not None:
             return self._r_new_id[file_id]
         elif file_id in self._tree.inventory:
@@ -2052,8 +2044,21 @@ def revert(working_tree, target_tree, filenames, backups=False,
     tt = TreeTransform(working_tree, pb)
     try:
         pp = ProgressPhase("Revert phase", 3, pb)
-        conflicts, merge_modified = _prepare_revert_transform(
-            working_tree, target_tree, tt, filenames, backups, pp)
+        pp.next_phase()
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            merge_modified = _alter_files(working_tree, target_tree, tt,
+                                          child_pb, filenames, backups)
+        finally:
+            child_pb.finished()
+        pp.next_phase()
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            raw_conflicts = resolve_conflicts(tt, child_pb,
+                lambda t, c: conflict_pass(t, c, target_tree))
+        finally:
+            child_pb.finished()
+        conflicts = cook_conflicts(raw_conflicts, tt)
         if change_reporter:
             change_reporter = delta._ChangeReporter(
                 unversioned_filter=working_tree.is_ignored)
@@ -2068,26 +2073,6 @@ def revert(working_tree, target_tree, filenames, backups=False,
         tt.finalize()
         pb.clear()
     return conflicts
-
-
-def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
-                              backups, pp):
-    pp.next_phase()
-    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-    try:
-        merge_modified = _alter_files(working_tree, target_tree, tt,
-                                      child_pb, filenames, backups)
-    finally:
-        child_pb.finished()
-    pp.next_phase()
-    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-    try:
-        raw_conflicts = resolve_conflicts(tt, child_pb,
-            lambda t, c: conflict_pass(t, c, target_tree))
-    finally:
-        child_pb.finished()
-    conflicts = cook_conflicts(raw_conflicts, tt)
-    return conflicts, merge_modified
 
 
 def _alter_files(working_tree, target_tree, tt, pb, specific_files,
@@ -2168,13 +2153,10 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 tt.version_file(file_id, trans_id)
             if versioned == (True, False):
                 tt.unversion_file(trans_id)
-            if (name[1] is not None and
+            if (name[1] is not None and 
                 (name[0] != name[1] or parent[0] != parent[1])):
-                if name[1] == '' and parent[1] is None:
-                    parent_trans = ROOT_PARENT
-                else:
-                    parent_trans = tt.trans_id_file_id(parent[1])
-                tt.adjust_path(name[1], parent_trans, trans_id)
+                tt.adjust_path(
+                    name[1], tt.trans_id_file_id(parent[1]), trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
         for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
