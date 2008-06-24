@@ -985,6 +985,9 @@ static svn_error_t *py_revfinish_cb(svn_revnum_t revision, void *replay_baton,
 	if (ret == NULL) 
 		return py_svn_error();
 
+    Py_DECREF((PyObject *)edit_baton);
+    Py_DECREF(ret);
+
 	return NULL;
 }
 
@@ -997,7 +1000,7 @@ static PyObject *ra_replay_range(PyObject *self, PyObject *args)
 	PyObject *cbs;
 	bool send_deltas = true;
 
-	if (!PyArg_ParseTuple(args, "lllOO|b", &start_revision, &end_revision, &low_water_mark, &cbs, &send_deltas))
+	if (!PyArg_ParseTuple(args, "lllO|b", &start_revision, &end_revision, &low_water_mark, &cbs, &send_deltas))
 		return NULL;
 
 	if (!PyTuple_Check(cbs)) {
