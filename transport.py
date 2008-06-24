@@ -160,6 +160,8 @@ class SvnRaTransport(Transport):
         else:
             self.connections = pool
 
+        self._repos_root = None
+        self._uuid = None
         self.capabilities = {}
 
         from bzrlib.plugins.svn import lazy_check_versions
@@ -188,12 +190,14 @@ class SvnRaTransport(Transport):
         raise TransportNotPossible('stat not supported on Subversion')
 
     def get_uuid(self):
-        conn = self.get_connection()
-        self.mutter('svn get-uuid')
-        try:
-            return conn.get_uuid()
-        finally:
-            self.add_connection(conn)
+        if self._uuid is None:
+            conn = self.get_connection()
+            self.mutter('svn get-uuid')
+            try:
+                return conn.get_uuid()
+            finally:
+                self.add_connection(conn)
+        return self._uuid
 
     def get_repos_root(self):
         root = self.get_svn_repos_root()
@@ -203,12 +207,14 @@ class SvnRaTransport(Transport):
         return root
 
     def get_svn_repos_root(self):
-        conn = self.get_connection()
-        self.mutter('svn get-repos-root')
-        try:
-            return conn.get_repos_root()
-        finally:
-            self.add_connection(conn)
+        if self._repos_root is None:
+            self.mutter('svn get-repos-root')
+            conn = self.get_connection()
+            try:
+                self._repos_root = conn.get_repos_root()
+            finally:
+                self.add_connection(conn)
+        return self._repos_root
 
     def get_latest_revnum(self):
         conn = self.get_connection()
