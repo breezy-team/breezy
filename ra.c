@@ -954,6 +954,80 @@ static PyObject *ra_replay(PyObject *self, PyObject *args)
 	Py_RETURN_NONE;
 }
 
+static svn_error_t *py_revstart_cb(svn_revnum_t revision, void *replay_baton,
+   const svn_delta_editor_t **editor, void **edit_baton, apr_hash_t *rev_props, apr_pool_t *pool)
+{
+	PyObject *cbs = (PyObject *)replay_baton;
+	PyObject *py_start_fn = PyTuple_GetItem(cbs, 0);
+	PyObject *py_revprops = prop_hash_to_dict(rev_props);
+	PyObject *ret;
+
+	ret = PyObject_CallFunction(py_start_fn, "lO", revision, py_revprops);
+	if (ret == NULL) 
+		return py_svn_error();
+
+	*editor = &py_editor;
+	*edit_baton = ret;
+
+	return NULL;
+}
+
+static svn_error_t *py_revfinish_cb(svn_revnum_t revision, void *replay_baton, 
+									const svn_delta_editor_t *editor, void *edit_baton, 
+									apr_hash_t *rev_props, apr_pool_t *pool)
+{
+	PyObject *cbs = (PyObject *)replay_baton;
+	PyObject *py_finish_fn = PyTuple_GetItem(cbs, 1);
+	PyObject *py_revprops = prop_hash_to_dict(rev_props);
+	PyObject *ret;
+
+	ret = PyObject_CallFunction(py_finish_fn, "lOO", revision, py_revprops, edit_baton);
+	if (ret == NULL) 
+		return py_svn_error();
+
+	return NULL;
+}
+
+static PyObject *ra_replay_range(PyObject *self, PyObject *args)
+{
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+	apr_pool_t *temp_pool;
+	svn_revnum_t start_revision, end_revision, low_water_mark;
+	PyObject *cbs;
+	bool send_deltas = true;
+
+	if (!PyArg_ParseTuple(args, "lllOO|b", &start_revision, &end_revision, &low_water_mark, &cbs, &send_deltas))
+		return NULL;
+
+	if (!PyTuple_Check(cbs)) {
+		PyErr_SetString(PyExc_TypeError, "Expected tuple with callbacks");
+		return NULL;
+	}
+
+	if (ra_check_busy(ra))
+		return NULL;
+
+	temp_pool = Pool(NULL);
+	if (temp_pool == NULL)
+		return NULL;
+
+	Py_INCREF(cbs);
+    RUN_RA_WITH_POOL(temp_pool, ra,
+					  svn_ra_replay_range(ra->ra, start_revision, end_revision, low_water_mark,
+									send_deltas, py_revstart_cb, py_revfinish_cb, cbs, 
+									temp_pool));
+	apr_pool_destroy(temp_pool);
+
+	Py_RETURN_NONE;
+#else
+	PyErr_SetString(PyExc_NotImplementedError, "svn_ra_replay not available with Subversion 1.4");
+	return NULL;
+#endif
+}
+
+
+
 static PyObject *ra_rev_proplist(PyObject *self, PyObject *args)
 {
 	apr_pool_t *temp_pool;
@@ -1408,6 +1482,7 @@ static PyMethodDef ra_methods[] = {
 	{ "get_commit_editor", (PyCFunction)get_commit_editor, METH_VARARGS|METH_KEYWORDS, NULL },
 	{ "rev_proplist", ra_rev_proplist, METH_VARARGS, NULL },
 	{ "replay", ra_replay, METH_VARARGS, NULL },
+	{ "replay_range", ra_replay_range, METH_VARARGS, NULL },
 	{ "do_switch", ra_do_switch, METH_VARARGS, NULL },
 	{ "do_update", ra_do_update, METH_VARARGS, NULL },
 	{ "get_repos_root", (PyCFunction)ra_get_repos_root, METH_VARARGS|METH_NOARGS, NULL },
