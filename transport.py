@@ -260,11 +260,14 @@ class SvnRaTransport(Transport):
                     self.pending.append(args)
                     self.semaphore.release()
                 try:
-                    self.conn.get_log(callback=rcvr, *self.args, **self.kwargs)
-                    self.pending.append(None)
-                except Exception, e:
-                    self.pending.append(e)
-                self.semaphore.release()
+                    try:
+                        self.conn.get_log(callback=rcvr, *self.args, **self.kwargs)
+                        self.pending.append(None)
+                    except Exception, e:
+                        self.pending.append(e)
+                finally:
+                    self.pending.append(RuntimeException("Some exception was not handled"))
+                    self.semaphore.release()
 
         if paths is None:
             newpaths = None
@@ -428,6 +431,7 @@ class SvnRaTransport(Transport):
         return self.PhonyLock() # FIXME
 
     def _is_http_transport(self):
+        return False
         return (self.svn_url.startswith("http://") or 
                 self.svn_url.startswith("https://"))
 
