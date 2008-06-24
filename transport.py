@@ -266,7 +266,7 @@ class SvnRaTransport(Transport):
                     except Exception, e:
                         self.pending.append(e)
                 finally:
-                    self.pending.append(RuntimeException("Some exception was not handled"))
+                    self.pending.append(Exception("Some exception was not handled"))
                     self.semaphore.release()
 
         if paths is None:
