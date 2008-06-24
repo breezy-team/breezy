@@ -1571,7 +1571,7 @@ static PyObject *auth_init(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	ret->providers = providers;
 	Py_INCREF(providers);
 
-    c_providers = apr_array_make(ret->pool, PyList_Size(providers), 4);
+    c_providers = apr_array_make(ret->pool, PyList_Size(providers), sizeof(svn_auth_provider_object_t *));
 	if (c_providers == NULL) {
 		PyErr_NoMemory();
 		return NULL;
