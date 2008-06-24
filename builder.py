@@ -25,8 +25,6 @@ import tarfile
 import tempfile
 import os
 
-import apt_pkg
-
 from debian_bundle.changelog import Version
 
 from bzrlib.branch import Branch
@@ -210,6 +208,7 @@ class DebBuild(object):
     os.unlink(fetched_tarball)
 
   def _get_upstream_from_archive(self):
+    import apt_pkg
     apt_pkg.init()
     sources = apt_pkg.GetPkgSrcRecords()
     sources.Restart()
