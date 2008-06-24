@@ -196,6 +196,7 @@ static void client_dealloc(PyObject *self)
 	Py_XDECREF((PyObject *)client->client->notify_baton2);
 	Py_XDECREF((PyObject *)client->client->log_msg_baton2);
 	Py_XDECREF(client->py_auth);
+	Py_XDECREF(client->py_config);
     apr_pool_destroy(client->pool);
 	PyObject_Del(self);
 }
