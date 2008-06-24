@@ -419,15 +419,14 @@ class Merger(object):
             merge = self.make_merger()
             merge.do_merge()
             if self.recurse == 'down':
-                for path, file_id in self.this_tree.iter_references():
-                    sub_tree = self.this_tree.get_nested_tree(file_id, path)
+                for relpath, file_id in self.this_tree.iter_references():
+                    sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
                     other_revision = self.other_tree.get_reference_revision(
-                        file_id, path)
+                        file_id, relpath)
                     if  other_revision == sub_tree.last_revision():
                         continue
                     sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                     sub_merge.merge_type = self.merge_type
-                    relpath = self.this_tree.relpath(path)
                     other_branch = self.other_branch.reference_parent(file_id, relpath)
                     sub_merge.set_other_revision(other_revision, other_branch)
                     base_revision = self.base_tree.get_reference_revision(file_id)
