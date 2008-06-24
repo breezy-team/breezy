@@ -687,29 +687,19 @@ class SvnRepository(Repository):
                 for p in sorted(paths.keys()):
                     if layout.is_branch(p) or layout.is_tag(p):
                         if paths[p][0] in ('R', 'D') and p in created_branches:
+                            ret.append((p, created_branches[p], False))
                             del created_branches[p]
-                            if paths[p][1]:
-                                prev_path = paths[p][1]
-                                prev_rev = paths[p][2]
-                            else:
-                                prev_path = p
-                                prev_rev = self._log.find_latest_change(p, i-1)
-                            assert isinstance(prev_rev, int)
-                            ret.append((prev_path, prev_rev, False))
 
-                        if paths[p][0] in ('A', 'R'): 
+                        if paths[p][0] in ('A', 'R', 'M'): 
                             created_branches[p] = i
-                    elif layout.is_branch_parent(p) or \
-                            layout.is_tag_parent(p):
+                    elif layout.is_branch_parent(p) or layout.is_tag_parent(p):
                         if paths[p][0] in ('R', 'D'):
                             k = created_branches.keys()
                             for c in k:
                                 if c.startswith(p+"/") and c in created_branches:
+                                    ret.append((c, created_branches[c], False))
                                     del created_branches[c] 
-                                    j = self._log.find_latest_change(c, i-1)
-                                    assert isinstance(j, int)
-                                    ret.append((c, j, False))
-                        if paths[p][0] in ('A', 'R'):
+                        if paths[p][0] in ('A', 'R') and paths[p][1] is not None:
                             parents = [p]
                             while parents:
                                 p = parents.pop()
@@ -726,18 +716,8 @@ class SvnRepository(Repository):
         finally:
             pb.finished()
 
-        pb = ui.ui_factory.nested_progress_bar()
-        i = 0
-        for p in created_branches:
-            pb.update("determining branch last changes", 
-                      i, len(created_branches))
-            j = self._log.find_latest_change(p, to_revnum)
-            if j is None:
-                j = created_branches[p]
-            assert isinstance(j, int)
-            ret.append((p, j, True))
-            i += 1
-        pb.finished()
+        for p, i in created_branches.items():
+            ret.append((p, i, True))
 
         return ret
 
