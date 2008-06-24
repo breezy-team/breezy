@@ -48,7 +48,7 @@ static PyObject *repos_create(PyObject *self, PyObject *args)
     pool = Pool(NULL);
 	if (pool == NULL)
 		return NULL;
-    hash_config = apr_hash_make(pool); /* FIXME */
+    hash_config = config_hash_from_object(config, pool);
     hash_fs_config = apr_hash_make(pool); /* FIXME */
     RUN_SVN_WITH_POOL(pool, svn_repos_create(&repos, path, NULL, NULL, 
                 hash_config, hash_fs_config, pool));

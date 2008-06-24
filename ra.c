@@ -518,6 +518,7 @@ static svn_error_t *py_get_client_string(void *baton, const char **name, apr_poo
 		return py_svn_error();
 
 	*name = apr_pstrdup(pool, PyString_AsString(ret));
+	Py_DECREF(ret);
 
 	return NULL;
 }
@@ -552,8 +553,10 @@ static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 								pool);
 		if (status) {
 			PyErr_SetAprStatus(status);
+			Py_DECREF(ret);
 			return NULL;
 		}
+		Py_DECREF(ret);
 	} else if (PyFile_Check(ret)) {
 		FILE *file;
 		apr_os_file_t osfile;
@@ -567,9 +570,14 @@ static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 		status = apr_os_file_put(fp, &osfile, O_CREAT | O_WRONLY, pool);
 		if (status) {
 			PyErr_SetAprStatus(status);
+			Py_DECREF(ret);
 			return NULL;
 		}
-	}
+	} else {
+		PyErr_SetString(PyExc_TypeError, "Unknown type for file variable");
+		Py_DECREF(ret);
+		return NULL;
+	}	
 
 	return NULL;
 }
@@ -754,6 +762,7 @@ static PyObject *ra_get_log(PyObject *self, PyObject *args, PyObject *kwargs)
 		 * so tweak our own parameters a bit. */
 		apr_paths = apr_array_make(temp_pool, 1, sizeof(char *));
 		APR_ARRAY_PUSH(apr_paths, char *) = apr_pstrdup(temp_pool, "");
+		apr_paths = NULL;
 	} else if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
 		apr_pool_destroy(temp_pool);
 		return NULL;
@@ -1774,6 +1783,7 @@ static svn_error_t *py_username_prompt(svn_auth_cred_username_t **cred, void *ba
 	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->username = apr_pstrdup(pool, PyString_AsString(py_username));
 	(*cred)->may_save = (py_may_save == Py_True);
+	Py_DECREF(ret);
     return NULL;
 }
 
@@ -1832,6 +1842,7 @@ static svn_error_t *py_simple_prompt(svn_auth_cred_simple_t **cred, void *baton,
     (*cred)->username = apr_pstrdup(pool, PyString_AsString(py_username));
     (*cred)->password = apr_pstrdup(pool, PyString_AsString(py_password));
 	(*cred)->may_save = (py_may_save == Py_True);
+	Py_DECREF(ret);
     return NULL;
 }
 
@@ -1897,6 +1908,7 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 	(*cred)->accepted_failures = PyInt_AsLong(py_accepted_failures);
 	(*cred)->may_save = (py_may_save == Py_True);
 
+	Py_DECREF(ret);
     return NULL;
 }
 
@@ -1947,6 +1959,7 @@ static svn_error_t *py_ssl_client_cert_pw_prompt(svn_auth_cred_ssl_client_cert_p
 	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->password = apr_pstrdup(pool, PyString_AsString(py_password));
 	(*cred)->may_save = (py_may_save == Py_True);
+	Py_DECREF(ret);
     return NULL;
 }
 
@@ -1981,6 +1994,7 @@ static svn_error_t *py_ssl_client_cert_prompt(svn_auth_cred_ssl_client_cert_t **
 	*cred = apr_pcalloc(pool, sizeof(**cred));
 	(*cred)->cert_file = apr_pstrdup(pool, PyString_AsString(py_cert_file));
 	(*cred)->may_save = (py_may_save == Py_True);
+	Py_DECREF(ret);
     return NULL;
 }
 

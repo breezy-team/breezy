@@ -190,6 +190,7 @@ svn_error_t *py_svn_log_entry_receiver(void *baton, svn_log_entry_t *log_entry, 
 	Py_DECREF(revprops);
 	if (ret == NULL)
 		return py_svn_error();
+	Py_DECREF(ret);
 	return NULL;
 }
 #endif
@@ -221,6 +222,7 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long rev
 	Py_DECREF(revprops);
 	if (ret == NULL)
 		return py_svn_error();
+	Py_DECREF(ret);
 	return NULL;
 }
 
@@ -264,6 +266,7 @@ static svn_error_t *py_stream_read(void *baton, char *buffer, apr_size_t *length
 	/* FIXME: Handle !PyString_Check(ret) */
     *length = PyString_Size(ret);
     memcpy(buffer, PyString_AS_STRING(ret), *length);
+	Py_DECREF(ret);
     return NULL;
 }
 
@@ -273,6 +276,7 @@ static svn_error_t *py_stream_write(void *baton, const char *data, apr_size_t *l
     ret = PyObject_CallMethod(self, "write", "s#", data, len[0]);
 	if (ret == NULL)
 		return py_svn_error();
+	Py_DECREF(ret);
 	return NULL;
 }
 
@@ -283,6 +287,7 @@ static svn_error_t *py_stream_close(void *baton)
 	if (ret == NULL)
 		return py_svn_error();
     Py_DECREF(self);
+	Py_DECREF(ret);
 	return NULL;
 }
 
@@ -303,8 +308,10 @@ svn_error_t *py_cancel_func(void *cancel_baton)
     if (py_fn != Py_None) {
         PyObject *ret = PyObject_CallFunction(py_fn, NULL);
 		if (PyBool_Check(ret) && ret == Py_True) {
+			Py_DECREF(ret);
             return svn_error_create(SVN_ERR_CANCELLED, NULL, NULL);
 		}
+		Py_DECREF(ret);
 	}
     return NULL;
 }
