@@ -643,41 +643,33 @@ class InterFromSvnRepository(InterRepository):
 
                 editor.start_revision(revid, parent_inv, revmeta)
 
+                if parent_revid == NULL_REVISION:
+                    parent_branch = editor.branch_path
+                    parent_revnum = editor.revnum
+                    start_empty = True
+                else:
+                    (parent_branch, parent_revnum, mapping) = \
+                            self.source.lookup_revision_id(parent_revid)
+                    start_empty = False
+
                 try:
                     conn = None
                     try:
-                        if parent_revid == NULL_REVISION:
-                            branch_url = urlutils.join(repos_root, 
-                                                       editor.branch_path)
+                        conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
 
-                            conn = self.source.transport.connections.get(branch_url)
-                            reporter = conn.do_update(editor.revnum, "", True, 
-                                                           editor)
-
-                            try:
-                                # Report status of existing paths
-                                reporter.set_path("", editor.revnum, True, None)
-                            except:
-                                reporter.abort()
-                                raise
+                        if parent_branch != editor.branch_path:
+                            reporter = conn.do_switch(editor.revnum, "", True, 
+                                urlutils.join(repos_root, editor.branch_path), 
+                                editor)
                         else:
-                            (parent_branch, parent_revnum, mapping) = \
-                                    self.source.lookup_revision_id(parent_revid)
-                            conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
+                            reporter = conn.do_update(editor.revnum, "", True, editor)
 
-                            if parent_branch != editor.branch_path:
-                                reporter = conn.do_switch(editor.revnum, "", True, 
-                                    urlutils.join(repos_root, editor.branch_path), 
-                                    editor)
-                            else:
-                                reporter = conn.do_update(editor.revnum, "", True, editor)
-
-                            try:
-                                # Report status of existing paths
-                                reporter.set_path("", parent_revnum, False, None)
-                            except:
-                                reporter.abort()
-                                raise
+                        try:
+                            # Report status of existing paths
+                            reporter.set_path("", parent_revnum, start_empty)
+                        except:
+                            reporter.abort()
+                            raise
 
                         reporter.finish()
                     finally:
