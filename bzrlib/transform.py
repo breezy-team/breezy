@@ -1484,7 +1484,7 @@ class _PreviewTree(tree.Tree):
         return cur_parent, list(reversed(segments))
 
     def _candidate_treepath2id(self, trans_segment, segments):
-        parent_path = self._transform._tree_id_paths[trans_segment]
+        parent_path = self._final_paths.get_path(trans_segment)
         tree_path = pathjoin(*([parent_path] + segments))
         tree_file_id = self._transform._tree.path2id(tree_path)
         return tree_file_id, tree_path
