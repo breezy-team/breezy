@@ -30,6 +30,10 @@ from bzrlib.util.configobj import configobj
 # Name of the file holding rules in a tree
 RULES_TREE_FILENAME = ".bzrrules"
 
+# Namespace prefix for per file preferences
+FILE_PREFS_PREFIX = 'on '
+FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
+
 
 class _RulesSearcher(object):
     """An object that provides rule-based preferences."""
@@ -58,8 +62,14 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         """
         options = {'encoding': 'utf-8'}
         self._cfg = configobj.ConfigObj(inifile, options=options)
-        patterns = self._cfg.keys()
-        if patterns:
+        sections = self._cfg.keys()
+        patterns = [s[FILE_PREFS_PREFIX_LEN:] for s in sections
+            if s.startswith(FILE_PREFS_PREFIX)]
+        if len(patterns) < len(sections):
+            unknowns = [s for s in sections
+                if not s.startswith(FILE_PREFS_PREFIX)]
+            raise errors.BzrUnsupportedRules(unknowns)
+        elif patterns:
             self._globster = globbing._OrderedGlobster(patterns)
         else:
             self._globster = None
@@ -72,7 +82,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if pat is None:
             return None
         else:
-            all = self._cfg[pat]
+            all = self._cfg[FILE_PREFS_PREFIX + pat]
             if names is None:
                 return tuple(all.items())
             else:

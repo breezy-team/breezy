@@ -23,15 +23,26 @@ from bzrlib import (
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
+def _patch_in_namespace(lines):
+    lines_with_prefix = []
+    if lines:
+        for line in lines:
+            if line.startswith('['):
+                line = '[%s%s' % (rules.FILE_PREFS_PREFIX, line[1:])
+            lines_with_prefix.append(line)
+    return lines_with_prefix
+
+
 class TestIterSearchRules(TestCaseWithTree):
 
     def make_per_user_searcher(self, lines):
         """Make a _RulesSearcher from a list of strings"""
-        return rules._IniBasedRulesSearcher(lines)
+        return rules._IniBasedRulesSearcher(_patch_in_namespace(lines))
 
     def make_tree_with_rules(self, text):
         tree = self.make_branch_and_tree('.')
         if text is not None:
+            text = ''.join(_patch_in_namespace(text.splitlines(True)))
             text_utf8 = text.encode('utf-8')
             self.build_tree_contents([(rules.RULES_TREE_FILENAME, text_utf8)])
             tree.add(rules.RULES_TREE_FILENAME)

@@ -27,11 +27,21 @@ from bzrlib import (
 from bzrlib.util.configobj import configobj
 
 
+def _patch_in_namespace(lines):
+    lines_with_prefix = []
+    if lines:
+        for line in lines:
+            if line.startswith('['):
+                line = '[%s%s' % (rules.FILE_PREFS_PREFIX, line[1:])
+            lines_with_prefix.append(line)
+    return lines_with_prefix
+
+
 class TestIniBasedRulesSearcher(tests.TestCase):
 
     def make_searcher(self, lines):
         """Make a _RulesSearcher from a list of strings"""
-        return rules._IniBasedRulesSearcher(lines)
+        return rules._IniBasedRulesSearcher(_patch_in_namespace(lines))
 
     def test_get_items_file_missing(self):
         rs = self.make_searcher(None)
@@ -75,9 +85,11 @@ class TestStackedRulesSearcher(tests.TestCase):
         """Make a _StackedRulesSearcher with 0, 1 or 2 items"""
         searchers = []
         if lines1 is not None:
-            searchers.append(rules._IniBasedRulesSearcher(lines1))
+            searchers.append(rules._IniBasedRulesSearcher(
+                _patch_in_namespace(lines1)))
         if lines2 is not None:
-            searchers.append(rules._IniBasedRulesSearcher(lines2))
+            searchers.append(rules._IniBasedRulesSearcher(
+                _patch_in_namespace(lines2)))
         return rules._StackedRulesSearcher(searchers)
 
     def test_stack_searching(self):
