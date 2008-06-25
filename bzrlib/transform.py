@@ -1579,12 +1579,7 @@ class _PreviewTree(tree.Tree):
                 parent_file_id, file_id)
             yield new_entry, trans_id
 
-    def iter_entries_by_dir(self, specific_file_ids=None):
-        # This may not be a maximally efficient implementation, but it is
-        # reasonably straightforward.  An implementation that grafts the
-        # TreeTransform changes onto the tree's iter_entries_by_dir results
-        # might be more efficient, but requires tricky inferences about stack
-        # position.
+    def _list_files_by_dir(self):
         todo = [ROOT_PARENT]
         ordered_ids = []
         while len(todo) > 0:
@@ -1596,9 +1591,27 @@ class _PreviewTree(tree.Tree):
             todo.extend(children)
             for trans_id in children:
                 ordered_ids.append((trans_id, parent_file_id))
+        return ordered_ids
+
+    def iter_entries_by_dir(self, specific_file_ids=None):
+        # This may not be a maximally efficient implementation, but it is
+        # reasonably straightforward.  An implementation that grafts the
+        # TreeTransform changes onto the tree's iter_entries_by_dir results
+        # might be more efficient, but requires tricky inferences about stack
+        # position.
+        ordered_ids = self._list_files_by_dir()
         for entry, trans_id in self._make_inv_entries(ordered_ids,
                                                       specific_file_ids):
             yield unicode(self._final_paths.get_path(trans_id)), entry
+
+    def list_files(self, include_root=False):
+        """See Tree.list_files."""
+        # XXX This should behave like WorkingTree.list_files, but is really
+        # more like RevisionTree.list_files.
+        for path, entry in self.iter_entries_by_dir():
+            if entry.name == '' and not include_root:
+                continue
+            yield path, 'V', entry, entry.kind, entry.file_id, entry
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
