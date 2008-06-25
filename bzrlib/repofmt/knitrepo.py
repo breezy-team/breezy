@@ -68,6 +68,8 @@ class _KnitParentsProvider(object):
         """See graph._StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
+            if revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
             else:
@@ -217,10 +219,6 @@ class KnitRepository(MetaDirRepository):
         reconciler.reconcile()
         return reconciler
     
-    @symbol_versioning.deprecated_method(symbol_versioning.one_five)
-    def revision_parents(self, revision_id):
-        return self._get_revision_vf().get_parents(revision_id)
-
     def _make_parents_provider(self):
         return _KnitParentsProvider(self._get_revision_vf())
 

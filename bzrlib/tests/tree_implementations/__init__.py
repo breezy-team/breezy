@@ -67,7 +67,7 @@ def revision_tree_from_workingtree(testcase, tree):
 
 
 def _dirstate_tree_from_workingtree(testcase, tree):
-    revid = tree.commit('save tree', allow_pointless=True)
+    revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.basis_tree()
 
 
@@ -334,7 +334,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             to be used as members of the TestCase.
         """
         if workingtree_format is None:
-            workingtree_format = WorkingTreeFormat3()
+            workingtree_format = WorkingTreeFormat._default_format
         scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
             workingtree_format, workingtree_format._matchingbzrdir)[1]
         scenario_options["_workingtree_to_test_tree"] = converter

@@ -41,7 +41,9 @@ import zipfile
 
 from bzrlib import (
     config,
+    debug,
     osutils,
+    trace,
     )
 from bzrlib import plugins as _mod_plugins
 """)
@@ -220,6 +222,8 @@ def load_from_dir(d):
             else:
                 warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()
+            if 'error' in debug.debug_flags:
+                trace.print_exception(sys.exc_info(), sys.stderr)
 
 
 @deprecated_function(one_three)
@@ -299,6 +303,8 @@ def load_from_zip(zip_name):
             warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
             log_exception_quietly()
+            if 'error' in debug.debug_flags:
+                trace.print_exception(sys.exc_info(), sys.stderr)
 
 
 def plugins():

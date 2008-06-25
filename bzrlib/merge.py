@@ -151,12 +151,13 @@ class Merger(object):
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
         revision_graph = tree.branch.repository.get_graph()
-        if (base_revision_id != _mod_revision.NULL_REVISION and
-            revision_graph.is_ancestor(
-            base_revision_id, tree.branch.last_revision())):
-            base_revision_id = None
-        else:
-            warning('Performing cherrypick')
+        if base_revision_id is not None:
+            if (base_revision_id != _mod_revision.NULL_REVISION and
+                revision_graph.is_ancestor(
+                base_revision_id, tree.branch.last_revision())):
+                base_revision_id = None
+            else:
+                warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
                                          base_revision_id, revision_graph=
                                          revision_graph)
@@ -418,15 +419,14 @@ class Merger(object):
             merge = self.make_merger()
             merge.do_merge()
             if self.recurse == 'down':
-                for path, file_id in self.this_tree.iter_references():
-                    sub_tree = self.this_tree.get_nested_tree(file_id, path)
+                for relpath, file_id in self.this_tree.iter_references():
+                    sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
                     other_revision = self.other_tree.get_reference_revision(
-                        file_id, path)
+                        file_id, relpath)
                     if  other_revision == sub_tree.last_revision():
                         continue
                     sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                     sub_merge.merge_type = self.merge_type
-                    relpath = self.this_tree.relpath(path)
                     other_branch = self.other_branch.reference_parent(file_id, relpath)
                     sub_merge.set_other_revision(other_revision, other_branch)
                     base_revision = self.base_tree.get_reference_revision(file_id)
@@ -1433,7 +1433,10 @@ class _PlanLCAMerge(_PlanMergeBase):
         _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
         self.lcas = graph.find_lca(a_rev, b_rev)
         for lca in self.lcas:
-            lca_lines = self.vf.get_lines(lca)
+            if _mod_revision.is_null(lca):
+                lca_lines = []
+            else:
+                lca_lines = self.vf.get_lines(lca)
             matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_a,
                                                            lca_lines)
             blocks = list(matcher.get_matching_blocks())

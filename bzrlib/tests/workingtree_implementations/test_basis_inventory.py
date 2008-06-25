@@ -43,7 +43,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('a')
         t.commit('a', rev_id='r1')
 
-        self.assertTrue(t._control_files._transport.has('basis-inventory-cache'))
+        self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv = t.basis_tree().inventory
         self.assertEquals('r1', basis_inv.revision_id)
@@ -55,7 +55,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('b')
         t.commit('b', rev_id='r2')
 
-        self.assertTrue(t._control_files._transport.has('basis-inventory-cache'))
+        self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
@@ -77,12 +77,12 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         open('a', 'wb').write('a\n')
         t.add('a')
         t.commit('a', rev_id='r1')
-        t._control_files.put_utf8('basis-inventory-cache', 'booga')
+        t._transport.put_bytes('basis-inventory-cache', 'booga')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', '<xml/>')
+        t._transport.put_bytes('basis-inventory-cache', '<xml/>')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', '<inventory />')
+        t._transport.put_bytes('basis-inventory-cache', '<inventory />')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', 
-                                  '<inventory format="pi"/>')
+        t._transport.put_bytes('basis-inventory-cache',
+            '<inventory format="pi"/>')
         t.basis_tree()

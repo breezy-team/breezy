@@ -1719,3 +1719,24 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         self.assertEndsWith(response, expected_end_of_response)
 
 
+class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
+    """No smart server here request handler."""
+
+    def do_POST(self):
+        self.send_error(403, "Forbidden")
+
+
+class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
+    """Test smart client behaviour against an http server without smarts."""
+
+    _req_handler_class = ForbiddenRequestHandler
+
+    def test_probe_smart_server(self):
+        """Test error handling against server refusing smart requests."""
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # No need to build a valid smart request here, the server will not even
+        # try to interpret it.
+        self.assertRaises(errors.SmartProtocolError,
+                          t.send_http_smart_request, 'whatever')
+

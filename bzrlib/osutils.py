@@ -529,19 +529,42 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(fromfile, tofile):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     """Copy contents of one file to another.
-    
+
+    The read_length can either be -1 to read to end-of-file (EOF) or
+    it can specify the maximum number of bytes to read.
+
+    The buff_size represents the maximum size for each read operation
+    performed on from_file.
+
     :return: The number of bytes copied.
     """
-    BUFSIZE = 32768
     length = 0
-    while True:
-        b = fromfile.read(BUFSIZE)
-        if not b:
-            break
-        tofile.write(b)
-        length += len(b)
+    if read_length >= 0:
+        # read specified number of bytes
+
+        while read_length > 0:
+            num_bytes_to_read = min(read_length, buff_size)
+
+            block = from_file.read(num_bytes_to_read)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+
+            actual_bytes_read = len(block)
+            read_length -= actual_bytes_read
+            length += actual_bytes_read
+    else:
+        # read to EOF
+        while True:
+            block = from_file.read(buff_size)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+            length += len(block)
     return length
 
 
@@ -823,6 +846,11 @@ def has_hardlinks():
         return True
     else:
         return False
+
+
+def host_os_dereferences_symlinks():
+    return (has_symlinks()
+            and sys.platform not in ('cygwin', 'win32'))
 
 
 def contains_whitespace(s):
@@ -1344,7 +1372,9 @@ def get_user_encoding(use_cache=True):
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if user_encoding in (None, 'cp0'):
+    #
+    # For python scripts run under vim, we get '', so also treat that as ASCII
+    if user_encoding in (None, 'cp0', ''):
         user_encoding = 'ascii'
     else:
         # check encoding

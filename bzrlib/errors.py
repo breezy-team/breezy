@@ -1465,6 +1465,14 @@ class SmartProtocolError(TransportError):
         self.details = details
 
 
+class UnexpectedProtocolVersionMarker(TransportError):
+
+    _fmt = "Received bad protocol version marker: %(marker)r"
+
+    def __init__(self, marker):
+        self.marker = marker
+
+
 class UnknownSmartMethod(InternalBzrError):
 
     _fmt = "The server does not recognise the '%(verb)s' request."
@@ -1472,6 +1480,14 @@ class UnknownSmartMethod(InternalBzrError):
     def __init__(self, verb):
         self.verb = verb
 
+
+class SmartMessageHandlerError(InternalBzrError):
+
+    _fmt = "The message handler raised an exception: %(exc_value)s."
+
+    def __init__(self, exc_info):
+        self.exc_type, self.exc_value, self.tb = exc_info
+        
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
@@ -2237,6 +2253,17 @@ class SSHVendorNotFound(BzrError):
             " Please set BZR_SSH environment variable.")
 
 
+class GhostRevisionsHaveNoRevno(BzrError):
+    """When searching for revnos, if we encounter a ghost, we are stuck"""
+
+    _fmt = ("Could not determine revno for {%(revision_id)s} because"
+            " its ancestry shows a ghost at {%(ghost_revision_id)s}")
+
+    def __init__(self, revision_id, ghost_revision_id):
+        self.revision_id = revision_id
+        self.ghost_revision_id = ghost_revision_id
+
+        
 class GhostRevisionUnusableHere(BzrError):
 
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
@@ -2417,6 +2444,21 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class ErrorFromSmartServer(BzrError):
+
+    _fmt = "Error received from smart server: %(error_tuple)r"
+
+    internal_error = True
+
+    def __init__(self, error_tuple):
+        self.error_tuple = error_tuple
+        try:
+            self.error_verb = error_tuple[0]
+        except IndexError:
+            self.error_verb = None
+        self.error_args = error_tuple[1:]
 
 
 class ContainerError(BzrError):
@@ -2679,6 +2721,14 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchAlias(BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        BzrError.__init__(self, alias_name=alias_name)
 
 
 class CannotBindAddress(BzrError):

@@ -215,6 +215,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             # assume all other formats have their own control files.
             self._control_files = _control_files
+        self._transport = self._control_files._transport
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -224,7 +225,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-                                              self._control_files._file_mode)
+            self.bzrdir._get_file_mode())
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -486,7 +487,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._control_files.get('pending-merges')
+            merges_file = self._transport.get('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
@@ -721,7 +722,27 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._control_files.put_bytes('pending-merges', '\n'.join(merges))
+        self._transport.put_bytes('pending-merges', '\n'.join(merges),
+            mode=self._control_files._file_mode)
+
+    def _filter_parent_ids_by_ancestry(self, revision_ids):
+        """Check that all merged revisions are proper 'heads'.
+
+        This will always return the first revision_id, and any merged revisions
+        which are 
+        """
+        if len(revision_ids) == 0:
+            return revision_ids
+        graph = self.branch.repository.get_graph()
+        heads = graph.heads(revision_ids)
+        new_revision_ids = revision_ids[:1]
+        for revision_id in revision_ids[1:]:
+            if revision_id in heads and revision_id not in new_revision_ids:
+                new_revision_ids.append(revision_id)
+        if new_revision_ids != revision_ids:
+            trace.mutter('requested to set revision_ids = %s,'
+                         ' but filtered to %s', revision_ids, new_revision_ids)
+        return new_revision_ids
 
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -741,6 +762,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         for revision_id in revision_ids:
             _mod_revision.check_not_reserved_id(revision_id)
 
+        revision_ids = self._filter_parent_ids_by_ancestry(revision_ids)
+
         if len(revision_ids) > 0:
             self.set_last_revision(revision_ids[0])
         else:
@@ -757,6 +780,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         self._check_parents_for_ghosts(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
 
         if len(parent_ids) == 0:
             leftmost_parent_id = _mod_revision.NULL_REVISION
@@ -803,7 +828,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
         my_file = rio_file(stanzas, header)
-        self._control_files.put(filename, my_file)
+        self._transport.put_file(filename, my_file,
+            mode=self._control_files._file_mode)
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
@@ -868,7 +894,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         still in the working inventory and have that text hash.
         """
         try:
-            hashfile = self._control_files.get('merge-hashes')
+            hashfile = self._transport.get('merge-hashes')
         except errors.NoSuchFile:
             return {}
         merge_hashes = {}
@@ -1031,7 +1057,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         sio = StringIO()
         self._serialize(self._inventory, sio)
         sio.seek(0)
-        self._control_files.put('inventory', sio)
+        self._transport.put_file('inventory', sio,
+            mode=self._control_files._file_mode)
         self._inventory_is_modified = False
 
     def _kind(self, relpath):
@@ -1717,7 +1744,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
         self._inventory_is_modified = False
-        result = self._deserialize(self._control_files.get('inventory'))
+        result = self._deserialize(self._transport.get('inventory'))
         self._set_inventory(result, dirty=False)
 
     @needs_tree_write_lock
@@ -1746,7 +1773,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Write the basis inventory XML to the basis-inventory file"""
         path = self._basis_inventory_name()
         sio = StringIO(xml)
-        self._control_files.put(path, sio)
+        self._transport.put_file(path, sio,
+            mode=self._control_files._file_mode)
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
@@ -1783,7 +1811,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._control_files.get(path).read()
+        return self._transport.get_bytes(path)
         
     @needs_read_lock
     def read_working_inventory(self):
@@ -1798,7 +1826,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # binary.
         if self._inventory_is_modified:
             raise errors.InventoryModified(self)
-        result = self._deserialize(self._control_files.get('inventory'))
+        result = self._deserialize(self._transport.get('inventory'))
         self._set_inventory(result, dirty=False)
         return result
 
@@ -2509,7 +2537,7 @@ class WorkingTree3(WorkingTree):
     def _last_revision(self):
         """See Mutable.last_revision."""
         try:
-            return self._control_files.get('last-revision').read()
+            return self._transport.get_bytes('last-revision')
         except errors.NoSuchFile:
             return _mod_revision.NULL_REVISION
 
@@ -2517,12 +2545,13 @@ class WorkingTree3(WorkingTree):
         """See WorkingTree._change_last_revision."""
         if revision_id is None or revision_id == NULL_REVISION:
             try:
-                self._control_files._transport.delete('last-revision')
+                self._transport.delete('last-revision')
             except errors.NoSuchFile:
                 pass
             return False
         else:
-            self._control_files.put_bytes('last-revision', revision_id)
+            self._transport.put_bytes('last-revision', revision_id,
+                mode=self._control_files._file_mode)
             return True
 
     @needs_tree_write_lock
@@ -2540,7 +2569,7 @@ class WorkingTree3(WorkingTree):
     @needs_read_lock
     def conflicts(self):
         try:
-            confile = self._control_files.get('conflicts')
+            confile = self._transport.get('conflicts')
         except errors.NoSuchFile:
             return _mod_conflicts.ConflictList()
         try:
@@ -2665,8 +2694,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
 
-    def stub_initialize_remote(self, control_files):
-        """As a special workaround create critical control files for a remote working tree
+    def _stub_initialize_remote(self, branch):
+        """As a special workaround create critical control files for a remote working tree.
         
         This ensures that it can later be updated and dealt with locally,
         since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
@@ -2676,9 +2705,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         inv = Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
-        control_files.put('inventory', sio)
-
-        control_files.put_bytes('pending-merges', '')
+        branch._transport.put_file('inventory', sio,
+            mode=branch.control_files._file_mode)
+        branch._transport.put_bytes('pending-merges', '',
+            mode=branch.control_files._file_mode)
         
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
@@ -2793,7 +2823,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        control_files.put_utf8('format', self.get_format_string())
+        transport.put_bytes('format', self.get_format_string(),
+            mode=control_files._file_mode)
         if from_branch is not None:
             branch = from_branch
         else:

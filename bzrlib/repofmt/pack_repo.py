@@ -604,7 +604,7 @@ class Packer(object):
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
             self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.control_files._file_mode)
+            file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -1586,13 +1586,11 @@ class RepositoryPackCollection(object):
             for key, value in disk_nodes:
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.control_files._file_mode)
+                mode=self.repo.bzrdir._get_file_mode())
             # move the baseline forward
             self._packs_at_load = disk_nodes
-            # now clear out the obsolete packs directory
             if clear_obsolete_packs:
-                self.transport.clone('obsolete_packs').delete_multi(
-                    self.transport.list_dir('obsolete_packs'))
+                self._clear_obsolete_packs()
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
@@ -1624,13 +1622,23 @@ class RepositoryPackCollection(object):
                 self._names[name] = sizes
                 self.get_pack_by_name(name)
 
+    def _clear_obsolete_packs(self):
+        """Delete everything from the obsolete-packs directory.
+        """
+        obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        for filename in obsolete_pack_transport.list_dir('.'):
+            try:
+                obsolete_pack_transport.delete(filename)
+            except (errors.PathError, errors.TransportError), e:
+                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.control_files._file_mode)
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1713,7 +1721,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback)
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.revision_index.knit_access)
@@ -1731,7 +1739,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback, parents=False)
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.signature_index.knit_access)
@@ -1820,25 +1828,26 @@ class InventoryKnitThunk(object):
             add_callback=add_callback, deltas=True, parents=True)
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.inventory_index.knit_access)
 
 
 class KnitPackRepository(KnitRepository):
-    """Experimental graph-knit using repository."""
+    """Repository with knit objects stored inside pack containers."""
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
         control_store, text_store, _commit_builder_class, _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
             _revision_store, control_store, text_store, _commit_builder_class,
             _serializer)
-        index_transport = control_files._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, control_files._transport,
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self,
+            self._transport,
             index_transport,
-            control_files._transport.clone('upload'),
-            control_files._transport.clone('packs'))
+            self._transport.clone('upload'),
+            self._transport.clone('packs'))
         self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
         self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
         self._inv_thunk = InventoryKnitThunk(self, index_transport)
@@ -1912,6 +1921,8 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection.ensure_loaded()
         index = self._pack_collection.revision_index.combined_index
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if _mod_revision.NULL_REVISION in keys:
             keys.discard(_mod_revision.NULL_REVISION)
             found_parents = {_mod_revision.NULL_REVISION:()}
@@ -2128,7 +2139,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+            'lock', lockdir.LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)

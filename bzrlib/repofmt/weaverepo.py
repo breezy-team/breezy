@@ -52,9 +52,8 @@ class AllInOneRepository(Repository):
     _serializer = xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
-        # we reuse one control files instance.
-        dir_mode = a_bzrdir._control_files._dir_mode
-        file_mode = a_bzrdir._control_files._file_mode
+        dir_mode = a_bzrdir._get_dir_mode()
+        file_mode = a_bzrdir._get_file_mode()
 
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
@@ -62,7 +61,7 @@ class AllInOneRepository(Repository):
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = a_bzrdir._control_files._escape(name)
-            store = TextStore(a_bzrdir._control_files._transport.clone(relpath),
+            store = TextStore(a_bzrdir.transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
                               file_mode=file_mode)
@@ -75,7 +74,8 @@ class AllInOneRepository(Repository):
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
-        super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+        super(AllInOneRepository, self).__init__(_format,
+            a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
         if control_store is not None:
             control_store.get_scope = self.get_transaction
         text_store.get_scope = self.get_transaction
@@ -288,21 +288,18 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         empty_weave = sio.getvalue()
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)),
-                 ]
         
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(a_bzrdir.transport,
-                                'branch-lock', lockable_files.TransportLock)
+            'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
+        transport = a_bzrdir.transport
         try:
-            for file, content in files:
-                control_files.put(file, content)
+            transport.mkdir_multi(['revision-store', 'weaves'],
+                mode=a_bzrdir._get_dir_mode())
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)

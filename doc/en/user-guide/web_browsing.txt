@@ -11,7 +11,7 @@ Bazaar repository. In increasing order of complexity, these are:
 * webserve
 * Loggerhead
 
-The first 2 tools are lightweight and easy to install.
+The first two tools are lightweight and easy to install.
 Loggerhead takes more effort to setup but provides more functionality.
 See http://bazaar-vcs.org/WebInterface for the latest information on
 these packages including download links.
