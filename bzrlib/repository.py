@@ -2966,7 +2966,7 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts)
 
     @classmethod

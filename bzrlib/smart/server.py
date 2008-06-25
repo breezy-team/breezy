@@ -275,3 +275,25 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
+
+
+class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
+    """A variation of SmartTCPServer_for_testing that limits the client to
+    using RPCs in protocol v2 (i.e. bzr <= 1.5).
+    """
+
+    def get_url(self):
+        url = super(SmartTCPServer_for_testing_v2_only, self).get_url()
+        url = 'bzr-v2://' + url[len('bzr://'):]
+        return url
+
+
+class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_only):
+    """Get a readonly server for testing."""
+
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        url = 'readonly+' + backing_transport_server.get_url()
+        return transport.get_transport(url)
+
+
