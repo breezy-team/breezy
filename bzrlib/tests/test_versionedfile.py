@@ -37,12 +37,21 @@ from bzrlib.errors import (
                            )
 from bzrlib import knit as _mod_knit
 from bzrlib.knit import (
-    make_file_knit,
+    cleanup_pack_knit,
+    make_file_factory,
+    make_pack_factory,
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
 from bzrlib.symbol_versioning import one_four, one_five
-from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
+from bzrlib.tests import (
+    TestCaseWithMemoryTransport,
+    TestScenarioApplier,
+    TestSkipped,
+    condition_isinstance,
+    split_suite_by_condition,
+    iter_suite_tests,
+    )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -50,8 +59,90 @@ from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
+from bzrlib.versionedfile import (
+    ConstantMapper,
+    HashEscapedPrefixMapper,
+    PrefixMapper,
+    make_versioned_files_factory,
+    )
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave, write_weave
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize VersionedFiles tests for different implementations."""
+    to_adapt, result = split_suite_by_condition(
+        standard_tests, condition_isinstance(TestVersionedFiles))
+    len_one_adapter = TestScenarioApplier()
+    len_two_adapter = TestScenarioApplier()
+    # We want to be sure of behaviour for:
+    # weaves prefix layout (weave texts)
+    # individually named weaves (weave inventories)
+    # annotated knits - prefix|hash|hash-escape layout, we test the third only
+    #                   as it is the most complex mapper.
+    # individually named knits
+    # individual no-graph knits in packs (signatures)
+    # individual graph knits in packs (inventories)
+    # individual graph nocompression knits in packs (revisions)
+    # plain text knits in packs (texts)
+    len_one_adapter.scenarios = [
+        ('weave-named', {
+            'cleanup':None,
+            'factory':make_versioned_files_factory(WeaveFile,
+                ConstantMapper('inventory')),
+            'graph':True,
+            'key_length':1,
+            }),
+        ('named-knit', {
+            'cleanup':None,
+            'factory':make_file_factory(False, ConstantMapper('revisions')),
+            'graph':True,
+            'key_length':1,
+            }),
+        ('named-nograph-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(False, False, 1),
+            'graph':False,
+            'key_length':1,
+            }),
+        ('named-graph-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, True, 1),
+            'graph':True,
+            'key_length':1,
+            }),
+        ('named-graph-nodelta-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, False, 1),
+            'graph':True,
+            'key_length':1,
+            }),
+        ]
+    len_two_adapter.scenarios = [
+        ('weave-prefix', {
+            'cleanup':None,
+            'factory':make_versioned_files_factory(WeaveFile,
+                PrefixMapper()),
+            'graph':True,
+            'key_length':2,
+            }),
+        ('annotated-knit-escape', {
+            'cleanup':None,
+            'factory':make_file_factory(True, HashEscapedPrefixMapper()),
+            'graph':True,
+            'key_length':2,
+            }),
+        ('plain-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, True, 2),
+            'graph':True,
+            'key_length':2,
+            }),
+        ]
+    for test in iter_suite_tests(to_adapt):
+        result.addTests(len_one_adapter.adapt(test))
+        result.addTests(len_two_adapter.adapt(test))
+    return result
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
@@ -80,6 +171,62 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
         f.add_lines('merged', ['left', 'right'],
             ['base\n', 'left\n', 'right\n', 'merged' + last_char])
     return f, parents
+
+
+def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
+    nograph=False):
+    """Get a diamond graph to exercise deltas and merges.
+
+    This creates a 5-node graph in files. If files supports 2-length keys two
+    graphs are made to exercise the support for multiple ids.
+    
+    :param trailing_eol: If True end the last line with \n.
+    :param key_length: The length of keys in files. Currently supports length 1
+        and 2 keys.
+    :param left_only: If True do not add the right and merged nodes.
+    :param nograph: If True, do not provide parents to the add_lines calls;
+        this is useful for tests that need inserted data but have graphless
+        stores.
+    :return: The results of the add_lines calls.
+    """
+    if key_length == 1:
+        prefixes = [()]
+    else:
+        prefixes = [('FileA',), ('FileB',)]
+    # insert a diamond graph to exercise deltas and merges.
+    if trailing_eol:
+        last_char = '\n'
+    else:
+        last_char = ''
+    result = []
+    def get_parents(suffix_list):
+        if nograph:
+            return ()
+        else:
+            result = [prefix + suffix for suffix in suffix_list]
+            return result
+    # we loop over each key because that spreads the inserts across prefixes,
+    # which is how commit operates.
+    for prefix in prefixes:
+        result.append(files.add_lines(prefix + ('origin',), (),
+            ['origin' + last_char]))
+    for prefix in prefixes:
+        result.append(files.add_lines(prefix + ('base',),
+            get_parents([('origin',)]), ['base' + last_char]))
+    for prefix in prefixes:
+        result.append(files.add_lines(prefix + ('left',),
+            get_parents([('base',)]),
+            ['base\n', 'left' + last_char]))
+    if not left_only:
+        for prefix in prefixes:
+            result.append(files.add_lines(prefix + ('right',),
+                get_parents([('base',)]),
+                ['base\n', 'right' + last_char]))
+        for prefix in prefixes:
+            result.append(files.add_lines(prefix + ('merged',),
+                get_parents([('left',), ('right',)]),
+                ['base\n', 'left\n', 'right\n', 'merged' + last_char]))
+    return result
 
 
 class VersionedFileTestMixIn(object):
@@ -117,266 +264,6 @@ class VersionedFileTestMixIn(object):
         # this checks that reopen with create=True does not break anything.
         f = self.reopen_file(create=True)
         verify_file(f)
-
-    def test_get_record_stream_empty(self):
-        """get_record_stream is a replacement for get_data_stream."""
-        f = self.get_file()
-        entries = f.get_record_stream([], 'unordered', False)
-        self.assertEqual([], list(entries))
-
-    def assertValidStorageKind(self, storage_kind):
-        """Assert that storage_kind is a valid storage_kind."""
-        self.assertSubset([storage_kind],
-            ['mpdiff', 'knit-annotated-ft', 'knit-annotated-delta',
-             'knit-ft', 'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
-             'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'])
-
-    def capture_stream(self, f, entries, on_seen, parents):
-        """Capture a stream for testing."""
-        for factory in entries:
-            on_seen(factory.key)
-            self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
-            self.assertEqual(parents[factory.key[0]], factory.parents)
-            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
-
-    def test_get_record_stream_interface(self):
-        """Each item in a stream has to provide a regular interface."""
-        f, parents = get_diamond_vf(self.get_file())
-        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
-            'unordered', False)
-        seen = set()
-        self.capture_stream(f, entries, seen.add, parents)
-        self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
-            seen)
-
-    def test_get_record_stream_interface_ordered(self):
-        """Each item in a stream has to provide a regular interface."""
-        f, parents = get_diamond_vf(self.get_file())
-        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
-            'topological', False)
-        seen = []
-        self.capture_stream(f, entries, seen.append, parents)
-        self.assertSubset([tuple(seen)],
-            (
-             (('base',), ('left',), ('right',), ('merged',)),
-             (('base',), ('right',), ('left',), ('merged',)),
-            ))
-
-    def test_get_record_stream_interface_ordered_with_delta_closure(self):
-        """Each item in a stream has to provide a regular interface."""
-        f, parents = get_diamond_vf(self.get_file())
-        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
-            'topological', True)
-        seen = []
-        for factory in entries:
-            seen.append(factory.key)
-            self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
-            self.assertEqual(parents[factory.key[0]], factory.parents)
-            self.assertEqual(f.get_text(factory.key[0]),
-                factory.get_bytes_as('fulltext'))
-            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
-        self.assertSubset([tuple(seen)],
-            (
-             (('base',), ('left',), ('right',), ('merged',)),
-             (('base',), ('right',), ('left',), ('merged',)),
-            ))
-
-    def test_get_record_stream_unknown_storage_kind_raises(self):
-        """Asking for a storage kind that the stream cannot supply raises."""
-        f, parents = get_diamond_vf(self.get_file())
-        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
-            'unordered', False)
-        # We track the contents because we should be able to try, fail a
-        # particular kind and then ask for one that works and continue.
-        seen = set()
-        for factory in entries:
-            seen.add(factory.key)
-            self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
-            self.assertEqual(parents[factory.key[0]], factory.parents)
-            # currently no stream emits mpdiff
-            self.assertRaises(errors.UnavailableRepresentation,
-                factory.get_bytes_as, 'mpdiff')
-            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
-        self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
-            seen)
-
-    def test_get_record_stream_missing_records_are_absent(self):
-        f, parents = get_diamond_vf(self.get_file())
-        entries = f.get_record_stream(['merged', 'left', 'right', 'or', 'base'],
-            'unordered', False)
-        self.assertAbsentRecord(f, parents, entries)
-        entries = f.get_record_stream(['merged', 'left', 'right', 'or', 'base'],
-            'topological', False)
-        self.assertAbsentRecord(f, parents, entries)
-
-    def assertAbsentRecord(self, f, parents, entries):
-        """Helper for test_get_record_stream_missing_records_are_absent."""
-        seen = set()
-        for factory in entries:
-            seen.add(factory.key)
-            if factory.key == ('or',):
-                self.assertEqual('absent', factory.storage_kind)
-                self.assertEqual(None, factory.sha1)
-                self.assertEqual(None, factory.parents)
-            else:
-                self.assertValidStorageKind(factory.storage_kind)
-                self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
-                self.assertEqual(parents[factory.key[0]], factory.parents)
-                self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                    str)
-        self.assertEqual(
-            set([('base',), ('left',), ('right',), ('merged',), ('or',)]),
-            seen)
-
-    def test_filter_absent_records(self):
-        """Requested missing records can be filter trivially."""
-        f, parents = get_diamond_vf(self.get_file())
-        entries = f.get_record_stream(['merged', 'left', 'right', 'extra', 'base'],
-            'unordered', False)
-        seen = set()
-        self.capture_stream(f, versionedfile.filter_absent(entries), seen.add,
-            parents)
-        self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
-            seen)
-
-    def test_insert_record_stream_empty(self):
-        """Inserting an empty record stream should work."""
-        f = self.get_file()
-        stream = []
-        f.insert_record_stream([])
-
-    def assertIdenticalVersionedFile(self, left, right):
-        """Assert that left and right have the same contents."""
-        self.assertEqual(set(left.versions()), set(right.versions()))
-        self.assertEqual(left.get_parent_map(left.versions()),
-            right.get_parent_map(right.versions()))
-        for v in left.versions():
-            self.assertEqual(left.get_text(v), right.get_text(v))
-
-    def test_insert_record_stream_fulltexts(self):
-        """Any file should accept a stream of fulltexts."""
-        f = self.get_file()
-        weave_vf = WeaveFile('source', get_transport(self.get_url('.')),
-            create=True, get_scope=self.get_transaction)
-        source, _ = get_diamond_vf(weave_vf)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_fulltexts_noeol(self):
-        """Any file should accept a stream of fulltexts."""
-        f = self.get_file()
-        weave_vf = WeaveFile('source', get_transport(self.get_url('.')),
-            create=True, get_scope=self.get_transaction)
-        source, _ = get_diamond_vf(weave_vf, trailing_eol=False)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_annotated_knits(self):
-        """Any file should accept a stream from plain knits."""
-        f = self.get_file()
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True)
-        get_diamond_vf(source)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_annotated_knits_noeol(self):
-        """Any file should accept a stream from plain knits."""
-        f = self.get_file()
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True)
-        get_diamond_vf(source, trailing_eol=False)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_plain_knits(self):
-        """Any file should accept a stream from plain knits."""
-        f = self.get_file()
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True, factory=KnitPlainFactory())
-        get_diamond_vf(source)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_plain_knits_noeol(self):
-        """Any file should accept a stream from plain knits."""
-        f = self.get_file()
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True, factory=KnitPlainFactory())
-        get_diamond_vf(source, trailing_eol=False)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_existing_keys(self):
-        """Inserting keys already in a file should not error."""
-        f = self.get_file()
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True, factory=KnitPlainFactory())
-        get_diamond_vf(source)
-        # insert some keys into f.
-        get_diamond_vf(f, left_only=True)
-        stream = source.get_record_stream(source.versions(), 'topological',
-            False)
-        f.insert_record_stream(stream)
-        self.assertIdenticalVersionedFile(f, source)
-
-    def test_insert_record_stream_missing_keys(self):
-        """Inserting a stream with absent keys should raise an error."""
-        f = self.get_file()
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True, factory=KnitPlainFactory())
-        stream = source.get_record_stream(['missing'], 'topological',
-            False)
-        self.assertRaises(errors.RevisionNotPresent, f.insert_record_stream,
-            stream)
-
-    def test_insert_record_stream_out_of_order(self):
-        """An out of order stream can either error or work."""
-        f, parents = get_diamond_vf(self.get_file())
-        origin_entries = f.get_record_stream(['origin'], 'unordered', False)
-        end_entries = f.get_record_stream(['merged', 'left'],
-            'topological', False)
-        start_entries = f.get_record_stream(['right', 'base'],
-            'topological', False)
-        entries = chain(origin_entries, end_entries, start_entries)
-        target = self.get_file('target')
-        try:
-            target.insert_record_stream(entries)
-        except RevisionNotPresent:
-            # Must not have corrupted the file.
-            target.check()
-        else:
-            self.assertIdenticalVersionedFile(f, target)
-
-    def test_insert_record_stream_delta_missing_basis_no_corruption(self):
-        """Insertion where a needed basis is not included aborts safely."""
-        # Annotated source - deltas can be used in any knit.
-        source = make_file_knit('source', get_transport(self.get_url('.')),
-            create=True)
-        get_diamond_vf(source)
-        entries = source.get_record_stream(['origin', 'merged'], 'unordered', False)
-        f = self.get_file()
-        self.assertRaises(RevisionNotPresent, f.insert_record_stream, entries)
-        f.check()
-        self.assertFalse(f.has_version('merged'))
 
     def test_adds_with_parent_texts(self):
         f = self.get_file()
@@ -614,7 +501,7 @@ class VersionedFileTestMixIn(object):
         for version in multiparent.topo_iter(vf):
             mpdiff = vf.make_mpdiffs([version])[0]
             new_vf.add_mpdiffs([(version, vf.get_parent_map([version])[version],
-                                 vf.get_sha1s([version])[0], mpdiff)])
+                                 vf.get_sha1s([version])[version], mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
 
@@ -734,8 +621,6 @@ class VersionedFileTestMixIn(object):
         self._transaction = 'after'
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
-        self.assertRaises(errors.OutSideTransaction, self.applyDeprecated,
-            one_five, f.join, '')
         
     def test_copy_to(self):
         f = self.get_file()
@@ -945,8 +830,6 @@ class VersionedFileTestMixIn(object):
                           'base',
                           [],
                           [])
-        self.assertRaises(errors.ReadOnlyError, self.applyDeprecated, one_five,
-            vf.join, 'base')
     
     def test_get_sha1s(self):
         # check the sha1 data is available
@@ -957,10 +840,12 @@ class VersionedFileTestMixIn(object):
         vf.add_lines('b', ['a'], ['a\n'])
         # a file differing only in last newline.
         vf.add_lines('c', [], ['a'])
-        self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
-                          '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
-                          '3f786850e387550fdab836ed7e6dc881de23001b'],
-                          vf.get_sha1s(['a', 'c', 'b']))
+        self.assertEqual({
+            'a': '3f786850e387550fdab836ed7e6dc881de23001b',
+            'c': '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+            'b': '3f786850e387550fdab836ed7e6dc881de23001b',
+            },
+            vf.get_sha1s(['a', 'c', 'b']))
         
 
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
@@ -1019,171 +904,61 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return WeaveFile
 
 
-class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
-
-    def get_file(self, name='foo', create=True):
-        return make_file_knit(name, get_transport(self.get_url('.')),
-            delta=True, create=True, get_scope=self.get_transaction)
-
-    def get_factory(self):
-        return make_file_knit
-
-    def get_file_corrupted_text(self):
-        knit = self.get_file()
-        knit.add_lines('v1', [], ['hello\n'])
-        knit.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
-        return knit
-
-    def reopen_file(self, name='foo', create=False):
-        return self.get_file(name, create)
-
-    def test_detection(self):
-        knit = self.get_file()
-        knit.check()
-
-    def test_no_implicit_create(self):
-        self.assertRaises(errors.NoSuchFile, self.get_factory(), 'foo',
-            get_transport(self.get_url('.')))
-
-
-class TestPlaintextKnit(TestKnit):
-    """Test a knit with no cached annotations"""
-
-    def get_file(self, name='foo', create=True):
-        return make_file_knit(name, get_transport(self.get_url('.')),
-            delta=True, create=create, get_scope=self.get_transaction,
-            factory=_mod_knit.KnitPlainFactory())
-
-
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
-        self.vf1 = make_file_knit('root', self.get_transport(), create=True)
-        self.vf2 = make_file_knit('root', self.get_transport(), create=True)
-        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
-            [self.vf1, self.vf2])
+        mapper = PrefixMapper()
+        factory = make_file_factory(True, mapper)
+        self.vf1 = factory(self.get_transport('root-1'))
+        self.vf2 = factory(self.get_transport('root-2'))
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root')
+        self.plan_merge_vf.fallback_versionedfiles.extend([self.vf1, self.vf2])
 
     def test_add_lines(self):
-        self.plan_merge_vf.add_lines('a:', [], [])
-        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a', [],
-                          [])
-        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a:', None,
-                          [])
-        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a:', [],
-                          None)
-
-    def test_ancestry(self):
-        self.vf1.add_lines('A', [], [])
-        self.vf1.add_lines('B', ['A'], [])
-        self.plan_merge_vf.add_lines('C:', ['B'], [])
-        self.plan_merge_vf.add_lines('D:', ['C:'], [])
-        self.assertEqual(set(['A', 'B', 'C:', 'D:']),
-            self.plan_merge_vf.get_ancestry('D:', topo_sorted=False))
+        self.plan_merge_vf.add_lines(('root', 'a:'), [], [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines,
+            ('root', 'a'), [], [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines,
+            ('root', 'a:'), None, [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines,
+            ('root', 'a:'), [], None)
 
     def setup_abcde(self):
-        self.vf1.add_lines('A', [], ['a'])
-        self.vf1.add_lines('B', ['A'], ['b'])
-        self.vf2.add_lines('C', [], ['c'])
-        self.vf2.add_lines('D', ['C'], ['d'])
-        self.plan_merge_vf.add_lines('E:', ['B', 'D'], ['e'])
-
-    def test_ancestry_uses_all_versionedfiles(self):
-        self.setup_abcde()
-        self.assertEqual(set(['A', 'B', 'C', 'D', 'E:']),
-            self.plan_merge_vf.get_ancestry('E:', topo_sorted=False))
-
-    def test_ancestry_raises_revision_not_present(self):
-        error = self.assertRaises(errors.RevisionNotPresent,
-                                  self.plan_merge_vf.get_ancestry, 'E:', False)
-        self.assertContainsRe(str(error), '{E:} not present in "root"')
+        self.vf1.add_lines(('root', 'A'), [], ['a'])
+        self.vf1.add_lines(('root', 'B'), [('root', 'A')], ['b'])
+        self.vf2.add_lines(('root', 'C'), [], ['c'])
+        self.vf2.add_lines(('root', 'D'), [('root', 'C')], ['d'])
+        self.plan_merge_vf.add_lines(('root', 'E:'),
+            [('root', 'B'), ('root', 'D')], ['e'])
 
     def test_get_parents(self):
         self.setup_abcde()
-        self.assertEqual({'B':('A',)}, self.plan_merge_vf.get_parent_map(['B']))
-        self.assertEqual({'D':('C',)}, self.plan_merge_vf.get_parent_map(['D']))
-        self.assertEqual({'E:':('B', 'D')},
-            self.plan_merge_vf.get_parent_map(['E:']))
-        self.assertEqual({}, self.plan_merge_vf.get_parent_map(['F']))
+        self.assertEqual({('root', 'B'):(('root', 'A'),)},
+            self.plan_merge_vf.get_parent_map([('root', 'B')]))
+        self.assertEqual({('root', 'D'):(('root', 'C'),)},
+            self.plan_merge_vf.get_parent_map([('root', 'D')]))
+        self.assertEqual({('root', 'E:'):(('root', 'B'),('root', 'D'))},
+            self.plan_merge_vf.get_parent_map([('root', 'E:')]))
+        self.assertEqual({},
+            self.plan_merge_vf.get_parent_map([('root', 'F')]))
         self.assertEqual({
-                'B':('A',),
-                'D':('C',),
-                'E:':('B', 'D'),
-                }, self.plan_merge_vf.get_parent_map(['B', 'D', 'E:', 'F']))
+                ('root', 'B'):(('root', 'A'),),
+                ('root', 'D'):(('root', 'C'),),
+                ('root', 'E:'):(('root', 'B'),('root', 'D')),
+                },
+            self.plan_merge_vf.get_parent_map(
+                [('root', 'B'), ('root', 'D'), ('root', 'E:'), ('root', 'F')]))
 
-    def test_get_lines(self):
+    def test_get_record_stream(self):
         self.setup_abcde()
-        self.assertEqual(['a'], self.plan_merge_vf.get_lines('A'))
-        self.assertEqual(['c'], self.plan_merge_vf.get_lines('C'))
-        self.assertEqual(['e'], self.plan_merge_vf.get_lines('E:'))
-        error = self.assertRaises(errors.RevisionNotPresent,
-                                  self.plan_merge_vf.get_lines, 'F')
-        self.assertContainsRe(str(error), '{F} not present in "root"')
-
-
-class InterString(versionedfile.InterVersionedFile):
-    """An inter-versionedfile optimised code path for strings.
-
-    This is for use during testing where we use strings as versionedfiles
-    so that none of the default regsitered interversionedfile classes will
-    match - which lets us test the match logic.
-    """
-
-    @staticmethod
-    def is_compatible(source, target):
-        """InterString is compatible with strings-as-versionedfiles."""
-        return isinstance(source, str) and isinstance(target, str)
-
-
-# TODO this and the InterRepository core logic should be consolidatable
-# if we make the registry a separate class though we still need to 
-# test the behaviour in the active registry to catch failure-to-handle-
-# stange-objects
-class TestInterVersionedFile(TestCaseWithMemoryTransport):
-
-    def test_get_default_inter_versionedfile(self):
-        # test that the InterVersionedFile.get(a, b) probes
-        # for a class where is_compatible(a, b) returns
-        # true and returns a default interversionedfile otherwise.
-        # This also tests that the default registered optimised interversionedfile
-        # classes do not barf inappropriately when a surprising versionedfile type
-        # is handed to them.
-        dummy_a = "VersionedFile 1."
-        dummy_b = "VersionedFile 2."
-        self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
-
-    def assertGetsDefaultInterVersionedFile(self, a, b):
-        """Asserts that InterVersionedFile.get(a, b) -> the default."""
-        inter = versionedfile.InterVersionedFile.get(a, b)
-        self.assertEqual(versionedfile.InterVersionedFile,
-                         inter.__class__)
-        self.assertEqual(a, inter.source)
-        self.assertEqual(b, inter.target)
-
-    def test_register_inter_versionedfile_class(self):
-        # test that a optimised code path provider - a
-        # InterVersionedFile subclass can be registered and unregistered
-        # and that it is correctly selected when given a versionedfile
-        # pair that it returns true on for the is_compatible static method
-        # check
-        dummy_a = "VersionedFile 1."
-        dummy_b = "VersionedFile 2."
-        versionedfile.InterVersionedFile.register_optimiser(InterString)
-        try:
-            # we should get the default for something InterString returns False
-            # to
-            self.assertFalse(InterString.is_compatible(dummy_a, None))
-            self.assertGetsDefaultInterVersionedFile(dummy_a, None)
-            # and we should get an InterString for a pair it 'likes'
-            self.assertTrue(InterString.is_compatible(dummy_a, dummy_b))
-            inter = versionedfile.InterVersionedFile.get(dummy_a, dummy_b)
-            self.assertEqual(InterString, inter.__class__)
-            self.assertEqual(dummy_a, inter.source)
-            self.assertEqual(dummy_b, inter.target)
-        finally:
-            versionedfile.InterVersionedFile.unregister_optimiser(InterString)
-        # now we should get the default InterVersionedFile object again.
-        self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
+        def get_record(suffix):
+            return self.plan_merge_vf.get_record_stream(
+                [('root', suffix)], 'unordered', True).next()
+        self.assertEqual('a', get_record('A').get_bytes_as('fulltext'))
+        self.assertEqual('c', get_record('C').get_bytes_as('fulltext'))
+        self.assertEqual('e', get_record('E:').get_bytes_as('fulltext'))
+        self.assertEqual('absent', get_record('F').storage_kind)
 
 
 class TestReadonlyHttpMixin(object):
@@ -1214,16 +989,6 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_factory(self):
         return WeaveFile
-
-
-class TestKnitHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
-
-    def get_file(self):
-        return make_file_knit('foo', get_transport(self.get_url('.')),
-            delta=True, create=True, get_scope=self.get_transaction)
-
-    def get_factory(self):
-        return make_file_knit
 
 
 class MergeCasesMixin(object):
@@ -1463,16 +1228,6 @@ class MergeCasesMixin(object):
         self._test_merge_from_strings(base, a, b, result)
 
 
-class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
-
-    def get_file(self, name='foo'):
-        return make_file_knit(name, get_transport(self.get_url('.')),
-                                 delta=True, create=True)
-
-    def log_contents(self, w):
-        pass
-
-
 class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
@@ -1513,21 +1268,18 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             self.assertIsInstance(adapter, klass)
 
     def get_knit(self, annotated=True):
-        if annotated:
-            factory = KnitAnnotateFactory()
-        else:
-            factory = KnitPlainFactory()
-        return make_file_knit('knit', self.get_transport('.'), delta=True,
-            create=True, factory=factory)
+        mapper = ConstantMapper('knit')
+        transport = self.get_transport()
+        return make_file_factory(annotated, mapper)(transport)
 
     def helpGetBytes(self, f, ft_adapter, delta_adapter):
         """Grab the interested adapted texts for tests."""
         # origin is a fulltext
-        entries = f.get_record_stream(['origin'], 'unordered', False)
+        entries = f.get_record_stream([('origin',)], 'unordered', False)
         base = entries.next()
         ft_data = ft_adapter.get_bytes(base, base.get_bytes_as(base.storage_kind))
         # merged is both a delta and multiple parents.
-        entries = f.get_record_stream(['merged'], 'unordered', False)
+        entries = f.get_record_stream([('merged',)], 'unordered', False)
         merged = entries.next()
         delta_data = delta_adapter.get_bytes(merged,
             merged.get_bytes_as(merged.storage_kind))
@@ -1536,7 +1288,8 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
     def test_deannotation_noeol(self):
         """Test converting annotated knits to unannotated knits."""
         # we need a full text, and a delta
-        f, parents = get_diamond_vf(self.get_knit(), trailing_eol=False)
+        f = self.get_knit()
+        get_diamond_files(f, 1, trailing_eol=False)
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTAnnotatedToUnannotated(None),
             _mod_knit.DeltaAnnotatedToUnannotated(None))
@@ -1553,7 +1306,8 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
     def test_deannotation(self):
         """Test converting annotated knits to unannotated knits."""
         # we need a full text, and a delta
-        f, parents = get_diamond_vf(self.get_knit())
+        f = self.get_knit()
+        get_diamond_files(f, 1)
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTAnnotatedToUnannotated(None),
             _mod_knit.DeltaAnnotatedToUnannotated(None))
@@ -1570,30 +1324,34 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
     def test_annotated_to_fulltext_no_eol(self):
         """Test adapting annotated knits to full texts (for -> weaves)."""
         # we need a full text, and a delta
-        f, parents = get_diamond_vf(self.get_knit(), trailing_eol=False)
+        f = self.get_knit()
+        get_diamond_files(f, 1, trailing_eol=False)
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
-        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTAnnotatedToFullText(None),
             _mod_knit.DeltaAnnotatedToFullText(logged_vf))
         self.assertEqual('origin', ft_data)
         self.assertEqual('base\nleft\nright\nmerged', delta_data)
-        self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+            True)], logged_vf.calls)
 
     def test_annotated_to_fulltext(self):
         """Test adapting annotated knits to full texts (for -> weaves)."""
         # we need a full text, and a delta
-        f, parents = get_diamond_vf(self.get_knit())
+        f = self.get_knit()
+        get_diamond_files(f, 1)
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
-        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTAnnotatedToFullText(None),
             _mod_knit.DeltaAnnotatedToFullText(logged_vf))
         self.assertEqual('origin\n', ft_data)
         self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
-        self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+            True)], logged_vf.calls)
 
     def test_unannotated_to_fulltext(self):
         """Test adapting unannotated knits to full texts.
@@ -1601,16 +1359,18 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         This is used for -> weaves, and for -> annotated knits.
         """
         # we need a full text, and a delta
-        f, parents = get_diamond_vf(self.get_knit(annotated=False))
+        f = self.get_knit(annotated=False)
+        get_diamond_files(f, 1)
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
-        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTPlainToFullText(None),
             _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual('origin\n', ft_data)
         self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
-        self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+            True)], logged_vf.calls)
 
     def test_unannotated_to_fulltext_no_eol(self):
         """Test adapting unannotated knits to full texts.
@@ -1618,15 +1378,782 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         This is used for -> weaves, and for -> annotated knits.
         """
         # we need a full text, and a delta
-        f, parents = get_diamond_vf(self.get_knit(annotated=False),
-            trailing_eol=False)
+        f = self.get_knit(annotated=False)
+        get_diamond_files(f, 1, trailing_eol=False)
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
-        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
             _mod_knit.FTPlainToFullText(None),
             _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual('origin', ft_data)
         self.assertEqual('base\nleft\nright\nmerged', delta_data)
-        self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+        self.assertEqual([('get_record_stream', [('left',)], 'unordered',
+            True)], logged_vf.calls)
 
+
+class TestKeyMapper(TestCaseWithMemoryTransport):
+    """Tests for various key mapping logic."""
+
+    def test_identity_mapper(self):
+        mapper = versionedfile.ConstantMapper("inventory")
+        self.assertEqual("inventory", mapper.map(('foo@ar',)))
+        self.assertEqual("inventory", mapper.map(('quux',)))
+
+    def test_prefix_mapper(self):
+        #format5: plain
+        mapper = versionedfile.PrefixMapper()
+        self.assertEqual("file-id", mapper.map(("file-id", "revision-id")))
+        self.assertEqual("new-id", mapper.map(("new-id", "revision-id")))
+        self.assertEqual(('file-id',), mapper.unmap("file-id"))
+        self.assertEqual(('new-id',), mapper.unmap("new-id"))
+
+    def test_hash_prefix_mapper(self):
+        #format6: hash + plain
+        mapper = versionedfile.HashPrefixMapper()
+        self.assertEqual("9b/file-id", mapper.map(("file-id", "revision-id")))
+        self.assertEqual("45/new-id", mapper.map(("new-id", "revision-id")))
+        self.assertEqual(('file-id',), mapper.unmap("9b/file-id"))
+        self.assertEqual(('new-id',), mapper.unmap("45/new-id"))
+
+    def test_hash_escaped_mapper(self):
+        #knit1: hash + escaped
+        mapper = versionedfile.HashEscapedPrefixMapper()
+        self.assertEqual("88/%2520", mapper.map((" ", "revision-id")))
+        self.assertEqual("ed/fil%2545-%2549d", mapper.map(("filE-Id",
+            "revision-id")))
+        self.assertEqual("88/ne%2557-%2549d", mapper.map(("neW-Id",
+            "revision-id")))
+        self.assertEqual(('filE-Id',), mapper.unmap("ed/fil%2545-%2549d"))
+        self.assertEqual(('neW-Id',), mapper.unmap("88/ne%2557-%2549d"))
+
+
+class TestVersionedFiles(TestCaseWithMemoryTransport):
+    """Tests for the multiple-file variant of VersionedFile."""
+
+    def get_versionedfiles(self, relpath='files'):
+        transport = self.get_transport(relpath)
+        if relpath != '.':
+            transport.mkdir('.')
+        files = self.factory(transport)
+        if self.cleanup is not None:
+            self.addCleanup(lambda:self.cleanup(files))
+        return files
+
+    def test_annotate(self):
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        if self.key_length == 1:
+            prefix = ()
+        else:
+            prefix = ('FileA',)
+        # introduced full text
+        origins = files.annotate(prefix + ('origin',))
+        self.assertEqual([
+            (prefix + ('origin',), 'origin\n')],
+            origins)
+        # a delta
+        origins = files.annotate(prefix + ('base',))
+        self.assertEqual([
+            (prefix + ('base',), 'base\n')],
+            origins)
+        # a merge
+        origins = files.annotate(prefix + ('merged',))
+        if self.graph:
+            self.assertEqual([
+                (prefix + ('base',), 'base\n'),
+                (prefix + ('left',), 'left\n'),
+                (prefix + ('right',), 'right\n'),
+                (prefix + ('merged',), 'merged\n')
+                ],
+                origins)
+        else:
+            # Without a graph everything is new.
+            self.assertEqual([
+                (prefix + ('merged',), 'base\n'),
+                (prefix + ('merged',), 'left\n'),
+                (prefix + ('merged',), 'right\n'),
+                (prefix + ('merged',), 'merged\n')
+                ],
+                origins)
+        self.assertRaises(RevisionNotPresent,
+            files.annotate, prefix + ('missing-key',))
+
+    def test_construct(self):
+        """Each parameterised test can be constructed on a transport."""
+        files = self.get_versionedfiles()
+
+    def get_diamond_files(self, files, trailing_eol=True, left_only=False):
+        return get_diamond_files(files, self.key_length,
+            trailing_eol=trailing_eol, nograph=not self.graph,
+            left_only=left_only)
+
+    def test_add_lines_return(self):
+        files = self.get_versionedfiles()
+        # save code by using the stock data insertion helper.
+        adds = self.get_diamond_files(files)
+        results = []
+        # We can only validate the first 2 elements returned from add_lines.
+        for add in adds:
+            self.assertEqual(3, len(add))
+            results.append(add[:2])
+        if self.key_length == 1:
+            self.assertEqual([
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
+                results)
+        elif self.key_length == 2:
+            self.assertEqual([
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
+                results)
+
+    def test_empty_lines(self):
+        """Empty files can be stored."""
+        f = self.get_versionedfiles()
+        key_a = self.get_simple_key('a')
+        f.add_lines(key_a, [], [])
+        self.assertEqual('',
+            f.get_record_stream([key_a], 'unordered', True
+                ).next().get_bytes_as('fulltext'))
+        key_b = self.get_simple_key('b')
+        f.add_lines(key_b, self.get_parents([key_a]), [])
+        self.assertEqual('',
+            f.get_record_stream([key_b], 'unordered', True
+                ).next().get_bytes_as('fulltext'))
+
+    def test_newline_only(self):
+        f = self.get_versionedfiles()
+        key_a = self.get_simple_key('a')
+        f.add_lines(key_a, [], ['\n'])
+        self.assertEqual('\n',
+            f.get_record_stream([key_a], 'unordered', True
+                ).next().get_bytes_as('fulltext'))
+        key_b = self.get_simple_key('b')
+        f.add_lines(key_b, self.get_parents([key_a]), ['\n'])
+        self.assertEqual('\n',
+            f.get_record_stream([key_b], 'unordered', True
+                ).next().get_bytes_as('fulltext'))
+
+    def test_get_record_stream_empty(self):
+        """An empty stream can be requested without error."""
+        f = self.get_versionedfiles()
+        entries = f.get_record_stream([], 'unordered', False)
+        self.assertEqual([], list(entries))
+
+    def assertValidStorageKind(self, storage_kind):
+        """Assert that storage_kind is a valid storage_kind."""
+        self.assertSubset([storage_kind],
+            ['mpdiff', 'knit-annotated-ft', 'knit-annotated-delta',
+             'knit-ft', 'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
+             'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'])
+
+    def capture_stream(self, f, entries, on_seen, parents):
+        """Capture a stream for testing."""
+        for factory in entries:
+            on_seen(factory.key)
+            self.assertValidStorageKind(factory.storage_kind)
+            self.assertEqual(f.get_sha1s([factory.key])[factory.key],
+                factory.sha1)
+            self.assertEqual(parents[factory.key], factory.parents)
+            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                str)
+
+    def test_get_record_stream_interface(self):
+        """each item in a stream has to provide a regular interface."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, _ = self.get_keys_and_sort_order()
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'unordered', False)
+        seen = set()
+        self.capture_stream(files, entries, seen.add, parent_map)
+        self.assertEqual(set(keys), seen)
+
+    def get_simple_key(self, suffix):
+        """Return a key for the object under test."""
+        if self.key_length == 1:
+            return (suffix,)
+        else:
+            return ('FileA',) + (suffix,)
+
+    def get_keys_and_sort_order(self):
+        """Get diamond test keys list, and their sort ordering."""
+        if self.key_length == 1:
+            keys = [('merged',), ('left',), ('right',), ('base',)]
+            sort_order = {('merged',):2, ('left',):1, ('right',):1, ('base',):0}
+        else:
+            keys = [
+                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
+                ('FileA', 'base'),
+                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
+                ('FileB', 'base'),
+                ]
+            sort_order = {
+                ('FileA', 'merged'):2, ('FileA', 'left'):1, ('FileA', 'right'):1,
+                ('FileA', 'base'):0,
+                ('FileB', 'merged'):2, ('FileB', 'left'):1, ('FileB', 'right'):1,
+                ('FileB', 'base'):0,
+                }
+        return keys, sort_order
+
+    def test_get_record_stream_interface_ordered(self):
+        """each item in a stream has to provide a regular interface."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, sort_order = self.get_keys_and_sort_order()
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'topological', False)
+        seen = []
+        self.capture_stream(files, entries, seen.append, parent_map)
+        self.assertStreamOrder(sort_order, seen, keys)
+
+    def test_get_record_stream_interface_ordered_with_delta_closure(self):
+        """each item must be accessible as a fulltext."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, sort_order = self.get_keys_and_sort_order()
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'topological', True)
+        seen = []
+        for factory in entries:
+            seen.append(factory.key)
+            self.assertValidStorageKind(factory.storage_kind)
+            self.assertSubset([factory.sha1],
+                [None, files.get_sha1s([factory.key])[factory.key]])
+            self.assertEqual(parent_map[factory.key], factory.parents)
+            # self.assertEqual(files.get_text(factory.key),
+            self.assertIsInstance(factory.get_bytes_as('fulltext'), str)
+            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                str)
+        self.assertStreamOrder(sort_order, seen, keys)
+
+    def assertStreamOrder(self, sort_order, seen, keys):
+        self.assertEqual(len(set(seen)), len(keys))
+        if self.key_length == 1:
+            lows = {():0}
+        else:
+            lows = {('FileA',):0, ('FileB',):0}
+        if not self.graph:
+            self.assertEqual(set(keys), set(seen))
+        else:
+            for key in seen:
+                sort_pos = sort_order[key]
+                self.assertTrue(sort_pos >= lows[key[:-1]],
+                    "Out of order in sorted stream: %r, %r" % (key, seen))
+                lows[key[:-1]] = sort_pos
+
+    def test_get_record_stream_unknown_storage_kind_raises(self):
+        """Asking for a storage kind that the stream cannot supply raises."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        if self.key_length == 1:
+            keys = [('merged',), ('left',), ('right',), ('base',)]
+        else:
+            keys = [
+                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
+                ('FileA', 'base'),
+                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
+                ('FileB', 'base'),
+                ]
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'unordered', False)
+        # We track the contents because we should be able to try, fail a
+        # particular kind and then ask for one that works and continue.
+        seen = set()
+        for factory in entries:
+            seen.add(factory.key)
+            self.assertValidStorageKind(factory.storage_kind)
+            self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                factory.sha1)
+            self.assertEqual(parent_map[factory.key], factory.parents)
+            # currently no stream emits mpdiff
+            self.assertRaises(errors.UnavailableRepresentation,
+                factory.get_bytes_as, 'mpdiff')
+            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                str)
+        self.assertEqual(set(keys), seen)
+
+    def test_get_record_stream_missing_records_are_absent(self):
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        if self.key_length == 1:
+            keys = [('merged',), ('left',), ('right',), ('absent',), ('base',)]
+        else:
+            keys = [
+                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
+                ('FileA', 'absent'), ('FileA', 'base'),
+                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
+                ('FileB', 'absent'), ('FileB', 'base'),
+                ('absent', 'absent'),
+                ]
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'unordered', False)
+        self.assertAbsentRecord(files, keys, parent_map, entries)
+        entries = files.get_record_stream(keys, 'topological', False)
+        self.assertAbsentRecord(files, keys, parent_map, entries)
+
+    def assertAbsentRecord(self, files, keys, parents, entries):
+        """Helper for test_get_record_stream_missing_records_are_absent."""
+        seen = set()
+        for factory in entries:
+            seen.add(factory.key)
+            if factory.key[-1] == 'absent':
+                self.assertEqual('absent', factory.storage_kind)
+                self.assertEqual(None, factory.sha1)
+                self.assertEqual(None, factory.parents)
+            else:
+                self.assertValidStorageKind(factory.storage_kind)
+                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                    factory.sha1)
+                self.assertEqual(parents[factory.key], factory.parents)
+                self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                    str)
+        self.assertEqual(set(keys), seen)
+
+    def test_filter_absent_records(self):
+        """Requested missing records can be filter trivially."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, _ = self.get_keys_and_sort_order()
+        parent_map = files.get_parent_map(keys)
+        # Add an absent record in the middle of the present keys. (We don't ask
+        # for just absent keys to ensure that content before and after the
+        # absent keys is still delivered).
+        present_keys = list(keys)
+        if self.key_length == 1:
+            keys.insert(2, ('extra',))
+        else:
+            keys.insert(2, ('extra', 'extra'))
+        entries = files.get_record_stream(keys, 'unordered', False)
+        seen = set()
+        self.capture_stream(files, versionedfile.filter_absent(entries), seen.add,
+            parent_map)
+        self.assertEqual(set(present_keys), seen)
+
+    def get_mapper(self):
+        """Get a mapper suitable for the key length of the test interface."""
+        if self.key_length == 1:
+            return ConstantMapper('source')
+        else:
+            return HashEscapedPrefixMapper()
+
+    def get_parents(self, parents):
+        """Get parents, taking self.graph into consideration."""
+        if self.graph:
+            return parents
+        else:
+            return None
+
+    def test_get_parent_map(self):
+        files = self.get_versionedfiles()
+        if self.key_length == 1:
+            parent_details = [
+                (('r0',), self.get_parents(())),
+                (('r1',), self.get_parents((('r0',),))),
+                (('r2',), self.get_parents(())),
+                (('r3',), self.get_parents(())),
+                (('m',), self.get_parents((('r0',),('r1',),('r2',),('r3',)))),
+                ]
+        else:
+            parent_details = [
+                (('FileA', 'r0'), self.get_parents(())),
+                (('FileA', 'r1'), self.get_parents((('FileA', 'r0'),))),
+                (('FileA', 'r2'), self.get_parents(())),
+                (('FileA', 'r3'), self.get_parents(())),
+                (('FileA', 'm'), self.get_parents((('FileA', 'r0'),
+                    ('FileA', 'r1'), ('FileA', 'r2'), ('FileA', 'r3')))),
+                ]
+        for key, parents in parent_details:
+            files.add_lines(key, parents, [])
+            # immediately after adding it should be queryable.
+            self.assertEqual({key:parents}, files.get_parent_map([key]))
+        # We can ask for an empty set
+        self.assertEqual({}, files.get_parent_map([]))
+        # We can ask for many keys
+        all_parents = dict(parent_details)
+        self.assertEqual(all_parents, files.get_parent_map(all_parents.keys()))
+        # Absent keys are just not included in the result.
+        keys = all_parents.keys()
+        if self.key_length == 1:
+            keys.insert(1, ('missing',))
+        else:
+            keys.insert(1, ('missing', 'missing'))
+        # Absent keys are just ignored
+        self.assertEqual(all_parents, files.get_parent_map(keys))
+
+    def test_get_sha1s(self):
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        if self.key_length == 1:
+            keys = [('base',), ('origin',), ('left',), ('merged',), ('right',)]
+        else:
+            # ask for shas from different prefixes.
+            keys = [
+                ('FileA', 'base'), ('FileB', 'origin'), ('FileA', 'left'),
+                ('FileA', 'merged'), ('FileB', 'right'),
+                ]
+        self.assertEqual({
+            keys[0]: '51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',
+            keys[1]: '00e364d235126be43292ab09cb4686cf703ddc17',
+            keys[2]: 'a8478686da38e370e32e42e8a0c220e33ee9132f',
+            keys[3]: 'ed8bce375198ea62444dc71952b22cfc2b09226d',
+            keys[4]: '9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',
+            },
+            files.get_sha1s(keys))
+        
+    def test_insert_record_stream_empty(self):
+        """Inserting an empty record stream should work."""
+        files = self.get_versionedfiles()
+        files.insert_record_stream([])
+
+    def assertIdenticalVersionedFile(self, expected, actual):
+        """Assert that left and right have the same contents."""
+        self.assertEqual(set(actual.keys()), set(expected.keys()))
+        actual_parents = actual.get_parent_map(actual.keys())
+        if self.graph:
+            self.assertEqual(actual_parents, expected.get_parent_map(expected.keys()))
+        else:
+            for key, parents in actual_parents.items():
+                self.assertEqual(None, parents)
+        for key in actual.keys():
+            actual_text = actual.get_record_stream(
+                [key], 'unordered', True).next().get_bytes_as('fulltext')
+            expected_text = expected.get_record_stream(
+                [key], 'unordered', True).next().get_bytes_as('fulltext')
+            self.assertEqual(actual_text, expected_text)
+
+    def test_insert_record_stream_fulltexts(self):
+        """Any file should accept a stream of fulltexts."""
+        files = self.get_versionedfiles()
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        # weaves always output fulltexts.
+        source = make_versioned_files_factory(WeaveFile, mapper)(
+            source_transport)
+        self.get_diamond_files(source, trailing_eol=False)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_fulltexts_noeol(self):
+        """Any file should accept a stream of fulltexts."""
+        files = self.get_versionedfiles()
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        # weaves always output fulltexts.
+        source = make_versioned_files_factory(WeaveFile, mapper)(
+            source_transport)
+        self.get_diamond_files(source, trailing_eol=False)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_annotated_knits(self):
+        """Any file should accept a stream from plain knits."""
+        files = self.get_versionedfiles()
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        source = make_file_factory(True, mapper)(source_transport)
+        self.get_diamond_files(source)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_annotated_knits_noeol(self):
+        """Any file should accept a stream from plain knits."""
+        files = self.get_versionedfiles()
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        source = make_file_factory(True, mapper)(source_transport)
+        self.get_diamond_files(source, trailing_eol=False)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_plain_knits(self):
+        """Any file should accept a stream from plain knits."""
+        files = self.get_versionedfiles()
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        source = make_file_factory(False, mapper)(source_transport)
+        self.get_diamond_files(source)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_plain_knits_noeol(self):
+        """Any file should accept a stream from plain knits."""
+        files = self.get_versionedfiles()
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        source = make_file_factory(False, mapper)(source_transport)
+        self.get_diamond_files(source, trailing_eol=False)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_existing_keys(self):
+        """Inserting keys already in a file should not error."""
+        files = self.get_versionedfiles()
+        source = self.get_versionedfiles('source')
+        self.get_diamond_files(source)
+        # insert some keys into f.
+        self.get_diamond_files(files, left_only=True)
+        stream = source.get_record_stream(source.keys(), 'topological',
+            False)
+        files.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_missing_keys(self):
+        """Inserting a stream with absent keys should raise an error."""
+        files = self.get_versionedfiles()
+        source = self.get_versionedfiles('source')
+        stream = source.get_record_stream([('missing',) * self.key_length],
+            'topological', False)
+        self.assertRaises(errors.RevisionNotPresent, files.insert_record_stream,
+            stream)
+
+    def test_insert_record_stream_out_of_order(self):
+        """An out of order stream can either error or work."""
+        files = self.get_versionedfiles()
+        source = self.get_versionedfiles('source')
+        self.get_diamond_files(source)
+        if self.key_length == 1:
+            origin_keys = [('origin',)]
+            end_keys = [('merged',), ('left',)]
+            start_keys = [('right',), ('base',)]
+        else:
+            origin_keys = [('FileA', 'origin'), ('FileB', 'origin')]
+            end_keys = [('FileA', 'merged',), ('FileA', 'left',),
+                ('FileB', 'merged',), ('FileB', 'left',)]
+            start_keys = [('FileA', 'right',), ('FileA', 'base',),
+                ('FileB', 'right',), ('FileB', 'base',)]
+        origin_entries = source.get_record_stream(origin_keys, 'unordered', False)
+        end_entries = source.get_record_stream(end_keys, 'topological', False)
+        start_entries = source.get_record_stream(start_keys, 'topological', False)
+        entries = chain(origin_entries, end_entries, start_entries)
+        try:
+            files.insert_record_stream(entries)
+        except RevisionNotPresent:
+            # Must not have corrupted the file.
+            files.check()
+        else:
+            self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_delta_missing_basis_no_corruption(self):
+        """Insertion where a needed basis is not included aborts safely."""
+        # We use a knit always here to be sure we are getting a binary delta.
+        mapper = self.get_mapper()
+        source_transport = self.get_transport('source')
+        source_transport.mkdir('.')
+        source = make_file_factory(False, mapper)(source_transport)
+        self.get_diamond_files(source)
+        entries = source.get_record_stream(['origin', 'merged'], 'unordered', False)
+        files = self.get_versionedfiles()
+        self.assertRaises(RevisionNotPresent, files.insert_record_stream,
+            entries)
+        files.check()
+        self.assertEqual({}, files.get_parent_map([]))
+
+    def test_iter_lines_added_or_present_in_keys(self):
+        # test that we get at least an equalset of the lines added by
+        # versions in the store.
+        # the ordering here is to make a tree so that dumb searches have
+        # more changes to muck up.
+
+        class InstrumentedProgress(progress.DummyProgress):
+
+            def __init__(self):
+
+                progress.DummyProgress.__init__(self)
+                self.updates = []
+
+            def update(self, msg=None, current=None, total=None):
+                self.updates.append((msg, current, total))
+
+        files = self.get_versionedfiles()
+        # add a base to get included
+        files.add_lines(self.get_simple_key('base'), (), ['base\n'])
+        # add a ancestor to be included on one side
+        files.add_lines(self.get_simple_key('lancestor'), (), ['lancestor\n'])
+        # add a ancestor to be included on the other side
+        files.add_lines(self.get_simple_key('rancestor'),
+            self.get_parents([self.get_simple_key('base')]), ['rancestor\n'])
+        # add a child of rancestor with no eofile-nl
+        files.add_lines(self.get_simple_key('child'),
+            self.get_parents([self.get_simple_key('rancestor')]),
+            ['base\n', 'child\n'])
+        # add a child of lancestor and base to join the two roots
+        files.add_lines(self.get_simple_key('otherchild'),
+            self.get_parents([self.get_simple_key('lancestor'),
+                self.get_simple_key('base')]),
+            ['base\n', 'lancestor\n', 'otherchild\n'])
+        def iter_with_keys(keys, expected):
+            # now we need to see what lines are returned, and how often.
+            lines = {}
+            progress = InstrumentedProgress()
+            # iterate over the lines
+            for line in files.iter_lines_added_or_present_in_keys(keys,
+                pb=progress):
+                lines.setdefault(line, 0)
+                lines[line] += 1
+            if []!= progress.updates:
+                self.assertEqual(expected, progress.updates)
+            return lines
+        lines = iter_with_keys(
+            [self.get_simple_key('child'), self.get_simple_key('otherchild')],
+            [('Walking content.', 0, 2),
+             ('Walking content.', 1, 2),
+             ('Walking content.', 2, 2)])
+        # we must see child and otherchild
+        self.assertTrue(lines[('child\n', self.get_simple_key('child'))] > 0)
+        self.assertTrue(
+            lines[('otherchild\n', self.get_simple_key('otherchild'))] > 0)
+        # we dont care if we got more than that.
+        
+        # test all lines
+        lines = iter_with_keys(files.keys(),
+            [('Walking content.', 0, 5),
+             ('Walking content.', 1, 5),
+             ('Walking content.', 2, 5),
+             ('Walking content.', 3, 5),
+             ('Walking content.', 4, 5),
+             ('Walking content.', 5, 5)])
+        # all lines must be seen at least once
+        self.assertTrue(lines[('base\n', self.get_simple_key('base'))] > 0)
+        self.assertTrue(
+            lines[('lancestor\n', self.get_simple_key('lancestor'))] > 0)
+        self.assertTrue(
+            lines[('rancestor\n', self.get_simple_key('rancestor'))] > 0)
+        self.assertTrue(lines[('child\n', self.get_simple_key('child'))] > 0)
+        self.assertTrue(
+            lines[('otherchild\n', self.get_simple_key('otherchild'))] > 0)
+
+    def test_make_mpdiffs(self):
+        from bzrlib import multiparent
+        files = self.get_versionedfiles('source')
+        # add texts that should trip the knit maximum delta chain threshold
+        # as well as doing parallel chains of data in knits.
+        # this is done by two chains of 25 insertions
+        files.add_lines(self.get_simple_key('base'), [], ['line\n'])
+        files.add_lines(self.get_simple_key('noeol'),
+            self.get_parents([self.get_simple_key('base')]), ['line'])
+        # detailed eol tests:
+        # shared last line with parent no-eol
+        files.add_lines(self.get_simple_key('noeolsecond'),
+            self.get_parents([self.get_simple_key('noeol')]),
+                ['line\n', 'line'])
+        # differing last line with parent, both no-eol
+        files.add_lines(self.get_simple_key('noeolnotshared'),
+            self.get_parents([self.get_simple_key('noeolsecond')]),
+                ['line\n', 'phone'])
+        # add eol following a noneol parent, change content
+        files.add_lines(self.get_simple_key('eol'),
+            self.get_parents([self.get_simple_key('noeol')]), ['phone\n'])
+        # add eol following a noneol parent, no change content
+        files.add_lines(self.get_simple_key('eolline'),
+            self.get_parents([self.get_simple_key('noeol')]), ['line\n'])
+        # noeol with no parents:
+        files.add_lines(self.get_simple_key('noeolbase'), [], ['line'])
+        # noeol preceeding its leftmost parent in the output:
+        # this is done by making it a merge of two parents with no common
+        # anestry: noeolbase and noeol with the 
+        # later-inserted parent the leftmost.
+        files.add_lines(self.get_simple_key('eolbeforefirstparent'),
+            self.get_parents([self.get_simple_key('noeolbase'),
+                self.get_simple_key('noeol')]),
+            ['line'])
+        # two identical eol texts
+        files.add_lines(self.get_simple_key('noeoldup'),
+            self.get_parents([self.get_simple_key('noeol')]), ['line'])
+        next_parent = self.get_simple_key('base')
+        text_name = 'chain1-'
+        text = ['line\n']
+        sha1s = {0 :'da6d3141cb4a5e6f464bf6e0518042ddc7bfd079',
+                 1 :'45e21ea146a81ea44a821737acdb4f9791c8abe7',
+                 2 :'e1f11570edf3e2a070052366c582837a4fe4e9fa',
+                 3 :'26b4b8626da827088c514b8f9bbe4ebf181edda1',
+                 4 :'e28a5510be25ba84d31121cff00956f9970ae6f6',
+                 5 :'d63ec0ce22e11dcf65a931b69255d3ac747a318d',
+                 6 :'2c2888d288cb5e1d98009d822fedfe6019c6a4ea',
+                 7 :'95c14da9cafbf828e3e74a6f016d87926ba234ab',
+                 8 :'779e9a0b28f9f832528d4b21e17e168c67697272',
+                 9 :'1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f',
+                 10:'131a2ae712cf51ed62f143e3fbac3d4206c25a05',
+                 11:'c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199',
+                 12:'31a2286267f24d8bedaa43355f8ad7129509ea85',
+                 13:'dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a',
+                 14:'2c4b1736566b8ca6051e668de68650686a3922f2',
+                 15:'5912e4ecd9b0c07be4d013e7e2bdcf9323276cde',
+                 16:'b0d2e18d3559a00580f6b49804c23fea500feab3',
+                 17:'8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7',
+                 18:'5cf64a3459ae28efa60239e44b20312d25b253f3',
+                 19:'1ebed371807ba5935958ad0884595126e8c4e823',
+                 20:'2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3',
+                 21:'01edc447978004f6e4e962b417a4ae1955b6fe5d',
+                 22:'d8d8dc49c4bf0bab401e0298bb5ad827768618bb',
+                 23:'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
+                 24:'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
+                 25:'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
+                 }
+        for depth in range(26):
+            new_version = self.get_simple_key(text_name + '%s' % depth)
+            text = text + ['line\n']
+            files.add_lines(new_version, self.get_parents([next_parent]), text)
+            next_parent = new_version
+        next_parent = self.get_simple_key('base')
+        text_name = 'chain2-'
+        text = ['line\n']
+        for depth in range(26):
+            new_version = self.get_simple_key(text_name + '%s' % depth)
+            text = text + ['line\n']
+            files.add_lines(new_version, self.get_parents([next_parent]), text)
+            next_parent = new_version
+        target = self.get_versionedfiles('target')
+        for key in multiparent.topo_iter_keys(files, files.keys()):
+            mpdiff = files.make_mpdiffs([key])[0]
+            parents = files.get_parent_map([key])[key] or []
+            target.add_mpdiffs(
+                [(key, parents, files.get_sha1s([key])[key], mpdiff)])
+            self.assertEqualDiff(
+                files.get_record_stream([key], 'unordered',
+                    True).next().get_bytes_as('fulltext'),
+                target.get_record_stream([key], 'unordered',
+                    True).next().get_bytes_as('fulltext')
+                )
+
+    def test_keys(self):
+        # While use is discouraged, versions() is still needed by aspects of
+        # bzr.
+        files = self.get_versionedfiles()
+        self.assertEqual(set(), set(files.keys()))
+        if self.key_length == 1:
+            key = ('foo',)
+        else:
+            key = ('foo', 'bar',)
+        files.add_lines(key, (), [])
+        self.assertEqual(set([key]), set(files.keys()))

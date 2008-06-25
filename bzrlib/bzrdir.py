@@ -43,12 +43,14 @@ from bzrlib import (
     graph,
     lockable_files,
     lockdir,
+    osutils,
     registry,
     remote,
     revision as _mod_revision,
     symbol_versioning,
     ui,
     urlutils,
+    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
@@ -61,8 +63,7 @@ from bzrlib.osutils import (
     )
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart import protocol
-from bzrlib.store.revision.text import TextRevisionStore
-from bzrlib.store.text import TextStore
+from bzrlib.repofmt.weaverepo import TextRevisionStore, RevisionTextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
@@ -2085,14 +2086,17 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.mkdir('revision-store')
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
-        _revision_store = TextRevisionStore(TextStore(revision_transport,
-                                                      prefixed=False,
-                                                      compressed=True))
+        from bzrlib.xml5 import serializer_v5
+        revision_store = RevisionTextStore(revision_transport,
+            serializer_v5, False, versionedfile.PrefixMapper(),
+            lambda:True, lambda:True)
         try:
-            transaction = WriteTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                _revision_store.add_revision(self.revisions[rev_id], transaction)
+                text = serializer_v5.write_revision_to_string(
+                    self.revisions[rev_id])
+                key = (rev_id,)
+                revision_store.add_lines(key, None, osutils.split_lines(text))
         finally:
             self.pb.clear()
             
@@ -2111,8 +2115,7 @@ class ConvertBzrDir4To5(Converter):
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev = self.branch.repository._revision_store.get_revision(rev_id,
-                self.branch.repository.get_transaction())
+            rev = self.branch.repository.get_revision(rev_id)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
@@ -2208,7 +2211,7 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository.weave_store.get(ie.text_id)
+            text = self.branch.repository._text_store.get(ie.text_id)
             file_lines = text.readlines()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
@@ -2262,16 +2265,17 @@ class ConvertBzrDir5To6(Converter):
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):
-                    file_id = os.path.splitext(filename)[0]
+                    file_id, suffix = os.path.splitext(filename)
                 else:
                     file_id = filename
-                prefix_dir = store.hash_prefix(file_id)
+                    suffix = ''
+                new_name = store._mapper.map((file_id,)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.move(filename, new_name)
                 except errors.NoSuchFile: # catches missing dirs strangely enough
-                    store_transport.mkdir(prefix_dir)
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.mkdir(osutils.dirname(new_name))
+                    store_transport.move(filename, new_name)
         self.bzrdir.transport.put_bytes(
             'branch-format',
             BzrDirFormat6().get_format_string(),

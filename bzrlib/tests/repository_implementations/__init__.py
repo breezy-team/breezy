@@ -379,7 +379,6 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         else:
             count = 3
         return [
-            "%d inconsistent parents" % count,
             # will be gc'd
             r"unreferenced version: {rev2} in a-file-id",
             r"unreferenced version: {rev2b} in a-file-id",
@@ -390,6 +389,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             r"but should have \('rev2c',\)",
             r"a-file-id version rev4 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
+            "%d inconsistent parents" % count,
             ]
 
     def populate_repository(self, repo):

@@ -398,9 +398,10 @@ class TestTransportStore(TestCase):
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
-        my_store = store.TransportStore(MemoryTransport(), escaped=True)
+        my_store = store.TransportStore(MemoryTransport(), prefixed=True,
+            escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEquals(my_store._escape_file_id('C:<>'), '%43%3a%3c%3e')
+        self.assertEquals(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):
@@ -433,3 +434,14 @@ class TestVersionFileStore(TestCaseWithTransport):
         self._transaction = transactions.ReadOnlyTransaction()
         vf = self.vfstore.get_weave_or_empty('id', self._transaction)
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
+
+    def test___iter__escaped(self):
+        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport(),
+            prefixed=True, escaped=True)
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty(' ', self._transaction)
+        vf.add_lines('a', [], [])
+        del vf
+        self._transaction.finish()
+        self.assertEqual([' '], list(self.vfstore))
