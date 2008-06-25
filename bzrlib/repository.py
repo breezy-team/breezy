@@ -505,6 +505,10 @@ class Repository(object):
         if not self._add_fallback_repository_check(repository):
             raise errors.IncompatibleRepositories(self, repository)
         self._fallback_repositories.append(repository)
+        self.texts.add_fallback_versioned_files(repository.texts)
+        self.inventories.add_fallback_versioned_files(repository.inventories)
+        self.revisions.add_fallback_versioned_files(repository.revisions)
+        self.signatures.add_fallback_versioned_files(repository.signatures)
 
     def _add_fallback_repository_check(self, repository):
         """Check that this repository can fallback to repository safely.
@@ -712,11 +716,16 @@ class Repository(object):
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
         result = self.control_files.lock_write(token=token)
+        for repo in self._fallback_repositories:
+            # Writes don't affect fallback repos
+            repo.lock_read()
         self._refresh_data()
         return result
 
     def lock_read(self):
         self.control_files.lock_read()
+        for repo in self._fallback_repositories:
+            repo.lock_read()
         self._refresh_data()
 
     def get_physical_lock_status(self):
@@ -954,6 +963,8 @@ class Repository(object):
                 raise errors.BzrError(
                     'Must end write groups before releasing write locks.')
         self.control_files.unlock()
+        for repo in self._fallback_repositories:
+            repo.unlock()
 
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
