@@ -32,7 +32,7 @@ from bzrlib.util.configobj import configobj
 RULES_TREE_FILENAME = ".bzrrules"
 
 # Namespace prefix for per file preferences
-FILE_PREFS_PREFIX = 'on '
+FILE_PREFS_PREFIX = 'for '
 FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
 
 
