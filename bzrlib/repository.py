@@ -574,7 +574,8 @@ class Repository(object):
                 rev.inventory_sha1 = self.add_inventory(revision_id, inv,
                                                         rev.parent_ids)
         else:
-            rev.inventory_sha1 = self.inventories.get_sha1s([(revision_id,)])[0]
+            key = (revision_id,)
+            rev.inventory_sha1 = self.inventories.get_sha1s([key])[key]
         self._add_revision(rev)
 
     def _add_revision(self, revision):

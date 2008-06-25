@@ -150,7 +150,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :returns: A dict of `{version: hash}`.
         """
         keys = [('a-file-id', version) for version in versions]
-        return dict(zip(versions, repo.texts.get_sha1s(keys)))
+        return repo.texts.get_sha1s(keys)
 
     def test_reconcile_behaviour(self):
         """Populate a repository and reconcile it, verifying the state before
