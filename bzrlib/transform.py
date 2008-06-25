@@ -1683,22 +1683,13 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.annotate_iter(file_id,
             default_revision=default_revision)
 
-    def _get_symlink_target_trans_id(self, trans_id):
-        kind = self._transform._new_contents.get(trans_id)
-        if kind == 'symlink':
-            name = self._transform._limbo_name(trans_id)
-            return os.readlink(name)
-        elif kind is not None:
-            return None
-        path = self._transform._tree_id_paths.get(trans_id)
-        if path is None:
-            return None
-        return self._transform._tree.path_content_summary(path)[3]
-
     def get_symlink_target(self, file_id):
         """See Tree.get_symlink_target"""
+        if not self._content_change(file_id):
+            return self._transform._tree.get_symlink_target(file_id)
         trans_id = self._transform.trans_id_file_id(file_id)
-        return self._get_symlink_target_trans_id(trans_id)
+        name = self._transform._limbo_name(trans_id)
+        return os.readlink(name)
 
     def list_files(self, include_root=False):
         return self._transform._tree.list_files(include_root)
