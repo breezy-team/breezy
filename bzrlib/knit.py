@@ -2419,261 +2419,31 @@ class _KnitAnnotator(object):
     def __init__(self, knit):
         self._knit = knit
 
-        # Content objects, differs from fulltexts because of how final newlines
-        # are treated by knits. the content objects here will always have a
-        # final newline
-        self._fulltext_contents = {}
-
-        # Annotated lines of specific revisions
-        self._annotated_lines = {}
-
-        # Track the raw data for nodes that we could not process yet.
-        # This maps the revision_id of the base to a list of children that will
-        # annotated from it.
-        self._pending_children = {}
-
-        # Nodes which cannot be extracted
-        self._ghosts = set()
-
-        # Track how many children this node has, so we know if we need to keep
-        # it
-        self._annotate_children = {}
-        self._compression_children = {}
-
-        self._all_build_details = {}
-        # The children => parent revision_id graph
-        self._revision_id_graph = {}
-
-        self._heads_provider = None
-
-        self._nodes_to_keep_annotations = set()
-        self._generations_until_keep = 100
-
-    def set_generations_until_keep(self, value):
-        """Set the number of generations before caching a node.
-
-        Setting this to -1 will cache every merge node, setting this higher
-        will cache fewer nodes.
-        """
-        self._generations_until_keep = value
-
-    def _add_fulltext_content(self, revision_id, content_obj):
-        self._fulltext_contents[revision_id] = content_obj
-        # TODO: jam 20080305 It might be good to check the sha1digest here
-        return content_obj.text()
-
-    def _check_parents(self, child, nodes_to_annotate):
-        """Check if all parents have been processed.
-
-        :param child: A tuple of (rev_id, parents, raw_content)
-        :param nodes_to_annotate: If child is ready, add it to
-            nodes_to_annotate, otherwise put it back in self._pending_children
-        """
-        for parent_id in child[1]:
-            if (parent_id not in self._annotated_lines):
-                # This parent is present, but another parent is missing
-                self._pending_children.setdefault(parent_id,
-                                                  []).append(child)
-                break
-        else:
-            # This one is ready to be processed
-            nodes_to_annotate.append(child)
-
-    def _add_annotation(self, revision_id, fulltext, parent_ids,
-                        left_matching_blocks=None):
-        """Add an annotation entry.
-
-        All parents should already have been annotated.
-        :return: A list of children that now have their parents satisfied.
-        """
-        a = self._annotated_lines
-        annotated_parent_lines = [a[p] for p in parent_ids]
-        annotated_lines = list(annotate.reannotate(annotated_parent_lines,
-            fulltext, revision_id, left_matching_blocks,
-            heads_provider=self._get_heads_provider()))
-        self._annotated_lines[revision_id] = annotated_lines
-        for p in parent_ids:
-            ann_children = self._annotate_children[p]
-            ann_children.remove(revision_id)
-            if (not ann_children
-                and p not in self._nodes_to_keep_annotations):
-                del self._annotated_lines[p]
-                del self._all_build_details[p]
-                if p in self._fulltext_contents:
-                    del self._fulltext_contents[p]
-        # Now that we've added this one, see if there are any pending
-        # deltas to be done, certainly this parent is finished
-        nodes_to_annotate = []
-        for child in self._pending_children.pop(revision_id, []):
-            self._check_parents(child, nodes_to_annotate)
-        return nodes_to_annotate
-
-    def _get_build_graph(self, key):
-        """Get the graphs for building texts and annotations.
-
-        The data you need for creating a full text may be different than the
-        data you need to annotate that text. (At a minimum, you need both
-        parents to create an annotation, but only need 1 parent to generate the
-        fulltext.)
-
-        :return: A list of (key, index_memo) records, suitable for
-            passing to read_records_iter to start reading in the raw data fro/
-            the pack file.
-        """
-        if key in self._annotated_lines:
-            # Nothing to do
-            return []
-        pending = set([key])
-        records = []
-        generation = 0
-        kept_generation = 0
-        while pending:
-            # get all pending nodes
-            generation += 1
-            this_iteration = pending
-            build_details = self._knit._index.get_build_details(this_iteration)
-            self._all_build_details.update(build_details)
-            # new_nodes = self._knit._index._get_entries(this_iteration)
-            pending = set()
-            for key, details in build_details.iteritems():
-                (index_memo, compression_parent, parents,
-                 record_details) = details
-                self._revision_id_graph[key] = parents
-                records.append((key, index_memo))
-                # Do we actually need to check _annotated_lines?
-                pending.update(p for p in parents
-                                 if p not in self._all_build_details)
-                if compression_parent:
-                    self._compression_children.setdefault(compression_parent,
-                        []).append(key)
-                if parents:
-                    for parent in parents:
-                        self._annotate_children.setdefault(parent,
-                            []).append(key)
-                    num_gens = generation - kept_generation
-                    if ((num_gens >= self._generations_until_keep)
-                        and len(parents) > 1):
-                        kept_generation = generation
-                        self._nodes_to_keep_annotations.add(key)
-
-            missing_versions = this_iteration.difference(build_details.keys())
-            self._ghosts.update(missing_versions)
-            for missing_version in missing_versions:
-                # add a key, no parents
-                self._revision_id_graph[missing_version] = ()
-                pending.discard(missing_version) # don't look for it
-        if self._ghosts.intersection(self._compression_children):
-            raise KnitCorrupt(
-                "We cannot have nodes which have a ghost compression parent:\n"
-                "ghosts: %r\n"
-                "compression children: %r"
-                % (self._ghosts, self._compression_children))
-        # Cleanout anything that depends on a ghost so that we don't wait for
-        # the ghost to show up
-        for node in self._ghosts:
-            if node in self._annotate_children:
-                # We won't be building this node
-                del self._annotate_children[node]
-        # Generally we will want to read the records in reverse order, because
-        # we find the parent nodes after the children
-        records.reverse()
-        return records
-
-    def _annotate_records(self, records):
-        """Build the annotations for the listed records."""
-        # We iterate in the order read, rather than a strict order requested
-        # However, process what we can, and put off to the side things that
-        # still need parents, cleaning them up when those parents are
-        # processed.
-        for (rev_id, record,
-             digest) in self._knit._read_records_iter(records):
-            if rev_id in self._annotated_lines:
-                continue
-            parent_ids = self._revision_id_graph[rev_id]
-            parent_ids = [p for p in parent_ids if p not in self._ghosts]
-            details = self._all_build_details[rev_id]
-            (index_memo, compression_parent, parents,
-             record_details) = details
-            nodes_to_annotate = []
-            # TODO: Remove the punning between compression parents, and
-            #       parent_ids, we should be able to do this without assuming
-            #       the build order
-            if len(parent_ids) == 0:
-                # There are no parents for this node, so just add it
-                # TODO: This probably needs to be decoupled
-                fulltext_content, delta = self._knit._factory.parse_record(
-                    rev_id, record, record_details, None)
-                fulltext = self._add_fulltext_content(rev_id, fulltext_content)
-                nodes_to_annotate.extend(self._add_annotation(rev_id, fulltext,
-                    parent_ids, left_matching_blocks=None))
-            else:
-                child = (rev_id, parent_ids, record)
-                # Check if all the parents are present
-                self._check_parents(child, nodes_to_annotate)
-            while nodes_to_annotate:
-                # Should we use a queue here instead of a stack?
-                (rev_id, parent_ids, record) = nodes_to_annotate.pop()
-                (index_memo, compression_parent, parents,
-                 record_details) = self._all_build_details[rev_id]
-                if compression_parent is not None:
-                    comp_children = self._compression_children[compression_parent]
-                    if rev_id not in comp_children:
-                        raise AssertionError("%r not in compression children %r"
-                            % (rev_id, comp_children))
-                    # If there is only 1 child, it is safe to reuse this
-                    # content
-                    reuse_content = (len(comp_children) == 1
-                        and compression_parent not in
-                            self._nodes_to_keep_annotations)
-                    if reuse_content:
-                        # Remove it from the cache since it will be changing
-                        parent_fulltext_content = self._fulltext_contents.pop(compression_parent)
-                        # Make sure to copy the fulltext since it might be
-                        # modified
-                        parent_fulltext = list(parent_fulltext_content.text())
-                    else:
-                        parent_fulltext_content = self._fulltext_contents[compression_parent]
-                        parent_fulltext = parent_fulltext_content.text()
-                    comp_children.remove(rev_id)
-                    fulltext_content, delta = self._knit._factory.parse_record(
-                        rev_id, record, record_details,
-                        parent_fulltext_content,
-                        copy_base_content=(not reuse_content))
-                    fulltext = self._add_fulltext_content(rev_id,
-                                                          fulltext_content)
-                    blocks = KnitContent.get_line_delta_blocks(delta,
-                            parent_fulltext, fulltext)
-                else:
-                    fulltext_content = self._knit._factory.parse_fulltext(
-                        record, rev_id)
-                    fulltext = self._add_fulltext_content(rev_id,
-                        fulltext_content)
-                    blocks = None
-                nodes_to_annotate.extend(
-                    self._add_annotation(rev_id, fulltext, parent_ids,
-                                     left_matching_blocks=blocks))
-
-    def _get_heads_provider(self):
-        """Create a heads provider for resolving ancestry issues."""
-        if self._heads_provider is not None:
-            return self._heads_provider
-        parent_provider = _mod_graph.DictParentsProvider(
-            self._revision_id_graph)
-        graph_obj = _mod_graph.Graph(parent_provider)
-        head_cache = _mod_graph.FrozenHeadsCache(graph_obj)
-        self._heads_provider = head_cache
-        return head_cache
-
     def annotate(self, key):
         """Return the annotated fulltext at the given key.
 
         :param key: The key to annotate.
         """
-        records = self._get_build_graph(key)
-        if key in self._ghosts:
-            raise errors.RevisionNotPresent(key, self._knit)
-        self._annotate_records(records)
-        return self._annotated_lines[key]
+        graph = Graph(self._knit)
+        head_cache = _mod_graph.FrozenHeadsCache(graph)
+        search = graph._make_breadth_first_searcher([key])
+        keys = set()
+        while True:
+            try:
+                present, ghosts = search.next_with_ghosts()
+            except StopIteration:
+                break
+            keys.update(present)
+        parent_map = self._knit.get_parent_map(keys)
+        parent_cache = {}
+        reannotate = annotate.reannotate
+        for record in self._knit.get_record_stream(keys, 'topological', True):
+            key = record.key
+            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            parent_cache[key] = list(
+                reannotate(parent_lines, fulltext, key, None, head_cache))
+        return parent_cache[key]
 
 
 try:
