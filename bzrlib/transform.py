@@ -1496,7 +1496,7 @@ class _PreviewTree(tree.Tree):
         return cur_parent, list(reversed(segments))
 
     def _candidate_treepath(self, trans_segment, segments):
-        parent_path = self._transform._tree_id_paths[trans_segment]
+        parent_path = self._final_paths.get_path(trans_segment)
         tree_path = pathjoin(*([parent_path] + segments))
         return tree_path
 
@@ -1611,7 +1611,7 @@ class _PreviewTree(tree.Tree):
         for path, entry in self.iter_entries_by_dir():
             if entry.name == '' and not include_root:
                 continue
-            yield path, 'V', entry, entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry.file_id, entry
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1715,9 +1715,6 @@ class _PreviewTree(tree.Tree):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.readlink(name)
-
-    def list_files(self, include_root=False):
-        return self._transform._tree.list_files(include_root)
 
     def walkdirs(self, prefix=""):
         return self._transform._tree.walkdirs(prefix)
@@ -2194,8 +2191,12 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         # contents
                         mode_id = trans_id
                         trans_id = new_trans_id
-                if kind[1] == 'directory':
+                if kind[1] in ('directory', 'tree-reference'):
                     tt.create_directory(trans_id)
+                    if kind[1] == 'tree-reference':
+                        revision = target_tree.get_reference_revision(file_id,
+                                                                      path[1])
+                        tt.set_tree_reference(revision, trans_id)
                 elif kind[1] == 'symlink':
                     tt.create_symlink(target_tree.get_symlink_target(file_id),
                                       trans_id)
