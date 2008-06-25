@@ -111,9 +111,10 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 
 
 def _annotations(repo, file_id, rev_id):
-    """Return the list of (origin,text) for a revision of a file in a repository."""
-    w = repo.weave_store.get_weave(file_id, repo.get_transaction())
-    return w.annotate(rev_id)
+    """Return the list of (origin_revision_id, line_text) for a revision of a file in a repository."""
+    annotations = repo.texts.annotate((file_id, rev_id))
+    # 
+    return [(key[-1], line) for (key, line) in annotations]
 
 
 def _annotate_file(branch, rev_id, file_id):

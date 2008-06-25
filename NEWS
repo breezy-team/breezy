@@ -62,11 +62,28 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * Removed ``Repository.text_store``, ``control_store``, etc.  Instead,
+      there are new attributes ``texts, inventories, revisions,
+      signatures``, each of which is a ``VersionedFiles``.  See the
+      Repository docstring for more details.
+      (Robert Collins)
+
     * ``Branch.pull`` now accepts an ``_override_hook_target`` optional
       parameter.  If you have a subclass of ``Branch`` that overrides
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
   INTERNALS:
+
+    * New ``versionedfile.KeyMapper`` interface to abstract out the access to
+      underlying .knit/.kndx etc files in repositories with partitioned
+      storage. (Robert Collins)
+
+    * Obsolete developer-use command ``weave-join`` has been removed.
+      (Robert Collins)
+
+    * ``RemoteToOtherFetcher`` and ``get_data_stream_for_search`` removed,
+      to support new ``VersionedFiles`` layering.
+      (Robert Collins)
 
 
 bzr 1.6beta2 2008-06-10
