@@ -1718,7 +1718,28 @@ class TestStacking(KnitTests):
         self.assertEqual([("keys",)], basis.calls)
 
     def test_add_mpdiffs(self):
-        pass
+        # records are inserted as normal; add_mpdiff builds on
+        # add_lines, so a smoke test should be all thats needed:
+        key = ('foo',)
+        key_basis = ('bar',)
+        key_delta = ('zaphod',)
+        basis, test = self.get_basis_and_test_knit()
+        source = self.make_test_knit(name='source')
+        basis.add_lines(key_basis, (), ['foo\n'])
+        basis.calls = []
+        source.add_lines(key_basis, (), ['foo\n'])
+        source.add_lines(key_delta, (key_basis,), ['bar\n'])
+        diffs = source.make_mpdiffs([key_delta])
+        test.add_mpdiffs([(key_delta, (key_basis,),
+            source.get_sha1s([key_delta])[key_delta], diffs[0])])
+        self.assertEqual([("get_parent_map", set([key_basis])),
+            ('get_record_stream', [('bar',)], 'unordered', True),
+            ('get_parent_map', set([('bar',)]))],
+            basis.calls)
+        self.assertEqual({key_delta:(key_basis,)},
+            test.get_parent_map([key_delta]))
+        self.assertEqual('bar\n', test.get_record_stream([key_delta],
+            'unordered', True).next().get_bytes_as('fulltext'))
 
     def test_make_mpdiffs(self):
         pass

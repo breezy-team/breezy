@@ -753,10 +753,11 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        present_parents = set(self.get_parent_map(needed_parents).keys())
         split_lines = osutils.split_lines
-        for record in self.get_record_stream(present_parents, 'unordered',
+        for record in self.get_record_stream(needed_parents, 'unordered',
             True):
+            if record.storage_kind == 'absent':
+                continue
             mpvf.add_version(split_lines(record.get_bytes_as('fulltext')),
                 record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in\
