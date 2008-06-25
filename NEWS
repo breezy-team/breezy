@@ -14,6 +14,11 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * The smart protocol now has improved support for setting branches'
+      revision info directly.  This makes operations like push
+      faster.  The new request method name is
+      ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
+
   BUGFIXES:
 
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be

@@ -85,6 +85,7 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -361,6 +362,7 @@ class Branch(object):
         """
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -413,11 +415,17 @@ class Branch(object):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
+    @needs_read_lock
     def last_revision_info(self):
         """Return information about the last revision.
 
-        :return: A tuple (revno, last_revision_id).
+        :return: A tuple (revno, revision_id).
         """
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+
+    def _last_revision_info(self):
         rh = self.revision_history()
         revno = len(rh)
         if revno:
@@ -484,16 +492,11 @@ class Branch(object):
             if not overwrite:
                 if graph is None:
                     graph = self.repository.get_graph()
-                heads = graph.heads([stop_revision, last_rev])
-                if heads == set([last_rev]):
-                    # The current revision is a decendent of the target,
-                    # nothing to do
+                if self._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, other):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
                     return
-                elif heads == set([stop_revision, last_rev]):
-                    # These branches have diverged
-                    raise errors.DivergedBranches(self, other)
-                elif heads != set([stop_revision]):
-                    raise AssertionError("invalid heads: %r" % heads)
             if stop_revno is None:
                 if graph is None:
                     graph = self.repository.get_graph()
@@ -853,6 +856,41 @@ class Branch(object):
 
     def supports_tags(self):
         return self._format.supports_tags()
+
+    def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
+                                         other_branch):
+        """Ensure that revision_b is a descendant of revision_a.
+
+        This is a helper function for update_revisions.
+        
+        :raises: DivergedBranches if revision_b has diverged from revision_a.
+        :returns: True if revision_b is a descendant of revision_a.
+        """
+        relation = self._revision_relations(revision_a, revision_b, graph)
+        if relation == 'b_descends_from_a':
+            return True
+        elif relation == 'diverged':
+            raise errors.DivergedBranches(self, other_branch)
+        elif relation == 'a_descends_from_b':
+            return False
+        else:
+            raise AssertionError("invalid heads: %r" % heads)
+
+    def _revision_relations(self, revision_a, revision_b, graph):
+        """Determine the relationship between two revisions.
+        
+        :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
+        """
+        heads = graph.heads([revision_a, revision_b])
+        if heads == set([revision_b]):
+            return 'b_descends_from_a'
+        elif heads == set([revision_a, revision_b]):
+            # These branches have diverged
+            return 'diverged'
+        elif heads == set([revision_a]):
+            return 'a_descends_from_b'
+        else:
+            raise AssertionError("invalid heads: %r" % heads)
 
 
 class BranchFormat(object):
@@ -1887,23 +1925,11 @@ class BzrBranch6(BzrBranch5):
 
     def __init__(self, *args, **kwargs):
         super(BzrBranch6, self).__init__(*args, **kwargs)
-        self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
 
     def _clear_cached_state(self):
         super(BzrBranch6, self)._clear_cached_state()
-        self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
-
-    @needs_read_lock
-    def last_revision_info(self):
-        """Return information about the last revision.
-
-        :return: A tuple (revno, revision_id).
-        """
-        if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._last_revision_info()
-        return self._last_revision_info_cache
 
     def _last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
