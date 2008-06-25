@@ -128,6 +128,7 @@ class SvnBranch(Branch):
             return self._cached_revnum
         latest_revnum = self.repository.get_latest_revnum()
         self._cached_revnum = self.repository._log.find_latest_change(self.get_branch_path(), latest_revnum)
+        assert self._cached_revnum is not None
         return self._cached_revnum
 
     def check(self):
