@@ -181,6 +181,8 @@ class RemoteBzrDir(BzrDir):
             format.supports_tree_reference = (response[3] == 'yes')
             # No wire format to check this yet.
             format.supports_external_lookups = (response[4] == 'yes')
+            # Used to support creating a real format instance when needed.
+            format._creating_bzrdir = self
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
@@ -239,7 +241,10 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     def initialize(self, a_bzrdir, shared=False):
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            raise AssertionError('%r is not a RemoteBzrDir' % (a_bzrdir,))
+            prior_repo = self._creating_bzrdir.open_repository()
+            prior_repo._ensure_real()
+            return prior_repo._real_repository._format.initialize(
+                a_bzrdir, shared=shared)
         return a_bzrdir.create_repository(shared=shared)
     
     def open(self, a_bzrdir):

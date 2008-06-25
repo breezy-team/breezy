@@ -143,6 +143,14 @@ class TestBranch(ExternalBase):
         new_revid = new_tree.commit('new work')
         self.assertShallow(new_revid, trunk_tree.branch.base)
 
+    def test_branch_stacked_from_smart_server(self):
+        # We can branch stacking on a smart server
+        from bzrlib.smart.server import SmartTCPServer_for_testing
+        self.transport_server = SmartTCPServer_for_testing
+        trunk = self.make_branch('mainline', format='development')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 
