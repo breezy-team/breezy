@@ -60,9 +60,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         inv.root.revision = revision_id
         if repo.supports_rich_root():
             root_id = inv.root.file_id
-            vf = repo.weave_store.get_weave_or_empty(root_id,
-                repo.get_transaction())
-            vf.add_lines(revision_id, [], [])
+            repo.texts.add_lines((root_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = Revision(revision_id, committer='jrandom@example.com',
             timestamp=0, inventory_sha1='', timezone=0, message='foo',
@@ -103,9 +101,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         entry.text_sha1 = sha.sha(file_contents).hexdigest()
         inv.add(entry)
         if make_file_version:
-            vf = repo.weave_store.get_weave_or_empty(file_id,
-                                                     repo.get_transaction())
-            vf.add_lines(revision, parents, [file_contents])
+            repo.texts.add_lines((file_id, revision),
+                [(file_id, parent) for parent in parents], [file_contents])
         return inv
 
     def require_repo_suffers_text_parent_corruption(self, repo):
@@ -114,13 +111,13 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                     "Format does not support text parent reconciliation")
 
     def file_parents(self, repo, revision_id):
-        return repo.weave_store.get_weave('a-file-id',
-            repo.get_transaction()).get_parent_map([revision_id])[revision_id]
+        key = ('a-file-id', revision_id)
+        parent_map = repo.texts.get_parent_map([key])
+        return tuple(parent[-1] for parent in parent_map[key])
 
     def assertFileVersionAbsent(self, repo, revision_id):
-        self.assertFalse(repo.weave_store.get_weave('a-file-id',
-            repo.get_transaction()).has_version(revision_id),
-            'File version %s wrongly present.' % (revision_id,))
+        self.assertEqual({},
+            repo.texts.get_parent_map([('a-file-id', revision_id)]))
 
     def assertParentsMatch(self, expected_parents_for_versions, repo,
                            when_description):
@@ -152,8 +149,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
         :returns: A dict of `{version: hash}`.
         """
-        vf = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
-        return dict(zip(versions, vf.get_sha1s(versions)))
+        keys = [('a-file-id', version) for version in versions]
+        return dict(zip(versions, repo.texts.get_sha1s(keys)))
 
     def test_reconcile_behaviour(self):
         """Populate a repository and reconcile it, verifying the state before
@@ -180,12 +177,20 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                 self.shas_for_versions_of_file(
                     repo, scenario.all_versions_after_reconcile()))
 
+            # Scenario.corrected_fulltexts contains texts which the test wants
+            # to assert are now fulltexts. However this is an abstraction
+            # violation; really we care that:
+            # - the text is reconstructable
+            # - it has an empty parents list
+            # (we specify it this way because a store can use arbitrary
+            # compression pointers in principle.
             for file_version in scenario.corrected_fulltexts():
-                vf = repo.weave_store.get_weave(
-                    'a-file-id', repo.get_transaction())
-                self.assertEqual('fulltext',
-                    vf._index.get_method(file_version),
-                    '%r should be fulltext' % (file_version,))
+                key = ('a-file-id', file_version)
+                self.assertEqual({key:()}, repo.texts.get_parent_map([key]))
+                self.assertIsInstance(
+                    repo.texts.get_record_stream([key], 'unordered',
+                        True).next().get_bytes_as('fulltext'),
+                    str)
         finally:
             repo.unlock()
 

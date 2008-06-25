@@ -1503,6 +1503,9 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
+        for rev_id in rev_history:
+            check_not_reserved_id(rev_id)
         self._write_revision_history(rev_history)
         self._clear_cached_state()
         self._cache_revision_history(rev_history)
@@ -1566,9 +1569,11 @@ class BzrBranch(Branch):
             raise errors.NoSuchRevision(self, revision_id)
         current_rev_id = revision_id
         new_history = []
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
         # Do not include ghosts or graph origin in revision_history
         while (current_rev_id in parents_map and
                len(parents_map[current_rev_id]) > 0):
+            check_not_reserved_id(current_rev_id)
             new_history.append(current_rev_id)
             current_rev_id = parents_map[current_rev_id][0]
             parents_map = graph.get_parent_map([current_rev_id])
