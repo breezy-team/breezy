@@ -34,7 +34,7 @@ try:
     except ImportError:
         from cElementTree import (ElementTree, SubElement, Element,
                                   XMLTreeBuilder, fromstring, tostring)
-        import elementtree
+        import elementtree.ElementTree
     ParseError = SyntaxError
 except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'

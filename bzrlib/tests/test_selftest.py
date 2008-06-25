@@ -241,18 +241,18 @@ class TestRepositoryParameterisation(TestCase):
         """The vfs_transport_factory can be set optionally."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
         scenarios = formats_to_scenarios(
-            [("a", "b"), ("c", "d")],
+            [("(one)", "a", "b"), ("(two)", "c", "d")],
             None,
             None,
             vfs_transport_factory="vfs")
         self.assertEqual([
-            ('str',
+            ('str(one)',
              {'bzrdir_format': 'b',
               'repository_format': 'a',
               'transport_readonly_server': None,
               'transport_server': None,
               'vfs_transport_factory': 'vfs'}),
-            ('str',
+            ('str(two)',
              {'bzrdir_format': 'd',
               'repository_format': 'c',
               'transport_readonly_server': None,
@@ -263,32 +263,32 @@ class TestRepositoryParameterisation(TestCase):
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
-        formats = [("c", "C"), (1, "D")]
+        formats = [("(c)", "c", "C"), ("(d)", 1, "D")]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             vfs_transport_factory="vfs")
         # no_vfs generate scenarios without vfs_transport_factor
         self.assertEqual([
-            ('str',
+            ('str(c)',
              {'bzrdir_format': 'C',
               'repository_format': 'c',
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'}),
-            ('int',
+            ('int(d)',
              {'bzrdir_format': 'D',
               'repository_format': 1,
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'})],
             no_vfs_scenarios)
         self.assertEqual([
-            ('str',
+            ('str(c)',
              {'bzrdir_format': 'C',
               'repository_format': 'c',
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'}),
-            ('int',
+            ('int(d)',
              {'bzrdir_format': 'D',
               'repository_format': 1,
               'transport_readonly_server': 'readonly',

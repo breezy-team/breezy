@@ -134,7 +134,7 @@ class cmd_status(Command):
     
     Note that --short or -S gives status flags for each item, similar
     to Subversion's status command. To get output similar to svn -q,
-    use bzr -SV.
+    use bzr status -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -3353,20 +3353,6 @@ class cmd_shell_complete(Command):
     def run(self, context=None):
         import shellcomplete
         shellcomplete.shellcomplete(context)
-
-
-class cmd_fetch(Command):
-    """Copy in history from another branch but don't merge it.
-
-    This is an internal method used for pull and merge.
-    """
-    hidden = True
-    takes_args = ['from_branch', 'to_branch']
-    def run(self, from_branch, to_branch):
-        from bzrlib.fetch import Fetcher
-        from_b = Branch.open(from_branch)
-        to_b = Branch.open(to_branch)
-        Fetcher(to_b, from_b)
 
 
 class cmd_missing(Command):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2895,7 +2895,7 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts)
 
     @classmethod

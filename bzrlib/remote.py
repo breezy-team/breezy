@@ -825,7 +825,7 @@ class RemoteRepository(object):
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
-        if not medium._remote_is_at_least_1_2:
+        if medium._is_remote_before((1, 2)):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
@@ -904,7 +904,7 @@ class RemoteRepository(object):
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
-            medium._remote_is_at_least_1_2 = False
+            medium._remember_remote_is_before((1, 2))
             return self.get_revision_graph(None)
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
@@ -1481,15 +1481,10 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
-        # FIXME: This asks the real branch to run the hooks, which means
-        # they're called with the wrong target branch parameter. 
-        # The test suite specifically allows this at present but it should be
-        # fixed.  It should get a _override_hook_target branch,
-        # as push does.  -- mbp 20070405
         self._ensure_real()
         return self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
-            **kwargs)
+            _override_hook_target=self, **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
