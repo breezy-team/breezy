@@ -3,7 +3,8 @@ Bazaar Main Document Catalog
 ============================
 
 The latest version of these documents are available from Bazaar's
-documentation site, http://doc.bazaar-vcs.org.
+documentation site, <http://doc.bazaar-vcs.org/>, and more documentation
+may be linked from <http://bazaar-vcs.org/Documentation>.
 
 Core Documentation
 ==================
@@ -18,7 +19,8 @@ Core Documentation
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 
-* `Developer Guide <en/developer-guide/HACKING.html>`_
+* `Developer Document Catalog <developers/index.html>`_ |--| for developers
+  of Bazaar and plugins
 
 
 Tutorials
@@ -33,32 +35,26 @@ Tutorials
 * `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
 
 
-Other Documentation
-===================
-
-Moving to Bazaar (Web links):
+Web links
+=========
 
 * `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_ 
-  - for users moving from another VCS tool
+  |--| for users moving from another VCS tool
 
 * `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
-  - for teams migrating history from another VCS tool
-
-Other Documents (Web links):
+  |--| for teams migrating history from another VCS tool
 
 * `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
 
 * `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
-
-* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
-
-Technical specifications, roadmaps and various
-technical notes are available in English below:
-
-* `Developer Document Catalog <developers/index.html>`_
 
 
 Other Languages
 ===============
 
 * `Spanish Documentation <index.es.html>`_
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

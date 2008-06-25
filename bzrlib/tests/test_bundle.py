@@ -469,23 +469,28 @@ class BundleTester(object):
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
+            old.lock_read()
+            new.lock_read()
+            try:
+                # Check that there aren't any inventory level changes
+                delta = new.changes_from(old)
+                self.assertFalse(delta.has_changed(),
+                                 'Revision %s not copied correctly.'
+                                 % (ancestor,))
 
-            # Check that there aren't any inventory level changes
-            delta = new.changes_from(old)
-            self.assertFalse(delta.has_changed(),
-                             'Revision %s not copied correctly.'
-                             % (ancestor,))
-
-            # Now check that the file contents are all correct
-            for inventory_id in old:
-                try:
-                    old_file = old.get_file(inventory_id)
-                except NoSuchFile:
-                    continue
-                if old_file is None:
-                    continue
-                self.assertEqual(old_file.read(),
-                                 new.get_file(inventory_id).read())
+                # Now check that the file contents are all correct
+                for inventory_id in old:
+                    try:
+                        old_file = old.get_file(inventory_id)
+                    except NoSuchFile:
+                        continue
+                    if old_file is None:
+                        continue
+                    self.assertEqual(old_file.read(),
+                                     new.get_file(inventory_id).read())
+            finally:
+                new.unlock()
+                old.unlock()
         if not _mod_revision.is_null(rev_id):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
@@ -1027,9 +1032,12 @@ class BundleTester(object):
         repo = self.make_repo_with_installed_revisions()
         inv = repo.get_inventory('rev2')
         self.assertEqual('rev2', inv.root.revision)
-        root_vf = repo.weave_store.get_weave(inv.root.file_id,
-                                             repo.get_transaction())
-        self.assertEqual(root_vf.versions(), ['rev1', 'rev2'])
+        root_id = inv.root.file_id
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({(root_id, 'rev1'):(),
+            (root_id, 'rev2'):((root_id, 'rev1'),)},
+            repo.texts.get_parent_map([(root_id, 'rev1'), (root_id, 'rev2')]))
 
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
@@ -1345,14 +1353,18 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
         install_bundle(target_repo, serializer.read(s))
-        vf = target_repo.weave_store.get_weave('fileid-2',
-            target_repo.get_transaction())
-        self.assertEqual('contents1\nstatic\n', vf.get_text('rev1'))
-        self.assertEqual('contents2\nstatic\n', vf.get_text('rev2'))
+        target_repo.lock_read()
+        self.addCleanup(target_repo.unlock)
+        self.assertEqual({'1':'contents1\nstatic\n',
+            '2':'contents2\nstatic\n'},
+            dict(target_repo.iter_files_bytes(
+                [('fileid-2', 'rev1', '1'), ('fileid-2', 'rev2', '2')])))
         rtree = target_repo.revision_tree('rev2')
-        inventory_vf = target_repo.get_inventory_weave()
-        self.assertEqual({'rev2':('rev1',)},
-            inventory_vf.get_parent_map(['rev2']))
+        inventory_vf = target_repo.inventories
+        # If the inventory store has a graph, it must match the revision graph.
+        self.assertSubset(
+            [inventory_vf.get_parent_map([('rev2',)])[('rev2',)]],
+            [None, (('rev1',),)])
         self.assertEqual('changed file',
                          target_repo.get_revision('rev2').message)
 

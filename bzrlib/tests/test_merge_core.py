@@ -724,7 +724,7 @@ class TestMerger(TestCaseWithTransport):
 
     def test_from_revision_ids(self):
         this, other = self.set_up_trees()
-        self.assertRaises(errors.RevisionNotPresent, Merger.from_revision_ids,
+        self.assertRaises(errors.NoSuchRevision, Merger.from_revision_ids,
                           progress.DummyProgress(), this, 'rev2b')
         this.lock_write()
         self.addCleanup(this.unlock)

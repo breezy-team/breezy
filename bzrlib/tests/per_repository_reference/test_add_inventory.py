@@ -46,4 +46,4 @@ class TestAddInventory(TestCaseWithExternalReferenceRepository):
             repo.unlock()
         inv2 = repo.get_inventory(revid)
         self.assertEqual(inv._byid, inv2._byid)
-        self.assertRaises(errors.RevisionNotPresent, base.get_inventory, revid)
+        self.assertRaises(errors.NoSuchRevision, base.get_inventory, revid)
