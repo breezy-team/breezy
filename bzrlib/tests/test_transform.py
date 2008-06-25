@@ -2166,6 +2166,36 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         summary = preview.get_preview_tree().path_content_summary('path')
         self.assertEqual(('missing', None, None, None), summary)
 
+    def test_file_content_summary_executable(self):
+        if not osutils.supports_executable():
+            raise TestNotApplicable()
+        preview = self.get_empty_preview()
+        path_id = preview.new_file('path', preview.root, 'contents', 'path-id')
+        preview.set_executability(True, path_id)
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(4, len(summary))
+        self.assertEqual('file', summary[0])
+        # size must be known
+        self.assertEqual(len('contents'), summary[1])
+        # executable
+        self.assertEqual(True, summary[2])
+        # may have hash,
+        self.assertSubset((summary[3],),
+            (None, '0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+
+    def test_change_executability(self):
+        if not osutils.supports_executable():
+            raise TestNotApplicable()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/path'])
+        tree.add('path')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        path_id = preview.trans_id_tree_path('path')
+        preview.set_executability(True, path_id)
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(True, summary[2])
+
     def test_file_content_summary_non_exec(self):
         preview = self.get_empty_preview()
         preview.new_file('path', preview.root, 'contents', 'path-id')
@@ -2173,7 +2203,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(4, len(summary))
         self.assertEqual('file', summary[0])
         # size must be known
-        self.assertEqual(8, summary[1])
+        self.assertEqual(len('contents'), summary[1])
         # not executable
         if osutils.supports_executable():
             self.assertEqual(False, summary[2])
