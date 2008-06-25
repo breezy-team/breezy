@@ -2150,3 +2150,49 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.new_symlink('path', preview.root, 'target', 'path-id')
         summary = preview.get_preview_tree().path_content_summary('path')
         self.assertEqual(('symlink', None, None, 'target'), summary)
+
+    def test_missing_content_summary(self):
+        preview = self.get_empty_preview()
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('missing', None, None, None), summary)
+
+    def test_deleted_content_summary(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/path/'])
+        tree.add('path')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.delete_contents(preview.trans_id_tree_path('path'))
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('missing', None, None, None), summary)
+
+    def test_file_content_summary_non_exec(self):
+        preview = self.get_empty_preview()
+        preview.new_file('path', preview.root, 'contents', 'path-id')
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(4, len(summary))
+        self.assertEqual('file', summary[0])
+        # size must be known
+        self.assertEqual(8, summary[1])
+        # not executable
+        if osutils.supports_executable():
+            self.assertEqual(False, summary[2])
+        else:
+            self.assertEqual(None, summary[2])
+        # may have hash,
+        self.assertSubset((summary[3],),
+            (None, '0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+
+    def test_dir_content_summary(self):
+        preview = self.get_empty_preview()
+        preview.new_directory('path', preview.root, 'path-id')
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('directory', None, None, None), summary)
+
+    def test_tree_content_summary(self):
+        preview = self.get_empty_preview()
+        path = preview.new_directory('path', preview.root, 'path-id')
+        preview.set_tree_reference('rev-1', path)
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(4, len(summary))
+        self.assertEqual('tree-reference', summary[0])
