@@ -32,40 +32,8 @@ Patterns
 
 Patterns are ordered and searching stops as soon as one matches.
 As a consequence, more explicit patterns should be placed towards
-the top of the file. Otherwise, rule patterns use exactly the
-same conventions as ignore patterns as explained below.
-
-Trailing slashes on patterns are ignored. If the pattern contains a
-slash or is a regular expression, it is compared to the whole path
-from the branch root. Otherwise, it is compared to only the last
-component of the path. To match a file only in the root directory,
-prepend './'. Patterns specifying absolute paths are not allowed.
-
-Patterns may include globbing wildcards such as::
-
-  ? - Matches any single character except '/'
-  * - Matches 0 or more characters except '/'
-  /**/ - Matches 0 or more directories in a path
-  [a-z] - Matches a single character from within a group of characters
-
-Patterns may also be Python regular expressions. Regular expression
-patterns are identified by a 'RE:' prefix followed by the regular
-expression.  Regular expression patterns may not include named or
-numbered groups.
+the top of the file. Rule patterns use exactly the same conventions
+as ignore patterns. See ``bzr help patterns`` for details.
 
 Note: Patterns containing square brackets should be surrounded in
 quotes to ensure they are corrected parsed.
-
-
-Preferences
------------
-
-The basic syntax is::
-
-  keyword = value  # inline comment
-
-The trailing comment is optional. If a keyword or value starts or ends
-with whitespace, or contains a quote mark, comma or # character, then
-it needs to be surrounded by quotes. Quotes may be either single (')
-or double (") quotes. For an extended specification of the format, see
-http://www.voidspace.org.uk/python/configobj.html#the-config-file-format.
