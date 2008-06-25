@@ -26,6 +26,7 @@ from bzrlib import (
     errors,
     generate_ids,
     knit,
+    multiparent,
     pack,
     )
 from bzrlib.errors import (
@@ -1733,8 +1734,8 @@ class TestStacking(KnitTests):
         test.add_mpdiffs([(key_delta, (key_basis,),
             source.get_sha1s([key_delta])[key_delta], diffs[0])])
         self.assertEqual([("get_parent_map", set([key_basis])),
-            ('get_record_stream', [('bar',)], 'unordered', True),
-            ('get_parent_map', set([('bar',)]))],
+            ('get_record_stream', [key_basis], 'unordered', True),
+            ('get_parent_map', set([key_basis]))],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -1742,4 +1743,31 @@ class TestStacking(KnitTests):
             'unordered', True).next().get_bytes_as('fulltext'))
 
     def test_make_mpdiffs(self):
-        pass
+        # Generating an mpdiff across a stacking boundary should detect parent
+        # texts regions.
+        key = ('foo',)
+        key_left = ('bar',)
+        key_right = ('zaphod',)
+        basis, test = self.get_basis_and_test_knit()
+        basis.add_lines(key_left, (), ['bar\n'])
+        basis.add_lines(key_right, (), ['zaphod\n'])
+        basis.calls = []
+        test.add_lines(key, (key_left, key_right),
+            ['bar\n', 'foo\n', 'zaphod\n'])
+        diffs = test.make_mpdiffs([key])
+        self.assertEqual([
+            multiparent.MultiParent([multiparent.ParentText(0, 0, 0, 1),
+                multiparent.NewText(['foo\n']),
+                multiparent.ParentText(1, 0, 2, 1)])],
+            diffs)
+        self.assertEqual(4, len(basis.calls))
+        self.assertEqual([
+            ("get_parent_map", set([key_left, key_right])),
+            ("get_parent_map", set([key_left, key_right])),
+            ("get_parent_map", set([key_left, key_right])),
+            ],
+            basis.calls[:3])
+        self.assertEqual(set([key_left, key_right]), set(basis.calls[3][1]))
+        self.assertEqual('get_record_stream', basis.calls[3][0])
+        self.assertEqual('unordered', basis.calls[3][2])
+        self.assertEqual(True, basis.calls[3][3])
