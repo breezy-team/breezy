@@ -1296,7 +1296,6 @@ class RemoteBranch(branch.Branch):
 
     def _clear_cached_state(self):
         super(RemoteBranch, self)._clear_cached_state()
-        self._last_revision_info_cache = None
         if self._real_branch is not None:
             self._real_branch._clear_cached_state()
         
@@ -1451,13 +1450,6 @@ class RemoteBranch(branch.Branch):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
-    @needs_read_lock
-    def last_revision_info(self):
-        """See Branch.last_revision_info()."""
-        if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._last_revision_info()
-        return self._last_revision_info_cache
-    
     def _last_revision_info(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.last_revision_info', path)
@@ -1479,7 +1471,6 @@ class RemoteBranch(branch.Branch):
             return []
         return result
 
-    @needs_write_lock
     def _set_last_revision_descendant(self, revision_id, other_branch,
             allow_diverged=False, do_not_overwrite_descendant=True):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1585,6 +1576,7 @@ class RemoteBranch(branch.Branch):
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
+    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
         medium = self._client._medium
@@ -1639,7 +1631,7 @@ class RemoteBranch(branch.Branch):
                 last_rev = revision.ensure_null(self.last_revision())
                 if graph is None:
                     graph = self.repository.get_graph()
-                if self._ensure_not_diverged(
+                if self._check_if_descendant_or_diverged(
                         stop_revision, last_rev, graph, other):
                     # stop_revision is a descendant of last_rev, but we aren't
                     # overwriting, so we're done.
