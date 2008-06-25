@@ -555,9 +555,11 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.assertEqual(
             (1, rev_id_utf8), self.tree.branch.last_revision_info())
 
-    def test_not_allow_diverged(self):
-        """If allow_diverged is not passed, then setting a divergent history
-        returns a Diverged error.
+    def make_branch_with_divergent_history(self):
+        """Make a branch with divergent history in its repo.
+
+        The branch's tip will be 'child-2', and the repo will also contain
+        'child-1', which diverges from a common base revision.
         """
         self.tree.lock_write()
         self.tree.add('')
@@ -571,11 +573,32 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         # child-1.
         new_r2 = self.tree.commit('2nd commit', rev_id='child-2')
         self.tree.unlock()
+        
+    def test_not_allow_diverged(self):
+        """If allow_diverged is not passed, then setting a divergent history
+        returns a Diverged error.
+        """
+        self.make_branch_with_divergent_history()
         self.assertEqual(
             FailedSmartServerResponse(('Diverged',)),
             self.set_last_revision('child-1', 2))
         # The branch tip was not changed.
         self.assertEqual('child-2', self.tree.branch.last_revision())
+
+    def test_allow_diverged(self):
+        """If allow_diverged is passed, then setting a divergent history
+        succeeds.
+        """
+        self.make_branch_with_divergent_history()
+        branch_token, repo_token = self.lock_branch()
+        response = self.request.execute(
+            '', branch_token, repo_token, 'child-1', 1, 0)
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', 2, 'child-1')),
+            response)
+        self.unlock_branch()
+        # The branch tip was changed.
+        self.assertEqual('child-1', self.tree.branch.last_revision())
 
 
 class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
