@@ -21,6 +21,7 @@ See ``bzr help rules`` for details.
 
 from bzrlib import (
     config,
+    errors,
     globbing,
     osutils,
     )
@@ -68,7 +69,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if len(patterns) < len(sections):
             unknowns = [s for s in sections
                 if not s.startswith(FILE_PREFS_PREFIX)]
-            raise errors.BzrUnsupportedRules(unknowns)
+            raise errors.UnknownRules(unknowns)
         elif patterns:
             self._globster = globbing._OrderedGlobster(patterns)
         else:

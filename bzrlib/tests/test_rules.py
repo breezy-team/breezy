@@ -21,6 +21,7 @@ import sys
 
 from bzrlib import (
     config,
+    errors,
     rules,
     tests,
     )
@@ -42,6 +43,10 @@ class TestIniBasedRulesSearcher(tests.TestCase):
     def make_searcher(self, lines):
         """Make a _RulesSearcher from a list of strings"""
         return rules._IniBasedRulesSearcher(_patch_in_namespace(lines))
+
+    def test_unknown_namespace(self):
+        self.assertRaises(errors.UnknownRules, rules._IniBasedRulesSearcher,
+            ["[junk]", "foo=bar"])
 
     def test_get_items_file_missing(self):
         rs = self.make_searcher(None)
