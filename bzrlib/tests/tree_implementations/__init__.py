@@ -85,6 +85,8 @@ def preview_tree_post(testcase, tree):
     empty.lock_read()
     testcase.addCleanup(tt.finalize)
     pp = progress.ProgressPhase('', 1, progress.DummyProgress())
+    tree.lock_read()
+    testcase.addCleanup(tree.unlock)
     transform._prepare_revert_transform(empty, tree, tt, None, False, pp,
                                         empty, {})
     return tt.get_preview_tree()

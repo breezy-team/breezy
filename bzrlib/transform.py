@@ -2102,7 +2102,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                  backups, merge_modified, basis_tree=None):
     change_list = target_tree.iter_changes(working_tree,
         specific_files=specific_files, pb=pb)
-    if target_tree.inventory.root is None:
+    if target_tree.get_root_id() is None:
         skip_root = True
     else:
         skip_root = False
