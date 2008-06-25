@@ -1483,11 +1483,10 @@ class _PreviewTree(tree.Tree):
                 break
         return cur_parent, list(reversed(segments))
 
-    def _candidate_treepath2id(self, trans_segment, segments):
+    def _candidate_treepath(self, trans_segment, segments):
         parent_path = self._transform._tree_id_paths[trans_segment]
         tree_path = pathjoin(*([parent_path] + segments))
-        tree_file_id = self._transform._tree.path2id(tree_path)
-        return tree_file_id, tree_path
+        return tree_path
 
     def _valid_path2id(self, file_id, tree_path, trans_segment):
         """Determine whether a file_id corresponds to a path.
@@ -1517,12 +1516,19 @@ class _PreviewTree(tree.Tree):
             cur_trans_id = self._transform._tree_path_ids.get(tree_path)
         return True
 
+    def _path_trans_id(self, path):
+        trans_segment, segments = self._path2id_last_transform_segment(path)
+        if len(segments) == 0:
+            return trans_segment
+        tree_path = self._candidate_treepath(trans_segment, segments)
+        return trans_id_tree_path(tree_path)
+
     def path2id(self, path):
         trans_segment, segments = self._path2id_last_transform_segment(path)
         if len(segments) == 0:
             return self._transform.final_file_id(trans_segment)
-        tree_file_id, tree_path = self._candidate_treepath2id(trans_segment,
-                                                              segments)
+        tree_path = self._candidate_treepath(trans_segment, segments)
+        tree_file_id = self._transform._tree.path2id(tree_path)
         if self._valid_path2id(tree_file_id, tree_path, trans_segment):
             return tree_file_id
         else:
@@ -1608,7 +1614,11 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.is_executable(file_id, path)
 
     def path_content_summary(self, path):
-        return self._transform._tree.path_content_summary(path)
+        trans_id = self._path_trans_id(path)
+        kind = self._transform.final_kind(trans_id)
+        if kind == 'symlink':
+            link_or_sha1 = self._get_symlink_target_trans_id(trans_id)
+        return kind, None, None, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=None,
@@ -1649,13 +1659,22 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.annotate_iter(file_id,
             default_revision=default_revision)
 
+    def _get_symlink_target_trans_id(self, trans_id):
+        kind = self._transform._new_contents.get(trans_id)
+        if kind == 'symlink':
+            name = self._transform._limbo_name(trans_id)
+            return os.readlink(name)
+        elif kind is not None:
+            return None
+        path = self._transform.tree_id_paths.get(trans_id)
+        if path is None:
+            return None
+        return self._transform._tree.get_content_symmary(path)[3]
+
     def get_symlink_target(self, file_id):
         """See Tree.get_symlink_target"""
-        if not self._content_change(file_id):
-            return self._transform._tree.get_symlink_target(file_id)
         trans_id = self._transform.trans_id_file_id(file_id)
-        name = self._transform._limbo_name(trans_id)
-        return os.readlink(name)
+        return self._get_symlink_target_trans_id(trans_id)
 
     def list_files(self, include_root=False):
         return self._transform._tree.list_files(include_root)

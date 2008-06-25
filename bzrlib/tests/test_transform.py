@@ -2143,3 +2143,10 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.add(['parent', 'parent/child'], ['parent-id', 'child-id'])
         tt = TreeTransform(tree)
         self.assertMatchingIterEntries(tt, ['tree-root-id', 'child-id'])
+
+    def test_symlink_content_summary(self):
+        self.requireFeature(SymlinkFeature)
+        preview = self.get_empty_preview()
+        preview.new_symlink('path', preview.root, 'target', 'path-id')
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('symlink', None, None, 'target'), summary)
