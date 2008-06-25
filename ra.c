@@ -2109,10 +2109,8 @@ static PyObject *txdelta_send_stream(PyObject *self, PyObject *args)
 	if (pool == NULL)
 		return NULL;
 
-    if (!check_error(svn_txdelta_send_stream(new_py_stream(pool, stream), py_txdelta->txdelta_handler, py_txdelta->txdelta_baton, (unsigned char *)digest, pool))) {
-		apr_pool_destroy(pool);
-		return NULL;
-	}
+	RUN_SVN_WITH_POOL(pool, svn_txdelta_send_stream(new_py_stream(pool, stream), py_txdelta->txdelta_handler, py_txdelta->txdelta_baton, (unsigned char *)digest, pool));
+
     apr_pool_destroy(pool);
     return PyString_FromStringAndSize((char *)digest, 16);
 }
