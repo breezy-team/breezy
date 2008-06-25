@@ -1472,12 +1472,12 @@ class RemoteBranch(branch.Branch):
         return result
 
     def _set_last_revision_descendant(self, revision_id, other_branch,
-            allow_diverged=False, do_not_overwrite_descendant=True):
+            allow_diverged=False, allow_overwrite_descendant=False):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call('Branch.set_last_revision_ex',
                 path, self._lock_token, self._repo_lock_token, revision_id,
-                int(allow_diverged), int(do_not_overwrite_descendant))
+                int(allow_diverged), int(allow_overwrite_descendant))
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'NoSuchRevision':
                 raise NoSuchRevision(self, revision_id)
@@ -1583,7 +1583,7 @@ class RemoteBranch(branch.Branch):
         if not medium._is_remote_before((1, 6)):
             try:
                 self._set_last_revision_descendant(revision_id, other_branch,
-                    allow_diverged=True, do_not_overwrite_descendant=False)
+                    allow_diverged=True, allow_overwrite_descendant=True)
                 return
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
