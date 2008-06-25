@@ -2179,9 +2179,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(len('contents'), summary[1])
         # executable
         self.assertEqual(True, summary[2])
-        # may have hash,
-        self.assertSubset((summary[3],),
-            (None, '0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+        # will not have hash (not cheap to determine)
+        self.assertIs(None, summary[3])
 
     def test_change_executability(self):
         if not osutils.supports_executable():
@@ -2209,9 +2208,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             self.assertEqual(False, summary[2])
         else:
             self.assertEqual(None, summary[2])
-        # may have hash,
-        self.assertSubset((summary[3],),
-            (None, '0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+        # will not have hash (not cheap to determine)
+        self.assertIs(None, summary[3])
 
     def test_dir_content_summary(self):
         preview = self.get_empty_preview()
