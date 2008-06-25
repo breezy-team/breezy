@@ -1599,7 +1599,7 @@ class _PreviewTree(tree.Tree):
         for path, entry in self.iter_entries_by_dir():
             if entry.name == '' and not include_root:
                 continue
-            yield path, 'V', entry, entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry.file_id, entry
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1703,9 +1703,6 @@ class _PreviewTree(tree.Tree):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.readlink(name)
-
-    def list_files(self, include_root=False):
-        return self._transform._tree.list_files(include_root)
 
     def walkdirs(self, prefix=""):
         return self._transform._tree.walkdirs(prefix)
