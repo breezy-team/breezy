@@ -1693,7 +1693,7 @@ class _PreviewTree(tree.Tree):
         path = self._transform._tree_id_paths.get(trans_id)
         if path is None:
             return None
-        return self._transform._tree.get_content_symmary(path)[3]
+        return self._transform._tree.path_content_summary(path)[3]
 
     def get_symlink_target(self, file_id):
         """See Tree.get_symlink_target"""
