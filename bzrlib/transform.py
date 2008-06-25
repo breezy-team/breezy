@@ -16,7 +16,7 @@
 
 import os
 import errno
-from stat import S_ISREG
+from stat import S_ISREG, S_IEXEC
 import tempfile
 
 from bzrlib.lazy_import import lazy_import
@@ -1495,11 +1495,10 @@ class _PreviewTree(tree.Tree):
                 break
         return cur_parent, list(reversed(segments))
 
-    def _candidate_treepath2id(self, trans_segment, segments):
+    def _candidate_treepath(self, trans_segment, segments):
         parent_path = self._transform._tree_id_paths[trans_segment]
         tree_path = pathjoin(*([parent_path] + segments))
-        tree_file_id = self._transform._tree.path2id(tree_path)
-        return tree_file_id, tree_path
+        return tree_path
 
     def _valid_path2id(self, file_id, tree_path, trans_segment):
         """Determine whether a file_id corresponds to a path.
@@ -1529,12 +1528,20 @@ class _PreviewTree(tree.Tree):
             cur_trans_id = self._transform._tree_path_ids.get(tree_path)
         return True
 
+    def _path_info(self, path):
+        trans_segment, segments = self._path2id_last_transform_segment(path)
+        if len(segments) == 0:
+            tree_path = self._transform._tree_id_paths.get(trans_segment)
+            return trans_segment, tree_path
+        tree_path = self._candidate_treepath(trans_segment, segments)
+        return self._transform.trans_id_tree_path(tree_path), tree_path
+
     def path2id(self, path):
         trans_segment, segments = self._path2id_last_transform_segment(path)
         if len(segments) == 0:
             return self._transform.final_file_id(trans_segment)
-        tree_file_id, tree_path = self._candidate_treepath2id(trans_segment,
-                                                              segments)
+        tree_path = self._candidate_treepath(trans_segment, segments)
+        tree_file_id = self._transform._tree.path2id(tree_path)
         if self._valid_path2id(tree_file_id, tree_path, trans_segment):
             return tree_file_id
         else:
@@ -1620,7 +1627,34 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.is_executable(file_id, path)
 
     def path_content_summary(self, path):
-        return self._transform._tree.path_content_summary(path)
+        trans_id, tree_path = self._path_info(path)
+        tt = self._transform
+        kind = tt._new_contents.get(trans_id)
+        if kind is None:
+            if trans_id in tt._removed_contents:
+                return 'missing', None, None, None
+            summary = tt._tree.path_content_summary(tree_path)
+            kind, size, executable, link_or_sha1 = summary
+        else:
+            link_or_sha1 = None
+            limbo_name = tt._limbo_name(trans_id)
+            if trans_id in tt._new_reference_revision:
+                kind = 'tree-reference'
+            if kind == 'file':
+                statval = os.lstat(limbo_name)
+                size = statval.st_size
+                if not supports_executable():
+                    executable = None
+                else:
+                    executable = statval.st_mode & S_IEXEC
+            else:
+                size = None
+                executable = None
+            if kind == 'symlink':
+                link_or_sha1 = os.readlink(limbo_name)
+        if supports_executable():
+            executable = tt._new_executability.get(trans_id, executable)
+        return kind, size, executable, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=None,
