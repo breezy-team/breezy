@@ -1298,6 +1298,18 @@ class RemoteBranch(branch.Branch):
         super(RemoteBranch, self)._clear_cached_state()
         if self._real_branch is not None:
             self._real_branch._clear_cached_state()
+
+    def _clear_cached_state_of_remote_branch_only(self):
+        """Like _clear_cached_state, but doesn't clear the cache of
+        self._real_branch.
+
+        This is useful when falling back to calling a method of
+        self._real_branch that changes state.  In that case the underlying
+        branch changes, so we need to invalidate this RemoteBranch's cache of
+        it.  However, there's no need to invalidate the _real_branch's cache
+        too, in fact doing so might harm performance.
+        """
+        super(RemoteBranch, self)._clear_cached_state()
         
     @property
     def control_files(self):
@@ -1489,6 +1501,7 @@ class RemoteBranch(branch.Branch):
             raise errors.UnexpectedSmartServerResponse(response)
         new_revno, new_revision_id = response[1:]
         self._last_revision_info_cache = new_revno, new_revision_id
+        self._real_branch._last_revision_info_cache = new_revno, new_revision_id
 
     def _set_last_revision(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1537,7 +1550,7 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
-        self._clear_cached_state()
+        self._clear_cached_state_of_remote_branch_only()
         self._ensure_real()
         return self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
@@ -1562,7 +1575,7 @@ class RemoteBranch(branch.Branch):
                 path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            self._clear_cached_state()
+            self._clear_cached_state_of_remote_branch_only()
             self._real_branch.set_last_revision_info(revno, revision_id)
             self._last_revision_info_cache = revno, revision_id
             return
@@ -1573,6 +1586,10 @@ class RemoteBranch(branch.Branch):
         if response == ('ok',):
             self._clear_cached_state()
             self._last_revision_info_cache = revno, revision_id
+            # Update the _real_branch's cache too.
+            if self._real_branch is not None:
+                cache = self._last_revision_info_cache
+                self._real_branch._last_revision_info_cache = cache
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -1587,7 +1604,7 @@ class RemoteBranch(branch.Branch):
                 return
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
-        self._clear_cached_state()
+        self._clear_cached_state_of_remote_branch_only()
         self._ensure_real()
         self._real_branch.generate_revision_history(
             revision_id, last_rev=last_rev, other_branch=other_branch)

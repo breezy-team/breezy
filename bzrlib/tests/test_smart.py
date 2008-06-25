@@ -443,7 +443,6 @@ class TestSmartServerBranchRequestSetLastRevision(
         finally:
             tree.branch.unlock()
 
-
     def test_revision_id_previous(self):
         backing = self.get_transport()
         request = self.request_class(backing)
@@ -502,6 +501,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
                     '', branch_token, repo_token, revision_id, 0, 0))
         finally:
             b.unlock()
+
     def test_revision_id_present2(self):
         backing = self.get_transport()
         request = self.request_class(backing)
