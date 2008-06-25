@@ -2224,3 +2224,20 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         summary = preview.get_preview_tree().path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('tree-reference', summary[0])
+
+    def test_list_files_with_root(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content(work_tree)
+        expected = [('', 'V', 'directory', 'root-id'),
+                    ('a', 'V', 'file', 'a-id'),
+                    ('b', 'V', 'directory', 'b-id'),
+                    ('b/c', 'V', 'file', 'c-id'),
+                   ]
+        tree.lock_read()
+        try:
+            actual = [(path, status, kind, file_id)
+                      for path, status, kind, file_id, ie in
+                          tree.list_files(include_root=True)]
+        finally:
+            tree.unlock()
+        self.assertEqual(expected, actual)
