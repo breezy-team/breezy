@@ -18,10 +18,21 @@ from bzrlib.versionedfile import VersionedFiles
 class SvnTexts(VersionedFiles):
     """Subversion texts backend."""
 
+    def check(self, progressbar=None):
+        return True
+
+
 class FakeRevisionTexts(VersionedFiles):
     """Fake revisions backend."""
 
+    def check(self, progressbar=None):
+        return True
+
+
 class FakeInventoryTexts(VersionedFiles):
     """Fake inventories backend."""
+
+    def check(self, progressbar=None):
+        return True
 
 

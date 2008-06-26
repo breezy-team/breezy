@@ -348,6 +348,7 @@ def test_suite():
             'test_transport',
             'test_tree',
             'test_upgrade',
+            'test_versionedfiles',
             'test_wc',
             'test_workingtree',
             'test_blackbox']
