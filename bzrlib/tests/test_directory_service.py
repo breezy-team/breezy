@@ -74,6 +74,15 @@ class TestAliasDirectory(TestCaseWithTransport):
         branch.set_bound_location('http://d')
         self.assertEqual('http://d', directories.dereference(':bound'))
 
+    def test_lookup_push(self):
+        branch = self.make_branch('.')
+        branch.set_push_location('http://e')
+        self.assertEqual('http://e', directories.dereference(':push'))
+
+    def test_lookup_this(self):
+        branch = self.make_branch('.')
+        self.assertEqual(branch.base, directories.dereference(':this'))
+
     def test_lookup_badname(self):
         branch = self.make_branch('.')
         e = self.assertRaises(errors.InvalidLocationAlias,

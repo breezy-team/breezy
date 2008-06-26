@@ -58,8 +58,8 @@ directories = DirectoryServiceRegistry()
 class AliasDirectory(object):
     """Directory lookup for locations associated with a branch.
 
-    :parent, :submit, :public, and :bound are currently supported.  On error,
-    a subclass of DirectoryLookupFailure will be raised.
+    :parent, :submit, :public, :push, :this,and :bound are currently
+    supported.  On error, a subclass of DirectoryLookupFailure will be raised.
     """
 
     def look_up(self, name, url):
@@ -69,6 +69,8 @@ class AliasDirectory(object):
             'submit': branch.get_submit_branch,
             'public': branch.get_public_branch,
             'bound': branch.get_bound_location,
+            'push': branch.get_push_location,
+            'this': lambda: branch.base
         }
         try:
             method = lookups[url[1:]]
