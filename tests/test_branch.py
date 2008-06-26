@@ -509,14 +509,12 @@ foohosts""")
         newbranch.lock_read()
         tree = newbranch.repository.revision_tree(oldbranch.generate_revision_id(7))
 
-        weave = newbranch.repository.weave_store.get_weave(
-            tree.inventory.path2id("hosts"),
-            newbranch.repository.get_transaction())
+        host_fileid = tree.inventory.path2id("hosts")
 
-        self.assertEqual(set([
+        self.assertVersionsPresentEquals(newbranch.repository.texts, 
+                                        host_fileid, [
             oldbranch.generate_revision_id(6),
-            oldbranch.generate_revision_id(7)]),
-                          set(weave.versions()))
+            oldbranch.generate_revision_id(7)])
         newbranch.unlock()
  
 
@@ -571,13 +569,16 @@ foohosts""")
         texts = newbranch.repository.texts
         host_fileid = tree.inventory.path2id("hosts")
         mapping = BzrSvnMappingv3FileProps(TrunkBranchingScheme())
-        self.assertEqual(set([
-            (host_fileid, mapping.generate_revision_id(uuid, 1, "trunk")),
-            (host_fileid, mapping.generate_revision_id(uuid, 2, "trunk")),
-            (host_fileid, mapping.generate_revision_id(uuid, 3, "trunk")),
-            (host_fileid, oldbranch.generate_revision_id(6))]),
-            set(filter(lambda (fid, rid): fid == host_fileid, texts.keys())))
+        self.assertVersionsPresentEquals(texts, host_fileid, [
+            mapping.generate_revision_id(uuid, 1, "trunk"),
+            mapping.generate_revision_id(uuid, 2, "trunk"),
+            mapping.generate_revision_id(uuid, 3, "trunk"),
+            oldbranch.generate_revision_id(6)])
         newbranch.repository.unlock()
+
+    def assertVersionsPresentEquals(self, texts, fileid, versions):
+        self.assertEqual(set([(fileid, v) for v in versions]),
+            set(filter(lambda (fid, rid): fid == fileid, texts.keys())))
 
     def test_check(self):
         self.make_repository('d')
