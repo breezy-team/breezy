@@ -16,6 +16,7 @@
 
 """Branch tests."""
 
+from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError
@@ -44,6 +45,21 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         self.assertEqual("", branch.get_branch_path())
+
+    def test_get_branch_path_old(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk2", "trunk", 1)
+        dc.close()
+
+        branch = Branch.open(urlutils.join(repos_url, "trunk2"))
+        self.assertEqual("trunk2", branch.get_branch_path(2))
+        self.assertEqual("trunk", branch.get_branch_path(1))
 
     def test_get_branch_path_subdir(self):
         repos_url = self.make_repository("a")

@@ -115,8 +115,10 @@ class SvnBranch(Branch):
         if revnum is None:
             return self._branch_path
 
-        # TODO: Use revnum - this branch may have been moved in the past 
-        return self._branch_path
+        # Use revnum - this branch may have been moved in the past 
+        return self.repository.transport.get_locations(
+                    self._branch_path, self.get_revnum(), 
+                    [revnum])[revnum].strip("/")
 
     def get_revnum(self):
         """Obtain the Subversion revision number this branch was 
