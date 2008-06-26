@@ -1545,7 +1545,11 @@ class _PreviewTree(tree.Tree):
         return self._transform.final_kind(trans_id)
 
     def stored_kind(self, file_id):
-        return self._transform._tree.stored_kind(file_id)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        try:
+            return self._transform._new_contents[trans_id]
+        except KeyError:
+            return self._transform._tree.stored_kind(file_id)
 
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime"""
