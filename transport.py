@@ -401,6 +401,14 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
+    def get_locations(self, path, peg_revnum, revnums):
+        conn = self.get_connection()
+        self.mutter('svn get_locations -r%d %s (%r)' % (peg_revnum,path,revnums))
+        try:
+            return conn.get_locations(path, peg_revnum, revnums)
+        finally:
+            self.add_connection(conn)
+
     def get_commit_editor(self, revprops, done_cb=None, 
                           lock_token=None, keep_locks=False):
         conn = self._open_real_transport()
