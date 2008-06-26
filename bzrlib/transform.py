@@ -1391,6 +1391,8 @@ class TransformPreview(TreeTransformBase):
         except KeyError:
             return
         file_id = self.tree_file_id(parent_id)
+        if file_id is None:
+            return
         children = getattr(self._tree.inventory[file_id], 'children', {})
         for child in children:
             childpath = joinpath(path, child)
@@ -1470,71 +1472,20 @@ class _PreviewTree(tree.Tree):
                       trees=[], require_versioned=require_versioned))
         return result
 
-    def _path2id_last_transform_segment(self, path):
-        segments = list(reversed(splitpath(path)))
+    def _path2trans_id(self, path):
+        segments = splitpath(path)
         cur_parent = self._transform.root
-        while len(segments) > 0:
-            cur_segment = segments.pop()
-            for child in self._by_parent.get(cur_parent, []):
+        for cur_segment in segments:
+            for child in self._all_children(cur_parent):
                 if self._transform.final_name(child) == cur_segment:
                     cur_parent = child
                     break
             else:
-                segments.append(cur_segment)
-                break
-        return cur_parent, list(reversed(segments))
-
-    def _candidate_treepath(self, trans_segment, segments):
-        parent_path = self._final_paths.get_path(trans_segment)
-        tree_path = pathjoin(*([parent_path] + segments))
-        return tree_path
-
-    def _valid_path2id(self, file_id, tree_path, trans_segment):
-        """Determine whether a file_id corresponds to a path.
-
-        We do by seeing if the trans_segment is actually the last parent that
-        is mentioned in the transform.  If a more recent parent is mentioned,
-        in the transform, it it would be the trans_segment unless it has been
-        renamed.  Therefore, the parent has been renamed and the path is not
-        valid.
-
-        :param file_id: The file_id that may correspond to tree_path
-        :param tree_path: The path of the file_id in the tree
-        :param trans_segment: The last parent of the file which is mentioned
-            in the transform.
-        """
-        cur_trans_id = self._transform._tree_path_ids.get(tree_path)
-        while cur_trans_id != trans_segment:
-            if cur_trans_id is not None:
-                # If there was an entry for this file, and the path was
-                # correct we would have handled it already.  So the path must
-                # be wrong.
-                if cur_trans_id in self._transform._new_parent:
-                    return False
-            file_id = self._transform._tree.iter_entries_by_dir(
-                [file_id]).next()[1].parent_id
-            tree_path = self._transform._tree.id2path(file_id)
-            cur_trans_id = self._transform._tree_path_ids.get(tree_path)
-        return True
-
-    def _path_info(self, path):
-        trans_segment, segments = self._path2id_last_transform_segment(path)
-        if len(segments) == 0:
-            tree_path = self._transform._tree_id_paths.get(trans_segment)
-            return trans_segment, tree_path
-        tree_path = self._candidate_treepath(trans_segment, segments)
-        return self._transform.trans_id_tree_path(tree_path), tree_path
+                return None
+        return cur_parent
 
     def path2id(self, path):
-        trans_segment, segments = self._path2id_last_transform_segment(path)
-        if len(segments) == 0:
-            return self._transform.final_file_id(trans_segment)
-        tree_path = self._candidate_treepath(trans_segment, segments)
-        tree_file_id = self._transform._tree.path2id(tree_path)
-        if self._valid_path2id(tree_file_id, tree_path, trans_segment):
-            return tree_file_id
-        else:
-            return None
+        return self._transform.final_file_id(self._path2trans_id(path))
 
     def id2path(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1629,11 +1580,12 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.is_executable(file_id, path)
 
     def path_content_summary(self, path):
-        trans_id, tree_path = self._path_info(path)
+        trans_id = self._path2trans_id(path)
         tt = self._transform
+        tree_path = tt._tree_id_paths.get(trans_id)
         kind = tt._new_contents.get(trans_id)
         if kind is None:
-            if trans_id in tt._removed_contents:
+            if tree_path is None or trans_id in tt._removed_contents:
                 return 'missing', None, None, None
             summary = tt._tree.path_content_summary(tree_path)
             kind, size, executable, link_or_sha1 = summary
