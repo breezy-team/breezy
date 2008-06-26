@@ -78,13 +78,13 @@ IN DEVELOPMENT
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
     * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
-      These methods are bad API because they write directly to sys.stdout.
-      bzrlib internally does not use them, and have no one direct test
+      These methods are bad APIs because they write directly to sys.stdout.
+      bzrlib does not use them internally, and there are no direct tests
       for them. (Alexander Belchenko)
 
   INTERNALS:
 
-    * ``cat`` command no more internally used ``Tree.print_file()``.
+    * ``cat`` command no longer uses ``Tree.print_file()`` internally.
       (Alexander Belchenko)
 
     * New ``versionedfile.KeyMapper`` interface to abstract out the access to

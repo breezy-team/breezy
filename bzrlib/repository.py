@@ -58,7 +58,7 @@ from bzrlib.symbol_versioning import (
         one_one,
         one_two,
         one_three,
-        one_four,
+        one_six,
         )
 from bzrlib.trace import mutter, mutter_callsite, note, warning
 
@@ -1668,7 +1668,7 @@ class Repository(object):
         """
 
     @needs_read_lock
-    @deprecated_method(one_four)
+    @deprecated_method(one_six)
     def print_file(self, file, revision_id):
         """Print `file` to stdout.
         
