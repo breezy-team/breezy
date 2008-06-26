@@ -156,12 +156,6 @@ class RevisionBuildEditor(object):
     def close(self):
         pass
 
-    def _store_directory(self, file_id, parents):
-        raise NotImplementedError(self._store_directory)
-
-    def _get_file_data(self, file_id, revid):
-        raise NotImplementedError(self._get_file_data)
-
     def _finish_commit(self):
         raise NotImplementedError(self._finish_commit)
 
@@ -170,9 +164,6 @@ class RevisionBuildEditor(object):
 
     def _start_revision(self):
         pass
-
-    def _store_file(self, file_id, lines, parents):
-        raise NotImplementedError(self._store_file)
 
     def _get_existing_id(self, old_parent_id, new_parent_id, path):
         assert isinstance(path, unicode)
@@ -218,7 +209,8 @@ class DirectoryBuildEditor(object):
         self.editor.inventory[self.new_id].revision = self.editor.revid
 
         # Only record root if the target repository supports it
-        self.editor._store_directory(self.new_id, self.parent_revids)
+        self.editor.texts.add_lines((self.new_id, self.editor.revid), 
+                 [(self.new_id, revid) for revid in self.parent_revids], [])
 
         if self.new_id == self.editor.inventory.root.file_id:
             assert len(self.editor._premature_deletes) == 0
@@ -320,7 +312,8 @@ class DirectoryBuildEditor(object):
         base_revid = self.editor.old_inventory[base_file_id].revision
         file_id = self.editor._get_existing_id(self.old_id, self.new_id, path)
         is_symlink = (self.editor.inventory[base_file_id].kind == 'symlink')
-        file_data = self.editor._get_file_data(base_file_id, base_revid)
+        record = self.editor.texts.get_record_stream([(base_file_id, base_revid)], 'unordered', True).next()
+        file_data = record.get_bytes_as('fulltext')
         if file_id == base_file_id:
             file_parents = [base_revid]
         else:
@@ -400,7 +393,8 @@ class FileBuildEditor(object):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        self.editor._store_file(self.file_id, lines, self.file_parents)
+        self.editor.texts.add_lines((self.file_id, self.editor.revid), 
+                [(self.file_id, revid) for revid in self.file_parents], lines)
 
         assert self.is_symlink in (True, False)
 
@@ -433,25 +427,11 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """
     def __init__(self, source, target):
         RevisionBuildEditor.__init__(self, source, target)
-        self.weave_store = target.weave_store
+        self.texts = target.texts
 
     def _start_revision(self):
         self._write_group_active = True
         self.target.start_write_group()
-
-    def _store_directory(self, file_id, parents):
-        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
-        if not file_weave.has_version(self.revid):
-            file_weave.add_lines(self.revid, parents, [])
-
-    def _get_file_data(self, file_id, revid):
-        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
-        return file_weave.get_text(revid)
-
-    def _store_file(self, file_id, lines, parents):
-        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
-        if not file_weave.has_version(self.revid):
-            file_weave.add_lines(self.revid, parents, lines)
 
     def _finish_commit(self):
         (rev, signature) = self._get_revision(self.revid)
@@ -471,24 +451,6 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
             self._write_group_active = False
 
 
-class PackRevisionBuildEditor(WeaveRevisionBuildEditor):
-    """Revision Build Editor for Subversion that is specific for the packs API.
-    """
-    def __init__(self, source, target):
-        WeaveRevisionBuildEditor.__init__(self, source, target)
-
-    def _add_text_to_weave(self, file_id, new_lines, parents):
-        return self.target._packs._add_text_to_weave(file_id,
-            self.revid, new_lines, parents, nostore_sha=None, 
-            random_revid=False)
-
-    def _store_directory(self, file_id, parents):
-        self._add_text_to_weave(file_id, [], parents)
-
-    def _store_file(self, file_id, lines, parents):
-        self._add_text_to_weave(file_id, lines, parents)
-
-
 class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
     """Revision Build Editor for Subversion that uses the CommitBuilder API.
     """
@@ -503,8 +465,6 @@ def get_revision_build_editor(repository):
     :param repository: Repository to obtain the buildeditor for.
     :return: Class object of class descending from RevisionBuildEditor
     """
-    if getattr(repository, '_packs', None):
-        return PackRevisionBuildEditor
     return WeaveRevisionBuildEditor
 
 

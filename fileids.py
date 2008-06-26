@@ -17,9 +17,10 @@
 
 from bzrlib import ui
 from bzrlib.errors import NotBranchError, RevisionNotPresent
-from bzrlib.knit import make_file_knit
+from bzrlib.knit import make_file_factory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
+from bzrlib.versionedfile import ConstantMapper
 
 import urllib
 
@@ -189,7 +190,8 @@ class FileIdMap(object):
 class CachingFileIdMap(object):
     """A file id map that uses a cache."""
     def __init__(self, cache_transport, actual):
-        self.idmap_knit = make_file_knit("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, 0644, create=True)
+        mapper = ConstantMapper("fileidmap-v%d" % FILEIDMAP_VERSION)
+        self.idmap_knit = make_file_factory(True, mapper)(cache_transport)
         self.actual = actual
         self.apply_changes = actual.apply_changes
         self.repos = actual.repos
@@ -202,13 +204,13 @@ class CachingFileIdMap(object):
             assert isinstance(id, str)
             assert isinstance(created_revid, str)
 
-        self.idmap_knit.add_lines_with_ghosts(revid, parent_revids, 
+        self.idmap_knit.add_lines(revid, parent_revids, 
                 ["%s\t%s\t%s\n" % (urllib.quote(filename.encode("utf-8")), urllib.quote(_map[filename][0]), 
                                         urllib.quote(_map[filename][1])) for filename in sorted(_map.keys())])
 
     def load(self, revid):
         map = {}
-        for line in self.idmap_knit.get_lines(revid):
+        for (line, version_id) in self.idmap_knit.iter_lines_added_or_present_in_keys([revid]):
             (filename, id, create_revid) = line.rstrip("\n").split("\t", 3)
             map[urllib.unquote(filename).decode("utf-8")] = (urllib.unquote(id), urllib.unquote(create_revid))
             assert isinstance(map[urllib.unquote(filename)][0], str)

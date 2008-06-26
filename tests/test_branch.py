@@ -568,15 +568,15 @@ foohosts""")
              oldbranch.generate_revision_id(6))
         transaction = newbranch.repository.get_transaction()
         newbranch.repository.lock_read()
-        weave = newbranch.repository.weave_store.get_weave(
-                tree.inventory.path2id("hosts"), transaction)
+        texts = newbranch.repository.texts
+        host_fileid = tree.inventory.path2id("hosts")
         mapping = BzrSvnMappingv3FileProps(TrunkBranchingScheme())
         self.assertEqual(set([
-            mapping.generate_revision_id(uuid, 1, "trunk"),
-            mapping.generate_revision_id(uuid, 2, "trunk"),
-            mapping.generate_revision_id(uuid, 3, "trunk"),
-            oldbranch.generate_revision_id(6)]),
-                          set(weave.versions()))
+            (host_fileid, mapping.generate_revision_id(uuid, 1, "trunk")),
+            (host_fileid, mapping.generate_revision_id(uuid, 2, "trunk")),
+            (host_fileid, mapping.generate_revision_id(uuid, 3, "trunk")),
+            (host_fileid, oldbranch.generate_revision_id(6))]),
+            set(filter(lambda (fid, rid): fid == host_fileid, texts.keys())))
         newbranch.repository.unlock()
 
     def test_check(self):

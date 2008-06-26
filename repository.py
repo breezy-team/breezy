@@ -156,8 +156,7 @@ class SvnRepository(Repository):
         assert isinstance(transport, Transport)
 
         control_files = LockableFiles(transport, '', TransportLock)
-        Repository.__init__(self, SvnRepositoryFormat(), bzrdir, 
-            control_files, None, None, None)
+        Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
         self._cached_revnum = None
         self._lock_mode = None
