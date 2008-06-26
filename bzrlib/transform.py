@@ -1647,14 +1647,21 @@ class _PreviewTree(tree.Tree):
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         changes = self._changes(file_id)
-        changed_content, versioned, kind = changes[2], changes[3], changes[6]
-        if kind[1] is None:
-            return None
-        if kind[0] is None or not versioned[0]:
-            old_annotation = []
+        if changes is None:
+            get_old = True
         else:
+            changed_content, versioned, kind = (changes[2], changes[3],
+                                                changes[6])
+            if kind[1] is None:
+                return None
+            get_old = (kind[0] == 'file' and versioned[0])
+        if get_old:
             old_annotation = self._transform._tree.annotate_iter(file_id,
                 default_revision=default_revision)
+        else:
+            old_annotation = []
+        if changes is None:
+            return old_annotation
         if not changed_content:
             return old_annotation
         return annotate.reannotate([old_annotation],
