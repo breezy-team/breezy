@@ -1693,13 +1693,13 @@ Node-copyfrom-path: x
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
-        self.assertEquals([
+        self.assertEquals(set([
             oldrepos.generate_revision_id(0, "", mapping),
             oldrepos.generate_revision_id(1, "", mapping),
             oldrepos.generate_revision_id(2, "", mapping),
             oldrepos.generate_revision_id(3, "", mapping),
             oldrepos.generate_revision_id(4, "", mapping),
-            ], newrepos.all_revision_ids())
+            ]), newrepos.all_revision_ids())
 
     def test_fetch_property_change_only_trunk(self):
         repos_url = self.make_repository('d')
@@ -1729,12 +1729,12 @@ Node-copyfrom-path: x
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
-        self.assertEquals([
+        self.assertEquals(set([
             oldrepos.generate_revision_id(1, "trunk", mapping),
             oldrepos.generate_revision_id(2, "trunk", mapping),
             oldrepos.generate_revision_id(3, "trunk", mapping),
             oldrepos.generate_revision_id(4, "trunk", mapping),
-            ], newrepos.all_revision_ids())
+            ]), newrepos.all_revision_ids())
 
     def test_fetch_crosscopy(self):
         repos_url = self.make_client('d', 'dc')
