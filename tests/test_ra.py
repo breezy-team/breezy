@@ -140,6 +140,19 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.assertEquals("/bar", rets[0][0])
         self.assertEquals("/bar", rets[1][0])
 
+    def test_get_locations_root(self):
+        self.assertEquals({0: "/"}, ra.get_locations("", 0, [0]))
+
+    def test_get_locations_dir(self):
+        cb = self.commit_editor()
+        cb.add_dir("bar")
+        cb.close()
+
+        cb = self.commit_editor()
+        cb.add_dir("bla", "bar", 1)
+        cb.close()
+
+        self.assertEquals({1: "/bar", 2: "/bla"}, ra.get_locations("bla", 1, [1,2]))
 
 class AuthTests(TestCase):
     def test_not_registered(self):
