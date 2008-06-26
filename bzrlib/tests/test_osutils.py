@@ -26,6 +26,7 @@ import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    tests,
     win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
@@ -47,6 +48,38 @@ from bzrlib.tests.file_utils import (
     FakeReadFile,
     )
 from cStringIO import StringIO
+
+
+class _Win32FileFeature(tests.Feature):
+    """Test if win32file is available."""
+
+    def _probe(self):
+        try:
+            import win32file
+        except ImportError:
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return 'win32file'
+
+Win32FileFeature = _Win32FileFeature()
+
+
+class TestWin32FileFeature(tests.TestCase):
+
+    def test_is_correct(self):
+        try:
+            import win32file
+        except ImportError:
+            self.assertFalse(Win32FileFeature.available())
+        else:
+            self.assertTrue(Win32FileFeature.available())
+
+    def test_name(self):
+        self.assertTrue('win32file' in str(Win32FileFeature))
+
 
 class TestOSUtils(TestCaseInTempDir):
 
@@ -971,6 +1004,49 @@ class TestWalkDirs(TestCaseInTempDir):
                 ),
             ]
         result = list(osutils._walkdirs_unicode_to_utf8('.'))
+        self._filter_out_stat(result)
+        self.assertEqual(expected_dirblocks, result)
+
+    def test__walkdirs_utf_win32_find_file(self):
+        self.requireFeature(Win32FileFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        name0u = u'0file-\xb6'
+        name1u = u'1dir-\u062c\u0648'
+        name2u = u'2file-\u0633'
+        tree = [
+            name0u,
+            name1u + '/',
+            name1u + '/' + name0u,
+            name1u + '/' + name1u + '/',
+            name2u,
+            ]
+        self.build_tree(tree)
+        name0 = name0u.encode('utf8')
+        name1 = name1u.encode('utf8')
+        name2 = name2u.encode('utf8')
+
+        # All of the abspaths should be in unicode, all of the relative paths
+        # should be in utf8
+        expected_dirblocks = [
+                (('', '.'),
+                 [(name0, name0, 'file', './' + name0u),
+                  (name1, name1, 'directory', './' + name1u),
+                  (name2, name2, 'file', './' + name2u),
+                 ]
+                ),
+                ((name1, './' + name1u),
+                 [(name1 + '/' + name0, name0, 'file', './' + name1u
+                                                        + '/' + name0u),
+                  (name1 + '/' + name1, name1, 'directory', './' + name1u
+                                                            + '/' + name1u),
+                 ]
+                ),
+                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+                 [
+                 ]
+                ),
+            ]
+        result = list(osutils._walkdirs_utf8_win32_find_file(u'.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 

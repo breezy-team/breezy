@@ -53,6 +53,13 @@ from bzrlib import (
     )
 """)
 
+try:
+    import win32file
+except:
+    have_win32file = False
+else:
+    have_win32file = True
+
 import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -1190,7 +1197,9 @@ def _walkdirs_utf8(top, prefix=""):
         pass to os functions to affect the file in question. (such as os.lstat)
     """
     fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32' or
+    if (have_win32file):
+        return _walkdirs_utf8_win32_find_file(top, prefix=prefix)
+    elif (sys.platform == 'win32' or
         fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
         return _walkdirs_unicode_to_utf8(top, prefix=prefix)
     else:
@@ -1265,6 +1274,108 @@ def _walkdirs_unicode_to_utf8(top, prefix=""):
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
+        # push the user specified dirs from dirblock
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+
+
+class _Win32Stat(object):
+    """Represent a 'stat' result generated from WIN32_FIND_DATA"""
+
+    __slots__ = ['st_mode', 'st_ctime', 'st_mtime', 'st_atime',
+                 'st_size']
+
+    # os.stat always returns 0, so we hard code it here
+    st_dev = 0
+    st_ino = 0
+
+    def __init__(self, win32_find_data_record):
+        """Create a new Stat object, based on the WIN32_FIND_DATA tuple"""
+        (attrib, ctime, atime, wtime, size_high, size_low,
+         res0, res1, name, alt_name) = win32_find_data_record
+        self.st_ctime = int(ctime)
+        self.st_mtime = int(wtime)
+        self.st_atime = int(atime)
+        self.st_size = (size_high * 1<<32) + size_low
+
+        mode_bits = 0100666 # writeable file, the most common
+        if (win32file.FILE_ATTRIBUTE_READONLY & attrib ==
+            win32file.FILE_ATTRIBUTE_READONLY):
+            mode_bits ^= 0222 # remove writable bits
+        if (win32file.FILE_ATTRIBUTE_DIRECTORY & attrib ==
+            win32file.FILE_ATTRIBUTE_DIRECTORY):
+            # Remove the FILE bit, set the DIR bit, and set the EXEC bits
+            mode_bits ^= 0140111
+        self.st_mode = mode_bits
+
+    def __repr__(self):
+        """Repr is the same as a Stat object.
+
+        (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+        """
+        return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, self.st_atime,
+                     self.st_mtime, self.st_ctime))
+
+
+def _walkdirs_utf8_win32_find_file(top, prefix=""):
+    """
+    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
+    Unicode paths.
+    This is currently the fallback code path when the filesystem encoding is
+    not UTF-8. It may be better to implement an alternative so that we can
+    safely handle paths that are not properly decodable in the current
+    encoding.
+    """
+    import operator
+    _utf8_encode = codecs.getencoder('utf8')
+
+    # WIN32_FIND_DATA object looks like:
+    # (FILE_ATTRIBUTES, createTime, accessTime, writeTime, nFileSizeHigh,
+    #  nFileSizeLow, reserved0, reserved1, name, alternateFilename)
+    _directory = _directory_kind
+    _file = _formats[stat.S_IFREG]
+
+    # Possible attributes:
+    # 
+    # FILE_ATTRIBUTE_ARCHIVE 
+    # FILE_ATTRIBUTE_COMPRESSED 
+    # FILE_ATTRIBUTE_DIRECTORY 
+    # FILE_ATTRIBUTE_HIDDEN 
+    # FILE_ATTRIBUTE_NORMAL 
+    # FILE_ATTRIBUTE_OFFLINE 
+    # FILE_ATTRIBUTE_READONLY 
+    # FILE_ATTRIBUTE_SYSTEM 
+    # FILE_ATTRIBUTE_TEMPORARY 
+    DIRECTORY = win32file.FILE_ATTRIBUTE_DIRECTORY
+    NORMAL = win32file.FILE_ATTRIBUTE_NORMAL
+
+    pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
+    while pending:
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + '/'
+        else:
+            relprefix = ''
+        top_slash = top + u'/'
+        top_star = top_slash + u'*'
+
+        dirblock = []
+        append = dirblock.append
+        for record in win32file.FindFilesIterator(top_star):
+            name = record[-2]
+            if name in (u'.', u'..'):
+                continue
+            attrib = record[0]
+            statvalue = _Win32Stat(record)
+            name_utf8 = _utf8_encode(name)[0]
+            abspath = top_slash + name
+            if DIRECTORY & attrib == DIRECTORY:
+                kind = _directory
+            else:
+                kind = _file
+            append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
+        dirblock.sort(key=operator.itemgetter(1))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
