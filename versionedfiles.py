@@ -21,12 +21,18 @@ class SvnTexts(VersionedFiles):
     def check(self, progressbar=None):
         return True
 
+    # TODO: annotate, get_parent_map, get_record_stream, get_sha1s, 
+    # iter_lines_added_or_present_in_keys, keys
+
 
 class FakeRevisionTexts(VersionedFiles):
     """Fake revisions backend."""
 
     def check(self, progressbar=None):
         return True
+
+    # TODO: annotate, get_parent_map, get_record_stream, get_sha1s, 
+    # iter_lines_added_or_present_in_keys, keys
 
 
 class FakeInventoryTexts(VersionedFiles):
@@ -35,4 +41,6 @@ class FakeInventoryTexts(VersionedFiles):
     def check(self, progressbar=None):
         return True
 
+    # TODO: annotate, get_parent_map, get_record_stream, get_sha1s, 
+    # iter_lines_added_or_present_in_keys, keys
 

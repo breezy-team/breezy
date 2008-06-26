@@ -31,6 +31,10 @@ class BasicSvnTextsTests:
     def test_check(self):
         self.assertTrue(self.texts.check())
 
+    def test_insert_record_stream(self):
+        self.assertRaises(NotImplementedError, self.texts.insert_record_stream,
+                          [])
+
 
 class SvnTextsTests(TestCase,BasicSvnTextsTests):
     def setUp(self):
