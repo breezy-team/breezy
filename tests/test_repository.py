@@ -673,7 +673,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                          rev.revision_id)
         self.assertEqual("", rev.committer)
         self.assertEqual({}, rev.properties)
-        self.assertEqual(None, rev.timezone)
+        self.assertEqual(0, rev.timezone)
 
     def test_store_branching_scheme(self):
         repos_url = self.make_client('d', 'dc')
