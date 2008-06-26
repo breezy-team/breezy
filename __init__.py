@@ -116,19 +116,20 @@ class cmd_rebase(Command):
             type=str)]
     
     @display_command
-    def run(self, upstream_location=None, onto=None, revision=None, 
-            merge_type=None, verbose=False, dry_run=False, 
+    def run(self, upstream_location=None, onto=None, revision=None,
+            merge_type=None, verbose=False, dry_run=False,
             always_rebase_merges=False, pending_merges=False):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
-        from rebase import (generate_simple_plan, rebase, rebase_plan_exists, 
-                            read_rebase_plan, remove_rebase_plan, 
+        from rebase import (generate_simple_plan, rebase, rebase_plan_exists,
+                            read_rebase_plan, remove_rebase_plan,
                             workingtree_replay, write_rebase_plan,
                             regenerate_default_revid,
                             rebase_todo)
         if revision is not None and pending_merges:
-            raise BzrCommandError("--revision and --pending-merges are mutually exclusive")
+            raise BzrCommandError(
+                "--revision and --pending-merges are mutually exclusive")
 
         wt = WorkingTree.open_containing(".")[0]
         wt.lock_write()
@@ -146,7 +147,9 @@ class cmd_rebase(Command):
         try:
             # Abort if there already is a plan file
             if rebase_plan_exists(wt):
-                raise BzrCommandError("A rebase operation was interrupted. Continue using 'bzr rebase-continue' or abort using 'bzr rebase-abort'")
+                raise BzrCommandError("A rebase operation was interrupted. "
+                    "Continue using 'bzr rebase-continue' or abort using 'bzr "
+                    "rebase-abort'")
 
             start_revid = None
             stop_revid = None
@@ -168,7 +171,8 @@ class cmd_rebase(Command):
                 if len(wt_parents) in (0, 1):
                     raise BzrCommandError("No pending merges present.")
                 elif len(wt_parents) > 2:
-                    raise BzrCommandError("Rebasing more than one pending merge not supported")
+                    raise BzrCommandError(
+                        "Rebasing more than one pending merge not supported")
                 stop_revid = wt_parents[1]
                 assert stop_revid is not None, "stop revid invalid"
 
@@ -183,31 +187,36 @@ class cmd_rebase(Command):
             wt.branch.repository.fetch(upstream_repository, onto)
 
             if stop_revid is not None:
-                revhistory = list(wt.branch.repository.iter_reverse_revision_history(stop_revid))
+                revhistory = list(
+                    wt.branch.repository.iter_reverse_revision_history(
+                        stop_revid))
                 revhistory.reverse()
             else:
                 revhistory = wt.branch.revision_history()
 
             if start_revid is None:
-                common_revid = find_last_common_revid(revhistory, 
+                common_revid = find_last_common_revid(revhistory,
                                                  upstream.revision_history())
                 if common_revid == upstream.last_revision():
                     self.outf.write("No revisions to rebase.\n")
                     return
                 if common_revid == revhistory[-1]:
-                    self.outf.write("Base branch is descendant of current branch. Use 'bzr pull'.\n")
+                    self.outf.write("Base branch is descendant of current "
+                        "branch. Use 'bzr pull'.\n")
                     return
                 try:
                     start_revid = revhistory[revhistory.index(common_revid)+1]
                 except NoSuchRevision:
-                    raise BzrCommandError("No common revision, please specify --revision")
+                    raise BzrCommandError(
+                        "No common revision, please specify --revision")
 
             # Create plan
             replace_map = generate_simple_plan(
                     revhistory, start_revid, stop_revid, onto,
                     wt.branch.repository.get_ancestry(onto),
                     wt.branch.repository.get_graph(),
-                    lambda revid: regenerate_default_revid(wt.branch.repository, revid),
+                    lambda revid: regenerate_default_revid(wt.branch.repository,
+                        revid),
                     not always_rebase_merges
                     )
 
@@ -228,10 +237,12 @@ class cmd_rebase(Command):
 
                 # Start executing plan
                 try:
-                    rebase(wt.branch.repository, replace_map, 
+                    rebase(wt.branch.repository, replace_map,
                            workingtree_replay(wt, merge_type=merge_type))
                 except ConflictsInTree:
-                    raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
+                    raise BzrCommandError("A conflict occurred replaying a "
+                        "commit. Resolve the conflict and run "
+                        "'bzr rebase-continue' or run 'bzr rebase-abort'.")
                 # Remove plan file
                 remove_rebase_plan(wt)
         finally:
@@ -269,8 +280,8 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self, merge_type=None):
-        from rebase import (commit_rebase, rebase, rebase_plan_exists, 
-                            read_rebase_plan, read_active_rebase_revid, 
+        from rebase import (commit_rebase, rebase, rebase_plan_exists,
+                            read_rebase_plan, read_active_rebase_revid,
                             remove_rebase_plan, workingtree_replay)
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
@@ -292,10 +303,12 @@ class cmd_rebase_continue(Command):
                 commit_rebase(wt, oldrev, replace_map[oldrevid][0])
             try:
                 # Start executing plan from current Branch.last_revision()
-                rebase(wt.branch.repository, replace_map, 
+                rebase(wt.branch.repository, replace_map,
                         workingtree_replay(wt, merge_type=merge_type))
             except ConflictsInTree:
-                raise BzrCommandError("A conflict occurred replaying a commit. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
+                raise BzrCommandError("A conflict occurred replaying a commit."
+                    " Resolve the conflict and run 'bzr rebase-continue' or "
+                    "run 'bzr rebase-abort'.")
             # Remove plan file  
             remove_rebase_plan(wt)
         finally:
@@ -309,7 +322,7 @@ class cmd_rebase_todo(Command):
     """
     
     def run(self):
-        from rebase import (rebase_todo, read_rebase_plan, 
+        from rebase import (rebase_todo, read_rebase_plan,
                             read_active_rebase_revid)
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
@@ -370,15 +383,15 @@ class cmd_replay(Command):
                 pb.update("replaying commits", todo.index(revid), len(todo))
                 wt.branch.repository.fetch(from_branch.repository, revid)
                 newrevid = regenerate_default_revid(wt.branch.repository, revid)
-                replay_delta_workingtree(wt, revid, newrevid, 
-                                         [wt.last_revision()], 
+                replay_delta_workingtree(wt, revid, newrevid,
+                                         [wt.last_revision()],
                                          merge_type=merge_type)
         finally:
             pb.finished()
             wt.unlock()
 
 
-for cmd in [cmd_replay, cmd_rebase, cmd_rebase_abort, cmd_rebase_continue, 
+for cmd in [cmd_replay, cmd_rebase, cmd_rebase_abort, cmd_rebase_continue,
             cmd_rebase_todo]:
     register_command(cmd)
 
