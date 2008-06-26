@@ -311,9 +311,10 @@ class CachingLogWalker(CacheTable):
             if self.saved_revnum % 5000 == 0:
                 self.cachedb.commit()
 
+        self.mutter("get_log %d->%d", self.saved_revnum, to_revnum)
         try:
             try:
-                self.actual._transport.get_log(rcvr, None, self.saved_revnum, to_revnum, 0, True, True, False, todo_revprops)
+                self.actual._transport.get_log(rcvr, [""], self.saved_revnum, to_revnum, 0, True, True, False, todo_revprops)
             except SubversionException, (_, num):
                 if num == ERR_FS_NO_SUCH_REVISION:
                     raise NoSuchRevision(branch=self, 
