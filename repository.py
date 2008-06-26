@@ -47,6 +47,8 @@ from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
 from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
 from bzrlib.plugins.svn.tree import SvnRevisionTree
+from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
+                                               FakeInventoryTexts)
 import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
@@ -158,6 +160,9 @@ class SvnRepository(Repository):
         control_files = LockableFiles(transport, '', TransportLock)
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
+        self.texts = SvnTexts()
+        self.revisions = FakeRevisionTexts()
+        self.inventories = FakeInventoryTexts()
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0
