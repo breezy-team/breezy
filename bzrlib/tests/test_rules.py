@@ -28,21 +28,15 @@ from bzrlib import (
 from bzrlib.util.configobj import configobj
 
 
-def _patch_in_namespace(lines):
-    lines_with_prefix = []
-    if lines:
-        for line in lines:
-            if line.startswith('['):
-                line = '[%s%s' % (rules.FILE_PREFS_PREFIX, line[1:])
-            lines_with_prefix.append(line)
-    return lines_with_prefix
-
-
 class TestIniBasedRulesSearcher(tests.TestCase):
 
-    def make_searcher(self, lines):
-        """Make a _RulesSearcher from a list of strings"""
-        return rules._IniBasedRulesSearcher(_patch_in_namespace(lines))
+    def make_searcher(self, text):
+        """Make a _RulesSearcher from a string"""
+        if text is None:
+            lines = None
+        else:
+            lines = text.splitlines()
+        return rules._IniBasedRulesSearcher(lines)
 
     def test_unknown_namespace(self):
         self.assertRaises(errors.UnknownRules, rules._IniBasedRulesSearcher,
@@ -54,12 +48,12 @@ class TestIniBasedRulesSearcher(tests.TestCase):
         self.assertEquals(None, rs.get_items('a.txt', ['foo']))
 
     def test_get_items_file_empty(self):
-        rs = self.make_searcher([])
+        rs = self.make_searcher("")
         self.assertEquals(None, rs.get_items('a.txt'))
         self.assertEquals(None, rs.get_items('a.txt', ['foo']))
 
     def test_get_items_from_extension_match(self):
-        rs = self.make_searcher(["[*.txt]", "foo=bar", "a=True"])
+        rs = self.make_searcher("[name *.txt]\nfoo=bar\na=True\n")
         self.assertEquals(None, rs.get_items('a.py'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
             rs.get_items('a.txt'))
@@ -69,15 +63,15 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             rs.get_items('a.txt', ['foo']))
 
     def test_get_items_pathname_match(self):
-        rs = self.make_searcher(["[./a.txt]", "foo=baz"])
+        rs = self.make_searcher("[name ./a.txt]\nfoo=baz\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
         self.assertEquals(None, rs.get_items('dir/a.txt'))
 
     def test_get_items_match_first(self):
-        rs = self.make_searcher([
-            "[./a.txt]", "foo=baz",
-            "[*.txt]", "foo=bar", "a=True"])
+        rs = self.make_searcher(
+            "[name ./a.txt]\nfoo=baz\n"
+            "[name *.txt]\nfoo=bar\na=True\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
@@ -86,21 +80,21 @@ class TestIniBasedRulesSearcher(tests.TestCase):
 
 class TestStackedRulesSearcher(tests.TestCase):
 
-    def make_searcher(self, lines1=None, lines2=None):
+    def make_searcher(self, text1=None, text2=None):
         """Make a _StackedRulesSearcher with 0, 1 or 2 items"""
         searchers = []
-        if lines1 is not None:
+        if text1 is not None:
             searchers.append(rules._IniBasedRulesSearcher(
-                _patch_in_namespace(lines1)))
-        if lines2 is not None:
+                text1.splitlines()))
+        if text2 is not None:
             searchers.append(rules._IniBasedRulesSearcher(
-                _patch_in_namespace(lines2)))
+                text2.splitlines()))
         return rules._StackedRulesSearcher(searchers)
 
     def test_stack_searching(self):
         rs = self.make_searcher(
-            ["[./a.txt]", "foo=baz"],
-            ["[*.txt]", "foo=bar", "a=True"])
+            "[name ./a.txt]\nfoo=baz\n",
+            "[name *.txt]\nfoo=bar\na=True\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),

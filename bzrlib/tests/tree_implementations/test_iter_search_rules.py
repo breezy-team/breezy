@@ -23,26 +23,15 @@ from bzrlib import (
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
-def _patch_in_namespace(lines):
-    lines_with_prefix = []
-    if lines:
-        for line in lines:
-            if line.startswith('['):
-                line = '[%s%s' % (rules.FILE_PREFS_PREFIX, line[1:])
-            lines_with_prefix.append(line)
-    return lines_with_prefix
-
-
 class TestIterSearchRules(TestCaseWithTree):
 
-    def make_per_user_searcher(self, lines):
-        """Make a _RulesSearcher from a list of strings"""
-        return rules._IniBasedRulesSearcher(_patch_in_namespace(lines))
+    def make_per_user_searcher(self, text):
+        """Make a _RulesSearcher from a string"""
+        return rules._IniBasedRulesSearcher(text.splitlines(True))
 
     def make_tree_with_rules(self, text):
         tree = self.make_branch_and_tree('.')
         if text is not None:
-            text = ''.join(_patch_in_namespace(text.splitlines(True)))
             text_utf8 = text.encode('utf-8')
             self.build_tree_contents([(rules.RULES_TREE_FILENAME, text_utf8)])
             tree.add(rules.RULES_TREE_FILENAME)
@@ -53,9 +42,9 @@ class TestIterSearchRules(TestCaseWithTree):
         return result
 
     def test_iter_search_rules_no_tree(self):
-        per_user = self.make_per_user_searcher([
-            "[./a.txt]", "foo=baz",
-            "[*.txt]", "foo=bar", "a=True"])
+        per_user = self.make_per_user_searcher(
+            "[name ./a.txt]\nfoo=baz\n"
+            "[name *.txt]\nfoo=bar\na=True\n")
         tree = self.make_tree_with_rules(None)
         result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
             _default_searcher=per_user))
@@ -63,11 +52,11 @@ class TestIterSearchRules(TestCaseWithTree):
         self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
 
     def test_iter_search_rules_just_tree(self):
-        per_user = self.make_per_user_searcher([])
+        per_user = self.make_per_user_searcher('')
         tree = self.make_tree_with_rules(
-            "[./a.txt]\n"
+            "[name ./a.txt]\n"
             "foo=baz\n"
-            "[*.txt]\n"
+            "[name *.txt]\n"
             "foo=bar\n"
             "a=True\n")
         result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
@@ -76,11 +65,11 @@ class TestIterSearchRules(TestCaseWithTree):
         self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
 
     def test_iter_search_rules_tree_and_per_user(self):
-        per_user = self.make_per_user_searcher([
-            "[./a.txt]", "foo=baz",
-            "[*.txt]", "foo=bar", "a=True"])
+        per_user = self.make_per_user_searcher(
+            "[name ./a.txt]\nfoo=baz\n"
+            "[name *.txt]\nfoo=bar\na=True\n")
         tree = self.make_tree_with_rules(
-            "[./a.txt]\n"
+            "[name ./a.txt]\n"
             "foo=qwerty\n")
         result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
             _default_searcher=per_user))
