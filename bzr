@@ -59,6 +59,26 @@ if '--profile-imports' in sys.argv:
     profile_imports.install()
     profiling = True
 
+if sys.platform == 'darwin':
+    # work around egregious python 2.4 bug
+    sys.platform = 'posix'
+    try:
+        import locale
+    finally:
+        sys.platform = 'darwin'
+else:
+    import locale
+
+try:
+    locale.setlocale(locale.LC_ALL, '')
+except locale.Error, e:
+    sys.stderr.write('bzr: warning: %s\n'
+                     '  bzr could not set the application locale.\n'
+                     '  Although this should be no problem for bzr itself,\n'
+                     '  it might cause problems with some plugins.\n'
+                     '  To investigate the issue, look at the output\n'
+                     '  of the locale(1p) tool available on POSIX systems.\n'
+                     % e)
 
 try:
     import bzrlib
