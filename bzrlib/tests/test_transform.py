@@ -2276,3 +2276,10 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual('file', preview_tree.stored_kind('file-id'))
+
+    def test_is_executable(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
+        preview.set_executability(True, preview.trans_id_file_id('file-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(True, preview_tree.is_executable('file-id'))
