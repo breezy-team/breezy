@@ -358,6 +358,7 @@ class Tree(object):
                                  last_revision_base)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
         def file_revision(revision_tree):
             revision_tree.lock_read()
             try:
@@ -372,18 +373,19 @@ class Tree(object):
                 except:
                     yield self.repository.revision_tree(revision_id)
 
-        if getattr(self, '_get_weave', None) is None:
+        if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_revisions = [file_revision(t) for t in iter_parent_trees()]
-            vf.add_lines(last_revision, parent_revisions,
+            parent_keys = [(file_id, file_revision(t)) for t in
+                iter_parent_trees()]
+            vf.add_lines((file_id, last_revision), parent_keys,
                          self.get_file(file_id).readlines())
             repo = self.branch.repository
-            transaction = repo.get_transaction()
-            base_vf = repo.weave_store.get_weave(file_id, transaction)
+            base_vf = repo.texts
         else:
             last_revision = file_revision(self)
-            base_vf = self._get_weave(file_id)
-        vf.fallback_versionedfiles.append(base_vf)
+            base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
         return last_revision
 
     inventory = property(_get_inventory,

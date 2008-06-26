@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,9 +18,12 @@
 """
 
 import os
-from bzrlib.trace import mutter
 import tarfile
+import time
+import sys
+
 from bzrlib import errors, export
+from bzrlib.trace import mutter
 
 
 def tar_exporter(tree, dest, root, compression=None):
@@ -29,12 +32,16 @@ def tar_exporter(tree, dest, root, compression=None):
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    from time import time
-    now = time()
+    now = time.time()
     compression = str(compression or '')
-    if root is None:
-        root = export.get_root_name(dest)
-    ball = tarfile.open(dest, 'w:' + compression)
+    if dest == '-':
+        # XXX: If no root is given, the output tarball will contain files
+        # named '-/foo'; perhaps this is the most reasonable thing.
+        ball = tarfile.open(None, 'w|' + compression, sys.stdout)
+    else:
+        if root is None:
+            root = export.get_root_name(dest)
+        ball = tarfile.open(dest, 'w:' + compression)
     mutter('export version %r', tree)
     inv = tree.inventory
     entries = inv.iter_entries()
@@ -44,8 +51,6 @@ def tar_exporter(tree, dest, root, compression=None):
         # so do not export it
         if dp == ".bzrignore":
             continue
-        
-        mutter("  export {%s} kind %s to %s", ie.file_id, ie.kind, dest)
         item, fileobj = ie.get_tar_item(root, dp, now, tree)
         ball.addfile(item, fileobj)
     ball.close()

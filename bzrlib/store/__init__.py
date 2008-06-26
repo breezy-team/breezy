@@ -35,6 +35,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     urlutils,
+    versionedfile,
     )
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.symbol_versioning import (
@@ -184,8 +185,9 @@ class TransportStore(Store):
         raise NotImplementedError('children need to implement this function.')
 
     def _check_fileid(self, fileid):
-        if not isinstance(fileid, basestring):
-            raise TypeError('Fileids should be a string type: %s %r' % (type(fileid), fileid))
+        if type(fileid) != str:
+            raise TypeError('Fileids should be bytestrings: %s %r' % (
+                type(fileid), fileid))
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
@@ -251,20 +253,21 @@ class TransportStore(Store):
         # will just use the filesystem defaults
         self._dir_mode = dir_mode
         self._file_mode = file_mode
-
-    def _unescape(self, file_id):
-        """If filename escaping is enabled for this store, unescape and return the filename."""
-        if self._escaped:
-            return urllib.unquote(file_id)
+        # Create a key mapper to use
+        if escaped and prefixed:
+            self._mapper = versionedfile.HashEscapedPrefixMapper()
+        elif not escaped and prefixed:
+            self._mapper = versionedfile.HashPrefixMapper()
+        elif self._escaped:
+            import pdb;pdb.set_trace()
+            raise ValueError("escaped unprefixed stores are not permitted.")
         else:
-            return file_id
+            self._mapper = versionedfile.PrefixMapper()
 
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
         for quoted_relpath in self._transport.iter_files_recursive():
-            # transport iterator always returns quoted paths, regardless of
-            # escaping
-            yield urllib.unquote(quoted_relpath)
+            yield quoted_relpath
 
     def __iter__(self):
         for relpath in self._iter_files_recursive():
@@ -278,7 +281,7 @@ class TransportStore(Store):
                     if name.endswith('.' + suffix):
                         skip = True
             if not skip:
-                yield self._unescape(name)
+                yield self._mapper.unmap(name)[0]
 
     def __len__(self):
         return len(list(self.__iter__()))
@@ -292,40 +295,9 @@ class TransportStore(Store):
                 self._check_fileid(suffix)
         else:
             suffixes = []
-        fileid = self._escape_file_id(fileid)
-        if self._prefixed:
-            # hash_prefix adds the '/' separator
-            prefix = self.hash_prefix(fileid, escaped=True)
-        else:
-            prefix = ''
-        path = prefix + fileid
-        full_path = u'.'.join([path] + suffixes)
-        return urlutils.escape(full_path)
-
-    def _escape_file_id(self, file_id):
-        """Turn a file id into a filesystem safe string.
-
-        This is similar to a plain urllib.quote, except
-        it uses specific safe characters, so that it doesn't
-        have to translate a lot of valid file ids.
-        """
-        if not self._escaped:
-            return file_id
-        if isinstance(file_id, unicode):
-            file_id = file_id.encode('utf-8')
-        # @ does not get escaped. This is because it is a valid
-        # filesystem character we use all the time, and it looks
-        # a lot better than seeing %40 all the time.
-        safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
-        r = [((c in safe) and c or ('%%%02x' % ord(c)))
-             for c in file_id]
-        return ''.join(r)
-
-    def hash_prefix(self, fileid, escaped=False):
-        # fileid should be unescaped
-        if not escaped and self._escaped:
-            fileid = self._escape_file_id(fileid)
-        return "%02x/" % (adler32(fileid) & 0xff)
+        path = self._mapper.map((fileid,))
+        full_path = '.'.join([path] + suffixes)
+        return full_path
 
     def __repr__(self):
         if self._transport is None:
