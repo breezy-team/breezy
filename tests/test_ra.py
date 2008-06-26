@@ -152,8 +152,21 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         cb.add_dir("bla", "bar", 1)
         cb.close()
 
+        cb = self.commit_editor()
+        cb.delete("bar")
+        cb.close()
+
         self.assertEquals({1: "/bar", 2: "/bla"}, 
-                          self.ra.get_locations("bla", 1, [1,2]))
+                          self.ra.get_locations("bla", 2, [1,2]))
+
+        self.assertEquals({1: "/bar", 2: "/bar"}, 
+                          self.ra.get_locations("bar", 1, [1,2]))
+
+        self.assertEquals({1: "/bar", 2: "/bar"}, 
+                          self.ra.get_locations("bar", 2, [1,2]))
+
+        self.assertEquals({1: "/bar", 2: "/bla", 3: "/bla"}, 
+                          self.ra.get_locations("bla", 3, [1,2,3]))
 
 class AuthTests(TestCase):
     def test_not_registered(self):
