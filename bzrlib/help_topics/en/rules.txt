@@ -8,10 +8,10 @@ Rules are defined in ini file format where the sections are file glob
 patterns and the contents of each section are the preferences for files
 matching that pattern. For example::
 
-    [for *.bat]
+    [name *.bat]
     eol = dos
 
-    [for *.html]
+    [name *.html]
     keywords = escape
 
 Preferences like these are useful for commands and plugins wishing to
