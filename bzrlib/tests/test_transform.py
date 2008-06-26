@@ -2271,3 +2271,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         annotation = preview_tree.annotate_iter('file-id', 'me:')
         self.assertIs(None, annotation)
 
+    def test_stored_kind(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('file', preview_tree.stored_kind('file-id'))
