@@ -2224,3 +2224,50 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         summary = preview.get_preview_tree().path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('tree-reference', summary[0])
+
+    def test_annotate(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'a\n')])
+        tree.add('file', 'file-id')
+        tree.commit('a', rev_id='one')
+        self.build_tree_contents([('tree/file', 'a\nb\n')])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(file_trans_id)
+        preview.create_file('a\nb\nc\n', file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        expected = [
+            ('one', 'a\n'),
+            ('me:', 'b\n'),
+            ('me:', 'c\n'),
+        ]
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertEqual(expected, annotation)
+
+    def test_annotate_missing(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
+        preview_tree = preview.get_preview_tree()
+        expected = [
+            ('me:', 'a\n'),
+            ('me:', 'b\n'),
+            ('me:', 'c\n'),
+         ]
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertEqual(expected, annotation)
+
+    def test_annotate_deleted(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'a\n')])
+        tree.add('file', 'file-id')
+        tree.commit('a', rev_id='one')
+        self.build_tree_contents([('tree/file', 'a\nb\n')])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertIs(None, annotation)
+

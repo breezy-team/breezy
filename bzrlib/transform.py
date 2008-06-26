@@ -22,6 +22,7 @@ import tempfile
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    annotate,
     bzrdir,
     delta,
     errors,
@@ -1680,8 +1681,20 @@ class _PreviewTree(tree.Tree):
 
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        return self._transform._tree.annotate_iter(file_id,
-            default_revision=default_revision)
+        changes = self._changes(file_id)
+        changed_content, versioned, kind = changes[2], changes[3], changes[6]
+        if kind[1] is None:
+            return None
+        if kind[0] is None or not versioned[0]:
+            old_annotation = []
+        else:
+            old_annotation = self._transform._tree.annotate_iter(file_id,
+                default_revision=default_revision)
+        if not changed_content:
+            return old_annotation
+        return annotate.reannotate([old_annotation],
+                                   self.get_file(file_id).readlines(),
+                                   default_revision)
 
     def get_symlink_target(self, file_id):
         """See Tree.get_symlink_target"""
