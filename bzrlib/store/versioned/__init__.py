@@ -69,7 +69,7 @@ class VersionedFileStore(TransportStore):
                 if relpath.endswith(suffix):
                     # TODO: use standard remove_suffix function
                     escaped_id = os.path.basename(relpath[:-len(suffix)])
-                    file_id = self._unescape(escaped_id)
+                    file_id = self._mapper.unmap(escaped_id)[0]
                     if file_id not in ids:
                         ids.add(file_id)
                         yield file_id
@@ -153,7 +153,8 @@ class VersionedFileStore(TransportStore):
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
                 raise
-            self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
+            dirname = osutils.dirname(_filename)
+            self._transport.mkdir(dirname, mode=self._dir_mode)
             weave = self._versionedfile_class(_filename, self._transport,
                                               self._file_mode, create=True,
                                               get_scope=self.get_scope,
@@ -178,13 +179,10 @@ class VersionedFileStore(TransportStore):
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
         myweave = self._make_new_versionedfile(file_id, transaction)
-        myweave.insert_record_stream(weave.get_record_stream(weave.versions(),
+        myweave.insert_record_stream(weave.get_record_stream(
+            [(version,) for version in weave.versions()],
             'topological', False))
 
-    def copy(self, source, result_id, transaction):
-        """Copy the source versioned file to result_id in this store."""
-        source.copy_to(self.filename(result_id), self._transport)
- 
     def copy_all_ids(self, store_from, pb=None, from_transaction=None,
                      to_transaction=None):
         """Copy all the file ids from store_from into self."""
@@ -241,7 +239,8 @@ class VersionedFileStore(TransportStore):
                 target = self._make_new_versionedfile(f, to_transaction)
                 source = from_store.get_weave(f, from_transaction)
                 target.insert_record_stream(source.get_record_stream(
-                    source.versions(), 'topological', False))
+                    [(version,) for version in source.versions()],
+                    'topological', False))
         finally:
             pb.finished()
 
