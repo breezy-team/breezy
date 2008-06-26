@@ -77,7 +77,15 @@ IN DEVELOPMENT
       parameter.  If you have a subclass of ``Branch`` that overrides
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
+    * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
+      These methods are bad API because they write directly to sys.stdout.
+      bzrlib internally does not use them, and have no one direct test
+      for them. (Alexander Belchenko)
+
   INTERNALS:
+
+    * ``cat`` command no more internally used ``Tree.print_file()``.
+      (Alexander Belchenko)
 
     * New ``versionedfile.KeyMapper`` interface to abstract out the access to
       underlying .knit/.kndx etc files in repositories with partitioned

@@ -55,6 +55,10 @@ from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
+        one_one,
+        one_two,
+        one_three,
+        one_four,
         )
 from bzrlib.trace import mutter, mutter_callsite, note, warning
 
@@ -846,7 +850,7 @@ class Repository(object):
         return InterRepository.get(other, self).search_missing_revision_ids(
             revision_id, find_ghosts)
 
-    @deprecated_method(symbol_versioning.one_two)
+    @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
         """Return the revision ids that other has that this does not.
@@ -1664,6 +1668,7 @@ class Repository(object):
         """
 
     @needs_read_lock
+    @deprecated_method(one_four)
     def print_file(self, file, revision_id):
         """Print `file` to stdout.
         
@@ -1684,7 +1689,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
-    @deprecated_method(symbol_versioning.one_one)
+    @deprecated_method(one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
         parent_map = self.get_parent_map(revision_ids)
@@ -2330,7 +2335,7 @@ class InterRepository(InterObject):
             searcher.stop_searching_any(have_revs)
         return searcher.get_result()
    
-    @deprecated_method(symbol_versioning.one_two)
+    @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """Return the revision ids that source has that target does not.
