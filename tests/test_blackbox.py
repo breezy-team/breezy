@@ -42,13 +42,13 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         repos_url = self.make_repository('d')
         self.run_bzr('log %s' % repos_url)
 
-    def test_info(self):
-        repos_url = self.make_repository('d')
-        self.run_bzr('info %s' % repos_url)
-
     def test_info_verbose(self):
         repos_url = self.make_repository('d')
         self.run_bzr('info -v %s' % repos_url)
+
+    def test_info_workingtree(self):
+        repos_url = self.make_client('d', 'dc')
+        self.run_bzr('info -v dc')
 
     def test_dumpfile(self):
         filename = os.path.join(self.test_dir, "dumpfile")

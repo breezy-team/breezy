@@ -814,6 +814,3 @@ class SvnCheckout(BzrDir):
         branch.bzrdir = self.remote_bzrdir
  
         return branch
-
-
-
