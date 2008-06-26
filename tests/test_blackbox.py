@@ -42,6 +42,14 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         repos_url = self.make_repository('d')
         self.run_bzr('log %s' % repos_url)
 
+    def test_info(self):
+        repos_url = self.make_repository('d')
+        self.run_bzr('info %s' % repos_url)
+
+    def test_info_verbose(self):
+        repos_url = self.make_repository('d')
+        self.run_bzr('info -v %s' % repos_url)
+
     def test_dumpfile(self):
         filename = os.path.join(self.test_dir, "dumpfile")
         uuid = "606c7b1f-987c-4826-b37d-eb456ceb87e1"

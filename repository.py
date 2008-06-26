@@ -23,7 +23,7 @@ from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError,
 from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.repository import Repository, RepositoryFormat
+from bzrlib.repository import Repository, RepositoryFormat, needs_read_lock
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION, ensure_null
 from bzrlib.transport import Transport, get_transport
@@ -31,7 +31,7 @@ from bzrlib.trace import info, mutter
 
 import os
 
-from bzrlib.plugins.svn import changes, core, errors, logwalker
+from bzrlib.plugins.svn import changes, core, errors, logwalker, properties
 from bzrlib.plugins.svn.branchprops import PathPropertyProvider
 from bzrlib.plugins.svn.cache import create_cache_dir, sqlite3
 from bzrlib.plugins.svn.changes import changes_path, find_prev_location
@@ -40,7 +40,8 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
-                     get_default_mapping, parse_revision_id)
+                     get_default_mapping, parse_revision_id, 
+                     parse_svn_dateprop)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from bzrlib.plugins.svn.parents import SqliteCachingParentsProvider
 from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
@@ -247,6 +248,24 @@ class SvnRepository(Repository):
         self._cached_revnum = self.transport.get_latest_revnum()
         return self._cached_revnum
 
+    @needs_read_lock
+    def gather_stats(self, revid=None, committers=None):
+        result = {}
+        def revdate(revnum):
+            return parse_svn_dateprop(self._log.revprop_list(revnum)[properties.PROP_REVISION_DATE])
+        if committers is not None and revid is not None:
+            all_committers = set()
+            for rev in self.get_revisions(filter(lambda r: r is not None and r != NULL_REVISION, self.get_ancestry(revid))):
+                if rev.committer != '':
+                    all_committers.add(rev.committer)
+            result['committers'] = len(all_committers)
+        result['firstrev'] = revdate(0)
+        result['latestrev'] = revdate(self.get_latest_revnum())
+        result['uuid'] = self.uuid
+        # Approximate number of revisions
+        result['revisions'] = self.get_latest_revnum()+1
+        return result
+
     def get_mapping(self):
         if self._default_mapping is None:
             self._default_mapping = get_default_mapping().from_repository(self, self._hinted_branch_path)
@@ -362,8 +381,6 @@ class SvnRepository(Repository):
         ancestry = []
         graph = self.get_graph()
         for rev, parents in graph.iter_ancestry([revision_id]):
-            if rev == NULL_REVISION:
-                rev = None
             ancestry.append(rev)
         ancestry.reverse()
         return ancestry

@@ -248,6 +248,15 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         set_branching_scheme(repos, TrunkBranchingScheme())
         self.assertEqual([], list(repos.all_revision_ids()))
 
+    def test_gather_stats(self):
+        repos_url = self.make_repository("a")
+        repos = Repository.open(repos_url)
+        stats = repos.gather_stats()
+        self.assertEquals(1, stats['revisions'])
+        self.assertTrue(stats.has_key("firstrev"))
+        self.assertTrue(stats.has_key("latestrev"))
+        self.assertFalse(stats.has_key('committers'))
+
     def test_all_revs(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})

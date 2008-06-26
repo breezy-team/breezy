@@ -135,6 +135,11 @@ def parse_merge_property(line):
 
     return tuple(filter(lambda x: x != "", line.split("\t")))
 
+
+def parse_svn_dateprop(date):
+    return (properties.time_from_cstring(date) / 1000000.0, 0)
+
+
 def parse_svn_revprops(svn_revprops, rev):
     if svn_revprops.has_key(properties.PROP_REVISION_AUTHOR):
         rev.committer = svn_revprops[properties.PROP_REVISION_AUTHOR]
@@ -150,8 +155,7 @@ def parse_svn_revprops(svn_revprops, rev):
             pass
 
     assert svn_revprops.has_key(properties.PROP_REVISION_DATE)
-    rev.timestamp = properties.time_from_cstring(svn_revprops[properties.PROP_REVISION_DATE]) / 1000000.0
-    rev.timezone = None
+    (rev.timestamp, rev.timezone) = parse_svn_dateprop(svn_revprops[properties.PROP_REVISION_DATE])
     rev.properties = {}
 
 
