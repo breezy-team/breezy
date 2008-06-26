@@ -1581,7 +1581,11 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.get_file_sha1(file_id)
 
     def is_executable(self, file_id, path=None):
-        return self._transform._tree.is_executable(file_id, path)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        try:
+            return self._transform._new_executability[trans_id]
+        except KeyError:
+            return self._transform._tree.is_executable(file_id, path)
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)
