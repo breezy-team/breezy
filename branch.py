@@ -76,8 +76,6 @@ class SvnBranch(Branch):
         assert isinstance(self._branch_path, str)
         try:
             revnum = self.get_revnum()
-            if revnum is None:
-                raise NotBranchError(self.base)
             if self.repository.transport.check_path(branch_path.strip("/"), 
                 revnum) != core.NODE_DIR:
                 raise NotBranchError(self.base)
@@ -130,7 +128,8 @@ class SvnBranch(Branch):
             return self._cached_revnum
         latest_revnum = self.repository.get_latest_revnum()
         self._cached_revnum = self.repository._log.find_latest_change(self.get_branch_path(), latest_revnum)
-        assert self._cached_revnum is not None
+        if self._cached_revnum is None:
+            raise NotBranchError(self.base)
         return self._cached_revnum
 
     def check(self):
@@ -200,8 +199,13 @@ class SvnBranch(Branch):
     def generate_revision_id(self, revnum):
         """Generate a new revision id for a revision on this branch."""
         assert isinstance(revnum, int)
-        return self.repository.generate_revision_id(
+        try:
+            return self.repository.generate_revision_id(
                 revnum, self.get_branch_path(revnum), self.mapping)
+        except SubversionException, (_, num):
+            if num == ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(self, revnum)
+            raise
 
     def get_config(self):
         return BranchConfig(self)
