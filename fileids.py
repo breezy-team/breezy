@@ -204,7 +204,7 @@ class CachingFileIdMap(object):
             assert isinstance(id, str)
             assert isinstance(created_revid, str)
 
-        self.idmap_knit.add_lines(revid, parent_revids, 
+        self.idmap_knit.add_lines((revid,), [(r, ) for r in parent_revids], 
                 ["%s\t%s\t%s\n" % (urllib.quote(filename.encode("utf-8")), urllib.quote(_map[filename][0]), 
                                         urllib.quote(_map[filename][1])) for filename in sorted(_map.keys())])
 
