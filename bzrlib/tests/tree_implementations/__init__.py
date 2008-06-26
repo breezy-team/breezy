@@ -80,15 +80,15 @@ def preview_tree_pre(testcase, tree):
 
 
 def preview_tree_post(testcase, tree):
-    empty = tree.branch.repository.revision_tree(NULL_REVISION)
-    tt = TransformPreview(empty)
-    empty.lock_read()
+    basis = tree.basis_tree()
+    tt = TransformPreview(basis)
+    basis.lock_read()
     testcase.addCleanup(tt.finalize)
     pp = progress.ProgressPhase('', 1, progress.DummyProgress())
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
-    transform._prepare_revert_transform(empty, tree, tt, None, False, pp,
-                                        empty, {})
+    transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
+                                        basis, {})
     return tt.get_preview_tree()
 
 
