@@ -49,6 +49,9 @@ check-random::
 valgrind-check:: build-inplace-debug
 	$(MAKE) check DEBUGGER="valgrind --suppressions=/usr/lib/valgrind/python.supp $(VALGRIND_OPTIONS)"
 
+leak-check:: 
+	$(MAKE) valgrind-check VALGRIND_OPTIONS="--leak-check=full --show-reachable=yes --num-callers=200 --leak-resolution=med --log-file=leaks.log"
+
 gdb-check:: build-inplace-debug
 	$(MAKE) check DEBUGGER="gdb --args $(GDB_OPTIONS)"
 
