@@ -357,14 +357,21 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.assertEquals(1, len(tree.inventory))
 
     def test_fetch_local(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo/bla': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/foo/blo': "data2", "dc/bar/foo": "data3", 'dc/foo/bla': "data"})
-        self.client_add("dc/foo/blo")
-        self.client_add("dc/bar")
-        self.client_commit("dc", "Second Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        foo = dc.add_dir("foo")
+        foo.add_file("foo/bla").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        foo = dc.open_dir("foo")
+        foo.add_file("foo/blo").modify("data2")
+        foo.open_file("foo/bla").modify("data")
+        bar = dc.add_dir("bar")
+        bar.add_file("bar/foo").modify("data3")
+        dc.close()
+
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -385,14 +392,17 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
             newrepos.unlock()
 
     def test_fetch_replace(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data"})
-        self.client_add("dc/bla")
-        self.client_commit("dc", "My Message")
-        self.client_delete("dc/bla")
-        self.build_tree({'dc/bla': "data2"})
-        self.client_add("dc/bla")
-        self.client_commit("dc", "Second Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.delete('bla')
+        dc.add_file("bla").modify("data2")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1316,16 +1326,19 @@ Node-copyfrom-path: x
                          branch.revision_history())
 
     def test_fetch_file_from_non_branch(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('d')
 
-        self.build_tree({'dc/old-trunk/lib/file': 'data'})
-        self.client_add("dc/old-trunk")
-        self.client_commit("dc", "trunk data")
+        dc = self.get_commit_editor(repos_url)
+        old_trunk = dc.add_dir("old-trunk")
+        lib = old_trunk.add_dir("old-trunk/lib")
+        lib.add_file("old-trunk/lib/file").modify("data")
+        dc.close()
 
-        self.build_tree({'dc/trunk/lib': None})
-        self.client_add("dc/trunk")
-        self.client_copy("dc/old-trunk/lib/file", "dc/trunk/lib/file")
-        self.client_commit("dc", "revive old trunk")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        lib = trunk.add_dir("trunk/lib")
+        lib.add_file("trunk/lib/file", "old-trunk/lib/file")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme())
@@ -1338,16 +1351,18 @@ Node-copyfrom-path: x
                          branch.revision_history())
 
     def test_fetch_dir_from_non_branch(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('d')
 
-        self.build_tree({'dc/old-trunk/lib/file': 'data'})
-        self.client_add("dc/old-trunk")
-        self.client_commit("dc", "trunk data")
+        dc = self.get_commit_editor(repos_url)
+        old_trunk = dc.add_dir("old-trunk")
+        lib = old_trunk.add_dir("old-trunk/lib")
+        lib.add_file("old-trunk/lib/file").modify("data")
+        dc.close()
 
-        self.build_tree({'dc/trunk': None})
-        self.client_add("dc/trunk")
-        self.client_copy("dc/old-trunk/lib", "dc/trunk")
-        self.client_commit("dc", "revive old trunk")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_dir("trunk/lib", "old-trunk/lib")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme())
@@ -1385,16 +1400,18 @@ Node-copyfrom-path: x
 
 
     def test_fetch_branch_downgrade(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('d')
 
-        self.build_tree({'dc/trunk/file': 'data'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "trunk data")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/file").modify("data")
+        dc.close()
 
-        self.build_tree({'dc/branches/mybranch': None})
-        self.client_add("dc/branches")
-        self.client_copy("dc/trunk", "dc/branches/mybranch/lib")
-        self.client_commit("dc", "split out lib")
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.add_dir("branches")
+        mybranch = branches.add_dir("branches/mybranch")
+        mybranch.add_dir("branches/mybranch/lib", "trunk")
+        dc.close()
 
         oldrepos = Repository.open(repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme())
@@ -1533,13 +1550,17 @@ Node-copyfrom-path: x
         self.assertEqual(inv1, inv2)
 
     def test_fetch_executable(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data", 'dc/blie': "data2"})
-        self.client_add("dc/bla")
-        self.client_add("dc/blie")
-        self.client_set_prop("dc/bla", "svn:executable", "*")
-        self.client_set_prop("dc/blie", "svn:executable", "")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        bla = dc.add_file("bla")
+        bla.modify('data')
+        bla.change_prop("svn:executable", "*")
+        blie = dc.add_file("blie")
+        blie.modify("data2")
+        blie.change_prop("svn:executable", "")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1600,12 +1621,16 @@ Node-copyfrom-path: x
         self.assertEqual('bla', inv2[inv2.path2id("mylink")].symlink_target)
 
     def test_fetch_executable_separate(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data"})
-        self.client_add("dc/bla")
-        self.client_commit("dc", "My Message")
-        self.client_set_prop("dc/bla", "svn:executable", "*")
-        self.client_commit("dc", "Make executable")
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("bla").change_prop("svn:executable", "*")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1640,20 +1665,25 @@ Node-copyfrom-path: x
         self.assertTrue("aghost" in rev.parent_ids)
 
     def test_fetch_svk_merge(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/bla': "data", "dc/branches": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
 
-        self.client_add("dc/branches")
-        self.client_copy("dc/trunk", "dc/branches/foo")
-        self.build_tree({'dc/branches/foo/bla': "more data"})
-        self.client_commit("dc", "Branch")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/bla").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.add_dir("branches")
+        foo = branches.add_dir("branches/foo", "trunk")
+        foo.open_file("branches/foo/bla").modify("more data")
+        dc.close()
 
         oldrepos = Repository.open("svn+"+repos_url)
-        self.client_set_prop("dc/trunk", "svk:merge", 
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_dir("trunk").change_prop("svk:merge", 
                              "%s:/branches/foo:2\n" % oldrepos.uuid)
-        self.client_commit("dc", "Merge")
+        dc.close()
 
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1666,11 +1696,13 @@ Node-copyfrom-path: x
         self.assertTrue(oldrepos.generate_revision_id(2, "branches/foo", mapping) in rev.parent_ids)
 
     def test_fetch_invalid_ghosts(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data"})
-        self.client_add("dc/bla")
-        self.client_set_prop("dc", "bzr:ancestry:v3-none", "a ghost\n")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("data")
+        dc.change_prop("bzr:ancestry:v3-none", "a ghost\n")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1749,28 +1781,35 @@ Node-copyfrom-path: x
             ]), set(newrepos.all_revision_ids()))
 
     def test_fetch_crosscopy(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/adir/afile': "data", 
-                         'dc/trunk/adir/stationary': None,
-                         'dc/branches/abranch': None})
-        self.client_add("dc/trunk")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "Initial commit")
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        adir = trunk.add_dir("trunk/adir")
+        adir.add_file("trunk/adir/afile").modify("data")
+        adir.add_dir("trunk/adir/stationary")
+        dc.add_dir("branches").add_dir("branches/abranch")
+        dc.close()
 
         # copyrev
-        self.client_copy("dc/trunk/adir", "dc/branches/abranch/bdir")
-        self.client_commit("dc", "Cross copy commit")
+        dc = self.get_commit_editor(repos_url)
+        abranch = dc.open_dir("branches").open_dir("branches/abranch")
+        abranch.add_dir("branches/abranch/bdir", "trunk/adir")
+        dc.close()
 
         # prevrev
-        self.build_tree({"dc/branches/abranch/bdir/afile": "otherdata"})
-        self.client_commit("dc", "Change data")
+        dc = self.get_commit_editor(repos_url)
+        bdir = dc.open_dir("branches").open_dir("branches/abranch").open_dir("branches/abranch/bdir")
+        bdir.open_file("branches/abranch/bdir/afile").modify("otherdata")
+        dc.close()
 
         # lastrev
-        self.build_tree({"dc/branches/abranch/bdir/bfile": "camel",
-                      "dc/branches/abranch/bdir/stationary/traveller": "data"})
-        self.client_add("dc/branches/abranch/bdir/bfile")
-        self.client_add("dc/branches/abranch/bdir/stationary/traveller")
-        self.client_commit("dc", "Change dir")
+        dc = self.get_commit_editor(repos_url)
+        bdir = dc.open_dir("branches").open_dir("branches/abranch").open_dir("branches/abranch/bdir")
+        bdir.add_file("branches/abranch/bdir/bfile").modify("camel")
+        stationary = bdir.open_dir("/branches/abranch/bdir/stationary")
+        stationary.add_file("branches/abranch/bdir/stationary/traveller").modify("data")
+        dc.close()
 
         oldrepos = Repository.open("svn+"+repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme())
