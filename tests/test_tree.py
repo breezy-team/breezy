@@ -56,13 +56,14 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
 
     def test_symlink(self):
-        if not has_symlinks():
-            return
-        self.make_client("d", "dc")
-        os.symlink("target", "dc/file")
-        self.build_tree({"dc/file": "x"})
-        self.client_add("dc/file")
-        self.client_commit("dc", "symlink")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.get_commit_editor(repos_url)
+        file = dc.add_file("file")
+        file.modify("link target")
+        file.change_prop("svn:special", "*")
+        dc.close()
+
         self.client_update("dc")
         tree = SvnBasisTree(self.open_checkout("dc"))
         self.assertEqual('symlink', 
@@ -71,17 +72,21 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
     def test_symlink_next(self):
-        if not has_symlinks():
-            return
-        self.make_client("d", "dc")
-        os.symlink("target", "dc/file")
-        self.build_tree({"dc/file": "x", "dc/bla": "p"})
-        self.client_add("dc/file")
-        self.client_add("dc/bla")
-        self.client_commit("dc", "symlink")
-        self.build_tree({"dc/bla": "pa"})
-        self.client_commit("dc", "change")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("p")
+        file = dc.add_file("file")
+        file.modify("link target")
+        file.change_prop("svn:special", "*")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("bla").modify("pa")
+        dc.close()
+
         self.client_update("dc")
+
         tree = SvnBasisTree(self.open_checkout("dc"))
         self.assertEqual('symlink', 
                          tree.inventory[tree.inventory.path2id("file")].kind)
@@ -89,13 +94,17 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
     def test_annotate_iter(self):
-        self.make_client("d", "dc")
-        self.build_tree({"dc/file": "x\n"})
-        self.client_add("dc/file")
-        self.client_commit("dc", "change")
-        self.client_update("dc")
-        self.build_tree({"dc/file": "x\n\y\n"})
-        self.client_commit("dc", "change")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("file").modify("x\n")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("file").modify("x\ny\n")
+        dc.close()
+
+        self.client_update('dc')
         tree = SvnBasisTree(self.open_checkout("dc"))
         self.assertRaises(NotImplementedError, tree.annotate_iter, tree.path2id("file"))
 
