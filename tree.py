@@ -115,8 +115,10 @@ class SvnRevisionTree(RevisionTree):
         reporter.finish()
 
     def get_file_lines(self, file_id):
-        return osutils.split_lines(self.file_data[file_id])
+        return osutils.split_lines(self.get_file_text(file_id))
 
+    def get_file_text(self, file_id):
+        return self.file_data[file_id]
 
 class TreeBuildEditor(object):
     """Builds a tree given Subversion tree transform calls."""
