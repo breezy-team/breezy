@@ -566,26 +566,32 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual({}, repository.get_parent_map(["notexisting"]))
 
     def test_revision_fileidmap(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-info", "")
-        self.client_set_prop("dc", "bzr:file-ids", "foo\tsomeid\n")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.change_prop("bzr:revision-info", "")
+        dc.change_prop("bzr:file-ids", "foo\tsomeid\n")
+        dc.close()
+
         repository = Repository.open("svn+%s" % repos_url)
         tree = repository.revision_tree(Branch.open(repos_url).last_revision())
         self.assertEqual("someid", tree.inventory.path2id("foo"))
         self.assertFalse("1@%s::foo" % repository.uuid in tree.inventory)
 
     def test_revision_ghost_parents(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo': "data"})
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
         self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.client_update("dc")
-        self.build_tree({'dc/foo': "data2"})
-        self.client_set_prop("dc", "bzr:ancestry:v3-none", "ghostparent\n")
-        self.client_commit("dc", "Second Message")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("foo").modify("data2")
+        dc.change_prop("bzr:ancestry:v3-none", "ghostparent\n")
+        dc.close()
+
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
         self.assertEqual((),
