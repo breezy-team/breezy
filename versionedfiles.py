@@ -69,10 +69,9 @@ class FakeRevisionTexts(FakeVersionedFiles):
         super(FakeRevisionTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
     def get_lines(self, key):
-        return None
+        return osutils.split_lines(self.repository.get_revision_xml(key))
 
-    # TODO: annotate, get_record_stream, 
-    # iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
 
 class FakeInventoryTexts(FakeVersionedFiles):
@@ -84,8 +83,7 @@ class FakeInventoryTexts(FakeVersionedFiles):
     def get_lines(self, key):
         return osutils.split_lines(self.repository.get_inventory_xml(key))
 
-    # TODO: annotate, get_record_stream,
-    # iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
 
 class FakeSignatureTexts(FakeVersionedFiles):
@@ -95,8 +93,7 @@ class FakeSignatureTexts(FakeVersionedFiles):
         super(FakeSignatureTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
     def get_lines(self, key):
-        return None
+        return osutils.split_lines(self.repository.get_signature_text(key))
 
-    # TODO: annotate, get_record_stream, 
-    # iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
