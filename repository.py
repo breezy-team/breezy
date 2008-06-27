@@ -49,7 +49,7 @@ from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_sinc
                  parse_svk_feature)
 from bzrlib.plugins.svn.tree import SvnRevisionTree
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
-                                               FakeInventoryTexts)
+                                               FakeInventoryTexts, FakeSignatureTexts)
 import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
@@ -162,8 +162,9 @@ class SvnRepository(Repository):
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
         self.texts = SvnTexts()
-        self.revisions = FakeRevisionTexts()
-        self.inventories = FakeInventoryTexts()
+        self.revisions = FakeRevisionTexts(self.get_parent_map)
+        self.inventories = FakeInventoryTexts(self.get_parent_map)
+        self.signatures = FakeSignatureTexts(self.get_parent_map)
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0

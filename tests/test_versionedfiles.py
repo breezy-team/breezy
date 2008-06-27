@@ -13,10 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from bzrlib.graph import DictParentsProvider
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
-                                               FakeInventoryTexts)
+                                               FakeInventoryTexts, FakeSignatureTexts)
 
 
 class BasicSvnTextsTests:
@@ -41,12 +42,26 @@ class SvnTextsTests(TestCase,BasicSvnTextsTests):
         self.texts = SvnTexts()
 
 
-class FakeRevisionTextsTests(TestCase,BasicSvnTextsTests):
-    def setUp(self):
-        self.texts = FakeRevisionTexts()
+class FakeTextsTests(BasicSvnTextsTests):
+    def get_parent_map(self, keys):
+        return DictParentsProvider(self.parent_map).get_parent_map(keys)
+
+    def test_get_parent_map(self):
+        self.parent_map = {"G": ("A", "B")}
+        self.assertEquals({("G",): (("A",),("B",))}, self.texts.get_parent_map([("G",)]))
 
 
-class FakeInventoryTextsTests(TestCase,BasicSvnTextsTests):
+class FakeRevisionTextsTests(TestCase,FakeTextsTests):
     def setUp(self):
-        self.texts = FakeInventoryTexts()
+        self.texts = FakeRevisionTexts(self.get_parent_map)
+
+
+class FakeInventoryTextsTests(TestCase,FakeTextsTests):
+    def setUp(self):
+        self.texts = FakeInventoryTexts(self.get_parent_map)
+
+
+class FakeSignatureTextsTests(TestCase,FakeTextsTests):
+    def setUp(self):
+        self.texts = FakeSignatureTexts(self.get_parent_map)
 
