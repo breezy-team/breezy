@@ -53,12 +53,68 @@ static void py_editor_dealloc(PyObject *self)
 	PyObject_Del(self);
 }
 
+static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+	char *kwnames[] = { "window", NULL };
+	svn_txdelta_window_t window;
+	TxDeltaWindowHandlerObject *obj = (TxDeltaWindowHandlerObject *)self;
+	PyObject *py_window, *py_ops, *py_new_data;
+	int i;
+	svn_string_t new_data;
+	svn_txdelta_op_t *ops;
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwnames, &py_window))
+		return NULL;
+
+	if (py_window == Py_None) {
+		if (!check_error(obj->txdelta_handler(NULL, obj->txdelta_baton)))
+			return NULL;
+		Py_RETURN_NONE;
+	}
+
+	if (!PyArg_ParseTuple(py_window, "LIIiOO", &window.sview_offset, &window.sview_len, 
+						                    &window.tview_len, &window.src_ops, &py_ops, &py_new_data))
+		return NULL;
+
+	if (py_new_data == Py_None) {
+		window.new_data = NULL;
+	} else {
+		new_data.data = PyString_AsString(py_new_data);
+		new_data.len = PyString_Size(py_new_data);
+		window.new_data = &new_data;
+	}
+
+	if (!PyList_Check(py_ops)) {
+		PyErr_SetString(PyExc_TypeError, "ops not a list");
+		return NULL;
+	}
+
+	window.num_ops = PyList_Size(py_ops);
+
+	window.ops = ops = malloc(sizeof(svn_txdelta_op_t) * window.num_ops);
+
+	for (i = 0; i < window.num_ops; i++) {
+		if (!PyArg_ParseTuple(PyList_GetItem(py_ops, i), "iII", &ops[i].action_code, &ops[i].offset, &ops[i].length)) {
+			free(ops);
+			return NULL;
+		}
+	}
+
+	if (!check_error(obj->txdelta_handler(&window, obj->txdelta_baton))) {
+		free(ops);
+		return NULL;
+	}
+
+	free(ops);
+
+	Py_RETURN_NONE;
+}
 
 PyTypeObject TxDeltaWindowHandler_Type = {
 	PyObject_HEAD_INIT(&PyType_Type) 0,
 	.tp_basicsize = sizeof(TxDeltaWindowHandlerObject),
 	.tp_name = "ra.TxDeltaWindowHandler",
-	.tp_call = NULL, /* FIXME */
+	.tp_call = txdelta_call,
 	.tp_dealloc = (destructor)PyObject_Del
 };
 
