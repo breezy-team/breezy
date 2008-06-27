@@ -82,7 +82,7 @@ class FakeRevisionTextsTests(TestCase,BasicSvnTextsTests):
 
 
 class FakeInventoryTextsTests(TestCase,BasicSvnTextsTests):
-    def get_inventory_xml(self):
+    def get_inventory_xml(self, key):
         return "FOO"
 
     def get_parent_map(self, keys):

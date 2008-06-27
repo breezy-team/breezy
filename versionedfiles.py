@@ -53,7 +53,7 @@ class FakeVersionedFiles(VersionedFiles):
         return ret
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
-        for (k,) in keys:
+        for (k,) in list(keys):
             lines = self._get_lines(k)
             if lines is not None:
                 assert isinstance(lines, list)
