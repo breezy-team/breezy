@@ -4,6 +4,10 @@ bzr-svn 0.4.11	UNRELEASED
 
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
+  FEATURES
+  
+   * Add new "dpush" command that works similar to git-svn's dcommit.
+
   BUG FIXES
 
    * More efficient use of mutter.
