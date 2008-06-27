@@ -41,9 +41,8 @@ class test_filesystem(medusa.filesys.os_filesystem):
     """A custom filesystem wrapper to add missing functionalities."""
 
     def chmod(self, path, mode):
-        p = self.normalize (self.path_module.join (self.wd, path))
+        p = self.normalize(self.path_module.join (self.wd, path))
         return os.chmod(self.translate(p), mode)
-
 
 
 class test_authorizer(object):
@@ -163,12 +162,15 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
                 self.respond ('550 error creating directory.')
 
     def cmd_site(self, line):
+        """Site specific commands."""
         command, args = line[1].split(' ', 1)
         if command.lower() == 'chmod':
             try:
                 mode, path = args.split()
                 mode = int(mode, 8)
             except ValueError:
+                # We catch both malformed line and malformed mode with the same
+                # ValueError.
                 self.command_not_understood(' '.join(line))
                 return
             try:
@@ -176,9 +178,13 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
                 self.filesystem.chmod(path, mode)
                 self.respond('200 SITE CHMOD command successful')
             except AttributeError:
-                # The chmod method is not available in read-only
+                # The chmod method is not available in read-only and will raise
+                # AttributeError since a different filesystem is used in that
+                # case
                 self.command_not_authorized(' '.join(line))
         else:
+            # Another site specific command was requested. We don't know that
+            # one
             self.command_not_understood(' '.join(line))
 
 
