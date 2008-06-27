@@ -13,23 +13,8 @@ proposed for inclusion in Subversion 1.4.7.
 One way to work around this problem is to Ctrl+C the branch operation 
 and restart it.
 
-I am unable to access a repository that requires user/password authentication or uses self-signed SSL certificates
-------------------------------------------------------------------------------------------------------------------
-The Python bindings required for password prompting are only present in 
-version 1.5 of Subversion so password prompting is only possible if 
-you have that version installed.
-
-If you have an older version of Subversion installed, bzr-svn can 
-use passwords cached by Subversion or credentials specified in the URL. 
-
-Subversion can be forced to cache the password by accessing the repository 
-using the Subversion command-line client. 
-For example, try running 'svn info <url>'. 
-
-You can specify the username and password in the URL in the standard way, e.g.::
-
-  $ bzr co svn+http://guest:@tortoisesvn.tigris.org/svn/tortoisesvn/trunk
-
+I am unable to access a repository that uses self-signed SSL certificates
+-------------------------------------------------------------------------
 If you are using a Subversion repository over http or https it may be 
 necessary to prefix the repository URL with "svn+", e.g. 
 svn+http://svn.python.org/projects/python/trunk/

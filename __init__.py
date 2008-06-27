@@ -31,7 +31,7 @@ from bzrlib.plugins.svn import revspec
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 4, 11, 'dev', 0)
+version_info = (0, 4, 11, 'exp', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -39,7 +39,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(1, 4), (1, 5), (1, 6)]
+COMPATIBLE_BZR_VERSIONS = [(1, 6)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -69,22 +69,14 @@ def check_subversion_version():
 
     """
     try:
-        import svn.delta
-    except ImportError:
-        warning('No Python bindings for Subversion installed. See the '
-                'bzr-svn README for details.')
-        raise bzrlib.errors.BzrError("missing python subversion bindings")
-    if (not hasattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler') and 
-        not hasattr(svn.delta, 'tx_invoke_window_handler')):
-        warning('Installed Subversion version does not have updated Python '
-                'bindings. See the bzr-svn README for details.')
-        raise bzrlib.errors.BzrError("incompatible python subversion bindings")
-    import svn.core
-    if (svn.core.SVN_VER_MINOR >= 5 and 
-            27729 <= svn.core.SVN_VER_REVISION < 31470):
+        from bzrlib.plugins.svn.ra import version
+    except:
+        warning("Unable to load bzr-svn extensions - did you build it?")
+    ra_version = version()
+    if (ra_version[0] >= 5 and getattr(ra, 'SVN_REVISION', None) and 27729 <= ra.SVN_REVISION < 31470):
         warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
 
-    mutter("bzr-svn: using Subversion %d.%d.%d (%s)", svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__)
+    mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % ra_version)
 
 
 def check_rebase_version(min_version):

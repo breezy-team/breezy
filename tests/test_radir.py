@@ -31,9 +31,9 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_clone(self):
         repos_url = self.make_client("d", "dc")
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("foo")
-        dc.done()
+        dc.close()
 
         x = self.open_checkout_bzrdir("dc")
         self.assertRaises(NotImplementedError, x.clone, "dir")
@@ -62,9 +62,9 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_create_branch_top_already_branch(self):
         repos_url = self.make_repository("d")
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("bla", "contents")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("contents")
+        dc.close()
         x = BzrDir.open(repos_url)
         self.assertRaises(AlreadyBranchError, x.create_branch)
 
@@ -80,9 +80,9 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_bad_dir(self):
         repos_url = self.make_repository("d")
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_file("foo")
-        dc.done()
+        dc.close()
 
         BzrDir.open(repos_url+"/foo")
 
@@ -112,9 +112,9 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_find_repos_nonroot(self):
         repos_url = self.make_repository("d")
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("trunk")
-        dc.done()
+        dc.close()
 
         x = BzrDir.open(repos_url+"/trunk")
         repos = x.find_repository()
@@ -129,9 +129,9 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_open_repos_nonroot(self):
         repos_url = self.make_repository("d")
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("trunk")
-        dc.done()
+        dc.close()
 
         x = BzrDir.open(repos_url+"/trunk")
         self.assertRaises(NoRepositoryPresent, x.open_repository)

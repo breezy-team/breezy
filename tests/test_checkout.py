@@ -58,7 +58,7 @@ class TestCheckoutFormat(TestCase):
 class TestCheckout(TestCaseWithSubversionRepository):
     def test_not_for_writing(self):
         self.make_client("d", "dc")
-        x = self.create_branch_convenience("dc/foo")
+        x = BzrDir.create_branch_convenience("dc/foo")
         self.assertFalse(hasattr(x.repository, "uuid"))
 
     def test_open_repository(self):
@@ -95,9 +95,9 @@ class TestCheckout(TestCaseWithSubversionRepository):
     def test_checkout_branch(self):
         repos_url = self.make_client("d", "dc")
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("trunk")
-        dc.done()
+        dc.close()
 
         self.client_update("dc")
         x = self.open_checkout_bzrdir("dc/trunk")

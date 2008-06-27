@@ -23,7 +23,7 @@ from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError,
 from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.repository import Repository, RepositoryFormat
+from bzrlib.repository import Repository, RepositoryFormat, needs_read_lock
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION, ensure_null
 from bzrlib.transport import Transport, get_transport
@@ -31,7 +31,7 @@ from bzrlib.trace import info, mutter
 
 import os
 
-from bzrlib.plugins.svn import changes, core, errors, logwalker
+from bzrlib.plugins.svn import changes, core, errors, logwalker, properties
 from bzrlib.plugins.svn.branchprops import PathPropertyProvider
 from bzrlib.plugins.svn.cache import create_cache_dir, sqlite3
 from bzrlib.plugins.svn.changes import changes_path, find_prev_location
@@ -40,13 +40,16 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
-                     get_default_mapping, parse_revision_id)
+                     get_default_mapping, parse_revision_id, 
+                     parse_svn_dateprop)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from bzrlib.plugins.svn.parents import SqliteCachingParentsProvider
 from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
 from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
 from bzrlib.plugins.svn.tree import SvnRevisionTree
+from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
+                                               FakeInventoryTexts)
 import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
@@ -138,7 +141,7 @@ class SvnRepositoryFormat(RepositoryFormat):
         return target_repo_format.rich_root_data
 
 
-CACHE_DB_VERSION = 3
+CACHE_DB_VERSION = 4
 
 cachedbs = {}
 
@@ -156,9 +159,11 @@ class SvnRepository(Repository):
         assert isinstance(transport, Transport)
 
         control_files = LockableFiles(transport, '', TransportLock)
-        Repository.__init__(self, SvnRepositoryFormat(), bzrdir, 
-            control_files, None, None, None)
+        Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
+        self.texts = SvnTexts()
+        self.revisions = FakeRevisionTexts()
+        self.inventories = FakeInventoryTexts()
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0
@@ -242,6 +247,24 @@ class SvnRepository(Repository):
             return self._cached_revnum
         self._cached_revnum = self.transport.get_latest_revnum()
         return self._cached_revnum
+
+    @needs_read_lock
+    def gather_stats(self, revid=None, committers=None):
+        result = {}
+        def revdate(revnum):
+            return parse_svn_dateprop(self._log.revprop_list(revnum)[properties.PROP_REVISION_DATE])
+        if committers is not None and revid is not None:
+            all_committers = set()
+            for rev in self.get_revisions(filter(lambda r: r is not None and r != NULL_REVISION, self.get_ancestry(revid))):
+                if rev.committer != '':
+                    all_committers.add(rev.committer)
+            result['committers'] = len(all_committers)
+        result['firstrev'] = revdate(0)
+        result['latestrev'] = revdate(self.get_latest_revnum())
+        result['uuid'] = self.uuid
+        # Approximate number of revisions
+        result['revisions'] = self.get_latest_revnum()+1
+        return result
 
     def get_mapping(self):
         if self._default_mapping is None:
@@ -348,7 +371,8 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb, limit=limit):
+        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb, 
+                                                        limit=limit):
             yield revmeta.get_revision_id(mapping)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -408,33 +432,15 @@ class SvnRepository(Repository):
         assert isinstance(path, str)
         assert isinstance(revnum, int)
 
-        if not mapping.is_branch(path) and \
-           not mapping.is_tag(path):
-            raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, mapping))
-
-        # Make sure the specified revision actually exists
-        changes = self._log.get_revision_paths(revnum)
-        if not changes_path(changes, path):
-            # the specified revno should be changing the branch or 
-            # otherwise it is invalid
-            raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, mapping))
-
-        while True:
-            next = find_prev_location(changes, path, revnum)
-            if next is None:
-                break
-            (path, revnum) = next
-            changes = self._log.get_revision_paths(revnum)
-
-            if changes_path(changes, path):
-                revid = self.generate_revision_id(revnum, path, mapping)
-                if not mapping.is_branch(path) and \
-                   not mapping.is_tag(path):
-                       return NULL_REVISION
-                return revid
-        return NULL_REVISION
+        iterator = self.iter_reverse_branch_changes(path, revnum, mapping=mapping, 
+                                                    limit=2)
+        revmeta = iterator.next()
+        assert revmeta.branch_path == path
+        assert revmeta.revnum == revnum
+        try:
+            return iterator.next().get_revision_id(mapping)
+        except StopIteration:
+            return NULL_REVISION
 
     def get_parent_map(self, revids):
         parent_map = {}
@@ -454,7 +460,7 @@ class SvnRepository(Repository):
             if mainline_parent != NULL_REVISION:
 
                 svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-                svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+                svn_revprops = self._log.revprop_list(revnum)
                 revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
 
                 parent_ids += revmeta.get_rhs_parents(mapping)
@@ -488,7 +494,7 @@ class SvnRepository(Repository):
 
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
-        svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+        svn_revprops = self._log.revprop_list(revnum)
         svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
 
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
@@ -522,7 +528,7 @@ class SvnRepository(Repository):
         assert isinstance(mapping, BzrSvnMapping)
 
         if revprops is None:
-            revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+            revprops = self._log.revprop_list(revnum)
 
         if changed_fileprops is None:
             changed_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
@@ -578,8 +584,13 @@ class SvnRepository(Repository):
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
         bp = branch_path
+        i = 0
 
-        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb, limit=limit):
+        # Limit can't be passed on directly to LogWalker.iter_changes() 
+        # because we're skipping some revs
+        # TODO: Rather than fetching everything if limit == 2, maybe just 
+        # set specify an extra X revs just to be sure?
+        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb):
             assert bp is not None
             next = find_prev_location(paths, bp, revnum)
             assert revnum > 0 or bp == ""
@@ -595,7 +606,11 @@ class SvnRepository(Repository):
                 yield (bp, lazypaths, revnum, revprops)
                 return
                      
-            yield (bp, paths, revnum, revprops)
+            if changes_path(paths, bp, False):
+                yield (bp, paths, revnum, revprops)
+                i += 1
+                if limit != 0 and limit == i:
+                    break
 
             if next is None:
                 bp = None
@@ -690,35 +705,24 @@ class SvnRepository(Repository):
 
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i in xrange(from_revnum, to_revnum+1):
-                pb.update("finding branches", i, to_revnum+1)
-                paths = self._log.get_revision_paths(i)
+            for (paths, i, revprops) in self._log.iter_changes([""], from_revnum, to_revnum):
+                pb.update("finding branches", i, to_revnum)
                 for p in sorted(paths.keys()):
                     if layout.is_branch(p) or layout.is_tag(p):
                         if paths[p][0] in ('R', 'D') and p in created_branches:
+                            ret.append((p, created_branches[p], False))
                             del created_branches[p]
-                            if paths[p][1]:
-                                prev_path = paths[p][1]
-                                prev_rev = paths[p][2]
-                            else:
-                                prev_path = p
-                                prev_rev = self._log.find_latest_change(p, i-1)
-                            assert isinstance(prev_rev, int)
-                            ret.append((prev_path, prev_rev, False))
 
-                        if paths[p][0] in ('A', 'R'): 
+                        if paths[p][0] in ('A', 'R', 'M'): 
                             created_branches[p] = i
-                    elif layout.is_branch_parent(p) or \
-                            layout.is_tag_parent(p):
+                    elif layout.is_branch_parent(p) or layout.is_tag_parent(p):
                         if paths[p][0] in ('R', 'D'):
                             k = created_branches.keys()
                             for c in k:
                                 if c.startswith(p+"/") and c in created_branches:
+                                    ret.append((c, created_branches[c], False))
                                     del created_branches[c] 
-                                    j = self._log.find_latest_change(c, i-1)
-                                    assert isinstance(j, int)
-                                    ret.append((c, j, False))
-                        if paths[p][0] in ('A', 'R'):
+                        if paths[p][0] in ('A', 'R') and paths[p][1] is not None:
                             parents = [p]
                             while parents:
                                 p = parents.pop()
@@ -735,18 +739,8 @@ class SvnRepository(Repository):
         finally:
             pb.finished()
 
-        pb = ui.ui_factory.nested_progress_bar()
-        i = 0
-        for p in created_branches:
-            pb.update("determining branch last changes", 
-                      i, len(created_branches))
-            j = self._log.find_latest_change(p, to_revnum)
-            if j is None:
-                j = created_branches[p]
-            assert isinstance(j, int)
-            ret.append((p, j, True))
-            i += 1
-        pb.finished()
+        for p, i in created_branches.items():
+            ret.append((p, i, True))
 
         return ret
 

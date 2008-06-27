@@ -1,5 +1,5 @@
-# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
- 
+# Copyright (C) 2006-2008 Jelmer Vernooij <jelmer@samba.org>
+
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
@@ -11,15 +11,13 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.core
+NODE_DIR = 2
+NODE_FILE = 1
+NODE_NONE = 0
+NODE_UNKNOWN = 3
 
-NODE_NONE = svn.core.svn_node_none
-NODE_FILE = svn.core.svn_node_file
-NODE_DIR = svn.core.svn_node_dir
-NODE_UNKNOWN = svn.core.svn_node_unknown
-
-SubversionException = svn.core.SubversionException
-time_to_cstring = svn.core.svn_time_to_cstring
-get_config = svn.core.svn_config_get_config
+class SubversionException(Exception):
+    """A Subversion exception"""

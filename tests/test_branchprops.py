@@ -33,13 +33,13 @@ class TestBranchProps(TestCaseWithSubversionRepository):
     def test_get_old_properties(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.change_dir_prop("", "myprop", "data")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop("myprop", "data")
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
 
         logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
@@ -50,9 +50,9 @@ class TestBranchProps(TestCaseWithSubversionRepository):
     def test_get_properties(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.change_dir_prop("", "myprop", "data")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop("myprop", "data")
+        dc.close()
 
         transport = SvnRaTransport(repos_url)
         logwalk = self.get_log_walker(transport=transport)
@@ -68,17 +68,17 @@ class TestBranchProps(TestCaseWithSubversionRepository):
     def test_get_changed_properties(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.change_dir_prop("", "myprop", "data\n")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop("myprop", "data\n")
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_dir_prop("", "myprop", "newdata\n")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop("myprop", "newdata\n")
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_dir_prop("", "myp2", "newdata\n")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop("myp2", "newdata\n")
+        dc.close()
 
         logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 

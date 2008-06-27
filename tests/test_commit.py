@@ -28,9 +28,9 @@ from bzrlib.workingtree import WorkingTree
 from copy import copy
 import os
 
-from bzrlib.plugins.svn.core import time_to_cstring
 from bzrlib.plugins.svn.commit import set_svn_revprops, _revision_id_to_svk_feature
 from bzrlib.plugins.svn.errors import RevpropChangeFailed
+from bzrlib.plugins.svn.properties import time_to_cstring
 from bzrlib.plugins.svn.transport import SvnRaTransport
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
@@ -154,10 +154,10 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt.rename_one("foo", "bar")
         wt.commit(message="doe")
         paths = self.client_log("dc", 2, 0)[2][0]
-        self.assertEquals('D', paths["/foo"].action)
-        self.assertEquals('A', paths["/bar"].action)
-        self.assertEquals('/foo', paths["/bar"].copyfrom_path)
-        self.assertEquals(1, paths["/bar"].copyfrom_rev)
+        self.assertEquals('D', paths["/foo"][0])
+        self.assertEquals('A', paths["/bar"][0])
+        self.assertEquals('/foo', paths["/bar"][1])
+        self.assertEquals(1, paths["/bar"][2])
         self.assertEquals("bar\t%s\n" % oldid, 
                           self.client_get_prop(repos_url, "bzr:file-ids", 2))
 
@@ -172,10 +172,10 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertTrue(wt.has_filename("bar"))
         wt.commit(message="doe")
         paths = self.client_log("dc", 2, 0)[2][0]
-        self.assertEquals('D', paths["/adir/foo"].action)
-        self.assertEquals('A', paths["/bar"].action)
-        self.assertEquals('/adir/foo', paths["/bar"].copyfrom_path)
-        self.assertEquals(1, paths["/bar"].copyfrom_rev)
+        self.assertEquals('D', paths["/adir/foo"][0])
+        self.assertEquals('A', paths["/bar"][0])
+        self.assertEquals('/adir/foo', paths["/bar"][1])
+        self.assertEquals(1, paths["/bar"][2])
 
     def test_commit_revision_id(self):
         repos_url = self.make_client('d', 'dc')
@@ -416,10 +416,10 @@ class TestPush(TestCaseWithSubversionRepository):
         wt.commit(message="doe")
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
-        self.assertEquals('D', paths["/vla"].action)
-        self.assertEquals('A', paths["/bar"].action)
-        self.assertEquals('/vla', paths["/bar"].copyfrom_path)
-        self.assertEquals(2, paths["/bar"].copyfrom_rev)
+        self.assertEquals('D', paths["/vla"][0])
+        self.assertEquals('A', paths["/bar"][0])
+        self.assertEquals('/vla', paths["/bar"][1])
+        self.assertEquals(2, paths["/bar"][2])
 
     def test_commit_rename_file_from_directory(self):
         wt = self.newdir.open_workingtree()
@@ -434,10 +434,10 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
         mutter('paths %r' % paths)
-        self.assertEquals('D', paths["/adir/foo"].action)
-        self.assertEquals('A', paths["/bar"].action)
-        self.assertEquals('/adir/foo', paths["/bar"].copyfrom_path)
-        self.assertEquals(2, paths["/bar"].copyfrom_rev)
+        self.assertEquals('D', paths["/adir/foo"][0])
+        self.assertEquals('A', paths["/bar"][0])
+        self.assertEquals('/adir/foo', paths["/bar"][1])
+        self.assertEquals(2, paths["/bar"][2])
 
     def test_commit_remove(self):
         wt = self.newdir.open_workingtree()
@@ -449,7 +449,7 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
         mutter('paths %r' % paths)
-        self.assertEquals('D', paths["/foob"].action)
+        self.assertEquals('D', paths["/foob"][0])
 
     def test_commit_rename_remove_parent(self):
         wt = self.newdir.open_workingtree()
@@ -463,10 +463,10 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
         mutter('paths %r' % paths)
-        self.assertEquals('D', paths["/adir"].action)
-        self.assertEquals('A', paths["/bar"].action)
-        self.assertEquals('/adir/foob', paths["/bar"].copyfrom_path)
-        self.assertEquals(2, paths["/bar"].copyfrom_rev)
+        self.assertEquals('D', paths["/adir"][0])
+        self.assertEquals('A', paths["/bar"][0])
+        self.assertEquals('/adir/foob', paths["/bar"][1])
+        self.assertEquals(2, paths["/bar"][2])
 
     def test_commit_remove_nested(self):
         wt = self.newdir.open_workingtree()
@@ -479,7 +479,7 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
         paths = self.client_log(self.repos_url, 3, 0)[3][0]
         mutter('paths %r' % paths)
-        self.assertEquals('D', paths["/adir/foob"].action)
+        self.assertEquals('D', paths["/adir/foob"][0])
 
 
 class TestPushNested(TestCaseWithSubversionRepository):
@@ -579,9 +579,9 @@ class RevpropTests(TestCaseWithSubversionRepository):
     def test_change_revprops(self):
         repos_url = self.make_repository("d")
 
-        dc = self.commit_editor(repos_url, message="My commit")
-        dc.add_file("foo.txt")
-        dc.done()
+        dc = self.get_commit_editor(repos_url, message="My commit")
+        dc.add_file("foo.txt").modify()
+        dc.close()
 
         transport = SvnRaTransport(repos_url)
         set_svn_revprops(transport, 1, {"svn:author": "Somebody", 
@@ -593,9 +593,9 @@ class RevpropTests(TestCaseWithSubversionRepository):
     def test_change_revprops_disallowed(self):
         repos_url = self.make_repository("d", allow_revprop_changes=False)
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo.txt")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo.txt").modify()
+        dc.close()
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 

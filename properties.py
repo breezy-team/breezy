@@ -21,6 +21,22 @@ def is_valid_property_name(prop):
             return False
     return True
 
+def time_to_cstring(timestamp):
+    import time
+    tm_usec = timestamp % 1000000
+    (tm_year, tm_mon, tm_mday, tm_hour, tm_min, 
+            tm_sec, tm_wday, tm_yday, tm_isdst) = time.gmtime(timestamp / 1000000)
+    return "%04d-%02d-%02dT%02d:%02d:%02d.%06dZ" % (tm_year, tm_mon, tm_mday, tm_hour, tm_min, tm_sec, tm_usec)
+
+def time_from_cstring(text):
+    import time
+    (basestr, usecstr) = text.split(".", 1)
+    assert usecstr[-1] == "Z"
+    tm_usec = int(usecstr[:-1])
+    tm = time.strptime(basestr, "%Y-%m-%dT%H:%M:%S")
+    return (long(time.mktime((tm[0], tm[1], tm[2], tm[3], tm[4], tm[5], tm[6], tm[7], -1)) - time.timezone) * 1000000 + tm_usec)
+
+
 PROP_EXECUTABLE = 'svn:executable'
 PROP_EXECUTABLE_VALUE = '*'
 PROP_EXTERNALS = 'svn:externals'

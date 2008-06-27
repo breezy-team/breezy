@@ -16,6 +16,7 @@
 
 """Branch tests."""
 
+from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError
@@ -45,12 +46,27 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
         self.assertEqual("", branch.get_branch_path())
 
+    def test_get_branch_path_old(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk2", "trunk", 1)
+        dc.close()
+
+        branch = Branch.open(urlutils.join(repos_url, "trunk2"))
+        self.assertEqual("trunk2", branch.get_branch_path(2))
+        self.assertEqual("trunk", branch.get_branch_path(1))
+
     def test_get_branch_path_subdir(self):
         repos_url = self.make_repository("a")
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("trunk")
-        dc.done()
+        dc.close()
 
         branch = Branch.open(repos_url+"/trunk")
         self.assertEqual("trunk", branch.get_branch_path())
@@ -92,9 +108,9 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual(branch.generate_revision_id(0),
                          branch.last_revision())
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
         
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
@@ -105,9 +121,9 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual(repos.generate_revision_id(1, "", mapping), 
                 branch.last_revision())
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("foo")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("foo").modify()
+        dc.close()
 
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
@@ -162,11 +178,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual([branch.generate_revision_id(0)], 
                 branch.revision_history())
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.change_dir_prop("", SVN_PROP_BZR_REVISION_ID+"none", 
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.change_prop(SVN_PROP_BZR_REVISION_ID+"none", 
                 "42 mycommit\n")
-        dc.done()
+        dc.close()
         
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
@@ -177,9 +193,9 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
                     repos.generate_revision_id(1, "", mapping)], 
                 branch.revision_history())
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("foo")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("foo").modify()
+        dc.close()
 
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
@@ -208,11 +224,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_revision_id_to_revno_simple(self):
         repos_url = self.make_repository('a')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.change_dir_prop("", "bzr:revision-id:v3-none", 
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.change_prop("bzr:revision-id:v3-none", 
                             "2 myrevid\n")
-        dc.done()
+        dc.close()
 
         branch = Branch.open(repos_url)
         self.assertEquals(2, branch.revision_id_to_revno("myrevid"))
@@ -220,17 +236,17 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_revision_id_to_revno_older(self):
         repos_url = self.make_repository('a')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.change_dir_prop("", "bzr:revision-id:v3-none", 
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.change_prop("bzr:revision-id:v3-none", 
                             "2 myrevid\n")
-        dc.done()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("foo")
-        dc.change_dir_prop("", "bzr:revision-id:v3-none", 
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("foo").modify()
+        dc.change_prop("bzr:revision-id:v3-none", 
                             "2 myrevid\n3 mysecondrevid\n")
-        dc.done()
+        dc.close()
 
         branch = Branch.open(repos_url)
         self.assertEquals(3, branch.revision_id_to_revno("mysecondrevid"))
@@ -239,9 +255,9 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_nick_none(self):
         repos_url = self.make_repository('a')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
 
         branch = Branch.open("svn+"+repos_url)
 
@@ -250,9 +266,9 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_nick_path(self):
         repos_url = self.make_repository('a')
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("trunk")
-        dc.done()
+        dc.close()
 
         branch = Branch.open("svn+"+repos_url+"/trunk")
 
@@ -261,11 +277,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_revprops(self):
         repos_url = self.make_repository('a')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_file("foo")
-        dc.change_dir_prop("", "bzr:revision-info", 
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.change_prop("bzr:revision-info", 
                 "properties: \n\tbranch-nick: mybranch\n")
-        dc.done()
+        dc.close()
 
         branch = Branch.open("svn+"+repos_url)
 
@@ -509,44 +525,46 @@ foohosts""")
         newbranch.lock_read()
         tree = newbranch.repository.revision_tree(oldbranch.generate_revision_id(7))
 
-        weave = newbranch.repository.weave_store.get_weave(
-            tree.inventory.path2id("hosts"),
-            newbranch.repository.get_transaction())
+        host_fileid = tree.inventory.path2id("hosts")
 
-        self.assertEqual(set([
+        self.assertVersionsPresentEquals(newbranch.repository.texts, 
+                                        host_fileid, [
             oldbranch.generate_revision_id(6),
-            oldbranch.generate_revision_id(7)]),
-                          set(weave.versions()))
+            oldbranch.generate_revision_id(7)])
         newbranch.unlock()
  
 
     def test_fetch_odd(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_dir("trunk")
-        dc.add_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/hosts").modify()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.open_file("trunk/hosts").modify()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("trunk/hosts").modify()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
+        dc = self.get_commit_editor(repos_url)
         dc.add_dir("branches")
-        dc.done()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.add_dir("branches/foobranch", "trunk")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        branches.add_dir("branches/foobranch", "trunk")
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("branches/foobranch/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        foobranch = branches.open_dir("branches/foobranch")
+        foobranch.open_file("branches/foobranch/hosts").modify()
+        dc.close()
 
         os.mkdir("new")
 
@@ -564,16 +582,19 @@ foohosts""")
              oldbranch.generate_revision_id(6))
         transaction = newbranch.repository.get_transaction()
         newbranch.repository.lock_read()
-        weave = newbranch.repository.weave_store.get_weave(
-                tree.inventory.path2id("hosts"), transaction)
+        texts = newbranch.repository.texts
+        host_fileid = tree.inventory.path2id("hosts")
         mapping = BzrSvnMappingv3FileProps(TrunkBranchingScheme())
-        self.assertEqual(set([
+        self.assertVersionsPresentEquals(texts, host_fileid, [
             mapping.generate_revision_id(uuid, 1, "trunk"),
             mapping.generate_revision_id(uuid, 2, "trunk"),
             mapping.generate_revision_id(uuid, 3, "trunk"),
-            oldbranch.generate_revision_id(6)]),
-                          set(weave.versions()))
+            oldbranch.generate_revision_id(6)])
         newbranch.repository.unlock()
+
+    def assertVersionsPresentEquals(self, texts, fileid, versions):
+        self.assertEqual(set([(fileid, v) for v in versions]),
+            set(filter(lambda (fid, rid): fid == fileid, texts.keys())))
 
     def test_check(self):
         self.make_repository('d')
@@ -584,10 +605,10 @@ foohosts""")
     def test_generate_revision_id(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_dir("bla")
-        dc.add_dir("bla/bloe")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        bla = dc.add_dir("bla")
+        bla.add_dir("bla/bloe")
+        dc.close()
 
         branch = Branch.open('d')
         self.assertEqual("svn-v3-none:%s::1" % (branch.repository.uuid),  branch.generate_revision_id(1))
@@ -595,10 +616,10 @@ foohosts""")
     def test_create_checkout(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_dir("trunk")
-        dc.add_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/hosts").modify()
+        dc.close()
 
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
@@ -613,10 +634,10 @@ foohosts""")
     def test_create_checkout_lightweight(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_dir("trunk")
-        dc.add_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/hosts")
+        dc.close()
 
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
@@ -629,14 +650,15 @@ foohosts""")
     def test_create_checkout_lightweight_stop_rev(self):
         repos_url = self.make_repository('d')
 
-        dc = self.commit_editor(repos_url)
-        dc.add_dir("trunk")
-        dc.add_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/hosts").modify()
+        dc.close()
 
-        dc = self.commit_editor(repos_url)
-        dc.change_file("trunk/hosts")
-        dc.done()
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.open_file("trunk/hosts").modify()
+        dc.close()
 
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
@@ -651,10 +673,10 @@ foohosts""")
     def test_fetch_branch(self):
         repos_url = self.make_client('d', 'sc')
 
-        sc = self.commit_editor(repos_url)
-        sc.add_dir("foo")
-        sc.add_file("foo/bla")
-        sc.done()
+        sc = self.get_commit_editor(repos_url)
+        foo = sc.add_dir("foo")
+        foo.add_file("foo/bla").modify()
+        sc.close()
 
         olddir = self.open_checkout_bzrdir("sc")
 
@@ -669,16 +691,17 @@ foohosts""")
     def test_fetch_dir_upgrade(self):
         repos_url = self.make_client('d', 'sc')
 
-        sc = self.commit_editor(repos_url)
-        sc.add_dir("trunk")
-        sc.add_dir("trunk/mylib")
-        sc.add_file("trunk/mylib/bla")
+        sc = self.get_commit_editor(repos_url)
+        trunk = sc.add_dir("trunk")
+        mylib = trunk.add_dir("trunk/mylib")
+        mylib.add_file("trunk/mylib/bla").modify()
         sc.add_dir("branches")
-        sc.done()
+        sc.close()
 
-        sc = self.commit_editor(repos_url)
-        sc.add_dir("branches/abranch", "trunk/mylib")
-        sc.done()
+        sc = self.get_commit_editor(repos_url)
+        branches = sc.open_dir("branches")
+        branches.add_dir("branches/abranch", "trunk/mylib")
+        sc.close()
 
         self.client_update('sc')
         olddir = self.open_checkout_bzrdir("sc/branches/abranch")
@@ -694,16 +717,17 @@ foohosts""")
     def test_fetch_branch_downgrade(self):
         repos_url = self.make_client('d', 'sc')
 
-        sc = self.commit_editor(repos_url)
+        sc = self.get_commit_editor(repos_url)
         sc.add_dir("trunk")
-        sc.add_dir("branches")
-        sc.add_dir("branches/abranch")
-        sc.add_file("branches/abranch/bla")
-        sc.done()
+        branches = sc.add_dir("branches")
+        abranch = branches.add_dir("branches/abranch")
+        abranch.add_file("branches/abranch/bla").modify()
+        sc.close()
 
-        sc = self.commit_editor(repos_url)
+        sc = self.get_commit_editor(repos_url)
+        trunk = sc.open_dir("trunk")
         sc.add_dir("trunk/mylib", "branches/abranch")
-        sc.done()
+        sc.close()
 
         self.client_update('sc')
         olddir = self.open_checkout_bzrdir("sc/trunk")
@@ -723,11 +747,11 @@ foohosts""")
         # revision that has ghost parents
         repos_url = self.make_client('d', 'sc')
 
-        sc = self.commit_editor(repos_url)
-        sc.add_dir("foo")
-        sc.add_file("foo/bla")
-        sc.change_dir_prop("", "bzr:ancestry:v3-none", "some-ghost\n")
-        sc.done()
+        sc = self.get_commit_editor(repos_url)
+        foo = sc.add_dir("foo")
+        foo.add_file("foo/bla").modify()
+        sc.change_prop("bzr:ancestry:v3-none", "some-ghost\n")
+        sc.close()
 
         olddir = self.open_checkout_bzrdir("sc")
 

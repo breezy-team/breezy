@@ -29,9 +29,98 @@ from bzrlib.trace import mutter
 from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
-import svn.core, svn.repos, svn.wc
-from bzrlib.plugins.svn.errors import NoCheckoutSupport
-from bzrlib.plugins.svn.ra import RemoteAccess
+from bzrlib.plugins.svn import properties, ra, repos
+from bzrlib.plugins.svn.delta import send_stream
+from bzrlib.plugins.svn.client import Client
+from bzrlib.plugins.svn.ra import Auth, RemoteAccess
+
+class TestFileEditor(object):
+    def __init__(self, file):
+        self.file = file
+        self.is_closed = False
+
+    def change_prop(self, name, value):
+        self.file.change_prop(name, value)
+
+    def modify(self, contents=None):
+        if contents is None:
+            contents = osutils.rand_chars(100)
+        txdelta = self.file.apply_textdelta()
+        send_stream(StringIO(contents), txdelta)
+
+    def close(self):
+        assert not self.is_closed
+        self.is_closed = True
+        self.file.close()
+
+
+class TestDirEditor(object):
+    def __init__(self, dir, baseurl, revnum):
+        self.dir = dir
+        self.baseurl = baseurl
+        self.revnum = revnum
+        self.is_closed = False
+        self.children = []
+
+    def close_children(self):
+        for c in reversed(self.children):
+            if not c.is_closed:
+                c.close()
+
+    def close(self):
+        assert not self.is_closed
+        self.is_closed = True
+        self.close_children()
+        self.dir.close()
+
+    def change_prop(self, name, value):
+        self.dir.change_prop(name, value)
+
+    def open_dir(self, path):
+        self.close_children()
+        child = TestDirEditor(self.dir.open_directory(path, -1), self.baseurl, self.revnum)
+        self.children.append(child)
+        return child
+
+    def open_file(self, path):
+        self.close_children()
+        child = TestFileEditor(self.dir.open_file(path, -1))
+        self.children.append(child)
+        return child
+
+    def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
+        self.close_children()
+        if copyfrom_path is not None:
+            copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
+        if copyfrom_path is not None and copyfrom_rev == -1:
+            copyfrom_rev = self.revnum
+        child = TestDirEditor(self.dir.add_directory(path, copyfrom_path, copyfrom_rev), self.baseurl, self.revnum)
+        self.children.append(child)
+        return child
+
+    def add_file(self, path, copyfrom_path=None, copyfrom_rev=-1):
+        self.close_children()
+        if copyfrom_path is not None:
+            copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
+        if copyfrom_path is not None and copyfrom_rev == -1:
+            copyfrom_rev = self.revnum
+        child = TestFileEditor(self.dir.add_file(path, copyfrom_path, copyfrom_rev))
+        self.children.append(child)
+        return child
+
+    def delete(self, path):
+        self.dir.delete_entry(path)
+
+
+class TestCommitEditor(TestDirEditor):
+    def __init__(self, editor, baseurl, revnum):
+        self.editor = editor
+        TestDirEditor.__init__(self, self.editor.open_root(), baseurl, revnum)
+
+    def close(self):
+        TestDirEditor.close(self)
+        self.editor.close()
+
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -39,11 +128,16 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
     def setUp(self):
         super(TestCaseWithSubversionRepository, self).setUp()
-        self.client_ctx = svn.client.create_context()
-        self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
-        self.client_ctx.log_msg_baton2 = self.log_message_func
+        self.client_ctx = Client()
+        self.client_ctx.auth = Auth([ra.get_simple_provider(), 
+                                     ra.get_username_provider(),
+                                     ra.get_ssl_client_cert_file_provider(),
+                                     ra.get_ssl_client_cert_pw_file_provider(),
+                                     ra.get_ssl_server_trust_file_provider()])
+        self.client_ctx.log_msg_func = self.log_message_func
+        #self.client_ctx.notify_func = lambda err: mutter("Error: %s" % err)
 
-    def log_message_func(self, items, pool):
+    def log_message_func(self, items):
         return self.next_message
 
     def make_repository(self, relpath, allow_revprop_changes=True):
@@ -53,7 +147,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         abspath = os.path.join(self.test_dir, relpath)
 
-        svn.repos.create(abspath, '', '', None, None)
+        repos.create(abspath)
 
         if allow_revprop_changes:
             if sys.platform == 'win32':
@@ -66,98 +160,52 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         return local_path_to_url(abspath)
 
-    def make_remote_bzrdir(self, relpath):
-        """Create a repository."""
-
-        repos_url = self.make_repository(relpath)
-
-        return BzrDir.open("svn+%s" % repos_url)
-
-    def open_local_bzrdir(self, repos_url, relpath):
-        """Open a local BzrDir."""
-
-        self.make_checkout(repos_url, relpath)
-
-        return BzrDir.open(relpath)
-
     def make_local_bzrdir(self, repos_path, relpath):
         """Create a repository and checkout."""
 
         repos_url = self.make_repository(repos_path)
 
-        try:
-            return self.open_local_bzrdir(repos_url, relpath)
-        except NoCheckoutSupport:
-            raise TestSkipped('No Checkout Support')
+        self.make_checkout(repos_url, relpath)
 
+        return BzrDir.open(relpath)
 
     def make_checkout(self, repos_url, relpath):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-
-        svn.client.checkout2(repos_url, relpath, 
-                rev, rev, True, False, self.client_ctx)
+        self.client_ctx.checkout(repos_url, relpath, "HEAD") 
 
     @staticmethod
     def create_checkout(branch, path, revision_id=None, lightweight=False):
-        try:
-            return branch.create_checkout(path, revision_id=revision_id,
+        return branch.create_checkout(path, revision_id=revision_id,
                                           lightweight=lightweight)
-        except NoCheckoutSupport:
-            raise TestSkipped('No Checkout Support')
 
     @staticmethod
     def open_checkout(url):
-        try:
-            return WorkingTree.open(url)
-        except NoCheckoutSupport:
-           raise TestSkipped('No Checkout Support')
+        return WorkingTree.open(url)
 
     @staticmethod
     def open_checkout_bzrdir(url):
-        try:
-            return BzrDir.open(url)
-        except NoCheckoutSupport:
-           raise TestSkipped('No Checkout Support')
-
-    @staticmethod
-    def create_branch_convenience(url):
-        try:
-            return BzrDir.create_branch_convenience(url)
-        except NoCheckoutSupport:
-           raise TestSkipped('No Checkout Support')
+        return BzrDir.open(url)
 
     def client_set_prop(self, path, name, value):
         if value is None:
             value = ""
-        svn.client.propset2(name, value, path, False, True, self.client_ctx)
+        self.client_ctx.propset(name, value, path, False, True)
 
     def client_get_prop(self, path, name, revnum=None, recursive=False):
-        rev = svn.core.svn_opt_revision_t()
-
         if revnum is None:
-            rev.kind = svn.core.svn_opt_revision_working
+            rev = "WORKING"
         else:
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
-        ret = svn.client.propget2(name, path, rev, rev, recursive, 
-                                  self.client_ctx)
+            rev = revnum
+        ret = self.client_ctx.propget(name, path, rev, rev, recursive)
         if recursive:
             return ret
         else:
             return ret.values()[0]
 
     def client_get_revprop(self, url, revnum, name):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = revnum
-        return svn.client.revprop_get(name, url, rev, self.client_ctx)[0]
+        return self.client_ctx.revprop_get(name, url, revnum)[0]
 
     def client_set_revprop(self, url, revnum, name, value):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = revnum
-        svn.client.revprop_set(name, value, url, rev, True, self.client_ctx)
+        self.client_ctx.revprop_set(name, value, url, revnum, True)
         
     def client_commit(self, dir, message=None, recursive=True):
         """Commit current changes in specified working copy.
@@ -167,39 +215,34 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         olddir = os.path.abspath('.')
         self.next_message = message
         os.chdir(dir)
-        info = svn.client.commit2(["."], recursive, False, self.client_ctx)
+        info = self.client_ctx.commit(["."], recursive, False)
         os.chdir(olddir)
         assert info is not None
-        return (info.revision, info.date, info.author)
+        return info
 
     def client_add(self, relpath, recursive=True):
         """Add specified files to working copy.
         
         :param relpath: Path to the files to add.
         """
-        svn.client.add3(relpath, recursive, False, False, self.client_ctx)
+        self.client_ctx.add(relpath, recursive, False, False)
 
     def revnum_to_opt_rev(self, revnum):
-        rev = svn.core.svn_opt_revision_t()
         if revnum is None:
-            rev.kind = svn.core.svn_opt_revision_head
+            rev = "HEAD"
         else:
             assert isinstance(revnum, int)
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
+            rev = revnum
         return rev
 
     def client_log(self, path, start_revnum=None, stop_revnum=None):
         assert isinstance(path, str)
         ret = {}
-        def rcvr(orig_paths, rev, author, date, message, pool):
-            ret[rev] = (orig_paths, author, date, message)
-        svn.client.log([path], self.revnum_to_opt_rev(start_revnum),
-                       self.revnum_to_opt_rev(stop_revnum),
-                       True,
-                       True,
-                       rcvr,
-                       self.client_ctx)
+        def rcvr(orig_paths, rev, revprops, has_children):
+            ret[rev] = (orig_paths, revprops.get(properties.PROP_REVISION_AUTHOR), revprops.get(properties.PROP_REVISION_DATE), revprops.get(properties.PROP_REVISION_LOG))
+        self.client_ctx.log([path], rcvr, None, self.revnum_to_opt_rev(start_revnum),
+                       self.revnum_to_opt_rev(stop_revnum), 0,
+                       True, True)
         return ret
 
     def client_delete(self, relpath):
@@ -207,7 +250,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         :param relpath: Path to the files to remove.
         """
-        svn.client.delete2([relpath], True, self.client_ctx)
+        self.client_ctx.delete([relpath], True)
 
     def client_copy(self, oldpath, newpath, revnum=None):
         """Copy file in working copy.
@@ -215,18 +258,14 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :param oldpath: Relative path to original file.
         :param newpath: Relative path to new file.
         """
-        rev = svn.core.svn_opt_revision_t()
         if revnum is None:
-            rev.kind = svn.core.svn_opt_revision_head
+            rev = "HEAD"
         else:
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = revnum
-        svn.client.copy2(oldpath, rev, newpath, self.client_ctx)
+            rev = revnum
+        self.client_ctx.copy(oldpath, newpath, rev)
 
     def client_update(self, path):
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-        svn.client.update(path, rev, True, self.client_ctx)
+        self.client_ctx.update([path], "HEAD", True)
 
     def build_tree(self, files):
         """Create a directory tree.
@@ -265,132 +304,17 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         self.make_checkout(repos_url, clientpath)
         return repos_url
 
-    def dumpfile(self, repos):
-        """Create a dumpfile for the specified repository.
-
-        :return: File name of the dumpfile.
-        """
-        raise NotImplementedError(self.dumpfile)
-
     def open_fs(self, relpath):
         """Open a fs.
 
         :return: FS.
         """
-        repos = svn.repos.open(relpath)
+        return repos.Repository(relpath).fs()
 
-        return svn.repos.fs(repos)
-
-    def commit_editor(self, url, message="Test commit"):
-        ra = RemoteAccess(url.encode('utf8'))
-        class CommitEditor:
-            def __init__(self, ra, editor, base_revnum, base_url):
-                self._used = False
-                self.ra = ra
-                self.base_revnum = base_revnum
-                self.editor = editor
-                self.data = {}
-                self.create = set()
-                self.props = {}
-                self.copyfrom = {}
-                self.base_url = base_url
-
-            def _parts(self, path):
-                return path.strip("/").split("/")
-
-            def add_dir(self, path, copyfrom_path=None, copyfrom_rev=-1):
-                self.create.add(path)
-                if copyfrom_path is not None:
-                    if copyfrom_rev == -1:
-                        copyfrom_rev = self.base_revnum
-                    copyfrom_path = os.path.join(self.base_url, copyfrom_path)
-                self.copyfrom[path] = (copyfrom_path, copyfrom_rev)
-                self.open_dir(path)
-
-            def open_dir(self, path):
-                x = self.data
-                for p in self._parts(path):
-                    if not p in x:
-                        x[p] = {}
-                    x = x[p]
-                return x
-
-            def add_file(self, path, contents=None):
-                self.create.add(path)
-                self.change_file(path, contents)
-                
-            def change_file(self, path, contents=None):
-                parts = self._parts(path)
-                x = self.open_dir("/".join(parts[:-1]))
-                if contents is None:
-                    contents = osutils.rand_chars(100)
-                x[parts[-1]] = contents
-
-            def delete(self, path):
-                parts = self._parts(path)
-                x = self.open_dir("/".join(parts[:-1]))
-                x[parts[-1]] = None
-                
-            def change_dir_prop(self, path, propname, propval):
-                self.open_dir(path)
-                if not path in self.props:
-                    self.props[path] = {}
-                self.props[path][propname] = propval
-
-            def change_file_prop(self, path, propname, propval):
-                parts = self._parts(path)
-                x = self.open_dir("/".join(parts[:-1]))
-                x[parts[-1]] = ()
-                if not path in self.props:
-                    self.props[path] = {}
-                self.props[path][propname] = propval
-
-            def _process_dir(self, dir_baton, dir_dict, path):
-                for name, contents in dir_dict.items():
-                    subpath = urlutils.join(path, name).strip("/")
-                    if contents is None:
-                        dir_baton.delete_entry(subpath, -1)
-                    elif isinstance(contents, dict):
-                        if subpath in self.create:
-                            child_baton = dir_baton.add_directory(subpath, self.copyfrom[subpath][0], self.copyfrom[subpath][1])
-                        else:
-                            child_baton = dir_baton.open_directory(subpath, -1)
-                        if subpath in self.props:
-                            for k, v in self.props[subpath].items():
-                                child_baton.change_prop(k, v)
-
-                        self._process_dir(child_baton, dir_dict[name], subpath)
-
-                        child_baton.close()
-                    else:
-                        if subpath in self.create:
-                            child_baton = dir_baton.add_file(subpath, None, -1)
-                        else:
-                            child_baton = dir_baton.open_file(subpath)
-                        if isinstance(contents, str):
-                            (txdelta, txbaton) = child_baton.apply_textdelta()
-                            svn.delta.svn_txdelta_send_stream(StringIO(contents), txdelta, txbaton)
-                        if subpath in self.props:
-                            for k, v in self.props[subpath].items():
-                                child_baton.change_prop(k, v)
-                        child_baton.close()
-
-            def done(self):
-                assert self._used == False
-                self._used = True
-                root_baton = self.editor.open_root(self.base_revnum)
-                self._process_dir(root_baton, self.data, "")
-                root_baton.close()
-                self.editor.close()
-
-                my_revnum = ra.get_latest_revnum()
-                assert my_revnum > self.base_revnum
-
-                return my_revnum
-
-        base_revnum = ra.get_latest_revnum()
-        editor = ra.get_commit_editor({"svn:log": message})
-        return CommitEditor(ra, editor, base_revnum, url)
+    def get_commit_editor(self, url, message="Test commit"):
+        ra = RemoteAccess(url.encode("utf-8"))
+        revnum = ra.get_latest_revnum()
+        return TestCommitEditor(ra.get_commit_editor({"svn:log": message}), ra.url, revnum)
 
 
 def test_suite():
@@ -407,17 +331,21 @@ def test_suite():
             'test_branchprops', 
             'test_changes',
             'test_checkout',
+            'test_client',
             'test_commit',
             'test_config',
             'test_convert',
+            'test_core',
             'test_errors',
             'test_fetch',
             'test_fileids', 
             'test_logwalker',
             'test_mapping',
             'test_push',
+            'test_ra',
             'test_radir',
             'test_repos', 
+            'test_repository', 
             'test_revids',
             'test_revspec',
             'test_scheme', 
@@ -425,6 +353,8 @@ def test_suite():
             'test_transport',
             'test_tree',
             'test_upgrade',
+            'test_versionedfiles',
+            'test_wc',
             'test_workingtree',
             'test_blackbox']
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))

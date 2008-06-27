@@ -19,9 +19,8 @@ from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import version_info, errors, properties
+from bzrlib.plugins.svn import core, errors, properties, version_info
 import calendar
-import svn
 import time
 import urllib
 
@@ -136,6 +135,11 @@ def parse_merge_property(line):
 
     return tuple(filter(lambda x: x != "", line.split("\t")))
 
+
+def parse_svn_dateprop(date):
+    return (properties.time_from_cstring(date) / 1000000.0, 0)
+
+
 def parse_svn_revprops(svn_revprops, rev):
     if svn_revprops.has_key(properties.PROP_REVISION_AUTHOR):
         rev.committer = svn_revprops[properties.PROP_REVISION_AUTHOR]
@@ -150,11 +154,8 @@ def parse_svn_revprops(svn_revprops, rev):
         except UnicodeDecodeError:
             pass
 
-    if svn_revprops.has_key(properties.PROP_REVISION_DATE):
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[properties.PROP_REVISION_DATE], None)
-    else:
-        rev.timestamp = 0.0 # FIXME: Obtain repository creation time
-    rev.timezone = None
+    assert svn_revprops.has_key(properties.PROP_REVISION_DATE)
+    (rev.timestamp, rev.timezone) = parse_svn_dateprop(svn_revprops[properties.PROP_REVISION_DATE])
     rev.properties = {}
 
 

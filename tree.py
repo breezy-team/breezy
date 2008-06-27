@@ -22,16 +22,14 @@ from bzrlib.revision import CURRENT_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
-from bzrlib.plugins.svn.delta import apply_txdelta_handler
-
 import os
 import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.wc
+from bzrlib.plugins.svn import errors, properties, core, wc
+from bzrlib.plugins.svn.delta import apply_txdelta_handler
 
-from bzrlib.plugins.svn import errors, properties, core
 
 def parse_externals_description(base_url, val):
     """Parse an svn:externals property value.
@@ -117,10 +115,12 @@ class SvnRevisionTree(RevisionTree):
         reporter.finish()
 
     def get_file_lines(self, file_id):
-        return osutils.split_lines(self.file_data[file_id])
+        return osutils.split_lines(self.get_file_text(file_id))
 
+    def get_file_text(self, file_id):
+        return self.file_data[file_id]
 
-class TreeBuildEditor:
+class TreeBuildEditor(object):
     """Builds a tree given Subversion tree transform calls."""
     def __init__(self, tree):
         self.tree = tree
@@ -130,21 +130,33 @@ class TreeBuildEditor:
     def set_target_revision(self, revnum):
         self.revnum = revnum
 
-    def open_root(self, revnum, baton):
+    def open_root(self, revnum):
         file_id, revision_id = self.tree.id_map[""]
         ie = self.tree._inventory.add_path("", 'directory', file_id)
         ie.revision = revision_id
         self.tree._inventory.revision_id = revision_id
-        return file_id
+        return DirectoryTreeEditor(self.tree, file_id)
 
-    def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+    def close(self):
+        pass
+
+    def abort(self):
+        pass
+
+
+class DirectoryTreeEditor(object):
+    def __init__(self, tree, file_id):
+        self.tree = tree
+        self.file_id = file_id
+
+    def add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
         path = path.decode("utf-8")
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
-        return file_id
+        return DirectoryTreeEditor(self.tree, file_id)
 
-    def change_dir_prop(self, id, name, value, pool):
+    def change_prop(self, name, value):
         if name in (properties.PROP_ENTRY_COMMITTED_DATE,
                     properties.PROP_ENTRY_LAST_AUTHOR,
                     properties.PROP_ENTRY_LOCK_TOKEN,
@@ -158,7 +170,25 @@ class TreeBuildEditor:
         elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported dir property %r', name)
 
-    def change_file_prop(self, id, name, value, pool):
+    def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
+        path = path.decode("utf-8")
+        self.is_symlink = False
+        self.is_executable = False
+        return FileTreeEditor(self.tree, path)
+
+    def close(self):
+        pass
+
+
+class FileTreeEditor(object):
+    def __init__(self, tree, path):
+        self.tree = tree
+        self.path = path
+        self.is_executable = False
+        self.is_symlink = False
+        self.last_file_rev = None
+
+    def change_prop(self, name, value):
         if name == properties.PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == properties.PROP_SPECIAL:
@@ -178,21 +208,12 @@ class TreeBuildEditor:
         elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported file property %r', name)
 
-    def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
-        path = path.decode("utf-8")
-        self.is_symlink = False
-        self.is_executable = False
-        return path
-
-    def close_dir(self, id):
-        pass
-
-    def close_file(self, path, checksum):
-        file_id, revision_id = self.tree.id_map[path]
+    def close(self, checksum=None):
+        file_id, revision_id = self.tree.id_map[self.path]
         if self.is_symlink:
-            ie = self.tree._inventory.add_path(path, 'symlink', file_id)
+            ie = self.tree._inventory.add_path(self.path, 'symlink', file_id)
         else:
-            ie = self.tree._inventory.add_path(path, 'file', file_id)
+            ie = self.tree._inventory.add_path(self.path, 'file', file_id)
         ie.revision = revision_id
 
         if self.file_stream:
@@ -219,13 +240,7 @@ class TreeBuildEditor:
 
         self.file_stream = None
 
-    def close_edit(self):
-        pass
-
-    def abort_edit(self):
-        pass
-
-    def apply_textdelta(self, file_id, base_checksum):
+    def apply_textdelta(self, base_checksum):
         self.file_stream = StringIO()
         return apply_txdelta_handler("", self.file_stream)
 
@@ -243,10 +258,8 @@ class SvnBasisTree(RevisionTree):
         self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 
-        def add_file_to_inv(relpath, id, revid, wc):
-            props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"), wc)
-            if isinstance(props, list): # Subversion 1.5
-                props = props[1]
+        def add_file_to_inv(relpath, id, revid, adm):
+            (propchanges, props) = adm.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"))
             if props.has_key(properties.PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
@@ -265,14 +278,14 @@ class SvnBasisTree(RevisionTree):
 
         def find_ids(entry):
             relpath = urllib.unquote(entry.url[len(entry.repos):].strip("/"))
-            if entry.schedule in (svn.wc.schedule_normal, 
-                                  svn.wc.schedule_delete, 
-                                  svn.wc.schedule_replace):
+            if entry.schedule in (wc.SCHEDULE_NORMAL, 
+                                  wc.SCHEDULE_DELETE, 
+                                  wc.SCHEDULE_REPLACE):
                 return self.id_map[workingtree.branch.unprefix(relpath.decode("utf-8"))]
             return (None, None)
 
-        def add_dir_to_inv(relpath, wc, parent_id):
-            entries = svn.wc.entries_read(wc, False)
+        def add_dir_to_inv(relpath, adm, parent_id):
+            entries = adm.entries_read(False)
             entry = entries[""]
             (id, revid) = find_ids(entry)
             if id == None:
@@ -297,26 +310,25 @@ class SvnBasisTree(RevisionTree):
                 assert entry
                 
                 if entry.kind == core.NODE_DIR:
-                    subwc = svn.wc.adm_open3(wc, 
-                            self.workingtree.abspath(subrelpath), 
-                                             False, 0, None)
+                    subwc = wc.WorkingCopy(adm, 
+                            self.workingtree.abspath(subrelpath))
                     try:
                         add_dir_to_inv(subrelpath, subwc, id)
                     finally:
-                        svn.wc.adm_close(subwc)
+                        subwc.close()
                 else:
                     (subid, subrevid) = find_ids(entry)
                     if subid is not None:
-                        add_file_to_inv(subrelpath, subid, subrevid, wc)
+                        add_file_to_inv(subrelpath, subid, subrevid, adm)
 
-        wc = workingtree._get_wc() 
+        adm = workingtree._get_wc() 
         try:
-            add_dir_to_inv(u"", wc, None)
+            add_dir_to_inv(u"", adm, None)
         finally:
-            svn.wc.adm_close(wc)
+            adm.close()
 
     def _abspath(self, relpath):
-        return svn.wc.get_pristine_copy_path(self.workingtree.abspath(relpath).encode("utf-8"))
+        return wc.get_pristine_copy_path(self.workingtree.abspath(relpath).encode("utf-8"))
 
     def get_file_lines(self, file_id):
         base_copy = self._abspath(self.id2path(file_id))

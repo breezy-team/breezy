@@ -20,15 +20,12 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
-import svn.delta
-
 from bzrlib.plugins.svn import changes, core
 from bzrlib.plugins.svn.cache import CacheTable
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND
+from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY
+from bzrlib.plugins.svn.ra import DIRENT_KIND
 from bzrlib.plugins.svn.transport import SvnRaTransport
-
-LOG_CHUNK_LIMIT = 0
 
 class lazy_dict(object):
     def __init__(self, initial, create_fn, *args):
@@ -104,7 +101,7 @@ class CachingLogWalker(CacheTable):
         self._transport = actual._transport
         self.find_children = actual.find_children
 
-        self.saved_revnum = self.cachedb.execute("SELECT MAX(rev) FROM changed_path").fetchone()[0]
+        self.saved_revnum = self.cachedb.execute("SELECT MAX(rev) FROM revinfo").fetchone()[0]
         if self.saved_revnum is None:
             self.saved_revnum = 0
 
@@ -114,6 +111,11 @@ class CachingLogWalker(CacheTable):
           create index if not exists path_rev on changed_path(rev);
           create unique index if not exists path_rev_path on changed_path(rev, path);
           create unique index if not exists path_rev_path_action on changed_path(rev, path, action);
+          create table if not exists revprop(rev integer, name text, value text);
+          create table if not exists revinfo(rev integer, all_revprops int);
+          create index if not exists revprop_rev on revprop(rev);
+          create unique index if not exists revprop_rev_name on revprop(rev, name);
+          create unique index if not exists revinfo_rev on revinfo(rev);
         """)
 
     def find_latest_change(self, path, revnum):
@@ -186,9 +188,10 @@ class CachingLogWalker(CacheTable):
             else:
                 next = changes.find_prev_location(revpaths, path, revnum)
 
-            revprops = lazy_dict({}, self._transport.revprop_list, revnum)
+            revprops = lazy_dict({}, self.revprop_list, revnum)
 
             if changes.changes_path(revpaths, path, True):
+                assert isinstance(revnum, int)
                 yield (revpaths, revnum, revprops)
                 i += 1
                 if limit != 0 and i == limit:
@@ -197,7 +200,11 @@ class CachingLogWalker(CacheTable):
             if next is None:
                 break
 
+            assert (ascending and next[1] > revnum) or \
+                   (not ascending and next[1] < revnum)
             (path, revnum) = next
+            assert isinstance(path, str)
+            assert isinstance(revnum, int)
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.
@@ -214,7 +221,7 @@ class CachingLogWalker(CacheTable):
         if row is None:
             return (None, -1)
         if row[2] == -1:
-            if row[0] == 'A':
+            if row[0] in ('A','R'):
                 return (None, -1)
             return (path, revnum-1)
         return (row[1], row[2])
@@ -245,61 +252,88 @@ class CachingLogWalker(CacheTable):
 
         return self._get_revision_paths(revnum)
 
+    def revprop_list(self, revnum):
+        self.mutter("revprop list: %r", revnum)
+
+        self.fetch_revisions(revnum)
+
+        if revnum > 0:
+            has_all_revprops = self.cachedb.execute("SELECT all_revprops FROM revinfo WHERE rev=?", (revnum,)).fetchone()[0]
+            known_revprops = {}
+            for k,v in self.cachedb.execute("select name, value from revprop where rev="+str(revnum)):
+                known_revprops[k.encode("utf-8")] = v.encode("utf-8")
+        else:
+            has_all_revprops = False
+            known_revprops = {}
+
+        if has_all_revprops:
+            return known_revprops
+
+        return lazy_dict(known_revprops, self._transport.revprop_list, revnum)
+
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
         until to_revnum.
 
         :param to_revnum: End of range to fetch information for
         """
+        assert isinstance(self.saved_revnum, int)
         if to_revnum <= self.saved_revnum:
             return
         latest_revnum = self.actual._transport.get_latest_revnum()
+        assert isinstance(latest_revnum, int)
         to_revnum = max(latest_revnum, to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
 
+        # Subversion 1.4 clients and servers can only deliver a limited set of revprops
+        if self._transport.has_capability("log-revprops"):
+            todo_revprops = None
+        else:
+            todo_revprops = ["svn:author", "svn:log", "svn:date"]
+
+        def rcvr(orig_paths, revision, revprops, has_children):
+            pb.update('fetching svn revision info', revision, to_revnum)
+            if orig_paths is None:
+                orig_paths = {}
+            for p in orig_paths:
+                copyfrom_path = orig_paths[p][1]
+                if copyfrom_path is not None:
+                    copyfrom_path = copyfrom_path.strip("/")
+
+                self.cachedb.execute(
+                     "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
+                     (revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2]))
+            for k,v in revprops.items():
+                self.cachedb.execute("replace into revprop (rev, name, value) values (?,?,?)", (revision, k, v))
+            self.cachedb.execute("replace into revinfo (rev, all_revprops) values (?,?)", (revision, todo_revprops is None))
+            self.saved_revnum = revision
+            if self.saved_revnum % 5000 == 0:
+                self.cachedb.commit()
+
+        self.mutter("get_log %d->%d", self.saved_revnum, to_revnum)
         try:
             try:
-                while self.saved_revnum < to_revnum:
-                    for (orig_paths, revision, revprops) in self.actual._transport.iter_log(None, self.saved_revnum, 
-                                             to_revnum, self.actual._limit, True, 
-                                             True, []):
-                        pb.update('fetching svn revision info', revision, to_revnum)
-                        if orig_paths is None:
-                            orig_paths = {}
-                        for p in orig_paths:
-                            copyfrom_path = orig_paths[p].copyfrom_path
-                            if copyfrom_path is not None:
-                                copyfrom_path = copyfrom_path.strip("/")
-
-                            self.cachedb.execute(
-                                 "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                                 (revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
-                            # Work around nasty memory leak in Subversion
-                            orig_paths[p]._parent_pool.destroy()
-
-                        self.saved_revnum = revision
-                        if self.saved_revnum % 1000 == 0:
-                            self.cachedb.commit()
-            finally:
-                pb.finished()
-        except SubversionException, (_, num):
-            if num == ERR_FS_NO_SUCH_REVISION:
-                raise NoSuchRevision(branch=self, 
-                    revision="Revision number %d" % to_revnum)
-            raise
+                self.actual._transport.get_log(rcvr, [""], self.saved_revnum, to_revnum, 0, True, True, False, todo_revprops)
+            except SubversionException, (_, num):
+                if num == ERR_FS_NO_SUCH_REVISION:
+                    raise NoSuchRevision(branch=self, 
+                        revision="Revision number %d" % to_revnum)
+                raise
+        finally:
+            pb.finished()
         self.cachedb.commit()
 
 
 def struct_revpaths_to_tuples(changed_paths):
     assert isinstance(changed_paths, dict)
     revpaths = {}
-    for k,v in changed_paths.items():
-        if v.copyfrom_path is None:
+    for k,(action, copyfrom_path, copyfrom_rev) in changed_paths.items():
+        if copyfrom_path is None:
             copyfrom_path = None
         else:
-            copyfrom_path = v.copyfrom_path.strip("/")
-        revpaths[k.strip("/")] = (v.action, copyfrom_path, v.copyfrom_rev)
+            copyfrom_path = copyfrom_path.strip("/")
+        revpaths[k.strip("/")] = (action, copyfrom_path, copyfrom_rev)
     return revpaths
 
 
@@ -314,11 +348,6 @@ class LogWalker(object):
 
         self._transport = transport
 
-        if limit is not None:
-            self._limit = limit
-        else:
-            self._limit = LOG_CHUNK_LIMIT
-
     def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
 
@@ -329,7 +358,7 @@ class LogWalker(object):
         assert isinstance(revnum, int) and revnum >= 0
 
         try:
-            return self._transport.iter_log([path], revnum, 0, 2, True, False, []).next()[1]
+            return self._transport.iter_log([path], revnum, 0, 2, True, False, False, []).next()[1]
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -337,6 +366,9 @@ class LogWalker(object):
             if num == ERR_FS_NOT_FOUND:
                 return None
             raise
+
+    def revprop_list(self, revnum):
+        return lazy_dict({}, self._transport.revprop_list, revnum)
 
     def iter_changes(self, paths, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
@@ -350,7 +382,16 @@ class LogWalker(object):
         assert from_revnum >= 0 and to_revnum >= 0
 
         try:
-            for (changed_paths, revnum, known_revprops) in self._transport.iter_log(paths, from_revnum, to_revnum, limit, True, False, []):
+            # Subversion 1.4 clients and servers can only deliver a limited set of revprops
+            if self._transport.has_capability("log-revprops"):
+                todo_revprops = None
+            else:
+                todo_revprops = ["svn:author", "svn:log", "svn:date"]
+
+            iterator = self._transport.iter_log(paths, from_revnum, to_revnum, limit, 
+                                                    True, False, False, revprops=todo_revprops)
+
+            for (changed_paths, revnum, known_revprops, has_children) in iterator:
                 if pb is not None:
                     pb.update("determining changes", from_revnum-revnum, from_revnum)
                 if revnum == 0 and changed_paths is None:
@@ -358,7 +399,10 @@ class LogWalker(object):
                 else:
                     assert isinstance(changed_paths, dict), "invalid paths %r in %r" % (changed_paths, revnum)
                     revpaths = struct_revpaths_to_tuples(changed_paths)
-                revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
+                if todo_revprops is None:
+                    revprops = known_revprops
+                else:
+                    revprops = lazy_dict(known_revprops, self.revprop_list, revnum)
                 yield (revpaths, revnum, revprops)
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
@@ -379,7 +423,7 @@ class LogWalker(object):
 
         try:
             return struct_revpaths_to_tuples(
-                self._transport.iter_log(None, revnum, revnum, 1, True, True, []).next()[0])
+                self._transport.iter_log([""], revnum, revnum, 1, True, True, False, []).next()[0])
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -395,66 +439,25 @@ class LogWalker(object):
         assert isinstance(path, str), "invalid path"
         path = path.strip("/")
         conn = self._transport.connections.get(self._transport.get_svn_repos_root())
+        results = []
+        unchecked_dirs = set([path])
         try:
-            ft = conn.check_path(path, revnum)
-            if ft == core.NODE_FILE:
-                return []
-            assert ft == core.NODE_DIR
+            while len(unchecked_dirs) > 0:
+                nextp = unchecked_dirs.pop()
+                try:
+                    dirents = conn.get_dir(nextp, revnum, DIRENT_KIND)[0]
+                except SubversionException, (_, num):
+                    if num == ERR_FS_NOT_DIRECTORY:
+                        continue
+                    raise
+                for k,v in dirents.items():
+                    childp = urlutils.join(nextp, k)
+                    if v['kind'] == core.NODE_DIR:
+                        unchecked_dirs.add(childp)
+                    results.append(childp)
         finally:
             self._transport.connections.add(conn)
-
-        class TreeLister(svn.delta.Editor):
-            def __init__(self, base):
-                self.files = []
-                self.base = base
-
-            def set_target_revision(self, revnum):
-                """See Editor.set_target_revision()."""
-                pass
-
-            def open_root(self, revnum, baton):
-                """See Editor.open_root()."""
-                return path
-
-            def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-                """See Editor.add_directory()."""
-                self.files.append(urlutils.join(self.base, path))
-                return path
-
-            def change_dir_prop(self, id, name, value, pool):
-                pass
-
-            def change_file_prop(self, id, name, value, pool):
-                pass
-
-            def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
-                self.files.append(urlutils.join(self.base, path))
-                return path
-
-            def close_dir(self, id):
-                pass
-
-            def close_file(self, path, checksum):
-                pass
-
-            def close_edit(self):
-                pass
-
-            def abort_edit(self):
-                pass
-
-            def apply_textdelta(self, file_id, base_checksum):
-                pass
-
-        editor = TreeLister(path)
-        try:
-            conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
-            reporter = conn.do_update(revnum, "", True, editor)
-            reporter.set_path("", revnum, True, None)
-            reporter.finish()
-        finally:
-            self._transport.connections.add(conn)
-        return editor.files
+        return results
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.
@@ -467,7 +470,7 @@ class LogWalker(object):
             return (None, -1)
 
         try:
-            paths = struct_revpaths_to_tuples(self._transport.iter_log([path], revnum, revnum, 1, True, False, []).next()[0])
+            paths = struct_revpaths_to_tuples(self._transport.iter_log([path], revnum, revnum, 1, True, False, False, []).next()[0])
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -478,7 +481,7 @@ class LogWalker(object):
             return (None, -1)
 
         if paths[path][2] == -1:
-            if paths[path][0] == 'A':
+            if paths[path][0] in ('A', 'R'):
                 return (None, -1)
             return (path, revnum-1)
 

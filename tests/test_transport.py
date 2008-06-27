@@ -60,12 +60,17 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertTrue(t.listable())
 
     def test_get_dir_rev(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo/bar': 'Data'})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "MSG")
-        self.client_delete("dc/foo")
-        self.client_commit("dc", "MSG2")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        foo = dc.add_dir("foo")
+        foo.add_file("foo/bar").modify("Data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.delete("foo")
+        dc.close()
+
         t = SvnRaTransport(repos_url)
         lists = t.get_dir("foo", 1, 0)
         self.assertTrue("bar" in lists[0])
@@ -81,31 +86,34 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertEqual(["bar"], t.list_dir("foo"))
 
     def test_list_dir_file(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({"dc/file": "data"})
-        self.client_add("dc/file")
-        self.client_commit("dc", "Bla")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("file").modify("data")
+        dc.close()
 
         t = SvnRaTransport(repos_url)
         self.assertEqual(["file"], t.list_dir("."))
         self.assertRaises(NoSuchFile, t.list_dir, "file")
 
     def test_clone(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({"dc/dir": None, "dc/bl": "data"})
-        self.client_add("dc/dir")
-        self.client_add("dc/bl")
-        self.client_commit("dc", "Bla")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("dir")
+        dc.add_file("bl").modify("data")
+        dc.close()
 
         t = SvnRaTransport(repos_url)
         self.assertEqual("%s/dir" % repos_url, t.clone('dir').base)
 
     def test_clone_none(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({"dc/dir": None, "dc/bl": "data"})
-        self.client_add("dc/dir")
-        self.client_add("dc/bl")
-        self.client_commit("dc", "Bla")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("dir")
+        dc.add_file("bl").modify("data")
+        dc.close()
 
         t = SvnRaTransport(repos_url)
         tt = t.clone()
@@ -143,21 +151,23 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertRaises(FileExists, t.mkdir, "bla")
 
     def test_clone2(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({"dc/dir": None, "dc/bl": "data"})
-        self.client_add("dc/dir")
-        self.client_add("dc/bl")
-        self.client_commit("dc", "Bla")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("dir")
+        dc.add_file("bl").modify("data")
+        dc.close()
 
         t = SvnRaTransport(repos_url)
         self.assertEqual("%s/dir" % repos_url, t.clone('dir').base)
         
     def test_get_root(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({"dc/dir": None, "dc/bl": "data"})
-        self.client_add("dc/dir")
-        self.client_add("dc/bl")
-        self.client_commit("dc", "Bla")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("dir")
+        dc.add_file("bl").modify("data")
+        dc.close()
 
         t = SvnRaTransport("%s/dir" % repos_url)
         root = t.get_svn_repos_root()

@@ -13,23 +13,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Subversion rpeository library tests."""
+"""Subversion core library tests."""
 
-import os
-from bzrlib.plugins.svn import repos
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCase
+from bzrlib.plugins.svn import core, properties
 
-class TestClient(TestCaseInTempDir):
+class TestCore(TestCase):
     def setUp(self):
-        super(TestClient, self).setUp()
+        super(TestCore, self).setUp()
 
-    def test_create(self):
-        repos.create(os.path.join(self.test_dir, "foo"))
+    def test_exc(self):
+        self.assertIsInstance(core.SubversionException("foo", 1), Exception)
 
-    def test_open(self):
-        repos.create(os.path.join(self.test_dir, "foo"))
-        repos.Repository("foo")
+    def test_time_from_cstring(self):
+        self.assertEquals(1225704780716938L, properties.time_from_cstring("2008-11-03T09:33:00.716938Z"))
 
-    def test_uuid(self):
-        repos.create(os.path.join(self.test_dir, "foo"))
-        self.assertIsInstance(repos.Repository("foo").fs().get_uuid(), str)
+    def test_time_to_cstring(self):
+        self.assertEquals("2008-11-03T09:33:00.716938Z", properties.time_to_cstring(1225704780716938L))
+

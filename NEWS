@@ -1,6 +1,22 @@
-bzr-svn 0.4.11	UNRELEASED
+bzr-svn 0.4.11    UNRELEASED
 
   CHANGES
+
+   * bzr-svn now comes with its own Python bindings for the Subversion 
+     libraries, removing the need for a unreleased version of Subversion and 
+     improving performance.
+
+     It does however mean the extensions have to be built. This requires 
+     the Subversion development libraries and should be possible by 
+     simply running ``make`` from the plugin directory. 
+
+	 This fixes some existing bzr-svn related bugs caused by Python-Subversion:
+
+     * KeyboardInterrupts are now no longer swallowed.  (#242217)
+
+     * Crash bug trying to access sites that use self-signed certificates. (#238529)
+
+     * Username and password prompting will now always work.
 
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
@@ -39,6 +55,17 @@ bzr-svn 0.4.11	UNRELEASED
    * Fix dealing with strange remove during replace operation. (#232196)
 
    * Deal with missing branches/tags directories when using webdav. (#235301)
+
+   * Remove endless loop in logwalker. (#235776)
+
+   * Convert redirect requests received from Subversion. (#229848)
+
+   * New function for finding path children that's faster and more correct. (#240954)
+
+   * Support cloning bzr-svn branches (will clone to rich-root-pack). (#229819)
+
+   * Fix inconsistent revision iteration when branches' parents were moved but 
+     not changed. (#237901)
 
 bzr-svn 0.4.10  2008-05-12
 
@@ -118,6 +145,12 @@ bzr-svn 0.4.10  2008-05-12
 
 bzr-svn 0.4.9    2008-03-23
 
+  CHANGES
+
+   * The Python-Subversion bindings are no longer necessary. Instead, 
+     bzr-svn now comes with its own Python bindings for the Subversion 
+     libraries.
+
   FEATURES
 
    * Set revision properties when possible.
@@ -140,6 +173,8 @@ bzr-svn 0.4.9    2008-03-23
    * Fix compatibility with bzr 1.3.
 
    * Be a bit quieter with messages about experimental mappings. (#162496)
+
+   * Properly warn when trying to open a working copy with a newer version.
 
    * More correct implementation of Repository.get_ancestry(). 
 

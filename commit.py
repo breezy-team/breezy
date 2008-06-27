@@ -27,13 +27,13 @@ from bzrlib.trace import mutter, warning
 from cStringIO import StringIO
 
 from bzrlib.plugins.svn import core, properties
-from bzrlib.plugins.svn.core import SubversionException, time_to_cstring
+from bzrlib.plugins.svn.core import SubversionException
+from bzrlib.plugins.svn.delta import send_stream
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
 from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
-from bzrlib.plugins.svn.ra import txdelta_send_stream
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
 
 import urllib
@@ -197,8 +197,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param file_editor: Subversion FileEditor object.
         """
         assert file_editor is not None
-        (txdelta, txbaton) = file_editor.apply_textdelta(None)
-        digest = txdelta_send_stream(StringIO(contents), txdelta, txbaton)
+        txdelta = file_editor.apply_textdelta()
+        digest = send_stream(StringIO(contents), txdelta)
         if 'validate' in debug.debug_flags:
             from fetch import md5_strings
             assert digest == md5_strings(contents)
@@ -244,9 +244,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding %s %r', child_ie.kind, new_child_path)
-                child_editor = dir_editor.add_file(
-                    full_new_child_path, None, -1)
-
+                child_editor = dir_editor.add_file(full_new_child_path)
 
             # copy if they existed at different location
             elif (self.old_inv.id2path(child_ie.file_id) != new_child_path or
@@ -302,7 +300,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.modified_files[child_ie.file_id], child_editor)
 
             if child_editor is not None:
-                child_editor.close(None)
+                child_editor.close()
 
         # Loop over subdirectories of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -316,7 +314,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter('adding dir %r', child_ie.name)
                 child_editor = dir_editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), 
-                                  new_child_path), None, -1)
+                                  new_child_path))
 
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != new_child_path:
@@ -401,13 +399,13 @@ class SvnCommitBuilder(RootCommitBuilder):
         """Finish the commit.
 
         """
-        def done(revision_data, pool):
+        def done(*args):
             """Callback that is called by the Subversion commit editor 
             once the commit finishes.
 
             :param revision_data: Revision metadata
             """
-            self.revision_metadata = revision_data
+            self.revision_metadata = args
         
         bp_parts = self.branch.get_branch_path().split("/")
         repository_latest_revnum = self.repository.get_latest_revnum()
@@ -457,11 +455,11 @@ class SvnCommitBuilder(RootCommitBuilder):
             for prop in self._svn_revprops:
                 if not properties.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name", prop)
-            try:
+            if self.repository.transport.has_capability("commit-revprops"):
                 self.editor = self.repository.transport.get_commit_editor(
                         self._svn_revprops, done, None, False)
                 self._svn_revprops = {}
-            except NotImplementedError:
+            else:
                 if set_revprops:
                     raise
                 # Try without bzr: revprops
@@ -513,13 +511,15 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.repository._clear_cached_state()
 
-        revid = self.branch.generate_revision_id(self.revision_metadata.revision)
+        (result_revision, result_date, result_author) = self.revision_metadata
+
+        revid = self.branch.generate_revision_id(result_revision)
 
         assert self._new_revision_id is None or self._new_revision_id == revid
 
         self.mutter('commit %d finished. author: %r, date: %r, revid: %r',
-               self.revision_metadata.revision, self.revision_metadata.author, 
-                   self.revision_metadata.date, revid)
+               result_revision, result_author, 
+                   result_date, revid)
 
         override_svn_revprops = self._config.get_override_svn_revprops()
         if override_svn_revprops is not None:
@@ -527,11 +527,11 @@ class SvnCommitBuilder(RootCommitBuilder):
             if properties.PROP_REVISION_AUTHOR in override_svn_revprops:
                 new_revprops[properties.PROP_REVISION_AUTHOR] = self._committer.encode("utf-8")
             if properties.PROP_REVISION_DATE in override_svn_revprops:
-                new_revprops[properties.PROP_REVISION_DATE] = time_to_cstring(1000000*self._timestamp)
-            set_svn_revprops(self.repository.transport, self.revision_metadata.revision, new_revprops)
+                new_revprops[properties.PROP_REVISION_DATE] = properties.time_to_cstring(1000000*self._timestamp)
+            set_svn_revprops(self.repository.transport, result_revision, new_revprops)
 
         try:
-            set_svn_revprops(self.repository.transport, self.revision_metadata.revision, 
+            set_svn_revprops(self.repository.transport, result_revision, 
                          self._svn_revprops) 
         except RevpropChangeFailed:
             pass # Ignore for now
