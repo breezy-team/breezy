@@ -46,10 +46,12 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertTrue(tree.inventory[tree.inventory.path2id("file")].executable)
 
     def test_executable_changed(self):
-        self.make_client("d", "dc")
-        self.build_tree({"dc/file": "x"})
-        self.client_add("dc/file")
-        self.client_commit("dc", "executable")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("file").modify("x")
+        dc.close()
+
         self.client_update("dc")
         self.client_set_prop("dc/file", "svn:executable", "*")
         tree = SvnBasisTree(self.open_checkout("dc"))
@@ -111,12 +113,17 @@ class TestBasisTree(TestCaseWithSubversionRepository):
     def test_executable_link(self):
         if not has_symlinks():
             return
-        self.make_client("d", "dc")
-        os.symlink("target", "dc/file")
-        self.build_tree({"dc/file": "x"})
-        self.client_add("dc/file")
-        self.client_set_prop("dc/file", "svn:executable", "*")
-        self.client_commit("dc", "exe1")
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.get_commit_editor(repos_url)
+        file = dc.add_file("file")
+        file.modify("link target")
+        file.change_prop("svn:special", "*")
+        file.change_prop("svn:executable", "*")
+        dc.close()
+
+        self.client_update("dc")
+
         wt = self.open_checkout("dc")
         tree = SvnBasisTree(wt)
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
