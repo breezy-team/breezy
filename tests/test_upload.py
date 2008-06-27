@@ -67,6 +67,25 @@ class TransportAdapter(
                 # Continue even if a dependency prevents us 
                 # from adding this test
                 pass
+        try:
+            import bzrlib.plugins.local_test_server
+            from bzrlib.plugins.local_test_server import test_server
+            if False:
+                # XXX: Disable since we can't get chmod working for anonymous
+                # user
+                scenario = ('vsftpd',
+                            {'transport_class': test_server.FtpTransport,
+                             'transport_server': test_server.Vsftpd,
+                             })
+                result.append(scenario)
+            if test_server.ProftpdFeature().available():
+                scenario = ('proftpd',
+                            {'transport_class': test_server.FtpTransport,
+                             'transport_server': test_server.Proftpd,
+                             })
+                result.append(scenario)
+        except ImportError:
+            pass
         return result
 
 
