@@ -263,7 +263,10 @@ static svn_error_t *py_stream_read(void *baton, char *buffer, apr_size_t *length
     ret = PyObject_CallMethod(self, "read", "i", *length);
 	if (ret == NULL)
 		return py_svn_error();
-	/* FIXME: Handle !PyString_Check(ret) */
+	if (!PyString_Check(ret)) {
+		PyErr_SetString(PyExc_TypeError, "Expected stream read function to return string");
+		return py_svn_error();
+	}
     *length = PyString_Size(ret);
     memcpy(buffer, PyString_AS_STRING(ret), *length);
 	Py_DECREF(ret);
@@ -284,9 +287,9 @@ static svn_error_t *py_stream_close(void *baton)
 {
     PyObject *self = (PyObject *)baton, *ret;
     ret = PyObject_CallMethod(self, "close", NULL);
+    Py_DECREF(self);
 	if (ret == NULL)
 		return py_svn_error();
-    Py_DECREF(self);
 	Py_DECREF(ret);
 	return NULL;
 }
