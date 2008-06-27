@@ -173,10 +173,11 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         newrepos.start_write_group()
 
         mapping = oldrepos.get_mapping()
-        vf = newrepos.weave_store.get_weave_or_empty(tree.inventory.path2id("a"), newrepos.get_transaction())
-        vf.add_lines("customrev%s-upgrade" % mapping.upgrade_suffix,
-                ["svn-v1:1@%s-" % oldrepos.uuid],
-                vf.get_lines("svn-v1:1@%s-" % oldrepos.uuid))
+        fileid = tree.inventory.path2id("a")
+        revid = "customrev%s-upgrade" % mapping.upgrade_suffix
+        newrepos.texts.add_lines((fileid, revid), 
+                [(fileid, "svn-v1:1@%s-" % oldrepos.uuid)],
+                tree.get_file(fileid).readlines())
 
         newrepos.commit_write_group()
         newrepos.unlock()
