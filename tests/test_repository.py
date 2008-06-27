@@ -96,13 +96,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertFalse(repos.get_physical_lock_status())
 
     def test_iter_changes_parent_rename(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo/bar': None})
-        self.client_add('dc/foo')
-        self.client_commit('dc', 'a')
-        self.client_update('dc')
-        self.client_copy('dc/foo', 'dc/bla')
-        self.client_commit('dc', 'b')
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        foo = dc.add_dir("foo")
+        foo.add_dir("foo/bar")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("bla", "foo")
+        dc.close()
+
         repos = Repository.open(repos_url)
         ret = list(repos.iter_changes('bla/bar', 2, BzrSvnMappingv3(SingleBranchingScheme('bla/bar'))))
         self.assertEquals(1, len(ret))
@@ -121,19 +125,24 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual({u"": (mapping.generate_file_id(repos.uuid, 0, "", u""), mapping.generate_revision_id(repos.uuid, 0, ""))}, repos.get_fileid_map(0, "", mapping))
 
     def test_generate_revision_id_forced_revid(self):
-        repos_url = self.make_client("a", "dc")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID+"none", 
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop(SVN_PROP_BZR_REVISION_ID+"none", 
                              "2 someid\n")
-        self.client_commit("dc", "set id")
+        dc.close()
+
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(1, "", repos.get_mapping())
         self.assertEquals("someid", revid)
 
     def test_generate_revision_id_forced_revid_invalid(self):
-        repos_url = self.make_client("a", "dc")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID+"none", 
-                             "corrupt-id\n")
-        self.client_commit("dc", "set id")
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.change_prop(SVN_PROP_BZR_REVISION_ID+"none", "corrupt-id\n")
+        dc.close()
+
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(1, "", repos.get_mapping())
         self.assertEquals(
@@ -163,10 +172,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals(repos.get_signature_text(revid), "TEXT")
 
     def test_repr(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.close()
 
         repos = Repository.open(repos_url)
 
@@ -216,13 +226,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             )
 
     def test_follow_branch_move_single(self):
-        repos_url = self.make_client('a', 'dc')
-        self.build_tree({'dc/pykleur/bla': None})
-        self.client_add("dc/pykleur")
-        self.client_commit("dc", "initial")
-        self.client_copy("dc/pykleur", "dc/pygments", 1)
-        self.client_update("dc")
-        self.client_commit("dc", "commit")
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        pykleur = dc.add_dir("pykleur")
+        pykleur.add_dir("pykleur/bla")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("pygments", "pykleur", 1)
+        dc.close()
+
         repos = Repository.open(repos_url)
         changes = repos.iter_reverse_branch_changes("pygments", 2, SingleBranchingScheme("pygments"))
         self.assertEquals([('pygments',
@@ -231,11 +245,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 [(l.branch_path, l.paths, l.revnum) for l in changes])
 
     def test_history_all(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
-        self.client_add("dc/trunk")
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/file").modify("data")
+        foo = dc.add_dir("foo")
+        foo.add_file("foo/file").modify("data")
+        dc.close()
 
         repos = Repository.open(repos_url)
 
@@ -258,15 +275,25 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertFalse(stats.has_key('committers'))
 
     def test_all_revs(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "add trunk")
-        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "add a branch")
-        self.client_delete("dc/branches/somebranch")
-        self.client_commit("dc", "remove branch")
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/file").modify("data")
+        foo = dc.add_dir("foo")
+        foo.add_file("foo/file").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.add_dir("branches")
+        somebranch = branches.add_dir("branches/somebranch")
+        somebranch.add_file("branches/somebranch/somefile").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        branches.delete("branches/somebranch")
+        dc.close()
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
@@ -283,25 +310,32 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
               list(repos.all_revision_ids(repos.get_layout())))
 
     def test_follow_history_empty_branch(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})
-        self.client_add("dc/trunk")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/afile").modify("data")
+        dc.add_dir("branches")
+        dc.close()
+
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
         self.assertEqual([repos.generate_revision_id(1, 'trunk', repos.get_mapping())], 
                 list(repos.all_revision_ids(repos.get_layout())))
 
     def test_follow_history_follow(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})
-        self.client_add("dc/trunk")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository("a")
 
-        self.client_copy("dc/trunk", "dc/branches/abranch")
-        self.client_commit("dc", "Create branch")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/afile").modify("data")
+        dc.add_dir("branches")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        branches.add_dir("branches/abranch", "trunk", 1)
+        dc.close()
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
@@ -387,13 +421,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=2)))
 
     def test_find_branchpaths_start_revno(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/branches/brancha': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/branches/branchb': None})
-        self.client_add("dc/branches/branchb")
-        self.client_commit("dc", "My Message 2")
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.add_dir("branches")
+        branches.add_dir("branches/brancha")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        branches.add_dir("branches/branchb")
+        dc.close()
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
@@ -478,30 +516,33 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=0)))
 
     def test_find_branchpaths_trunk_one(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
 
-        self.build_tree({'dc/trunk/foo': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/foo").modify("data")
+        dc.close()
 
         self.assertEqual([("trunk", 1, True)], 
                 list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=1)))
 
     def test_find_branchpaths_removed(self):
-        repos_url = self.make_client("a", "dc")
+        repos_url = self.make_repository("a")
 
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
 
-        self.build_tree({'dc/trunk/foo': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/foo").modify("data")
+        dc.close()
 
-        self.client_delete("dc/trunk")
-        self.client_commit("dc", "remove")
+        dc = self.get_commit_editor(repos_url)
+        dc.delete("trunk")
+        dc.close()
 
         self.assertEqual([("trunk", 1, True)], 
                 list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=1)))
@@ -584,7 +625,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         dc = self.get_commit_editor(repos_url)
         dc.add_file("foo").modify("data")
-        self.client_add("dc/foo")
         dc.close()
 
         dc = self.get_commit_editor(repos_url)
@@ -841,11 +881,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repository.generate_revision_id(1, "bloe", mapping))[:2])
 
     def test_lookup_revision_id_overridden(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bloe': None})
-        self.client_add("dc/bloe")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID+"none", "2 myid\n")
-        self.client_commit("dc", "foobar")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("bloe")
+        dc.change_prop(SVN_PROP_BZR_REVISION_ID+"none", "2 myid\n")
+        dc.close()
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
         self.assertEqual(("", 1), repository.lookup_revision_id( 
@@ -854,12 +895,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repository.lookup_revision_id("myid")[:2])
 
     def test_lookup_revision_id_overridden_invalid(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bloe': None})
-        self.client_add("dc/bloe")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID+"none", 
-                             "corrupt-entry\n")
-        self.client_commit("dc", "foobar")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("bloe")
+        dc.change_prop(SVN_PROP_BZR_REVISION_ID+"none", "corrupt-entry\n")
+        dc.close()
+
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
         self.assertEqual(("", 1), repository.lookup_revision_id( 
