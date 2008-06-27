@@ -99,6 +99,10 @@ class TestDirEditor(object):
 
     def add_file(self, path, copyfrom_path=None, copyfrom_rev=-1):
         self.close_children()
+        if copyfrom_path is not None:
+            copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
+        if copyfrom_path is not None and copyfrom_rev == -1:
+            copyfrom_rev = self.revnum
         child = TestFileEditor(self.dir.add_file(path, copyfrom_path, copyfrom_rev))
         self.children.append(child)
         return child
