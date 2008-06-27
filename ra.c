@@ -77,13 +77,26 @@ static svn_error_t *py_lock_func (void *baton, const char *path, int do_lock,
 	return NULL;
 }
 
+/** Connection to a remote Subversion repository. */
+typedef struct {
+	PyObject_HEAD
+	svn_ra_session_t *ra;
+    apr_pool_t *pool;
+    const char *url;
+    PyObject *progress_func;
+	AuthObject *auth;
+	bool busy;
+	PyObject *client_string_func;
+	PyObject *open_tmp_file_func;
+	char *root;
+} RemoteAccessObject;
+
 typedef struct {
 	PyObject_HEAD
     const svn_ra_reporter2_t *reporter;
     void *report_baton;
     apr_pool_t *pool;
-	void (*done_cb)(void *baton);
-	void *done_baton;
+	RemoteAccessObject *ra;
 } ReporterObject;
 
 static PyObject *reporter_set_path(PyObject *self, PyObject *args)
@@ -142,12 +155,13 @@ static PyObject *reporter_finish(PyObject *self)
 {
 	ReporterObject *reporter = (ReporterObject *)self;
 
-	if (reporter->done_cb != NULL)
-		reporter->done_cb(reporter->done_baton);
+	reporter->ra->busy = false;
 
 	if (!check_error(reporter->reporter->finish_report(reporter->report_baton, 
 													  reporter->pool)))
 		return NULL;
+
+	Py_XDECREF(reporter->ra);
 
 	Py_RETURN_NONE;
 }
@@ -156,12 +170,13 @@ static PyObject *reporter_abort(PyObject *self)
 {
 	ReporterObject *reporter = (ReporterObject *)self;
 	
-	if (reporter->done_cb != NULL)
-		reporter->done_cb(reporter->done_baton);
+	reporter->ra->busy = false;
 
 	if (!check_error(reporter->reporter->abort_report(reporter->report_baton, 
 													 reporter->pool)))
 		return NULL;
+
+	Py_XDECREF(reporter->ra);
 
 	Py_RETURN_NONE;
 }
@@ -327,34 +342,39 @@ static svn_error_t *py_txdelta_window_handler(svn_txdelta_window_t *window, void
 	int i;
 	PyObject *ops, *ret;
     PyObject *fn = (PyObject *)baton, *py_new_data, *py_window;
-    if (window == NULL) {
-        /* Signals all delta windows have been received */
-        Py_DECREF(fn);
-        return NULL;
-	}
     if (fn == Py_None) {
         /* User doesn't care about deltas */
         return NULL;
 	}
-    ops = PyList_New(window->num_ops);
-	if (ops == NULL)
-		return NULL;
-	for (i = 0; i < window->num_ops; i++) {
-		PyList_SetItem(ops, i, Py_BuildValue("(iII)", window->ops[i].action_code, 
-					window->ops[i].offset, 
-					window->ops[i].length));
-	}
-	if (window->new_data != NULL && window->new_data->data != NULL) {
-		py_new_data = PyString_FromStringAndSize(window->new_data->data, window->new_data->len);
+
+	if (window == NULL) {
+		py_window = Py_None;
+		Py_INCREF(py_window);
 	} else {
-		py_new_data = Py_None;
+		ops = PyList_New(window->num_ops);
+		if (ops == NULL)
+			return NULL;
+		for (i = 0; i < window->num_ops; i++) {
+			PyList_SetItem(ops, i, Py_BuildValue("(iII)", window->ops[i].action_code, 
+						window->ops[i].offset, 
+						window->ops[i].length));
+		}
+		if (window->new_data != NULL && window->new_data->data != NULL) {
+			py_new_data = PyString_FromStringAndSize(window->new_data->data, window->new_data->len);
+		} else {
+			py_new_data = Py_None;
+		}
+		py_window = Py_BuildValue("((LIIiOO))", window->sview_offset, window->sview_len, window->tview_len, 
+									window->src_ops, ops, py_new_data);
+		Py_DECREF(ops);
+		Py_DECREF(py_new_data);
 	}
-	py_window = Py_BuildValue("((LIIiOO))", window->sview_offset, window->sview_len, window->tview_len, 
-								window->src_ops, ops, py_new_data);
-	Py_DECREF(ops);
-	Py_DECREF(py_new_data);
 	ret = PyObject_CallFunction(fn, "O", py_window);
 	Py_DECREF(py_window);
+	if (window == NULL) {
+        /* Signals all delta windows have been received */
+        Py_DECREF(fn);
+	}
 	if (ret == NULL)
 		return py_svn_error();
 	Py_DECREF(ret);
@@ -460,19 +480,6 @@ static svn_error_t *py_file_rev_handler(void *baton, const char *path, svn_revnu
     return NULL;
 }
 
-/** Connection to a remote Subversion repository. */
-typedef struct {
-	PyObject_HEAD
-	svn_ra_session_t *ra;
-    apr_pool_t *pool;
-    const char *url;
-    PyObject *progress_func;
-	AuthObject *auth;
-	bool busy;
-	PyObject *client_string_func;
-	PyObject *open_tmp_file_func;
-	char *root;
-} RemoteAccessObject;
 
 static void ra_done_handler(void *_ra)
 {
@@ -887,8 +894,7 @@ static PyObject *ra_do_update(PyObject *self, PyObject *args)
 	ret->report_baton = report_baton;
 	ret->pool = temp_pool;
 	Py_INCREF(ra);
-	ret->done_cb = ra_done_handler;
-	ret->done_baton = ra;
+	ret->ra = ra;
 	return (PyObject *)ret;
 }
 
@@ -931,8 +937,7 @@ static PyObject *ra_do_switch(PyObject *self, PyObject *args)
 	ret->report_baton = report_baton;
 	ret->pool = temp_pool;
 	Py_INCREF(ra);
-	ret->done_cb = ra_done_handler;
-	ret->done_baton = ra;
+	ret->ra = ra;
 	return (PyObject *)ret;
 }
 
