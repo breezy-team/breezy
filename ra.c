@@ -2099,30 +2099,8 @@ static PyObject *get_ssl_client_cert_pw_file_provider(PyObject *self)
     return (PyObject *)auth;
 }
 
-static PyObject *txdelta_send_stream(PyObject *self, PyObject *args)
-{
-    unsigned char digest[16];
-    apr_pool_t *pool;
-	PyObject *stream;
-	TxDeltaWindowHandlerObject *py_txdelta;
-
-	if (!PyArg_ParseTuple(args, "OO", &stream, &py_txdelta))
-		return NULL;
-
-	pool = Pool(NULL);
-
-	if (pool == NULL)
-		return NULL;
-
-	RUN_SVN_WITH_POOL(pool, svn_txdelta_send_stream(new_py_stream(pool, stream), py_txdelta->txdelta_handler, py_txdelta->txdelta_baton, (unsigned char *)digest, pool));
-
-    apr_pool_destroy(pool);
-    return PyString_FromStringAndSize((char *)digest, 16);
-}
-
 static PyMethodDef ra_module_methods[] = {
 	{ "version", (PyCFunction)version, METH_NOARGS, NULL },
-	{ "txdelta_send_stream", txdelta_send_stream, METH_VARARGS, NULL },
 	{ "get_ssl_client_cert_pw_file_provider", (PyCFunction)get_ssl_client_cert_pw_file_provider, METH_NOARGS, NULL },
 	{ "get_ssl_client_cert_file_provider", (PyCFunction)get_ssl_client_cert_file_provider, METH_NOARGS, NULL },
 	{ "get_ssl_server_trust_file_provider", (PyCFunction)get_ssl_server_trust_file_provider, METH_NOARGS, NULL },

@@ -30,8 +30,9 @@ from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import properties, ra, repos
+from bzrlib.plugins.svn.delta import send_stream
 from bzrlib.plugins.svn.client import Client
-from bzrlib.plugins.svn.ra import Auth, RemoteAccess, txdelta_send_stream
+from bzrlib.plugins.svn.ra import Auth, RemoteAccess
 
 class TestFileEditor(object):
     def __init__(self, file):
@@ -45,7 +46,7 @@ class TestFileEditor(object):
         if contents is None:
             contents = osutils.rand_chars(100)
         txdelta = self.file.apply_textdelta()
-        txdelta_send_stream(StringIO(contents), txdelta)
+        send_stream(StringIO(contents), txdelta)
 
     def close(self):
         assert not self.is_closed
