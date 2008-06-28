@@ -46,14 +46,20 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
     # movefileorder.dump
     # recreatebranch.dump
     def test_simplemove(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo': "data", "dc/blie": "bloe"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/foo", "dc/bar")
-        self.client_delete("dc/foo")
-        self.build_tree({'dc/bar': "data2"})
-        self.client_commit("dc", "Second Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bar", "foo", 1)
+        dc.delete("foo")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("bar").modify("data2")
+        dc.close()
 
         repository = Repository.open("svn+"+repos_url)
         mapping = repository.get_mapping()
@@ -71,14 +77,16 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertNotEqual(inv2.path2id("bar"), inv2.path2id("blie"))
 
     def test_simplecopy(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo': "data", "dc/blie": "bloe"})
-        self.client_add("dc/foo")
-        self.client_add("dc/blie")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/foo", "dc/bar")
-        self.build_tree({'dc/bar': "data2"})
-        self.client_commit("dc", "Second Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.add_file("blie").modify("bloe")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bar", "foo", 1).modify("data2")
+        dc.close()
 
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.find_repository()
@@ -95,12 +103,15 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertNotEqual(None, inv1.path2id("blie"))
 
     def test_simpledelete(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.client_delete("dc/foo")
-        self.client_commit("dc", "Second Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.delete("foo")
+        dc.close()
 
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.find_repository()
@@ -114,14 +125,16 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertIs(None, inv2.path2id("foo"))
 
     def test_replace(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.client_delete("dc/foo")
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "Second Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.delete("foo")
+        dc.add_file("foo").modify("data")
+        dc.close()
 
         bzrdir = BzrDir.open("svn+"+repos_url)
         repository = bzrdir.find_repository()
@@ -136,13 +149,19 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
 
     def test_copy_branch(self):
         scheme = TrunkBranchingScheme()
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/dir/file': "data", 'dc/branches': None})
-        self.client_add("dc/trunk")
-        self.client_add("dc/branches")
-        self.client_commit("dc", "My Message")
-        self.client_copy("dc/trunk", "dc/branches/mybranch")
-        self.client_commit("dc", "Copy branch")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        dir = trunk.add_dir("trunk/dir")
+        dir.add_file("trunk/dir/file").modify("data")
+        dc.add_dir("branches")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        branches.add_dir("branches/mybranch", "trunk", 1)
+        dc.close()
 
         bzrdir = BzrDir.open("svn+"+repos_url + "/branches/mybranch")
         repository = bzrdir.find_repository()
@@ -250,7 +269,7 @@ class TestFileMapping(TestCase):
 class GetMapTests(TestCaseWithSubversionRepository):
     def setUp(self):
         super(GetMapTests, self).setUp()
-        self.repos_url = self.make_client("d", "dc")
+        self.repos_url = self.make_repository("d")
         self.repos = Repository.open(self.repos_url)
 
     def test_empty(self):
@@ -262,64 +281,84 @@ class GetMapTests(TestCaseWithSubversionRepository):
     def test_empty_trunk(self):
         set_branching_scheme(self.repos, TrunkBranchingScheme())
         self.mapping = self.repos.get_mapping()
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Msg")
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
         self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(1, "trunk", self.mapping))}, 
                 self.repos.get_fileid_map(1, "trunk", self.mapping))
 
     def test_change_parent(self):
         set_branching_scheme(self.repos, TrunkBranchingScheme())
         self.mapping = self.repos.get_mapping()
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Msg")
-        self.build_tree({"dc/trunk/file": 'data'})
-        self.client_add("dc/trunk/file")
-        self.client_commit("dc", "Msg")
+        
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.open_dir("trunk").add_file("trunk/file").modify("data")
+        dc.close()
+
         self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(2, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(2, "trunk", self.mapping))}, self.repos.get_fileid_map(2, "trunk", self.mapping))
 
     def test_change_updates(self):
         set_branching_scheme(self.repos, TrunkBranchingScheme())
         self.mapping = self.repos.get_mapping()
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Msg")
-        self.build_tree({"dc/trunk/file": 'data'})
-        self.client_add("dc/trunk/file")
-        self.client_commit("dc", "Msg")
-        self.build_tree({"dc/trunk/file": 'otherdata'})
-        self.client_commit("dc", "Msg")
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.open_dir("trunk").add_file("trunk/file").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.open_dir("trunk").open_file("trunk/file").modify("otherdata")
+        dc.close()
+
         self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(3, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", self.mapping))
 
     def test_sibling_unrelated(self):
         set_branching_scheme(self.repos, TrunkBranchingScheme())
         self.mapping = self.repos.get_mapping()
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Msg")
-        self.client_update("dc")
-        self.build_tree({"dc/trunk/file": 'data', 'dc/trunk/bar': 'data2'})
-        self.client_add("dc/trunk/file")
-        self.client_add("dc/trunk/bar")
-        self.client_commit("dc", "Msg")
-        self.client_update("dc")
-        self.build_tree({"dc/trunk/file": 'otherdata'})
-        self.client_commit("dc", "Msg")
-        self.client_update("dc")
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file("trunk/file").modify("data")
+        trunk.add_file("trunk/bar").modify("data2")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.open_file("trunk/file").modify('otherdata')
+        dc.close()
+
         self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), "bar": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"bar"), self.repos.generate_revision_id(2, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(3, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", self.mapping))
 
     def test_copy(self):
         set_branching_scheme(self.repos, TrunkBranchingScheme())
         self.mapping = self.repos.get_mapping()
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Msg")
-        self.build_tree({"dc/trunk/file": 'data'})
-        self.client_add("dc/trunk/file")
-        self.client_commit("dc", "Msg")
-        self.client_copy("dc/trunk/file", "dc/trunk/bar")
-        self.client_commit("dc", "Msg")
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file("trunk/file").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file("trunk/bar", "trunk/file", 2)
+        dc.close()
+
         self.assertEqual({
             "": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), 
             "bar": (self.mapping.generate_file_id(self.repos.uuid, 3, "trunk", u"bar"), self.repos.generate_revision_id(3, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(2, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", self.mapping))
@@ -327,15 +366,23 @@ class GetMapTests(TestCaseWithSubversionRepository):
     def test_copy_nested_modified(self):
         set_branching_scheme(self.repos, TrunkBranchingScheme())
         self.mapping = self.repos.get_mapping()
-        self.build_tree({"dc/trunk": None})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "Msg")
-        self.build_tree({"dc/trunk/dir/file": 'data'})
-        self.client_add("dc/trunk/dir")
-        self.client_commit("dc", "Msg")
-        self.client_copy("dc/trunk/dir", "dc/trunk/bar")
-        self.build_tree({"dc/trunk/bar/file": "data2"})
-        self.client_commit("dc", "Msg")
+
+        dc = self.get_commit_editor(self.repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        trunk = dc.open_dir("trunk")
+        dir = trunk.add_dir("trunk/dir")
+        dir.add_file("trunk/dir/file").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(self.repos_url)
+        trunk = dc.open_dir("trunk")
+        dir = trunk.add_dir("trunk/bar", "trunk/dir")
+        dir.open_file("trunk/bar/file").modify("data2")
+        dc.close()
+
         self.assertEqual({
           "": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), 
             self.repos.generate_revision_id(3, "trunk", self.mapping)), 

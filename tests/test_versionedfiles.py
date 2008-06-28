@@ -13,10 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from bzrlib import osutils
+from bzrlib.graph import DictParentsProvider
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
-                                               FakeInventoryTexts)
+                                               FakeInventoryTexts, FakeSignatureTexts,
+                                               FakeVersionedFiles)
 
 
 class BasicSvnTextsTests:
@@ -41,12 +44,61 @@ class SvnTextsTests(TestCase,BasicSvnTextsTests):
         self.texts = SvnTexts()
 
 
+class FakeTextsTests(TestCase,BasicSvnTextsTests):
+    def get_parent_map(self, keys):
+        return DictParentsProvider(self.parent_map).get_parent_map(keys)
+
+    def get_lines(self, key):
+        (k,) = key
+        if not k in self.lines:
+            return None
+        return self.lines[k]
+
+    def test_get_parent_map(self):
+        self.parent_map = {"G": ("A", "B")}
+        self.assertEquals({("G",): (("A",),("B",))}, self.texts.get_parent_map([("G",)]))
+
+    def test_get_sha1s(self):
+        self.lines = {"A": ["FOO"]}
+        self.assertEquals({("A",): osutils.sha_strings(["FOO"])}, 
+                self.texts.get_sha1s([("A",), ("B",)]))
+
+    def test_get_record_stream(self):
+        self.lines = {"A": ["FOO"]}
+        it = self.texts.get_record_stream([("A",)], "unordered", True)
+        record = it.next()
+        self.assertEquals("FOO", record.get_bytes_as("fulltext"))
+
+    def setUp(self):
+        self.texts = FakeVersionedFiles(self.get_parent_map, self.get_lines)
+
+
 class FakeRevisionTextsTests(TestCase,BasicSvnTextsTests):
     def setUp(self):
-        self.texts = FakeRevisionTexts()
+        self.texts = FakeRevisionTexts(self)
+
+    def get_parent_map(self, keys):
+        raise NotImplementedError
 
 
 class FakeInventoryTextsTests(TestCase,BasicSvnTextsTests):
+    def get_inventory_xml(self, key):
+        return "FOO"
+
+    def get_parent_map(self, keys):
+        return {("A",): (("B",))}
+
     def setUp(self):
-        self.texts = FakeInventoryTexts()
+        self.texts = FakeInventoryTexts(self)
+
+    def test_get_sha1s(self):
+        self.assertEquals({("A",): osutils.sha_strings(["FOO"])}, self.texts.get_sha1s([("A",)]))
+
+
+class FakeSignatureTextsTests(TestCase,BasicSvnTextsTests):
+    def setUp(self):
+        self.texts = FakeSignatureTexts(self)
+
+    def get_parent_map(self, keys):
+        raise NotImplementedError
 

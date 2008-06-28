@@ -318,6 +318,15 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
+    def get_file(self, path, stream, revnum):
+        path = self._request_path(path)
+        conn = self.get_connection()
+        self.mutter('svn get-file -r%d %s' % (revnum, path))
+        try:
+            return conn.get_file(path, stream, revnum)
+        finally:
+            self.add_connection(conn)
+
     def mutter(self, text, *args):
         if 'transport' in debug.debug_flags:
             mutter(text, *args)

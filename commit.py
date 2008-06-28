@@ -28,12 +28,12 @@ from cStringIO import StringIO
 
 from bzrlib.plugins.svn import core, properties
 from bzrlib.plugins.svn.core import SubversionException
+from bzrlib.plugins.svn.delta import send_stream
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
 from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
-from bzrlib.plugins.svn.ra import txdelta_send_stream
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
 
 import urllib
@@ -194,7 +194,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         assert file_editor is not None
         txdelta = file_editor.apply_textdelta()
-        digest = txdelta_send_stream(StringIO(contents), txdelta)
+        digest = send_stream(StringIO(contents), txdelta)
         if 'validate' in debug.debug_flags:
             from fetch import md5_strings
             assert digest == md5_strings(contents)

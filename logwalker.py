@@ -423,7 +423,7 @@ class LogWalker(object):
 
         try:
             return struct_revpaths_to_tuples(
-                self._transport.iter_log(None, revnum, revnum, 1, True, True, False, []).next()[0])
+                self._transport.iter_log([""], revnum, revnum, 1, True, True, False, []).next()[0])
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 

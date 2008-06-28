@@ -13,34 +13,134 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib.versionedfile import VersionedFiles
+from bzrlib import debug, osutils, urlutils
+from bzrlib.trace import mutter
+from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory
+
+from cStringIO import StringIO
 
 class SvnTexts(VersionedFiles):
     """Subversion texts backend."""
 
+    def __init__(self, repository):
+        self.repository = repository
+
     def check(self, progressbar=None):
         return True
 
-    # TODO: annotate, get_parent_map, get_record_stream, get_sha1s, 
+    def add_mpdiffs(self, records):
+        raise NotImplementedError(self.add_mpdiffs)
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        for (fileid, revid) in list(keys):
+            (branch, revnum, mapping) = self.repository.lookup_revision_id(revid)
+            map = self.repository.get_fileid_map(revnum, branch, mapping)
+            # Unfortunately, the map is the other way around
+            lines = None
+            mutter('map %r', map)
+            for k,(v,ck) in map.items():
+                if v == fileid:
+                    stream = StringIO()
+                    self.repository.transport.get_file(urlutils.join(branch, k), stream, revnum)
+                    lines = stream.readlines()
+                    break
+            if lines is None:
+                raise Exception("Inconsistent key specified: (%r,%r)" % (fileid, revid))
+            yield FulltextContentFactory((fileid,revid), None, 
+                        sha1=osutils.sha_strings(lines),
+                        text=''.join(lines))
+
+    def get_parent_map(self, keys):
+        mutter("get_parent_map(%r)" % keys)
+
+        invs = {}
+
+        # First, figure out the revision number/path
+        ret = {}
+        for (fileid, revid) in keys:
+            # FIXME: Evil hack
+            ret[(fileid, revid)] = None
+        return ret
+
+    # TODO: annotate, , get_sha1s, 
     # iter_lines_added_or_present_in_keys, keys
 
 
-class FakeRevisionTexts(VersionedFiles):
+class FakeVersionedFiles(VersionedFiles):
+    def mutter(self, text, *args):
+        if "fakevf" in debug.debug_flags:
+            mutter(text, *args)
+
+    def __init__(self, get_parent_map, get_lines):
+        self._get_parent_map = get_parent_map
+        self._get_lines = get_lines
+        
+    def check(self, progressbar=None):
+        return True
+
+    def add_mpdiffs(self, records):
+        raise NotImplementedError(self.add_mpdiffs)
+
+    def get_parent_map(self, keys):
+        self.mutter("get_parent_map(%r)" % keys)
+        return dict([((k,), tuple([(p,) for p in v])) for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
+
+    def get_sha1s(self, keys):
+        self.mutter("get_sha1s(%r)" % keys)
+        ret = {}
+        for (k,) in keys:
+            lines = self._get_lines(k)
+            if lines is not None:
+                assert isinstance(lines, list)
+                ret[(k,)] = osutils.sha_strings(lines)
+        return ret
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        self.mutter("get_record_stream(%r)" % keys)
+        for (k,) in list(keys):
+            lines = self._get_lines(k)
+            if lines is not None:
+                assert isinstance(lines, list)
+                yield FulltextContentFactory((k,), None, 
+                        sha1=osutils.sha_strings(lines),
+                        text=''.join(lines))
+            else:
+                yield AbsentContentFactory((k,))
+
+
+class FakeRevisionTexts(FakeVersionedFiles):
     """Fake revisions backend."""
+    def __init__(self, repository):
+        self.repository = repository
+        super(FakeRevisionTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
-    def check(self, progressbar=None):
-        return True
+    def get_lines(self, key):
+        self.mutter("get revision text(%r)", key)
+        return osutils.split_lines(self.repository.get_revision_xml(key))
 
-    # TODO: annotate, get_parent_map, get_record_stream, get_sha1s, 
-    # iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
 
-class FakeInventoryTexts(VersionedFiles):
+class FakeInventoryTexts(FakeVersionedFiles):
     """Fake inventories backend."""
+    def __init__(self, repository):
+        self.repository = repository
+        super(FakeInventoryTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
-    def check(self, progressbar=None):
-        return True
+    def get_lines(self, key):
+        return osutils.split_lines(self.repository.get_inventory_xml(key))
 
-    # TODO: annotate, get_parent_map, get_record_stream, get_sha1s, 
-    # iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
+
+
+class FakeSignatureTexts(FakeVersionedFiles):
+    """Fake signatures backend."""
+    def __init__(self, repository):
+        self.repository = repository
+        super(FakeSignatureTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
+
+    def get_lines(self, key):
+        return osutils.split_lines(self.repository.get_signature_text(key))
+
+    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
