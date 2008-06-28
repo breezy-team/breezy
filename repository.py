@@ -497,7 +497,7 @@ class SvnRepository(Repository):
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
 
         rev = Revision(revision_id=revision_id, parent_ids=revmeta.get_parent_ids(mapping),
-                       inventory_sha1=None)
+                       inventory_sha1="")
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
 
