@@ -163,7 +163,7 @@ def get_diff_info(a_repo, start_rev, end_rev):
     return info
 
 
-def display_info(info, to_file):
+def display_info(info, to_file, gather_class_stats=None):
     """Write out the information"""
 
     for count, revs, emails, fullnames in info:
@@ -193,6 +193,11 @@ def display_info(info, to_file):
                     to_file.write("''\n")
                 else:
                     to_file.write("%s\n" % (email,))
+        if gather_class_stats is not None:
+            print '     Contributions:'
+            classes, total = gather_class_stats(revs)
+            for name,count in sorted(classes.items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0]))):
+                to_file.write("     %4.0f%% %s\n" % ((float(count) / total) * 100.0, "Unknown" if name is None else name))
 
 
 class cmd_committer_statistics(commands.Command):
@@ -200,11 +205,12 @@ class cmd_committer_statistics(commands.Command):
 
     aliases = ['stats', 'committer-stats']
     takes_args = ['location?']
-    takes_options = ['revision']
+    takes_options = ['revision', 
+            option.Option('show-class', help="Show the class of contributions")]
 
     encoding_type = 'replace'
 
-    def run(self, location='.', revision=None):
+    def run(self, location='.', revision=None, show_class=False):
         alternate_rev = None
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
@@ -229,7 +235,9 @@ class cmd_committer_statistics(commands.Command):
                 info = get_info(a_branch.repository, last_rev)
         finally:
             a_branch.unlock()
-        display_info(info, self.outf)
+        def fetch_class_stats(revs):
+            return gather_class_stats(a_branch.repository, revs)
+        display_info(info, self.outf, fetch_class_stats if show_class else None)
 
 
 commands.register_command(cmd_committer_statistics)
