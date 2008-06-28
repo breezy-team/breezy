@@ -15,7 +15,7 @@
 
 from bzrlib import debug, osutils, urlutils
 from bzrlib.trace import mutter
-from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles
+from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory
 
 from cStringIO import StringIO
 
@@ -104,6 +104,8 @@ class FakeVersionedFiles(VersionedFiles):
                 yield FulltextContentFactory((k,), None, 
                         sha1=osutils.sha_strings(lines),
                         text=''.join(lines))
+            else:
+                yield AbsentContentFactory((k,))
 
 
 class FakeRevisionTexts(FakeVersionedFiles):
@@ -113,6 +115,7 @@ class FakeRevisionTexts(FakeVersionedFiles):
         super(FakeRevisionTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
     def get_lines(self, key):
+        self.mutter("get revision text(%r)", key)
         return osutils.split_lines(self.repository.get_revision_xml(key))
 
     # TODO: annotate, iter_lines_added_or_present_in_keys, keys
