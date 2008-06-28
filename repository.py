@@ -161,7 +161,7 @@ class SvnRepository(Repository):
         control_files = LockableFiles(transport, '', TransportLock)
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
-        self.texts = SvnTexts()
+        self.texts = SvnTexts(self)
         self.revisions = FakeRevisionTexts(self)
         self.inventories = FakeInventoryTexts(self)
         self.signatures = FakeSignatureTexts(self)
