@@ -61,15 +61,20 @@ def get_local_changes(paths, branch, mapping, generate_revid,
 FILEIDMAP_VERSION = 1
 
 def simple_apply_changes(new_file_id, changes, find_children=None):
-    """Simple function that can apply file id changes.
+    """Simple function that generates a dictionary with file id changes.
     
     Does not track renames. """
     map = {}
     for p in sorted(changes.keys()):
         data = changes[p]
 
+        inv_p = p.decode("utf-8")
+        if data[0] in ('D', 'R'):
+            map[inv_p] = None
+            for p in map:
+                if p.startswith("%s/" % inv_p):
+                    map[p] = None
         if data[0] in ('A', 'R'):
-            inv_p = p.decode("utf-8")
             map[inv_p] = new_file_id(inv_p)
 
             if data[1] is not None:
@@ -174,7 +179,14 @@ class FileIdMap(object):
             if changes[p][0] == 'M' and not idmap.has_key(p):
                 idmap[p] = map[p][0]
 
-        map.update(dict([(x, (str(idmap[x]), revid)) for x in idmap]))
+        for x in sorted(idmap.keys()):
+            if idmap[x] is None:
+                del map[x]
+                for p in map.keys():
+                    if p.startswith("%s/" % x):
+                        del map[p]
+            else:
+                map[x] = (str(idmap[x]), revid)
 
         # Mark all parent paths as changed
         for p in idmap:

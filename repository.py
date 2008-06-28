@@ -16,7 +16,7 @@
 """Subversion repository access."""
 
 import bzrlib
-from bzrlib import osutils, ui, urlutils, xml5
+from bzrlib import osutils, ui, urlutils, xml7
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
@@ -49,7 +49,7 @@ from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_sinc
                  parse_svk_feature)
 from bzrlib.plugins.svn.tree import SvnRevisionTree
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
-                                               FakeInventoryTexts)
+                                               FakeInventoryTexts, FakeSignatureTexts)
 import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
@@ -161,9 +161,10 @@ class SvnRepository(Repository):
         control_files = LockableFiles(transport, '', TransportLock)
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
-        self.texts = SvnTexts()
-        self.revisions = FakeRevisionTexts()
-        self.inventories = FakeInventoryTexts()
+        self.texts = SvnTexts(self)
+        self.revisions = FakeRevisionTexts(self)
+        self.inventories = FakeInventoryTexts(self)
+        self.signatures = FakeSignatureTexts(self)
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0
@@ -173,7 +174,7 @@ class SvnRepository(Repository):
         assert self.uuid is not None
         self.base = transport.base
         assert self.base is not None
-        self._serializer = xml5.serializer_v5
+        self._serializer = xml7.serializer_v7
         self.get_config().add_location(self.base)
         self._log = logwalker.LogWalker(transport=transport)
         self.fileid_map = FileIdMap(simple_apply_changes, self)
@@ -346,10 +347,6 @@ class SvnRepository(Repository):
         for revmeta in self.iter_all_changes(layout):
             yield revmeta.get_revision_id(mapping)
 
-    def get_inventory_weave(self):
-        """See Repository.get_inventory_weave()."""
-        raise NotImplementedError(self.get_inventory_weave)
-
     def set_make_working_trees(self, new_value):
         """See Repository.set_make_working_trees()."""
         pass # FIXME: ignored, nowhere to store it... 
@@ -500,7 +497,7 @@ class SvnRepository(Repository):
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
 
         rev = Revision(revision_id=revision_id, parent_ids=revmeta.get_parent_ids(mapping),
-                       inventory_sha1=None)
+                       inventory_sha1="")
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
 

@@ -1212,8 +1212,50 @@ static PyObject *ra_get_dir(PyObject *self, PyObject *args)
 	}
 
 	py_props = prop_hash_to_dict(props);
+	if (py_props == NULL) {
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	}
 	apr_pool_destroy(temp_pool);
 	return Py_BuildValue("(NlN)", py_dirents, fetch_rev, py_props);
+}
+
+static PyObject *ra_get_file(PyObject *self, PyObject *args)
+{
+	char *path;
+	svn_revnum_t revision = -1;
+	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+    apr_hash_t *props;
+    svn_revnum_t fetch_rev;
+	PyObject *py_stream, *py_props;
+	apr_pool_t *temp_pool;
+
+	if (!PyArg_ParseTuple(args, "sO|l", &path, &py_stream, &revision))
+		return NULL;
+
+	if (ra_check_busy(ra))
+		return NULL;
+
+	temp_pool = Pool(NULL);
+	if (temp_pool == NULL)
+		return NULL;
+
+	if (revision != SVN_INVALID_REVNUM)
+		fetch_rev = revision;
+
+	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_get_file(ra->ra, path, revision, 
+													new_py_stream(temp_pool, py_stream), 
+													&fetch_rev, &props, temp_pool));
+
+	py_props = prop_hash_to_dict(props);
+	if (py_props == NULL) {
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	}
+
+	apr_pool_destroy(temp_pool);
+		 
+	return Py_BuildValue("(lN)", fetch_rev, py_props);
 }
 
 static PyObject *ra_get_lock(PyObject *self, PyObject *args)
@@ -1495,6 +1537,7 @@ static PyMethodDef ra_methods[] = {
 	{ "check_path", ra_check_path, METH_VARARGS, NULL },
 	{ "get_lock", ra_get_lock, METH_VARARGS, NULL },
 	{ "get_dir", ra_get_dir, METH_VARARGS, NULL },
+	{ "get_file", ra_get_file, METH_VARARGS, NULL },
 	{ "change_rev_prop", ra_change_rev_prop, METH_VARARGS, NULL },
 	{ "get_commit_editor", (PyCFunction)get_commit_editor, METH_VARARGS|METH_KEYWORDS, NULL },
 	{ "rev_proplist", ra_rev_proplist, METH_VARARGS, NULL },
