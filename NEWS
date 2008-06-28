@@ -20,6 +20,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Now uses absolute imports and no longer adds plugin directory to the system path.
 
+   * Basic support for stacked branches.
+
   BUG FIXES
 
    * More efficient use of mutter.
