@@ -53,7 +53,8 @@ The following features are currently present:
 
 .. _svn2bzr: http://bazaar-vcs.org/svn2bzr
 
-- Ability to track merges done with SVK_ and write merges from SVK/Subversion branches in a format understandable by SVK.
+- Ability to track merges done with SVK_ and write merges from SVK/Subversion 
+  branches in a format understandable by SVK.
 
 .. _SVK: http://svk.elixus.org/
 
@@ -78,7 +79,8 @@ Some bzr-svn specific issues are answered by the FAQ_.
 
 .. _FAQ: http://samba.org/~jelmer/bzr-svn/FAQ.html
 
-The way Bazaar metadata is stored in Subversion and the other way around is specified in the `mapping specification`_.
+The way Bazaar metadata is stored in Subversion and the other way around is 
+specified in the `mapping specification`_.
 
 .. _mapping specification: BzrForeignBranches/Subversion/mapping
 
@@ -107,7 +109,9 @@ therefore ignored for the time being:
 
 - 'svn:eol-style'. Requires eol support in Bazaar.
 
-- 'svn:keywords'. Requires keywords support in Bazaar. Spec at https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion. `#81463 <https://bugs.launchpad.net/bzr-svn/+bug/81463>`_
+- 'svn:keywords'. Requires keywords support in Bazaar. Spec at 
+  https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion. 
+  `#81463 <https://bugs.launchpad.net/bzr-svn/+bug/81463>`_
 
 - 'svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
   nested branches and the other way around. This can't be implemented 
@@ -128,10 +132,6 @@ In the future, I also hope to support:
 	
 - use svn_ra_replay() when using servers that have Subversion 1.4. Saves a 
   couple of roundtrips when fetching history.
-
-- Shallow branches. Most of the existing Subversion repositories 
-  are quite large and it would therefore be nice to be able to limit 
-  the amount of history that needs to be retrieved during checkouts.
 
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
@@ -163,14 +163,15 @@ will warn if the Bazaar release used is too old or too new.
 SQLite
 ~~~~~~
 
-If you are using Python 2.4, you will need to have the pysqlite module installed. Python 2.5 and higher have sqlite support built in. 
+If you are using Python 2.4, you will need to have the pysqlite module installed. 
+Python 2.5 and higher have sqlite support built in. 
 
 Subversion development files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You need the Subversion libraries, including the development files. This should
 be readily packaged for most platforms. The package name for Debian 
-and Debian-based distributions is ``libsvn-dev``.
+and Debian-based distributions such as Ubuntu is ``libsvn-dev``. 
  
 bzr-rebase
 ~~~~~~~~~~
@@ -205,7 +206,8 @@ To run the bzr-svn testsuite, simply run 'bzr selftest svn'
 
 Credits
 -------
-bzr-svn was written by JelmerVernooij_ with the help from various other people. See the AUTHORS file for a full list of contributors.
+bzr-svn was written by JelmerVernooij_ with the help from various other people. See 
+the AUTHORS file for a full list of contributors.
 
 .. _JelmerVernooij: http://samba.org/~jelmer/
 

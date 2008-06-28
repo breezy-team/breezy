@@ -19,6 +19,7 @@ Support for Subversion branches
 """
 import bzrlib
 from bzrlib.bzrdir import BzrDirFormat, format_registry
+from bzrlib.errors import BzrError
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
 from bzrlib.revisionspec import SPEC_TYPES
@@ -54,7 +55,6 @@ def check_bzrlib_version(desired):
         ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
          bzrlib.version_info[3] == 'dev')):
         return
-    from bzrlib.errors import BzrError
     if bzrlib_version < desired[0]:
         raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
     else:
