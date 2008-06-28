@@ -9,10 +9,13 @@ from bzrlib import (
     commands,
     config,
     errors,
+    option,
     tsort,
     ui,
     workingtree,
     )
+from bzrlib.plugins.stats.classify import classify_delta
+from itertools import izip
 """)
 from bzrlib import lazy_regex
 
@@ -268,13 +271,118 @@ class cmd_ancestor_growth(commands.Command):
 commands.register_command(cmd_ancestor_growth)
 
 
+def gather_class_stats(repository, revs):
+    ret = {}
+    total = 0
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        repository.lock_read()
+        try:
+            i = 0
+            for delta in repository.get_deltas_for_revisions(revs):
+                pb.update("classifying commits", i, len(revs))
+                for c in classify_delta(delta):
+                    if not c in ret:
+                        ret[c] = 0
+                    ret[c] += 1
+                    total += 1
+                i += 1
+        finally:
+            repository.unlock()
+    finally:
+        pb.finished()
+    return ret, total
+
+
+def display_credits(credits):
+    (coders, documenters, artists, translators) = credits
+    def print_section(name, lst):
+        if len(lst) == 0:
+            return
+        print "%s:" % name
+        for name in lst:
+            print "%s" % name
+        print ""
+    print_section("Code", coders)
+    print_section("Documentation", documenters)
+    print_section("Art", artists)
+    print_section("Translations", translators)
+
+
+def find_credits(repository, revid):
+    """Find the credits of the contributors to a revision.
+
+    :return: tuple with (authors, documenters, artists, translators)
+    """
+    ret = {"documentation": {},
+           "code": {},
+           "art": {},
+           "translation": {},
+           None: {}
+           }
+    repository.lock_read()
+    try:
+        ancestry = filter(lambda x: x is not None, repository.get_ancestry(revid))
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            revs = repository.get_revisions(ancestry)
+            for rev,delta in izip(revs, repository.get_deltas_for_revisions(revs)):
+                # Don't count merges
+                if len(rev.parent_ids) > 1:
+                    continue
+                for c in set(classify_delta(delta)):
+                    author = rev.get_apparent_author()
+                    if not author in ret[c]:
+                        ret[c][author] = 0
+                    ret[c][author] += 1
+        finally:
+            pb.finished()
+    finally:
+        repository.unlock()
+    def sort_class(name):
+        return map(lambda (x,y): x, sorted(ret[name].items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0]))))
+    return (sort_class("code"), sort_class("documentation"), sort_class("art"), sort_class("translation"))
+
+
+class cmd_credits(commands.Command):
+    """Determine credits for LOCATION."""
+
+    takes_args = ['location?']
+    takes_options = ['revision']
+
+    encoding_type = 'replace'
+
+    def run(self, location='.', revision=None):
+        try:
+            wt = workingtree.WorkingTree.open_containing(location)[0]
+        except errors.NoWorkingTree:
+            a_branch = branch.Branch.open(location)
+            last_rev = a_branch.last_revision()
+        else:
+            a_branch = wt.branch
+            last_rev = wt.last_revision()
+
+        if revision is not None:
+            last_rev = revision[0].in_history(a_branch).rev_id
+
+        a_branch.lock_read()
+        try:
+            credits = find_credits(a_branch.repository, last_rev)
+            display_credits(credits)
+        finally:
+            a_branch.unlock()
+
+
+commands.register_command(cmd_credits)
+
+
 def test_suite():
     from unittest import TestSuite
     from bzrlib.tests import TestLoader
     import test_stats
     suite = TestSuite()
     loader = TestLoader()
-    testmod_names = ['test_stats']
+    testmod_names = ['test_stats', 'test_classify']
     suite.addTest(loader.loadTestsFromModuleNames(['%s.%s' % (__name__, i) for i in testmod_names]))
     return suite
 
