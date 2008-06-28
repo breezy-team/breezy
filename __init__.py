@@ -102,9 +102,9 @@ def sort_by_committer(a_repo, revids):
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
             try:
-                email = config.extract_email_address(rev.committer)
+                email = config.extract_email_address(rev.get_apparent_author())
             except errors.BzrError:
-                email = rev.committer
+                email = rev.get_apparent_author()
             committers.setdefault(email, []).append(rev)
     finally:
         pb.finished()
@@ -148,9 +148,9 @@ def get_diff_info(a_repo, start_rev, end_rev):
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(ancestry))
             try:
-                email = config.extract_email_address(rev.committer)
+                email = config.extract_email_address(rev.get_apparent_author())
             except errors.BzrError:
-                email = rev.committer
+                email = rev.get_apparent_author()
             committers.setdefault(email, []).append(rev)
     finally:
         a_repo.unlock()
