@@ -45,8 +45,8 @@ def find_fullnames(lst):
     return sorted(((count, name) for name,count in counts.iteritems()), reverse=True)
 
 
-def collapse_by_author(committers):
-    """The committers list is sorted by email, fix it up by author.
+def collapse_by_person(committers):
+    """The committers list is sorted by email, fix it up by person.
 
     Some people commit with a similar username, but different email
     address. Which makes it hard to sort out when they have multiple
@@ -125,7 +125,7 @@ def get_info(a_repo, revision):
         a_repo.unlock()
         pb.finished()
 
-    return collapse_by_author(committers)
+    return collapse_by_person(committers)
 
 
 def get_diff_info(a_repo, start_rev, end_rev):
@@ -156,8 +156,9 @@ def get_diff_info(a_repo, start_rev, end_rev):
         a_repo.unlock()
         pb.finished()
 
-    info = collapse_by_author(committers)
+    info = collapse_by_person(committers)
     return info
+
 
 def display_info(info, to_file):
     """Write out the information"""
