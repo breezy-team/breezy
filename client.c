@@ -48,29 +48,29 @@ static int client_set_config(PyObject *self, PyObject *auth, void *closure);
 
 static bool to_opt_revision(PyObject *arg, svn_opt_revision_t *ret)
 {
-    if (PyInt_Check(arg)) {
-        ret->kind = svn_opt_revision_number;
-        ret->value.number = PyLong_AsLong(arg);
-        return true;
-    } else if (arg == Py_None) {
-        ret->kind = svn_opt_revision_unspecified;
-        return true;
-    } else if (PyString_Check(arg)) {
-        char *text = PyString_AsString(arg);
-        if (!strcmp(text, "HEAD")) {
-            ret->kind = svn_opt_revision_head;
-            return true;
-        } else if (!strcmp(text, "WORKING")) {
-            ret->kind = svn_opt_revision_working;
-            return true;
-        } else if (!strcmp(text, "BASE")) {
-            ret->kind = svn_opt_revision_base;
-            return true;
-        } 
-    } 
+	if (PyInt_Check(arg)) {
+		ret->kind = svn_opt_revision_number;
+		ret->value.number = PyLong_AsLong(arg);
+		return true;
+	} else if (arg == Py_None) {
+		ret->kind = svn_opt_revision_unspecified;
+		return true;
+	} else if (PyString_Check(arg)) {
+		char *text = PyString_AsString(arg);
+		if (!strcmp(text, "HEAD")) {
+			ret->kind = svn_opt_revision_head;
+			return true;
+		} else if (!strcmp(text, "WORKING")) {
+			ret->kind = svn_opt_revision_working;
+			return true;
+		} else if (!strcmp(text, "BASE")) {
+			ret->kind = svn_opt_revision_base;
+			return true;
+		} 
+	} 
 
-    PyErr_SetString(PyExc_ValueError, "Unable to parse revision");
-    return false;
+	PyErr_SetString(PyExc_ValueError, "Unable to parse revision");
+	return false;
 }
 
 static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
@@ -78,7 +78,7 @@ static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
 	PyObject *ret;
 	int i;
 
-    ret = PyList_New(commit_items->nelts);
+	ret = PyList_New(commit_items->nelts);
 	if (ret == NULL)
 		return NULL;
 
@@ -110,75 +110,75 @@ static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
 
 static svn_error_t *py_log_msg_func2(const char **log_msg, const char **tmp_file, const apr_array_header_t *commit_items, void *baton, apr_pool_t *pool)
 {
-    PyObject *py_commit_items, *ret, *py_log_msg, *py_tmp_file;
-    if (baton == Py_None)
-        return NULL;
+	PyObject *py_commit_items, *ret, *py_log_msg, *py_tmp_file;
+	if (baton == Py_None)
+		return NULL;
 
 	py_commit_items = wrap_py_commit_items(commit_items);
 	if (py_commit_items == NULL)
 		return py_svn_error();
 
-    ret = PyObject_CallFunction(baton, "O", py_commit_items);
+	ret = PyObject_CallFunction(baton, "O", py_commit_items);
 	Py_DECREF(py_commit_items);
 	if (ret == NULL)
 		return py_svn_error();
-    if (PyTuple_Check(ret)) {
-        py_log_msg = PyTuple_GetItem(ret, 0);
-        py_tmp_file = PyTuple_GetItem(ret, 1);
-    } else {
-        py_tmp_file = Py_None;
-        py_log_msg = ret;
-    }
-    if (py_log_msg != Py_None) {
-        *log_msg = PyString_AsString(py_log_msg);
-    }
-    if (py_tmp_file != Py_None) {
-        *tmp_file = PyString_AsString(py_tmp_file);
-    }
+	if (PyTuple_Check(ret)) {
+		py_log_msg = PyTuple_GetItem(ret, 0);
+		py_tmp_file = PyTuple_GetItem(ret, 1);
+	} else {
+		py_tmp_file = Py_None;
+		py_log_msg = ret;
+	}
+	if (py_log_msg != Py_None) {
+		*log_msg = PyString_AsString(py_log_msg);
+	}
+	if (py_tmp_file != Py_None) {
+		*tmp_file = PyString_AsString(py_tmp_file);
+	}
 	Py_DECREF(ret);
-    return NULL;
+	return NULL;
 }
 
 static PyObject *py_commit_info_tuple(svn_commit_info_t *ci)
 {
 	if (ci == NULL)
 		Py_RETURN_NONE;
-    if (ci->revision == SVN_INVALID_REVNUM)
-        Py_RETURN_NONE;
-    return Py_BuildValue("(izz)", ci->revision, ci->date, ci->author);
+	if (ci->revision == SVN_INVALID_REVNUM)
+		Py_RETURN_NONE;
+	return Py_BuildValue("(izz)", ci->revision, ci->date, ci->author);
 }
 
 typedef struct {
-    PyObject_HEAD
-    svn_client_ctx_t *client;
-    apr_pool_t *pool;
-    PyObject *callbacks;
+	PyObject_HEAD
+	svn_client_ctx_t *client;
+	apr_pool_t *pool;
+	PyObject *callbacks;
 	PyObject *py_auth;
 	PyObject *py_config;
 } ClientObject;
 
 static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    ClientObject *ret;
+	ClientObject *ret;
 	PyObject *config = Py_None, *auth = Py_None;
-    char *kwnames[] = { "config", "auth", NULL };
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwnames, &config, &auth))
-        return NULL;
+	char *kwnames[] = { "config", "auth", NULL };
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwnames, &config, &auth))
+		return NULL;
 
-    ret = PyObject_New(ClientObject, &Client_Type);
-    if (ret == NULL)
-        return NULL;
+	ret = PyObject_New(ClientObject, &Client_Type);
+	if (ret == NULL)
+		return NULL;
 
-    ret->pool = Pool(NULL);
+	ret->pool = Pool(NULL);
 	if (ret->pool == NULL) {
 		PyObject_Del(ret);
 		return NULL;
 	}
 
-    if (!check_error(svn_client_create_context(&ret->client, ret->pool))) {
+	if (!check_error(svn_client_create_context(&ret->client, ret->pool))) {
 		apr_pool_destroy(ret->pool);
 		PyObject_Del(ret);
-        return NULL;
+		return NULL;
 	}
 
 	ret->py_auth = NULL;
@@ -187,31 +187,31 @@ static PyObject *client_new(PyTypeObject *type, PyObject *args, PyObject *kwargs
 	ret->client->notify_baton2 = NULL;
 	client_set_config((PyObject *)ret, config, NULL);
 	client_set_auth((PyObject *)ret, auth, NULL);
-    return (PyObject *)ret;
+	return (PyObject *)ret;
 }
 
 static void client_dealloc(PyObject *self)
 {
-    ClientObject *client = (ClientObject *)self;
+	ClientObject *client = (ClientObject *)self;
 	Py_XDECREF((PyObject *)client->client->notify_baton2);
 	Py_XDECREF((PyObject *)client->client->log_msg_baton2);
 	Py_XDECREF(client->py_auth);
 	Py_XDECREF(client->py_config);
-    apr_pool_destroy(client->pool);
+	apr_pool_destroy(client->pool);
 	PyObject_Del(self);
 }
 
 static PyObject *client_get_log_msg_func(PyObject *self, void *closure)
 {
-    ClientObject *client = (ClientObject *)self;
-    if (client->client->log_msg_func2 == NULL)
+	ClientObject *client = (ClientObject *)self;
+	if (client->client->log_msg_func2 == NULL)
 		Py_RETURN_NONE;
 	return client->client->log_msg_baton2;
 }
 
 static int client_set_log_msg_func(PyObject *self, PyObject *func, void *closure)
 {
-    ClientObject *client = (ClientObject *)self;
+	ClientObject *client = (ClientObject *)self;
 
 	if (client->client->log_msg_baton2 != NULL) {
 		Py_DECREF((PyObject *)client->client->log_msg_baton2);
@@ -223,21 +223,21 @@ static int client_set_log_msg_func(PyObject *self, PyObject *func, void *closure
 		client->client->log_msg_func2 = py_log_msg_func2;
 		client->client->log_msg_baton2 = (void *)func;
 	}
-    Py_INCREF(func);
-    return 0;
+	Py_INCREF(func);
+	return 0;
 }
 
 static PyObject *client_get_notify_func(PyObject *self, void *closure)
 {
-    ClientObject *client = (ClientObject *)self;
-    if (client->client->notify_func2 == NULL)
+	ClientObject *client = (ClientObject *)self;
+	if (client->client->notify_func2 == NULL)
 		Py_RETURN_NONE;
 	return client->client->notify_baton2;
 }
 
 static int client_set_notify_func(PyObject *self, PyObject *func, void *closure)
 {
-    ClientObject *client = (ClientObject *)self;
+	ClientObject *client = (ClientObject *)self;
 
 	if (client->client->notify_baton2 != NULL) {
 		Py_DECREF((PyObject *)client->client->notify_baton2);
@@ -249,8 +249,8 @@ static int client_set_notify_func(PyObject *self, PyObject *func, void *closure)
 		client->client->notify_func2 = py_wc_notify_func;
 		client->client->notify_baton2 = (void *)func;
 	}
-    Py_INCREF(func);
-    return 0;
+	Py_INCREF(func);
+	return 0;
 }
 
 static int client_set_auth(PyObject *self, PyObject *auth, void *closure)
@@ -294,15 +294,15 @@ static int client_set_config(PyObject *self, PyObject *config, void *closure)
 
 static PyObject *client_add(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    char *path; 
-    ClientObject *client = (ClientObject *)self;
-    bool recursive=true, force=false, no_ignore=false;
+	char *path; 
+	ClientObject *client = (ClientObject *)self;
+	bool recursive=true, force=false, no_ignore=false;
 	apr_pool_t *temp_pool;
-    char *kwnames[] = { "path", "recursive", "force", "no_ignore", NULL };
+	char *kwnames[] = { "path", "recursive", "force", "no_ignore", NULL };
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|bbb", kwnames, 
-                          &path, &recursive, &force, &no_ignore))
-        return NULL;
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|bbb", kwnames, 
+						  &path, &recursive, &force, &no_ignore))
+		return NULL;
 	
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
@@ -310,52 +310,52 @@ static PyObject *client_add(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	RUN_SVN_WITH_POOL(temp_pool, 
 					  svn_client_add3(path, recursive, force, no_ignore, 
-                client->client, temp_pool));
+				client->client, temp_pool));
 	apr_pool_destroy(temp_pool);
-    Py_RETURN_NONE;
+	Py_RETURN_NONE;
 }
 
 static PyObject *client_checkout(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    ClientObject *client = (ClientObject *)self;
-    char *kwnames[] = { "url", "path", "rev", "peg_rev", "recurse", "ignore_externals", NULL };
-    svn_revnum_t result_rev;
-    svn_opt_revision_t c_peg_rev, c_rev;
-    char *url, *path; 
+	ClientObject *client = (ClientObject *)self;
+	char *kwnames[] = { "url", "path", "rev", "peg_rev", "recurse", "ignore_externals", NULL };
+	svn_revnum_t result_rev;
+	svn_opt_revision_t c_peg_rev, c_rev;
+	char *url, *path; 
 	apr_pool_t *temp_pool;
-    PyObject *peg_rev=Py_None, *rev=Py_None;
-    bool recurse=true, ignore_externals=false;
+	PyObject *peg_rev=Py_None, *rev=Py_None;
+	bool recurse=true, ignore_externals=false;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|OObb", kwnames, &url, &path, &rev, &peg_rev, &recurse, &ignore_externals))
-        return NULL;
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|OObb", kwnames, &url, &path, &rev, &peg_rev, &recurse, &ignore_externals))
+		return NULL;
 
-    if (!to_opt_revision(peg_rev, &c_peg_rev))
-        return NULL;
-    if (!to_opt_revision(rev, &c_rev))
-        return NULL;
+	if (!to_opt_revision(peg_rev, &c_peg_rev))
+		return NULL;
+	if (!to_opt_revision(rev, &c_rev))
+		return NULL;
 
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_checkout2(&result_rev, url, path, 
-        &c_peg_rev, &c_rev, recurse, 
-        ignore_externals, client->client, temp_pool));
+	RUN_SVN_WITH_POOL(temp_pool, svn_client_checkout2(&result_rev, url, path, 
+		&c_peg_rev, &c_rev, recurse, 
+		ignore_externals, client->client, temp_pool));
 	apr_pool_destroy(temp_pool);
-    return PyLong_FromLong(result_rev);
+	return PyLong_FromLong(result_rev);
 }
 
 static PyObject *client_commit(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyObject *targets; 
-    ClientObject *client = (ClientObject *)self;
-    bool recurse=true, keep_locks=true;
+	PyObject *targets; 
+	ClientObject *client = (ClientObject *)self;
+	bool recurse=true, keep_locks=true;
 	apr_pool_t *temp_pool;
-    svn_commit_info_t *commit_info = NULL;
+	svn_commit_info_t *commit_info = NULL;
 	PyObject *ret;
 	apr_array_header_t *apr_targets;
-    char *kwnames[] = { "targets", "recurse", "keep_locks", NULL };
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|bb", kwnames, &targets, &recurse, &keep_locks))
-        return NULL;
+	char *kwnames[] = { "targets", "recurse", "keep_locks", NULL };
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|bb", kwnames, &targets, &recurse, &keep_locks))
+		return NULL;
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
@@ -363,10 +363,10 @@ static PyObject *client_commit(PyObject *self, PyObject *args, PyObject *kwargs)
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_commit3(&commit_info, 
+	RUN_SVN_WITH_POOL(temp_pool, svn_client_commit3(&commit_info, 
 				apr_targets,
-               recurse, keep_locks, client->client, temp_pool));
-    ret = py_commit_info_tuple(commit_info);
+			   recurse, keep_locks, client->client, temp_pool));
+	ret = py_commit_info_tuple(commit_info);
 	apr_pool_destroy(temp_pool);
 
 	return ret;
@@ -374,30 +374,30 @@ static PyObject *client_commit(PyObject *self, PyObject *args, PyObject *kwargs)
 
 static PyObject *client_delete(PyObject *self, PyObject *args)
 {
-    PyObject *paths; 
-    bool force=false;
+	PyObject *paths; 
+	bool force=false;
 	apr_pool_t *temp_pool;
-    svn_commit_info_t *commit_info = NULL;
+	svn_commit_info_t *commit_info = NULL;
 	PyObject *ret;
 	apr_array_header_t *apr_paths;
-    ClientObject *client = (ClientObject *)self;
+	ClientObject *client = (ClientObject *)self;
 
-    if (!PyArg_ParseTuple(args, "O|b", &paths, &force))
-        return NULL;
+	if (!PyArg_ParseTuple(args, "O|b", &paths, &force))
+		return NULL;
 
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-    if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
+	if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
 
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_delete2(&commit_info, 
+	RUN_SVN_WITH_POOL(temp_pool, svn_client_delete2(&commit_info, 
 													apr_paths,
-                force, client->client, temp_pool));
+				force, client->client, temp_pool));
 
-    ret = py_commit_info_tuple(commit_info);
+	ret = py_commit_info_tuple(commit_info);
 
 	apr_pool_destroy(temp_pool);
 
@@ -406,98 +406,98 @@ static PyObject *client_delete(PyObject *self, PyObject *args)
 
 static PyObject *client_copy(PyObject *self, PyObject *args)
 {
-    char *src_path, *dst_path;
-    PyObject *src_rev=Py_None;
-    svn_commit_info_t *commit_info = NULL;
+	char *src_path, *dst_path;
+	PyObject *src_rev=Py_None;
+	svn_commit_info_t *commit_info = NULL;
 	apr_pool_t *temp_pool;
-    svn_opt_revision_t c_src_rev;
+	svn_opt_revision_t c_src_rev;
 	PyObject *ret;
-    ClientObject *client = (ClientObject *)self;
-    if (!PyArg_ParseTuple(args, "ss|O", &src_path, &dst_path, &src_rev))
-        return NULL;
-    if (!to_opt_revision(src_rev, &c_src_rev))
-        return NULL;
+	ClientObject *client = (ClientObject *)self;
+	if (!PyArg_ParseTuple(args, "ss|O", &src_path, &dst_path, &src_rev))
+		return NULL;
+	if (!to_opt_revision(src_rev, &c_src_rev))
+		return NULL;
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_copy2(&commit_info, src_path, 
-                &c_src_rev, dst_path, client->client, temp_pool));
-    ret = py_commit_info_tuple(commit_info);
+	RUN_SVN_WITH_POOL(temp_pool, svn_client_copy2(&commit_info, src_path, 
+				&c_src_rev, dst_path, client->client, temp_pool));
+	ret = py_commit_info_tuple(commit_info);
 	apr_pool_destroy(temp_pool);
 	return ret;
 }
 
 static PyObject *client_propset(PyObject *self, PyObject *args)
 {
-    char *propname;
-    svn_string_t c_propval;
-    int recurse = true;
-    int skip_checks = false;
-    ClientObject *client = (ClientObject *)self;
+	char *propname;
+	svn_string_t c_propval;
+	int recurse = true;
+	int skip_checks = false;
+	ClientObject *client = (ClientObject *)self;
 	apr_pool_t *temp_pool;
-    char *target;
+	char *target;
 
-    if (!PyArg_ParseTuple(args, "sz#s|bb", &propname, &c_propval.data, &c_propval.len, &target, &recurse, &skip_checks))
-        return NULL;
+	if (!PyArg_ParseTuple(args, "sz#s|bb", &propname, &c_propval.data, &c_propval.len, &target, &recurse, &skip_checks))
+		return NULL;
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
 	RUN_SVN_WITH_POOL(temp_pool, svn_client_propset2(propname, &c_propval,
-                target, recurse, skip_checks, client->client, temp_pool));
+				target, recurse, skip_checks, client->client, temp_pool));
 	apr_pool_destroy(temp_pool);
-    Py_RETURN_NONE;
+	Py_RETURN_NONE;
 }
-    
+	
 static PyObject *client_propget(PyObject *self, PyObject *args)
 {
-    svn_opt_revision_t c_peg_rev;
-    svn_opt_revision_t c_rev;
-    apr_hash_t *hash_props;
-    bool recurse = false;
-    char *propname;
+	svn_opt_revision_t c_peg_rev;
+	svn_opt_revision_t c_rev;
+	apr_hash_t *hash_props;
+	bool recurse = false;
+	char *propname;
 	apr_pool_t *temp_pool;
-    char *target;
-    PyObject *peg_revision = Py_None;
-    PyObject *revision;
-    ClientObject *client = (ClientObject *)self;
+	char *target;
+	PyObject *peg_revision = Py_None;
+	PyObject *revision;
+	ClientObject *client = (ClientObject *)self;
 	PyObject *ret;
 
-    if (!PyArg_ParseTuple(args, "ssO|Ob", &propname, &target, &peg_revision, 
-                          &revision, &recurse))
-        return NULL;
-    if (!to_opt_revision(peg_revision, &c_peg_rev))
-        return NULL;
-    if (!to_opt_revision(revision, &c_rev))
-        return NULL;
+	if (!PyArg_ParseTuple(args, "ssO|Ob", &propname, &target, &peg_revision, 
+						  &revision, &recurse))
+		return NULL;
+	if (!to_opt_revision(peg_revision, &c_peg_rev))
+		return NULL;
+	if (!to_opt_revision(revision, &c_rev))
+		return NULL;
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-    RUN_SVN_WITH_POOL(temp_pool, 
+	RUN_SVN_WITH_POOL(temp_pool, 
 					  svn_client_propget2(&hash_props, propname, target,
-                &c_peg_rev, &c_rev, recurse, client->client, temp_pool));
-    ret = prop_hash_to_dict(hash_props);
+				&c_peg_rev, &c_rev, recurse, client->client, temp_pool));
+	ret = prop_hash_to_dict(hash_props);
 	apr_pool_destroy(temp_pool);
 	return ret;
 }
 
 static PyObject *client_update(PyObject *self, PyObject *args)
 {
-    bool recurse = true;
-    bool ignore_externals = false;
+	bool recurse = true;
+	bool ignore_externals = false;
 	apr_pool_t *temp_pool;
-    PyObject *rev = Py_None, *paths;
-    apr_array_header_t *result_revs, *apr_paths;
-    svn_opt_revision_t c_rev;
-    svn_revnum_t ret_rev;
-    PyObject *ret;
-    int i = 0;
-    ClientObject *client = (ClientObject *)self;
+	PyObject *rev = Py_None, *paths;
+	apr_array_header_t *result_revs, *apr_paths;
+	svn_opt_revision_t c_rev;
+	svn_revnum_t ret_rev;
+	PyObject *ret;
+	int i = 0;
+	ClientObject *client = (ClientObject *)self;
 
-    if (!PyArg_ParseTuple(args, "O|Obb", &paths, &rev, &recurse, &ignore_externals))
-        return NULL;
+	if (!PyArg_ParseTuple(args, "O|Obb", &paths, &rev, &recurse, &ignore_externals))
+		return NULL;
 
-    if (!to_opt_revision(rev, &c_rev))
-        return NULL;
+	if (!to_opt_revision(rev, &c_rev))
+		return NULL;
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
@@ -505,31 +505,31 @@ static PyObject *client_update(PyObject *self, PyObject *args)
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_update2(&result_revs, 
-            apr_paths, &c_rev, 
-            recurse, ignore_externals, client->client, temp_pool));
-    ret = PyList_New(result_revs->nelts);
+	RUN_SVN_WITH_POOL(temp_pool, svn_client_update2(&result_revs, 
+			apr_paths, &c_rev, 
+			recurse, ignore_externals, client->client, temp_pool));
+	ret = PyList_New(result_revs->nelts);
 	if (ret == NULL)
 		return NULL;
 	for (i = 0; i < result_revs->nelts; i++) {
 		ret_rev = APR_ARRAY_IDX(result_revs, i, svn_revnum_t);
-        if (PyList_SetItem(ret, i, PyLong_FromLong(ret_rev)) != 0)
+		if (PyList_SetItem(ret, i, PyLong_FromLong(ret_rev)) != 0)
 			return NULL;
-    }
+	}
 	apr_pool_destroy(temp_pool);
-    return ret;
+	return ret;
 }
 
 static PyMethodDef client_methods[] = {
-    { "add", (PyCFunction)client_add, METH_VARARGS|METH_KEYWORDS, NULL },
-    { "checkout", (PyCFunction)client_checkout, METH_VARARGS|METH_KEYWORDS, NULL },
-    { "commit", (PyCFunction)client_commit, METH_VARARGS|METH_KEYWORDS, NULL },
-    { "delete", client_delete, METH_VARARGS, NULL },
-    { "copy", client_copy, METH_VARARGS, NULL },
-    { "propset", client_propset, METH_VARARGS, NULL },
-    { "propget", client_propget, METH_VARARGS, NULL },
-    { "update", client_update, METH_VARARGS, NULL },
-    { NULL, }
+	{ "add", (PyCFunction)client_add, METH_VARARGS|METH_KEYWORDS, NULL },
+	{ "checkout", (PyCFunction)client_checkout, METH_VARARGS|METH_KEYWORDS, NULL },
+	{ "commit", (PyCFunction)client_commit, METH_VARARGS|METH_KEYWORDS, NULL },
+	{ "delete", client_delete, METH_VARARGS, NULL },
+	{ "copy", client_copy, METH_VARARGS, NULL },
+	{ "propset", client_propset, METH_VARARGS, NULL },
+	{ "propget", client_propget, METH_VARARGS, NULL },
+	{ "update", client_update, METH_VARARGS, NULL },
+	{ NULL, }
 };
 
 static PyGetSetDef client_getset[] = {
@@ -542,22 +542,22 @@ static PyGetSetDef client_getset[] = {
 
 static PyObject *get_default_ignores(PyObject *self)
 {
-    apr_array_header_t *patterns;
-    apr_pool_t *pool;
+	apr_array_header_t *patterns;
+	apr_pool_t *pool;
 	int i = 0;
 	ConfigObject *configobj = (ConfigObject *)self;
 	PyObject *ret;
 
-    pool = Pool(NULL);
+	pool = Pool(NULL);
 	if (pool == NULL)
 		return NULL;
-    RUN_SVN_WITH_POOL(pool, svn_wc_get_default_ignores(&patterns, configobj->config, pool));
-    ret = PyList_New(patterns->nelts);
+	RUN_SVN_WITH_POOL(pool, svn_wc_get_default_ignores(&patterns, configobj->config, pool));
+	ret = PyList_New(patterns->nelts);
 	for (i = 0; i < patterns->nelts; i++) {
 		PyList_SetItem(ret, i, PyString_FromString(APR_ARRAY_IDX(patterns, i, char *)));
 	}
-    apr_pool_destroy(pool);
-    return ret;
+	apr_pool_destroy(pool);
+	return ret;
 }
 
 static PyObject *config_get_dict(PyObject *self, void *closure)
@@ -565,23 +565,23 @@ static PyObject *config_get_dict(PyObject *self, void *closure)
 	ConfigObject *config = (ConfigObject *)self;
 	apr_pool_t *pool;
 	PyObject *ret;
-    apr_hash_index_t *idx;
-    const char *key;
-    svn_config_t *val;
-    apr_ssize_t klen;
+	apr_hash_index_t *idx;
+	const char *key;
+	svn_config_t *val;
+	apr_ssize_t klen;
 
 	pool = Pool(NULL);
 	if (pool == NULL)
 		return NULL;
 
-    ret = PyDict_New();
-    for (idx = apr_hash_first(pool, config->config); idx != NULL; 
+	ret = PyDict_New();
+	for (idx = apr_hash_first(pool, config->config); idx != NULL; 
 		 idx = apr_hash_next(idx)) {
 		ConfigItemObject *data;
-        apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
+		apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
 		data = PyObject_New(ConfigItemObject, &ConfigItem_Type);
 		data->item = val;
-        PyDict_SetItemString(ret, key, (PyObject *)data);
+		PyDict_SetItemString(ret, key, (PyObject *)data);
 	}
 
 	return ret;
@@ -632,12 +632,12 @@ PyTypeObject ConfigItem_Type = {
 
 
 PyTypeObject Client_Type = {
-    PyObject_HEAD_INIT(&PyType_Type) 0,
-    .tp_name = "client.Client",
-    .tp_basicsize = sizeof(ClientObject),
-    .tp_methods = client_methods,
-    .tp_dealloc = client_dealloc,
-    .tp_new = client_new,
+	PyObject_HEAD_INIT(&PyType_Type) 0,
+	.tp_name = "client.Client",
+	.tp_basicsize = sizeof(ClientObject),
+	.tp_methods = client_methods,
+	.tp_dealloc = client_dealloc,
+	.tp_new = client_new,
 	.tp_getset = client_getset
 };
 
@@ -653,14 +653,14 @@ static PyObject *get_config(PyObject *self, PyObject *args)
 	if (data == NULL)
 		return NULL;
 
-    data->pool = Pool(NULL);
+	data->pool = Pool(NULL);
 	if (data->pool == NULL)
 		return NULL;
 
-    RUN_SVN_WITH_POOL(data->pool, 
+	RUN_SVN_WITH_POOL(data->pool, 
 					  svn_config_get_config(&data->config, config_dir, data->pool));
 
-    return (PyObject *)data;
+	return (PyObject *)data;
 }
 
 static PyMethodDef client_mod_methods[] = {
@@ -670,24 +670,24 @@ static PyMethodDef client_mod_methods[] = {
 
 void initclient(void)
 {
-    PyObject *mod;
+	PyObject *mod;
 
-    if (PyType_Ready(&Client_Type) < 0)
-        return;
+	if (PyType_Ready(&Client_Type) < 0)
+		return;
 
-    if (PyType_Ready(&Config_Type) < 0)
-        return;
+	if (PyType_Ready(&Config_Type) < 0)
+		return;
 
 	if (PyType_Ready(&ConfigItem_Type) < 0)
-        return;
+		return;
 
 	/* Make sure APR is initialized */
 	apr_initialize();
 
-    mod = Py_InitModule3("client", client_mod_methods, "Client methods");
-    if (mod == NULL)
-        return;
+	mod = Py_InitModule3("client", client_mod_methods, "Client methods");
+	if (mod == NULL)
+		return;
 
-    Py_INCREF(&Client_Type);
-    PyModule_AddObject(mod, "Client", (PyObject *)&Client_Type);
+	Py_INCREF(&Client_Type);
+	PyModule_AddObject(mod, "Client", (PyObject *)&Client_Type);
 }
