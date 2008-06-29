@@ -377,7 +377,7 @@ class cmd_svn_dpush(Command):
     branch. 
     """
     takes_args = ['location?']
-    takes_options = ['revision', 'remember', Option('directory',
+    takes_options = ['remember', Option('directory',
             help='Branch to push from, '
                  'rather than the one containing the working directory.',
             short_name='d',
@@ -385,17 +385,22 @@ class cmd_svn_dpush(Command):
             ),
             Option('no-rebase', help="Don't rebase after push")]
 
-    def run(self, location=None, revision=None, remember=False, 
+    def run(self, location=None, remember=False, 
             directory=None, no_rebase=False):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
-        from bzrlib.errors import NotBranchError, BzrCommandError
+        from bzrlib.errors import NotBranchError, BzrCommandError, NoWorkingTree
         from bzrlib.commit import dpush
         from bzrlib import urlutils
 
         if directory is None:
             directory = "."
-        source_branch = Branch.open_containing(directory)[0]
+        try:
+            source_wt = WorkingTree.open_containing(directory)[0]
+            source_branch = source_wt.branch
+        except NoWorkingTree:
+            source_branch = Branch.open_containing(directory)[0]
+            source_wt = None
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:
@@ -417,14 +422,16 @@ class cmd_svn_dpush(Command):
             revision_id = None
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        revid_map = dpush(target_branch, source_branch, stop_revision=revision_id)
+        revid_map = dpush(target_branch, source_branch)
         # We successfully created the target, remember it
         if source_branch.get_push_location() is None or remember:
             source_branch.set_push_location(target_branch.base)
         if not no_rebase:
-            check_rebase_version((0, 2))
-            from bzrlib.plugins.rebase import rebase
-            # FIXME
+            new_last_revid = revid_map[source_branch.last_revision()]
+            source_branch.set_last_revision(new_last_revid)
+            if source_wt is not None:
+                source_wt.set_last_revision(new_last_revid)
+
 
 register_command(cmd_svn_dpush)
 

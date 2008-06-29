@@ -59,13 +59,21 @@ class TestDPush(TestCaseWithSubversionRepository):
         wt = self.bzrdir.open_workingtree()
         newid = wt.commit(message="Commit from Bzr")
 
-        dpush(self.svndir.open_branch(), self.bzrdir.open_branch())
+        revid_map = dpush(self.svndir.open_branch(), self.bzrdir.open_branch())
+
+        self.assertEquals([newid], revid_map.keys())
 
         c = ra.RemoteAccess(self.repos_url)
         (entries, fetch_rev, props) = c.get_dir("", c.get_latest_revnum())
         self.assertEquals(set(['svn:entry:committed-rev', 
             'svn:entry:last-author', 'svn:entry:uuid', 
             'svn:entry:committed-date']), set(props.keys()))
+
+        r = self.svndir.find_repository()
+        self.assertEquals([r.generate_revision_id(
+                c.get_latest_revnum(),
+                "", 
+                r.get_mapping())], revid_map.values())
  
 
 class TestPush(TestCaseWithSubversionRepository):
