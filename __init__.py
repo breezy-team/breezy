@@ -369,7 +369,7 @@ class cmd_svn_push(Command):
 
 register_command(cmd_svn_push)
 
-class cmd_svn_dpush(Command):
+class cmd_dpush(Command):
     """Push revisions to Subversion without setting any magic Bazaar-specific 
     properties.
 
@@ -385,13 +385,14 @@ class cmd_svn_dpush(Command):
             ),
             Option('no-rebase', help="Don't rebase after push")]
 
-    def run(self, location=None, remember=False, 
-            directory=None, no_rebase=False):
+    def run(self, location=None, remember=False, directory=None, no_rebase=False):
+        from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError, NoWorkingTree
-        from bzrlib.commit import dpush
-        from bzrlib import urlutils
+        from bzrlib.workingtree import WorkingTree
+
+        from bzrlib.plugins.svn.commit import dpush
 
         if directory is None:
             directory = "."
@@ -412,14 +413,6 @@ class cmd_svn_dpush(Command):
                 location = stored_loc
 
         bzrdir = BzrDir.open(location)
-        if revision is not None:
-            if len(revision) > 1:
-                raise BzrCommandError(
-                    'bzr svn-dpush --revision takes exactly one revision' 
-                    ' identifier')
-            revision_id = revision[0].as_revision_id(source_branch)
-        else:
-            revision_id = None
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
         revid_map = dpush(target_branch, source_branch)
@@ -427,13 +420,15 @@ class cmd_svn_dpush(Command):
         if source_branch.get_push_location() is None or remember:
             source_branch.set_push_location(target_branch.base)
         if not no_rebase:
-            new_last_revid = revid_map[source_branch.last_revision()]
-            source_branch.set_last_revision(new_last_revid)
+            revno, old_last_revid = source_branch.last_revision_info()
+            new_last_revid = revid_map[old_last_revid]
+            source_branch.repository.fetch(target_branch.repository, new_last_revid)
+            source_branch.set_last_revision_info(revno, new_last_revid)
             if source_wt is not None:
                 source_wt.set_last_revision(new_last_revid)
 
 
-register_command(cmd_svn_dpush)
+register_command(cmd_dpush)
 
 
 class cmd_svn_branching_scheme(Command):

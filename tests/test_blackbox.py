@@ -46,6 +46,46 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         repos_url = self.make_repository('d')
         self.run_bzr('info -v %s' % repos_url)
 
+    def test_push(self):
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
+
+        self.run_bzr("branch %s dc" % repos_url)
+        self.build_tree({"dc/foo": "blaaaa"})
+        self.run_bzr("commit -m msg dc")
+        self.run_bzr("push -d dc %s" % repos_url)
+        self.check_output("", "status dc")
+
+    def test_dpush(self):
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
+
+        self.run_bzr("branch %s dc" % repos_url)
+        self.build_tree({"dc/foo": "blaaaa"})
+        self.run_bzr("commit -m msg dc")
+        self.run_bzr("dpush -d dc %s" % repos_url)
+        self.check_output("", "status dc")
+
+    def test_dpush_new(self):
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify()
+        dc.close()
+
+        self.run_bzr("branch %s dc" % repos_url)
+        self.build_tree({"dc/foofile": "blaaaa"})
+        self.run_bzr("add dc/foofile")
+        self.run_bzr("commit -m msg dc")
+        self.run_bzr("dpush -d dc %s" % repos_url)
+        self.check_output("", "status dc")
+
     def test_info_workingtree(self):
         repos_url = self.make_client('d', 'dc')
         self.run_bzr('info -v dc')
