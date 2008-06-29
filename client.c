@@ -547,53 +547,6 @@ static PyObject *client_update(PyObject *self, PyObject *args)
     return ret;
 }
 
-static PyObject *client_revprop_get(PyObject *self, PyObject *args)
-{
-    PyObject *rev = Py_None;
-    char *propname, *propval, *url;
-    svn_revnum_t set_rev;
-    svn_opt_revision_t c_rev;
-    svn_string_t *c_val;
-    ClientObject *client = (ClientObject *)self;
-	apr_pool_t *temp_pool;
-	PyObject *ret;
-    if (!PyArg_ParseTuple(args, "sssO", &propname, &propval, &url, &rev))
-        return NULL;
-    if (!to_opt_revision(rev, &c_rev))
-        return NULL;
-	temp_pool = Pool(NULL);
-	if (temp_pool == NULL)
-		return NULL;
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_revprop_get(propname, &c_val, url, 
-                &c_rev, &set_rev, client->client, temp_pool));
-    ret = Py_BuildValue("(z#i)", c_val->data, c_val->len, set_rev);
-	apr_pool_destroy(temp_pool);
-	return ret;
-}
-
-static PyObject *client_revprop_set(PyObject *self, PyObject *args)
-{
-    PyObject *rev = Py_None;
-    bool force = false;
-    ClientObject *client = (ClientObject *)self;
-    char *propname, *url;
-    svn_revnum_t set_rev;
-    svn_opt_revision_t c_rev;
-	apr_pool_t *temp_pool;
-    svn_string_t c_val;
-    if (!PyArg_ParseTuple(args, "sz#s|Ob", &propname, &c_val.data, &c_val.len, &url, &rev, &force))
-        return NULL;
-    if (!to_opt_revision(rev, &c_rev))
-        return NULL;
-	temp_pool = Pool(NULL);
-	if (temp_pool == NULL)
-		return NULL;
-    RUN_SVN_WITH_POOL(temp_pool, svn_client_revprop_set(propname, &c_val, url, 
-                &c_rev, &set_rev, force, client->client, temp_pool));
-	apr_pool_destroy(temp_pool);
-    return PyLong_FromLong(set_rev);
-}
-
 static PyMethodDef client_methods[] = {
     { "add", (PyCFunction)client_add, METH_VARARGS|METH_KEYWORDS, NULL },
     { "checkout", (PyCFunction)client_checkout, METH_VARARGS|METH_KEYWORDS, NULL },
@@ -604,8 +557,6 @@ static PyMethodDef client_methods[] = {
     { "propset", client_propset, METH_VARARGS, NULL },
     { "propget", client_propget, METH_VARARGS, NULL },
     { "update", client_update, METH_VARARGS, NULL },
-    { "revprop_get", client_revprop_get, METH_VARARGS, NULL },
-    { "revprop_set", client_revprop_set, METH_VARARGS, NULL },
     { NULL, }
 };
 
