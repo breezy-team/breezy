@@ -235,14 +235,13 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             rev = revnum
         return rev
 
-    def client_log(self, path, start_revnum=None, stop_revnum=None):
-        assert isinstance(path, str)
+    def client_log(self, url, start_revnum, stop_revnum):
+        r = ra.RemoteAccess(url)
+        assert isinstance(url, str)
         ret = {}
         def rcvr(orig_paths, rev, revprops, has_children):
             ret[rev] = (orig_paths, revprops.get(properties.PROP_REVISION_AUTHOR), revprops.get(properties.PROP_REVISION_DATE), revprops.get(properties.PROP_REVISION_LOG))
-        self.client_ctx.log([path], rcvr, None, self.revnum_to_opt_rev(start_revnum),
-                       self.revnum_to_opt_rev(stop_revnum), 0,
-                       True, True)
+        r.get_log(rcvr, [""], start_revnum, stop_revnum, 0, True, True)
         return ret
 
     def client_delete(self, relpath):

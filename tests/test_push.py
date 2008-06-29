@@ -202,7 +202,7 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         self.assertEquals(("Sombody famous", "2002-02-01T23:00:00.000000Z", "Commit from Bzr"), 
-            self.client_log(self.repos_url)[2][1:])
+            self.client_log(self.repos_url, 0, 2)[2][1:])
 
     def test_empty_file(self):
         self.build_tree({'dc/file': ''})
@@ -400,7 +400,7 @@ class TestPush(TestCaseWithSubversionRepository):
         push(Branch.open("%s/trunk" % self.repos_url), wt.branch, wt.branch.last_revision())
         mutter('log %r' % self.client_log("%s/trunk" % self.repos_url)[5][0])
         self.assertEquals("/branches/mybranch", 
-            self.client_log("%s/trunk" % self.repos_url)[5][0]['/trunk'][1])
+            self.client_log("%s/trunk" % self.repos_url, 0, 5)[5][0]['/trunk'][1])
 
 class PushNewBranchTests(TestCaseWithSubversionRepository):
     def test_single_revision(self):

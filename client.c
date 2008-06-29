@@ -594,44 +594,6 @@ static PyObject *client_revprop_set(PyObject *self, PyObject *args)
     return PyLong_FromLong(set_rev);
 }
 
-static PyObject *client_log(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    char *kwnames[] = { "targets", "callback", "peg_revision", "start", "end", "limit", "discover_changed_paths", "strict_node_history", NULL };
-    PyObject *targets, *callback, *peg_revision=Py_None, *start=Py_None, 
-             *end=Py_None;
-    ClientObject *client = (ClientObject *)self;
-	apr_pool_t *temp_pool;
-    int limit=0; 
-    bool discover_changed_paths=true, strict_node_history=true;
-    svn_opt_revision_t c_peg_rev, c_start_rev, c_end_rev;
-	apr_array_header_t *apr_paths;
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|OOOlbb", 
-                                     kwnames, &targets, &callback, 
-                                     &peg_revision, &start, &end, 
-                                     &limit, &discover_changed_paths, 
-                                     &strict_node_history))
-        return NULL;
-
-    if (!to_opt_revision(peg_revision, &c_peg_rev))
-        return NULL;
-    if (!to_opt_revision(start, &c_start_rev))
-        return NULL;
-    if (!to_opt_revision(end, &c_end_rev))
-        return NULL;
-	temp_pool = Pool(NULL);
-	if (temp_pool == NULL)
-		return NULL;
-	if (!string_list_to_apr_array(temp_pool, targets, &apr_paths)) {
-		apr_pool_destroy(temp_pool);
-		return NULL;
-	}
-	RUN_SVN_WITH_POOL(temp_pool, svn_client_log3(apr_paths,
-                &c_peg_rev, &c_start_rev, &c_end_rev, limit, discover_changed_paths, strict_node_history, py_svn_log_wrapper, callback, client->client, temp_pool));
-	apr_pool_destroy(temp_pool);
-    Py_RETURN_NONE;
-}
-
 static PyMethodDef client_methods[] = {
     { "add", (PyCFunction)client_add, METH_VARARGS|METH_KEYWORDS, NULL },
     { "checkout", (PyCFunction)client_checkout, METH_VARARGS|METH_KEYWORDS, NULL },
@@ -644,7 +606,6 @@ static PyMethodDef client_methods[] = {
     { "update", client_update, METH_VARARGS, NULL },
     { "revprop_get", client_revprop_get, METH_VARARGS, NULL },
     { "revprop_set", client_revprop_set, METH_VARARGS, NULL },
-    { "log", (PyCFunction)client_log, METH_KEYWORDS|METH_VARARGS, NULL },
     { NULL, }
 };
 

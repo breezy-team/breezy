@@ -90,6 +90,3 @@ class CacheTable(object):
     def mutter(self, text, *args):
         if "cache" in debug.debug_flags:
             mutter(text, *args)
-
-    def __del__(self):
-        self.cachedb.close()

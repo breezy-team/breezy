@@ -954,7 +954,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals("bla/*\n", 
                    self.client_get_prop("dc", SVN_PROP_BZR_BRANCHING_SCHEME))
         self.assertEquals("Updating branching scheme for Bazaar.", 
-                self.client_log("dc", 1, 1)[1][3])
+                self.client_log(repos_url, 1, 1)[1][3])
 
     def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')

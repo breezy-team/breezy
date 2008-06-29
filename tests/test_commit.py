@@ -153,7 +153,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt.commit(message="data")
         wt.rename_one("foo", "bar")
         wt.commit(message="doe")
-        paths = self.client_log("dc", 2, 0)[2][0]
+        paths = self.client_log(repos_url, 2, 0)[2][0]
         self.assertEquals('D', paths["/foo"][0])
         self.assertEquals('A', paths["/bar"][0])
         self.assertEquals('/foo', paths["/bar"][1])
@@ -171,7 +171,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertFalse(wt.has_filename("adir/foo"))
         self.assertTrue(wt.has_filename("bar"))
         wt.commit(message="doe")
-        paths = self.client_log("dc", 2, 0)[2][0]
+        paths = self.client_log(repos_url, 2, 0)[2][0]
         self.assertEquals('D', paths["/adir/foo"][0])
         self.assertEquals('A', paths["/bar"][0])
         self.assertEquals('/adir/foo', paths["/bar"][1])
@@ -588,7 +588,7 @@ class RevpropTests(TestCaseWithSubversionRepository):
                                         "svn:date": time_to_cstring(1000000*473385600)})
 
         self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
-                          self.client_log(repos_url)[1][1:])
+                          self.client_log(repos_url, 1, 1)[1][1:])
 
     def test_change_revprops_disallowed(self):
         repos_url = self.make_repository("d", allow_revprop_changes=False)
