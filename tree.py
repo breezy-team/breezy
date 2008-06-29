@@ -311,7 +311,7 @@ class SvnBasisTree(RevisionTree):
                 
                 if entry.kind == core.NODE_DIR:
                     subwc = wc.WorkingCopy(adm, 
-                            self.workingtree.abspath(subrelpath))
+                            self.workingtree.abspath(subrelpath).encode("utf-8"))
                     try:
                         add_dir_to_inv(subrelpath, subwc, id)
                     finally:
