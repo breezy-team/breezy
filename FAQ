@@ -116,9 +116,12 @@ retaining the exact same history that is in the Bazaar branch
 you're pushing. These properties are used for storing Bazaar metadata that 
 can not be losslessly mapped to existing Subversion metadata. 
 
-It would be possible to support pushing changes to Subversion without
-setting that metadata but then the revision created in Subversion
-would actually be a different one than in your local branch. 
+It is possible to push changes to Subversion without
+setting that metadata by using the ``bzr dpush`` command. 
+Since revisions created in Subversion this way are actually (slightly) different 
+from the matching revisions in the local branch, it is necessary for the dpush command 
+to rebase your branch to the remote branch after pushing.
+
 You would get a DivergedBranches error when pulling from a svn branch you have 
 just pushed to. 
 
