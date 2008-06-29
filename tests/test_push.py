@@ -54,7 +54,7 @@ class TestDPush(TestCaseWithSubversionRepository):
     def commit_editor(self):
         return self.get_commit_editor(self.repos_url)
 
-    def test_change(self):
+    def test_change_single(self):
         self.build_tree({'dc/foo/bla': 'other data'})
         wt = self.bzrdir.open_workingtree()
         newid = wt.commit(message="Commit from Bzr")
@@ -74,6 +74,31 @@ class TestDPush(TestCaseWithSubversionRepository):
                 c.get_latest_revnum(),
                 "", 
                 r.get_mapping())], revid_map.values())
+
+    def test_change_multiple(self):
+        self.build_tree({'dc/foo/bla': 'other data'})
+        wt = self.bzrdir.open_workingtree()
+        self.build_tree({'dc/foo/bla': 'other data'})
+        newid1 = wt.commit(message="Commit from Bzr")
+        self.build_tree({'dc/foo/bla': 'yet other data'})
+        newid2 = wt.commit(message="Commit from Bzr")
+
+        revid_map = dpush(self.svndir.open_branch(), self.bzrdir.open_branch())
+
+        self.assertEquals(set([newid1, newid2]), set(revid_map.keys()))
+
+        c = ra.RemoteAccess(self.repos_url)
+        (entries, fetch_rev, props) = c.get_dir("", c.get_latest_revnum())
+        self.assertEquals(set(['svn:entry:committed-rev', 
+            'svn:entry:last-author', 'svn:entry:uuid', 
+            'svn:entry:committed-date']), set(props.keys()))
+
+        r = self.svndir.find_repository()
+        self.assertEquals(set([r.generate_revision_id(
+                rev,
+                "", 
+                r.get_mapping()) for rev in (c.get_latest_revnum()-1, c.get_latest_revnum())]), 
+                set(revid_map.values()))
  
 
 class TestPush(TestCaseWithSubversionRepository):

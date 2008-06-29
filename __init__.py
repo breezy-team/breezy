@@ -26,8 +26,7 @@ from bzrlib.revisionspec import SPEC_TYPES
 from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 
-from bzrlib.plugins.svn import format
-from bzrlib.plugins.svn import revspec
+from bzrlib.plugins.svn import format, revspec
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
@@ -370,11 +369,11 @@ class cmd_svn_push(Command):
 register_command(cmd_svn_push)
 
 class cmd_dpush(Command):
-    """Push revisions to Subversion without setting any magic Bazaar-specific 
-    properties.
+    """Push diffs into Subversion avoiding the use of any Bazaar-specific properties.
 
     This will afterwards rebase the local Bazaar branch on the Subversion 
-    branch. 
+    branch unless the --no-rebase option is used, in which case 
+    the two branches will be out of sync. 
     """
     takes_args = ['location?']
     takes_options = ['remember', Option('directory',

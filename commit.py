@@ -676,7 +676,7 @@ def push_new(target_repository, target_branch_path, source,
 
 
 def dpush(target, source, stop_revision=None):
-    source.lock_read()
+    source.lock_write()
     try:
         if stop_revision is None:
             stop_revision = ensure_null(source.last_revision())
@@ -697,6 +697,7 @@ def dpush(target, source, stop_revision=None):
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
                 revid_map[revid] = push(target, source, revid, push_metadata=False)
+                source.repository.fetch(target.repository, revision_id=revid_map[revid])
                 target._clear_cached_state()
         finally:
             pb.finished()
@@ -711,7 +712,8 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
     old_tree = source_repo.revision_tree(revision_id)
     base_tree = source_repo.revision_tree(base_revid)
 
-    builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
+    builder = SvnCommitBuilder(target.repository, target, 
+                               rev.parent_ids if push_metadata else [base_revid],
                                config, rev.timestamp,
                                rev.timezone, rev.committer, rev.properties, 
                                revision_id, base_tree.inventory, 
@@ -748,10 +750,13 @@ def push(target, source, revision_id, push_metadata=True):
     mutter('pushing %r (%r)', revision_id, rev.parent_ids)
 
     # revision on top of which to commit
-    if rev.parent_ids == []:
-        base_revid = None
+    if push_metadata:
+        if rev.parent_ids == []:
+            base_revid = None
+        else:
+            base_revid = rev.parent_ids[0]
     else:
-        base_revid = rev.parent_ids[0]
+        base_revid = target.last_revision()
 
     source.lock_read()
     try:
@@ -822,7 +827,8 @@ class InterToSvnRepository(InterRepository):
                 if target_branch.get_branch_path() != bp:
                     target_branch.set_branch_path(bp)
 
-                push_revision_tree(target_branch, target_branch.get_config(), self.source, parent_revid, revision_id, rev)
+                push_revision_tree(target_branch, target_branch.get_config(), self.source, 
+                                   parent_revid, revision_id, rev)
         finally:
             self.source.unlock()
  
