@@ -422,10 +422,10 @@ class cmd_dpush(Command):
         if not no_rebase:
             revno, old_last_revid = source_branch.last_revision_info()
             new_last_revid = revid_map[old_last_revid]
-            source_branch.repository.fetch(target_branch.repository, new_last_revid)
-            source_branch.set_last_revision_info(revno, new_last_revid)
             if source_wt is not None:
-                source_wt.set_last_revision(new_last_revid)
+                source_wt.pull(target_branch, overwrite=True, stop_revision=new_last_revid)
+            else:
+                source_branch.pull(target_branch, overwrite=True, stop_revision=new_last_revid)
 
 
 register_command(cmd_dpush)
