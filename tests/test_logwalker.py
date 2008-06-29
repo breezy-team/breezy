@@ -17,6 +17,7 @@
 """Log walker tests."""
 
 from bzrlib.errors import NoSuchRevision
+from bzrlib.tests import TestCase
 
 import os
 from bzrlib import debug
@@ -729,4 +730,46 @@ class TestCachingLogWalker(TestLogWalker):
     def get_log_walker(self, transport):
         return logwalker.CachingLogWalker(super(TestCachingLogWalker, self).get_log_walker(transport))
 
+
+
+class TestLogCache(TestCase):
+    def setUp(self):
+        super(TestLogCache, self).setUp()
+        self.cache = logwalker.LogCache()
+
+    def test_insert_path(self):
+        self.cache.insert_path(42, "foo", "A", None, -1)
+        self.assertEquals({"foo": ("A", None, -1)}, self.cache.get_revision_paths(42))
+
+    def test_insert_revprop(self):
+        self.cache.insert_revprop(100, "some", "data")
+        self.assertEquals({"some": "data"}, self.cache.get_revprops(100))
+
+    def test_insert_revinfo(self):
+        self.cache.insert_revinfo(45, True)
+        self.cache.insert_revinfo(42, False)
+        self.assertTrue(self.cache.has_all_revprops(45))
+        self.assertFalse(self.cache.has_all_revprops(42))
+
+    def test_find_latest_change(self):
+        self.cache.insert_path(42, "foo", "A")
+        self.assertEquals(42, self.cache.find_latest_change("foo", 42))
+        self.assertEquals(42, self.cache.find_latest_change("foo", 45))
+
+    def test_changes_path(self):
+        self.cache.insert_path(42, "foo", "A")
+        self.assertTrue(self.cache.changes_path("foo", 42))
+        self.assertFalse(self.cache.changes_path("foo", 41))
+
+    def test_path_added(self):
+        self.cache.insert_path(42, "foo", "A")
+        self.assertEquals(42, self.cache.path_added("foo", 41, 43))
+        self.assertEquals(None, self.cache.path_added("foo", 42, 43))
+        self.assertEquals(None, self.cache.path_added("foo", 44, 49))
+
+    def test_get_change(self):
+        self.cache.insert_path(41, "foo", "A", "bla", 32)
+        self.cache.insert_path(42, "foo", "A")
+        self.assertEquals(("A", None, -1), self.cache.get_change("foo", 42))
+        self.assertEquals(("A", "bla", 32), self.cache.get_change("foo", 41))
 
