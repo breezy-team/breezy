@@ -28,6 +28,8 @@ from bzrlib.transport import register_lazy_transport, register_transport_proto
 
 from bzrlib.plugins.svn import format, revspec
 
+import os
+
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
@@ -67,12 +69,24 @@ def check_subversion_version():
     """Check that Subversion is compatible.
 
     """
+    def check_mtime(m):
+        (base, _) = os.path.splitext(m.__file__)
+        c_file = "%s.c" % base
+        if not os.path.exists(c_file):
+            return True
+        if os.path.getmtime(m.__file__) < os.path.getmtime(c_file):
+            return False
+        return True
     try:
-        from bzrlib.plugins.svn.ra import version
-    except:
+        from bzrlib.plugins.svn import client, ra, repos, wc
+        for x in client, ra, repos, wc:
+            if not check_mtime(x):
+                warning("bzr-svn extensions are outdated and need to be rebuilt")
+                break
+    except ImportError:
         warning("Unable to load bzr-svn extensions - did you build it?")
-        raise BzrError('missing dependency')
-    ra_version = version()
+        raise
+    ra_version = ra.version()
     if (ra_version[0] >= 5 and getattr(ra, 'SVN_REVISION', None) and 27729 <= ra.SVN_REVISION < 31470):
         warning('Installed Subversion has buggy svn.ra.get_log() implementation, please install newer.')
 
