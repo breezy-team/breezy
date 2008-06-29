@@ -56,7 +56,12 @@ static svn_error_t *py_commit_callback(const svn_commit_info_t *commit_info, voi
 
 static PyObject *pyify_lock(const svn_lock_t *lock)
 {
-    Py_RETURN_NONE; /* FIXME */
+	return Py_BuildValue("(ssszbLL)", 
+						 lock->path, lock->token, 
+						 lock->owner, lock->comment,
+						 lock->is_dav_comment,
+						 lock->creation_date,
+						 lock->expiration_date);
 }
 
 static svn_error_t *py_lock_func (void *baton, const char *path, int do_lock, 
@@ -71,6 +76,7 @@ static svn_error_t *py_lock_func (void *baton, const char *path, int do_lock,
     ret = PyObject_CallFunction((PyObject *)baton, "zbOO", path, do_lock, 
 						  py_lock, py_ra_err);
 	Py_DECREF(py_lock);
+	Py_DECREF(py_ra_err);
 	if (ret == NULL)
 		return py_svn_error();
 	Py_DECREF(ret);
