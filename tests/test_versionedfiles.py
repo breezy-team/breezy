@@ -41,7 +41,7 @@ class BasicSvnTextsTests:
 
 class SvnTextsTests(TestCase,BasicSvnTextsTests):
     def setUp(self):
-        self.texts = SvnTexts()
+        self.texts = SvnTexts(self)
 
 
 class FakeTextsTests(TestCase,BasicSvnTextsTests):

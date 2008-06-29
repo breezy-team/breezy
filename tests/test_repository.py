@@ -562,11 +562,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         fs = self.open_fs('c')
         self.assertEqual(fs.get_uuid(), repository.uuid)
 
-    def test_get_inventory_weave(self):
-        bzrdir = self.make_client_and_bzrdir('d', 'dc')
-        repository = bzrdir.find_repository()
-        self.assertRaises(NotImplementedError, repository.get_inventory_weave)
-
     def test_has_revision(self):
         bzrdir = self.make_client_and_bzrdir('d', 'dc')
         repository = bzrdir.find_repository()
