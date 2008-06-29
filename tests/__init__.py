@@ -202,11 +202,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
             return ret.values()[0]
 
     def client_get_revprop(self, url, revnum, name):
-        r = ra.RemoteUrl(url)
+        r = ra.RemoteAccess(url)
         return r.rev_proplist(revnum)[name]
 
     def client_set_revprop(self, url, revnum, name, value):
-        r = ra.RemoteUrl(url)
+        r = ra.RemoteAccess(url)
         r.change_rev_prop(revnum, name, value)
         
     def client_commit(self, dir, message=None, recursive=True):
@@ -228,14 +228,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :param relpath: Path to the files to add.
         """
         self.client_ctx.add(relpath, recursive, False, False)
-
-    def revnum_to_opt_rev(self, revnum):
-        if revnum is None:
-            rev = "HEAD"
-        else:
-            assert isinstance(revnum, int)
-            rev = revnum
-        return rev
 
     def client_log(self, url, start_revnum, stop_revnum):
         r = ra.RemoteAccess(url)
