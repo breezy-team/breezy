@@ -33,9 +33,48 @@ from time import sleep
 
 from bzrlib.plugins.svn import format, ra
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
-from bzrlib.plugins.svn.commit import push
+from bzrlib.plugins.svn.commit import push, dpush
 from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
+
+class TestDPush(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(TestDPush, self).setUp()
+        self.repos_url = self.make_repository('d')
+
+        dc = self.commit_editor()
+        foo = dc.add_dir("foo")
+        foo.add_file("foo/bla").modify("data")
+        dc.close()
+
+        self.svndir = BzrDir.open(self.repos_url)
+        os.mkdir("dc")
+        self.bzrdir = self.svndir.sprout("dc")
+
+    def commit_editor(self):
+        return self.get_commit_editor(self.repos_url)
+
+    def test_change(self):
+        self.build_tree({'dc/foo/bla': 'other data'})
+        wt = self.bzrdir.open_workingtree()
+        newid = wt.commit(message="Commit from Bzr")
+
+        revid_map = dpush(self.svndir.open_branch(), self.bzrdir.open_branch())
+
+        self.assertEquals([newid], revid_map.keys())
+
+        c = ra.RemoteAccess(self.repos_url)
+        (entries, fetch_rev, props) = c.get_dir("", c.get_latest_revnum())
+        self.assertEquals(set(['svn:entry:committed-rev', 
+            'svn:entry:last-author', 'svn:entry:uuid', 
+            'svn:entry:committed-date']), set(props.keys()))
+
+        r = self.svndir.find_repository()
+        self.assertEquals([r.generate_revision_id(
+                c.get_latest_revnum(),
+                "", 
+                r.get_mapping())], revid_map.values())
+ 
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
