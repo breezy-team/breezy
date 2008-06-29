@@ -92,31 +92,174 @@ class lazy_dict(object):
         return self.dict.__eq__(other)
 
 
+class LogCache(CacheTable):
+    """Log browser cache table manager. The methods of this class
+    encapsulate the SQL commands used by CachingLogWalker to access
+    the log cache tables."""
+    
+    def __init__(self, cache_db=None):
+        CacheTable.__init__(self, cache_db)
+        self.commit_countdown = 1000
+
+    def _create_table(self):
+        self.cachedb.executescript("""
+            create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
+            create index if not exists path_rev on changed_path(rev);
+            create unique index if not exists path_rev_path on changed_path(rev, path);
+            create unique index if not exists path_rev_path_action on changed_path(rev, path, action);
+
+            create table if not exists revprop(rev integer, name text, value text);
+            create table if not exists revinfo(rev integer, all_revprops int);
+            create index if not exists revprop_rev on revprop(rev);
+            create unique index if not exists revprop_rev_name on revprop(rev, name);
+            create unique index if not exists revinfo_rev on revinfo(rev);
+        """)
+    
+    def find_latest_change(self, path, revnum):
+        if path == "":
+            return self.cachedb.execute("select max(rev) from changed_path where rev <= ?", (revnum,)).fetchone()[0]
+        return self.cachedb.execute("""
+            select max(rev) from changed_path
+            where rev <= ?
+            and (path=?
+                 or path glob ?
+                 or (? glob (path || '/*')
+                     and action in ('A', 'R')))
+        """, (revnum, path, path + "/*", path)).fetchone()[0]
+
+    def path_added(self, path, from_revnum, to_revnum):
+        """Determine whether a path was recently added. 
+        
+        It returns the latest revision number before to_revnum in which the 
+        path was added or replaced, or None if the path was neither added nor
+        replaced after from_revnum but before to_revnum.
+        """
+        assert from_revnum < to_revnum
+        return self.cachedb.execute("""
+            select max(rev) from changed_path
+            where rev > ? and rev <= ?
+            and (?=path or ? glob (path || '/*'))
+            and action in ('A', 'R')
+        """, (from_revnum, to_revnum, path, path)).fetchone()[0]
+    
+    def get_change(self, path, revnum):
+        return self.cachedb.execute("""
+            select action, copyfrom_path, copyfrom_rev
+            from changed_path
+            where path=? and rev=?
+        """, (path, revnum)).fetchone()
+
+    def get_previous(self, path, revnum):
+        """Determine the change that created the given path or its
+        nearest ancestor, in order to determine where it came from."""
+        return self.cachedb.execute("""
+            select path, action, copyfrom_path, copyfrom_rev
+            from changed_path
+            where rev=? and action in ('A', 'R')
+            and (path=? or path='' or ? glob (path || '/*'))
+            order by path desc
+            limit 1
+        """, (revnum, path, path)).fetchone()
+
+    def get_revision_paths(self, revnum):
+        """Return all history information for a given revision number.
+        
+        :param revnum: Revision number of revision.
+        """
+        result = self.cachedb.execute("select path, action, copyfrom_path, copyfrom_rev from changed_path where rev=?", (revnum,))
+        paths = {}
+        for p, act, cf, cr in result:
+            if cf is not None:
+                cf = cf.encode("utf-8")
+            paths[p.encode("utf-8")] = (act, cf, cr)
+        return paths
+    
+    def changes_path(self, path, revnum):
+        """Check whether a path was changed in a particular revision:
+
+        :param path: path to check for
+        :param revnum: revision number to fetch
+        """
+        if path == '':
+            return self.cachedb.execute("select count(*) from changed_path where rev=?", (revnum,)).fetchone()[0] > 0
+        return self.cachedb.execute("select count(*) from changed_path where rev=? and (path=? or path glob (? || '/*'))", (revnum, path, path)).fetchone()[0] > 0
+
+    def insert_path(self, rev, path, action, copyfrom_path=None, copyfrom_rev=-1):
+        """Insert new history information into the cache.
+        
+        :param rev: Revision number of the revision
+        :param path: Path that was changed
+        :param action: Action on path (single-character)
+        :param copyfrom_path: Optional original path this path was copied from.
+        :param copyfrom_rev: Optional original rev this path was copied from.
+        """
+        assert action in ("A", "R", "D", "M")
+        assert not path.startswith("/")
+        self.cachedb.execute("replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", (rev, path, action, copyfrom_path, copyfrom_rev))
+
+    def get_revprops(self, revnum):
+        """Retrieve all the cached revision properties.
+
+        :param revnum: Revision number of revision to retrieve revprops for.
+        """
+        result = self.cachedb.execute("select name, value from revprop where rev = ?", (revnum,))
+        revprops = {}
+        for k,v in result:
+            revprops[k.encode("utf-8")] = v.encode("utf-8")
+        return revprops
+
+    def insert_revprop(self, rev, name, value):
+        """Add a revision property.
+
+        :param rev: Revision number of the revision.
+        :param name: Name of the revision property.
+        :param value: Contents of the revision property.
+        """
+        self.cachedb.execute("replace into revprop (rev, name, value) values (?, ?, ?)", (rev, name, value))
+
+    def has_all_revprops(self, revnum):
+        """Check whether all revprops for a revision have been cached.
+
+        :param revnum: Revision number of the revision.
+        """
+        return self.cachedb.execute("select all_revprops from revinfo where rev = ?", (revnum,)).fetchone()[0]
+
+    def insert_revinfo(self, rev, all_revprops):
+        """Insert metadata for a revision.
+
+        :param rev: Revision number of the revision.
+        :param all_revprops: Whether or not the full revprops have been stored.
+        """
+        self.cachedb.execute("""
+            replace into revinfo (rev, all_revprops) values (?, ?)
+        """, (rev, all_revprops))
+
+    def last_revnum(self):
+        saved_revnum = self.cachedb.execute("SELECT MAX(rev) FROM revinfo").fetchone()[0]
+        if saved_revnum is None:
+            return 0
+        return saved_revnum
+
+    def commit(self):
+        """Commit the cache database."""
+        self.cachedb.commit()
+        self.commit_countdown = 1000
+
+    def commit_conditionally(self):
+        self.commit_countdown -= 1
+        if self.commit_countdown <= 0:
+            self.commit()
+
+
 class CachingLogWalker(CacheTable):
     """Subversion log browser."""
     def __init__(self, actual, cache_db=None):
-        CacheTable.__init__(self, cache_db)
-
+        self.cache = LogCache(cache_db)
         self.actual = actual
         self._transport = actual._transport
         self.find_children = actual.find_children
 
-        self.saved_revnum = self.cachedb.execute("SELECT MAX(rev) FROM revinfo").fetchone()[0]
-        if self.saved_revnum is None:
-            self.saved_revnum = 0
-
-    def _create_table(self):
-        self.cachedb.executescript("""
-          create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
-          create index if not exists path_rev on changed_path(rev);
-          create unique index if not exists path_rev_path on changed_path(rev, path);
-          create unique index if not exists path_rev_path_action on changed_path(rev, path, action);
-          create table if not exists revprop(rev integer, name text, value text);
-          create table if not exists revinfo(rev integer, all_revprops int);
-          create index if not exists revprop_rev on revprop(rev);
-          create unique index if not exists revprop_rev_name on revprop(rev, name);
-          create unique index if not exists revinfo_rev on revinfo(rev);
-        """)
+        self.saved_revnum = self.cache.last_revnum()
 
     def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
@@ -129,24 +272,11 @@ class CachingLogWalker(CacheTable):
         self.fetch_revisions(revnum)
 
         self.mutter("latest change: %r:%r", path, revnum)
-
-        extra = ""
-        if path == "":
-            extra += " OR path GLOB '*'"
-        else:
-            extra += " OR path GLOB '%s/*'" % path.strip("/")
-        extra += " OR ('%s' GLOB (path || '/*') AND (action = 'R' OR action = 'A'))" % path.strip("/")
- 
-        query = "SELECT rev FROM changed_path WHERE (path='%s'%s) AND rev <= %d ORDER BY rev DESC LIMIT 1" % (path.strip("/"), extra, revnum)
-
-        row = self.cachedb.execute(query).fetchone()
-        if row is None and path == "":
+        revnum = self.cache.find_latest_change(path.strip("/"), revnum)
+        if revnum is None and path == "":
             return 0
-
-        if row is None:
-            return None
-
-        return row[0]
+        
+        return revnum
 
     def iter_changes(self, paths, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between from_revnum and to_revnum named path or inside path.
@@ -174,6 +304,7 @@ class CachingLogWalker(CacheTable):
 
         assert from_revnum >= to_revnum or path == ""
 
+        self.fetch_revisions(max(from_revnum, to_revnum))
         i = 0
 
         while ((not ascending and revnum >= to_revnum) or
@@ -181,7 +312,7 @@ class CachingLogWalker(CacheTable):
             if pb is not None:
                 pb.update("determining changes", from_revnum-revnum, from_revnum)
             assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
-            revpaths = self._get_revision_paths(revnum)
+            revpaths = self.get_revision_paths(revnum)
 
             if ascending:
                 next = (path, revnum+1)
@@ -215,42 +346,29 @@ class CachingLogWalker(CacheTable):
         assert revnum >= 0
         self.fetch_revisions(revnum)
         self.mutter("get previous %r:%r", path, revnum)
-        if revnum == 0:
-            return (None, -1)
-        row = self.cachedb.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
-        if row is None:
-            return (None, -1)
-        if row[2] == -1:
-            if row[0] in ('A','R'):
+        if path == "":
+            if revnum == 0:
                 return (None, -1)
+            return (path, revnum - 1)
+        row = self.cache.get_previous(path, revnum)
+        if row is None:
             return (path, revnum-1)
-        return (row[1], row[2])
-
-    def _get_revision_paths(self, revnum):
-        if revnum == 0:
-            return {'': ('A', None, -1)}
-
-        self.fetch_revisions(revnum)
-
-        query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
-
-        paths = {}
-        for p, act, cf, cr in self.cachedb.execute(query):
-            if cf is not None:
-                cf = cf.encode("utf-8")
-            paths[p.encode("utf-8")] = (act, cf, cr)
-        return paths
+        (branch_path, action, copyfrom_path, copyfrom_rev) = row
+        branch_path = branch_path.encode('utf-8')
+        if copyfrom_path is not None:
+            copyfrom_path = copyfrom_path.encode('utf-8')
+        assert path == branch_path or path.startswith(branch_path + "/")
+        if copyfrom_rev == -1:
+            assert path == branch_path
+            return (None, -1) # newly added
+        return (copyfrom_path + path[len(branch_path):], copyfrom_rev)
 
     def get_revision_paths(self, revnum):
-        """Obtain dictionary with all the changes in a particular revision.
+        if revnum == 0:
+            return {'': ('A', None, -1)}
+        self.fetch_revisions(revnum)
 
-        :param revnum: Subversion revision number
-        :returns: dictionary with paths as keys and 
-                  (action, copyfrom_path, copyfrom_rev) as values.
-        """
-        self.mutter("revision paths: %r", revnum)
-
-        return self._get_revision_paths(revnum)
+        return self.cache.get_revision_paths(revnum)
 
     def revprop_list(self, revnum):
         self.mutter("revprop list: %r", revnum)
@@ -258,10 +376,8 @@ class CachingLogWalker(CacheTable):
         self.fetch_revisions(revnum)
 
         if revnum > 0:
-            has_all_revprops = self.cachedb.execute("SELECT all_revprops FROM revinfo WHERE rev=?", (revnum,)).fetchone()[0]
-            known_revprops = {}
-            for k,v in self.cachedb.execute("select name, value from revprop where rev="+str(revnum)):
-                known_revprops[k.encode("utf-8")] = v.encode("utf-8")
+            has_all_revprops = self.cache.has_all_revprops(revnum)
+            known_revprops = self.cache.get_revprops(revnum)
         else:
             has_all_revprops = False
             known_revprops = {}
@@ -270,6 +386,10 @@ class CachingLogWalker(CacheTable):
             return known_revprops
 
         return lazy_dict(known_revprops, self._transport.revprop_list, revnum)
+
+    def changes_path(self, path, revnum):
+        self.fetch_revisions(revnum)
+        return self.cache.changes_path(path, revnum)
 
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
@@ -301,15 +421,12 @@ class CachingLogWalker(CacheTable):
                 if copyfrom_path is not None:
                     copyfrom_path = copyfrom_path.strip("/")
 
-                self.cachedb.execute(
-                     "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                     (revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2]))
+                self.cache.insert_path(revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2])
             for k,v in revprops.items():
-                self.cachedb.execute("replace into revprop (rev, name, value) values (?,?,?)", (revision, k, v))
-            self.cachedb.execute("replace into revinfo (rev, all_revprops) values (?,?)", (revision, todo_revprops is None))
+                self.cache.insert_revprop(revision, k, v)
+            self.cache.insert_revinfo(revision, todo_revprops is None)
             self.saved_revnum = revision
-            if self.saved_revnum % 5000 == 0:
-                self.cachedb.commit()
+            self.cache.commit_conditionally()
 
         self.mutter("get_log %d->%d", self.saved_revnum, to_revnum)
         try:
@@ -322,7 +439,6 @@ class CachingLogWalker(CacheTable):
                 raise
         finally:
             pb.finished()
-        self.cachedb.commit()
 
 
 def struct_revpaths_to_tuples(changed_paths):
@@ -429,6 +545,9 @@ class LogWalker(object):
                 raise NoSuchRevision(branch=self, 
                     revision="Revision number %d" % revnum)
             raise
+
+    def changes_path(self, path, revnum):
+        return self.get_revision_paths(revnum).has_key(path)
         
     def find_children(self, path, revnum):
         """Find all children of path in revnum.
