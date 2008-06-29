@@ -33,7 +33,7 @@ from time import sleep
 
 from bzrlib.plugins.svn import format, ra
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
-from bzrlib.plugins.svn.commit import push
+from bzrlib.plugins.svn.commit import push, dpush
 from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
@@ -59,14 +59,13 @@ class TestDPush(TestCaseWithSubversionRepository):
         wt = self.bzrdir.open_workingtree()
         newid = wt.commit(message="Commit from Bzr")
 
-        svnbranch = self.svndir.open_branch()
-        svnbranch.pull(self.bzrdir.open_branch())
+        dpush(self.svndir.open_branch(), self.bzrdir.open_branch())
 
         c = ra.RemoteAccess(self.repos_url)
         (entries, fetch_rev, props) = c.get_dir("", c.get_latest_revnum())
-        self.assertEquals(['svn:entry:committed-rev', 
+        self.assertEquals(set(['svn:entry:committed-rev', 
             'svn:entry:last-author', 'svn:entry:uuid', 
-            'svn:entry:committed-date'], props.keys())
+            'svn:entry:committed-date']), set(props.keys()))
  
 
 class TestPush(TestCaseWithSubversionRepository):

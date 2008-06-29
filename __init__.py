@@ -390,6 +390,7 @@ class cmd_svn_dpush(Command):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError
+        from bzrlib.commit import dpush
         from bzrlib import urlutils
 
         if directory is None:
@@ -416,15 +417,7 @@ class cmd_svn_dpush(Command):
             revision_id = None
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        revid_map = {}
-        # FIXME: figure out what revisions to push
-        todo = []
-        try:
-            for revid in todo:
-                revid_map[revid] = push(target_branch, source_branch, revid, 
-                     push_metadata=False)
-        finally:
-            target_branch.unlock()
+        revid_map = dpush(target_branch, source_branch, stop_revision=revision_id)
         # We successfully created the target, remember it
         if source_branch.get_push_location() is None or remember:
             source_branch.set_push_location(target_branch.base)

@@ -15,13 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Committing and pushing to Subversion repositories."""
 
-from bzrlib import debug, osutils, urlutils
+from bzrlib import debug, osutils, urlutils, ui
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
                            UnrelatedBranches, AppendRevisionsOnlyViolation)
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, ensure_null
 from bzrlib.trace import mutter, warning
 
 from cStringIO import StringIO
@@ -515,7 +515,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         revid = self.branch.generate_revision_id(result_revision)
 
-        assert self._new_revision_id is None or self._new_revision_id == revid
+        assert not self.push_metadata or self._new_revision_id is None or self._new_revision_id == revid
 
         self.mutter('commit %d finished. author: %r, date: %r, revid: %r',
                result_revision, result_author, 
@@ -673,6 +673,37 @@ def push_new(target_repository, target_branch_path, source,
                 self.repository.get_mapping())
 
     push(ImaginaryBranch(target_repository), source, start_revid, push_metadata=push_metadata)
+
+
+def dpush(target, source, stop_revision=None):
+    source.lock_read()
+    try:
+        if stop_revision is None:
+            stop_revision = ensure_null(source.last_revision())
+        if target.last_revision() in (stop_revision, source.last_revision()):
+            return
+        graph = target.repository.get_graph()
+        if not source.repository.get_graph().is_ancestor(target.last_revision(), 
+                                                        stop_revision):
+            if graph.is_ancestor(stop_revision, target.last_revision()):
+                return
+            raise DivergedBranches(self, other)
+        todo = target.repository.lhs_missing_revisions(source.revision_history(), 
+                                                     stop_revision)
+        revid_map = {}
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for revid in todo:
+                pb.update("pushing revisions", todo.index(revid), 
+                          len(todo))
+                revid_map[revid] = push(target, source, revid, push_metadata=False)
+                target._clear_cached_state()
+        finally:
+            pb.finished()
+        (new_revno, new_revid) = target.last_revision_info()
+        return revid_map
+    finally:
+        source.unlock()
 
 
 def push_revision_tree(target, config, source_repo, base_revid, revision_id, 
