@@ -90,7 +90,7 @@ class RevisionBuildEditor(object):
     def __init__(self, source, target):
         self.target = target
         self.source = source
-        self.transact = target.get_transaction()
+        self.texts = target.texts
 
     def set_target_revision(self, revnum):
         assert self.revnum == revnum
@@ -425,10 +425,6 @@ class FileBuildEditor(object):
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
     """
-    def __init__(self, source, target):
-        RevisionBuildEditor.__init__(self, source, target)
-        self.texts = target.texts
-
     def _start_revision(self):
         self._write_group_active = True
         self.target.start_write_group()
