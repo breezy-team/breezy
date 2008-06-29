@@ -372,33 +372,6 @@ static PyObject *client_commit(PyObject *self, PyObject *args, PyObject *kwargs)
 	return ret;
 }
 
-static PyObject *client_mkdir(PyObject *self, PyObject *args)
-{
-    PyObject *paths;
-    svn_commit_info_t *commit_info = NULL;
-	apr_pool_t *temp_pool;
-	apr_array_header_t *apr_paths;
-    ClientObject *client = (ClientObject *)self;
-	PyObject *ret;
-    if (!PyArg_ParseTuple(args, "O", &paths))
-        return NULL;
-	temp_pool = Pool(NULL);
-	if (temp_pool == NULL)
-		return NULL;
-	if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
-		apr_pool_destroy(temp_pool);
-		return NULL;
-	}
-
-    if (!check_error(svn_client_mkdir2(&commit_info, apr_paths,
-                client->client, temp_pool)))
-        return NULL;
-    ret = py_commit_info_tuple(commit_info);
-	apr_pool_destroy(temp_pool);
-
-	return ret;
-}
-
 static PyObject *client_delete(PyObject *self, PyObject *args)
 {
     PyObject *paths; 
@@ -551,7 +524,6 @@ static PyMethodDef client_methods[] = {
     { "add", (PyCFunction)client_add, METH_VARARGS|METH_KEYWORDS, NULL },
     { "checkout", (PyCFunction)client_checkout, METH_VARARGS|METH_KEYWORDS, NULL },
     { "commit", (PyCFunction)client_commit, METH_VARARGS|METH_KEYWORDS, NULL },
-    { "mkdir", client_mkdir, METH_VARARGS, NULL },
     { "delete", client_delete, METH_VARARGS, NULL },
     { "copy", client_copy, METH_VARARGS, NULL },
     { "propset", client_propset, METH_VARARGS, NULL },
