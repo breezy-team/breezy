@@ -358,3 +358,31 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'd', 'd-id', False, [None, u'd', u'd'], iterator)
         self.assertWalkerNext(u'e', 'e-id', False, [None, u'e', None], iterator)
         self.assertRaises(StopIteration, iterator.next)
+
+    def test_different_file_id_in_others(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/c/'])
+        tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.commit('first', rev_id='first-rev-id')
+
+        tree.rename_one('b', 'c/d')
+        self.build_tree(['tree/b'])
+        tree.add(['b'], ['b2-id'])
+        tree.commit('second', rev_id='second-rev-id')
+
+        tree.rename_one('a', 'c/e')
+        self.build_tree(['tree/a'])
+        tree.add(['a'], ['a2-id'])
+
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
+        first_tree = tree.branch.repository.revision_tree('first-rev-id')
+        walker = _mod_tree.MultiWalker(tree, [basis_tree, first_tree])
+
+        iterator = walker.iter_all()
+        self.assertWalkerNext(u'', root_id, True, [u'', u''], iterator)
+        self.assertWalkerNext(u'a', 'a2-id', True, [None, None], iterator)
+        self.assertWalkerNext(u'b', 'b2-id', True, [u'b', None], iterator)
+        self.assertWalkerNext(u'c', 'c-id', True, [u'c', u'c'], iterator)
+        self.assertWalkerNext(u'c/d', 'b-id', True, [u'c/d', u'b'], iterator)
+        self.assertWalkerNext(u'c/e', 'a-id', True, [u'a', u'a'], iterator)
+        self.assertRaises(StopIteration, iterator.next)
