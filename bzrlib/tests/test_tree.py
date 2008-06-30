@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,12 @@
 
 """Tests for Tree and InterTree."""
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    revision,
+    tests,
+    tree as _mod_tree,
+    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tree import InterTree
 
@@ -138,3 +143,88 @@ class TestTree(TestCaseWithTransport):
             specific_files=['known_file', 'unknown_file'] ,
             require_versioned=False)
         self.assertEqual(len(delta.added), 1)
+
+
+class TestMultiWalker(TestCaseWithTransport):
+
+    def assertStepOne(self, has_more, path, file_id, iterator):
+        retval = _mod_tree.MultiWalker._step_one(iterator)
+        if not has_more:
+            self.assertIs(None, path)
+            self.assertIs(None, file_id)
+            self.assertEqual((False, None, None), retval)
+        else:
+            self.assertEqual((has_more, path, file_id),
+                             (retval[0], retval[1], retval[2].file_id))
+
+    def test__step_one_empty(self):
+        tree = self.make_branch_and_tree('empty')
+        repo = tree.branch.repository
+        empty_tree = repo.revision_tree(revision.NULL_REVISION)
+
+        iterator = empty_tree.iter_entries_by_dir()
+        self.assertStepOne(False, None, None, iterator)
+        self.assertStepOne(False, None, None, iterator)
+
+    def test__step_one(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b/', 'tree/b/c'])
+        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+
+        iterator = tree.iter_entries_by_dir()
+        root_id = tree.path2id('')
+        self.assertStepOne(True, '', root_id, iterator)
+        self.assertStepOne(True, 'a', 'a-id', iterator)
+        self.assertStepOne(True, 'b', 'b-id', iterator)
+        self.assertStepOne(True, 'b/c', 'c-id', iterator)
+        self.assertStepOne(False, None, None, iterator)
+        self.assertStepOne(False, None, None, iterator)
+
+    def test_simple_stepping(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b/', 'tree/b/c'])
+        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+
+        tree.commit('first', rev_id='first-rev-id')
+        basis_tree = tree.basis_tree()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
+
+        walker = _mod_tree.MultiWalker(tree, [basis_tree])
+        iterator = walker.iter_all()
+        master_path, file_id, master_ie, other_values = iterator.next()
+        root_id = tree.path2id('')
+        self.assertEqual('', master_path)
+        self.assertEqual(root_id, file_id)
+        self.assertEqual(1, len(other_values))
+        other_path, other_ie = other_values[0]
+        self.assertEqual('', other_path)
+        self.assertEqual(root_id, other_ie.file_id)
+
+        master_path, file_id, master_ie, other_values = iterator.next()
+        self.assertEqual(u'a', master_path)
+        self.assertEqual('a-id', file_id)
+        self.assertEqual(1, len(other_values))
+        other_path, other_ie = other_values[0]
+        self.assertEqual(u'a', other_path)
+        self.assertEqual('a-id', other_ie.file_id)
+
+        master_path, file_id, master_ie, other_values = iterator.next()
+        self.assertEqual(u'b', master_path)
+        self.assertEqual('b-id', file_id)
+        self.assertEqual(1, len(other_values))
+        other_path, other_ie = other_values[0]
+        self.assertEqual(u'b', other_path)
+        self.assertEqual('b-id', other_ie.file_id)
+
+        master_path, file_id, master_ie, other_values = iterator.next()
+        self.assertEqual(u'b/c', master_path)
+        self.assertEqual('c-id', file_id)
+        self.assertEqual(1, len(other_values))
+        other_path, other_ie = other_values[0]
+        self.assertEqual(u'b/c', other_path)
+        self.assertEqual('c-id', other_ie.file_id)
+
+        self.assertRaises(StopIteration, iterator.next)

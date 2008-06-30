@@ -905,3 +905,75 @@ class InterTree(InterObject):
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
+
+
+class MultiWalker(object):
+    """Walk multiple trees simultaneously, getting combined results."""
+
+    def __init__(self, master_tree, other_trees):
+        """Create a new MultiWalker.
+
+        All trees being walked must implement "iter_entries_by_dir()", such
+        that they yield (path, object) tuples, where that object will have a
+        '.file_id' member, that can be used to check equality.
+
+        :param master_tree: All trees will be 'slaved' to the master_tree. Such
+            that nodes in master_tree will be used as 'first-pass' sync points.
+            Any nodes that aren't in master_tree will be merged in a second
+            pass.
+        :param other_trees: A list of other trees to walk simultaneously.
+        """
+        self._master_tree = master_tree
+        self._other_trees = other_trees
+
+    @staticmethod
+    def _step_one(iterator):
+        """Step an iter_entries_by_dir iterator.
+
+        :return: (has_more, path, ie)
+            If has_more is False, path and ie will be None.
+        """
+        try:
+            path, ie = iterator.next()
+        except StopIteration:
+            return False, None, None
+        else:
+            return True, path, ie
+
+    def iter_all(self):
+        """Match up the values in the different trees."""
+        import pdb; pdb.set_trace()
+        master_iterator = self._master_tree.iter_entries_by_dir()
+
+        other_walkers = [other.iter_entries_by_dir()
+                         for other in self._other_trees]
+        other_entries = [self._step_one(walker) for walker in other_walkers]
+
+        master_has_more = True
+        while master_has_more:
+            (master_has_more, master_path,
+             master_ie) = self._step_one(master_iterator)
+            if not master_has_more:
+                break
+
+            master_file_id = master_ie.file_id
+            other_values = []
+            next_other_entries = []
+            for other_walker, (other_has_more, other_path, other_ie) in \
+                zip(other_walkers, other_entries):
+                if not other_has_more:
+                    other_values.append((None, None))
+                    next_other_entries.append(False, None, None)
+                elif master_file_id == other_ie.file_id:
+                    # This walker matched, so consume this path, and go on to
+                    # the next
+                    other_values.append((other_path, other_ie))
+                    next_other_entries.append(self._step_one(other_walker))
+                else:
+                    # This walker did not match, step it until it either
+                    # matches, or we know we are past the current walker.
+                    raise NotImplementedError
+            other_entries = next_other_entries
+
+            # We've matched all the walkers, yield this datapoint
+            yield master_path, master_file_id, master_ie, other_values
