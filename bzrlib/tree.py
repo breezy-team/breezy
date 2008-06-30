@@ -926,6 +926,11 @@ class MultiWalker(object):
         self._master_tree = master_tree
         self._other_trees = other_trees
 
+        # Keep track of any nodes that were properly processed just out of
+        # order, that way we don't return them at the end, we don't have to
+        # track *all* processed file_ids, just the out-of-order ones
+        self._out_of_order_processed = set()
+
     @staticmethod
     def _step_one(iterator):
         """Step an iter_entries_by_dir iterator.
@@ -972,6 +977,38 @@ class MultiWalker(object):
         key2 = (dirname2.split(u'/'), basename2)
         return cmp(key1, key2)
 
+    def _lookup_by_file_id(self, extra_entries, other_tree, file_id):
+        """Lookup an inventory entry by file_id.
+
+        This is called when an entry is missing in the normal order.
+        Generally this is because a file was either renamed, or it was
+        deleted/added. If the entry was found in the inventory and not in
+        extra_entries, it will be added to self._out_of_order_processed
+
+        :param extra_entries: A dictionary of {file_id: (path, ie)}.  This
+            should be filled with entries that were found before they were
+            used. If file_id is present, it will be removed from the
+            dictionary.
+        :param other_tree: The Tree to search, in case we didn't find the entry
+            yet.
+        :param file_id: The file_id to look for
+        :return: (path, ie) if found or (None, None) if not present.
+        """
+        if file_id in extra_entries:
+            return extra_entries.pop(file_id)
+        # TODO: Is id2path better as the first call, or is
+        #       inventory[file_id] better as a first check?
+        try:
+            cur_path = other_tree.id2path(file_id)
+        except errors.NoSuchId:
+            cur_path = None
+        if cur_path is None:
+            return (None, None)
+        else:
+            self._out_of_order_processed.add(file_id)
+            cur_ie = other_tree.inventory[file_id]
+            return (cur_path, cur_ie)
+
     def iter_all(self):
         """Match up the values in the different trees."""
         master_iterator = self._master_tree.iter_entries_by_dir()
@@ -982,29 +1019,6 @@ class MultiWalker(object):
 
         # Track extra nodes in the other trees
         others_extra = [{} for i in xrange(len(self._other_trees))]
-
-        # Keep track of any nodes that were properly processed just out of
-        # order, that way we don't return them at the end, we don't have to
-        # track *all* processed file_ids, just the out-of-order ones
-        out_of_order_processed = set()
-
-        def lookup_by_file_id(idx, file_id):
-            # TODO: Is id2path better as the first call, or is
-            #       inventory[file_id] better as a first check?
-            if file_id in others_extra[idx]:
-                return others_extra[idx].pop(file_id)
-            try:
-                cur_path = self._other_trees[idx].id2path(file_id)
-            except errors.NoSuchId:
-                cur_path = None
-            if cur_path is None:
-                return (None, None)
-            else:
-                out_of_order_processed.add(file_id)
-                cur_ie = self._other_trees[idx].inventory[file_id]
-                return (cur_path, cur_ie)
-
-
 
         master_has_more = True
         while master_has_more:
@@ -1018,7 +1032,8 @@ class MultiWalker(object):
             next_other_entries = []
             for idx, (other_has_more, other_path, other_ie) in enumerate(other_entries):
                 if not other_has_more:
-                    other_values.append(lookup_by_file_id(idx, file_id))
+                    other_values.append(self._lookup_by_file_id(
+                        others_extra[idx], self._other_trees[idx], file_id))
                     next_other_entries.append((False, None, None))
                 elif file_id == other_ie.file_id:
                     # This walker matched, so consume this path, and go on to
@@ -1031,7 +1046,7 @@ class MultiWalker(object):
                     while (other_has_more and
                            self._cmp_path_by_dirblock(other_path, master_path) < 0):
                         other_file_id = other_ie.file_id
-                        if other_file_id not in out_of_order_processed:
+                        if other_file_id not in self._out_of_order_processed:
                             others_extra[idx][other_file_id] = (other_path,
                                                                 other_ie)
                         other_has_more, other_path, other_ie = \
@@ -1044,7 +1059,8 @@ class MultiWalker(object):
                     else:
                         # This record isn't in the normal order, see if it
                         # exists at all,
-                        other_values.append(lookup_by_file_id(idx, file_id))
+                        other_values.append(self._lookup_by_file_id(
+                            others_extra[idx], self._other_trees[idx], file_id))
                     next_other_entries.append((other_has_more, other_path,
                                                other_ie))
             other_entries = next_other_entries
@@ -1056,7 +1072,7 @@ class MultiWalker(object):
         for idx, (other_has_more, other_path, other_ie) in enumerate(other_entries):
             while other_has_more:
                 other_file_id = other_ie.file_id
-                if other_file_id not in out_of_order_processed:
+                if other_file_id not in self._out_of_order_processed:
                     others_extra[idx][other_file_id] = (other_path, other_ie)
                 other_has_more, other_path, other_ie = \
                     self._step_one(other_walkers[idx])
@@ -1080,6 +1096,8 @@ class MultiWalker(object):
                 other_values = [(None, None) for i in xrange(idx)]
                 other_values.append((other_path, other_ie))
                 for alt_idx, alt_extra in enumerate(others_extra[idx+1:]):
-                    other_values.append(lookup_by_file_id(alt_idx + idx + 1,
-                                                          file_id))
+                    alt_idx = alt_idx + idx + 1
+                    other_values.append(self._lookup_by_file_id(
+                        others_extra[alt_idx], self._other_trees[alt_idx],
+                        file_id))
                 yield other_path, file_id, None, other_values
