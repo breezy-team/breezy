@@ -328,16 +328,12 @@ class EmacsMail(ExternalMailClient):
         This temporary file will be loaded at runtime in
         _get_compose_commandline function.
 
-        FIXME: this function does not remove the file. That's a wanted
+        This function does not remove the file.  That's a wanted
         behaviour since _get_compose_commandline won't run the send
         mail function directly but return the eligible command line.
         Removing our temporary file here would prevent our sendmail
-        function to work.
-
-        A possible workaround could be to load the function here with
-        emacsclient --eval '(load temp)' but this is not robust since
-        emacs could have been stopped between here and the call to
-        mail client.
+        function to work.  (The file is deleted by some elisp code
+        after being read by Emacs.)
         """
 
         _defun = r"""(defun bzr-add-mime-att (file)
@@ -349,7 +345,7 @@ class EmacsMail(ExternalMailClient):
           (progn
 	    (mail-text)
 	    (newline)
-	    (etach-attach file)))
+	    (mail-attach-file file)))
          ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
           (progn
 	    (mail-text)
