@@ -202,14 +202,24 @@ class TestMultiWalker(TestCaseWithTransport):
             self.assertIs(None, master_ie, 'master should not have an entry')
         self.assertEqual(len(exp_other_paths), len(other_values),
                             'Wrong number of other entries')
-        for exp_other_path, (other_path, other_ie) in \
-                zip(exp_other_paths, other_values):
-            self.assertEqual(exp_other_path, other_path, "Other path incorrect")
-            if exp_other_path is None:
-                self.assertIs(None, other_ie, "Other should not have an entry")
+        other_paths = []
+        other_file_ids = []
+        for path, ie in other_values:
+            other_paths.append(path)
+            if ie is None:
+                other_file_ids.append(None)
             else:
-                self.assertEqual(file_id, other_ie.file_id,
-                                 "Incorrect other entry")
+                other_file_ids.append(ie.file_id)
+        
+        exp_file_ids = []
+        for path in exp_other_paths:
+            if path is None:
+                exp_file_ids.append(None)
+            else:
+                exp_file_ids.append(file_id)
+        self.assertEqual(exp_other_paths, other_paths, "Other paths incorrect")
+        self.assertEqual(exp_file_ids, other_file_ids,
+                         "Other file_ids incorrect")
 
     def lock_and_get_basis_and_root_id(self, tree):
         tree.lock_read()
@@ -323,3 +333,22 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'd', 'd-id', False, [u'd'], iterator)
         self.assertRaises(StopIteration, iterator.next)
 
+    def test_others_extra_at_end(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/c', 'tree/d'])
+        tree.add(['a', 'b', 'c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree.commit('first', rev_id='first-rev-id')
+        tree.remove(['d'])
+        tree.commit('second', rev_id='second-rev-id')
+        tree.remove(['c'])
+
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
+        first_tree = tree.branch.repository.revision_tree('first-rev-id')
+        walker = _mod_tree.MultiWalker(tree, [basis_tree, first_tree])
+        iterator = walker.iter_all()
+        self.assertWalkerNext(u'', root_id, True, [u'', u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a', u'a'], iterator)
+        self.assertWalkerNext(u'b', 'b-id', True, [u'b', u'b'], iterator)
+        self.assertWalkerNext(u'c', 'c-id', False, [u'c', u'c'], iterator)
+        self.assertWalkerNext(u'd', 'd-id', False, [None, u'd'], iterator)
+        self.assertRaises(StopIteration, iterator.next)

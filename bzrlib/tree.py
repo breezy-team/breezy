@@ -1063,15 +1063,20 @@ class MultiWalker(object):
 
         # We have walked all of the master tree, now we want to find any extra
         # nodes in the other trees
+        def path_key(other):
+            path = other[0]
+            dirname, basename = os.path.split(path)
+            return (dirname.split(u'/'), basename)
+
         for idx, other_extra in enumerate(others_extra):
             # TODO: we could use a key=XXX rather than cmp=XXX
-            others = sorted(other_extra.itervalues(),
-                            cmp=self._cmp_path_by_dirblock)
+            others = sorted(other_extra.itervalues(), key=path_key)
             for other_path, other_ie in others:
                 file_id = other_ie.file_id
                 other_extra.pop(file_id)
-                other_values = [(other_path, other_ie)]
+                other_values = [(None, None) for i in xrange(idx)]
+                other_values.append((other_path, other_ie))
                 for alt_idx, alt_extra in enumerate(others_extra[idx+1:]):
-                    other_values.append(lookup_by_file_id(alt_idx + idx,
+                    other_values.append(lookup_by_file_id(alt_idx + idx + 1,
                                                           file_id))
                 yield other_path, file_id, None, other_values
