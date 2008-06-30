@@ -345,12 +345,12 @@ class EmacsMail(ExternalMailClient):
           (progn
 	    (mail-text)
 	    (newline)
-	    (mail-attach-file file)))
+	    (if (functionp 'etach-attach)
+	      (etach-attach file)
+	      (mail-attach-file file))))
          ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
           (progn
-	    (mail-text)
-	    (newline)
-	    (mml-attach-file file "text/x-patch" "BZR merge" "attachment")))
+	    (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
 	 ((eq agent 'mew-user-agent)
 	  (progn
 	    (mew-draft-prepare-attachments)
