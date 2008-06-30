@@ -657,6 +657,15 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('new-b', 'c\n'),
                          ], list(plan))
 
+    def test_plan_merge_with_delete_and_change(self):
+        self.add_version(('root', 'C'), [], 'a')
+        self.add_version(('root', 'A'), [('root', 'C')], 'b')
+        self.add_version(('root', 'B'), [('root', 'C')], '')
+        plan = self.plan_merge_vf.plan_merge('A', 'B')
+        self.assertEqual([('new-a', 'b\n'),
+                          ('killed-both', 'a\n')
+                         ], list(plan))
+
 
 class TestMergeImplementation(object):
 
@@ -693,6 +702,31 @@ class TestMergeImplementation(object):
         self.do_merge(this_tree, other_tree, interesting_files=['file1'])
         self.assertFileEqual('d\na\nb\nc\n', 'this/file1')
         self.assertFileEqual('d\na\nb\n', 'this/file2')
+
+    def test_merge_delete_and_change(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        self.build_tree_contents([
+            ('this/file1', 'a\nb\n'),
+        ])
+        this_tree.add('file1',)
+        this_tree.commit('Added file')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([
+            ('other/file1', 'a\nc\n'),
+        ])
+        other_tree.commit('Changed b to c')
+        self.build_tree_contents([
+            ('this/file1', 'a\n'),
+        ])
+        this_tree.commit('Deleted b')
+        self.do_merge(this_tree, other_tree)
+        self.assertFileEqual('a\n'
+            '<<<<<<< TREE\n'
+            '=======\n'
+            'c\n'
+            '>>>>>>> MERGE-SOURCE\n', 'this/file1')
 
 
 class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
