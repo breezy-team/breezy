@@ -172,6 +172,9 @@ class TestMultiWalker(TestCaseWithTransport):
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
 
         iterator = tree.iter_entries_by_dir()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+
         root_id = tree.path2id('')
         self.assertStepOne(True, '', root_id, iterator)
         self.assertStepOne(True, 'a', 'a-id', iterator)
@@ -180,31 +183,42 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertStepOne(False, None, None, iterator)
         self.assertStepOne(False, None, None, iterator)
 
-    def assertWalkerNext(self, exp_path, exp_file_id, master_is_None,
+    def assertWalkerNext(self, exp_path, exp_file_id, master_has_node,
                          exp_other_paths, iterator):
         """Check what happens when we step the iterator.
 
         :param path: The path for this entry
         :param file_id: The file_id for this entry
-        :param master_is_None: Is this node None for the master tree?
+        :param master_has_node: Does the master tree have this entry?
         :param exp_other_paths: A list of other_path values.
         :param iterator: The iterator to step
         """
         path, file_id, master_ie, other_values = iterator.next()
-        self.assertEqual(exp_path, path)
-        self.assertEqual(exp_file_id, file_id)
-        if master_is_None:
-            self.assertIs(None, master_ie)
+        self.assertEqual((exp_path, exp_file_id), (path, file_id),
+                         'Master entry did not match')
+        if master_has_node:
+            self.assertIsNot(None, master_ie, 'master should have an entry')
         else:
-            self.assertIsNot(None, master_ie)
-        self.assertEqual(len(exp_other_paths), len(other_values))
+            self.assertIs(None, master_ie, 'master should not have an entry')
+        self.assertEqual(len(exp_other_paths), len(other_values),
+                            'Wrong number of other entries')
         for exp_other_path, (other_path, other_ie) in \
                 zip(exp_other_paths, other_values):
-            self.assertEqual(exp_other_path, other_path)
+            self.assertEqual(exp_other_path, other_path, "Other path incorrect")
             if exp_other_path is None:
-                self.assertIs(None, other_ie)
+                self.assertIs(None, other_ie, "Other should not have an entry")
             else:
-                self.assertEqual(file_id, other_ie.file_id)
+                self.assertEqual(file_id, other_ie.file_id,
+                                 "Incorrect other entry")
+
+    def lock_and_get_basis_and_root_id(self, tree):
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
+        root_id = tree.path2id('')
+        return basis_tree, root_id
 
     def test_simple_stepping(self):
         tree = self.make_branch_and_tree('tree')
@@ -212,20 +226,15 @@ class TestMultiWalker(TestCaseWithTransport):
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
 
         tree.commit('first', rev_id='first-rev-id')
-        basis_tree = tree.basis_tree()
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        basis_tree.lock_read()
-        self.addCleanup(basis_tree.unlock)
 
-        root_id = tree.path2id('')
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
 
         walker = _mod_tree.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, False, [u''], iterator)
-        self.assertWalkerNext(u'a', 'a-id', False, [u'a'], iterator)
-        self.assertWalkerNext(u'b', 'b-id', False, [u'b'], iterator)
-        self.assertWalkerNext(u'b/c', 'c-id', False, [u'b/c'], iterator)
+        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
+        self.assertWalkerNext(u'b', 'b-id', True, [u'b'], iterator)
+        self.assertWalkerNext(u'b/c', 'c-id', True, [u'b/c'], iterator)
         self.assertRaises(StopIteration, iterator.next)
 
     def test_master_has_extra(self):
@@ -234,20 +243,66 @@ class TestMultiWalker(TestCaseWithTransport):
         tree.add(['a', 'b', 'd'], ['a-id', 'b-id', 'd-id'])
 
         tree.commit('first', rev_id='first-rev-id')
-        basis_tree = tree.basis_tree()
 
         tree.add(['c'], ['c-id'])
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        basis_tree.lock_read()
-        self.addCleanup(basis_tree.unlock)
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
 
-        root_id = tree.path2id('')
         walker = _mod_tree.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, False, [u''], iterator)
-        self.assertWalkerNext(u'a', 'a-id', False, [u'a'], iterator)
+        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
+        self.assertWalkerNext(u'b', 'b-id', True, [u'b'], iterator)
+        self.assertWalkerNext(u'c', 'c-id', True, [None], iterator)
+        self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
+        self.assertRaises(StopIteration, iterator.next)
+
+    def test_master_renamed_to_earlier(self):
+        """The record is still present, it just shows up early."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/c', 'tree/d'])
+        tree.add(['a', 'c', 'd'], ['a-id', 'c-id', 'd-id'])
+        tree.commit('first', rev_id='first-rev-id')
+        tree.rename_one('d', 'b')
+
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
+
+        walker = _mod_tree.MultiWalker(tree, [basis_tree])
+        iterator = walker.iter_all()
+        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
+        self.assertWalkerNext(u'b', 'd-id', True, [u'd'], iterator)
+        self.assertWalkerNext(u'c', 'c-id', True, [u'c'], iterator)
+        self.assertRaises(StopIteration, iterator.next)
+
+    def test_master_renamed_to_later(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/d'])
+        tree.add(['a', 'b', 'd'], ['a-id', 'b-id', 'd-id'])
+        tree.commit('first', rev_id='first-rev-id')
+        tree.rename_one('b', 'e')
+
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
+
+        walker = _mod_tree.MultiWalker(tree, [basis_tree])
+        iterator = walker.iter_all()
+        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
+        self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
+        self.assertWalkerNext(u'e', 'b-id', True, [u'b'], iterator)
+        self.assertRaises(StopIteration, iterator.next)
+
+    def test_other_extra(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/d'])
+        tree.add(['a', 'b', 'd'], ['a-id', 'b-id', 'd-id'])
+        tree.commit('first', rev_id='first-rev-id')
+        tree.remove(['b'])
+
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
+        walker = _mod_tree.MultiWalker(tree, [basis_tree])
+        iterator = walker.iter_all()
+        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
+        self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
         self.assertWalkerNext(u'b', 'b-id', False, [u'b'], iterator)
-        self.assertWalkerNext(u'c', 'c-id', False, [None], iterator)
-        self.assertWalkerNext(u'd', 'd-id', False, [u'd'], iterator)
         self.assertRaises(StopIteration, iterator.next)

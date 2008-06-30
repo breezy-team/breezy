@@ -954,6 +954,9 @@ class MultiWalker(object):
             0 if paths are equal
             and a positive number if ``path2`` sorts first
         """
+        # Shortcut this special case
+        if path1 == path2:
+            return 0
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
@@ -964,9 +967,9 @@ class MultiWalker(object):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
         dirname1, basename1 = os.path.split(path1)
-        key1 = (dirname1.split('/'), basename1)
+        key1 = (dirname1.split(u'/'), basename1)
         dirname2, basename2 = os.path.split(path2)
-        key2 = (dirname2.split('/'), basename2)
+        key2 = (dirname2.split(u'/'), basename2)
         return cmp(key1, key2)
 
     def iter_all(self):
@@ -976,6 +979,25 @@ class MultiWalker(object):
         other_walkers = [other.iter_entries_by_dir()
                          for other in self._other_trees]
         other_entries = [self._step_one(walker) for walker in other_walkers]
+
+        # Track extra nodes in the other trees
+        others_extra = [{} for i in xrange(len(self._other_trees))]
+
+        def lookup_by_file_id(idx, file_id):
+            # TODO: Is id2path better as the first call, or is
+            #       inventory[file_id] better as a first check?
+            if file_id in others_extra[idx]:
+                return others_extra[idx].pop(file_id)
+            try:
+                cur_path = self._other_trees[idx].id2path(file_id)
+            except errors.NoSuchId:
+                cur_path = None
+            if cur_path is None:
+                return (None, None)
+            else:
+                cur_ie = self._other_trees[idx].inventory[file_id]
+                return (cur_path, cur_ie)
+
 
 
         master_has_more = True
@@ -988,33 +1010,52 @@ class MultiWalker(object):
             file_id = master_ie.file_id
             other_values = []
             next_other_entries = []
-            for other_walker, (other_has_more, other_path, other_ie) in \
-                zip(other_walkers, other_entries):
+            for idx, (other_has_more, other_path, other_ie) in enumerate(other_entries):
                 if not other_has_more:
-                    other_values.append((None, None))
-                    next_other_entries.append(False, None, None)
+                    other_values.append(lookup_by_file_id(idx, file_id))
+                    next_other_entries.append((False, None, None))
                 elif file_id == other_ie.file_id:
                     # This walker matched, so consume this path, and go on to
                     # the next
                     other_values.append((other_path, other_ie))
-                    next_other_entries.append(self._step_one(other_walker))
+                    next_other_entries.append(self._step_one(other_walkers[idx]))
                 else:
                     # This walker did not match, step it until it either
                     # matches, or we know we are past the current walker.
                     while (other_has_more and
                            self._cmp_path_by_dirblock(other_path, master_path) < 0):
+                        other_file_id = other_ie.file_id
+                        others_extra[idx][other_file_id] = (other_path,
+                                                            other_ie)
                         other_has_more, other_path, other_ie = \
-                            self._step_one(other_walker)
+                            self._step_one(other_walkers[idx])
                     if other_has_more and other_ie.file_id == file_id:
                         # We ended up walking to this point, match and continue
                         other_values.append((other_path, other_ie))
                         other_has_more, other_path, other_ie = \
-                            self._step_one(other_walker)
+                            self._step_one(other_walkers[idx])
                     else:
-                        other_values.append((None, None))
+                        # This record isn't in the normal order, see if it
+                        # exists at all,
+                        other_values.append(lookup_by_file_id(idx, file_id))
                     next_other_entries.append((other_has_more, other_path,
                                                other_ie))
             other_entries = next_other_entries
 
             # We've matched all the walkers, yield this datapoint
             yield master_path, file_id, master_ie, other_values
+
+        # We have walked all of the master tree, now we want to find any extra
+        # nodes in the other trees
+        for idx, other_extra in enumerate(others_extra):
+            # TODO: we could use a key=XXX rather than cmp=XXX
+            others = sorted(other_extra.itervalues(),
+                            cmp=self._cmp_path_by_dirblock)
+            for other_path, other_ie in others:
+                file_id = other_ie.file_id
+                other_extra.pop(file_id)
+                other_values = [(other_path, other_ie)]
+                for alt_idx, alt_extra in enumerate(others_extra[idx+1:]):
+                    other_values.append(lookup_by_file_id(alt_idx + idx,
+                                                          file_id))
+                yield other_path, file_id, None, other_values
