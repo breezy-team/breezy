@@ -859,6 +859,11 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
         return before
 
+    def get_smart_medium(self):
+        # smart server and webdav are exclusive. There is really no point to
+        # use webdav if a smart server is available
+        raise errors.NoSmartMedium(self)
+
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
