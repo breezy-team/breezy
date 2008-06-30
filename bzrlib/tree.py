@@ -940,14 +940,43 @@ class MultiWalker(object):
         else:
             return True, path, ie
 
+    @staticmethod
+    def _cmp_path_by_dirblock(path1, path2):
+        """Compare two paths based on what directory they are in.
+
+        This generates a sort order, such that all children of a directory are
+        sorted together, and grandchildren are in the same order as the
+        children appear. But all grandchildren come after all children.
+
+        :param path1: first path
+        :param path2: the second path
+        :return: negative number if ``path1`` comes first,
+            0 if paths are equal
+            and a positive number if ``path2`` sorts first
+        """
+        # This is stolen from _dirstate_helpers_py.py, only switching it to
+        # Unicode objects. Consider using encode_utf8() and then using the
+        # optimized versions, or maybe writing optimized unicode versions.
+        if not isinstance(path1, unicode):
+            raise TypeError("'path1' must be a unicode string, not %s: %r"
+                            % (type(path1), path1))
+        if not isinstance(path2, unicode):
+            raise TypeError("'path2' must be a unicode string, not %s: %r"
+                            % (type(path2), path2))
+        dirname1, basename1 = os.path.split(path1)
+        key1 = (dirname1.split('/'), basename1)
+        dirname2, basename2 = os.path.split(path2)
+        key2 = (dirname2.split('/'), basename2)
+        return cmp(key1, key2)
+
     def iter_all(self):
         """Match up the values in the different trees."""
-        import pdb; pdb.set_trace()
         master_iterator = self._master_tree.iter_entries_by_dir()
 
         other_walkers = [other.iter_entries_by_dir()
                          for other in self._other_trees]
         other_entries = [self._step_one(walker) for walker in other_walkers]
+
 
         master_has_more = True
         while master_has_more:
@@ -956,7 +985,7 @@ class MultiWalker(object):
             if not master_has_more:
                 break
 
-            master_file_id = master_ie.file_id
+            file_id = master_ie.file_id
             other_values = []
             next_other_entries = []
             for other_walker, (other_has_more, other_path, other_ie) in \
@@ -964,7 +993,7 @@ class MultiWalker(object):
                 if not other_has_more:
                     other_values.append((None, None))
                     next_other_entries.append(False, None, None)
-                elif master_file_id == other_ie.file_id:
+                elif file_id == other_ie.file_id:
                     # This walker matched, so consume this path, and go on to
                     # the next
                     other_values.append((other_path, other_ie))
@@ -972,8 +1001,20 @@ class MultiWalker(object):
                 else:
                     # This walker did not match, step it until it either
                     # matches, or we know we are past the current walker.
-                    raise NotImplementedError
+                    while (other_has_more and
+                           self._cmp_path_by_dirblock(other_path, master_path) < 0):
+                        other_has_more, other_path, other_ie = \
+                            self._step_one(other_walker)
+                    if other_has_more and other_ie.file_id == file_id:
+                        # We ended up walking to this point, match and continue
+                        other_values.append((other_path, other_ie))
+                        other_has_more, other_path, other_ie = \
+                            self._step_one(other_walker)
+                    else:
+                        other_values.append((None, None))
+                    next_other_entries.append((other_has_more, other_path,
+                                               other_ie))
             other_entries = next_other_entries
 
             # We've matched all the walkers, yield this datapoint
-            yield master_path, master_file_id, master_ie, other_values
+            yield master_path, file_id, master_ie, other_values
