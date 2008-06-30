@@ -39,17 +39,26 @@ FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
 class _RulesSearcher(object):
     """An object that provides rule-based preferences."""
 
-    def get_items(self, path, names=None):
-        """Return the preferences for a path as a sequence of name,value tuples.
+    def get_items(self, path):
+        """Return the preferences for a path as name,value tuples.
 
         :param path: tree relative path
-        :param names: the list of preferences to lookup - None for all
-        :return: None if no rule matched, otherwise a sequence of name,value
-          tuples. If names is not None, the sequence is the same length as
-          names, tuple order matches the order in names, and undefined
-          preferences are given the value None.
+        :return: [] if no rule matched, otherwise a sequence of name,value
+          tuples.
         """
         raise NotImplementedError(self.get_items)
+
+    def get_selected_items(self, path, names):
+        """Return selected preferences for a path as name,value tuples.
+
+        :param path: tree relative path
+        :param names: the list of preferences to lookup
+        :return: [] if no rule matched, otherwise a sequence of name,value
+          tuples. The sequence is the same length as names,
+          tuple order matches the order in names, and
+          undefined preferences are given the value None.
+        """
+        raise NotImplementedError(self.get_selected_items)
 
 
 class _IniBasedRulesSearcher(_RulesSearcher):
@@ -75,19 +84,27 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         else:
             self._globster = None
 
-    def get_items(self, path, names=None):
+    def get_items(self, path):
         """See _RulesSearcher.get_items."""
         if self._globster is None:
-            return None
+            return []
         pat = self._globster.match(path)
         if pat is None:
-            return None
+            return []
         else:
             all = self._cfg[FILE_PREFS_PREFIX + pat]
-            if names is None:
-                return tuple(all.items())
-            else:
-                return tuple((k, all.get(k)) for k in names)
+            return tuple(all.items())
+
+    def get_selected_items(self, path, names):
+        """See _RulesSearcher.get_selected_items."""
+        if self._globster is None:
+            return []
+        pat = self._globster.match(path)
+        if pat is None:
+            return []
+        else:
+            all = self._cfg[FILE_PREFS_PREFIX + pat]
+            return tuple((k, all.get(k)) for k in names)
 
 
 class _StackedRulesSearcher(_RulesSearcher):
@@ -99,13 +116,21 @@ class _StackedRulesSearcher(_RulesSearcher):
         """
         self.searchers = searchers
 
-    def get_items(self, path, names=None):
+    def get_items(self, path):
         """See _RulesSearcher.get_items."""
         for searcher in self.searchers:
-            result = searcher.get_items(path, names)
-            if result is not None:
+            result = searcher.get_items(path)
+            if result:
                 return result
-        return None
+        return []
+
+    def get_selected_items(self, path, names):
+        """See _RulesSearcher.get_selected_items."""
+        for searcher in self.searchers:
+            result = searcher.get_selected_items(path, names)
+            if result:
+                return result
+        return []
 
 
 def rules_filename():

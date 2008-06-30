@@ -523,8 +523,12 @@ class Tree(object):
         """
         searcher = self._get_rules_searcher(_default_searcher)
         if searcher is not None:
-            for path in path_names:
-                yield searcher.get_items(path, pref_names)
+            if pref_names is not None:
+                for path in path_names:
+                    yield searcher.get_selected_items(path, pref_names)
+            else:
+                for path in path_names:
+                    yield searcher.get_items(path)
 
     @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
