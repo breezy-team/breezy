@@ -439,6 +439,7 @@ class CachingLogWalker(CacheTable):
                 raise
         finally:
             pb.finished()
+        self.cache.commit()
 
 
 def struct_revpaths_to_tuples(changed_paths):
