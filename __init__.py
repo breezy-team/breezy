@@ -26,8 +26,6 @@ from bzrlib.revisionspec import SPEC_TYPES
 from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 
-from bzrlib.plugins.svn import format, revspec
-
 import os
 
 # versions ending in 'exp' mean experimental mappings
@@ -112,6 +110,8 @@ def check_rebase_version(min_version):
 
 
 check_subversion_version()
+
+from bzrlib.plugins.svn import format, revspec
 
 register_transport_proto('svn+ssh://', 
     help="Access using the Subversion smart server tunneled over SSH.")

@@ -115,7 +115,7 @@ class SvnRemoteAccess(BzrDir):
         :param stop_revision: Tip of new branch
         :return: Branch object
         """
-        from commit import push_new
+        from bzrlib.plugins.svn.commit import push_new
         if stop_revision is None:
             stop_revision = source.last_revision()
         target_branch_path = self.branch_path.strip("/")
@@ -155,7 +155,7 @@ class SvnRemoteAccess(BzrDir):
 
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
-        from branch import SvnBranch
+        from bzrlib.plugins.svn.branch import SvnBranch
         repos = self.find_repository()
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self
