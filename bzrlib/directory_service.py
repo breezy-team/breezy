@@ -58,7 +58,7 @@ directories = DirectoryServiceRegistry()
 class AliasDirectory(object):
     """Directory lookup for locations associated with a branch.
 
-    :parent, :submit, :public, :push, :this,and :bound are currently
+    :parent, :submit, :public, :push, :this, and :bound are currently
     supported.  On error, a subclass of DirectoryLookupFailure will be raised.
     """
 
