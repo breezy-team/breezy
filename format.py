@@ -46,12 +46,14 @@ class SvnRemoteFormat(BzrDirFormat):
 
     def __init__(self):
         super(SvnRemoteFormat, self).__init__()
-        from repository import SvnRepositoryFormat
+        from bzrlib.plugins.svn import lazy_check_versions
+        lazy_check_versions()
+        from bzrlib.plugins.svn.repository import SvnRepositoryFormat
         self.repository_format = SvnRepositoryFormat()
 
     @classmethod
     def probe_transport(klass, transport):
-        from transport import get_svn_ra_transport
+        from bzrlib.plugins.svn.transport import get_svn_ra_transport
         from bzrlib.plugins.svn import core
         format = klass()
 
@@ -84,7 +86,7 @@ class SvnRemoteFormat(BzrDirFormat):
 
     def initialize_on_transport(self, transport):
         """See BzrDir.initialize_on_transport()."""
-        from transport import get_svn_ra_transport
+        from bzrlib.plugins.svn.transport import get_svn_ra_transport
         from bzrlib.transport.local import LocalTransport
         from bzrlib.plugins.svn import repos
 
@@ -112,7 +114,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
     def __init__(self):
         super(SvnWorkingTreeDirFormat, self).__init__()
-        from repository import SvnRepositoryFormat
+        from bzrlib.plugins.svn.repository import SvnRepositoryFormat
         self.repository_format = SvnRepositoryFormat()
 
     @classmethod
@@ -128,7 +130,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         raise bzr_errors.NotBranchError(path=transport.base)
 
     def _open(self, transport):
-        from workingtree import SvnCheckout
+        from bzrlib.plugins.svn.workingtree import SvnCheckout
         from bzrlib.plugins.svn import core
         try:
             return SvnCheckout(transport, self)

@@ -52,7 +52,7 @@ def check_bzrlib_version(desired):
     bzrlib_version = bzrlib.version_info[:2]
     if (bzrlib_version in desired or 
         ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
-         bzrlib.version_info[3] == 'dev')):
+         bzrlib.version_info[3] in ('dev', 'exp'))):
         return
     if bzrlib_version < desired[0]:
         raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
