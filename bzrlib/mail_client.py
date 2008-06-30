@@ -356,7 +356,7 @@ class EmacsMail(ExternalMailClient):
 	    (mew-draft-prepare-attachments)
 	    (mew-attach-link file (file-name-nondirectory file))))
          (t
-          (message "Unhandled MUA")))
+          (message "Unhandled MUA, report it on bazaar@lists.canonical.com")))
       (error "File %s does not exist." file))))
 """
 
