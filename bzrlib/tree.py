@@ -983,6 +983,11 @@ class MultiWalker(object):
         # Track extra nodes in the other trees
         others_extra = [{} for i in xrange(len(self._other_trees))]
 
+        # Keep track of any nodes that were properly processed just out of
+        # order, that way we don't return them at the end, we don't have to
+        # track *all* processed file_ids, just the out-of-order ones
+        out_of_order_processed = set()
+
         def lookup_by_file_id(idx, file_id):
             # TODO: Is id2path better as the first call, or is
             #       inventory[file_id] better as a first check?
@@ -995,6 +1000,7 @@ class MultiWalker(object):
             if cur_path is None:
                 return (None, None)
             else:
+                out_of_order_processed.add(file_id)
                 cur_ie = self._other_trees[idx].inventory[file_id]
                 return (cur_path, cur_ie)
 
@@ -1025,8 +1031,9 @@ class MultiWalker(object):
                     while (other_has_more and
                            self._cmp_path_by_dirblock(other_path, master_path) < 0):
                         other_file_id = other_ie.file_id
-                        others_extra[idx][other_file_id] = (other_path,
-                                                            other_ie)
+                        if other_file_id not in out_of_order_processed:
+                            others_extra[idx][other_file_id] = (other_path,
+                                                                other_ie)
                         other_has_more, other_path, other_ie = \
                             self._step_one(other_walkers[idx])
                     if other_has_more and other_ie.file_id == file_id:
@@ -1044,6 +1051,15 @@ class MultiWalker(object):
 
             # We've matched all the walkers, yield this datapoint
             yield master_path, file_id, master_ie, other_values
+
+        # Make sure we finished iterating all the other trees
+        for idx, (other_has_more, other_path, other_ie) in enumerate(other_entries):
+            while other_has_more:
+                other_file_id = other_ie.file_id
+                if other_file_id not in out_of_order_processed:
+                    others_extra[idx][other_file_id] = (other_path, other_ie)
+                other_has_more, other_path, other_ie = \
+                    self._step_one(other_walkers[idx])
 
         # We have walked all of the master tree, now we want to find any extra
         # nodes in the other trees

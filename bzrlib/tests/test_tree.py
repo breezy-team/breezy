@@ -291,7 +291,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'e', 'b-id', True, [u'b'], iterator)
         self.assertRaises(StopIteration, iterator.next)
 
-    def test_other_extra(self):
+    def test_other_extra_in_middle(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/d'])
         tree.add(['a', 'b', 'd'], ['a-id', 'b-id', 'd-id'])
@@ -306,3 +306,20 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
         self.assertWalkerNext(u'b', 'b-id', False, [u'b'], iterator)
         self.assertRaises(StopIteration, iterator.next)
+
+    def test_other_extra_at_end(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/d'])
+        tree.add(['a', 'b', 'd'], ['a-id', 'b-id', 'd-id'])
+        tree.commit('first', rev_id='first-rev-id')
+        tree.remove(['d'])
+
+        basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
+        walker = _mod_tree.MultiWalker(tree, [basis_tree])
+        iterator = walker.iter_all()
+        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
+        self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
+        self.assertWalkerNext(u'b', 'b-id', True, [u'b'], iterator)
+        self.assertWalkerNext(u'd', 'd-id', False, [u'd'], iterator)
+        self.assertRaises(StopIteration, iterator.next)
+
