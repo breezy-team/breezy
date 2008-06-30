@@ -1073,6 +1073,9 @@ class MultiWalker(object):
             others = sorted(other_extra.itervalues(), key=path_key)
             for other_path, other_ie in others:
                 file_id = other_ie.file_id
+                # We don't need to check out_of_order_processed here, because
+                # the lookup_by_file_id will be removing anything processed
+                # from the extras cache
                 other_extra.pop(file_id)
                 other_values = [(None, None) for i in xrange(idx)]
                 other_values.append((other_path, other_ie))
