@@ -233,7 +233,7 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(revid, str)
         self.mutter("lookup revid %r", revid)
         ret = self.cachedb.execute(
-            "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
+            "select path, min_revnum, max_revnum, scheme from revmap where revid=?" % (revid,)).fetchone()
         if ret is None:
             raise NoSuchRevision(self, revid)
         return (ret[0].encode("utf-8"), int(ret[1]), int(ret[2]), ret[3].encode("utf-8"))
@@ -245,15 +245,17 @@ class RevisionIdMapCache(CacheTable):
         :param path: Subversion branch path.
         :param scheme: Branching scheme name
         """
-        self.mutter("lookup branch,revnum %r:%r", path, revnum)
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert isinstance(scheme, str)
         revid = self.cachedb.execute(
-                "select revid from revmap where max_revnum = '%s' and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, revnum, path, scheme)).fetchone()
+                "select revid from revmap where max_revnum = ? and min_revnum=? and path=? and scheme=?", (revnum, revnum, path, scheme)).fetchone()
         if revid is not None:
-            return str(revid[0])
-        return None
+            ret = str(revid[0])
+        else:
+            ret = None
+        self.mutter("lookup branch,revnum %r:%r -> %r", path, revnum, ret)
+        return ret
 
     def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme):
         """Insert a revision id into the revision id cache.
