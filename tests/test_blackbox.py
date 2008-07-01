@@ -268,19 +268,19 @@ Node-copyfrom-path: x
 
 
     def test_list(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "test", 'dc/bla': "ha"})
-        self.client_add("dc/foo")
-        self.client_add("dc/bla")
-        self.client_commit("dc", "Msg")
+        repos_url = self.make_repository("a")
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("test")
+        dc.add_file("bla").modify("ha")
+        dc.close()
         self.check_output("a/bla\na/foo\n", "ls a")
 
     def test_info_remote(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "test", 'dc/bla': "ha"})
-        self.client_add("dc/foo")
-        self.client_add("dc/bla")
-        self.client_commit("dc", "Msg")
+        repos_url = self.make_repository("a")
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("test")
+        dc.add_file("bla").modify("ha")
+        dc.close()
         self.check_output(
                 "Repository branch (format: subversion)\nLocation:\n  shared repository: a\n  repository branch: a\n", 'info a')
 
