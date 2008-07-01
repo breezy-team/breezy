@@ -137,7 +137,7 @@ class SvnRaTransport(Transport):
     This implements just as much of Transport as is necessary 
     to fool Bazaar. """
     @convert_svn_error
-    def __init__(self, url="", _backing_url=None, pool=None):
+    def __init__(self, url="", _backing_url=None, pool=None, _uuid=None, _repos_root=None):
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
         # _backing_url is an evil hack so the root directory of a repository 
@@ -155,8 +155,8 @@ class SvnRaTransport(Transport):
         else:
             self.connections = pool
 
-        self._repos_root = None
-        self._uuid = None
+        self._repos_root = _repos_root
+        self._uuid = _uuid
         self.capabilities = {}
 
         from bzrlib.plugins.svn import lazy_check_versions
@@ -459,9 +459,11 @@ class SvnRaTransport(Transport):
     def clone(self, offset=None):
         """See Transport.clone()."""
         if offset is None:
-            return SvnRaTransport(self.base, pool=self.connections)
+            newurl = self.base
+        else:
+            newurl = urlutils.join(self.base, offset)
 
-        return SvnRaTransport(urlutils.join(self.base, offset), pool=self.connections)
+        return SvnRaTransport(newurl, pool=self.connections)
 
     def local_abspath(self, relpath):
         """See Transport.local_abspath()."""

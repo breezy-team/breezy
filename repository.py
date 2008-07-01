@@ -714,7 +714,7 @@ class SvnRepository(Repository):
         branches = []
         for project, bp, nick in layout.get_branches(self.get_latest_revnum()):
             try:
-                branches.append(Branch.open(urlutils.join(self.base, bp)))
+                branches.append(Branch.open_from_transport(self.transport.clone(bp)))
             except NotBranchError: # Skip non-directories
                 pass
         return branches
