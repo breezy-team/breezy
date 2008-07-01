@@ -717,11 +717,15 @@ class SvnRepository(Repository):
             layout = self.get_layout()
 
         branches = []
-        for project, bp, nick in layout.get_branches(self.get_latest_revnum()):
-            try:
-                branches.append(SvnBranch(self, bp))
-            except NotBranchError: # Skip non-directories
-                pass
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for project, bp, nick in layout.get_branches(self.get_latest_revnum(), pb=pb):
+                try:
+                    branches.append(SvnBranch(self, bp))
+                except NotBranchError: # Skip non-directories
+                    pass
+        finally:
+            pb.finished()
         return branches
 
     def find_branchpaths(self, layout, from_revnum=0, to_revnum=None):
