@@ -235,7 +235,7 @@ class cmd_svn_import(Command):
             from_repos = from_dir.open_repository()
         except NoRepositoryPresent, e:
             try:
-                Branch.open(from_location)
+                from_dir.open_branch()
                 raise BzrCommandError("No Repository found at %s. "
                     "For individual branches, use 'bzr branch'." % from_location)
             except NotBranchError:

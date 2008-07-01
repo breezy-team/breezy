@@ -249,6 +249,40 @@ class SvnRepository(Repository):
         self._cached_revnum = self.transport.get_latest_revnum()
         return self._cached_revnum
 
+    def item_keys_introduced_by(self, revision_ids, _file_pb=None):
+        fileids = {}
+
+        for count, (revid, d) in enumerate(zip(revision_ids, self.get_deltas_for_revisions(self.get_revisions(revision_ids)))):
+            if _files_cb is not None:
+                _files_pb.update("fetch revisions for texts", count, len(revision_ids))
+            for c in d.added + d.modified:
+                fileids.setdefault(c[1], set()).add(revid)
+            for c in d.renamed:
+                fileids.setdefault(c[2], set()).add(revid)
+
+        for fileids, altered_versions in fileids.items():
+            yield ("file", fileid, altered_versions)
+        
+        # We're done with the files_pb.  Note that it finished by the caller,
+        # just as it was created by the caller.
+        del _files_pb
+
+        yield ("inventory", None, revision_ids)
+
+        # signatures
+        revisions_with_signatures = set()
+        for rev_id in revision_ids:
+            try:
+                self.get_signature_text(rev_id)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            else:
+                revisions_with_signatures.add(rev_id)
+        yield ("signatures", None, revisions_with_signatures)
+
+        yield ("revisions", None, revision_ids)
+
     @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
         result = {}
