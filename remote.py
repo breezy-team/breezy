@@ -149,7 +149,7 @@ class SvnRemoteAccess(BzrDir):
         elif repos.get_latest_revnum() > 0:
             # Bail out if there are already revisions in this repository
             raise AlreadyBranchError(self.root_transport.base)
-        branch = SvnBranch(repos.base, self.branch_path)
+        branch = SvnBranch(repos, self.branch_path)
         branch.bzrdir = self
         return branch
 

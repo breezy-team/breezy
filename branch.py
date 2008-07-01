@@ -66,17 +66,17 @@ class SvnBranch(Branch):
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
         self.control_files = FakeControlFiles()
-        self.base = urlutils.join(self.repository.base, branch_path).rstrip("/")
         self._format = SvnBranchFormat()
         self._lock_mode = None
         self._lock_count = 0
         self.mapping = self.repository.get_mapping()
         self._branch_path = branch_path.strip("/")
+        self.base = urlutils.join(self.repository.base, self._branch_path).rstrip("/")
         self._revmeta_cache = None
         assert isinstance(self._branch_path, str)
         try:
             revnum = self.get_revnum()
-            if self.repository.transport.check_path(branch_path.strip("/"), 
+            if self.repository.transport.check_path(self._branch_path, 
                 revnum) != core.NODE_DIR:
                 raise NotBranchError(self.base)
         except SubversionException, (_, num):
