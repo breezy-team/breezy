@@ -495,13 +495,13 @@ class InterFromSvnRepository(InterRepository):
     def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
         set_needed = set()
         ret_needed = list()
-        for revid in branches:
+        for branch in branches:
             if pb:
-                pb.update("determining revisions to fetch", branches.index(revid), len(branches))
+                pb.update("determining revisions to fetch", branches.index(branch), len(branches))
             try:
                 nestedpb = ui.ui_factory.nested_progress_bar()
-                for rev in self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False,
-                                            pb=nestedpb):
+                for rev in self._find_until(branch.last_revision(), find_ghosts=find_ghosts, 
+                                            fetch_rhs_ancestry=False, pb=nestedpb):
                     if rev[0] not in set_needed:
                         ret_needed.append(rev)
                         set_needed.add(rev[0])
@@ -659,20 +659,25 @@ class InterFromSvnRepository(InterRepository):
         # or self.target.add_inventory() each time
         self.target.lock_read()
         try:
-            if branches is not None:
-                needed = self._find_branches(branches, find_ghosts, fetch_rhs_ancestry, pb=pb)
-            elif revision_id is None:
-                needed = self._find_all(self.source.get_mapping(), pb=pb)
-            else:
-                needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry, pb=pb)
+            nested_pb = ui.ui_factory.nested_progress_bar()
+            try:
+                if branches is not None:
+                    needed = self._find_branches(branches, find_ghosts, 
+                                fetch_rhs_ancestry, pb=nested_pb)
+                elif revision_id is None:
+                    needed = self._find_all(self.source.get_mapping(), pb=nested_pb)
+                else:
+                    needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry, pb=nested_pb)
+            finally:
+                nested_pb.finished()
+
+            if len(needed) == 0:
+                # Nothing to fetch
+                return
+
+            self._fetch_switch(self.source.transport.get_svn_repos_root(), needed, pb)
         finally:
             self.target.unlock()
-
-        if len(needed) == 0:
-            # Nothing to fetch
-            return
-
-        self._fetch_switch(self.source.transport.get_svn_repos_root(), needed, pb)
 
     @staticmethod
     def is_compatible(source, target):

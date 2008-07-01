@@ -143,7 +143,7 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
             elif (target_repos.is_shared() and 
                   getattr(inter, '_supports_branches', None) and 
                   inter._supports_branches):
-                inter.fetch(branches=[branch.last_revision() for branch in existing_branches])
+                inter.fetch(branches=existing_branches)
 
         source_graph = source_repos.get_graph()
         pb = ui.ui_factory.nested_progress_bar()

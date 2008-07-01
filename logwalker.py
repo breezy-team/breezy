@@ -304,7 +304,7 @@ class CachingLogWalker(CacheTable):
 
         assert from_revnum >= to_revnum or path == ""
 
-        self.fetch_revisions(max(from_revnum, to_revnum))
+        self.fetch_revisions(max(from_revnum, to_revnum), pb=pb)
         i = 0
 
         while ((not ascending and revnum >= to_revnum) or
@@ -391,7 +391,7 @@ class CachingLogWalker(CacheTable):
         self.fetch_revisions(revnum)
         return self.cache.changes_path(path, revnum)
 
-    def fetch_revisions(self, to_revnum=None):
+    def fetch_revisions(self, to_revnum=None, pb=None):
         """Fetch information about all revisions in the remote repository
         until to_revnum.
 
@@ -404,8 +404,6 @@ class CachingLogWalker(CacheTable):
         assert isinstance(latest_revnum, int)
         to_revnum = max(latest_revnum, to_revnum)
 
-        pb = ui.ui_factory.nested_progress_bar()
-
         # Subversion 1.4 clients and servers can only deliver a limited set of revprops
         if self._transport.has_capability("log-revprops"):
             todo_revprops = None
@@ -413,7 +411,7 @@ class CachingLogWalker(CacheTable):
             todo_revprops = ["svn:author", "svn:log", "svn:date"]
 
         def rcvr(orig_paths, revision, revprops, has_children):
-            pb.update('fetching svn revision info', revision, to_revnum)
+            nested_pb.update('fetching svn revision info', revision, to_revnum)
             if orig_paths is None:
                 orig_paths = {}
             for p in orig_paths:
@@ -429,7 +427,14 @@ class CachingLogWalker(CacheTable):
             self.cache.commit_conditionally()
 
         self.mutter("get_log %d->%d", self.saved_revnum, to_revnum)
+
+        if pb is None:
+            nested_pb = ui.ui_factory.nested_progress_bar()
+        else:
+            nested_pb = pb
+
         try:
+            nested_pb.update('fetching svn revision info', 0, to_revnum)
             try:
                 self.actual._transport.get_log(rcvr, [""], self.saved_revnum, to_revnum, 0, True, True, False, todo_revprops)
             except SubversionException, (_, num):
@@ -438,7 +443,8 @@ class CachingLogWalker(CacheTable):
                         revision="Revision number %d" % to_revnum)
                 raise
         finally:
-            pb.finished()
+            if pb is None:
+                nested_pb.finished()
         self.cache.commit()
 
 
