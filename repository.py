@@ -101,6 +101,9 @@ class RevisionMetadata(object):
             return ()
         return (lhs_parent,) + self.get_rhs_parents(mapping)
 
+    def __hash__(self):
+        return hash((self.__class__, self.repository.uuid, self.branch_path, self.revnum))
+
 
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
