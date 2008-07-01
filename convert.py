@@ -129,53 +129,57 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
             target_repos = get_dir("").create_repository(shared=True)
         target_repos.set_make_working_trees(working_trees)
 
-    existing_branches = source_repos.find_branches(layout=layout)
-    if filter_branch is not None:
-        existing_branches = filter(filter_branch, existing_branches)
-
-    if create_shared_repo:
-        inter = InterRepository.get(source_repos, target_repos)
-
-        if all:
-            inter.fetch()
-        elif (target_repos.is_shared() and 
-              getattr(inter, '_supports_branches', None) and 
-              inter._supports_branches):
-            inter.fetch(branches=[branch.last_revision() for branch in existing_branches])
-
-    source_graph = source_repos.get_graph()
-    pb = ui.ui_factory.nested_progress_bar()
+    source_repos.lock_read()
     try:
-        i = 0
-        for source_branch in existing_branches:
-            pb.update("%s:%d" % (source_branch.get_branch_path(), source_branch.get_revnum()), i, len(existing_branches))
-            target_dir = get_dir(source_branch.get_branch_path())
-            if not create_shared_repo:
+        existing_branches = source_repos.find_branches(layout=layout)
+        if filter_branch is not None:
+            existing_branches = filter(filter_branch, existing_branches)
+
+        if create_shared_repo:
+            inter = InterRepository.get(source_repos, target_repos)
+
+            if all:
+                inter.fetch()
+            elif (target_repos.is_shared() and 
+                  getattr(inter, '_supports_branches', None) and 
+                  inter._supports_branches):
+                inter.fetch(branches=[branch.last_revision() for branch in existing_branches])
+
+        source_graph = source_repos.get_graph()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            i = 0
+            for source_branch in existing_branches:
+                pb.update("%s:%d" % (source_branch.get_branch_path(), source_branch.get_revnum()), i, len(existing_branches))
+                target_dir = get_dir(source_branch.get_branch_path())
+                if not create_shared_repo:
+                    try:
+                        target_dir.open_repository()
+                    except NoRepositoryPresent:
+                        target_dir.create_repository()
                 try:
-                    target_dir.open_repository()
-                except NoRepositoryPresent:
-                    target_dir.create_repository()
-            try:
-                target_branch = target_dir.open_branch()
-            except NotBranchError:
-                target_branch = target_dir.create_branch()
-                target_branch.set_parent(source_branch.base)
-            if source_branch.last_revision() != target_branch.last_revision():
-                # Check if target_branch contains a subset of 
-                # source_branch. If that is not the case, 
-                # assume that source_branch has been replaced 
-                # and remove target_branch
-                if not source_graph.is_ancestor(
-                        ensure_null(target_branch.last_revision()),
-                        ensure_null(source_branch.last_revision())):
-                    target_branch.set_revision_history([])
-                target_branch.pull(source_branch)
-            if working_trees and not target_dir.has_workingtree():
-                target_dir.create_workingtree()
-            i += 1
+                    target_branch = target_dir.open_branch()
+                except NotBranchError:
+                    target_branch = target_dir.create_branch()
+                    target_branch.set_parent(source_branch.base)
+                if source_branch.last_revision() != target_branch.last_revision():
+                    # Check if target_branch contains a subset of 
+                    # source_branch. If that is not the case, 
+                    # assume that source_branch has been replaced 
+                    # and remove target_branch
+                    if not source_graph.is_ancestor(
+                            ensure_null(target_branch.last_revision()),
+                            ensure_null(source_branch.last_revision())):
+                        target_branch.set_revision_history([])
+                    target_branch.pull(source_branch)
+                if working_trees and not target_dir.has_workingtree():
+                    target_dir.create_workingtree()
+                i += 1
+        finally:
+            pb.finished()
     finally:
-        pb.finished()
-    
+        source_repos.unlock()
+        
 
 class SvnConverter(Converter):
     """Converts from a Subversion directory to a bzr dir."""
