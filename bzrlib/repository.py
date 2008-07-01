@@ -2909,6 +2909,45 @@ class InterOtherToRemote(InterRepository):
         return None
 
 
+class InterRemoteToOther(InterRepository):
+
+    def __init__(self, source, target):
+        InterRepository.__init__(self, source, target)
+        self._real_inter = None
+
+    @staticmethod
+    def is_compatible(source, target):
+        if not isinstance(source, remote.RemoteRepository):
+            return False
+        # Is source's model compatible with target's model?
+        source._ensure_real()
+        real_source = source._real_repository
+        if isinstance(real_source, remote.RemoteRepository):
+            raise NotImplementedError(
+                "We don't support remote repos backed by remote repos yet.")
+        return InterRepository._same_model(real_source, target)
+
+    def _ensure_real_inter(self):
+        if self._real_inter is None:
+            self.source._ensure_real()
+            real_source = self.source._real_repository
+            self._real_inter = InterRepository.get(real_source, self.target)
+    
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+        self._ensure_real_inter()
+        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts)
+
+    def copy_content(self, revision_id=None):
+        self._ensure_real_inter()
+        self._real_inter.copy_content(revision_id=revision_id)
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+
+
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
@@ -2917,6 +2956,7 @@ InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterOtherToRemote)
+InterRepository.register_optimiser(InterRemoteToOther)
 
 
 class CopyConverter(object):
