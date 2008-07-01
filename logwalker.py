@@ -216,6 +216,10 @@ class LogCache(CacheTable):
         :param value: Contents of the revision property.
         """
         self.cachedb.execute("replace into revprop (rev, name, value) values (?, ?, ?)", (rev, name, value))
+    
+    def insert_revprops(self, revision, revprops):
+        for k,v in revprops.items():
+            self.insert_revprop(revision, k, v)
 
     def has_all_revprops(self, revnum):
         """Check whether all revprops for a revision have been cached.
@@ -385,7 +389,14 @@ class CachingLogWalker(CacheTable):
         if has_all_revprops:
             return known_revprops
 
-        return lazy_dict(known_revprops, self._transport.revprop_list, revnum)
+        return lazy_dict(known_revprops, self._caching_revprop_list, revnum)
+
+    def _caching_revprop_list(self, revnum):
+        revprops = self._transport.revprop_list(revnum)
+        self.cache.insert_revprops(revnum, revprops)
+        self.cache.insert_revinfo(revnum, True)
+        self.cache.commit()
+        return revprops
 
     def changes_path(self, path, revnum):
         self.fetch_revisions(revnum)
@@ -420,8 +431,7 @@ class CachingLogWalker(CacheTable):
                     copyfrom_path = copyfrom_path.strip("/")
 
                 self.cache.insert_path(revision, p.strip("/"), orig_paths[p][0], copyfrom_path, orig_paths[p][2])
-            for k,v in revprops.items():
-                self.cache.insert_revprop(revision, k, v)
+            self.cache.insert_revprops(revision, revprops)
             self.cache.insert_revinfo(revision, todo_revprops is None)
             self.saved_revnum = revision
             self.cache.commit_conditionally()
