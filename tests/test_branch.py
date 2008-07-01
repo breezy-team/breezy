@@ -143,8 +143,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
     def test_repr(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
-        self.assertEqual("SvnBranch('svn+%s')" % repos_url, branch.__repr__())
+        branch = Branch.open(repos_url)
+        self.assertEqual("SvnBranch('%s')" % repos_url, branch.__repr__())
 
     def test_get_physical_lock_status(self):
         repos_url = self.make_repository('a')
@@ -624,7 +624,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = self.create_checkout(oldbranch, "e")
+        newtree = oldbranch.create_checkout("e")
         self.assertTrue(newtree.branch.repository.has_revision(
            oldbranch.generate_revision_id(1)))
 
@@ -639,10 +639,8 @@ foohosts""")
         trunk.add_file("trunk/hosts")
         dc.close()
 
-        url = "svn+"+repos_url+"/trunk"
-        oldbranch = Branch.open(url)
-
-        newtree = self.create_checkout(oldbranch, "e", lightweight=True)
+        oldbranch = Branch.open(repos_url+"/trunk")
+        newtree = oldbranch.create_checkout("e", lightweight=True)
         self.assertEqual(oldbranch.generate_revision_id(1), newtree.base_revid)
         self.assertTrue(os.path.exists("e/.svn"))
         self.assertFalse(os.path.exists("e/.bzr"))
@@ -663,7 +661,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = self.create_checkout(oldbranch, "e", revision_id=
+        newtree = oldbranch.create_checkout("e", revision_id=
            oldbranch.generate_revision_id(1), lightweight=True)
         self.assertEqual(oldbranch.generate_revision_id(1),
            newtree.base_revid)

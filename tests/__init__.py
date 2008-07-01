@@ -173,11 +173,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         self.client_ctx.checkout(repos_url, relpath, "HEAD") 
 
     @staticmethod
-    def create_checkout(branch, path, revision_id=None, lightweight=False):
-        return branch.create_checkout(path, revision_id=revision_id,
-                                          lightweight=lightweight)
-
-    @staticmethod
     def open_checkout(url):
         return WorkingTree.open(url)
 
