@@ -233,7 +233,7 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(revid, str)
         self.mutter("lookup revid %r", revid)
         ret = self.cachedb.execute(
-            "select path, min_revnum, max_revnum, scheme from revmap where revid=?" % (revid,)).fetchone()
+            "select path, min_revnum, max_revnum, scheme from revmap where revid=?", (revid,)).fetchone()
         if ret is None:
             raise NoSuchRevision(self, revid)
         return (ret[0].encode("utf-8"), int(ret[1]), int(ret[2]), ret[3].encode("utf-8"))
