@@ -21,10 +21,11 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from bzrlib.commands import Command, Option, display_command, register_command
+from bzrlib.commands import Command, display_command, register_command
 from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
                            UnrelatedBranches, NoSuchRevision, 
                            UncommittedChanges)
+from bzrlib.option import Option
 from bzrlib.trace import info, warning
 
 version_info = (0, 4, 0, 'dev', 0)
