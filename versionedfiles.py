@@ -17,6 +17,8 @@ from bzrlib import debug, osutils, urlutils
 from bzrlib.trace import mutter
 from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory
 
+from bzrlib.plugins.svn.errors import ERR_FS_NOT_FILE
+
 from cStringIO import StringIO
 
 class SvnTexts(VersionedFiles):
@@ -40,9 +42,15 @@ class SvnTexts(VersionedFiles):
             mutter('map %r', map)
             for k,(v,ck) in map.items():
                 if v == fileid:
-                    stream = StringIO()
-                    self.repository.transport.get_file(urlutils.join(branch, k), stream, revnum)
-                    lines = stream.readlines()
+                    try:
+                        stream = StringIO()
+                        self.repository.transport.get_file(urlutils.join(branch, k), stream, revnum)
+                        lines = stream.readlines()
+                    except SubversionException, (_, num):
+                        if num == ERR_FS_NOT_FILE:
+                            lines = []
+                        else:
+                            raise
                     break
             if lines is None:
                 raise Exception("Inconsistent key specified: (%r,%r)" % (fileid, revid))
