@@ -16,7 +16,6 @@
 """Conversion of full repositories."""
 from bzrlib import ui, urlutils
 from bzrlib.bzrdir import BzrDir, Converter
-from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
                            NoRepositoryPresent, NoSuchRevision) 
 from bzrlib.repository import InterRepository
