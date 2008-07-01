@@ -51,7 +51,16 @@ def get_svn_ra_transport(bzr_transport):
     if isinstance(bzr_transport, SvnRaTransport):
         return bzr_transport
 
-    return SvnRaTransport(bzr_transport.base)
+    ra_transport = getattr(bzr_transport, "_svn_ra", None)
+    if ra_transport is not None:
+        return ra_transport
+
+    # Save _svn_ra transport here so we don't have to connect again next time
+    # we try to use bzr svn on this transport
+    ra_transport = SvnRaTransport(bzr_transport.base)
+    bzr_transport._svn_ra = ra_transport
+    return ra_transport
+
 
 def _url_unescape_uri(url):
     (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
