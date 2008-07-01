@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,6 +55,10 @@ from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.symbol_versioning import (
         deprecated_method,
+        one_one,
+        one_two,
+        one_three,
+        one_six,
         )
 from bzrlib.trace import mutter, mutter_callsite, note, warning
 
@@ -446,13 +450,38 @@ class Repository(object):
     revisions and file history.  It's normally accessed only by the Branch,
     which views a particular line of development through that history.
 
-    The Repository builds on top of Stores and a Transport, which respectively 
-    describe the disk data format and the way of accessing the (possibly 
+    The Repository builds on top of some byte storage facilies (the revisions,
+    signatures, inventories and texts attributes) and a Transport, which
+    respectively provide byte storage and a means to access the (possibly
     remote) disk.
+
+    The byte storage facilities are addressed via tuples, which we refer to
+    as 'keys' throughout the code base. Revision_keys, inventory_keys and
+    signature_keys are all 1-tuples: (revision_id,). text_keys are two-tuples:
+    (file_id, revision_id). We use this interface because it allows low
+    friction with the underlying code that implements disk indices, network
+    encoding and other parts of bzrlib.
 
     :ivar revisions: A bzrlib.versionedfile.VersionedFiles instance containing
         the serialised revisions for the repository. This can be used to obtain
         revision graph information or to access raw serialised revisions.
+        The result of trying to insert data into the repository via this store
+        is undefined: it should be considered read-only except for implementors
+        of repositories.
+    :ivar signatures: A bzrlib.versionedfile.VersionedFiles instance containing
+        the serialised signatures for the repository. This can be used to
+        obtain access to raw serialised signatures.  The result of trying to
+        insert data into the repository via this store is undefined: it should
+        be considered read-only except for implementors of repositories.
+    :ivar inventories: A bzrlib.versionedfile.VersionedFiles instance containing
+        the serialised inventories for the repository. This can be used to
+        obtain unserialised inventories.  The result of trying to insert data
+        into the repository via this store is undefined: it should be
+        considered read-only except for implementors of repositories.
+    :ivar texts: A bzrlib.versionedfile.VersionedFiles instance containing the
+        texts of files and directories for the repository. This can be used to
+        obtain file texts or file graphs. Note that Repository.iter_file_bytes
+        is usually a better interface for accessing file texts.
         The result of trying to insert data into the repository via this store
         is undefined: it should be considered read-only except for implementors
         of repositories.
@@ -614,7 +643,6 @@ class Repository(object):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-        :param revisions: The revisions store for the repository.
 
         In the future we will have a single api for all stores for
         getting file texts, inventories and revisions, then
@@ -763,6 +791,8 @@ class Repository(object):
         # XXX: This is available for many repos regardless of listability.
         if self.bzrdir.root_transport.listable():
             # XXX: do we want to __define len__() ?
+            # Maybe the versionedfiles object should provide a different
+            # method to get the number of keys.
             result['revisions'] = len(self.revisions.keys())
             # result['size'] = t
         return result
@@ -821,7 +851,7 @@ class Repository(object):
         return InterRepository.get(other, self).search_missing_revision_ids(
             revision_id, find_ghosts)
 
-    @deprecated_method(symbol_versioning.one_two)
+    @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
         """Return the revision ids that other has that this does not.
@@ -1639,6 +1669,7 @@ class Repository(object):
         """
 
     @needs_read_lock
+    @deprecated_method(one_six)
     def print_file(self, file, revision_id):
         """Print `file` to stdout.
         
@@ -1659,7 +1690,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
-    @deprecated_method(symbol_versioning.one_one)
+    @deprecated_method(one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
         parent_map = self.get_parent_map(revision_ids)
@@ -2305,7 +2336,7 @@ class InterRepository(InterObject):
             searcher.stop_searching_any(have_revs)
         return searcher.get_result()
    
-    @deprecated_method(symbol_versioning.one_two)
+    @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """Return the revision ids that source has that target does not.
@@ -2870,7 +2901,7 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts)
 
     @classmethod

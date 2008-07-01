@@ -303,15 +303,13 @@ class BundleWriteOperation(object):
 
     def write_files(self):
         """Write bundle records for all revisions of all files"""
-        texts = self.repository.texts
         text_keys = []
-        for file_id, revision_ids in \
-            self.repository.fileids_altered_by_revision_ids(
-                self.revision_ids).iteritems():
-            revision_ids = list(revision_ids)
+        altered_fileids = self.repository.fileids_altered_by_revision_ids(
+                self.revision_ids)
+        for file_id, revision_ids in altered_fileids.iteritems():
             for revision_id in revision_ids:
                 text_keys.append((file_id, revision_id))
-        self.add_mp_records_keys('file', texts, text_keys)
+        self._add_mp_records_keys('file', self.repository.texts, text_keys)
 
     def write_revisions(self):
         """Write bundle records for all revisions and signatures"""
@@ -321,7 +319,7 @@ class BundleWriteOperation(object):
         if self.target is not None and self.target in self.revision_ids:
             revision_order.remove(self.target)
             revision_order.append(self.target)
-        self.add_mp_records_keys('inventory', inv_vf, [(revid,) for revid in revision_order])
+        self._add_mp_records_keys('inventory', inv_vf, [(revid,) for revid in revision_order])
         parent_map = self.repository.get_parent_map(revision_order)
         for revision_id in revision_order:
             parents = parent_map.get(revision_id, None)
@@ -350,7 +348,7 @@ class BundleWriteOperation(object):
                 base = parents[0]
         return base, target
 
-    def add_mp_records_keys(self, repo_kind, vf, keys):
+    def _add_mp_records_keys(self, repo_kind, vf, keys):
         """Add multi-parent diff records to a bundle"""
         ordered_keys = list(multiparent.topo_iter_keys(vf, keys))
         mpdiffs = vf.make_mpdiffs(ordered_keys)
@@ -528,7 +526,11 @@ class RevisionInstaller(object):
         d_func = multiparent.MultiParent.from_patch
         vf_records = []
         for key, meta, text in records:
-            # Adapt to tuple interface:
+            # Adapt to tuple interface: A length two key is a file_id,
+            # revision_id pair, a length 1 key is a
+            # revision/signature/inventory. We need to do this because
+            # the metadata extraction from the bundle has not yet been updated
+            # to use the consistent tuple interface itself.
             if len(key) == 2:
                 prefix = key[:1]
             else:

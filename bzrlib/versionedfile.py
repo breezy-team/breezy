@@ -559,7 +559,7 @@ class RecordingVersionedFilesDecorator(object):
 
 
 class KeyMapper(object):
-    """KeyMappers map between keys and underlying paritioned storage."""
+    """KeyMappers map between keys and underlying partitioned storage."""
 
     def map(self, key):
         """Map key to an underlying storage identifier.
@@ -574,7 +574,7 @@ class KeyMapper(object):
         """Map a partitioned storage id back to a key prefix.
         
         :param partition_id: The underlying partition id.
-        :return: As much of a key (or prefix) as is derivable from the parition
+        :return: As much of a key (or prefix) as is derivable from the partition
             id.
         """
         raise NotImplementedError(self.unmap)
@@ -695,6 +695,15 @@ class VersionedFiles(object):
 
     Currently no implementation allows the graph of different key prefixes to
     intersect, but the API does allow such implementations in the future.
+
+    The keyspace is expressed via simple tuples. Any instance of VersionedFiles
+    may have a different length key-size, but that size will be constant for
+    all texts added to or retrieved from it. For instance, bzrlib uses
+    instances with a key-size of 2 for storing user files in a repository, with
+    the first element the fileid, and the second the version of that file.
+
+    The use of tuples allows a single code base to support several different
+    uses with only the mapping logic changing from instance to instance.
     """
 
     def add_lines(self, key, parents, lines, parent_texts=None,
@@ -1178,8 +1187,8 @@ class _PlanMergeVersionedFile(VersionedFiles):
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
         """
-        if type(key) != tuple:
-            import pdb;pdb.set_trace()
+        if type(key) is not tuple:
+            raise TypeError(key)
         if not revision.is_reserved_id(key[-1]):
             raise ValueError('Only reserved ids may be used')
         if parents is None:

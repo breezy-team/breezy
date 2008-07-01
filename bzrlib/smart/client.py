@@ -61,6 +61,9 @@ class _SmartClient(object):
                     response_handler)
         else:
             for protocol_version in [3, 2]:
+                if protocol_version == 2:
+                    # If v3 doesn't work, the remote side is older than 1.6.
+                    self._medium._remember_remote_is_before((1, 6))
                 response_handler = self._send_request(
                     protocol_version, method, args, body=body,
                     readv_body=readv_body)

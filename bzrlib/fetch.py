@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -221,7 +221,6 @@ class RepoFetcher(object):
                 self.from_repository, self._last_revision,
                 find_ghosts=self.find_ghosts)
         except errors.NoSuchRevision, e:
-            import pdb;pdb.set_trace()
             raise InstallFailed([self._last_revision])
 
     def _fetch_inventory_weave(self, revs, pb):
@@ -387,8 +386,8 @@ class Inter1and2Helper(object):
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
         def yield_roots():
-            for root_id, rev_id in root_id_order:
-                key = (root_id, rev_id)
+            for key in root_id_order:
+                root_id, rev_id = key
                 rev_parents = parent_map[rev_id]
                 # We drop revision parents with different file-ids, because
                 # that represents a rename of the root to a different location

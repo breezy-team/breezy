@@ -579,6 +579,8 @@ class KnitAnnotateFactory(_KnitFactory):
                 result.append((prefix + (origin,), line))
             return result
         else:
+            # XXX: This smells a bit.  Why would key ever be a non-tuple here?
+            # Aren't keys defined to be tuples?  -- spiv 20080618
             return content.annotate()
 
 
@@ -647,6 +649,9 @@ class KnitPlainFactory(_KnitFactory):
 
 def make_file_factory(annotated, mapper):
     """Create a factory for creating a file based KnitVersionedFiles.
+
+    This is only functional enough to run interface tests, it doesn't try to
+    provide a full pack environment.
     
     :param annotated: knit annotations are wanted.
     :param mapper: The mapper from keys to paths.
@@ -741,8 +746,9 @@ class KnitVersionedFiles(VersionedFiles):
         self._index._check_write_ok()
         self._check_add(key, lines, random_id, check_content)
         if parents is None:
-            # For no-graph knits, have the public interface use None for
-            # parents.
+            # The caller might pass None if there is no graph data, but kndx
+            # indexes can't directly store that, so we give them
+            # an empty tuple instead.
             parents = ()
         return self._add(key, lines, parents,
             parent_texts, left_matching_blocks, nostore_sha, random_id)
@@ -853,15 +859,14 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
-        if contains_whitespace(key[-1]):
-            raise InvalidRevisionId(key[-1], self.filename)
-        self.check_not_reserved_id(key[-1])
-        # Technically this could be avoided if we are happy to allow duplicate
-        # id insertion when other things than bzr core insert texts, but it
-        # seems useful for folk using the knit api directly to have some safety
-        # blanket that we can disable.
-        ##if not random_id and self.has_version(key):
-        ##    raise RevisionAlreadyPresent(key, self)
+        version_id = key[-1]
+        if contains_whitespace(version_id):
+            raise InvalidRevisionId(version_id, self.filename)
+        self.check_not_reserved_id(version_id)
+        # TODO: If random_id==False and the key is already present, we should
+        # probably check that the existing content is identical to what is
+        # being inserted, and otherwise raise an exception.  This would make
+        # the bundle code simpler.
         if check_content:
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
@@ -905,8 +910,8 @@ class KnitVersionedFiles(VersionedFiles):
                 fulltext_size = size
                 break
             delta_size += size
-            # No exception here because we stop at first fulltext anyway, an
-            # absent parent indicates a corrupt knit anyway.
+            # We don't explicitly check for presence because this is in an
+            # inner loop, and if it's missing it'll fail anyhow.
             # TODO: This should be asking for compression parent, not graph
             # parent.
             parent = self._index.get_parent_map([parent])[parent][0]
@@ -922,7 +927,7 @@ class KnitVersionedFiles(VersionedFiles):
         # record_details, access_memo, compression_parent
         return build_details[3], build_details[0], build_details[1]
 
-    def _get_components_positions(self, keys, noraise=False):
+    def _get_components_positions(self, keys, allow_missing=False):
         """Produce a map of position data for the components of keys.
 
         This data is intended to be used for retrieving the knit records.
@@ -935,7 +940,7 @@ class KnitVersionedFiles(VersionedFiles):
         next is the build-parent of the version, or None for fulltexts.
         parents is the version_ids of the parents of this version
 
-        :param noraise: If True do not raise an error on a missing component,
+        :param allow_missing: If True do not raise an error on a missing component,
             just ignore it.
         """
         component_data = {}
@@ -952,7 +957,7 @@ class KnitVersionedFiles(VersionedFiles):
                     pending_components.add(compression_parent)
                 component_data[key] = self._build_details_to_components(details)
             missing = current_components.difference(build_details)
-            if missing and not noraise:
+            if missing and not allow_missing:
                 raise errors.RevisionNotPresent(missing.pop(), self)
         return component_data
        
@@ -976,7 +981,7 @@ class KnitVersionedFiles(VersionedFiles):
             which are known to not be in this knit, but rather in one of the
             fallback knits.
         :return: (text_map, content_map) where text_map contains the texts for
-        the requested versions and content_map contains the KnitContents.
+            the requested versions and content_map contains the KnitContents.
         """
         # FUTURE: This function could be improved for the 'extract many' case
         # by tracking each component and only doing the copy when the number of
@@ -1103,7 +1108,7 @@ class KnitVersionedFiles(VersionedFiles):
             error, just return the data that could be generated.
         """
         position_map = self._get_components_positions(keys,
-            noraise=allow_missing)
+            allow_missing=allow_missing)
         # key = component_id, r = record_details, i_m = index_memo, n = next
         records = [(key, i_m) for key, (r, i_m, n)
                              in position_map.iteritems()]
@@ -1134,9 +1139,11 @@ class KnitVersionedFiles(VersionedFiles):
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
         if include_delta_closure:
-            positions = self._get_components_positions(keys, noraise=True)
+            positions = self._get_components_positions(keys, allow_missing=True)
         else:
             build_details = self._index.get_build_details(keys)
+            # map from key to
+            # (record_details, access_memo, compression_parent_key)
             positions = dict((key, self._build_details_to_components(details))
                 for key, details in build_details.iteritems())
         absent_keys = keys.difference(set(positions))
@@ -1144,8 +1151,9 @@ class KnitVersionedFiles(VersionedFiles):
         # and are trying to include the delta closure.
         if include_delta_closure:
             needed_from_fallback = set()
-            # key:True means key can be reconstructed
-            checked_keys = {}
+            # Build up reconstructable_keys dict.  key:True in this dict means
+            # the key can be reconstructed.
+            reconstructable_keys = {}
             for key in keys:
                 # the delta chain
                 try:
@@ -1155,8 +1163,8 @@ class KnitVersionedFiles(VersionedFiles):
                     continue
                 result = True
                 while chain[-1] is not None:
-                    if chain[-1] in checked_keys:
-                        result = checked_keys[chain[-1]]
+                    if chain[-1] in reconstructable_keys:
+                        result = reconstructable_keys[chain[-1]]
                         break
                     else:
                         try:
@@ -1167,7 +1175,7 @@ class KnitVersionedFiles(VersionedFiles):
                             result = True
                             break
                 for chain_key in chain[:-1]:
-                    checked_keys[chain_key] = result
+                    reconstructable_keys[chain_key] = result
                 if not result:
                     needed_from_fallback.add(key)
         # Double index lookups here : need a unified api ?
@@ -1324,7 +1332,7 @@ class KnitVersionedFiles(VersionedFiles):
                     basis_parent = parents[0]
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
-                    # but we don't expose that differnet at the index level. If
+                    # but we don't expose that difference at the index level. If
                     # the query here has sufficient cost to show up in
                     # profiling we should do that.
                     if basis_parent not in self.get_parent_map([basis_parent]):
@@ -1395,8 +1403,8 @@ class KnitVersionedFiles(VersionedFiles):
             if key in keys:
                 key_records.append((key, details[0]))
                 keys.remove(key)
-        for key_idx, (key, data, sha_value) in \
-            enumerate(self._read_records_iter(key_records)):
+        records_iter = enumerate(self._read_records_iter(key_records))
+        for (key_idx, (key, data, sha_value)) in records_iter:
             pb.update('Walking content.', key_idx, total)
             compression_parent = build_details[key][1]
             if compression_parent is None:
@@ -1459,6 +1467,8 @@ class KnitVersionedFiles(VersionedFiles):
                     # content for any line that matches the last-checked
                     # parent.
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
+            # XXX: Robert says the following block is a workaround for a
+            # now-fixed bug and it can probably be deleted. -- mbp 20080618
             if content._lines and content._lines[-1][1][-1] != '\n':
                 # The copied annotation was from a line without a trailing EOL,
                 # reinstate one for the content object, to ensure correct
@@ -1630,7 +1640,7 @@ class KnitVersionedFiles(VersionedFiles):
 class _KndxIndex(object):
     """Manages knit index files
 
-    The index is kept in memorya  already kept in memory and read on startup, to enable
+    The index is kept in memory and read on startup, to enable
     fast lookups of revision information.  The cursor of the index
     file is always pointing to the end, making it easy to append
     entries.
@@ -1678,6 +1688,12 @@ class _KndxIndex(object):
     to ensure that records always start on new lines even if the last write was
     interrupted. As a result its normal for the last line in the index to be
     missing a trailing newline. One can be added with no harmful effects.
+
+    :ivar _kndx_cache: dict from prefix to the old state of KnitIndex objects,
+        where prefix is e.g. the (fileid,) for .texts instances or () for
+        constant-mapped things like .revisions, and the old state is
+        tuple(history_vector, cache_dict).  This is used to prevent having an
+        ABI change with the C extension that reads .kndx files.
     """
 
     HEADER = "# bzr knit index 8\n"
@@ -1796,7 +1812,7 @@ class _KndxIndex(object):
         Ghosts are omitted from the result.
 
         :param keys: An iterable of keys.
-        :return: A dict of key:(access_memo, compression_parent, parents,
+        :return: A dict of key:(index_memo, compression_parent, parents,
             record_details).
             index_memo
                 opaque structure to pass to read_records to extract the raw
@@ -1859,8 +1875,7 @@ class _KndxIndex(object):
         # Parse what we need to up front, this potentially trades off I/O
         # locality (.kndx and .knit in the same block group for the same file
         # id) for less checking in inner loops.
-        prefixes = set()
-        prefixes.update(key[:-1] for key in keys)
+        prefixes = set(key[:-1] for key in keys)
         self._load_prefixes(prefixes)
         result = {}
         for key in keys:

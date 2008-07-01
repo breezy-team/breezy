@@ -259,8 +259,9 @@ class TransportStore(Store):
         elif not escaped and prefixed:
             self._mapper = versionedfile.HashPrefixMapper()
         elif self._escaped:
-            import pdb;pdb.set_trace()
-            raise ValueError("escaped unprefixed stores are not permitted.")
+            raise ValueError(
+                "%r: escaped unprefixed stores are not permitted."
+                % (self,))
         else:
             self._mapper = versionedfile.PrefixMapper()
 

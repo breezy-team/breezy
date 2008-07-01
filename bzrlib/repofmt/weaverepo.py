@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -552,7 +552,7 @@ class TextVersionedFiles(VersionedFiles):
         if not self._can_write():
             raise errors.ReadOnlyError(self)
         if '/' in key[-1]:
-            raise ValueError('bad idea to put / in %r' % key)
+            raise ValueError('bad idea to put / in %r' % (key,))
         text = ''.join(lines)
         if self._compressed:
             text = bytes_to_gzip(text)

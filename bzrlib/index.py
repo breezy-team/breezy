@@ -219,7 +219,7 @@ class GraphIndexBuilder(object):
             raise errors.BzrError('Failed index creation. Internal error:'
                 ' mismatched output length and expected length: %d %d' %
                 (len(result.getvalue()), expected_bytes))
-        return StringIO(''.join(lines))
+        return result
 
 
 class GraphIndex(object):

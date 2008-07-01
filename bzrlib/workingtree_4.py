@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -528,6 +528,10 @@ class WorkingTree4(WorkingTree3):
         return iter(result)
 
     def iter_references(self):
+        if not self._repo_supports_tree_reference:
+            # When the repo doesn't support references, we will have nothing to
+            # return
+            return
         for key, tree_details in self.current_dirstate()._iter_entries():
             if tree_details[0][0] in ('a', 'r'): # absent, relocated
                 # not relevant to the working tree
@@ -535,10 +539,10 @@ class WorkingTree4(WorkingTree3):
             if not key[1]:
                 # the root is not a reference.
                 continue
-            path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
+            relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
             try:
-                if self._kind(path) == 'tree-reference':
-                    yield path, key[2]
+                if self._kind(relpath) == 'tree-reference':
+                    yield relpath, key[2]
             except errors.NoSuchFile:
                 # path is missing on disk.
                 continue
@@ -1415,6 +1419,9 @@ class DirStateRevisionTree(Tree):
         self._inventory = None
         self._locked = 0
         self._dirstate_locked = False
+        self._repo_supports_tree_reference = getattr(
+            repository._format, "supports_tree_reference",
+            False)
 
     def __repr__(self):
         return "<%s of %s in %s>" % \
@@ -1425,7 +1432,7 @@ class DirStateRevisionTree(Tree):
         """See Tree.annotate_iter"""
         text_key = (file_id, self.inventory[file_id].revision)
         annotations = self._repository.texts.annotate(text_key)
-        return [(key[-1], line) for key, line in annotations]
+        return [(key[-1], line) for (key, line) in annotations]
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,
@@ -1459,6 +1466,14 @@ class DirStateRevisionTree(Tree):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
+
+    def iter_references(self):
+        if not self._repo_supports_tree_reference:
+            # When the repo doesn't support references, we will have nothing to
+            # return
+            return iter([])
+        # Otherwise, fall back to the default implementation
+        return super(DirStateRevisionTree, self).iter_references()
 
     def _get_parent_index(self):
         """Return the index in the dirstate referenced by this tree."""
@@ -1718,6 +1733,10 @@ class DirStateRevisionTree(Tree):
                 self._dirstate.unlock()
                 self._dirstate_locked = False
             self._repository.unlock()
+
+    @needs_read_lock
+    def supports_tree_reference(self):
+        return self._repo_supports_tree_reference
 
     def walkdirs(self, prefix=""):
         # TODO: jam 20070215 This is the lazy way by using the RevisionTree

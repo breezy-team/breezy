@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -421,15 +421,14 @@ class Merger(object):
             merge = self.make_merger()
             merge.do_merge()
             if self.recurse == 'down':
-                for path, file_id in self.this_tree.iter_references():
-                    sub_tree = self.this_tree.get_nested_tree(file_id, path)
+                for relpath, file_id in self.this_tree.iter_references():
+                    sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
                     other_revision = self.other_tree.get_reference_revision(
-                        file_id, path)
+                        file_id, relpath)
                     if  other_revision == sub_tree.last_revision():
                         continue
                     sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                     sub_merge.merge_type = self.merge_type
-                    relpath = self.this_tree.relpath(path)
                     other_branch = self.other_branch.reference_parent(file_id, relpath)
                     sub_merge.set_other_revision(other_revision, other_branch)
                     base_revision = self.base_tree.get_reference_revision(file_id)
@@ -1243,13 +1242,14 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
 
 class _PlanMergeBase(object):
 
-    def __init__(self, a_rev, b_rev, vf, prefix):
+    def __init__(self, a_rev, b_rev, vf, key_prefix):
         """Contructor.
 
         :param a_rev: Revision-id of one revision to merge
         :param b_rev: Revision-id of the other revision to merge
         :param vf: A VersionedFiles containing both revisions
-        :param prefix: A prefix for accessing keys in vf.
+        :param key_prefix: A prefix for accessing keys in vf, typically
+            (file_id,).
         """
         self.a_rev = a_rev
         self.b_rev = b_rev
@@ -1257,7 +1257,7 @@ class _PlanMergeBase(object):
         self._last_lines = None
         self._last_lines_revision_id = None
         self._cached_matching_blocks = {}
-        self._prefix = prefix
+        self._key_prefix = key_prefix
         lines = self.get_lines([a_rev, b_rev])
         self.lines_a = lines[a_rev]
         self.lines_b = lines[b_rev]
@@ -1265,14 +1265,14 @@ class _PlanMergeBase(object):
     def get_lines(self, revisions):
         """Get lines for revisions from the backing VersionedFiles.
         
-        :raises RevisionNotPresent on absent texts.
+        :raises RevisionNotPresent: on absent texts.
         """
-        keys = dict((self._prefix + (rev,), rev) for rev in revisions)
+        keys = [(self._key_prefix + (rev,)) for rev in revisions]
         result = {}
         for record in self.vf.get_record_stream(keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            result[keys[record.key]] = osutils.split_lines(
+            result[record.key[-1]] = osutils.split_lines(
                 record.get_bytes_as('fulltext'))
         return result
 
@@ -1391,14 +1391,14 @@ class _PlanMergeBase(object):
 class _PlanMerge(_PlanMergeBase):
     """Plan an annotate merge using on-the-fly annotation"""
 
-    def __init__(self, a_rev, b_rev, vf, prefix):
-        _PlanMergeBase.__init__(self, a_rev, b_rev, vf, prefix)
+    def __init__(self, a_rev, b_rev, vf, key_prefix):
+        _PlanMergeBase.__init__(self, a_rev, b_rev, vf, key_prefix)
         graph = Graph(vf)
         # XXX: There is probably a better API to use to examine less history.
         a_ancestry = set(chain(*graph._make_breadth_first_searcher(
-            [prefix + (a_rev,)])))
+            [key_prefix + (a_rev,)])))
         b_ancestry = set(chain(*graph._make_breadth_first_searcher(
-            [prefix + (b_rev,)])))
+            [key_prefix + (b_rev,)])))
         self.uncommon = set(key[-1] for key in
             a_ancestry.symmetric_difference(b_ancestry))
 
@@ -1426,7 +1426,7 @@ class _PlanMerge(_PlanMergeBase):
         """
         if version_id not in self.uncommon:
             return set()
-        key = self._prefix + (version_id,)
+        key = self._key_prefix + (version_id,)
         parent_map = self.vf.get_parent_map([key])
         parents = tuple(parent[-1] for parent in parent_map[key])
         if len(parents) == 0:
@@ -1458,9 +1458,9 @@ class _PlanLCAMerge(_PlanMergeBase):
     This is faster, and hopefully produces more useful output.
     """
 
-    def __init__(self, a_rev, b_rev, vf, prefix, graph):
-        _PlanMergeBase.__init__(self, a_rev, b_rev, vf, prefix)
-        lcas = graph.find_lca(prefix + (a_rev,), prefix + (b_rev,))
+    def __init__(self, a_rev, b_rev, vf, key_prefix, graph):
+        _PlanMergeBase.__init__(self, a_rev, b_rev, vf, key_prefix)
+        lcas = graph.find_lca(key_prefix + (a_rev,), key_prefix + (b_rev,))
         self.lcas = set()
         for lca in lcas:
             if lca == NULL_REVISION:

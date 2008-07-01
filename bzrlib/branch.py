@@ -85,6 +85,7 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -361,6 +362,7 @@ class Branch(object):
         """
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -413,11 +415,17 @@ class Branch(object):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
+    @needs_read_lock
     def last_revision_info(self):
         """Return information about the last revision.
 
-        :return: A tuple (revno, last_revision_id).
+        :return: A tuple (revno, revision_id).
         """
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+
+    def _last_revision_info(self):
         rh = self.revision_history()
         revno = len(rh)
         if revno:
@@ -484,16 +492,11 @@ class Branch(object):
             if not overwrite:
                 if graph is None:
                     graph = self.repository.get_graph()
-                heads = graph.heads([stop_revision, last_rev])
-                if heads == set([last_rev]):
-                    # The current revision is a decendent of the target,
-                    # nothing to do
+                if self._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, other):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
                     return
-                elif heads == set([stop_revision, last_rev]):
-                    # These branches have diverged
-                    raise errors.DivergedBranches(self, other)
-                elif heads != set([stop_revision]):
-                    raise AssertionError("invalid heads: %r" % heads)
             if stop_revno is None:
                 if graph is None:
                     graph = self.repository.get_graph()
@@ -528,7 +531,7 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None,
-             possible_transports=None):
+             possible_transports=None, _override_hook_target=None):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
@@ -853,6 +856,41 @@ class Branch(object):
 
     def supports_tags(self):
         return self._format.supports_tags()
+
+    def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
+                                         other_branch):
+        """Ensure that revision_b is a descendant of revision_a.
+
+        This is a helper function for update_revisions.
+        
+        :raises: DivergedBranches if revision_b has diverged from revision_a.
+        :returns: True if revision_b is a descendant of revision_a.
+        """
+        relation = self._revision_relations(revision_a, revision_b, graph)
+        if relation == 'b_descends_from_a':
+            return True
+        elif relation == 'diverged':
+            raise errors.DivergedBranches(self, other_branch)
+        elif relation == 'a_descends_from_b':
+            return False
+        else:
+            raise AssertionError("invalid heads: %r" % heads)
+
+    def _revision_relations(self, revision_a, revision_b, graph):
+        """Determine the relationship between two revisions.
+        
+        :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
+        """
+        heads = graph.heads([revision_a, revision_b])
+        if heads == set([revision_b]):
+            return 'b_descends_from_a'
+        elif heads == set([revision_a, revision_b]):
+            # These branches have diverged
+            return 'diverged'
+        elif heads == set([revision_a]):
+            return 'a_descends_from_b'
+        else:
+            raise AssertionError("invalid heads: %r" % heads)
 
 
 class BranchFormat(object):
@@ -1562,18 +1600,24 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             _hook_master=None, run_hooks=True, possible_transports=None):
+             _hook_master=None, run_hooks=True, possible_transports=None,
+             _override_hook_target=None):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
-            be supplied as the master to push hooks.
+            be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
         """
         result = PullResult()
         result.source_branch = source
-        result.target_branch = self
+        if _override_hook_target is None:
+            result.target_branch = self
+        else:
+            result.target_branch = _override_hook_target
         source.lock_read()
         try:
             # We assume that during 'pull' the local repository is closer than
@@ -1586,9 +1630,9 @@ class BzrBranch(Branch):
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master
-                result.local_branch = self
+                result.local_branch = result.target_branch
             else:
-                result.master_branch = self
+                result.master_branch = result.target_branch
                 result.local_branch = None
             if run_hooks:
                 for hook in Branch.hooks['post_pull']:
@@ -1758,7 +1802,8 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             run_hooks=True, possible_transports=None):
+             run_hooks=True, possible_transports=None,
+             _override_hook_target=None):
         """Pull from source into self, updating my master if any.
         
         :param run_hooks: Private parameter - if false, this branch
@@ -1778,7 +1823,8 @@ class BzrBranch5(BzrBranch):
                     run_hooks=False)
             return super(BzrBranch5, self).pull(source, overwrite,
                 stop_revision, _hook_master=master_branch,
-                run_hooks=run_hooks)
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target)
         finally:
             if master_branch:
                 master_branch.unlock()
@@ -1879,23 +1925,11 @@ class BzrBranch6(BzrBranch5):
 
     def __init__(self, *args, **kwargs):
         super(BzrBranch6, self).__init__(*args, **kwargs)
-        self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
 
     def _clear_cached_state(self):
         super(BzrBranch6, self)._clear_cached_state()
-        self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
-
-    @needs_read_lock
-    def last_revision_info(self):
-        """Return information about the last revision.
-
-        :return: A tuple (revno, revision_id).
-        """
-        if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._last_revision_info()
-        return self._last_revision_info_cache
 
     def _last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
@@ -1939,7 +1973,8 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        self._extend_partial_history()
+        last_revno, last_revision = self.last_revision_info()
+        self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
 
     def _extend_partial_history(self, stop_index=None, stop_revision=None):

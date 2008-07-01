@@ -1656,7 +1656,29 @@ class RepositoryPackCollection(object):
 
 
 class KnitPackRepository(KnitRepository):
-    """Repository with knit objects stored inside pack containers."""
+    """Repository with knit objects stored inside pack containers.
+    
+    The layering for a KnitPackRepository is:
+
+    Graph        |  HPSS    | Repository public layer |
+    ===================================================
+    Tuple based apis below, string based, and key based apis above
+    ---------------------------------------------------
+    KnitVersionedFiles
+      Provides .texts, .revisions etc
+      This adapts the N-tuple keys to physical knit records which only have a
+      single string identifier (for historical reasons), which in older formats
+      was always the revision_id, and in the mapped code for packs is always
+      the last element of key tuples.
+    ---------------------------------------------------
+    GraphIndex
+      A separate GraphIndex is used for each of the
+      texts/inventories/revisions/signatures contained within each individual
+      pack file. The GraphIndex layer works in N-tuples and is unaware of any
+      semantic value.
+    ===================================================
+    
+    """
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):

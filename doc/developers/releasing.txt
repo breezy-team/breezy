@@ -239,6 +239,8 @@ Now that the release is publicly available, tell people about it.
 #. For final releases, also send the announcement mail to
    info-gnu@gnu.org and python-announce-list@python.org.
 
+#. Also send a GNU directory update to bug-directory@gnu.org.
+
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
    done by running ::
 
