@@ -495,21 +495,24 @@ class InterFromSvnRepository(InterRepository):
     def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
         set_needed = set()
         ret_needed = list()
+        checked = set()
         for branch in branches:
             if pb:
                 pb.update("determining revisions to fetch", branches.index(branch), len(branches))
             try:
                 nestedpb = ui.ui_factory.nested_progress_bar()
                 for rev in self._find_until(branch.last_revision(), find_ghosts=find_ghosts, 
-                                            fetch_rhs_ancestry=False, pb=nestedpb):
+                                            fetch_rhs_ancestry=False, pb=nestedpb, checked=checked):
                     if rev[0] not in set_needed:
                         ret_needed.append(rev)
                         set_needed.add(rev[0])
+                mutter('for %r: %r', branch, len(checked))
             finally:
                 nestedpb.finished()
         return ret_needed
 
-    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
+    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False, pb=None,
+                    checked=None):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
@@ -518,6 +521,10 @@ class InterFromSvnRepository(InterRepository):
         :return: Tuple with revisions missing and a dictionary with 
             parents for those revision.
         """
+        if checked is None:
+            checked = set()
+        if revision_id in checked:
+            return []
         extra = set()
         needed = []
         revs = []
@@ -536,9 +543,10 @@ class InterFromSvnRepository(InterRepository):
                     extra.update(revmeta.get_rhs_parents(mapping))
                 if not self.target.has_revision(revid):
                     revs.append(revid)
-                elif not find_ghosts:
+                elif not find_ghosts or revid in checked:
                     prev = None
                     break
+                checked.add(revid)
                 prev = revid
             lhs_parent[prev] = NULL_REVISION
 
@@ -580,7 +588,6 @@ class InterFromSvnRepository(InterRepository):
         num = 0
         prev_inv = None
 
-        self.target.lock_write()
         revbuildklass = get_revision_build_editor(self.target)
         editor = revbuildklass(self.source, self.target)
 
@@ -640,7 +647,6 @@ class InterFromSvnRepository(InterRepository):
                 prev_revid = revid
                 num += 1
         finally:
-            self.target.unlock()
             if nested_pb is not None:
                 nested_pb.finished()
 
@@ -657,7 +663,7 @@ class InterFromSvnRepository(InterRepository):
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
-        self.target.lock_read()
+        self.target.lock_write()
         try:
             nested_pb = ui.ui_factory.nested_progress_bar()
             try:
