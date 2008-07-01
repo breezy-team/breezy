@@ -551,7 +551,7 @@ class RecordingVersionedFilesDecorator(object):
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         self.calls.append(("iter_lines_added_or_present_in_keys", copy(keys)))
-        return self._backing_vf.iter_lines_added_or_present_in_keys(keys)
+        return self._backing_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
 
     def keys(self):
         self.calls.append(("keys",))
@@ -838,7 +838,7 @@ class VersionedFiles(object):
 
         :param keys: The names of the keys to lookup
         :return: a dict from key to sha1 digest. Keys of texts which are not
-            present in the store are not not present in the returned
+            present in the store are not present in the returned
             dictionary.
         """
         raise NotImplementedError(self.get_sha1s)

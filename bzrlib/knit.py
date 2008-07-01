@@ -1007,7 +1007,6 @@ class KnitVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'absent':
                     continue
                 missing_keys.remove(record.key)
-                bytes = record.get_bytes_as('fulltext')
                 lines = split_lines(record.get_bytes_as('fulltext'))
                 text_map[record.key] = lines
                 content_map[record.key] = PlainKnitContent(lines, record.key)
@@ -1065,9 +1064,9 @@ class KnitVersionedFiles(VersionedFiles):
         :return: A mapping from keys to parents. Absent keys are absent from
             the mapping.
         """
-        return self._get_parent_map(keys)[0]
+        return self._get_parent_map_with_sources(keys)[0]
 
-    def _get_parent_map(self, keys):
+    def _get_parent_map_with_sources(self, keys):
         """Get a map of the parents of keys.
 
         :param keys: The keys to look up parents for.
@@ -1179,7 +1178,7 @@ class KnitVersionedFiles(VersionedFiles):
                 if not result:
                     needed_from_fallback.add(key)
         # Double index lookups here : need a unified api ?
-        global_map, parent_maps = self._get_parent_map(keys)
+        global_map, parent_maps = self._get_parent_map_with_sources(keys)
         if ordering == 'topological':
             # Global topological sort
             present_keys = topo_sort(global_map)
@@ -1208,9 +1207,6 @@ class KnitVersionedFiles(VersionedFiles):
         for key in absent_keys:
             yield AbsentContentFactory(key)
         # restrict our view to the keys we can answer.
-        our_keys = parent_maps[0]
-        # keys - needed_from_fallback
-        # keys = keys - absent_keys
         # XXX: Memory: TODO: batch data here to cap buffered data at (say) 1MB.
         # XXX: At that point we need to consider the impact of double reads by
         # utilising components multiple times.

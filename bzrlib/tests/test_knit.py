@@ -1411,8 +1411,8 @@ class TestStacking(KnitTests):
         test.add_lines(key_cross_border, (key_basis,), ['foo\n'])
         self.assertEqual('fulltext', test._index.get_method(key_cross_border))
         self.assertEqual([("get_parent_map", set([key_basis]))], basis.calls)
-        basis.calls = []
         # Subsequent adds do delta.
+        basis.calls = []
         test.add_lines(key_delta, (key_cross_border,), ['foo\n'])
         self.assertEqual('line-delta', test._index.get_method(key_delta))
         self.assertEqual([], basis.calls)
@@ -1438,7 +1438,7 @@ class TestStacking(KnitTests):
         self.assertEqual([("annotate", key_basis)], basis.calls)
 
     def test_check(self):
-        # check() must not check the fallback files, its none of its business.
+        # check() must not check the fallback files, it's none of its business.
         basis, test = self.get_basis_and_test_knit()
         basis.check = None
         test.check()
@@ -1493,7 +1493,7 @@ class TestStacking(KnitTests):
                     record.get_bytes_as(record.storage_kind))
                 self.assertEqual(reference.get_bytes_as('fulltext'),
                     record.get_bytes_as('fulltext'))
-        # Its not strictly minimal, but it seems reasonable for now for it to
+        # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
             ("get_parent_map", set([key_basis, key_missing])),
@@ -1539,7 +1539,7 @@ class TestStacking(KnitTests):
             self.assertEqual(record.sha1, result[1])
             self.assertEqual(record.storage_kind, result[2])
             self.assertEqual(record.get_bytes_as('fulltext'), result[3])
-        # Its not strictly minimal, but it seems reasonable for now for it to
+        # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
             ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
@@ -1577,7 +1577,7 @@ class TestStacking(KnitTests):
                 self.assertEqual(reference.storage_kind, record.storage_kind)
                 self.assertEqual(reference.get_bytes_as(reference.storage_kind),
                     record.get_bytes_as(record.storage_kind))
-        # Its not strictly minimal, but it seems reasonable for now for it to
+        # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
             ("get_parent_map", set([key_basis, key_missing])),
@@ -1623,7 +1623,7 @@ class TestStacking(KnitTests):
             self.assertEqual(record.sha1, result[1])
             self.assertEqual(record.storage_kind, result[2])
             self.assertEqual(record.get_bytes_as(record.storage_kind), result[3])
-        # Its not strictly minimal, but it seems reasonable for now for it to
+        # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
             ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
@@ -1655,7 +1655,7 @@ class TestStacking(KnitTests):
 
     def test_insert_record_stream(self):
         # records are inserted as normal; insert_record_stream builds on
-        # add_lines, so a smoke test should be all thats needed:
+        # add_lines, so a smoke test should be all that's needed:
         key = ('foo',)
         key_basis = ('bar',)
         key_delta = ('zaphod',)
@@ -1720,7 +1720,7 @@ class TestStacking(KnitTests):
 
     def test_add_mpdiffs(self):
         # records are inserted as normal; add_mpdiff builds on
-        # add_lines, so a smoke test should be all thats needed:
+        # add_lines, so a smoke test should be all that's needed:
         key = ('foo',)
         key_basis = ('bar',)
         key_delta = ('zaphod',)
@@ -1767,7 +1767,8 @@ class TestStacking(KnitTests):
             ("get_parent_map", set([key_left, key_right])),
             ],
             basis.calls[:3])
-        self.assertEqual(set([key_left, key_right]), set(basis.calls[3][1]))
-        self.assertEqual('get_record_stream', basis.calls[3][0])
-        self.assertEqual('unordered', basis.calls[3][2])
-        self.assertEqual(True, basis.calls[3][3])
+        last_call = basis.calls[3]
+        self.assertEqual('get_record_stream', last_call[0])
+        self.assertEqual(set([key_left, key_right]), set(last_call[1]))
+        self.assertEqual('unordered', last_call[2])
+        self.assertEqual(True, last_call[3])
