@@ -354,7 +354,12 @@ class EmacsMail(ExternalMailClient):
 	 ((eq agent 'mew-user-agent)
 	  (progn
 	    (mew-draft-prepare-attachments)
-	    (mew-attach-link file (file-name-nondirectory file))))
+	    (mew-attach-link file (file-name-nondirectory file))
+	    (let* ((nums (mew-syntax-nums))
+	           (syntax (mew-syntax-get-entry mew-encode-syntax nums)))
+	      (mew-syntax-set-cd syntax "BZR merge")
+	      (mew-encode-syntax-print mew-encode-syntax))
+	    (mew-header-goto-body)))
          (t
           (message "Unhandled MUA, report it on bazaar@lists.canonical.com")))
       (error "File %s does not exist." file))))
