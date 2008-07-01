@@ -17,6 +17,7 @@ from bzrlib import debug, osutils, urlutils
 from bzrlib.trace import mutter
 from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory
 
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NOT_FILE
 
 from cStringIO import StringIO
