@@ -35,12 +35,13 @@ class SvnTexts(VersionedFiles):
         raise NotImplementedError(self.add_mpdiffs)
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
+        # TODO: Sort keys by file id and issue just one get_file_revs() call 
+        # per file-id ?
         for (fileid, revid) in list(keys):
             (branch, revnum, mapping) = self.repository.lookup_revision_id(revid)
             map = self.repository.get_fileid_map(revnum, branch, mapping)
             # Unfortunately, the map is the other way around
             lines = None
-            mutter('map %r', map)
             for k,(v,ck) in map.items():
                 if v == fileid:
                     try:
@@ -60,8 +61,6 @@ class SvnTexts(VersionedFiles):
                         text=''.join(lines))
 
     def get_parent_map(self, keys):
-        mutter("get_parent_map(%r)" % keys)
-
         invs = {}
 
         # First, figure out the revision number/path
@@ -71,8 +70,7 @@ class SvnTexts(VersionedFiles):
             ret[(fileid, revid)] = None
         return ret
 
-    # TODO: annotate, , get_sha1s, 
-    # iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, get_sha1s, iter_lines_added_or_present_in_keys, keys
 
 
 class FakeVersionedFiles(VersionedFiles):
