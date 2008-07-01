@@ -55,12 +55,17 @@ def expand_branch_pattern(begin, todo, check_path, get_children):
     if children is None:
         return []
     ret = []
-    for c in children:
-        if len(todo) == 1:
-            # Last path element, so return directly
-            ret.append("/".join(begin+[c]))
-        else:
-            ret += expand_branch_pattern(begin+[c], todo[1:], check_path, get_children)
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        for idx, c in enumerate(children):
+            pb.update("browsing branches", idx, len(children))
+            if len(todo) == 1:
+                # Last path element, so return directly
+                ret.append("/".join(begin+[c]))
+            else:
+                ret += expand_branch_pattern(begin+[c], todo[1:], check_path, get_children)
+    finally:
+        pb.finished()
     return ret
 
 
