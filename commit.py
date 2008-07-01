@@ -712,8 +712,12 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
     old_tree = source_repo.revision_tree(revision_id)
     base_tree = source_repo.revision_tree(base_revid)
 
+    if push_metadata:
+        base_revids = [base_revid]
+    else:
+        base_revids = rev.parent_ids
     builder = SvnCommitBuilder(target.repository, target, 
-                               rev.parent_ids if push_metadata else [base_revid],
+                               base_revids,
                                config, rev.timestamp,
                                rev.timezone, rev.committer, rev.properties, 
                                revision_id, base_tree.inventory, 
