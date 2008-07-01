@@ -506,7 +506,6 @@ class InterFromSvnRepository(InterRepository):
                     if rev[0] not in set_needed:
                         ret_needed.append(rev)
                         set_needed.add(rev[0])
-                mutter('for %r: %r', branch, len(checked))
             finally:
                 nestedpb.finished()
         return ret_needed
@@ -539,11 +538,15 @@ class InterFromSvnRepository(InterRepository):
                 revid = revmeta.get_revision_id(mapping)
                 lhs_parent[prev] = revid
                 meta_map[revid] = revmeta
+                if revid in checked:
+                    # This revision (and its ancestry) has already been checked
+                    prev = None
+                    break
                 if fetch_rhs_ancestry:
                     extra.update(revmeta.get_rhs_parents(mapping))
                 if not self.target.has_revision(revid):
                     revs.append(revid)
-                elif not find_ghosts or revid in checked:
+                elif not find_ghosts:
                     prev = None
                     break
                 checked.add(revid)
