@@ -210,6 +210,7 @@ class cmd_svn_import(Command):
         from bzrlib.errors import BzrCommandError, NoRepositoryPresent, NotBranchError
         from bzrlib import urlutils
         from bzrlib.plugins.svn.convert import convert_repository
+        from bzrlib.plugins.svn.mapping3 import repository_guess_scheme
         from bzrlib.plugins.svn.repository import SvnRepository
         import os
 
@@ -234,36 +235,41 @@ class cmd_svn_import(Command):
         try:
             from_repos = from_dir.open_repository()
         except NoRepositoryPresent, e:
-            try:
-                from_dir.open_branch()
-                raise BzrCommandError("No Repository found at %s. "
-                    "For individual branches, use 'bzr branch'." % from_location)
-            except NotBranchError:
-                if prefix is not None:
-                    raise BzrCommandError("Path inside repository specified and --prefix specified")
-                from_repos = from_dir.find_repository()
-                prefix = urlutils.relative_url(from_repos.base, from_location)
-                self.outf.write("Importing branches below %s\n" % 
-                        urlutils.unescape_for_display(prefix, self.outf.encoding))
+            if prefix is not None:
+                raise BzrCommandError("Path inside repository specified and --prefix specified")
+            from_repos = from_dir.find_repository()
+            prefix = urlutils.relative_url(from_repos.base, from_location)
+            prefix = prefix.encode("utf-8")
+            self.outf.write("Importing branches with prefix %s\n" % 
+                    urlutils.unescape_for_display(prefix, self.outf.encoding))
 
-        if prefix is not None:
-            prefix = prefix.strip("/") + "/"
+        from_repos.lock_read()
+        try:
+            scheme = repository_guess_scheme(from_repos, from_repos.get_latest_revnum())
 
-        if not isinstance(from_repos, SvnRepository):
-            raise BzrCommandError(
-                    "Not a Subversion repository: %s" % from_location)
+            if prefix is not None:
+                prefix = prefix.strip("/") + "/"
+                if scheme.is_branch(prefix):
+                    raise BzrCommandError("%s appears to contain a branch. " 
+                            "For individual branches, use 'bzr branch'." % from_location)
 
-        def filter_branch(branch):
-            if prefix is not None and not branch.get_branch_path().startswith(prefix):
-                return False
-            return True
+            if not isinstance(from_repos, SvnRepository):
+                raise BzrCommandError(
+                        "Not a Subversion repository: %s" % from_location)
 
-        convert_repository(from_repos, to_location, scheme, None, 
-                           not standalone, trees, all, filter_branch=filter_branch)
+            def filter_branch(branch):
+                if prefix is not None and not branch.get_branch_path().startswith(prefix):
+                    return False
+                return True
 
-        if tmp_repos is not None:
-            from bzrlib import osutils
-            osutils.rmtree(tmp_repos)
+            convert_repository(from_repos, to_location, scheme, None, 
+                               not standalone, trees, all, filter_branch=filter_branch)
+
+            if tmp_repos is not None:
+                from bzrlib import osutils
+                osutils.rmtree(tmp_repos)
+        finally:
+            from_repos.unlock()
 
 
 register_command(cmd_svn_import)
