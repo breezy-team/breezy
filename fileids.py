@@ -29,8 +29,17 @@ from bzrlib.plugins.svn.mapping import escape_svn_path
 
 def get_local_changes(paths, branch, mapping, generate_revid, 
                       get_children=None):
+    """Obtain all of the changes relative to a particular path
+    (usually a branch path).
+
+    :param paths: Changes
+    :param branch: Path under which to select changes
+    :parma mapping: Mapping to use to determine what are valid branch paths
+    :param generate_revid: Function for generating revision id from svn revnum
+    :param get_children: Function for obtaining the children of a path
+    """
     new_paths = {}
-    for p in sorted(paths.keys()):
+    for p in sorted(paths.keys(), reverse=False):
         if not changes.path_is_child(branch, p):
             continue
         data = paths[p]
@@ -65,7 +74,7 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
     
     Does not track renames. """
     map = {}
-    for p in sorted(changes.keys()):
+    for p in sorted(changes.keys(), reverse=False):
         data = changes[p]
 
         inv_p = p.decode("utf-8")
