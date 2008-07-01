@@ -113,6 +113,9 @@ class SvnBranch(Branch):
         if revnum is None:
             return self._branch_path
 
+        if revnum == self.get_revnum():
+            return self._branch_path
+
         # Use revnum - this branch may have been moved in the past 
         return self.repository.transport.get_locations(
                     self._branch_path, self.get_revnum(), 
