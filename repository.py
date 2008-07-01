@@ -249,18 +249,18 @@ class SvnRepository(Repository):
         self._cached_revnum = self.transport.get_latest_revnum()
         return self._cached_revnum
 
-    def item_keys_introduced_by(self, revision_ids, _file_pb=None):
+    def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         fileids = {}
 
         for count, (revid, d) in enumerate(zip(revision_ids, self.get_deltas_for_revisions(self.get_revisions(revision_ids)))):
-            if _files_cb is not None:
+            if _files_pb is not None:
                 _files_pb.update("fetch revisions for texts", count, len(revision_ids))
             for c in d.added + d.modified:
                 fileids.setdefault(c[1], set()).add(revid)
             for c in d.renamed:
                 fileids.setdefault(c[2], set()).add(revid)
 
-        for fileids, altered_versions in fileids.items():
+        for fileid, altered_versions in fileids.items():
             yield ("file", fileid, altered_versions)
         
         # We're done with the files_pb.  Note that it finished by the caller,
@@ -274,7 +274,7 @@ class SvnRepository(Repository):
         for rev_id in revision_ids:
             try:
                 self.get_signature_text(rev_id)
-            except errors.NoSuchRevision:
+            except NoSuchRevision:
                 # not signed.
                 pass
             else:
