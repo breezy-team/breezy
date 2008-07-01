@@ -22,6 +22,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Basic support for stacked branches.
 
+   * Avoid reopening connections to branch and repository when finding branches. (#243749)
+
   FEATURES
   
    * Add new "dpush" command that works similar to git-svn's dcommit.

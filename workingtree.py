@@ -804,8 +804,7 @@ class SvnCheckout(BzrDir):
         repos = self._find_repository()
 
         try:
-            branch = SvnBranch(self.remote_transport.base, repos, 
-                               self.remote_bzrdir.branch_path)
+            branch = SvnBranch(repos, self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
             if num == ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)

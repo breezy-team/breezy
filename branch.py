@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Handles branch-specific operations."""
 
-from bzrlib import ui
+from bzrlib import ui, urlutils
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
@@ -53,7 +53,7 @@ class FakeControlFiles(object):
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self, base, repository, branch_path):
+    def __init__(self, repository, branch_path):
         """Instantiate a new SvnBranch.
 
         :param repos: SvnRepository this branch is part of.
@@ -66,7 +66,7 @@ class SvnBranch(Branch):
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
         self.control_files = FakeControlFiles()
-        self.base = base.rstrip("/")
+        self.base = urlutils.join(self.repository.base, branch_path).rstrip("/")
         self._format = SvnBranchFormat()
         self._lock_mode = None
         self._lock_count = 0

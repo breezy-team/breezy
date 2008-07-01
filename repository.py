@@ -699,6 +699,7 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         self.transport.change_rev_prop(revnum, SVN_REVPROP_BZR_SIGNATURE, signature)
 
+    @needs_read_lock
     def find_branches(self, using=False, layout=None):
         """Find branches underneath this repository.
 
@@ -706,6 +707,7 @@ class SvnRepository(Repository):
 
         :param using: If True, list only branches using this repository.
         """
+        from bzrlib.plugins.svn.branch import SvnBranch # avoid circular imports
         # All branches use this repository, so the using argument can be 
         # ignored.
         if layout is None:
@@ -714,7 +716,7 @@ class SvnRepository(Repository):
         branches = []
         for project, bp, nick in layout.get_branches(self.get_latest_revnum()):
             try:
-                branches.append(Branch.open_from_transport(self.transport.clone(bp)))
+                branches.append(SvnBranch(self, bp))
             except NotBranchError: # Skip non-directories
                 pass
         return branches
