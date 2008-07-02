@@ -64,8 +64,6 @@ class TestPreviousHeads(TestCaseWithTree):
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
         self.file_active = get_entry(self.tree, 'fileid')
-        self.weave = self.branch.repository.weave_store.get_weave('fileid',
-            self.branch.repository.get_transaction())
 
     # TODO: test two inventories with the same file revision
 

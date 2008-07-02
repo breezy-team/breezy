@@ -146,17 +146,24 @@ class TestFetch(TestCaseWithTransport):
         branch = self.make_branch('branch', format=knit2_format)
         branch.pull(tree.branch, stop_revision='rev1')
         repo = branch.repository
-        root_knit = repo.weave_store.get_weave('tree-root',
-                                                repo.get_transaction())
-        # Make sure fetch retrieved only what we requested
-        self.assertTrue('rev1' in root_knit)
-        self.assertTrue('rev2' not in root_knit)
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev1'):()},
+                repo.texts.get_parent_map(
+                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
         branch.pull(tree.branch)
-        root_knit = repo.weave_store.get_weave('tree-root',
-                                                repo.get_transaction())
         # Make sure that the next revision in the root knit was retrieved,
         # even though the text, name, parent_id, etc., were unchanged.
-        self.assertTrue('rev2' in root_knit)
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
+                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
 
     def test_fetch_incompatible(self):
         knit_tree = self.make_branch_and_tree('knit', format='knit')
@@ -286,9 +293,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
-        # XXX: This *should* be '1', but more intrusive fetch changes are
-        # needed to drop this back to 1.
-        self.assertEqual(2, self._count_log_matches('inventory.kndx', http_logs))
+        self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         self.assertTrue(1 >= self._count_log_matches('revision-history',
@@ -350,9 +355,12 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.do_fetch_order_test('B', 'A')
 
     def get_parents(self, file_id, revision_id):
-        transaction = self.repo.get_transaction()
-        vf = self.repo.weave_store.get_weave(file_id, transaction)
-        return vf.get_parents_with_ghosts(revision_id)
+        self.repo.lock_read()
+        try:
+            parent_map = self.repo.texts.get_parent_map([(file_id, revision_id)])
+            return parent_map[(file_id, revision_id)]
+        finally:
+            self.repo.unlock()
 
     def test_fetch_ghosts(self):
         self.make_tree_and_repo()
@@ -366,8 +374,10 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.tree.commit('second commit', rev_id='second-id')
         self.repo.fetch(self.tree.branch.repository, 'second-id')
         root_id = self.tree.get_root_id()
-        self.assertEqual(['left-parent', 'ghost-parent', 'not-ghost-parent'],
-                         self.get_parents(root_id, 'second-id'))
+        self.assertEqual(
+            ((root_id, 'left-parent'), (root_id, 'ghost-parent'),
+             (root_id, 'not-ghost-parent')),
+            self.get_parents(root_id, 'second-id'))
 
     def make_two_commits(self, change_root, fetch_twice):
         self.make_tree_and_repo()
@@ -381,13 +391,13 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def test_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=False)
-        self.assertEqual([], self.get_parents('unique-id', 'second-id'))
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
 
     def test_two_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=True)
-        self.assertEqual([], self.get_parents('unique-id', 'second-id'))
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
 
     def test_two_fetches(self):
         self.make_two_commits(change_root=False, fetch_twice=True)
-        self.assertEqual(['first-id'],
-                         self.get_parents('TREE_ROOT', 'second-id'))
+        self.assertEqual((('TREE_ROOT', 'first-id'),),
+            self.get_parents('TREE_ROOT', 'second-id'))

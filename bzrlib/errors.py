@@ -2731,6 +2731,28 @@ class NoSuchAlias(BzrError):
         BzrError.__init__(self, alias_name=alias_name)
 
 
+class DirectoryLookupFailure(BzrError):
+    """Base type for lookup errors."""
+
+    pass
+
+
+class InvalidLocationAlias(DirectoryLookupFailure):
+
+    _fmt = '"%(alias_name)s" is not a valid location alias.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
+
+
+class UnsetLocationAlias(DirectoryLookupFailure):
+
+    _fmt = 'No %(alias_name)s location assigned.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
+
+
 class CannotBindAddress(BzrError):
 
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'

@@ -723,11 +723,6 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.get_revision(revision_id)
 
-    @property
-    def weave_store(self):
-        self._ensure_real()
-        return self._real_repository.weave_store
-
     def get_transaction(self):
         self._ensure_real()
         return self._real_repository.get_transaction()
@@ -782,20 +777,10 @@ class RemoteRepository(object):
         self._ensure_real()
         self._real_repository.create_bundle(target, base, fileobj, format)
 
-    @property
-    def control_weaves(self):
-        self._ensure_real()
-        return self._real_repository.control_weaves
-
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
         return self._real_repository.get_ancestry(revision_id, topo_sorted)
-
-    @needs_read_lock
-    def get_inventory_weave(self):
-        self._ensure_real()
-        return self._real_repository.get_inventory_weave()
 
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
@@ -1029,6 +1014,16 @@ class RemoteRepository(object):
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
 
+    @property
+    def inventories(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to
+        avoid creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.inventories
+
     @needs_write_lock
     def pack(self):
         """Compress the data within the repository.
@@ -1038,14 +1033,46 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.pack()
 
+    @property
+    def revisions(self):
+        """Decorate the real repository for now.
+
+        In the short term this should become a real object to intercept graph
+        lookups.
+
+        In the long term a full blown network facility is needed.
+        """
+        self._ensure_real()
+        return self._real_repository.revisions
+
     def set_make_working_trees(self, new_value):
         self._ensure_real()
         self._real_repository.set_make_working_trees(new_value)
+
+    @property
+    def signatures(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to avoid
+        creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.signatures
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
         self._ensure_real()
         return self._real_repository.sign_revision(revision_id, gpg_strategy)
+
+    @property
+    def texts(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to avoid
+        creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.texts
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
@@ -1077,62 +1104,6 @@ class RemoteRepository(object):
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
-
-    def get_data_stream_for_search(self, search):
-        medium = self._client._medium
-        if medium._is_remote_before((1, 2)):
-            self._ensure_real()
-            return self._real_repository.get_data_stream_for_search(search)
-        REQUEST_NAME = 'Repository.stream_revisions_chunked'
-        path = self.bzrdir._path_for_remote_call(self._client)
-        body = self._serialise_search_recipe(search.get_recipe())
-        try:
-            result = self._client.call_with_body_bytes_expecting_body(
-                REQUEST_NAME, (path,), body)
-            response, protocol = result
-        except errors.UnknownSmartMethod:
-            # Server does not support this method, so fall back to VFS.
-            # Worse, we have to force a disconnection, because the server now
-            # doesn't realise it has a body on the wire to consume, so the
-            # only way to recover is to abandon the connection.
-            warning(
-                'Server is too old for streaming pull, reconnecting.  '
-                '(Upgrade the server to Bazaar 1.2 to avoid this)')
-            medium.disconnect()
-            # To avoid having to disconnect repeatedly, we keep track of the
-            # fact the server doesn't understand this remote method.
-            medium._remember_remote_is_before((1, 2))
-            self._ensure_real()
-            return self._real_repository.get_data_stream_for_search(search)
-
-        if response == ('ok',):
-            return self._deserialise_stream(protocol)
-        if response == ('NoSuchRevision', ):
-            # We cannot easily identify the revision that is missing in this
-            # situation without doing much more network IO. For now, bail.
-            raise NoSuchRevision(self, "unknown")
-        else:
-            raise errors.UnexpectedSmartServerResponse(response)
-
-    def _deserialise_stream(self, protocol):
-        stream = protocol.read_streamed_body()
-        container_parser = ContainerPushParser()
-        for bytes in stream:
-            container_parser.accept_bytes(bytes)
-            records = container_parser.read_pending_records()
-            for record_names, record_bytes in records:
-                if len(record_names) != 1:
-                    # These records should have only one name, and that name
-                    # should be a one-element tuple.
-                    raise errors.SmartProtocolError(
-                        'Repository data stream had invalid record name %r'
-                        % (record_names,))
-                name_tuple = record_names[0]
-                yield name_tuple, record_bytes
-
-    def insert_data_stream(self, stream):
-        self._ensure_real()
-        self._real_repository.insert_data_stream(stream)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         self._ensure_real()
@@ -1230,6 +1201,7 @@ class RemoteBranch(branch.Branch):
         # And the parent's __init__ doesn't do much anyway.
         self._revision_id_to_revno_cache = None
         self._revision_history_cache = None
+        self._last_revision_info_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
@@ -1293,6 +1265,23 @@ class RemoteBranch(branch.Branch):
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
 
+    def _clear_cached_state(self):
+        super(RemoteBranch, self)._clear_cached_state()
+        if self._real_branch is not None:
+            self._real_branch._clear_cached_state()
+
+    def _clear_cached_state_of_remote_branch_only(self):
+        """Like _clear_cached_state, but doesn't clear the cache of
+        self._real_branch.
+
+        This is useful when falling back to calling a method of
+        self._real_branch that changes state.  In that case the underlying
+        branch changes, so we need to invalidate this RemoteBranch's cache of
+        it.  However, there's no need to invalidate the _real_branch's cache
+        too, in fact doing so might harm performance.
+        """
+        super(RemoteBranch, self)._clear_cached_state()
+        
     @property
     def control_files(self):
         # Defer actually creating RemoteBranchLockableFiles until its needed,
@@ -1444,8 +1433,7 @@ class RemoteBranch(branch.Branch):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
-    def last_revision_info(self):
-        """See Branch.last_revision_info()."""
+    def _last_revision_info(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.last_revision_info', path)
         if response[0] != 'ok':
@@ -1460,32 +1448,55 @@ class RemoteBranch(branch.Branch):
         response_tuple, response_handler = self._client.call_expecting_body(
             'Branch.revision_history', path)
         if response_tuple[0] != 'ok':
-            raise UnexpectedSmartServerResponse(response_tuple)
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
         result = response_handler.read_body_bytes().split('\x00')
         if result == ['']:
             return []
         return result
+
+    def _set_last_revision_descendant(self, revision_id, other_branch,
+            allow_diverged=False, allow_overwrite_descendant=False):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('Branch.set_last_revision_ex',
+                path, self._lock_token, self._repo_lock_token, revision_id,
+                int(allow_diverged), int(allow_overwrite_descendant))
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, revision_id)
+            elif err.error_verb == 'Diverged':
+                raise errors.DivergedBranches(self, other_branch)
+            raise
+        self._clear_cached_state()
+        if len(response) != 3 and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        new_revno, new_revision_id = response[1:]
+        self._last_revision_info_cache = new_revno, new_revision_id
+        self._real_branch._last_revision_info_cache = new_revno, new_revision_id
+
+    def _set_last_revision(self, revision_id):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        self._clear_cached_state()
+        try:
+            response = self._client.call('Branch.set_last_revision',
+                path, self._lock_token, self._repo_lock_token, revision_id)
+        except errors.ErrorFromSmartServer, err:
+            if err.error_verb == 'NoSuchRevision':
+                raise NoSuchRevision(self, revision_id)
+            raise
+        if response != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
         # Send just the tip revision of the history; the server will generate
         # the full history from that.  If the revision doesn't exist in this
         # branch, NoSuchRevision will be raised.
-        path = self.bzrdir._path_for_remote_call(self._client)
         if rev_history == []:
             rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
-        self._clear_cached_state()
-        try:
-            response = self._client.call('Branch.set_last_revision',
-                path, self._lock_token, self._repo_lock_token, rev_id)
-        except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'NoSuchRevision':
-                raise NoSuchRevision(self, rev_id)
-            raise
-        if response != ('ok',):
-            raise errors.UnexpectedSmartServerResponse(response)
+        self._set_last_revision(rev_id)
         self._cache_revision_history(rev_history)
 
     def get_parent(self):
@@ -1510,6 +1521,7 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
+        self._clear_cached_state_of_remote_branch_only()
         self._ensure_real()
         return self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
@@ -1534,21 +1546,38 @@ class RemoteBranch(branch.Branch):
                 path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            self._clear_cached_state()
-            return self._real_branch.set_last_revision_info(revno, revision_id)
+            self._clear_cached_state_of_remote_branch_only()
+            self._real_branch.set_last_revision_info(revno, revision_id)
+            self._last_revision_info_cache = revno, revision_id
+            return
         except errors.ErrorFromSmartServer, err:
             if err.error_verb == 'NoSuchRevision':
                 raise NoSuchRevision(self, err.error_args[0])
             raise
         if response == ('ok',):
             self._clear_cached_state()
+            self._last_revision_info_cache = revno, revision_id
+            # Update the _real_branch's cache too.
+            if self._real_branch is not None:
+                cache = self._last_revision_info_cache
+                self._real_branch._last_revision_info_cache = cache
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
+    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
+        medium = self._client._medium
+        if not medium._is_remote_before((1, 6)):
+            try:
+                self._set_last_revision_descendant(revision_id, other_branch,
+                    allow_diverged=True, allow_overwrite_descendant=True)
+                return
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before((1, 6))
+        self._clear_cached_state_of_remote_branch_only()
         self._ensure_real()
-        return self._real_branch.generate_revision_history(
+        self._real_branch.generate_revision_history(
             revision_id, last_rev=last_rev, other_branch=other_branch)
 
     @property
@@ -1560,12 +1589,44 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
+    @needs_write_lock
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None):
-        self._ensure_real()
-        return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision, overwrite=overwrite,
-            graph=graph)
+        """See Branch.update_revisions."""
+        other.lock_read()
+        try:
+            if stop_revision is None:
+                stop_revision = other.last_revision()
+                if revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+            self.fetch(other, stop_revision)
+
+            if overwrite:
+                # Just unconditionally set the new revision.  We don't care if
+                # the branches have diverged.
+                self._set_last_revision(stop_revision)
+            else:
+                medium = self._client._medium
+                if not medium._is_remote_before((1, 6)):
+                    try:
+                        self._set_last_revision_descendant(stop_revision, other)
+                        return
+                    except errors.UnknownSmartMethod:
+                        medium._remember_remote_is_before((1, 6))
+                # Fallback for pre-1.6 servers: check for divergence
+                # client-side, then do _set_last_revision.
+                last_rev = revision.ensure_null(self.last_revision())
+                if graph is None:
+                    graph = self.repository.get_graph()
+                if self._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, other):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+                self._set_last_revision(stop_revision)
+        finally:
+            other.unlock()
 
 
 def _extract_tar(tar, to_dir):
