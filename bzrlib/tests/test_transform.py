@@ -2257,6 +2257,22 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         annotation = preview_tree.annotate_iter('file-id', 'me:')
         self.assertEqual(expected, annotation)
 
+    def test_annotate_rename(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'a\n')])
+        tree.add('file', 'file-id')
+        tree.commit('a', rev_id='one')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.adjust_path('newname', preview.root, file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        expected = [
+            ('one', 'a\n'),
+        ]
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertEqual(expected, annotation)
+
     def test_annotate_deleted(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'a\n')])
