@@ -373,32 +373,36 @@ class Tree(object):
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
 
+    def _iter_parent_trees(self):
+        """Iterate through parent trees, defaulting to Tree.revision_tree."""
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self.repository.revision_tree(revision_id)
+
+    @staticmethod
+    def _file_revision(revision_tree, file_id):
+        """Determine the revision associated with a file in a given tree."""
+        revision_tree.lock_read()
+        try:
+            return revision_tree.inventory[file_id].revision
+        finally:
+            revision_tree.unlock()
+
     def _get_file_revision(self, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        def file_revision(revision_tree):
-            revision_tree.lock_read()
-            try:
-                return revision_tree.inventory[file_id].revision
-            finally:
-                revision_tree.unlock()
-
-        def iter_parent_trees():
-            for revision_id in self.get_parent_ids():
-                try:
-                    yield self.revision_tree(revision_id)
-                except:
-                    yield self.repository.revision_tree(revision_id)
 
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, file_revision(t)) for t in
-                iter_parent_trees()]
+            parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+                self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
                          self.get_file(file_id).readlines())
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = file_revision(self)
+            last_revision = self._file_revision(self, file_id)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)

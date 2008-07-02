@@ -1419,9 +1419,29 @@ class _PreviewTree(tree.Tree):
         # InterTree.iter_changes.
         return (changes is not None and changes[2])
 
+    def _get_repository(self):
+        repo = getattr(self._transform._tree, '_repository', None)
+        if repo is None:
+            repo = self._transform._tree.branch.repository
+        return repo
+
+    def _iter_parent_trees(self):
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self._get_repository().revision_tree(revision_id)
+
     def _get_file_revision(self, file_id, vf, tree_revision):
-        return self._transform._tree._get_file_revision(file_id, vf,
-                                                        tree_revision)
+        parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+                       self._iter_parent_trees()]
+        vf.add_lines((file_id, tree_revision), parent_keys,
+                     self.get_file(file_id).readlines())
+        repo = self._get_repository()
+        base_vf = repo.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return tree_revision
 
     def _stat_limbo_file(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
