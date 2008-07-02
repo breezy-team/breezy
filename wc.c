@@ -86,11 +86,11 @@ static svn_error_t *py_ra_report_abort(void *baton, apr_pool_t *pool)
 }
 
 static const svn_ra_reporter2_t py_ra_reporter = {
-	.finish_report = py_ra_report_finish,
-	.abort_report = py_ra_report_abort,
-	.link_path = py_ra_report_link_path,
-	.delete_path = py_ra_report_delete_path,
-	.set_path = py_ra_report_set_path,
+	py_ra_report_set_path,
+	py_ra_report_delete_path,
+	py_ra_report_link_path,
+	py_ra_report_finish,
+	py_ra_report_abort,
 };
 
 
@@ -117,7 +117,7 @@ static svn_error_t *py_wc_found_entry(const char *path, const svn_wc_entry_t *en
 }
 
 static svn_wc_entry_callbacks_t py_wc_entry_callbacks = {
-	.found_entry = py_wc_found_entry
+	py_wc_found_entry
 };
 
 void py_wc_notify_func(void *baton, const svn_wc_notify_t *notify, apr_pool_t *pool)
@@ -158,11 +158,65 @@ static PyMemberDef entry_members[] = {
 };
 
 PyTypeObject Entry_Type = {
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "wc.Entry",
-	.tp_basicsize = sizeof(EntryObject),
-	.tp_dealloc = entry_dealloc,
-	.tp_members = entry_members,
+	PyObject_HEAD_INIT(NULL) 0,
+	"wc.Entry", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(EntryObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	entry_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	NULL, /*	struct PyMethodDef *tp_methods;	*/
+	entry_members, /*	struct PyMemberDef *tp_members;	*/
+
 };
 
 static PyObject *py_entry(const svn_wc_entry_t *entry)
@@ -615,12 +669,74 @@ static PyMethodDef adm_methods[] = {
 };
 
 PyTypeObject Adm_Type = {
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "wc.WorkingCopy",
-	.tp_basicsize = sizeof(AdmObject),
-	.tp_new = adm_init,
-	.tp_dealloc = adm_dealloc,
-	.tp_methods = adm_methods,
+	PyObject_HEAD_INIT(NULL) 0,
+	"wc.WorkingCopy", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(AdmObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	adm_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	adm_methods, /*	struct PyMethodDef *tp_methods;	*/
+	NULL, /*	struct PyMemberDef *tp_members;	*/
+	NULL, /*	struct PyGetSetDef *tp_getset;	*/
+	NULL, /*	struct _typeobject *tp_base;	*/
+	NULL, /*	PyObject *tp_dict;	*/
+	NULL, /*	descrgetfunc tp_descr_get;	*/
+	NULL, /*	descrsetfunc tp_descr_set;	*/
+	0, /*	Py_ssize_t tp_dictoffset;	*/
+	NULL, /*	initproc tp_init;	*/
+	NULL, /*	allocfunc tp_alloc;	*/
+	adm_init, /*	newfunc tp_new;	*/
+
 };
 
 /** 

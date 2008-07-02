@@ -206,10 +206,63 @@ static void reporter_dealloc(PyObject *self)
 
 PyTypeObject Reporter_Type = {
 	PyObject_HEAD_INIT(NULL) 0,
-	.tp_name = "ra.Reporter",
-	.tp_basicsize = sizeof(ReporterObject),
-	.tp_methods = reporter_methods,
-	.tp_dealloc = reporter_dealloc,
+	"ra.Reporter", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(ReporterObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	reporter_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	reporter_methods, /*	struct PyMethodDef *tp_methods;	*/
+
 };
 
 /**
@@ -450,22 +503,22 @@ static svn_error_t *py_cb_editor_abort_edit(void *edit_baton, apr_pool_t *pool)
 }
 
 static const svn_delta_editor_t py_editor = {
-	.set_target_revision = py_cb_editor_set_target_revision,
-	.open_root = py_cb_editor_open_root,
-	.delete_entry = py_cb_editor_delete_entry,
-	.add_directory = py_cb_editor_add_directory,
-	.open_directory = py_cb_editor_open_directory,
-	.change_dir_prop = py_cb_editor_change_prop,
-	.close_directory = py_cb_editor_close_directory,
-	.absent_directory = py_cb_editor_absent_directory,
-	.add_file = py_cb_editor_add_file,
-	.open_file = py_cb_editor_open_file,
-	.apply_textdelta = py_cb_editor_apply_textdelta,
-	.change_file_prop = py_cb_editor_change_prop,
-	.close_file = py_cb_editor_close_file,
-	.absent_file = py_cb_editor_absent_file,
-	.close_edit = py_cb_editor_close_edit,
-	.abort_edit = py_cb_editor_abort_edit
+	py_cb_editor_set_target_revision,
+	py_cb_editor_open_root,
+	py_cb_editor_delete_entry,
+	py_cb_editor_add_directory,
+	py_cb_editor_open_directory,
+	py_cb_editor_change_prop,
+	py_cb_editor_close_directory,
+	py_cb_editor_absent_directory,
+	py_cb_editor_add_file,
+	py_cb_editor_open_file,
+	py_cb_editor_apply_textdelta,
+	py_cb_editor_change_prop,
+	py_cb_editor_close_file,
+	py_cb_editor_absent_file,
+	py_cb_editor_close_edit,
+	py_cb_editor_abort_edit
 };
 
 static svn_error_t *py_file_rev_handler(void *baton, const char *path, svn_revnum_t rev, apr_hash_t *rev_props, svn_txdelta_window_handler_t *delta_handler, void **delta_baton, apr_array_header_t *prop_diffs, apr_pool_t *pool)
@@ -1566,15 +1619,74 @@ static PyMemberDef ra_members[] = {
 };
 
 PyTypeObject RemoteAccess_Type = {
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "ra.RemoteAccess",
-	.tp_basicsize = sizeof(RemoteAccessObject),
-	.tp_new = ra_new,
-	.tp_dealloc = ra_dealloc,
-	.tp_repr = ra_repr,
-	.tp_methods = ra_methods,
-	.tp_getset = ra_getsetters,
-	.tp_members = ra_members,
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.RemoteAccess", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(RemoteAccessObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	ra_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	ra_repr, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	ra_methods, /*	struct PyMethodDef *tp_methods;	*/
+	ra_members, /*	struct PyMemberDef *tp_members;	*/
+	ra_getsetters, /*	struct PyGetSetDef *tp_getset;	*/
+	NULL, /*	struct _typeobject *tp_base;	*/
+	NULL, /*	PyObject *tp_dict;	*/
+	NULL, /*	descrgetfunc tp_descr_get;	*/
+	NULL, /*	descrsetfunc tp_descr_set;	*/
+	0, /*	Py_ssize_t tp_dictoffset;	*/
+	NULL, /*	initproc tp_init;	*/
+	NULL, /*	allocfunc tp_alloc;	*/
+	ra_new, /*	newfunc tp_new;	*/
+
 };
 
 typedef struct { 
@@ -1591,10 +1703,15 @@ static void auth_provider_dealloc(PyObject *self)
 }
 
 PyTypeObject AuthProvider_Type = { 
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "ra.AuthProvider",
-	.tp_basicsize = sizeof(AuthProviderObject),
-	.tp_dealloc = auth_provider_dealloc,
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.AuthProvider", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(AuthProviderObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	auth_provider_dealloc, /*	destructor tp_dealloc;	*/
+
 };
 
 static PyObject *auth_init(PyTypeObject *type, PyObject *args, PyObject *kwargs)
@@ -1771,12 +1888,61 @@ static PyObject *credentials_iter_next(CredentialsIterObject *iterator)
 }
 
 PyTypeObject CredentialsIter_Type = {
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_basicsize = sizeof(CredentialsIterObject),
-	.tp_dealloc = (destructor)credentials_iter_dealloc,
-	.tp_name = "ra.CredentialsIter",
-	.tp_iter = PyObject_SelfIter,
-	.tp_iternext = (iternextfunc)credentials_iter_next,
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.CredentialsIter", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(CredentialsIterObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	(destructor)credentials_iter_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	(iternextfunc)credentials_iter_next, /*	iternextfunc tp_iternext;	*/
+
 };
 
 static PyMethodDef auth_methods[] = {
@@ -1794,12 +1960,74 @@ static void auth_dealloc(PyObject *self)
 }
 
 PyTypeObject Auth_Type = {
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_new = auth_init,
-	.tp_basicsize = sizeof(AuthObject),
-	.tp_dealloc = auth_dealloc,
-	.tp_name = "ra.Auth",
-	.tp_methods = auth_methods,
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.Auth", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(AuthObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	auth_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	auth_methods, /*	struct PyMethodDef *tp_methods;	*/
+	NULL, /*	struct PyMemberDef *tp_members;	*/
+	NULL, /*	struct PyGetSetDef *tp_getset;	*/
+	NULL, /*	struct _typeobject *tp_base;	*/
+	NULL, /*	PyObject *tp_dict;	*/
+	NULL, /*	descrgetfunc tp_descr_get;	*/
+	NULL, /*	descrsetfunc tp_descr_set;	*/
+	0, /*	Py_ssize_t tp_dictoffset;	*/
+	NULL, /*	initproc tp_init;	*/
+	NULL, /*	allocfunc tp_alloc;	*/
+	auth_init, /*	newfunc tp_new;	*/
+
 };
 
 static svn_error_t *py_username_prompt(svn_auth_cred_username_t **cred, void *baton, const char *realm, int may_save, apr_pool_t *pool)

@@ -111,11 +111,31 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 PyTypeObject TxDeltaWindowHandler_Type = {
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_basicsize = sizeof(TxDeltaWindowHandlerObject),
-	.tp_name = "ra.TxDeltaWindowHandler",
-	.tp_call = txdelta_call,
-	.tp_dealloc = (destructor)PyObject_Del
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.TxDeltaWindowHandler", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(TxDeltaWindowHandlerObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	(destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	txdelta_call, /*	ternaryfunc tp_call;	*/
+	
 };
 
 static PyObject *py_file_editor_apply_textdelta(PyObject *self, PyObject *args)
@@ -188,11 +208,63 @@ static PyMethodDef py_file_editor_methods[] = {
 };
 
 PyTypeObject FileEditor_Type = { 
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "ra.FileEditor",
-	.tp_basicsize = sizeof(EditorObject),
-	.tp_methods = py_file_editor_methods,
-	.tp_dealloc = (destructor)PyObject_Del,
+	PyObject_HEAD_INIT(NULL) 0, 
+	"ra.FileEditor", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(EditorObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	(destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	py_file_editor_methods, /*	struct PyMethodDef *tp_methods;	*/
 };
 
 static PyObject *py_dir_editor_delete_entry(PyObject *self, PyObject *args)
@@ -403,11 +475,64 @@ static PyMethodDef py_dir_editor_methods[] = {
 };
 
 PyTypeObject DirectoryEditor_Type = { 
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "ra.DirEditor",
-	.tp_basicsize = sizeof(EditorObject),
-	.tp_methods = py_dir_editor_methods,
-	.tp_dealloc = (destructor)PyObject_Del,
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.DirEditor", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(EditorObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	(destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	py_dir_editor_methods, /*	struct PyMethodDef *tp_methods;	*/
+	
 };
 
 static PyObject *py_editor_set_target_revision(PyObject *self, PyObject *args)
@@ -497,11 +622,63 @@ static PyMethodDef py_editor_methods[] = {
 };
 
 PyTypeObject Editor_Type = { 
-	PyObject_HEAD_INIT(&PyType_Type) 0,
-	.tp_name = "ra.Editor",
-	.tp_basicsize = sizeof(EditorObject),
-	.tp_methods = py_editor_methods,
-	.tp_dealloc = py_editor_dealloc,
+	PyObject_HEAD_INIT(NULL) 0,
+	"ra.Editor", /*	const char *tp_name;  For printing, in format "<module>.<name>" */
+	sizeof(EditorObject), 
+	0,/*	Py_ssize_t tp_basicsize, tp_itemsize;  For allocation */
+	
+	/* Methods to implement standard operations */
+	
+	py_editor_dealloc, /*	destructor tp_dealloc;	*/
+	NULL, /*	printfunc tp_print;	*/
+	NULL, /*	getattrfunc tp_getattr;	*/
+	NULL, /*	setattrfunc tp_setattr;	*/
+	NULL, /*	cmpfunc tp_compare;	*/
+	NULL, /*	reprfunc tp_repr;	*/
+	
+	/* Method suites for standard classes */
+	
+	NULL, /*	PyNumberMethods *tp_as_number;	*/
+	NULL, /*	PySequenceMethods *tp_as_sequence;	*/
+	NULL, /*	PyMappingMethods *tp_as_mapping;	*/
+	
+	/* More standard operations (here for binary compatibility) */
+	
+	NULL, /*	hashfunc tp_hash;	*/
+	NULL, /*	ternaryfunc tp_call;	*/
+	NULL, /*	reprfunc tp_str;	*/
+	NULL, /*	getattrofunc tp_getattro;	*/
+	NULL, /*	setattrofunc tp_setattro;	*/
+	
+	/* Functions to access object as input/output buffer */
+	NULL, /*	PyBufferProcs *tp_as_buffer;	*/
+	
+	/* Flags to define presence of optional/expanded features */
+	0, /*	long tp_flags;	*/
+	
+	NULL, /*	const char *tp_doc;  Documentation string */
+	
+	/* Assigned meaning in release 2.0 */
+	/* call function for all accessible objects */
+	NULL, /*	traverseproc tp_traverse;	*/
+	
+	/* delete references to contained objects */
+	NULL, /*	inquiry tp_clear;	*/
+	
+	/* Assigned meaning in release 2.1 */
+	/* rich comparisons */
+	NULL, /*	richcmpfunc tp_richcompare;	*/
+	
+	/* weak reference enabler */
+	0, /*	Py_ssize_t tp_weaklistoffset;	*/
+	
+	/* Added in release 2.2 */
+	/* Iterators */
+	NULL, /*	getiterfunc tp_iter;	*/
+	NULL, /*	iternextfunc tp_iternext;	*/
+	
+	/* Attribute descriptor and subclassing stuff */
+	py_editor_methods, /*	struct PyMethodDef *tp_methods;	*/
 };
 
 
