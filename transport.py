@@ -231,14 +231,6 @@ class SvnRaTransport(Transport):
     def iter_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, include_merged_revisions, revprops):
         assert paths is None or isinstance(paths, list)
-
-        all_true = True
-        for item in [isinstance(x, str) for x in paths]:
-            if not item:
-                all_true = False
-                break
-        
-        assert paths is None or all_true
         assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
         assert isinstance(limit, int)
         from threading import Thread, Semaphore
