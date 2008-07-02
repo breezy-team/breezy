@@ -270,7 +270,8 @@ def check_branch(branch, verbose):
 
 
 def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
-    tree, branch, repo, relpath = BzrDir.open_containing_tree_branch_or_repository(path)
+    tree, branch, repo, relpath = \
+                        BzrDir.open_containing_tree_branch_or_repository(path)
 
     if do_tree:
         if tree is not None:
