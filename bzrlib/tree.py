@@ -194,7 +194,7 @@ class Tree(object):
            f/
              g
 
-        The yield order would be::
+        The yield order (ignoring root) would be::
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
         """
         return self.inventory.iter_entries_by_dir(
