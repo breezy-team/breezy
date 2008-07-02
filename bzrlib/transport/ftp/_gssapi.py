@@ -19,6 +19,8 @@
 See RFC2228 for details.
 """
 
+import base64, ftplib, getpass, socket
+
 from bzrlib import (
     config, 
     errors,
@@ -37,11 +39,10 @@ if getattr(kerberos, "authGSSClientWrap", None) is None:
     raise errors.DependencyNotPresent('kerberos', 
                                       "missing encryption functions")
 
-import base64, ftplib, getpass, socket
 
-
-class SecureFtp(ftplib.FTP):
+class GSSAPIFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
+
     def mic_putcmd(self, line):
         rc = kerberos.authGSSClientWrap(self.vc, 
             base64.b64encode(line), kerberos.authGSSClientUserName(self.vc))
@@ -78,9 +79,10 @@ class SecureFtp(ftplib.FTP):
             self.getline = self.mic_getline
             self.sendcmd('USER ' + user)
             return resp
+        mutter("Unable to use GSSAPI authentication: %s", resp)
 
 
-class SecureFtpTransport(FtpTransport):
+class GSSAPIFtpTransport(FtpTransport):
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
 
@@ -88,9 +90,12 @@ class SecureFtpTransport(FtpTransport):
 
         :return: The created connection and its associated credentials.
 
-        The credentials are only the password as it may have been entered
-        interactively by the user and may be different from the one provided
-        in base url at transport creation time.
+        The credentials are a tuple with the username and password. The 
+        password is used if GSSAPI Authentication is not available.
+
+        The username and password can both be None, in which case the 
+        credentials specified in the URL or provided by the 
+        AuthenticationConfig() are used.
         """
         if credentials is None:
             user, password = self._user, self._password
@@ -108,7 +113,7 @@ class SecureFtpTransport(FtpTransport):
                ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
-            connection = SecureFtp()
+            connection = GSSAPIFtp()
             connection.connect(host=self._host, port=self._port)
             try:
                 connection.gssapi_login(user=user)
@@ -134,6 +139,6 @@ def get_test_permutations():
     from bzrlib import tests
     if tests.FTPServerFeature.available():
         from bzrlib.tests import ftp_server
-        return [(SecureFtpTransport, ftp_server.FTPServer)]
+        return [(GSSAPIFtpTransport, ftp_server.FTPServer)]
     else:
         return []

@@ -1725,15 +1725,15 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 # Default to trying GSSAPI authentication (if the kerberos module is available)
 register_transport_proto('ftp+gssapi://', register_netloc=True)
 register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi', 
-                        'SecureFtpTransport')
+                        'GSSAPIFtpTransport')
 register_transport_proto('aftp+gssapi://', register_netloc=True)
 register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi', 
-                        'SecureFtpTransport')
+                        'GSSAPIFtpTransport')
 
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi', 
-                        'SecureFtpTransport')
+                        'GSSAPIFtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi', 
-                        'SecureFtpTransport')
+                        'GSSAPIFtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
