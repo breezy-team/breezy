@@ -137,14 +137,18 @@ def get_property_scheme(repository, revnum=None):
 
 
 def set_property_scheme(repository, scheme):
-    editor = repository.transport.get_commit_editor(
+    conn = repository.transport.get_connection()
+    try:
+        editor = conn.get_commit_editor(
             {properties.PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
             None, None, False)
-    root = editor.open_root()
-    root.change_prop(SVN_PROP_BZR_BRANCHING_SCHEME, 
-            "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
-    root.close()
-    editor.close()
+        root = editor.open_root()
+        root.change_prop(SVN_PROP_BZR_BRANCHING_SCHEME, 
+                "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
+        root.close()
+        editor.close()
+    finally:
+        repository.transport.add_connection(conn)
 
 
 def repository_guess_scheme(repository, last_revnum, branch_path=None):
