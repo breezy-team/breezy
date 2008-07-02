@@ -167,6 +167,17 @@ class Registry(object):
         """
         return self._dict[self._get_key_or_default(key)].get_obj()
 
+    def get_prefix(self, fullname):
+        """Return an object whose key is a prefix of the supplied value.
+
+        :fullname: The name to find a prefix for
+        :return: a tuple of (object, remainder), where the remainder is the
+            portion of the name that did not match the key.
+        """
+        for key, value in self.iteritems():
+            if fullname.startswith(key):
+                return value, fullname[len(key):]
+
     def _get_key_or_default(self, key=None):
         """Return either 'key' or the default key if key is None"""
         if key is not None:

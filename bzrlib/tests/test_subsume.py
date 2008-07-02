@@ -22,7 +22,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
             format = 'dirstate-with-subtree'
-        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
+        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath,
                                                                 format)
 
     def make_trees(self, format=None, same_root=False):
@@ -59,7 +59,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
 
     def test_subsume_tree(self):
         base_tree, sub_tree = self.make_trees()
-        assert base_tree.get_root_id() != sub_tree.get_root_id()
+        self.assertNotEqual(base_tree.get_root_id(), sub_tree.get_root_id())
         sub_root_id = sub_tree.get_root_id()
         # this test checks the subdir is removed, so it needs to know the
         # control directory; that changes rarely so just hardcode (and check)

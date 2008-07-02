@@ -33,7 +33,7 @@ class DirBlock:
         self.file_path = file_path
         self.abspath = tree.abspath(file_path)
         self.relpath = tree.relpath(file_path)
-        if file_name == None:
+        if file_name is None:
            file_name = os.path.split(file_path)[-1]
            if len(file_name) == 0:
                file_name = os.path.split(file_path)[-2]

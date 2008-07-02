@@ -290,7 +290,6 @@ class MemoryTree(mutabletree.MutableTree):
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None or parents_list[0][1] == 'null:':
-                import pdb; pdb.set_trace()
                 self._basis_tree = self.branch.repository.revision_tree(None)
             else:
                 self._basis_tree = parents_list[0][1]

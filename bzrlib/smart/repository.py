@@ -31,6 +31,7 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib import revision as _mod_revision
 
 
@@ -40,14 +41,17 @@ class SmartServerRepositoryRequest(SmartServerRequest):
     def do(self, path, *args):
         """Execute a repository request.
         
-        The repository must be at the exact path - no searching is done.
+        All Repository requests take a path to the repository as their first
+        argument.  The repository must be at the exact path given by the
+        client - no searching is done.
 
         The actual logic is delegated to self.do_repository_request.
 
-        :param path: The path for the repository.
-        :return: A smart server from self.do_repository_request().
+        :param client_path: The path for the repository as received from the
+            client.
+        :return: A SmartServerResponse from self.do_repository_request().
         """
-        transport = self._backing_transport.clone(path)
+        transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
         # Save the repository for use with do_body.
         self._repository = bzrdir.open_repository()
@@ -83,6 +87,18 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
             return (search, None)
+        finally:
+            repository.unlock()
+
+
+class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
+    """Calls self.do_readlocked_repository_request."""
+
+    def do_repository_request(self, repository, *args):
+        """Read lock a repository for do_readlocked_repository_request."""
+        repository.lock_read()
+        try:
+            return self.do_readlocked_repository_request(repository, *args)
         finally:
             repository.unlock()
 
@@ -173,10 +189,12 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             ('ok', ), bz2.compress('\n'.join(lines)))
 
 
-class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
+class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
     
-    def do_repository_request(self, repository, revision_id):
+    def do_readlocked_repository_request(self, repository, revision_id):
         """Return the result of repository.get_revision_graph(revision_id).
+
+        Deprecated as of bzr 1.4, but supported for older clients.
         
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to get a graph from.
@@ -187,9 +205,17 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
             revision_id = None
 
         lines = []
-        try:
-            revision_graph = repository.get_revision_graph(revision_id)
-        except errors.NoSuchRevision:
+        graph = repository.get_graph()
+        if revision_id:
+            search_ids = [revision_id]
+        else:
+            search_ids = repository.all_revision_ids()
+        search = graph._make_breadth_first_searcher(search_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = graph.get_parent_map(transitive_ids)
+        revision_graph = _strip_NULL_ghosts(parent_map)
+        if revision_id and revision_id not in revision_graph:
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
             # in the response for this method, even in the error case.
@@ -231,7 +257,6 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
               firstrev: 1234.230 0
               latestrev: 345.700 3600
               revisions: 2
-              size:45
 
               But containing only fields returned by the gather_stats() call
         """
@@ -324,7 +349,6 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, compression):
         from bzrlib import osutils
-        repo_transport = repository.control_files._transport
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
             controldir_name = tmp_dirname + '/.bzr'
@@ -363,65 +387,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             dirname = dirname.encode(sys.getfilesystemencoding())
             # python's tarball module includes the whole path by default so
             # override it
-            assert dirname.endswith('.bzr')
+            if not dirname.endswith('.bzr'):
+                raise ValueError(dirname)
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
-
-
-class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
-    """Bzr <= 1.1 streaming pull, buffers all data on server."""
-
-    def do_repository_request(self, repository, *revision_ids):
-        repository.lock_read()
-        try:
-            return self._do_repository_request(repository, revision_ids)
-        finally:
-            repository.unlock()
-
-    def _do_repository_request(self, repository, revision_ids):
-        stream = repository.get_data_stream_for_search(
-            repository.revision_ids_to_search_result(set(revision_ids)))
-        buffer = StringIO()
-        pack = ContainerSerialiser()
-        buffer.write(pack.begin())
-        try:
-            for name_tuple, bytes in stream:
-                buffer.write(pack.bytes_record(bytes, [name_tuple]))
-        except errors.RevisionNotPresent, e:
-            return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
-        buffer.write(pack.end())
-        return SuccessfulSmartServerResponse(('ok',), buffer.getvalue())
-
-
-class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
-    """Bzr 1.1+ streaming pull."""
-
-    def do_body(self, body_bytes):
-        repository = self._repository
-        repository.lock_read()
-        try:
-            search, error = self.recreate_search(repository, body_bytes)
-            if error is not None:
-                return error
-            stream = repository.get_data_stream_for_search(search.get_result())
-        except Exception:
-            # On non-error, unlocking is done by the body stream handler.
-            repository.unlock()
-            raise
-        return SuccessfulSmartServerResponse(('ok',),
-            body_stream=self.body_stream(stream, repository))
-
-    def body_stream(self, stream, repository):
-        pack = ContainerSerialiser()
-        yield pack.begin()
-        try:
-            for name_tuple, bytes in stream:
-                yield pack.bytes_record(bytes, [name_tuple])
-        except errors.RevisionNotPresent, e:
-            # This shouldn't be able to happen, but as we don't buffer
-            # everything it can in theory happen.
-            yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
-        repository.unlock()
-        pack.end()
-

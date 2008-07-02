@@ -34,7 +34,6 @@ from bzrlib import (
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_seventeen,
         )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
@@ -52,8 +51,9 @@ def extract_auth(url, password_manager):
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert re.match(r'^(https?)(\+\w+)?://', url), \
-            'invalid absolute url %r' % url
+    if not re.match(r'^(https?)(\+\w+)?://', url):
+        raise ValueError(
+            'invalid absolute url %r' % (url,))
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
 
     if '@' in netloc:
@@ -514,9 +514,27 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         return ','.join(strings)
 
     def send_http_smart_request(self, bytes):
-        code, body_filelike = self._post(bytes)
-        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        try:
+            code, body_filelike = self._post(bytes)
+            if code != 200:
+                raise InvalidHttpResponse(
+                    self._remote_path('.bzr/smart'),
+                    'Expected 200 response code, got %r' % (code,))
+        except errors.InvalidHttpResponse, e:
+            raise errors.SmartProtocolError(str(e))
         return body_filelike
+
+    def should_probe(self):
+        return True
+
+    def remote_path_from_transport(self, transport):
+        # Strip the optional 'bzr+' prefix from transport so it will have the
+        # same scheme as self.
+        transport_base = transport.base
+        if transport_base.startswith('bzr+'):
+            transport_base = transport_base[4:]
+        rel_url = urlutils.relative_url(self.base, transport_base)
+        return urllib.unquote(rel_url)
 
 
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):

@@ -19,6 +19,7 @@ import os.path
 from cStringIO import StringIO
 import errno
 import subprocess
+import sys
 from tempfile import TemporaryFile
 
 from bzrlib import tests
@@ -34,10 +35,28 @@ from bzrlib.diff import (
     )
 from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
+import bzrlib.transform as transform
 import bzrlib.patiencediff
 import bzrlib._patiencediff_py
 from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
+
+
+class _AttribFeature(Feature):
+
+    def _probe(self):
+        if (sys.platform not in ('cygwin', 'win32')):
+            return False
+        try:
+            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
+        except OSError, e:
+            return False
+        return (0 == proc.wait())
+
+    def feature_name(self):
+        return 'attrib Windows command-line tool'
+
+AttribFeature = _AttribFeature()
 
 
 class _CompiledPatienceDiffFeature(Feature):
@@ -54,35 +73,6 @@ class _CompiledPatienceDiffFeature(Feature):
 
 CompiledPatienceDiffFeature = _CompiledPatienceDiffFeature()
 
-
-class _UnicodeFilename(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            os.stat(u'\u03b1')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilename = _UnicodeFilename()
-
-
-class TestUnicodeFilename(TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilename._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        UnicodeFilename._probe()
-        
 
 def udiff_lines(old, new, allow_binary=False):
     output = StringIO()
@@ -509,12 +499,45 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')
 
+
+    def test_internal_diff_exec_property(self):
+        tree = self.make_branch_and_tree('tree')
+
+        tt = transform.TreeTransform(tree)
+        tt.new_file('a', tt.root, 'contents\n', 'a-id', True)
+        tt.new_file('b', tt.root, 'contents\n', 'b-id', False)
+        tt.new_file('c', tt.root, 'contents\n', 'c-id', True)
+        tt.new_file('d', tt.root, 'contents\n', 'd-id', False)
+        tt.new_file('e', tt.root, 'contents\n', 'control-e-id', True)
+        tt.new_file('f', tt.root, 'contents\n', 'control-f-id', False)
+        tt.apply()
+        tree.commit('one', rev_id='rev-1')
+
+        tt = transform.TreeTransform(tree)
+        tt.set_executability(False, tt.trans_id_file_id('a-id'))
+        tt.set_executability(True, tt.trans_id_file_id('b-id'))
+        tt.set_executability(False, tt.trans_id_file_id('c-id'))
+        tt.set_executability(True, tt.trans_id_file_id('d-id'))
+        tt.apply()
+        tree.rename_one('c', 'new-c')
+        tree.rename_one('d', 'new-d')
+
+        diff = self.get_diff(tree.basis_tree(), tree)
+
+        self.assertContainsRe(diff, r"file 'a'.*\(properties changed:.*\+x to -x.*\)")
+        self.assertContainsRe(diff, r"file 'b'.*\(properties changed:.*-x to \+x.*\)")
+        self.assertContainsRe(diff, r"file 'c'.*\(properties changed:.*\+x to -x.*\)")
+        self.assertContainsRe(diff, r"file 'd'.*\(properties changed:.*-x to \+x.*\)")
+        self.assertNotContainsRe(diff, r"file 'e'")
+        self.assertNotContainsRe(diff, r"file 'f'")
+
+
     def test_binary_unicode_filenames(self):
         """Test that contents of files are *not* encoded in UTF-8 when there
         is a binary file in the diff.
         """
         # See https://bugs.launchpad.net/bugs/110092.
-        self.requireFeature(UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         # This bug isn't triggered with cStringIO.
         from StringIO import StringIO
@@ -539,7 +562,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
 
     def test_unicode_filename(self):
         """Test when the filename are unicode."""
-        self.requireFeature(UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         alpha, omega = u'\u03b1', u'\u03c9'
         autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
@@ -1273,14 +1296,42 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertEqual('a-tool-which-is-unlikely-to-exist could not be found'
                          ' on this machine', str(e))
 
+    def test_prepare_files_creates_paths_readable_by_windows_tool(self):
+        self.requireFeature(AttribFeature)
+        output = StringIO()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'content')])
+        tree.add('file', 'file-id')
+        tree.commit('old tree')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                tree, tree, output)
+        diff_obj._prepare_files('file-id', 'file', 'file')
+        self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
+        self.assertReadableByAttrib(diff_obj._root, 'new\\file', r'new\\file')
+
+    def assertReadableByAttrib(self, cwd, relpath, regex):
+        proc = subprocess.Popen(['attrib', relpath],
+                                stdout=subprocess.PIPE,
+                                cwd=cwd)
+        proc.wait()
+        result = proc.stdout.read()
+        self.assertContainsRe(result, regex)
+
     def test_prepare_files(self):
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/oldname', 'oldcontent')])
+        self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
         tree.add('oldname', 'file-id')
+        tree.add('oldname2', 'file2-id')
         tree.commit('old tree', timestamp=0)
         tree.rename_one('oldname', 'newname')
+        tree.rename_one('oldname2', 'newname2')
         self.build_tree_contents([('tree/newname', 'newcontent')])
+        self.build_tree_contents([('tree/newname2', 'newcontent2')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
@@ -1298,7 +1349,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertContainsRe(new_path, 'new/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
-        if osutils.has_symlinks():
+        if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
+        diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')

@@ -57,7 +57,6 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    one_zero,
     )
 from bzrlib.trace import mutter
 
@@ -468,35 +467,6 @@ def normalizepath(f):
         return pathjoin(F(p), e)
 
 
-@deprecated_function(one_zero)
-def backup_file(fn):
-    """Copy a file to a backup.
-
-    Backups are named in GNU-style, with a ~ suffix.
-
-    If the file is already a backup, it's not copied.
-    """
-    if fn[-1] == '~':
-        return
-    bfn = fn + '~'
-
-    if has_symlinks() and os.path.islink(fn):
-        target = os.readlink(fn)
-        os.symlink(target, bfn)
-        return
-    inf = file(fn, 'rb')
-    try:
-        content = inf.read()
-    finally:
-        inf.close()
-    
-    outf = file(bfn, 'wb')
-    try:
-        outf.write(content)
-    finally:
-        outf.close()
-
-
 def isdir(f):
     """True if f is an accessible directory."""
     try:
@@ -559,19 +529,42 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(fromfile, tofile):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     """Copy contents of one file to another.
-    
+
+    The read_length can either be -1 to read to end-of-file (EOF) or
+    it can specify the maximum number of bytes to read.
+
+    The buff_size represents the maximum size for each read operation
+    performed on from_file.
+
     :return: The number of bytes copied.
     """
-    BUFSIZE = 32768
     length = 0
-    while True:
-        b = fromfile.read(BUFSIZE)
-        if not b:
-            break
-        tofile.write(b)
-        length += len(b)
+    if read_length >= 0:
+        # read specified number of bytes
+
+        while read_length > 0:
+            num_bytes_to_read = min(read_length, buff_size)
+
+            block = from_file.read(num_bytes_to_read)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+
+            actual_bytes_read = len(block)
+            read_length -= actual_bytes_read
+            length += actual_bytes_read
+    else:
+        # read to EOF
+        while True:
+            block = from_file.read(buff_size)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+            length += len(block)
     return length
 
 
@@ -584,8 +577,10 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if getattr(f, 'tell', None) is not None:
-        assert f.tell() == 0
+    """Calculate the hexdigest of an open file.
+
+    The file cursor should be already at the start.
+    """
     s = sha.new()
     BUFSIZE = 128<<10
     while True:
@@ -779,8 +774,6 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
-    assert isinstance(p, basestring)
-
     # split on either delimiter because people might use either on
     # Windows
     ps = re.split(r'[\\/]', p)
@@ -796,7 +789,6 @@ def splitpath(p):
     return rps
 
 def joinpath(p):
-    assert isinstance(p, (list, tuple))
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
@@ -856,6 +848,11 @@ def has_hardlinks():
         return False
 
 
+def host_os_dereferences_symlinks():
+    return (has_symlinks()
+            and sys.platform not in ('cygwin', 'win32'))
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -896,9 +893,10 @@ def relpath(base, path):
     avoids that problem.
     """
 
-    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
-        ' exceed the platform minimum length (which is %d)' % 
-        MIN_ABS_PATHLENGTH)
+    if len(base) < MIN_ABS_PATHLENGTH:
+        # must have space for e.g. a drive letter
+        raise ValueError('%r is too short to calculate a relative path'
+            % (base,))
 
     rp = abspath(path)
 
@@ -1374,7 +1372,9 @@ def get_user_encoding(use_cache=True):
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if user_encoding in (None, 'cp0'):
+    #
+    # For python scripts run under vim, we get '', so also treat that as ASCII
+    if user_encoding in (None, 'cp0', ''):
         user_encoding = 'ascii'
     else:
         # check encoding

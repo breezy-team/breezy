@@ -685,6 +685,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_forward(self):
         """Test the get_view_revisions method"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
@@ -696,6 +698,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_reverse(self):
         """Test the get_view_revisions with reverse"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
@@ -707,6 +711,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
@@ -721,6 +727,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge_reverse(self):
         """Test get_view_revisions in reverse when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
@@ -735,6 +743,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
@@ -879,6 +889,20 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
     def test_file_id_f3(self):
         tree = self.create_tree_with_single_merge()
         # f3 should be marked as modified by revisions A, B, C, and D
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_file_id_with_ghosts(self):
+        # This is testing bug #209948, where having a ghost would cause
+        # _filter_revisions_touching_file_id() to fail.
+        tree = self.create_tree_with_single_merge()
+        # We need to add a revision, so switch back to a write-locked tree
+        tree.unlock()
+        tree.lock_write()
+        first_parent = tree.last_revision()
+        tree.set_parent_ids([first_parent, 'ghost-revision-id'])
+        self.build_tree_contents([('tree/f1', 'A\nB\nXX\n')])
+        tree.commit('commit with a ghost', rev_id='XX')
+        self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
 
 
