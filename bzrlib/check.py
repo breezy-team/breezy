@@ -39,7 +39,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
-from bzrlib.symbol_versioning import deprecated_function, one_three
+from bzrlib.symbol_versioning import deprecated_function, one_six
 from bzrlib.trace import log_error, note
 import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
@@ -241,7 +241,7 @@ class Check(object):
             seen_names[path] = True
 
 
-@deprecated_function(one_three)
+@deprecated_function(one_six)
 def check(branch, verbose):
     """Run consistency checks on a branch.
     
