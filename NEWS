@@ -84,6 +84,10 @@ IN DEVELOPMENT
       parameter.  If you have a subclass of ``Branch`` that overrides
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
+    * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.
+      (Daniel Watkins)
+
     * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
       These methods are bad APIs because they write directly to sys.stdout.
       bzrlib does not use them internally, and there are no direct tests
@@ -555,8 +559,6 @@ bzr 1.5rc1 2008-05-09
 
     * Implement xml8 serializer.  (Aaron Bentley)
 
-  API BREAKS:
-
     * New form ``@deprecated_method(deprecated_in(1, 5, 0))`` for making 
       deprecation wrappers.  (Martin Pool)
 
@@ -625,9 +627,6 @@ bzr 1.4rc2 2008-04-21
       another regression in knit => knit fetching which re-read the index for
       every revision each side had in common.
       (Robert Collins, John Arbash Meinel)
-
-  * ``bzrlib.check.check()`` has been deprecated in favour of the more
-      aptly-named ``bzrlib.check.check_branch()``.  (Daniel Watkins)
 
 
 bzr 1.4rc1 2008-04-11
