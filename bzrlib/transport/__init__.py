@@ -1772,6 +1772,10 @@ register_transport_proto('bzr://',
 
 register_lazy_transport('bzr://', 'bzrlib.transport.remote',
                         'RemoteTCPTransport')
+register_transport_proto('bzr-v2://', register_netloc=True)
+
+register_lazy_transport('bzr-v2://', 'bzrlib.transport.remote',
+                        'RemoteTCPTransportV2Only')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
                          register_netloc=True)

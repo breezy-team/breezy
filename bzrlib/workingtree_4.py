@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1430,8 +1430,9 @@ class DirStateRevisionTree(Tree):
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        w = self._get_weave(file_id)
-        return w.annotate(self.inventory[file_id].revision)
+        text_key = (file_id, self.inventory[file_id].revision)
+        annotations = self._repository.texts.annotate(text_key)
+        return [(key[-1], line) for (key, line) in annotations]
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,
@@ -1597,25 +1598,18 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
-    def _get_weave(self, file_id):
-        return self._repository.weave_store.get_weave(file_id,
-                self._repository.get_transaction())
-
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):
-        entry = self._get_entry(file_id=file_id)[1]
-        if entry is None:
-            raise errors.NoSuchId(tree=self, file_id=file_id)
-        return self._get_weave(file_id).get_lines(entry[1][4])
+        return osutils.split_lines(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         return self.inventory[file_id].text_size
 
     def get_file_text(self, file_id):
-        return ''.join(self.get_file_lines(file_id))
+        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision

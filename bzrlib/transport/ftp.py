@@ -310,6 +310,7 @@ class FtpTransport(ConnectedTransport):
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
                 self._rename_and_overwrite(tmp_abspath, abspath, f)
+                self._setmode(relpath, mode)
                 if bytes is not None:
                     return len(bytes)
                 else:
@@ -351,6 +352,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP mkd: %s", abspath)
             f = self._get_FTP()
             f.mkd(abspath)
+            self._setmode(relpath, mode)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath,
                 unknown_exc=errors.FileExists)
@@ -411,8 +413,7 @@ class FtpTransport(ConnectedTransport):
             conn = ftp.transfercmd(cmd)
             conn.sendall(text)
             conn.close()
-            if mode:
-                self._setmode(relpath, mode)
+            self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath, extra='error appending',
@@ -432,16 +433,18 @@ class FtpTransport(ConnectedTransport):
         Only set permissions if the FTP server supports the 'SITE CHMOD'
         extension.
         """
-        try:
-            mutter("FTP site chmod: setting permissions to %s on %s",
-                str(mode), self._remote_path(relpath))
-            ftp = self._get_FTP()
-            cmd = "SITE CHMOD %s %s" % (self._remote_path(relpath), str(mode))
-            ftp.sendcmd(cmd)
-        except ftplib.error_perm, e:
-            # Command probably not available on this server
-            warning("FTP Could not set permissions to %s on %s. %s",
-                    str(mode), self._remote_path(relpath), str(e))
+        if mode:
+            try:
+                mutter("FTP site chmod: setting permissions to %s on %s",
+                    str(mode), self._remote_path(relpath))
+                ftp = self._get_FTP()
+                cmd = "SITE CHMOD %s %s" % (oct(mode),
+                                            self._remote_path(relpath))
+                ftp.sendcmd(cmd)
+            except ftplib.error_perm, e:
+                # Command probably not available on this server
+                warning("FTP Could not set permissions to %s on %s. %s",
+                        str(mode), self._remote_path(relpath), str(e))
 
     # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
     #       to copy something to another machine. And you may be able
