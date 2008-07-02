@@ -2758,6 +2758,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_revisionspec',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
+                   'bzrlib.tests.test_rules',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',

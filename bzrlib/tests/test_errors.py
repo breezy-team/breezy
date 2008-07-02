@@ -499,6 +499,10 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEquals("Unknown foo format: 'bar'", str(err))
 
+    def test_unknown_rules(self):
+        err = errors.UnknownRules(['foo', 'bar'])
+        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+
 
 class PassThroughError(errors.BzrError):
     
