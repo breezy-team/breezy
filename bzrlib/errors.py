@@ -2760,3 +2760,11 @@ class CannotBindAddress(BzrError):
     def __init__(self, host, port, orig_error):
         BzrError.__init__(self, host=host, port=port,
             orig_error=orig_error[1])
+
+
+class UnknownRules(BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        BzrError.__init__(self, unknowns_str=", ".join(unknowns))
