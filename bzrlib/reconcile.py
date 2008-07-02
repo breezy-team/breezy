@@ -34,6 +34,7 @@ from bzrlib import (
     )
 from bzrlib.trace import mutter, note
 from bzrlib.tsort import TopoSorter
+from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
 
 
 def reconcile(dir, other=None):
@@ -213,9 +214,10 @@ class RepoReconciler(object):
         from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data.')
-        self.inventory = self.repo.get_inventory_weave()
+        self.inventory = self.repo.inventories
+        self.revisions = self.repo.revisions
         # the total set of revisions to process
-        self.pending = set([rev_id for rev_id in self.repo._revision_store.all_revision_ids(transaction)])
+        self.pending = set([key[-1] for key in self.revisions.keys()])
 
         # mapping from revision_id to parents
         self._rev_graph = {}
@@ -234,46 +236,48 @@ class RepoReconciler(object):
             self.pb.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory...', 0, 0)
-        self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.repo.get_transaction())
+        self.repo._backup_inventory()
         self.pb.note('Backup Inventory created.')
-        # asking for '' should never return a non-empty weave
-        new_inventory_vf = self.repo.control_weaves.get_empty('inventory.new',
-            self.repo.get_transaction())
+        new_inventories = self.repo._temp_inventories()
 
         # we have topological order of revisions and non ghost parents ready.
         self._setup_steps(len(self._rev_graph))
-        for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
-            parents = self._rev_graph[rev_id]
-            # double check this really is in topological order.
-            unavailable = [p for p in parents if p not in new_inventory_vf]
-            if unavailable:
-                raise AssertionError('unavailable parents: %r'
-                    % unavailable)
-            # this entry has all the non ghost parents in the inventory
-            # file already.
-            self._reweave_step('adding inventories')
-            if isinstance(new_inventory_vf, WeaveFile):
-                # It's really a WeaveFile, but we call straight into the
-                # Weave's add method to disable the auto-write-out behaviour.
-                # This is done to avoid a revision_count * time-to-write additional overhead on 
-                # reconcile.
-                new_inventory_vf._check_write_ok()
-                Weave._add_lines(new_inventory_vf, rev_id, parents,
-                    self.inventory.get_lines(rev_id), None, None, None, False, True)
-            else:
-                new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
-
-        if isinstance(new_inventory_vf, WeaveFile):
-            new_inventory_vf._save()
-        # if this worked, the set of new_inventory_vf.names should equal
+        revision_keys = [(rev_id,) for rev_id in
+            TopoSorter(self._rev_graph.items()).iter_topo_order()]
+        stream = self._change_inv_parents(
+            self.inventory.get_record_stream(revision_keys, 'unsorted', True),
+            self._new_inv_parents,
+            set(revision_keys))
+        new_inventories.insert_record_stream(stream)
+        # if this worked, the set of new_inventories.keys should equal
         # self.pending
-        if not (set(new_inventory_vf.versions()) == self.pending):
+        if not (set(new_inventories.keys()) ==
+            set([(revid,) for revid in self.pending])):
             raise AssertionError()
         self.pb.update('Writing weave')
-        self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.repo.get_transaction())
-        self.repo.control_weaves.delete('inventory.new', self.repo.get_transaction())
+        self.repo._activate_new_inventory()
         self.inventory = None
         self.pb.note('Inventory regenerated.')
+
+    def _new_inv_parents(self, revision_key):
+        """Lookup ghost-filtered parents for revision_key."""
+        # Use the filtered ghostless parents list:
+        return tuple([(revid,) for revid in self._rev_graph[revision_key[-1]]])
+
+    def _change_inv_parents(self, stream, get_parents, all_revision_keys):
+        """Adapt a record stream to reconcile the parents."""
+        for record in stream:
+            wanted_parents = get_parents(record.key)
+            if wanted_parents and wanted_parents[0] not in all_revision_keys:
+                # The check for the left most parent only handles knit
+                # compressors, but this code only applies to knit and weave
+                # repositories anyway.
+                bytes = record.get_bytes_as('fulltext')
+                yield FulltextContentFactory(record.key, wanted_parents, record.sha1, bytes)
+            else:
+                adapted_record = AdapterFactory(record.key, wanted_parents, record)
+                yield adapted_record
+            self._reweave_step('adding inventories')
 
     def _setup_steps(self, new_total):
         """Setup the markers we need to control the progress bar."""
@@ -293,34 +297,6 @@ class RepoReconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents
-        if self._parents_are_inconsistent(rev_id, parents):
-            self.inconsistent_parents += 1
-            mutter('Inconsistent inventory parents: id {%s} '
-                   'inventory claims %r, '
-                   'available parents are %r, '
-                   'unavailable parents are %r',
-                   rev_id,
-                   set(self.inventory.get_parent_map([rev_id])[rev_id]),
-                   set(parents),
-                   set(rev.parent_ids).difference(set(parents)))
-
-    def _parents_are_inconsistent(self, rev_id, parents):
-        """Return True if the parents list of rev_id does not match the weave.
-
-        This detects inconsistencies based on the self.thorough value:
-        if thorough is on, the first parent value is checked as well as ghost
-        differences.
-        Otherwise only the ghost differences are evaluated.
-        """
-        weave_parents = self.inventory.get_parent_map([rev_id])[rev_id]
-        weave_missing_old_ghosts = set(weave_parents) != set(parents)
-        first_parent_is_wrong = (
-            len(weave_parents) and len(parents) and
-            parents[0] != weave_parents[0])
-        if self.thorough:
-            return weave_missing_old_ghosts or first_parent_is_wrong
-        else:
-            return weave_missing_old_ghosts
 
     def _check_garbage_inventories(self):
         """Check for garbage inventories which we cannot trust
@@ -330,12 +306,12 @@ class RepoReconciler(object):
         """
         if not self.thorough:
             return
-        inventories = set(self.inventory.versions())
-        revisions = set(self._rev_graph.keys())
+        inventories = set(self.inventory.keys())
+        revisions = set(self.revisions.keys())
         garbage = inventories.difference(revisions)
         self.garbage_inventories = len(garbage)
-        for revision_id in garbage:
-            mutter('Garbage inventory {%s} found.', revision_id)
+        for revision_key in garbage:
+            mutter('Garbage inventory {%s} found.', revision_key[-1])
 
     def _parent_is_available(self, parent):
         """True if parent is a fully available revision
@@ -343,8 +319,10 @@ class RepoReconciler(object):
         A fully available revision has a inventory and a revision object in the
         repository.
         """
-        return (parent in self._rev_graph or 
-                (parent in self.inventory and self.repo.has_revision(parent)))
+        if parent in self._rev_graph:
+            return True
+        inv_present = (1 == len(self.inventory.get_parent_map([(parent,)])))
+        return (inv_present and self.repo.has_revision(parent))
 
     def _reweave_step(self, message):
         """Mark a single step of regeneration complete."""
@@ -374,10 +352,10 @@ class KnitReconciler(RepoReconciler):
         """Load indexes for the reconciliation."""
         self.transaction = self.repo.get_transaction()
         self.pb.update('Reading indexes.', 0, 2)
-        self.inventory = self.repo.get_inventory_weave()
+        self.inventory = self.repo.inventories
         self.pb.update('Reading indexes.', 1, 2)
         self.repo._check_for_inconsistent_revision_parents()
-        self.revisions = self.repo._revision_store.get_revision_file(self.transaction)
+        self.revisions = self.repo.revisions
         self.pb.update('Reading indexes.', 2, 2)
 
     def _gc_inventory(self):
@@ -389,53 +367,28 @@ class KnitReconciler(RepoReconciler):
             self.pb.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory...', 0, 0)
-        self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.transaction)
+        self.repo._backup_inventory()
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
-        new_inventory_vf = self.repo.control_weaves.get_empty('inventory.new',
-            self.transaction)
-
+        new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
-        self._setup_steps(len(self.revisions))
-        revision_ids = self.revisions.versions()
-        graph = self.revisions.get_parent_map(revision_ids)
-        for rev_id in TopoSorter(graph.items()).iter_topo_order():
-            parents = graph[rev_id]
-            # double check this really is in topological order, ignoring existing ghosts.
-            unavailable = [p for p in parents if p not in new_inventory_vf and
-                p in self.revisions]
-            if unavailable:
-                raise AssertionError(
-                    'unavailable parents: %r' % (unavailable,))
-            # this entry has all the non ghost parents in the inventory
-            # file already.
-            self._reweave_step('adding inventories')
-            # ugly but needed, weaves are just way tooooo slow else.
-            new_inventory_vf.add_lines_with_ghosts(rev_id, parents,
-                self.inventory.get_lines(rev_id))
-
+        graph = self.revisions.get_parent_map(self.revisions.keys())
+        revision_keys = list(TopoSorter(graph).iter_topo_order())
+        revision_ids = [key[-1] for key in revision_keys]
+        self._setup_steps(len(revision_keys))
+        stream = self._change_inv_parents(
+            self.inventory.get_record_stream(revision_keys, 'unsorted', True),
+            graph.__getitem__,
+            set(revision_keys))
+        new_inventories.insert_record_stream(stream)
         # if this worked, the set of new_inventory_vf.names should equal
-        # self.pending
-        if not(set(new_inventory_vf.versions()) == set(self.revisions.versions())):
+        # the revisionds list
+        if not(set(new_inventories.keys()) == set(revision_keys)):
             raise AssertionError()
         self.pb.update('Writing weave')
-        self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.transaction)
-        self.repo.control_weaves.delete('inventory.new', self.transaction)
+        self.repo._activate_new_inventory()
         self.inventory = None
         self.pb.note('Inventory regenerated.')
-
-    def _check_garbage_inventories(self):
-        """Check for garbage inventories which we cannot trust
-
-        We cant trust them because their pre-requisite file data may not
-        be present - all we know is that their revision was not installed.
-        """
-        inventories = set(self.inventory.versions())
-        revisions = set(self.revisions.versions())
-        garbage = inventories.difference(revisions)
-        self.garbage_inventories = len(garbage)
-        for revision_id in garbage:
-            mutter('Garbage inventory {%s} found.', revision_id)
 
     def _fix_text_parents(self):
         """Fix bad versionedfile parent entries.
@@ -447,59 +400,78 @@ class KnitReconciler(RepoReconciler):
         parent lists, and replaces the versionedfile with a corrected version.
         """
         transaction = self.repo.get_transaction()
-        versions = self.revisions.versions()
+        versions = [key[-1] for key in self.revisions.keys()]
         mutter('Prepopulating revision text cache with %d revisions',
                 len(versions))
         vf_checker = self.repo._get_versioned_file_checker()
-        # List all weaves before altering, to avoid race conditions when we
-        # delete unused weaves.
-        weaves = list(enumerate(self.repo.weave_store))
-        for num, file_id in weaves:
+        bad_parents, unused_versions = vf_checker.check_file_version_parents(
+            self.repo.texts, self.pb)
+        text_index = vf_checker.text_index
+        per_id_bad_parents = {}
+        for key in unused_versions:
+            # Ensure that every file with unused versions gets rewritten.
+            # NB: This is really not needed, reconcile != pack.
+            per_id_bad_parents[key[0]] = {}
+        # Generate per-knit/weave data.
+        for key, details in bad_parents.iteritems():
+            file_id = key[0]
+            rev_id = key[1]
+            knit_parents = tuple([parent[-1] for parent in details[0]])
+            correct_parents = tuple([parent[-1] for parent in details[1]])
+            file_details = per_id_bad_parents.setdefault(file_id, {})
+            file_details[rev_id] = (knit_parents, correct_parents)
+        file_id_versions = {}
+        for text_key in text_index:
+            versions_list = file_id_versions.setdefault(text_key[0], [])
+            versions_list.append(text_key[1])
+        # Do the reconcile of individual weaves.
+        for num, file_id in enumerate(per_id_bad_parents):
             self.pb.update('Fixing text parents', num,
-                           len(self.repo.weave_store))
-            vf = self.repo.weave_store.get_weave(file_id, transaction)
-            versions_with_bad_parents, unused_versions = \
-                vf_checker.check_file_version_parents(vf, file_id)
-            if (len(versions_with_bad_parents) == 0 and
-                len(unused_versions) == 0):
-                continue
-            full_text_versions = set()
-            self._fix_text_parent(file_id, vf, versions_with_bad_parents,
-                full_text_versions, unused_versions)
+                           len(per_id_bad_parents))
+            versions_with_bad_parents = per_id_bad_parents[file_id]
+            id_unused_versions = set(key[-1] for key in unused_versions
+                if key[0] == file_id)
+            if file_id in file_id_versions:
+                file_versions = file_id_versions[file_id]
+            else:
+                # This id was present in the disk store but is not referenced
+                # by any revision at all.
+                file_versions = []
+            self._fix_text_parent(file_id, versions_with_bad_parents,
+                 id_unused_versions, file_versions)
 
-    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents,
-            full_text_versions, unused_versions):
+    def _fix_text_parent(self, file_id, versions_with_bad_parents,
+            unused_versions, all_versions):
         """Fix bad versionedfile entries in a single versioned file."""
         mutter('fixing text parent: %r (%d versions)', file_id,
                 len(versions_with_bad_parents))
-        mutter('(%d need to be full texts, %d are unused)',
-                len(full_text_versions), len(unused_versions))
-        new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
-            self.transaction)
+        mutter('(%d are unused)', len(unused_versions))
+        new_file_id = 'temp:%s' % file_id
         new_parents = {}
-        for version in vf.versions():
+        needed_keys = set()
+        for version in all_versions:
             if version in unused_versions:
                 continue
             elif version in versions_with_bad_parents:
                 parents = versions_with_bad_parents[version][1]
             else:
-                parents = vf.get_parent_map([version])[version]
-            new_parents[version] = parents
-        if not len(new_parents):
-            # No used versions, remove the VF.
-            self.repo.weave_store.delete(file_id, self.transaction)
-            return
-        for version in TopoSorter(new_parents.items()).iter_topo_order():
-            lines = vf.get_lines(version)
-            parents = new_parents[version]
-            if parents and (parents[0] in full_text_versions):
-                # Force this record to be a fulltext, not a delta.
-                new_vf._add(version, lines, parents, False,
-                    None, None, None, False)
-            else:
-                new_vf.add_lines(version, parents, lines)
-        self.repo.weave_store.copy(new_vf, file_id, self.transaction)
-        self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
+                pmap = self.repo.texts.get_parent_map([(file_id, version)])
+                parents = [key[-1] for key in pmap[(file_id, version)]]
+            new_parents[(new_file_id, version)] = [
+                (new_file_id, parent) for parent in parents]
+            needed_keys.add((file_id, version))
+        def fix_parents(stream):
+            for record in stream:
+                bytes = record.get_bytes_as('fulltext')
+                new_key = (new_file_id, record.key[-1])
+                parents = new_parents[new_key]
+                yield FulltextContentFactory(new_key, parents, record.sha1, bytes)
+        stream = self.repo.texts.get_record_stream(needed_keys, 'topological', True)
+        self.repo._remove_file_id(new_file_id)
+        self.repo.texts.insert_record_stream(fix_parents(stream))
+        self.repo._remove_file_id(file_id)
+        if len(new_parents):
+            self.repo._move_file_id(new_file_id, file_id)
 
 
 class PackReconciler(RepoReconciler):

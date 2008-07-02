@@ -37,6 +37,14 @@ from bzrlib import (
     )
 
 
+class test_filesystem(medusa.filesys.os_filesystem):
+    """A custom filesystem wrapper to add missing functionalities."""
+
+    def chmod(self, path, mode):
+        p = self.normalize(self.path_module.join (self.wd, path))
+        return os.chmod(self.translate(p), mode)
+
+
 class test_authorizer(object):
     """A custom Authorizer object for running the test suite.
 
@@ -64,7 +72,7 @@ class test_authorizer(object):
             and password != self.secured_password):
             return 0, 'Password invalid.', None
         else:
-            return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
+            return 1, 'OK.', test_filesystem(self.root)
 
 
 class ftp_channel(medusa.ftp_server.ftp_channel):
@@ -152,6 +160,32 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
                               os.strerror(e.errno))
             except:
                 self.respond ('550 error creating directory.')
+
+    def cmd_site(self, line):
+        """Site specific commands."""
+        command, args = line[1].split(' ', 1)
+        if command.lower() == 'chmod':
+            try:
+                mode, path = args.split()
+                mode = int(mode, 8)
+            except ValueError:
+                # We catch both malformed line and malformed mode with the same
+                # ValueError.
+                self.command_not_understood(' '.join(line))
+                return
+            try:
+                # Yes path and mode are reversed
+                self.filesystem.chmod(path, mode)
+                self.respond('200 SITE CHMOD command successful')
+            except AttributeError:
+                # The chmod method is not available in read-only and will raise
+                # AttributeError since a different filesystem is used in that
+                # case
+                self.command_not_authorized(' '.join(line))
+        else:
+            # Another site specific command was requested. We don't know that
+            # one
+            self.command_not_understood(' '.join(line))
 
 
 class ftp_server(medusa.ftp_server.ftp_server):
