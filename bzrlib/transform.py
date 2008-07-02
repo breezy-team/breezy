@@ -1548,7 +1548,7 @@ class _PreviewTree(tree.Tree):
             children = list(self._all_children(parent))
             paths = dict(zip(children, self._final_paths.get_paths(children)))
             children.sort(key=paths.get)
-            todo.extend(children)
+            todo.extend(reversed(children))
             for trans_id in children:
                 ordered_ids.append((trans_id, parent_file_id))
         return ordered_ids
