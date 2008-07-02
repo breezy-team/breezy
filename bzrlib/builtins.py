@@ -2200,14 +2200,15 @@ class cmd_cat(Command):
                 raise errors.BzrCommandError("%r is not present in revision %s"
                                                 % (filename, revision_id))
             else:
-                rev_tree.print_file(old_file_id)
+                content = rev_tree.get_file_text(old_file_id)
         elif cur_file_id is not None:
-            rev_tree.print_file(cur_file_id)
+            content = rev_tree.get_file_text(cur_file_id)
         elif old_file_id is not None:
-            rev_tree.print_file(old_file_id)
+            content = rev_tree.get_file_text(old_file_id)
         else:
             raise errors.BzrCommandError("%r is not present in revision %s" %
                                          (filename, revision_id))
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -4657,5 +4658,5 @@ from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, cmd_weave_join, \
+from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text
