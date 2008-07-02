@@ -241,18 +241,18 @@ class TestRepositoryParameterisation(TestCase):
         """The vfs_transport_factory can be set optionally."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
         scenarios = formats_to_scenarios(
-            [("a", "b"), ("c", "d")],
+            [("(one)", "a", "b"), ("(two)", "c", "d")],
             None,
             None,
             vfs_transport_factory="vfs")
         self.assertEqual([
-            ('str',
+            ('str(one)',
              {'bzrdir_format': 'b',
               'repository_format': 'a',
               'transport_readonly_server': None,
               'transport_server': None,
               'vfs_transport_factory': 'vfs'}),
-            ('str',
+            ('str(two)',
              {'bzrdir_format': 'd',
               'repository_format': 'c',
               'transport_readonly_server': None,
@@ -263,32 +263,32 @@ class TestRepositoryParameterisation(TestCase):
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
-        formats = [("c", "C"), (1, "D")]
+        formats = [("(c)", "c", "C"), ("(d)", 1, "D")]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             vfs_transport_factory="vfs")
         # no_vfs generate scenarios without vfs_transport_factor
         self.assertEqual([
-            ('str',
+            ('str(c)',
              {'bzrdir_format': 'C',
               'repository_format': 'c',
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'}),
-            ('int',
+            ('int(d)',
              {'bzrdir_format': 'D',
               'repository_format': 1,
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'})],
             no_vfs_scenarios)
         self.assertEqual([
-            ('str',
+            ('str(c)',
              {'bzrdir_format': 'C',
               'repository_format': 'c',
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'}),
-            ('int',
+            ('int(d)',
              {'bzrdir_format': 'D',
               'repository_format': 1,
               'transport_readonly_server': 'readonly',
@@ -374,61 +374,6 @@ class TestInterRepositoryProviderAdapter(TestCase):
               'transport_readonly_server': 'b',
               'transport_server': 'a'})],
             adapter.formats_to_scenarios(formats))
-
-
-class TestInterVersionedFileProviderAdapter(TestCase):
-    """A group of tests that test the InterVersionedFile test adapter."""
-
-    def test_scenarios(self):
-        # check that constructor parameters are passed through to the adapted
-        # test.
-        from bzrlib.tests.interversionedfile_implementations \
-            import InterVersionedFileTestProviderAdapter
-        server1 = "a"
-        server2 = "b"
-        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
-        adapter = InterVersionedFileTestProviderAdapter(server1, server2, formats)
-        self.assertEqual([
-            ('str',
-             {'interversionedfile_class':str,
-              'transport_readonly_server': 'b',
-              'transport_server': 'a',
-              'versionedfile_factory': 'C1',
-              'versionedfile_factory_to': 'C2'}),
-            ('int',
-             {'interversionedfile_class': int,
-              'transport_readonly_server': 'b',
-              'transport_server': 'a',
-              'versionedfile_factory': 'D1',
-              'versionedfile_factory_to': 'D2'})],
-            adapter.scenarios)
-
-
-class TestRevisionStoreProviderAdapter(TestCase):
-    """A group of tests that test the RevisionStore test adapter."""
-
-    def test_scenarios(self):
-        # check that constructor parameters are passed through to the adapted
-        # test.
-        from bzrlib.tests.revisionstore_implementations \
-            import RevisionStoreTestProviderAdapter
-        # revision stores need a store factory - i.e. RevisionKnit
-        #, a readonly and rw transport 
-        # transport servers:
-        server1 = "a"
-        server2 = "b"
-        store_factories = ["c", "d"]
-        adapter = RevisionStoreTestProviderAdapter(server1, server2, store_factories)
-        self.assertEqual([
-            ('c',
-             {'store_factory': 'c',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
-            ('d',
-             {'store_factory': 'd',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
-            adapter.scenarios)
 
 
 class TestWorkingTreeProviderAdapter(TestCase):
