@@ -2283,3 +2283,25 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.set_executability(True, preview.trans_id_file_id('file-id'))
         preview_tree = preview.get_preview_tree()
         self.assertEqual(True, preview_tree.is_executable('file-id'))
+
+    def test_plan_file_merge(self):
+        work_a = self.make_branch_and_tree('wta')
+        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        work_a.add('file', 'file-id')
+        work_a.commit('base version')
+        tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        preview = TransformPreview(work_a)
+        self.addCleanup(preview.finalize)
+        trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(trans_id)
+        preview.create_file('b\nc\nd\ne\n', trans_id)
+        self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
+        tree_a = preview.get_preview_tree()
+        self.assertEqual([
+            ('killed-b', 'b\n'),
+            ('killed-a', 'a\n'),
+            ('unchanged', 'c\n'),
+            ('unchanged', 'd\n'),
+            ('new-a', 'e\n'),
+            ('new-b', 'f\n'),
+        ], list(tree_a.plan_file_merge('file-id', tree_b)))
