@@ -14,8 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Basic server-side logic for dealing with requests."""
+"""Basic server-side logic for dealing with requests.
 
+**XXX**:
+
+The class names are a little confusing: the protocol will instantiate a
+SmartServerRequestHandler, whose dispatch_command method creates an instance of
+a SmartServerRequest subclass.
+
+The request_handlers registry tracks SmartServerRequest classes (rather than
+SmartServerRequestHandler).
+"""
 
 import tempfile
 
@@ -27,8 +36,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
-from bzrlib.transport import get_transport
-from bzrlib.transport.chroot import ChrootServer
 
 
 class SmartServerRequest(object):
@@ -39,6 +46,8 @@ class SmartServerRequest(object):
     care to call `translate_client_path` and `transport_from_client_path` as
     appropriate when dealing with paths received from the client.
     """
+    # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
+    # *handler* is a different concept to the request.
 
     def __init__(self, backing_transport, root_client_path='/'):
         """Constructor.
@@ -91,11 +100,18 @@ class SmartServerRequest(object):
         
         Must return a SmartServerResponse.
         """
-        # TODO: if a client erroneously sends a request that shouldn't have a
-        # body, what to do?  Probably SmartServerRequestHandler should catch
-        # this NotImplementedError and translate it into a 'bad request' error
-        # to send to the client.
         raise NotImplementedError(self.do_body)
+
+    def do_chunk(self, chunk_bytes):
+        """Called with each body chunk if the request has a streamed body.
+
+        The do() method is still called, and must have returned None.
+        """
+        raise NotImplementedError(self.do_chunk)
+
+    def do_end(self):
+        """Called when the end of the request has been received."""
+        pass
     
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
@@ -116,7 +132,8 @@ class SmartServerRequest(object):
         if client_path.startswith(self._root_client_path):
             path = client_path[len(self._root_client_path):]
             relpath = urlutils.joinpath('/', path)
-            assert relpath.startswith('/')
+            if not relpath.startswith('/'):
+                raise ValueError(relpath)
             return '.' + relpath
         else:
             raise errors.PathNotChild(client_path, self._root_client_path)
@@ -237,7 +254,7 @@ class SmartServerRequestHandler(object):
         try:
             command = self._commands.get(cmd)
         except LookupError:
-            raise errors.SmartProtocolError("bad request %r" % (cmd,))
+            raise errors.UnknownSmartMethod(cmd)
         self._command = command(self._backing_transport, self._root_client_path)
         self._run_handler_code(self._command.execute, args, {})
 
@@ -289,6 +306,32 @@ class SmartServerRequestHandler(object):
                 return FailedSmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
+
+    def headers_received(self, headers):
+        # Just a no-op at the moment.
+        pass
+
+    def args_received(self, args):
+        cmd = args[0]
+        args = args[1:]
+        try:
+            command = self._commands.get(cmd)
+        except LookupError:
+            raise errors.UnknownSmartMethod(cmd)
+        self._command = command(self._backing_transport)
+        self._run_handler_code(self._command.execute, args, {})
+
+    def prefixed_body_received(self, body_bytes):
+        """No more body data will be received."""
+        self._run_handler_code(self._command.do_body, (body_bytes,), {})
+        # cannot read after this.
+        self.finished_reading = True
+
+    def body_chunk_received(self, chunk_bytes):
+        self._run_handler_code(self._command.do_chunk, (chunk_bytes,), {})
+
+    def end_received(self):
+        self._run_handler_code(self._command.do_end, (), {})
 
 
 class HelloRequest(SmartServerRequest):
@@ -342,6 +385,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.set_last_revision_info', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionInfo')
+request_handlers.register_lazy(
+    'Branch.set_last_revision_ex', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetLastRevisionEx')
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(

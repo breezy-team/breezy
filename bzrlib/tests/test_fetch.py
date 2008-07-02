@@ -28,9 +28,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -149,17 +146,24 @@ class TestFetch(TestCaseWithTransport):
         branch = self.make_branch('branch', format=knit2_format)
         branch.pull(tree.branch, stop_revision='rev1')
         repo = branch.repository
-        root_knit = repo.weave_store.get_weave('tree-root',
-                                                repo.get_transaction())
-        # Make sure fetch retrieved only what we requested
-        self.assertTrue('rev1' in root_knit)
-        self.assertTrue('rev2' not in root_knit)
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev1'):()},
+                repo.texts.get_parent_map(
+                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
         branch.pull(tree.branch)
-        root_knit = repo.weave_store.get_weave('tree-root',
-                                                repo.get_transaction())
         # Make sure that the next revision in the root knit was retrieved,
         # even though the text, name, parent_id, etc., were unchanged.
-        self.assertTrue('rev2' in root_knit)
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
+                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
 
     def test_fetch_incompatible(self):
         knit_tree = self.make_branch_and_tree('knit', format='knit')
@@ -289,9 +293,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
-        # XXX: This *should* be '1', but more intrusive fetch changes are
-        # needed to drop this back to 1.
-        self.assertEqual(2, self._count_log_matches('inventory.kndx', http_logs))
+        self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         self.assertTrue(1 >= self._count_log_matches('revision-history',
@@ -322,3 +324,80 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class Test1To2Fetch(TestCaseWithTransport):
+    """Tests for Model1To2 failure modes"""
+
+    def make_tree_and_repo(self):
+        self.tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        self.repo = self.make_repository('rich-repo', format='rich-root-pack')
+        self.repo.lock_write()
+        self.addCleanup(self.repo.unlock)
+
+    def do_fetch_order_test(self, first, second):
+        """Test that fetch works no matter what the set order of revision is.
+
+        This test depends on the order of items in a set, which is
+        implementation-dependant, so we test A, B and then B, A.
+        """
+        self.make_tree_and_repo()
+        self.tree.commit('Commit 1', rev_id=first)
+        self.tree.commit('Commit 2', rev_id=second)
+        self.repo.fetch(self.tree.branch.repository, second)
+
+    def test_fetch_order_AB(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('A', 'B')
+
+    def test_fetch_order_BA(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('B', 'A')
+
+    def get_parents(self, file_id, revision_id):
+        self.repo.lock_read()
+        try:
+            parent_map = self.repo.texts.get_parent_map([(file_id, revision_id)])
+            return parent_map[(file_id, revision_id)]
+        finally:
+            self.repo.unlock()
+
+    def test_fetch_ghosts(self):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='left-parent')
+        self.tree.add_parent_tree_id('ghost-parent')
+        fork = self.tree.bzrdir.sprout('fork', 'null:').open_workingtree()
+        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        self.tree.branch.repository.fetch(fork.branch.repository,
+                                     'not-ghost-parent')
+        self.tree.add_parent_tree_id('not-ghost-parent')
+        self.tree.commit('second commit', rev_id='second-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+        root_id = self.tree.get_root_id()
+        self.assertEqual(
+            ((root_id, 'left-parent'), (root_id, 'ghost-parent'),
+             (root_id, 'not-ghost-parent')),
+            self.get_parents(root_id, 'second-id'))
+
+    def make_two_commits(self, change_root, fetch_twice):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='first-id')
+        if change_root:
+            self.tree.set_root_id('unique-id')
+        self.tree.commit('second commit', rev_id='second-id')
+        if fetch_twice:
+            self.repo.fetch(self.tree.branch.repository, 'first-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+
+    def test_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=False)
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=True)
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetches(self):
+        self.make_two_commits(change_root=False, fetch_twice=True)
+        self.assertEqual((('TREE_ROOT', 'first-id'),),
+            self.get_parents('TREE_ROOT', 'second-id'))

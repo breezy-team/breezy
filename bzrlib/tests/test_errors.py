@@ -52,6 +52,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
 
+    def test_ghost_revisions_have_no_revno(self):
+        error = errors.GhostRevisionsHaveNoRevno('target', 'ghost_rev')
+        self.assertEqualDiff("Could not determine revno for {target} because"
+                             " its ancestry shows a ghost at {ghost_rev}",
+                             str(error))
+
     def test_incompatibleAPI(self):
         error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
         self.assertEqualDiff(
@@ -186,12 +192,6 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
-    def test_read_only_lock_error(self):
-        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
-            errors.ReadOnlyLockError, 'filename', 'error message')
-        self.assertEqualDiff("Cannot acquire write lock on filename."
-                             " error message", str(error))
-
     def test_lock_failed(self):
         error = errors.LockFailed('http://canonical.com/', 'readonly transport')
         self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
@@ -203,6 +203,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
             "the currently open request.",
+            str(error))
+
+    def test_unavailable_representation(self):
+        error = errors.UnavailableRepresentation(('key',), "mpdiff", "fulltext")
+        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
+            "('key',) which is encoded as 'fulltext'.",
             str(error))
 
     def test_unknown_hook(self):

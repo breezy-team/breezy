@@ -292,7 +292,6 @@ development.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dmerge           Emit information for debugging merges.
 -Dpack            Emit information about pack operations.
--Dselftest_debug  Do not disable all debug flags when running selftest.
 """
 
 _standard_options = \
@@ -605,6 +604,26 @@ line-origin detection instead of a basis revision to determine the cause of
 differences.
 """
 
+_branches_out_of_sync = """Branches out of sync
+
+When reconfiguring a checkout, tree or branch into a lightweight checkout,
+a local branch must be destroyed.  (For checkouts, this is the local branch
+that serves primarily as a cache.)  If the branch-to-be-destroyed does not
+have the same last revision as the new reference branch for the lightweight
+checkout, data could be lost, so Bazaar refuses.
+
+How you deal with this depends on *why* the branches are out of sync.
+
+If you have a checkout and have done local commits, you can get back in sync
+by running "bzr update" (and possibly "bzr commit").
+
+If you have a branch and the remote branch is out-of-date, you can push
+the local changes using "bzr push".  If the local branch is out of date, you
+can do "bzr pull".  If both branches have had changes, you can merge, commit
+and then push your changes.  If you decide that some of the changes aren't
+useful, you can "push --overwrite" or "pull --overwrite" instead.
+"""
+
 
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
@@ -661,6 +680,8 @@ topic_registry.register('standalone-trees', _standalone_trees,
 topic_registry.register('working-trees', _working_trees,
                         'Information on working trees', SECT_CONCEPT)
 topic_registry.register('criss-cross', _criss_cross,
+                        'Information on criss-cross merging', SECT_CONCEPT)
+topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
                         'Information on criss-cross merging', SECT_CONCEPT)
 
 

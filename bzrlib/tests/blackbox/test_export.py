@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 """Black-box tests for bzr export.
 """
 
+from StringIO import StringIO
 import os
 import stat
 import sys
@@ -47,6 +48,10 @@ class TestExport(ExternalBase):
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
         # '.bzrignore'.
+        self.assertEqual(['test/a'], sorted(ball.getnames()))
+
+        out, err = self.run_bzr('export --format=tgz --root=test -')
+        ball = tarfile.open('', fileobj=StringIO(out))
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):

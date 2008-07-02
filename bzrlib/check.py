@@ -60,7 +60,7 @@ class Check(object):
         self.missing_revision_cnt = 0
         # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
-        self.checked_weaves = {}
+        self.checked_weaves = set()
         self.unreferenced_versions = set()
         self.inconsistent_parents = []
 
@@ -71,7 +71,7 @@ class Check(object):
             self.progress.update('retrieving inventory', 0, 2)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
-            self.inventory_weave = self.repository.get_inventory_weave()
+            self.inventory_weave = self.repository.inventories
             self.progress.update('checking revision graph', 1)
             self.check_revision_graph()
             self.plan_revisions()
@@ -101,7 +101,7 @@ class Check(object):
         repository = self.repository
         self.planned_revisions = repository.all_revision_ids()
         self.progress.clear()
-        inventoried = set(self.inventory_weave.versions())
+        inventoried = set(key[-1] for key in self.inventory_weave.keys())
         awol = set(self.planned_revisions) - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'
@@ -198,31 +198,26 @@ class Check(object):
     def check_weaves(self):
         """Check all the weaves we can get our hands on.
         """
-        n_weaves = 1
         weave_ids = []
-        if self.repository.weave_store.listable():
-            weave_ids = list(self.repository.weave_store)
-            n_weaves = len(weave_ids) + 1
-        self.progress.update('checking versionedfile', 0, n_weaves)
+        self.progress.update('checking inventory', 0, 2)
         self.inventory_weave.check(progress_bar=self.progress)
-        files_in_revisions = {}
-        revisions_of_files = {}
+        self.progress.update('checking text storage', 1, 2)
+        self.repository.texts.check(progress_bar=self.progress)
         weave_checker = self.repository._get_versioned_file_checker()
-        for i, weave_id in enumerate(weave_ids):
-            self.progress.update('checking versionedfile', i, n_weaves)
-            w = self.repository.weave_store.get_weave(weave_id,
-                    self.repository.get_transaction())
-            # No progress here, because it looks ugly.
-            w.check()
-            result = weave_checker.check_file_version_parents(w, weave_id)
-            bad_parents, unused_versions = result
-            bad_parents = bad_parents.items()
-            for revision_id, (weave_parents, correct_parents) in bad_parents:
-                self.inconsistent_parents.append(
-                    (revision_id, weave_id, weave_parents, correct_parents))
-            for revision_id in unused_versions:
-                self.unreferenced_versions.add((weave_id, revision_id))
-            self.checked_weaves[weave_id] = True
+        result = weave_checker.check_file_version_parents(
+            self.repository.texts, progress_bar=self.progress)
+        self.checked_weaves = weave_checker.file_ids
+        bad_parents, unused_versions = result
+        bad_parents = bad_parents.items()
+        for text_key, (stored_parents, correct_parents) in bad_parents:
+            # XXX not ready for id join/split operations.
+            weave_id = text_key[0]
+            revision_id = text_key[-1]
+            weave_parents = tuple([parent[-1] for parent in stored_parents])
+            correct_parents = tuple([parent[-1] for parent in correct_parents])
+            self.inconsistent_parents.append(
+                (revision_id, weave_id, weave_parents, correct_parents))
+        self.unreferenced_versions.update(unused_versions)
 
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)

@@ -22,7 +22,7 @@ import os
 import sys
 
 # update this on each release
-_script_version = (1, 4, 0)
+_script_version = (1, 6, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -64,9 +64,9 @@ try:
     import bzrlib
 except ImportError, e:
     sys.stderr.write("bzr: ERROR: "
-                     "Couldn't import bzrlib and dependencies.\n"
-                     "Please check bzrlib is on your PYTHONPATH.\n"
-                     "\n")
+        "Couldn't import bzrlib and dependencies.\n"
+        "Please check the directory containing bzrlib is on your PYTHONPATH.\n"
+        "\n")
     raise
 
 if bzrlib.version_info[:3] != _script_version:
