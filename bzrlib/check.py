@@ -247,7 +247,7 @@ def check(branch, verbose):
     
     Results are reported through logging.
     
-    Deprecated in 1.3.  Please use check_branch instead.
+    Deprecated in 1.6.  Please use check_branch instead.
 
     :raise BzrCheckError: if there's a consistency error.
     """
@@ -270,12 +270,12 @@ def check_branch(branch, verbose):
 
 
 def check_dwim(path, verbose):
-    tree, branch, repo = BzrDir.open_containing_tree_branch_or_repository(path)
+    tree, branch, repo, relpath = BzrDir.open_containing_tree_branch_or_repository(path)
 
     if tree is not None:
         note("Checking working tree at '%s'." 
              % (tree.bzrdir.root_transport.base,))
-        tree.check()
+        tree._check()
 
     if branch is not None:
         # We have a branch

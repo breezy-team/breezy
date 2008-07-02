@@ -2400,7 +2400,7 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validates working tree structure, branch consistency and repository
+    """Validate working tree structure, branch consistency and repository
     history.
 
     This command checks various invariants about branch and repository storage
