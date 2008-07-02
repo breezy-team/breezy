@@ -847,27 +847,29 @@ class BzrDir(object):
 
     @classmethod
     def open_containing_tree_branch_or_repository(klass, location):
-        """Return the branch, working tree and repo contained by a location.
+        """Return the working tree, branch and repo contained by a location.
 
-        Returns (tree, branch, repository).
+        Returns (tree, branch, repository, relpath).
         If there is no tree containing the location, tree will be None.
         If there is no branch containing the location, branch will be None.
         If there is no repository containing the location, repository will be
         None.
+        relpath is the portion of the path that is contained by the innermost
+        BzrDir.
 
-        If no branch, tree or repository is found, a NotVersionedError is
+        If no tree, branch or repository is found, a NotVersionedError is
         raised.
         """
+        bzrdir, relpath = klass.open_containing(location)
         try:
-            bzrdir = klass.open_containing(location)[0]
             tree, branch = bzrdir._get_tree_branch()
         except errors.NotBranchError:
             try:
                 repo = klass.open_containing(location)[0].find_repository()
-                return None, None, repo
-            except (errors.NoRepositoryPresent, errors.NotBranchError):
-                raise errors.NotVersionedError(location)
-        return tree, branch, branch.repository
+                return None, None, repo, relpath
+            except (errors.NoRepositoryPresent):
+                raise errors.NotBranchError(location)
+        return tree, branch, branch.repository, relpath
 
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.

@@ -452,13 +452,13 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual('g/p/q', relpath)
 
     def test_open_containing_tree_branch_or_repository_empty(self):
-        self.assertRaises(errors.NotVersionedError,
+        self.assertRaises(errors.NotBranchError,
             bzrdir.BzrDir.open_containing_tree_branch_or_repository,
             self.get_readonly_url(''))
 
     def test_open_containing_tree_branch_or_repository_all(self):
         self.make_branch_and_tree('topdir')
-        tree, branch, repo = \
+        tree, branch, repo, relpath = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'topdir/foo')
         self.assertEqual(os.path.realpath('topdir'),
@@ -468,10 +468,11 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(
             os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
+        self.assertEqual(relpath, 'foo')
 
     def test_open_containing_tree_branch_or_repository_no_tree(self):
         self.make_branch('branch')
-        tree, branch, repo = \
+        tree, branch, repo, relpath = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'branch/foo')
         self.assertEqual(tree, None)
@@ -480,10 +481,11 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(
             os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
+        self.assertEqual(relpath, 'foo')
 
     def test_open_containing_tree_branch_or_repository_repo(self):
         self.make_repository('repo')
-        tree, branch, repo = \
+        tree, branch, repo, relpath = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'repo')
         self.assertEqual(tree, None)
@@ -491,12 +493,13 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(
             os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
+        self.assertEqual(relpath, '')
 
     def test_open_containing_tree_branch_or_repository_shared_repo(self):
         self.make_repository('shared', shared=True)
         bzrdir.BzrDir.create_branch_convenience('shared/branch',
                                                 force_new_tree=False)
-        tree, branch, repo = \
+        tree, branch, repo, relpath = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'shared/branch')
         self.assertEqual(tree, None)
@@ -505,11 +508,12 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(
             os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
+        self.assertEqual(relpath, '')
 
     def test_open_containing_tree_branch_or_repository_branch_subdir(self):
         self.make_branch_and_tree('foo')
         self.build_tree(['foo/bar/'])
-        tree, branch, repo = \
+        tree, branch, repo, relpath = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'foo/bar')
         self.assertEqual(os.path.realpath('foo'),
@@ -519,11 +523,12 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(
             os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
+        self.assertEqual(relpath, 'bar')
 
     def test_open_containing_tree_branch_or_repository_repo_subdir(self):
         self.make_repository('bar')
         self.build_tree(['bar/baz/'])
-        tree, branch, repo = \
+        tree, branch, repo, relpath = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'bar/baz')
         self.assertEqual(tree, None)
@@ -531,6 +536,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(
             os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
+        self.assertEqual(relpath, 'baz')
 
     def test_open_containing_from_transport(self):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
