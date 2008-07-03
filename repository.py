@@ -729,7 +729,7 @@ class SvnRepository(Repository):
         return branches
 
     @needs_read_lock
-    def find_tags(self, layout=None, revnum=None):
+    def find_tags(self, layout=None, revnum=None, project=None):
         """Find branches underneath this repository.
 
         """
@@ -742,7 +742,7 @@ class SvnRepository(Repository):
         tags = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for project, bp, nick in layout.get_tags(revnum, pb=pb):
+            for project, bp, nick in layout.get_tags(revnum, project=project, pb=pb):
                 try:
                     tags[nick] = self.generate_revision_id(revnum, bp, 
                                                            self.get_mapping())

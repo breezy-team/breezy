@@ -46,6 +46,18 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
         self.assertEqual("", branch.get_branch_path())
 
+    def test_tags_dict(self):
+        repos_url = self.make_repository("a")
+       
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/foo")
+        dc.add_dir("trunk")
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
+
     def test_get_branch_path_old(self):
         repos_url = self.make_repository("a")
 

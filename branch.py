@@ -51,6 +51,41 @@ class FakeControlFiles(object):
         pass
 
 
+class SubversionTags:
+    def __init__(self, repository, project=""):
+        self.repository = repository
+        self.project = project
+
+    def set_tag(self, tag_name, tag_target):
+        # TODO: copy tag_target to tags/tag_name
+        raise NotImplementedError
+
+    def lookup_tag(self, tag_name):
+        # TODO: Check if tags/tag_name exists and return revid
+        raise NotImplementedError
+
+    def get_tag_dict(self):
+        return self.repository.find_tags(project=self.project)
+
+    def get_reverse_tag_dict(self):
+        """Returns a dict with revisions as keys
+           and a list of tags for that revision as value"""
+        d = self.get_tag_dict()
+        rev = {}
+        for key in d:
+            try:
+                rev[d[key]].append(key)
+            except KeyError:
+                rev[d[key]] = [key]
+        return rev
+
+    def delete_tag(self, tag_name):
+        raise NotImplementedError
+
+    def merge_to(self, to_tags, overwrite=False):
+        raise NotImplementedError
+
+
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
     def __init__(self, repository, branch_path):
@@ -62,8 +97,8 @@ class SvnBranch(Branch):
         :param revnum: Subversion revision number of the branch to 
             look at; none for latest.
         """
-        super(SvnBranch, self).__init__()
         self.repository = repository
+        super(SvnBranch, self).__init__()
         assert isinstance(self.repository, SvnRepository)
         self.control_files = FakeControlFiles()
         self._format = SvnBranchFormat()
@@ -85,6 +120,9 @@ class SvnBranch(Branch):
             raise
         if not self.mapping.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
+
+    def _make_tags(self):
+        return SubversionTags(self.repository)
 
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
