@@ -74,6 +74,20 @@ def parse_externals_description(base_url, val):
     return ret
 
 
+def parse_mergeinfo_property(text):
+    ret = {}
+    for l in text.splitlines():
+        (path, ranges) = l.rsplit(":",1)
+        assert path.startswith("/")
+        ret[path] = []
+        for range in ranges.split(","):
+            try:
+                (start, end) = range.split("-", 1)
+                ret[path].append((int(start), int(end)))
+            except ValueError:
+                ret[path].append((int(range), int(range)))
+
+    return ret
 
 
 PROP_EXECUTABLE = 'svn:executable'

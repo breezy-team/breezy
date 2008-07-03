@@ -84,4 +84,13 @@ third-party/sounds             http://sounds.red-bean.com/repos
             lambda: properties.parse_externals_description(None, "bla -R40 http://bla/"))
  
 
+class MergeInfoPropertyParserTests(TestCase):
+    def test_simple_range(self):
+        self.assertEquals({"/trunk": [(1,2)]}, properties.parse_mergeinfo_property("/trunk:1-2\n"))
 
+    def test_simple_individual(self):
+        self.assertEquals({"/trunk": [(1,1)]}, properties.parse_mergeinfo_property("/trunk:1\n"))
+
+    def test_empty(self):
+        self.assertEquals({}, properties.parse_mergeinfo_property(""))
+       
