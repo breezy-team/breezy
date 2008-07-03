@@ -115,7 +115,8 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         builder.set_file('executable', 'content', True)
         builder.set_link('link', 'broken')
         builder.set_file('subdir/subfile', 'subdir text\n', False)
-        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message',
+            timestamp=1205433193)
         mapping = builder.finish()
         commit_id = mapping[commit_handle]
 
@@ -124,27 +125,26 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = repository.Repository.open('.')
         inv = repo.get_inventory(revid)
         self.assertIsInstance(inv, inventory.Inventory)
-        entries = list(inv.iter_entries())
         printed_inv = '\n'.join(
             repr((path, entry.executable, entry))
             for path, entry in inv.iter_entries())
         self.assertEqualDiff(
             printed_inv,
             "('', False, InventoryDirectory('TREE_ROOT', u'', parent_id=None,"
-            " revision=None))\n"
+            " revision='git-experimental-r:69c39cfa65962f3cf16b9b3eb08a15954e9d8590'))\n"
             "(u'data', False, InventoryFile('data', u'data',"
             " parent_id='TREE_ROOT',"
-            " sha1='8e27be7d6154a1f68ea9160ef0e18691d20560dc', len=None))\n"
+            " sha1='aa785adca3fcdfe1884ae840e13c6d294a2414e8', len=5))\n"
             "(u'executable', True, InventoryFile('executable', u'executable',"
             " parent_id='TREE_ROOT',"
-            " sha1='6b584e8ece562ebffc15d38808cd6b98fc3d97ea', len=None))\n"
+            " sha1='040f06fd774092478d450774f5ba30c5da78acc8', len=7))\n"
             "(u'link', False, InventoryLink('link', u'link',"
-            " parent_id='TREE_ROOT', revision=None))\n"
+            " parent_id='TREE_ROOT', revision='git-experimental-r:69c39cfa65962f3cf16b9b3eb08a15954e9d8590'))\n"
             "(u'subdir', False, InventoryDirectory('subdir', u'subdir',"
-            " parent_id='TREE_ROOT', revision=None))\n"
+            " parent_id='TREE_ROOT', revision='git-experimental-r:69c39cfa65962f3cf16b9b3eb08a15954e9d8590'))\n"
             "(u'subdir/subfile', False, InventoryFile('subdir/subfile',"
             " u'subfile', parent_id='subdir',"
-            " sha1='0ddb53cbe2dd209f550dd8d7f1287a5ed9b1ee8b', len=None))")
+            " sha1='67b75c3e49f31fcadddbf9df6a1d8be8c3e44290', len=12))")
 
 
 class MemoryGitRepository(git_repository.GitRepository):
@@ -167,10 +167,10 @@ class MemoryGitBzrDirFormat(git_dir.GitBzrDirFormat):
     _gitdir_class = MemoryGitDir
 
 
-class TestGitRepository(tests.TestCaseWithMemoryTransport):
+class TestGitRepository(tests.TestCaseWithTransport):
 
     def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
+        tests.TestCaseWithTransport.setUp(self)
         self.transport = self.get_transport()
         self.transport.mkdir('.git')
         self.git_dir = MemoryGitBzrDirFormat().open(self.transport)
@@ -213,8 +213,8 @@ class TestGitRepositoryParseRev(tests.TestCase):
             "\n",
             "    message\n",
             "\x00"])
-        self.assertEqual(
-            rev.revision_id, 'git1r-873a8ae0d682b0e63e9795bc53056d32ed3de93f')
+        self.assertEqual(rev.revision_id,
+            'git-experimental-r:873a8ae0d682b0e63e9795bc53056d32ed3de93f')
         self.assertEqual(rev.parent_ids, [])
         self.assertEqual(rev.committer, 'Joe Foo <joe@foo.com>')
         self.assertEqual(repr(rev.timestamp), '1198784532.0')
@@ -244,9 +244,9 @@ class TestGitRepositoryParseRev(tests.TestCase):
         # commit base, the following parents are the ordered merged revisions.
         self.assertEqual(
             rev.parent_ids,
-            ['git1r-263ed20f0d4898be994404ca418bafe8e89abb8a',
-             'git1r-546563eb8f3e94a557f3bb779b6e5a2bd9658752',
-             'git1r-3116d42db7b5c5e69e58f651721e179791479c23'])
+            ['git-experimental-r:263ed20f0d4898be994404ca418bafe8e89abb8a',
+             'git-experimental-r:546563eb8f3e94a557f3bb779b6e5a2bd9658752',
+             'git-experimental-r:3116d42db7b5c5e69e58f651721e179791479c23'])
 
     def test_redundant_spaces(self):
         # Redundant spaces in author and committer are preserved.
