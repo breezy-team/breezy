@@ -399,6 +399,24 @@ class cmd_bisect(Command):
 
         bisect_log.bisect()
 
+    def run_bisect(self, script):
+        import subprocess
+        print "Starting bisect."
+        self.start()
+        process = subprocess.Popen(script, shell=True)
+        process.wait()
+        retcode = process.returncode
+        while True:
+            try:
+                if retcode == 0:
+                    self._set_state(None, 'yes')
+                elif retcode == 125:
+                    break
+                else:
+                    self._set_state(None, 'no')
+            except RuntimeError:
+                break
+
 register_command(cmd_bisect)
 
 
