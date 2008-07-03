@@ -1156,6 +1156,14 @@ class ChangeBranchTipParams(object):
         self.old_revid = old_revid
         self.new_revid = new_revid
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+    
+    def __repr__(self):
+        return "<%s of %s from (%s, %s) to (%s, %s)>" % (
+            self.__class__.__name__, self.branch, 
+            self.old_revno, self.old_revid, self.new_revno, self.new_revid)
+
 
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.

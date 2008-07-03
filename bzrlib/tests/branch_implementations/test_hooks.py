@@ -16,7 +16,7 @@
 
 """Tests that branch classes implement hook callouts correctly."""
 
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, ChangeBranchTipParams
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
 
@@ -81,21 +81,21 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
 
 
 class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
-    """Tests for pre_change_branch_tip hook."""
+    """Tests for pre_change_branch_tip hook.
+    
+    Most of these tests are very similar to the tests in
+    TestPostChangeBranchTip.
+    """
 
-    def setUp(self):
-        self.hook_calls = []
-        TestCaseWithMemoryTransport.setUp(self)
-
-    def capture_pre_change_branch_tip_hook(self, params):
-        """Capture post_change_branch_tip hook calls to self.hook_calls.
-
-        The call is logged, as is some state of the branch.
+    def install_logging_hook(self):
+        """Add a hook that logs calls made to it.
+        
+        :returns: the list that the calls will be appended to.
         """
-        self.hook_calls.append((params, params.branch.is_locked()))
-        # The branch hasn't changed -- yet.
-        self.assertEquals(params.branch.last_revision_info(),
-                          (params.old_revno, params.old_revid))
+        hook_calls = []
+        Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', hook_calls.append, None)
+        return hook_calls
 
     def make_branch_with_revision_ids(self, *revision_ids):
         """Makes a branch with the given commits."""
@@ -108,8 +108,22 @@ class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
         branch = tree.branch
         return branch
 
+    def test_hook_runs_before_change(self):
+        """The hook runs *before* the branch's last_revision_info has changed.
+        """
+        branch = self.make_branch_with_revision_ids('revid-one')
+        def assertBranchAtRevision1(params):
+            self.assertEquals(
+                (1, 'revid-one'), params.branch.last_revision_info())
+        Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', assertBranchAtRevision1, None)
+        branch.set_last_revision_info(0, NULL_REVISION)
+
     def test_reject_by_hook(self):
-        """If a hook raises an exception, the change take effect."""
+        """If a hook raises an exception, the change does not take effect.
+        
+        Also, the exception will be propogated.
+        """
         branch = self.make_branch_with_revision_ids(
             'one-\xc2\xb5', 'two-\xc2\xb5')
         class PearShapedError(Exception):
@@ -123,139 +137,120 @@ class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
         
-    # Tests from TestPostChangeBranchTip:
     def test_pre_change_branch_tip_empty_history(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_named_hook(
-            'pre_change_branch_tip',
-            self.capture_pre_change_branch_tip_hook,
-            None)
+        hook_calls = self.install_logging_hook()
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(len(self.hook_calls), 1)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][0].old_revid, NULL_REVISION)
-        self.assertEqual(self.hook_calls[0][0].old_revno, 0)
-        self.assertEqual(self.hook_calls[0][0].new_revid, NULL_REVISION)
-        self.assertEqual(self.hook_calls[0][0].new_revno, 0)
+        expected_params = ChangeBranchTipParams(
+            branch, 0, 0, NULL_REVISION, NULL_REVISION)
+        self.assertEqual([expected_params], hook_calls)
 
     def test_pre_change_branch_tip_nonempty_history(self):
+        # some branches require that their history be set to a revision in the
+        # repository, so we need to make a branch with non-empty history for
+        # this test.
         branch = self.make_branch_with_revision_ids(
             'one-\xc2\xb5', 'two-\xc2\xb5')
-        Branch.hooks.install_named_hook(
-            'pre_change_branch_tip',
-            self.capture_pre_change_branch_tip_hook,
-            None)
-        # some branches require that their history be set to a revision in the
-        # repository
+        hook_calls = self.install_logging_hook()
         branch.set_last_revision_info(1, 'one-\xc2\xb5')
-        self.assertEqual(len(self.hook_calls), 1)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][0].old_revid, 'two-\xc2\xb5')
-        self.assertEqual(self.hook_calls[0][0].old_revno, 2)
-        self.assertEqual(self.hook_calls[0][0].new_revid, 'one-\xc2\xb5')
-        self.assertEqual(self.hook_calls[0][0].new_revno, 1)
+        expected_params = ChangeBranchTipParams(
+            branch, 2, 1, 'two-\xc2\xb5', 'one-\xc2\xb5')
+        self.assertEqual([expected_params], hook_calls)
 
     def test_pre_change_branch_tip_branch_is_locked(self):
         branch = self.make_branch('source')
+        def assertBranchIsLocked(params):
+            self.assertTrue(params.branch.is_locked())
         Branch.hooks.install_named_hook(
-            'pre_change_branch_tip',
-            self.capture_pre_change_branch_tip_hook,
-            None)
+            'pre_change_branch_tip', assertBranchIsLocked, None)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(len(self.hook_calls), 1)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][1], True)
 
     def test_pre_change_branch_tip_calls_all_hooks_no_errors(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_named_hook(
-            'pre_change_branch_tip',
-            self.capture_pre_change_branch_tip_hook,
-            None)
-        Branch.hooks.install_named_hook(
-            'pre_change_branch_tip',
-            self.capture_pre_change_branch_tip_hook,
-            None)
+        hook_calls_1 = self.install_logging_hook()
+        hook_calls_2 = self.install_logging_hook()
+        self.assertIsNot(hook_calls_1, hook_calls_2)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(len(self.hook_calls), 2)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[1][0].branch, branch)
+        # Both hooks are called.
+        self.assertEqual(len(hook_calls_1), 1)
+        self.assertEqual(len(hook_calls_2), 1)
 
 
 class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
-    """Tests for post_change_branch_tip hook."""
+    """Tests for post_change_branch_tip hook.
 
-    def setUp(self):
-        self.hook_calls = []
-        TestCaseWithMemoryTransport.setUp(self)
+    Most of these tests are very similar to the tests in
+    TestPostChangeBranchTip.
+    """
 
-    def capture_post_change_branch_tip_hook(self, params):
-        """Capture post_change_branch_tip hook calls to self.hook_calls.
-
-        The call is logged, as is some state of the branch.
+    def install_logging_hook(self):
+        """Add a hook that logs calls made to it.
+        
+        :returns: the list that the calls will be appended to.
         """
-        self.hook_calls.append((params, params.branch.is_locked()))
-        self.assertEquals(params.branch.last_revision_info(),
-                          (params.new_revno, params.new_revid))
-
-    def test_post_change_branch_tip_empty_history(self):
-        branch = self.make_branch('source')
+        hook_calls = []
         Branch.hooks.install_named_hook(
-            'post_change_branch_tip',
-            self.capture_post_change_branch_tip_hook,
-            None)
-        branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(len(self.hook_calls), 1)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][0].old_revid, NULL_REVISION)
-        self.assertEqual(self.hook_calls[0][0].old_revno, 0)
-        self.assertEqual(self.hook_calls[0][0].new_revid, NULL_REVISION)
-        self.assertEqual(self.hook_calls[0][0].new_revno, 0)
+            'post_change_branch_tip', hook_calls.append, None)
+        return hook_calls
 
-    def test_post_change_branch_tip_nonempty_history(self):
+    def make_branch_with_revision_ids(self, *revision_ids):
+        """Makes a branch with the given commits."""
         tree = self.make_branch_and_memory_tree('source')
         tree.lock_write()
         tree.add('')
-        tree.commit('another commit', rev_id='f\xc2\xb5')
-        tree.commit('empty commit', rev_id='foo')
+        for revision_id in revision_ids:
+            tree.commit('Message of ' + revision_id, rev_id=revision_id)
         tree.unlock()
         branch = tree.branch
+        return branch
+
+    def test_hook_runs_after_change(self):
+        """The hook runs *after* the branch's last_revision_info has changed.
+        """
+        branch = self.make_branch_with_revision_ids('revid-one')
+        def assertBranchAtRevision1(params):
+            self.assertEquals(
+                (0, NULL_REVISION), params.branch.last_revision_info())
         Branch.hooks.install_named_hook(
-            'post_change_branch_tip',
-            self.capture_post_change_branch_tip_hook,
-            None)
+            'post_change_branch_tip', assertBranchAtRevision1, None)
+        branch.set_last_revision_info(0, NULL_REVISION)
+
+    def test_change_branch_tip_empty_history(self):
+        branch = self.make_branch('source')
+        hook_calls = self.install_logging_hook()
+        branch.set_last_revision_info(0, NULL_REVISION)
+        expected_params = ChangeBranchTipParams(
+            branch, 0, 0, NULL_REVISION, NULL_REVISION)
+        self.assertEqual([expected_params], hook_calls)
+
+    def test_change_branch_tip_nonempty_history(self):
         # some branches require that their history be set to a revision in the
-        # repository
-        branch.set_last_revision_info(1, 'f\xc2\xb5')
-        self.assertEqual(len(self.hook_calls), 1)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][0].old_revid, 'foo')
-        self.assertEqual(self.hook_calls[0][0].old_revno, 2)
-        self.assertEqual(self.hook_calls[0][0].new_revid, 'f\xc2\xb5')
-        self.assertEqual(self.hook_calls[0][0].new_revno, 1)
+        # repository, so we need to make a branch with non-empty history for
+        # this test.
+        branch = self.make_branch_with_revision_ids(
+            'one-\xc2\xb5', 'two-\xc2\xb5')
+        hook_calls = self.install_logging_hook()
+        branch.set_last_revision_info(1, 'one-\xc2\xb5')
+        expected_params = ChangeBranchTipParams(
+            branch, 2, 1, 'two-\xc2\xb5', 'one-\xc2\xb5')
+        self.assertEqual([expected_params], hook_calls)
 
-    def test_post_change_branch_tip_branch_is_locked(self):
+    def test_tip_branch_is_locked(self):
+        """The branch passed to the hook is locked."""
         branch = self.make_branch('source')
+        def assertBranchIsLocked(params):
+            self.assertTrue(params.branch.is_locked())
         Branch.hooks.install_named_hook(
-            'post_change_branch_tip',
-            self.capture_post_change_branch_tip_hook,
-            None)
+            'pre_change_branch_tip', assertBranchIsLocked, None)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(len(self.hook_calls), 1)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][1], True)
 
-    def test_post_change_branch_tip_calls_all_hooks_no_errors(self):
+    def test_change_branch_tip_calls_all_hooks_no_errors(self):
+        """If multiple hooks are registered, all are called."""
         branch = self.make_branch('source')
-        Branch.hooks.install_named_hook(
-            'post_change_branch_tip',
-            self.capture_post_change_branch_tip_hook,
-            None)
-        Branch.hooks.install_named_hook(
-            'post_change_branch_tip',
-            self.capture_post_change_branch_tip_hook,
-            None)
+        hook_calls_1 = self.install_logging_hook()
+        hook_calls_2 = self.install_logging_hook()
+        self.assertIsNot(hook_calls_1, hook_calls_2)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(len(self.hook_calls), 2)
-        self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[1][0].branch, branch)
+        # Both hooks are called.
+        self.assertEqual(len(hook_calls_1), 1)
+        self.assertEqual(len(hook_calls_2), 1)
