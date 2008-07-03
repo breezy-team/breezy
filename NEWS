@@ -28,6 +28,8 @@ bzr-svn 0.4.11    UNRELEASED
   
    * Add new "dpush" command that works similar to git-svn's dcommit.
 
+   * Support proper Bazaar tags. (#81102)
+
   BUG FIXES
 
    * More efficient use of mutter.
