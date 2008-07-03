@@ -1320,3 +1320,64 @@ class WeaveMerge(PlanWeaveMerge):
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
 
+class VirtualVersionedFiles(VersionedFiles):
+    """Dummy implementation for VersionedFiles that uses other functions for 
+    obtaining fulltexts and parent maps.
+
+    This is always on the bottom of the stack and uses string keys 
+    (rather than tuples) internally.
+    """
+
+    def __init__(self, get_parent_map, get_lines):
+        """Create a VirtualVersionedFiles.
+
+        :param get_parent_map: Same signature as Repository.get_parent_map.
+        :param get_lines: Should return lines for specified key or None if 
+                          not available.
+        """
+        super(VirtualVersionedFiles, self).__init__()
+        self._get_parent_map = get_parent_map
+        self._get_lines = get_lines
+        
+    def check(self, progressbar=None):
+        """See VersionedFiles.check.
+
+        :note: Always returns True for VirtualVersionedFiles.
+        """
+        return True
+
+    def add_mpdiffs(self, records):
+        """See VersionedFiles.mpdiffs.
+
+        :note: Not implemented for VirtualVersionedFiles.
+        """
+        raise NotImplementedError(self.add_mpdiffs)
+
+    def get_parent_map(self, keys):
+        """See VersionedFiles.get_parent_map."""
+        return dict([((k,), tuple([(p,) for p in v])) for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
+
+    def get_sha1s(self, keys):
+        """See VersionedFiles.get_sha1s."""
+        ret = {}
+        for (k,) in keys:
+            lines = self._get_lines(k)
+            if lines is not None:
+                assert isinstance(lines, list)
+                ret[(k,)] = osutils.sha_strings(lines)
+        return ret
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        """See VersionedFiles.get_record_stream."""
+        for (k,) in list(keys):
+            lines = self._get_lines(k)
+            if lines is not None:
+                assert isinstance(lines, list)
+                yield FulltextContentFactory((k,), None, 
+                        sha1=osutils.sha_strings(lines),
+                        text=''.join(lines))
+            else:
+                yield AbsentContentFactory((k,))
+
+
+
