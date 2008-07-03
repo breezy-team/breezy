@@ -27,6 +27,7 @@ from bzrlib.trace import mutter
 import os
 from unittest import TestCase
 
+from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.branch import FakeControlFiles, SvnBranchFormat
 from bzrlib.plugins.svn.convert import load_dumpfile
 from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
@@ -57,6 +58,25 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         b = Branch.open(repos_url + "/trunk")
         self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
+
+    def test_tag_set(self):
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.add_dir("tags")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file("trunk/bla").modify()
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        b.tags.set_tag("mytag", b.repository.generate_revision_id(1, "trunk", b.repository.get_mapping()))
+
+        self.assertEquals(core.NODE_DIR, 
+                b.repository.transport.check_path("tags/mytag", 3))
 
     def test_tags_delete(self):
         repos_url = self.make_repository("a")

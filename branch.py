@@ -22,6 +22,7 @@ from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision,
                            NoSuchTag, NotBranchError, UnstackableBranchFormat)
 from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
+from bzrlib.tag import BasicTags
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import core
@@ -51,15 +52,33 @@ class FakeControlFiles(object):
         pass
 
 
-class SubversionTags:
-    def __init__(self, repository, layout=None, project=""):
-        self.repository = repository
-        self.layout = layout or repository.get_layout()
+class SubversionTags(BasicTags):
+    def __init__(self, branch, layout=None, project=""):
+        self.branch = branch
+        self.repository = branch.repository
+        self.layout = layout or self.repository.get_layout()
         self.project = project
 
     def set_tag(self, tag_name, tag_target):
-        # TODO: copy tag_target to tags/tag_name
-        raise NotImplementedError
+        path = self.layout.get_tag_path(tag_name, self.project)
+        parent = urlutils.dirname(path)
+        (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
+        conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
+        deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
+        try:
+            ci = conn.get_commit_editor({"svn:log": "Add tag %s" % tag_name})
+            try:
+                root = ci.open_root()
+                if deletefirst:
+                    root.delete_entry(urlutils.basename(path))
+                root.add_directory(urlutils.basename(path), urlutils.join(self.repository.base, from_bp), from_revnum)
+                root.close()
+            except:
+                ci.abort()
+                raise
+            ci.close()
+        finally:
+            self.repository.transport.add_connection(conn)
 
     def lookup_tag(self, tag_name):
         try:
@@ -87,7 +106,7 @@ class SubversionTags:
         path = self.layout.get_tag_path(tag_name, self.project)
         parent = urlutils.dirname(path)
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
-        if self.repository.transport.check_path(path, self.repository.get_latest_revnum()) != core.NODE_DIR:
+        if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
             raise NoSuchTag(tag_name)
         try:
             ci = conn.get_commit_editor({"svn:log": "Remove tag %s" % tag_name})
@@ -101,9 +120,6 @@ class SubversionTags:
             ci.close()
         finally:
             self.repository.transport.add_connection(conn)
-
-    def merge_to(self, to_tags, overwrite=False):
-        raise NotImplementedError
 
 
 class SvnBranch(Branch):
@@ -142,7 +158,7 @@ class SvnBranch(Branch):
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
 
     def _make_tags(self):
-        return SubversionTags(self.repository)
+        return SubversionTags(self)
 
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
