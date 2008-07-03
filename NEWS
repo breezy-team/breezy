@@ -30,6 +30,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Support proper Bazaar tags. (#81102)
 
+   * Set mergeinfo properties when pushing merges. (write part of #131323)
+
   BUG FIXES
 
    * More efficient use of mutter.

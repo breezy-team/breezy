@@ -200,6 +200,44 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
             self.client_get_prop("dc", 
                 "bzr:revision-id:v3-none", 2))
 
+    def test_commit_sets_merge_info(self):
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        foo = dc.add_dir("trunk")
+        foo.add_file("trunk/bla").modify("bla")
+        dc.add_dir("branches")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        foobranch = tags.add_dir("tags/foo")
+        foobranch.add_file("tags/foo/afile").modify()
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.open_dir("tags")
+        foobranch = tags.open_dir("tags/foo")
+        foobranch.add_file("tags/foo/bfile").modify()
+        dc.close()
+
+        branch = Branch.open(repos_url+"/trunk")
+        foobranch = Branch.open(repos_url+"/tags/foo")
+        builder = branch.get_commit_builder([branch.last_revision(), foobranch.last_revision()], 
+                revision_id="my-revision-id")
+        tree = branch.repository.revision_tree(branch.last_revision())
+        new_tree = copy(tree)
+        ie = new_tree.inventory.root
+        ie.revision = None
+        builder.record_entry_contents(ie, [tree.inventory], '', new_tree, 
+                                      None)
+        builder.finish_inventory()
+        builder.commit("foo")
+
+        self.assertEqual("/tags/foo:2-3\n",
+            self.client_get_prop("%s/trunk" % repos_url, 
+                "svn:mergeinfo", 4))
+
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
         wt = self.open_checkout("dc")

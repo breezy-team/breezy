@@ -18,7 +18,8 @@
 from bzrlib import debug, osutils, urlutils, ui
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
-                           UnrelatedBranches, AppendRevisionsOnlyViolation)
+                           UnrelatedBranches, AppendRevisionsOnlyViolation,
+                           NoSuchRevision)
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION, ensure_null
@@ -67,6 +68,41 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
         if transport.check_path(path, base_rev) == core.NODE_DIR:
             return current
     return []
+
+
+def update_svk_features(oldvalue, merges):
+    old_svk_features = parse_svk_features(oldvalue)
+    svk_features = set(old_svk_features)
+
+    # SVK compatibility
+    for merge in merges:
+        try:
+            svk_features.add(_revision_id_to_svk_feature(merge))
+        except InvalidRevisionId:
+            pass
+
+    if old_svk_features != svk_features:
+        return serialize_svk_features(svk_features)
+    return None
+
+
+def update_mergeinfo(repository, oldvalue, baserevid, merges):
+    graph = repository.get_graph()
+    mergeinfo = properties.parse_mergeinfo_property(oldvalue)
+    for merge in merges:
+        for (revid, parents) in graph.iter_ancestry([merge]):
+            if graph.is_ancestor(revid, baserevid):
+                break
+            try:
+                (path, revnum, mapping) = repository.lookup_revision_id(revid)
+            except NoSuchRevision:
+                break
+
+            properties.mergeinfo_add_revision(mergeinfo, "/" + path, revnum)
+    newvalue = properties.generate_mergeinfo_property(mergeinfo)
+    if newvalue != oldvalue:
+        return newvalue
+    return None
 
 
 def set_svn_revprops(transport, revnum, revprops):
@@ -150,18 +186,13 @@ class SvnCommitBuilder(RootCommitBuilder):
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
-            old_svk_features = parse_svk_features(base_branch_props.get(SVN_PROP_SVK_MERGE, ""))
-            svk_features = set(old_svk_features)
+            new_svk_merges = update_svk_features(base_branch_props.get(SVN_PROP_SVK_MERGE, ""), merges)
+            if new_svk_merges is not None:
+                self._svnprops[SVN_PROP_SVK_MERGE] = new_svk_merges
 
-            # SVK compatibility
-            for merge in merges:
-                try:
-                    svk_features.add(_revision_id_to_svk_feature(merge))
-                except InvalidRevisionId:
-                    pass
-
-            if old_svk_features != svk_features:
-                self._svnprops[SVN_PROP_SVK_MERGE] = serialize_svk_features(svk_features)
+            new_mergeinfo = update_mergeinfo(self.repository, base_branch_props.get(properties.PROP_MERGEINFO, ""), self.base_revid, merges)
+            if new_mergeinfo is not None:
+                self._svnprops[properties.PROP_MERGEINFO] = new_mergeinfo
 
     def mutter(self, text, *args):
         if 'commit' in debug.debug_flags:

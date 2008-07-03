@@ -148,12 +148,19 @@ def mergeinfo_includes_revision(merges, path, revnum):
     return range_includes_revnum(ranges, revnum)
 
 
+def mergeinfo_add_revision(mergeinfo, path, revnum):
+    assert path.startswith("/")
+    mergeinfo[path] = range_add_revnum(mergeinfo.get(path, []), revnum)
+    return mergeinfo
+
+
 PROP_EXECUTABLE = 'svn:executable'
 PROP_EXECUTABLE_VALUE = '*'
 PROP_EXTERNALS = 'svn:externals'
 PROP_IGNORE = 'svn:ignore'
 PROP_KEYWORDS = 'svn:keywords'
 PROP_MIME_TYPE = 'svn:mime-type'
+PROP_MERGEINFO = 'svn:mergeinfo'
 PROP_NEEDS_LOCK = 'svn:needs-lock'
 PROP_NEEDS_LOCK_VALUE = '*'
 PROP_PREFIX = 'svn:'
