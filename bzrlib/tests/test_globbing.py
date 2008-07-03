@@ -17,6 +17,7 @@
 
 from bzrlib.globbing import (
     Globster,
+    _OrderedGlobster,
     )
 from bzrlib.tests import (
     TestCase, 
@@ -305,3 +306,15 @@ class TestGlobster(TestCase):
             self.assertEqual(patterns[x],globster.match(filename))
         self.assertEqual(None,globster.match('foobar.300'))
 
+
+class TestOrderedGlobster(TestCase):
+
+    def test_ordered_globs(self):
+        """test that the first match in a list is the one found"""
+        patterns = [ u'*.foo', u'bar.*']
+        globster = _OrderedGlobster(patterns)
+        self.assertEqual(u'*.foo', globster.match('bar.foo'))
+        self.assertEqual(None, globster.match('foo.bar'))
+        globster = _OrderedGlobster(reversed(patterns))
+        self.assertEqual(u'bar.*', globster.match('bar.foo'))
+        self.assertEqual(None, globster.match('foo.bar'))
