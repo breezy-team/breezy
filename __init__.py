@@ -403,11 +403,11 @@ class cmd_bisect(Command):
         import subprocess
         print "Starting bisect."
         self.start()
-        process = subprocess.Popen(script, shell=True)
-        process.wait()
-        retcode = process.returncode
         while True:
             try:
+                process = subprocess.Popen(script, shell=True)
+                process.wait()
+                retcode = process.returncode
                 if retcode == 0:
                     self._set_state(None, 'yes')
                 elif retcode == 125:
