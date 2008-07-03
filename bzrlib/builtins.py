@@ -2422,6 +2422,9 @@ class cmd_check(Command):
             in the checked revisions.  Texts can be repeated when their file
             entries are modified, but the file contents are not.  It does not
             indicate a problem.
+
+    If no objects are specified, Bazaar will check all of the objects that it
+    finds.
     """
 
     _see_also = ['reconcile']
