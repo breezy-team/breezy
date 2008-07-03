@@ -65,6 +65,9 @@ IN DEVELOPMENT
     * revision_history now tolerates mainline ghosts for Branch format 6.
       (Aaron Bentley, #235055)
 
+    * Set locale from environment for third party libs.
+      (Martin von Gagern, #128496)
+
   DOCUMENTATION:
 
     * Updated developer documentation.
