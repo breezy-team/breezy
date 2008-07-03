@@ -31,36 +31,6 @@ from bzrlib.plugins.svn import errors, properties, core, wc
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
 
 
-def parse_externals_description(base_url, val):
-    """Parse an svn:externals property value.
-
-    :param base_url: URL on which the property is set. Used for 
-        relative externals.
-
-    :returns: dictionary with local names as keys, (revnum, url)
-              as value. revnum is the revision number and is 
-              set to None if not applicable.
-    """
-    ret = {}
-    for l in val.splitlines():
-        if l == "" or l[0] == "#":
-            continue
-        pts = l.rsplit(None, 2) 
-        if len(pts) == 3:
-            if not pts[1].startswith("-r"):
-                raise errors.InvalidExternalsDescription()
-            ret[pts[0]] = (int(pts[1][2:]), urlutils.join(base_url, pts[2]))
-        elif len(pts) == 2:
-            if pts[1].startswith("//"):
-                raise NotImplementedError("Relative to the scheme externals not yet supported")
-            if pts[1].startswith("^/"):
-                raise NotImplementedError("Relative to the repository root externals not yet supported")
-            ret[pts[0]] = (None, urlutils.join(base_url, pts[1]))
-        else:
-            raise errors.InvalidExternalsDescription()
-    return ret
-
-
 def inventory_add_external(inv, parent_id, path, revid, ref_revnum, url):
     """Add an svn:externals entry to an inventory as a tree-reference.
     

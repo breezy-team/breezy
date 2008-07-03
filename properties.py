@@ -13,6 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from bzrlib.errors import BzrError
+
+
+class InvalidExternalsDescription(BzrError):
+    _fmt = """Unable to parse externals description."""
+
+
 def is_valid_property_name(prop):
     if not prop[0].isalnum() and not prop[0] in ":_":
         return False
@@ -35,6 +42,38 @@ def time_from_cstring(text):
     tm_usec = int(usecstr[:-1])
     tm = time.strptime(basestr, "%Y-%m-%dT%H:%M:%S")
     return (long(time.mktime((tm[0], tm[1], tm[2], tm[3], tm[4], tm[5], tm[6], tm[7], -1)) - time.timezone) * 1000000 + tm_usec)
+
+
+def parse_externals_description(base_url, val):
+    """Parse an svn:externals property value.
+
+    :param base_url: URL on which the property is set. Used for 
+        relative externals.
+
+    :returns: dictionary with local names as keys, (revnum, url)
+              as value. revnum is the revision number and is 
+              set to None if not applicable.
+    """
+    ret = {}
+    for l in val.splitlines():
+        if l == "" or l[0] == "#":
+            continue
+        pts = l.rsplit(None, 2) 
+        if len(pts) == 3:
+            if not pts[1].startswith("-r"):
+                raise InvalidExternalsDescription()
+            ret[pts[0]] = (int(pts[1][2:]), urlutils.join(base_url, pts[2]))
+        elif len(pts) == 2:
+            if pts[1].startswith("//"):
+                raise NotImplementedError("Relative to the scheme externals not yet supported")
+            if pts[1].startswith("^/"):
+                raise NotImplementedError("Relative to the repository root externals not yet supported")
+            ret[pts[0]] = (None, urlutils.join(base_url, pts[1]))
+        else:
+            raise InvalidExternalsDescription()
+    return ret
+
+
 
 
 PROP_EXECUTABLE = 'svn:executable'

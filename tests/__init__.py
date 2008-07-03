@@ -329,6 +329,7 @@ def test_suite():
             'test_fileids', 
             'test_logwalker',
             'test_mapping',
+            'test_properties',
             'test_push',
             'test_ra',
             'test_radir',
