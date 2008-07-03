@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from bzrlib import urlutils
 from bzrlib.errors import BzrError
 
 
@@ -88,6 +89,19 @@ def parse_mergeinfo_property(text):
                 ret[path].append((int(range), int(range)))
 
     return ret
+
+
+def generate_mergeinfo_property(merges):
+    def formatrange((start, end)):
+        if start == end:
+            return "%d" % (start, )
+        else:
+            return "%d-%d" % (start, end)
+    text = ""
+    for (path, ranges) in merges.items():
+        assert path.startswith("/")
+        text += "%s:%s\n" % (path, ",".join(map(formatrange, ranges)))
+    return text
 
 
 PROP_EXECUTABLE = 'svn:executable'

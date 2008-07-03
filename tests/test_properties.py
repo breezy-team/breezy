@@ -75,12 +75,12 @@ third-party/sounds             http://sounds.red-bean.com/repos
 
     def test_parse_invalid_missing_url(self):
         """No URL specified."""
-        self.assertRaises(InvalidExternalsDescription, 
+        self.assertRaises(properties.InvalidExternalsDescription, 
             lambda: properties.parse_externals_description("http://example.com/", "bla"))
             
     def test_parse_invalid_too_much_data(self):
         """No URL specified."""
-        self.assertRaises(InvalidExternalsDescription, 
+        self.assertRaises(properties.InvalidExternalsDescription, 
             lambda: properties.parse_externals_description(None, "bla -R40 http://bla/"))
  
 
@@ -94,3 +94,15 @@ class MergeInfoPropertyParserTests(TestCase):
     def test_empty(self):
         self.assertEquals({}, properties.parse_mergeinfo_property(""))
        
+
+class MergeInfoPropertyCreatorTests(TestCase):
+    def test_simple_range(self):
+        self.assertEquals("/trunk:1-2\n", properties.generate_mergeinfo_property({"/trunk": [(1,2)]}))
+
+    def test_simple_individual(self):
+        self.assertEquals("/trunk:1\n", properties.generate_mergeinfo_property({"/trunk": [(1,1)]}))
+
+    def test_empty(self):
+        self.assertEquals("", properties.generate_mergeinfo_property({}))
+
+
