@@ -19,7 +19,7 @@ from bzrlib import ui, urlutils
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
-                           NotBranchError, UnstackableBranchFormat)
+                           NoSuchTag, NotBranchError, UnstackableBranchFormat)
 from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
@@ -52,8 +52,9 @@ class FakeControlFiles(object):
 
 
 class SubversionTags:
-    def __init__(self, repository, project=""):
+    def __init__(self, repository, layout=None, project=""):
         self.repository = repository
+        self.layout = layout or repository.get_layout()
         self.project = project
 
     def set_tag(self, tag_name, tag_target):
@@ -65,7 +66,8 @@ class SubversionTags:
         raise NotImplementedError
 
     def get_tag_dict(self):
-        return self.repository.find_tags(project=self.project)
+        return self.repository.find_tags(project=self.project, 
+                                         layout=self.layout)
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys
@@ -80,7 +82,23 @@ class SubversionTags:
         return rev
 
     def delete_tag(self, tag_name):
-        raise NotImplementedError
+        path = self.layout.get_tag_path(tag_name, self.project)
+        parent = urlutils.dirname(path)
+        conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
+        if self.repository.transport.check_path(path, self.repository.get_latest_revnum()) != core.NODE_DIR:
+            raise NoSuchTag(tag_name)
+        try:
+            ci = conn.get_commit_editor({"svn:log": "Remove tag %s" % tag_name})
+            try:
+                root = ci.open_root()
+                root.delete_entry(urlutils.basename(path))
+                root.close()
+            except:
+                ci.abort()
+                raise
+            ci.close()
+        finally:
+            self.repository.transport.add_connection(conn)
 
     def merge_to(self, to_tags, overwrite=False):
         raise NotImplementedError

@@ -19,7 +19,7 @@
 from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError
+from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError, NoSuchTag
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -57,6 +57,27 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         b = Branch.open(repos_url + "/trunk")
         self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
+
+    def test_tags_delete(self):
+        repos_url = self.make_repository("a")
+       
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/foo")
+        dc.add_dir("trunk")
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
+        b.tags.delete_tag("foo")
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals([], b.tags.get_tag_dict().keys())
+
+    def test_tags_delete_nonexistent(self):
+        repos_url = self.make_repository("a")
+       
+        b = Branch.open(repos_url + "/trunk")
+        self.assertRaises(NoSuchTag, b.tags.delete_tag, "foo")
 
     def test_get_branch_path_old(self):
         repos_url = self.make_repository("a")

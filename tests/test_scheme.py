@@ -446,6 +446,15 @@ class TrunkScheme(TestCase):
     def test_is_branch_parent_other(self):
         self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))
 
+    def test_get_tag_path_zero(self):
+        self.assertEquals("tags/foo", 
+                          TrunkBranchingScheme().get_tag_path("foo"))
+
+    def test_get_tag_path_nonzero(self):
+        self.assertRaises(NotImplementedError,
+                          TrunkBranchingScheme(2).get_tag_path, "foo")
+
+
 
 class SingleBranchingSchemeTests(TestCase):
     def test_is_branch(self):

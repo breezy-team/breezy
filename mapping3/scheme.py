@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Branching scheme implementations."""
 
-from bzrlib import ui
+from bzrlib import ui, urlutils
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 
@@ -44,6 +44,13 @@ class BranchingScheme(object):
 
         :param path: Path to split up.
         :return: Tuple with branch-path and inside-branch path.
+        """
+        raise NotImplementedError
+
+    def get_tag_path(self, name):
+        """Find the path for a tag.
+
+        :param name: Tag name.
         """
         raise NotImplementedError
 
@@ -245,6 +252,12 @@ class TrunkBranchingScheme(ListBranchingScheme):
             ["*/" * level + "trunk",
              "*/" * level + "branches/*",
              "*/" * level + "tags/*"])
+
+    def get_tag_path(self, name):
+        # Only implemented for level 0
+        if self.level == 0:
+            return urlutils.join("tags", name)
+        raise NotImplementedError
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
