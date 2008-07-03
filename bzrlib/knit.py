@@ -861,7 +861,7 @@ class KnitVersionedFiles(VersionedFiles):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
         if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id, self.filename)
+            raise InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
