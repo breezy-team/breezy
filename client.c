@@ -89,17 +89,26 @@ static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
 			APR_ARRAY_IDX(commit_items, i, svn_client_commit_item2_t *);
 		PyObject *item, *copyfrom;
 
-		if (commit_item->copyfrom_url != NULL)
+		if (commit_item->copyfrom_url != NULL) {
 			copyfrom = Py_BuildValue("(si)", commit_item->copyfrom_url, 
 									 commit_item->copyfrom_rev);
-		else
+			if (copyfrom == NULL) {
+				PyObject_Del(ret);
+				return NULL;
+			}
+		} else {
 			copyfrom = Py_None;
+		}
 
 		item = Py_BuildValue("(szlNi)", 
 							 /* commit_item->path */ "foo",
 							 commit_item->url, commit_item->revision, 
 							 copyfrom,
 							 commit_item->state_flags);
+		if (item == NULL) {
+			PyObject_Del(ret);
+			return NULL;
+		}
 
 		if (PyList_SetItem(ret, i, item) != 0)
 			return NULL;

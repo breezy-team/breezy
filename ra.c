@@ -414,17 +414,26 @@ static svn_error_t *py_txdelta_window_handler(svn_txdelta_window_t *window, void
 		if (ops == NULL)
 			return NULL;
 		for (i = 0; i < window->num_ops; i++) {
-			PyList_SetItem(ops, i, Py_BuildValue("(iII)", window->ops[i].action_code, 
-						window->ops[i].offset, 
-						window->ops[i].length));
+			PyObject *pyval = Py_BuildValue("(iII)", 
+											window->ops[i].action_code, 
+											window->ops[i].offset, 
+											window->ops[i].length);
+			if (pyval == NULL)
+				return NULL;
+			PyList_SetItem(ops, i, pyval);
 		}
 		if (window->new_data != NULL && window->new_data->data != NULL) {
 			py_new_data = PyString_FromStringAndSize(window->new_data->data, window->new_data->len);
 		} else {
 			py_new_data = Py_None;
 		}
-		py_window = Py_BuildValue("((LIIiOO))", window->sview_offset, window->sview_len, window->tview_len, 
-									window->src_ops, ops, py_new_data);
+		py_window = Py_BuildValue("((LIIiOO))", 
+								  window->sview_offset, 
+								  window->sview_len, 
+								  window->tview_len, 
+								  window->src_ops, ops, py_new_data);
+		if (py_window == NULL)
+			return NULL;
 		Py_DECREF(ops);
 		Py_DECREF(py_new_data);
 	}
@@ -1484,8 +1493,14 @@ static PyObject *ra_get_locks(PyObject *self, PyObject *args)
 	ret = PyDict_New();
 	for (idx = apr_hash_first(temp_pool, hash_locks); idx != NULL;
 		 idx = apr_hash_next(idx)) {
+		PyObject *pyval;
 		apr_hash_this(idx, (const void **)&key, &klen, (void **)&lock);
-		PyDict_SetItemString(ret, key, pyify_lock(lock));
+		pyval = pyify_lock(lock);
+		if (pyval == NULL) {
+			apr_pool_destroy(temp_pool);
+			return NULL;
+		}
+		PyDict_SetItemString(ret, key, pyval);
 	}
 
 	apr_pool_destroy(temp_pool);
@@ -2159,6 +2174,9 @@ static svn_error_t *py_ssl_server_trust_prompt(svn_auth_cred_ssl_server_trust_t 
 						  cert_info->valid_from, cert_info->valid_until, 
 						  cert_info->issuer_dname, cert_info->ascii_cert);
 	}
+
+	if (py_cert == NULL)
+		return py_svn_error();
 
 	ret = PyObject_CallFunction(fn, "slOb", realm, failures, py_cert, may_save);
 	Py_DECREF(py_cert);
