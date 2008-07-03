@@ -728,6 +728,30 @@ class SvnRepository(Repository):
             pb.finished()
         return branches
 
+    @needs_read_lock
+    def find_tags(self, layout=None, revnum=None):
+        """Find branches underneath this repository.
+
+        """
+        if layout is None:
+            layout = self.get_layout()
+
+        if revnum is None:
+            revnum = self.get_latest_revnum()
+
+        tags = {}
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for project, bp, nick in layout.get_tags(revnum, pb=pb):
+                try:
+                    tags[nick] = self.generate_revision_id(revnum, bp, 
+                                                           self.get_mapping())
+                except NotBranchError: # Skip non-directories
+                    pass
+        finally:
+            pb.finished()
+        return tags
+
     def find_branchpaths(self, layout, from_revnum=0, to_revnum=None):
         """Find all branch paths that were changed in the specified revision 
         range.
