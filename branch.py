@@ -62,8 +62,10 @@ class SubversionTags:
         raise NotImplementedError
 
     def lookup_tag(self, tag_name):
-        # TODO: Check if tags/tag_name exists and return revid
-        raise NotImplementedError
+        try:
+            return self.get_tag_dict()[tag_name]
+        except KeyError:
+            raise NoSuchTag(tag_name)
 
     def get_tag_dict(self):
         return self.repository.find_tags(project=self.project, 

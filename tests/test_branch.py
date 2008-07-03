@@ -73,8 +73,34 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         b = Branch.open(repos_url + "/trunk")
         self.assertEquals([], b.tags.get_tag_dict().keys())
 
+    def test_tag_lookup(self):
+        repos_url = self.make_repository("a")
+       
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/foo")
+        dc.add_dir("trunk")
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals(b.repository.generate_revision_id(1, "tags/foo", b.repository.get_mapping()), b.tags.lookup_tag("foo"))
+
+    def test_tag_lookup_nonexistant(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+       
+        b = Branch.open(repos_url + "/trunk")
+        self.assertRaises(NoSuchTag, b.tags.lookup_tag, "foo")
+
     def test_tags_delete_nonexistent(self):
         repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.close()
        
         b = Branch.open(repos_url + "/trunk")
         self.assertRaises(NoSuchTag, b.tags.delete_tag, "foo")
