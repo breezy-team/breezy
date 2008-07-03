@@ -21,6 +21,7 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs
 
@@ -28,7 +29,7 @@ all: extensions
 
 extensions:
 	@echo "building extension modules."
-	$(PYTHON) setup.py build_ext -i
+	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
 check: docs extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
@@ -170,7 +171,7 @@ clean-docs:
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
-	$(PYTHON) setup.py build_ext -i -f
+	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
