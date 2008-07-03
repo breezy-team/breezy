@@ -857,15 +857,14 @@ class BzrDir(object):
         relpath is the portion of the path that is contained by the innermost
         BzrDir.
 
-        If no tree, branch or repository is found, a NotVersionedError is
-        raised.
+        If no tree, branch or repository is found, a NotBranchError is raised.
         """
         bzrdir, relpath = klass.open_containing(location)
         try:
             tree, branch = bzrdir._get_tree_branch()
         except errors.NotBranchError:
             try:
-                repo = klass.open_containing(location)[0].find_repository()
+                repo = bzrdir.find_repository()
                 return None, None, repo, relpath
             except (errors.NoRepositoryPresent):
                 raise errors.NotBranchError(location)
