@@ -82,7 +82,7 @@ class SchemeDerivedLayout(RepositoryLayout):
             type = "branch"
         return (type, "", bp, rp)
 
-    def get_branches(self, revnum, project="", pb=None):
+    def _get_root_paths(self, revnum, verify_fn, project="", pb=None):
         def check_path(path):
             return self.repository.transport.check_path(path, revnum) == NODE_DIR
         def find_children(path):
@@ -100,7 +100,14 @@ class SchemeDerivedLayout(RepositoryLayout):
                 pb.update("finding branches", idx, len(self.scheme.branch_list))
             for bp in expand_branch_pattern([], pattern.split("/"), check_path,
                     find_children):
-                yield "", bp, bp.split("/")[-1]
+                if verify_fn(bp):
+                    yield "", bp, bp.split("/")[-1]
+
+    def get_branches(self, revnum, project="", pb=None):
+        return self._get_root_paths(revnum, self.scheme.is_branch, project, pb)
+
+    def get_tags(self, revnum, project="", pb=None):
+        return self._get_root_paths(revnum, self.scheme.is_tag, project, pb)
 
     def is_branch_parent(self, path):
         # Na, na, na...
