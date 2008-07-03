@@ -10,6 +10,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr check`` can now be told which elements at a location it should
+      check.
+      (Daniel Watkins)
+
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
