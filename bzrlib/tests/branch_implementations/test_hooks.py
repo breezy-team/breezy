@@ -81,6 +81,7 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
 
 
 class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
+    """Tests for pre_change_branch_tip hook."""
 
     def setUp(self):
         self.hook_calls = []
@@ -92,12 +93,36 @@ class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
         The call is logged, as is some state of the branch.
         """
         self.hook_calls.append((params, params.branch.is_locked()))
+        # The branch hasn't changed -- yet.
         self.assertEquals(params.branch.last_revision_info(),
                           (params.old_revno, params.old_revid))
 
-    # test that this happens *before*
-    # test that a change can be rejected by a hook.
+    def make_branch_with_revision_ids(self, *revision_ids):
+        """Makes a branch with the given commits."""
+        tree = self.make_branch_and_memory_tree('source')
+        tree.lock_write()
+        tree.add('')
+        for revision_id in revision_ids:
+            tree.commit('Message of ' + revision_id, rev_id=revision_id)
+        tree.unlock()
+        branch = tree.branch
+        return branch
 
+    def test_reject_by_hook(self):
+        """If a hook raises an exception, the change take effect."""
+        branch = self.make_branch_with_revision_ids(
+            'one-\xc2\xb5', 'two-\xc2\xb5')
+        class PearShapedError(Exception):
+            pass
+        def hook_that_raises(params):
+            raise PearShapedError()
+        Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', hook_that_raises, None)
+        self.assertRaises(
+            PearShapedError, branch.set_last_revision_info, 0, NULL_REVISION)
+        # The revision info is unchanged.
+        self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
+        
     # Tests from TestPostChangeBranchTip:
     def test_pre_change_branch_tip_empty_history(self):
         branch = self.make_branch('source')
@@ -114,25 +139,20 @@ class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
         self.assertEqual(self.hook_calls[0][0].new_revno, 0)
 
     def test_pre_change_branch_tip_nonempty_history(self):
-        tree = self.make_branch_and_memory_tree('source')
-        tree.lock_write()
-        tree.add('')
-        tree.commit('another commit', rev_id='f\xc2\xb5')
-        tree.commit('empty commit', rev_id='foo')
-        tree.unlock()
-        branch = tree.branch
+        branch = self.make_branch_with_revision_ids(
+            'one-\xc2\xb5', 'two-\xc2\xb5')
         Branch.hooks.install_named_hook(
             'pre_change_branch_tip',
             self.capture_pre_change_branch_tip_hook,
             None)
         # some branches require that their history be set to a revision in the
         # repository
-        branch.set_last_revision_info(1, 'f\xc2\xb5')
+        branch.set_last_revision_info(1, 'one-\xc2\xb5')
         self.assertEqual(len(self.hook_calls), 1)
         self.assertEqual(self.hook_calls[0][0].branch, branch)
-        self.assertEqual(self.hook_calls[0][0].old_revid, 'foo')
+        self.assertEqual(self.hook_calls[0][0].old_revid, 'two-\xc2\xb5')
         self.assertEqual(self.hook_calls[0][0].old_revno, 2)
-        self.assertEqual(self.hook_calls[0][0].new_revid, 'f\xc2\xb5')
+        self.assertEqual(self.hook_calls[0][0].new_revid, 'one-\xc2\xb5')
         self.assertEqual(self.hook_calls[0][0].new_revno, 1)
 
     def test_pre_change_branch_tip_branch_is_locked(self):
@@ -163,6 +183,7 @@ class TestPreChangeBranchTip(TestCaseWithMemoryTransport):
 
 
 class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
+    """Tests for post_change_branch_tip hook."""
 
     def setUp(self):
         self.hook_calls = []
