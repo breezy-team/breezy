@@ -315,12 +315,14 @@ class cmd_bisect(Command):
             raise BzrCommandError("No bisect info found")
 
     def _set_state(self, revspec, state):
-        "Set the state of the given revspec and bisecting."
+        """Set the state of the given revspec and bisecting.
+
+        Returns boolean indicating if bisection is done."""
         bisect_log = BisectLog()
         if bisect_log.is_done():
             sys.stdout.write("No further bisection is possible.\n")
             bisect_log._current.show_rev_log(sys.stdout)
-            return
+            return True
 
         if revspec:
             bisect_log.set_status_from_revspec(revspec, state)
@@ -328,6 +330,7 @@ class cmd_bisect(Command):
             bisect_log.set_current(state)
         bisect_log.bisect()
         bisect_log.save()
+        return False
 
     def run(self, subcommand, args_list, revision=None, output=None):
         "Handle the bisect command."
@@ -436,11 +439,13 @@ class cmd_bisect(Command):
                 process.wait()
                 retcode = process.returncode
                 if retcode == 0:
-                    self._set_state(None, 'yes')
+                    done = self._set_state(None, 'yes')
                 elif retcode == 125:
                     break
                 else:
-                    self._set_state(None, 'no')
+                    done = self._set_state(None, 'no')
+                if done:
+                    break
             except RuntimeError:
                 break
 
