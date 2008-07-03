@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import bisect
 from bzrlib import urlutils
 from bzrlib.errors import BzrError
 
@@ -102,6 +103,49 @@ def generate_mergeinfo_property(merges):
         assert path.startswith("/")
         text += "%s:%s\n" % (path, ",".join(map(formatrange, ranges)))
     return text
+
+
+def range_includes_revnum(ranges, revnum):
+    i = bisect.bisect(ranges, (revnum, revnum))
+    if i == 0:
+        return False
+    (start, end) = ranges[i-1]
+    return (start <= revnum <= end)
+
+
+def range_add_revnum(ranges, revnum):
+    item = (revnum, revnum)
+    if len(ranges) == 0:
+        ranges.append(item)
+        return ranges
+    i = bisect.bisect(ranges, item)
+    if i > 0:
+        (start, end) = ranges[i-1]
+        if (start <= revnum <= end):
+            # already there
+            return ranges
+        if end == revnum-1:
+            # Extend previous range
+            ranges[i-1] = (start, end+1)
+            return ranges
+    if i < len(ranges):
+        (start, end) = ranges[i]
+        if start-1 == revnum:
+            # Extend next range
+            ranges[i] = (start-1, end)
+            return ranges
+    ranges.insert(i, item)
+    return ranges
+
+
+def mergeinfo_includes_revision(merges, path, revnum):
+    assert path.startswith("/")
+    try:
+        ranges = merges[path]
+    except KeyError:
+        return False
+
+    return range_includes_revnum(ranges, revnum)
 
 
 PROP_EXECUTABLE = 'svn:executable'

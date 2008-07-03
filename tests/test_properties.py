@@ -106,3 +106,44 @@ class MergeInfoPropertyCreatorTests(TestCase):
         self.assertEquals("", properties.generate_mergeinfo_property({}))
 
 
+class RevnumRangeTests(TestCase):
+    def test_add_revnum_empty(self):
+        self.assertEquals([(1,1)], properties.range_add_revnum([], 1))
+
+    def test_add_revnum_before(self):
+        self.assertEquals([(2,2), (8,8)], properties.range_add_revnum([(2,2)], 8))
+
+    def test_add_revnum_included(self):
+        self.assertEquals([(1,3)], properties.range_add_revnum([(1,3)], 2))
+        
+    def test_add_revnum_after(self):
+        self.assertEquals([(1,3),(5,5)], properties.range_add_revnum([(1,3)], 5))
+
+    def test_add_revnum_extend_before(self):
+        self.assertEquals([(1,3)], properties.range_add_revnum([(2,3)], 1))
+
+    def test_add_revnum_extend_after(self):
+        self.assertEquals([(1,3)], properties.range_add_revnum([(1,2)], 3))
+
+    def test_revnum_includes_empty(self):
+        self.assertFalse(properties.range_includes_revnum([], 2))
+
+    def test_revnum_includes_oor(self):
+        self.assertFalse(properties.range_includes_revnum([(1,3), (4,5)], 10))
+
+    def test_revnum_includes_in(self):
+        self.assertTrue(properties.range_includes_revnum([(1,3), (4,5)], 2))
+
+
+class MergeInfoIncludeTests(TestCase):
+    def test_includes_individual(self):
+        self.assertTrue(properties.mergeinfo_includes_revision({"/trunk": [(1,1)]}, "/trunk", 1))
+
+    def test_includes_range(self):
+        self.assertTrue(properties.mergeinfo_includes_revision({"/trunk": [(1,5)]}, "/trunk", 3))
+
+    def test_includes_invalid_path(self):
+        self.assertFalse(properties.mergeinfo_includes_revision({"/somepath": [(1,5)]}, "/trunk", 3))
+
+    def test_includes_invalid_revnum(self):
+        self.assertFalse(properties.mergeinfo_includes_revision({"/trunk": [(1,5)]}, "/trunk", 30))
