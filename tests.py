@@ -221,6 +221,11 @@ class BisectFuncTests(BisectTestCase):
         self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
 
+        # Run again.  Since we're done, this should do nothing.
+
+        self.run_bzr(['bisect', 'no'])
+        self.assertRevno(3)
+
     def testWorkflowSubtree(self):
         """Run through a usage scenario where the offending change
         is in a subtree."""
@@ -252,6 +257,11 @@ class BisectFuncTests(BisectTestCase):
         self.run_bzr(['bisect', 'yes'])
         self.assertRevno(1.1)
 
+        # Run again.  Since we're done, this should do nothing.
+
+        self.run_bzr(['bisect', 'yes'])
+        self.assertRevno(1.1)
+
     def testMove(self):
         "Test manually moving to a different revision during the bisection."
 
@@ -280,6 +290,20 @@ class BisectFuncTests(BisectTestCase):
 
         self.run_bzr(['bisect', 'reset'])
         self.assertRevno(5)
+
+        # Check that reset doesn't do anything unless there's a
+        # bisection in progress.
+
+        test_file = open("test_file", "w")
+        test_file.write("keep me")
+        test_file.close()
+
+        self.run_bzr(['bisect', 'reset'])
+
+        test_file = open("test_file")
+        content = test_file.read().strip()
+        test_file.close()
+        self.failUnless(content == "keep me")
 
     def testLog(self):
         "Test saving the current bisection state, and re-loading it."
