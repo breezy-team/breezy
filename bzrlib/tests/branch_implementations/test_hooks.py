@@ -241,7 +241,7 @@ class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
         def assertBranchIsLocked(params):
             self.assertTrue(params.branch.is_locked())
         Branch.hooks.install_named_hook(
-            'pre_change_branch_tip', assertBranchIsLocked, None)
+            'post_change_branch_tip', assertBranchIsLocked, None)
         branch.set_last_revision_info(0, NULL_REVISION)
 
     def test_change_branch_tip_calls_all_hooks_no_errors(self):
