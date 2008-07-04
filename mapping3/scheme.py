@@ -54,6 +54,13 @@ class BranchingScheme(object):
         """
         raise NotImplementedError
 
+    def get_branch_path(self, name):
+        """Find the path for a named branch.
+
+        :param name: Branch name.
+        """
+        raise NotImplementedError
+
     @staticmethod
     def find_scheme(name):
         """Find a branching scheme by name.
@@ -257,6 +264,15 @@ class TrunkBranchingScheme(ListBranchingScheme):
         # Only implemented for level 0
         if self.level == 0:
             return urlutils.join("tags", name)
+        raise NotImplementedError
+
+    def get_branch_path(self, name):
+        # Only implemented for level 0
+        if self.level == 0:
+            if name == "trunk":
+                return "trunk"
+            else:
+                return urlutils.join("branches", name)
         raise NotImplementedError
 
     def is_branch(self, path):
