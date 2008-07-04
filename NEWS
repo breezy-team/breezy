@@ -79,6 +79,10 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Several fixes for dealing with non-acii characters. (#128496)
 
+   * Re-use RA connections as much as possible. bzr-svn should in general now have 
+     no more than 2 TCP/IP connections to the same Subversion repository open
+	 at the same time. (#183824)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
