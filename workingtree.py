@@ -572,11 +572,15 @@ class SvnWorkingTree(WorkingTree):
         if self.base_revid is None or self.base_revid == NULL_REVISION:
             return self.branch.repository.revision_tree(self.base_revid)
 
+        if self.base_tree is None:
+            self.base_tree = SvnBasisTree(self)
+
         return self.base_tree
 
     def pull(self, source, overwrite=False, stop_revision=None, 
              delta_reporter=None, possible_transports=None):
         # FIXME: Use delta_reporter
+        # FIXME: Use source
         # FIXME: Use overwrite
         result = PullResult()
         result.source_branch = source
