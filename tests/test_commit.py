@@ -28,6 +28,7 @@ from bzrlib.workingtree import WorkingTree
 from copy import copy
 import os
 
+from bzrlib.plugins.svn import ra
 from bzrlib.plugins.svn.commit import set_svn_revprops, _revision_id_to_svk_feature
 from bzrlib.plugins.svn.errors import RevpropChangeFailed
 from bzrlib.plugins.svn.properties import time_to_cstring
@@ -200,7 +201,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
             self.client_get_prop("dc", 
                 "bzr:revision-id:v3-none", 2))
 
-    def test_commit_sets_merge_info(self):
+    def test_commit_sets_mergeinfo(self):
         repos_url = self.make_repository('d')
 
         dc = self.get_commit_editor(repos_url)
@@ -237,6 +238,13 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("/tags/foo:2-3\n",
             self.client_get_prop("%s/trunk" % repos_url, 
                 "svn:mergeinfo", 4))
+
+        try:
+            c = ra.RemoteAccess(repos_url)
+            mi = c.mergeinfo(["trunk"], 4)
+            self.assertEquals({"trunk": {"/tags/foo": [(1, 3, 1)]}}, mi)
+        except NotImplementedError:
+            pass # Svn 1.4
 
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
