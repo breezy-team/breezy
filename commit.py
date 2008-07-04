@@ -150,12 +150,12 @@ class SvnCommitBuilder(RootCommitBuilder):
         # Gather information about revision on top of which the commit is 
         # happening
         if parents == []:
-            self.base_revid = None
+            self.base_revid = NULL_REVISION
         else:
             self.base_revid = parents[0]
 
         self.base_revno = self.branch.revision_id_to_revno(self.base_revid)
-        if self.base_revid is None:
+        if self.base_revid == NULL_REVISION:
             self.base_revnum = -1
             self.base_path = None
             self.base_mapping = repository.get_mapping()
@@ -164,7 +164,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 repository.lookup_revision_id(self.base_revid)
 
         if old_inv is None:
-            if self.base_revid is None:
+            if self.base_revid == NULL_REVISION:
                 self.old_inv = Inventory(root_id=None)
             else:
                 self.old_inv = self.repository.get_inventory(self.base_revid)
@@ -179,7 +179,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.modified_files = {}
         self.modified_dirs = set()
-        if self.base_revid is None:
+        if self.base_revid == NULL_REVISION:
             base_branch_props = {}
         else:
             base_branch_props = lazy_dict({}, self.repository.branchprop_list.get_properties, self.base_path, self.base_revnum)
@@ -788,7 +788,7 @@ def push(target, source, revision_id, push_metadata=True):
     # revision on top of which to commit
     if push_metadata:
         if rev.parent_ids == []:
-            base_revid = None
+            base_revid = NULL_REVISION
         else:
             base_revid = rev.parent_ids[0]
     else:
