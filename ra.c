@@ -1459,12 +1459,12 @@ static PyObject *ra_lock(PyObject *self, PyObject *args)
 		rev = (svn_revnum_t *)apr_palloc(temp_pool, sizeof(svn_revnum_t));
 		*rev = PyLong_AsLong(v);
 		apr_hash_set(hash_path_revs, PyString_AsString(k), PyString_Size(k), 
-					 PyString_AsString(v));
+					 rev);
 	}
 	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_lock(ra->ra, hash_path_revs, comment, steal_lock,
 					 py_lock_func, lock_func, temp_pool));
 	apr_pool_destroy(temp_pool);
-	return NULL;
+	Py_RETURN_NONE;
 }
 
 static PyObject *ra_get_locks(PyObject *self, PyObject *args)
