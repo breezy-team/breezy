@@ -91,6 +91,11 @@ class TestCheck(ExternalBase):
             r"Checking branch at '.*'\.\n"
             r"checked branch.*\n$")
 
+    def test_check_missing_branch_in_shared_repo(self):
+        self.make_repository('shared', shared=True)
+        out, err = self.run_bzr('check --branch shared')
+        self.assertEqual(err, "No branch found at specified location.\n")
+
 
 class ChrootedCheckTests(ChrootedTestCase):
 
