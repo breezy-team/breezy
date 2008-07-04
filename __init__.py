@@ -367,10 +367,9 @@ commands.register_command(cmd_credits)
 def test_suite():
     from unittest import TestSuite
     from bzrlib.tests import TestLoader
-    import test_stats
     suite = TestSuite()
     loader = TestLoader()
-    testmod_names = ['test_stats', 'test_classify']
+    testmod_names = [ 'test_classify']
     suite.addTest(loader.loadTestsFromModuleNames(['%s.%s' % (__name__, i) for i in testmod_names]))
     return suite
 
