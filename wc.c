@@ -38,7 +38,7 @@ static svn_error_t *py_ra_report_set_path(void *baton, const char *path, long re
 	} else {
 		py_lock_token = PyString_FromString(lock_token);
 	}
-	ret = PyObject_CallFunction(self, "set_path", "slbO", path, revision, start_empty, py_lock_token);
+	ret = PyObject_CallMethod(self, "set_path", "slbO", path, revision, start_empty, py_lock_token);
 	if (ret == NULL)
 		return py_svn_error();
 	return NULL;
@@ -47,7 +47,7 @@ static svn_error_t *py_ra_report_set_path(void *baton, const char *path, long re
 static svn_error_t *py_ra_report_delete_path(void *baton, const char *path, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *ret;
-	ret = PyObject_CallFunction(self, "delete_path", "s", path);
+	ret = PyObject_CallMethod(self, "delete_path", "s", path);
 	if (ret == NULL)
 		return py_svn_error();
 	return NULL;
@@ -61,7 +61,7 @@ static svn_error_t *py_ra_report_link_path(void *report_baton, const char *path,
 	} else { 
 		py_lock_token = PyString_FromString(lock_token);
 	}
-	ret = PyObject_CallFunction(self, "link_path", "sslbO", path, url, revision, start_empty, py_lock_token);
+	ret = PyObject_CallMethod(self, "link_path", "sslbO", path, url, revision, start_empty, py_lock_token);
 	if (ret == NULL)
 		return py_svn_error();
 	return NULL;
@@ -70,7 +70,7 @@ static svn_error_t *py_ra_report_link_path(void *report_baton, const char *path,
 static svn_error_t *py_ra_report_finish(void *baton, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *ret;
-	ret = PyObject_CallFunction(self, "finish", NULL);
+	ret = PyObject_CallMethod(self, "finish", "");
 	if (ret == NULL)
 		return py_svn_error();
 	return NULL;
@@ -79,7 +79,7 @@ static svn_error_t *py_ra_report_finish(void *baton, apr_pool_t *pool)
 static svn_error_t *py_ra_report_abort(void *baton, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *ret;
-	ret = PyObject_CallFunction(self, "abort", NULL);
+	ret = PyObject_CallMethod(self, "abort", "");
 	if (ret == NULL)
 		return py_svn_error();
 	return NULL;
@@ -122,12 +122,13 @@ static svn_wc_entry_callbacks_t py_wc_entry_callbacks = {
 
 void py_wc_notify_func(void *baton, const svn_wc_notify_t *notify, apr_pool_t *pool)
 {
-	PyObject *func = baton;
+	PyObject *func = baton, *ret;
 	if (func == Py_None)
 		return;
 
 	if (notify->err != NULL) {
-		PyObject_CallFunction(func, "O", PyErr_NewSubversionException(notify->err));
+		ret = PyObject_CallFunction(func, "O", PyErr_NewSubversionException(notify->err));
+		Py_XDECREF(ret);
 		/* FIXME: Use return value */
 	}
 }
