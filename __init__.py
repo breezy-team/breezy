@@ -17,24 +17,6 @@ from bzrlib import (
 from bzrlib.plugins.stats.classify import classify_delta
 from itertools import izip
 """)
-from bzrlib import lazy_regex
-
-
-_fullname_re = lazy_regex.lazy_compile(r'(?P<fullname>.*?)\s*<')
-
-def extract_fullname(committer):
-    """Try to get the user's name from their committer info."""
-    m = _fullname_re.match(committer)
-    if m:
-        return m.group('fullname')
-    try:
-        email = config.extract_email_address(committer)
-    except errors.BzrError:
-        return committer
-    else:
-        # We found an email address, but not a fullname
-        # so there is no fullname
-        return ''
 
 
 def find_fullnames(lst):
@@ -42,7 +24,7 @@ def find_fullnames(lst):
 
     counts = {}
     for committer in lst:
-        fullname = extract_fullname(committer)
+        fullname = config.parse_username(committer)[0]
         counts.setdefault(fullname, 0)
         counts[fullname] += 1
     return sorted(((count, name) for name,count in counts.iteritems()), reverse=True)
@@ -67,7 +49,7 @@ def collapse_by_person(committers):
     counter_to_info = {}
     counter = 0
     for email, revs in committers.iteritems():
-        fullnames = find_fullnames(rev.committer for rev in revs)
+        fullnames = find_fullnames(rev.get_apparent_author() for rev in revs)
         match = None
         for count, fullname in fullnames:
             if fullname and fullname in name_to_counter:
@@ -104,10 +86,7 @@ def sort_by_committer(a_repo, revids):
         revisions = a_repo.get_revisions(revids)
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
-            try:
-                email = config.extract_email_address(rev.get_apparent_author())
-            except errors.BzrError:
-                email = rev.get_apparent_author()
+            email = config.parse_username(rev.get_apparent_author())[1]
             committers.setdefault(email, []).append(rev)
     finally:
         pb.finished()
