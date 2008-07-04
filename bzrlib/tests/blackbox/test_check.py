@@ -78,13 +78,21 @@ class TestCheck(ExternalBase):
                                    r"Checking branch at '.*'\.\n"
                                    r"checked branch.*\n$")
 
-
-class ChrootedCheckTests(ChrootedTestCase):
-
     def test_check_missing_tree(self):
         branch = self.make_branch('.')
         out, err = self.run_bzr('check --tree')
         self.assertEqual(err, "No working tree found at specified location.\n")
+
+    def test_check_missing_partial(self):
+        branch = self.make_branch('.')
+        out, err = self.run_bzr('check --tree --branch')
+        self.assertContainsRe(err,
+            r"^No working tree found at specified location\.\n"
+            r"Checking branch at '.*'\.\n"
+            r"checked branch.*\n$")
+
+
+class ChrootedCheckTests(ChrootedTestCase):
 
     def test_check_missing_branch(self):
         out, err = self.run_bzr(
@@ -94,14 +102,6 @@ class ChrootedCheckTests(ChrootedTestCase):
     def test_check_missing_repository(self):
         out, err = self.run_bzr('check --repo %s' % self.get_readonly_url(''))
         self.assertEqual(err, "No repository found at specified location.\n")
-
-    def test_check_missing_partial(self):
-        branch = self.make_branch('.')
-        out, err = self.run_bzr('check --tree --branch')
-        self.assertContainsRe(err,
-            r"^No working tree found at specified location\.\n"
-            r"Checking branch at '.*'\.\n"
-            r"checked branch.*\n$")
 
     def test_check_missing_everything(self):
         out, err = self.run_bzr('check %s' % self.get_readonly_url(''))
