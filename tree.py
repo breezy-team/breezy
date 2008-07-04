@@ -27,7 +27,7 @@ import md5
 from cStringIO import StringIO
 import urllib
 
-from bzrlib.plugins.svn import errors, properties, core, wc
+from bzrlib.plugins.svn import core, errors, properties, wc
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
 
 
