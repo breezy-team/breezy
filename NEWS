@@ -10,6 +10,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * New ``pre_change_branch_tip`` hook that is called before the
+      branch tip is moved, while the branch is write-locked.  See the User
+      Reference for signature details.  (Andrew Bennetts)
+
     * Rule-based preferences can now be defined for selected files in
       selected branches, allowing commands and plugins to provide
       custom behaviour for files matching defined patterns.
