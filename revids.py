@@ -129,6 +129,7 @@ class CachingRevidMap(object):
         revid = self.actual.get_revision_id(revnum, path, mapping, changed_fileprops, revprops)
 
         self.cache.insert_revid(revid, path, revnum, revnum, str(mapping.scheme))
+        self.cache.commit_conditionally()
 
         return revid
 
@@ -168,10 +169,13 @@ class CachingRevidMap(object):
                 # check again.
                 raise e
             found = False
+            revid_seen = set()
             for entry_revid, branch, revno, mapping in self.actual.discover_revids(layout, self.cache.last_revnum_checked(str(layout)), last_revnum):
                 if entry_revid == revid:
                     found = True
-                self.cache.insert_revid(entry_revid, branch, 0, revno, str(mapping.scheme))
+                if entry_revid not in revid_seen:
+                    self.cache.insert_revid(entry_revid, branch, 0, revno, str(mapping.scheme))
+                    revid_seen.add(entry_revid)
                 
             # We've added all the revision ids for this layout in the repository,
             # so no need to check again unless new revisions got added
@@ -200,7 +204,7 @@ class RevisionIdMapCache(CacheTable):
         create unique index if not exists scheme on revids_seen (scheme);
         """)
         # Revisions ids are quite expensive
-        self._commit_interval = 5
+        self._commit_interval = 100
 
     def set_last_revnum_checked(self, layout, revnum):
         """Remember the latest revision number that has been checked
@@ -284,4 +288,3 @@ class RevisionIdMapCache(CacheTable):
             self.cachedb.execute(
                 "insert into revmap (revid,path,min_revnum,max_revnum,scheme) VALUES (?,?,?,?,?)",
                 (revid, branch, min_revnum, max_revnum, scheme))
-        self.commit_conditionally()
