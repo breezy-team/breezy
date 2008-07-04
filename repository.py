@@ -730,15 +730,20 @@ class SvnRepository(Repository):
         if revnum is None:
             revnum = self.get_latest_revnum()
 
+        mapping = self.get_mapping()
+
         tags = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for project, bp, nick in layout.get_tags(revnum, project=project, pb=pb):
-                try:
-                    tags[nick] = self.generate_revision_id(revnum, bp, 
-                                                           self.get_mapping())
-                except NotBranchError: # Skip non-directories
-                    pass
+                it = self.iter_changes(bp, revnum, mapping, pb=pb, limit=2)
+                rev = revnum
+                paths = it.next()[1]
+                del paths[bp]
+                if not changes.changes_path(paths, bp, False):
+                    (bp, _, rev, _) = it.next()
+                
+                tags[nick] = self.generate_revision_id(rev, bp, mapping)
         finally:
             pb.finished()
         return tags
