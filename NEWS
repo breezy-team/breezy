@@ -77,6 +77,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Avoid assumption that a revision can only occur in one branch. (#208566)
 
+   * Several fixes for dealing with non-acii characters. (#128496)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
