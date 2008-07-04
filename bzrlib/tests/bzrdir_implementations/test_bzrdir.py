@@ -36,7 +36,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check
+from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -1484,7 +1484,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
+            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
+                         False)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')

@@ -37,6 +37,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``check`` handles the split-up .bzr layout correctly, so no longer
+      requires a branch to be present.
+      (Daniel Watkins, #64783)
+
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be
       loaded. 
       (Martin Pool, #205230)
@@ -96,6 +100,10 @@ IN DEVELOPMENT
       parameter.  If you have a subclass of ``Branch`` that overrides
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
+    * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.
+      (Daniel Watkins)
+
     * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
       These methods are bad APIs because they write directly to sys.stdout.
       bzrlib does not use them internally, and there are no direct tests
@@ -105,6 +113,11 @@ IN DEVELOPMENT
 
     * ``cat`` command no longer uses ``Tree.print_file()`` internally.
       (Alexander Belchenko)
+
+    * New class method ``BzrDir.open_containing_tree_branch_or_repository``
+      which eases the discovery of the tree, the branch and the repository
+      containing a given location.
+      (Daniel Watkins)
 
     * New ``versionedfile.KeyMapper`` interface to abstract out the access to
       underlying .knit/.kndx etc files in repositories with partitioned
