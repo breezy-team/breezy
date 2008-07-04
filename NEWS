@@ -83,6 +83,9 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * ``-Dmemory`` will cause /proc/PID/status to be catted before bzr
+     exits, allowing low-key analysis of peak memory use. (Robert Collins)
+
    * ``TestCaseWithTransport.make_branch_and_tree`` tries harder to return
      a tree with a ``branch`` attribute of the right format.  This was
      preventing some ``RemoteBranch`` tests from actually running with
