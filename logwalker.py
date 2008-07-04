@@ -364,6 +364,23 @@ class CachingLogWalker(CacheTable):
 
         return self.cache.get_revision_paths(revnum)
 
+    def get_change(self, path, revnum):
+        """Return action,copyfrom_path,copyfrom_revnum tuple for given
+        path, or None if no modification occurred in given revision.
+
+        :param path:  Path to check
+        :param revnum:  Revision to check
+        """
+        assert revnum >= 0
+        self.fetch_revisions(path, revnum)
+        
+        self.mutter("get previous %r:%r", path, revnum)
+        if revnum == 0:
+            if path == "":
+                return ('A', None, -1)
+            return None
+        return self.cache.get_change(path, revnum)
+
     def revprop_list(self, revnum):
         self.mutter("revprop list: %r", revnum)
 
