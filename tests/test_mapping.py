@@ -156,7 +156,7 @@ class MappingTestAdapter(object):
         except NotImplementedError:
             raise TestNotApplicable
         targetrev = Revision(None)
-        self.mapping.import_revision(revprops, fileprops, targetrev)
+        self.mapping.import_revision(revprops, fileprops, "someuuid", "somebp", 4, targetrev)
         self.assertEquals("My Commit message", targetrev.message)
 
     def test_revision(self):
@@ -166,7 +166,7 @@ class MappingTestAdapter(object):
                                      {"arevprop": "val" }, "arevid", 4, ["merge1"], dict())
         targetrev = Revision(None)
         revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
-        self.mapping.import_revision(revprops, fileprops, targetrev)
+        self.mapping.import_revision(revprops, fileprops, "someuuid", "somebp", 4, targetrev)
         self.assertEquals(targetrev.committer, "somebody")
         self.assertEquals(targetrev.properties, {"arevprop": "val"})
         self.assertEquals(targetrev.timestamp, 432432432.0)

@@ -15,7 +15,7 @@
 
 """Maps between Subversion and Bazaar semantics."""
 
-from bzrlib import osutils, registry
+from bzrlib import log, osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
@@ -324,13 +324,14 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.generate_file_id)
 
-    def import_revision(self, revprops, fileprops, rev):
+    def import_revision(self, revprops, fileprops, uuid, branch, revnum, rev):
         """Update a Revision object from Subversion revision and branch 
         properties.
 
         :param revprops: Dictionary with Subversion revision properties.
         :param fileprops: Dictionary with Subversion file properties on the 
                           branch root.
+        :param revnum: Revision number in Subversion.
         :param rev: Revision object to import data into.
         """
         raise NotImplementedError(self.import_revision)
@@ -449,7 +450,7 @@ class BzrSvnMappingFileProps(object):
         """Whether this mapping can be used with custom file properties."""
         return True
 
-    def import_revision(self, svn_revprops, fileprops, rev):
+    def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         parse_svn_revprops(svn_revprops, rev)
         metadata = fileprops.get(SVN_PROP_BZR_REVISION_INFO)
         if metadata is not None:
@@ -535,7 +536,7 @@ class BzrSvnMappingRevProps(object):
         """Whether this mapping can be used with custom revision properties."""
         return True
 
-    def import_revision(self, svn_revprops, fileprops, rev):
+    def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         parse_svn_revprops(svn_revprops, rev)
         parse_bzr_svn_revprops(svn_revprops, rev)
 
@@ -605,6 +606,9 @@ class BzrSvnMappingv4(BzrSvnMappingRevProps):
     @staticmethod
     def supports_roundtripping():
         return True
+
+    def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
+        super(BzrSvnMappingv4, self).import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)
 
     @classmethod
     def parse_revision_id(cls, revid):
@@ -693,3 +697,5 @@ def parse_revision_id(revid):
 
 def get_default_mapping():
     return mapping_registry.get_default()
+
+
