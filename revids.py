@@ -248,10 +248,10 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert isinstance(scheme, str)
-        revid = self.cachedb.execute(
+        row = self.cachedb.execute(
                 "select revid from revmap where max_revnum = ? and min_revnum=? and path=? and scheme=?", (revnum, revnum, path, scheme)).fetchone()
-        if revid is not None:
-            ret = str(revid[0])
+        if row is not None:
+            ret = str(row[0])
         else:
             ret = None
         self.mutter("lookup branch,revnum %r:%r -> %r", path, revnum, ret)

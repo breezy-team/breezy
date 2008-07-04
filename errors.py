@@ -25,10 +25,6 @@ import urllib
 from bzrlib.plugins.svn import core
 
 
-class InvalidExternalsDescription(BzrError):
-    _fmt = """Unable to parse externals description."""
-
-
 ERR_UNKNOWN_HOSTNAME = 670002
 ERR_UNKNOWN_HOSTNAME = 670002
 ERR_RA_SVN_CONNECTION_CLOSED = 210002

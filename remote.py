@@ -116,26 +116,30 @@ class SvnRemoteAccess(BzrDir):
         :return: Branch object
         """
         from bzrlib.plugins.svn.commit import push_new
-        if stop_revision is None:
-            stop_revision = source.last_revision()
-        target_branch_path = self.branch_path.strip("/")
-        repos = self.find_repository()
-        repos.lock_write()
+        source.lock_read()
         try:
-            full_branch_url = urlutils.join(repos.transport.base, 
-                                            target_branch_path)
-            if repos.transport.check_path(target_branch_path,
-                repos.get_latest_revnum()) != core.NODE_NONE:
-                raise AlreadyBranchError(full_branch_url)
-            push_new(repos, target_branch_path, source, stop_revision)
+            if stop_revision is None:
+                stop_revision = source.last_revision()
+            target_branch_path = self.branch_path.strip("/")
+            repos = self.find_repository()
+            repos.lock_write()
+            try:
+                full_branch_url = urlutils.join(repos.transport.base, 
+                                                target_branch_path)
+                if repos.transport.check_path(target_branch_path,
+                    repos.get_latest_revnum()) != core.NODE_NONE:
+                    raise AlreadyBranchError(full_branch_url)
+                push_new(repos, target_branch_path, source, stop_revision)
+            finally:
+                repos.unlock()
+            branch = self.open_branch()
+            branch.lock_write()
+            try:
+                branch.pull(source, stop_revision=stop_revision)
+            finally:
+                branch.unlock()
         finally:
-            repos.unlock()
-        branch = self.open_branch()
-        branch.lock_write()
-        try:
-            branch.pull(source, stop_revision=stop_revision)
-        finally:
-            branch.unlock()
+            source.unlock()
         return branch
 
     def create_branch(self):

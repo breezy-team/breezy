@@ -401,6 +401,21 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals(urlutils.join(repos.base, "branches/branchab"), 
                           branches[0].base)
 
+    def test_find_tags(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({
+            'dc/tags/brancha': None,
+            'dc/tags/branchab': None,
+            'dc/tags/brancha/data': "data", 
+            "dc/tags/branchab/data":"data"})
+        self.client_add("dc/tags")
+        self.client_commit("dc", "My Message")
+        repos = Repository.open(repos_url)
+        set_branching_scheme(repos, TrunkBranchingScheme())
+        tags = repos.find_tags()
+        self.assertEquals({"brancha": repos.generate_revision_id(1, "tags/brancha", repos.get_mapping()),
+                           "branchab": repos.generate_revision_id(1, "tags/branchab", repos.get_mapping())}, tags)
+
     def test_find_branchpaths_moved(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({

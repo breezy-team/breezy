@@ -17,9 +17,9 @@ from bzrlib import osutils
 from bzrlib.graph import DictParentsProvider
 from bzrlib.tests import TestCase
 
-from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
-                                               FakeInventoryTexts, FakeSignatureTexts,
-                                               FakeVersionedFiles)
+from bzrlib.plugins.svn.versionedfiles import (SvnTexts, VirtualRevisionTexts, 
+                                               VirtualInventoryTexts, VirtualSignatureTexts,
+                                               VirtualVersionedFiles)
 
 
 class BasicSvnTextsTests:
@@ -44,7 +44,7 @@ class SvnTextsTests(TestCase,BasicSvnTextsTests):
         self.texts = SvnTexts(self)
 
 
-class FakeTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualTextsTests(TestCase,BasicSvnTextsTests):
     def get_parent_map(self, keys):
         return DictParentsProvider(self.parent_map).get_parent_map(keys)
 
@@ -70,18 +70,18 @@ class FakeTextsTests(TestCase,BasicSvnTextsTests):
         self.assertEquals("FOO", record.get_bytes_as("fulltext"))
 
     def setUp(self):
-        self.texts = FakeVersionedFiles(self.get_parent_map, self.get_lines)
+        self.texts = VirtualVersionedFiles(self.get_parent_map, self.get_lines)
 
 
-class FakeRevisionTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualRevisionTextsTests(TestCase,BasicSvnTextsTests):
     def setUp(self):
-        self.texts = FakeRevisionTexts(self)
+        self.texts = VirtualRevisionTexts(self)
 
     def get_parent_map(self, keys):
         raise NotImplementedError
 
 
-class FakeInventoryTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualInventoryTextsTests(TestCase,BasicSvnTextsTests):
     def get_inventory_xml(self, key):
         return "FOO"
 
@@ -89,15 +89,15 @@ class FakeInventoryTextsTests(TestCase,BasicSvnTextsTests):
         return {("A",): (("B",))}
 
     def setUp(self):
-        self.texts = FakeInventoryTexts(self)
+        self.texts = VirtualInventoryTexts(self)
 
     def test_get_sha1s(self):
         self.assertEquals({("A",): osutils.sha_strings(["FOO"])}, self.texts.get_sha1s([("A",)]))
 
 
-class FakeSignatureTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualSignatureTextsTests(TestCase,BasicSvnTextsTests):
     def setUp(self):
-        self.texts = FakeSignatureTexts(self)
+        self.texts = VirtualSignatureTexts(self)
 
     def get_parent_map(self, keys):
         raise NotImplementedError

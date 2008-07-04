@@ -73,9 +73,9 @@ class SvnTexts(VersionedFiles):
     # TODO: annotate, get_sha1s, iter_lines_added_or_present_in_keys, keys
 
 
-class FakeVersionedFiles(VersionedFiles):
+class VirtualVersionedFiles(VersionedFiles):
     def mutter(self, text, *args):
-        if "fakevf" in debug.debug_flags:
+        if "virtualvf" in debug.debug_flags:
             mutter(text, *args)
 
     def __init__(self, get_parent_map, get_lines):
@@ -115,11 +115,11 @@ class FakeVersionedFiles(VersionedFiles):
                 yield AbsentContentFactory((k,))
 
 
-class FakeRevisionTexts(FakeVersionedFiles):
-    """Fake revisions backend."""
+class VirtualRevisionTexts(VirtualVersionedFiles):
+    """Virtual revisions backend."""
     def __init__(self, repository):
         self.repository = repository
-        super(FakeRevisionTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
+        super(VirtualRevisionTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
     def get_lines(self, key):
         self.mutter("get revision text(%r)", key)
@@ -128,11 +128,11 @@ class FakeRevisionTexts(FakeVersionedFiles):
     # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
 
-class FakeInventoryTexts(FakeVersionedFiles):
-    """Fake inventories backend."""
+class VirtualInventoryTexts(VirtualVersionedFiles):
+    """Virtual inventories backend."""
     def __init__(self, repository):
         self.repository = repository
-        super(FakeInventoryTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
+        super(VirtualInventoryTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
     def get_lines(self, key):
         return osutils.split_lines(self.repository.get_inventory_xml(key))
@@ -140,11 +140,11 @@ class FakeInventoryTexts(FakeVersionedFiles):
     # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
 
-class FakeSignatureTexts(FakeVersionedFiles):
-    """Fake signatures backend."""
+class VirtualSignatureTexts(VirtualVersionedFiles):
+    """Virtual signatures backend."""
     def __init__(self, repository):
         self.repository = repository
-        super(FakeSignatureTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
+        super(VirtualSignatureTexts, self).__init__(self.repository.get_parent_map, self.get_lines)
 
     def get_lines(self, key):
         return osutils.split_lines(self.repository.get_signature_text(key))

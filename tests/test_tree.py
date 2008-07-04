@@ -24,8 +24,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import errors
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
-from bzrlib.plugins.svn.tree import (SvnBasisTree, parse_externals_description, 
-                  inventory_add_external)
+from bzrlib.plugins.svn.tree import SvnBasisTree, inventory_add_external
 
 import os
 import sys
@@ -129,61 +128,6 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
         self.assertFalse(wt.inventory[wt.inventory.path2id("file")].executable)
 
-
-class TestExternalsParser(TestCase):
-    def test_parse_root_relative_externals(self):
-        self.assertRaises(NotImplementedError, parse_externals_description, 
-                    "http://example.com", "third-party/skins              ^/foo")
-
-    def test_parse_scheme_relative_externals(self):
-        self.assertRaises(NotImplementedError, parse_externals_description, 
-                    "http://example.com", "third-party/skins              //foo")
-
-    def test_parse_externals(self):
-        self.assertEqual({
-            'third-party/sounds': (None, "http://sounds.red-bean.com/repos"),
-            'third-party/skins': (None, "http://skins.red-bean.com/repositories/skinproj"),
-            'third-party/skins/toolkit': (21, "http://svn.red-bean.com/repos/skin-maker")},
-            parse_externals_description("http://example.com",
-"""third-party/sounds             http://sounds.red-bean.com/repos
-third-party/skins              http://skins.red-bean.com/repositories/skinproj
-third-party/skins/toolkit -r21 http://svn.red-bean.com/repos/skin-maker"""))
-
-    def test_parse_comment(self):
-        self.assertEqual({
-            'third-party/sounds': (None, "http://sounds.red-bean.com/repos")
-                },
-            parse_externals_description("http://example.com/",
-"""
-
-third-party/sounds             http://sounds.red-bean.com/repos
-#third-party/skins              http://skins.red-bean.com/repositories/skinproj
-#third-party/skins/toolkit -r21 http://svn.red-bean.com/repos/skin-maker"""))
-
-    def test_parse_relative(self):
-        self.assertEqual({
-            'third-party/sounds': (None, "http://example.com/branches/other"),
-                },
-            parse_externals_description("http://example.com/trunk",
-"third-party/sounds             ../branches/other"))
-
-    def test_parse_repos_root_relative(self):
-        self.assertEqual({
-            'third-party/sounds': (None, "http://example.com/bar/bla/branches/other"),
-                },
-            parse_externals_description("http://example.com/trunk",
-"third-party/sounds             /bar/bla/branches/other"))
-
-    def test_parse_invalid_missing_url(self):
-        """No URL specified."""
-        self.assertRaises(errors.InvalidExternalsDescription, 
-            lambda: parse_externals_description("http://example.com/", "bla"))
-            
-    def test_parse_invalid_too_much_data(self):
-        """No URL specified."""
-        self.assertRaises(errors.InvalidExternalsDescription, 
-            lambda: parse_externals_description(None, "bla -R40 http://bla/"))
- 
 
 class TestInventoryExternals(TestCaseWithSubversionRepository):
     def test_add_nested_norev(self):

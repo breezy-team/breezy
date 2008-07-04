@@ -35,10 +35,10 @@ from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
                      parse_merge_property,
                      parse_revision_metadata)
+from bzrlib.plugins.svn.properties import parse_externals_description
 from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
-from bzrlib.plugins.svn.tree import (parse_externals_description, 
-                  inventory_add_external)
+from bzrlib.plugins.svn.tree import inventory_add_external
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""

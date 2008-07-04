@@ -415,7 +415,7 @@ static PyObject *adm_get_prop_diffs(PyObject *self, PyObject *args)
 	AdmObject *admobj = (AdmObject *)self;
 	svn_prop_t el;
 	int i;
-	PyObject *py_propchanges, *py_orig_props;
+	PyObject *py_propchanges, *py_orig_props, *pyval;
 
 	if (!PyArg_ParseTuple(args, "s", &path))
 		return NULL;
@@ -428,11 +428,17 @@ static PyObject *adm_get_prop_diffs(PyObject *self, PyObject *args)
 	py_propchanges = PyList_New(propchanges->nelts);
 	for (i = 0; i < propchanges->nelts; i++) {
 		el = APR_ARRAY_IDX(propchanges, i, svn_prop_t);
-		PyList_SetItem(py_propchanges, i, 
-		   Py_BuildValue("(ss#)", el.name, el.value->data, el.value->len));
+		pyval = Py_BuildValue("(ss#)", el.name, el.value->data, el.value->len);
+		if (pyval == NULL) {
+			apr_pool_destroy(temp_pool);
+			return NULL;
+		}
+		PyList_SetItem(py_propchanges, i, pyval);
 	}
 	py_orig_props = prop_hash_to_dict(original_props);
 	apr_pool_destroy(temp_pool);
+	if (py_orig_props == NULL)
+		return NULL;
 	return Py_BuildValue("(NN)", py_propchanges, py_orig_props);
 }
 

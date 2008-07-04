@@ -48,8 +48,8 @@ from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
 from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
 from bzrlib.plugins.svn.tree import SvnRevisionTree
-from bzrlib.plugins.svn.versionedfiles import (SvnTexts, FakeRevisionTexts, 
-                                               FakeInventoryTexts, FakeSignatureTexts)
+from bzrlib.plugins.svn.versionedfiles import (SvnTexts, VirtualRevisionTexts, 
+                                               VirtualInventoryTexts, VirtualSignatureTexts)
 import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
@@ -165,9 +165,9 @@ class SvnRepository(Repository):
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
         self.texts = SvnTexts(self)
-        self.revisions = FakeRevisionTexts(self)
-        self.inventories = FakeInventoryTexts(self)
-        self.signatures = FakeSignatureTexts(self)
+        self.revisions = VirtualRevisionTexts(self)
+        self.inventories = VirtualInventoryTexts(self)
+        self.signatures = VirtualSignatureTexts(self)
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0
@@ -205,16 +205,7 @@ class SvnRepository(Repository):
     def get_revmap(self):
         return self.revmap
 
-    def lhs_missing_revisions(self, revhistory, stop_revision):
-        missing = []
-        slice = revhistory[:revhistory.index(stop_revision)+1]
-        for revid in reversed(slice):
-            if self.has_revision(revid):
-                missing.reverse()
-                return missing
-            missing.append(revid)
-        raise UnrelatedBranches()
-    
+   
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)
 
@@ -727,6 +718,30 @@ class SvnRepository(Repository):
         finally:
             pb.finished()
         return branches
+
+    @needs_read_lock
+    def find_tags(self, layout=None, revnum=None, project=None):
+        """Find branches underneath this repository.
+
+        """
+        if layout is None:
+            layout = self.get_layout()
+
+        if revnum is None:
+            revnum = self.get_latest_revnum()
+
+        tags = {}
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for project, bp, nick in layout.get_tags(revnum, project=project, pb=pb):
+                try:
+                    tags[nick] = self.generate_revision_id(revnum, bp, 
+                                                           self.get_mapping())
+                except NotBranchError: # Skip non-directories
+                    pass
+        finally:
+            pb.finished()
+        return tags
 
     def find_branchpaths(self, layout, from_revnum=0, to_revnum=None):
         """Find all branch paths that were changed in the specified revision 

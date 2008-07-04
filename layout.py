@@ -70,7 +70,7 @@ class RepositoryLayout(object):
         """
         raise NotImplementedError
 
-    def get_tags(self, project="", revnum=None):
+    def get_tags(self, revnum, project="", pb=None):
         """Retrieve a list of paths that refer to tags in a specific revision.
 
         :result: Iterator over tuples with (project, branch path)

@@ -61,6 +61,7 @@ PyObject *PyErr_NewSubversionException(svn_error_t *error)
 void PyErr_SetSubversionException(svn_error_t *error)
 {
 	PyObject *coremod = PyImport_ImportModule("bzrlib.plugins.svn.core"), *excobj;
+	PyObject *excval;
 
 	if (coremod == NULL) {
 		return;
@@ -73,7 +74,8 @@ void PyErr_SetSubversionException(svn_error_t *error)
 		return;
 	}
 
-	PyErr_SetObject(excobj, Py_BuildValue("(si)", error->message, error->apr_err));
+	excval = Py_BuildValue("(si)", error->message, error->apr_err);
+	PyErr_SetObject(excobj, excval);
 }
 
 bool check_error(svn_error_t *error)
@@ -149,7 +151,7 @@ PyObject *prop_hash_to_dict(apr_hash_t *props)
 
 static PyObject *pyify_changed_paths(apr_hash_t *changed_paths, apr_pool_t *pool)
 {
-	PyObject *py_changed_paths;
+	PyObject *py_changed_paths, *pyval;
 	apr_hash_index_t *idx;
 	const char *key;
 	apr_ssize_t klen;
@@ -162,9 +164,11 @@ static PyObject *pyify_changed_paths(apr_hash_t *changed_paths, apr_pool_t *pool
 		for (idx = apr_hash_first(pool, changed_paths); idx != NULL;
 			 idx = apr_hash_next(idx)) {
 			apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
-			PyDict_SetItemString(py_changed_paths, key, 
-					Py_BuildValue("(czi)", val->action, val->copyfrom_path, 
-										 val->copyfrom_rev));
+			pyval = Py_BuildValue("(czi)", val->action, val->copyfrom_path, 
+										 val->copyfrom_rev);
+			if (pyval == NULL)
+				return NULL;
+			PyDict_SetItemString(py_changed_paths, key, pyval);
 		}
 	}
 

@@ -13,6 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import bisect
+from bzrlib import urlutils
+from bzrlib.errors import BzrError
+
+
+class InvalidExternalsDescription(BzrError):
+    _fmt = """Unable to parse externals description."""
+
+
 def is_valid_property_name(prop):
     if not prop[0].isalnum() and not prop[0] in ":_":
         return False
@@ -37,12 +46,121 @@ def time_from_cstring(text):
     return (long(time.mktime((tm[0], tm[1], tm[2], tm[3], tm[4], tm[5], tm[6], tm[7], -1)) - time.timezone) * 1000000 + tm_usec)
 
 
+def parse_externals_description(base_url, val):
+    """Parse an svn:externals property value.
+
+    :param base_url: URL on which the property is set. Used for 
+        relative externals.
+
+    :returns: dictionary with local names as keys, (revnum, url)
+              as value. revnum is the revision number and is 
+              set to None if not applicable.
+    """
+    ret = {}
+    for l in val.splitlines():
+        if l == "" or l[0] == "#":
+            continue
+        pts = l.rsplit(None, 2) 
+        if len(pts) == 3:
+            if not pts[1].startswith("-r"):
+                raise InvalidExternalsDescription()
+            ret[pts[0]] = (int(pts[1][2:]), urlutils.join(base_url, pts[2]))
+        elif len(pts) == 2:
+            if pts[1].startswith("//"):
+                raise NotImplementedError("Relative to the scheme externals not yet supported")
+            if pts[1].startswith("^/"):
+                raise NotImplementedError("Relative to the repository root externals not yet supported")
+            ret[pts[0]] = (None, urlutils.join(base_url, pts[1]))
+        else:
+            raise InvalidExternalsDescription()
+    return ret
+
+
+def parse_mergeinfo_property(text):
+    ret = {}
+    for l in text.splitlines():
+        (path, ranges) = l.rsplit(":",1)
+        assert path.startswith("/")
+        ret[path] = []
+        for range in ranges.split(","):
+            try:
+                (start, end) = range.split("-", 1)
+                ret[path].append((int(start), int(end)))
+            except ValueError:
+                ret[path].append((int(range), int(range)))
+
+    return ret
+
+
+def generate_mergeinfo_property(merges):
+    def formatrange((start, end)):
+        if start == end:
+            return "%d" % (start, )
+        else:
+            return "%d-%d" % (start, end)
+    text = ""
+    for (path, ranges) in merges.items():
+        assert path.startswith("/")
+        text += "%s:%s\n" % (path, ",".join(map(formatrange, ranges)))
+    return text
+
+
+def range_includes_revnum(ranges, revnum):
+    i = bisect.bisect(ranges, (revnum, revnum))
+    if i == 0:
+        return False
+    (start, end) = ranges[i-1]
+    return (start <= revnum <= end)
+
+
+def range_add_revnum(ranges, revnum):
+    item = (revnum, revnum)
+    if len(ranges) == 0:
+        ranges.append(item)
+        return ranges
+    i = bisect.bisect(ranges, item)
+    if i > 0:
+        (start, end) = ranges[i-1]
+        if (start <= revnum <= end):
+            # already there
+            return ranges
+        if end == revnum-1:
+            # Extend previous range
+            ranges[i-1] = (start, end+1)
+            return ranges
+    if i < len(ranges):
+        (start, end) = ranges[i]
+        if start-1 == revnum:
+            # Extend next range
+            ranges[i] = (start-1, end)
+            return ranges
+    ranges.insert(i, item)
+    return ranges
+
+
+def mergeinfo_includes_revision(merges, path, revnum):
+    assert path.startswith("/")
+    try:
+        ranges = merges[path]
+    except KeyError:
+        return False
+
+    return range_includes_revnum(ranges, revnum)
+
+
+def mergeinfo_add_revision(mergeinfo, path, revnum):
+    assert path.startswith("/")
+    mergeinfo[path] = range_add_revnum(mergeinfo.get(path, []), revnum)
+    return mergeinfo
+
+
 PROP_EXECUTABLE = 'svn:executable'
 PROP_EXECUTABLE_VALUE = '*'
 PROP_EXTERNALS = 'svn:externals'
 PROP_IGNORE = 'svn:ignore'
 PROP_KEYWORDS = 'svn:keywords'
 PROP_MIME_TYPE = 'svn:mime-type'
+PROP_MERGEINFO = 'svn:mergeinfo'
 PROP_NEEDS_LOCK = 'svn:needs-lock'
 PROP_NEEDS_LOCK_VALUE = '*'
 PROP_PREFIX = 'svn:'

@@ -18,7 +18,8 @@
 from bzrlib import debug, osutils, urlutils, ui
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
-                           UnrelatedBranches, AppendRevisionsOnlyViolation)
+                           UnrelatedBranches, AppendRevisionsOnlyViolation,
+                           NoSuchRevision)
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION, ensure_null
@@ -69,6 +70,41 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     return []
 
 
+def update_svk_features(oldvalue, merges):
+    old_svk_features = parse_svk_features(oldvalue)
+    svk_features = set(old_svk_features)
+
+    # SVK compatibility
+    for merge in merges:
+        try:
+            svk_features.add(_revision_id_to_svk_feature(merge))
+        except InvalidRevisionId:
+            pass
+
+    if old_svk_features != svk_features:
+        return serialize_svk_features(svk_features)
+    return None
+
+
+def update_mergeinfo(repository, oldvalue, baserevid, merges):
+    graph = repository.get_graph()
+    mergeinfo = properties.parse_mergeinfo_property(oldvalue)
+    for merge in merges:
+        for (revid, parents) in graph.iter_ancestry([merge]):
+            if graph.is_ancestor(revid, baserevid):
+                break
+            try:
+                (path, revnum, mapping) = repository.lookup_revision_id(revid)
+            except NoSuchRevision:
+                break
+
+            properties.mergeinfo_add_revision(mergeinfo, "/" + path, revnum)
+    newvalue = properties.generate_mergeinfo_property(mergeinfo)
+    if newvalue != oldvalue:
+        return newvalue
+    return None
+
+
 def set_svn_revprops(transport, revnum, revprops):
     """Attempt to change the revision properties on the
     specified revision.
@@ -114,12 +150,12 @@ class SvnCommitBuilder(RootCommitBuilder):
         # Gather information about revision on top of which the commit is 
         # happening
         if parents == []:
-            self.base_revid = None
+            self.base_revid = NULL_REVISION
         else:
             self.base_revid = parents[0]
 
         self.base_revno = self.branch.revision_id_to_revno(self.base_revid)
-        if self.base_revid is None:
+        if self.base_revid == NULL_REVISION:
             self.base_revnum = -1
             self.base_path = None
             self.base_mapping = repository.get_mapping()
@@ -128,7 +164,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 repository.lookup_revision_id(self.base_revid)
 
         if old_inv is None:
-            if self.base_revid is None:
+            if self.base_revid == NULL_REVISION:
                 self.old_inv = Inventory(root_id=None)
             else:
                 self.old_inv = self.repository.get_inventory(self.base_revid)
@@ -143,25 +179,20 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.modified_files = {}
         self.modified_dirs = set()
-        if self.base_revid is None:
+        if self.base_revid == NULL_REVISION:
             base_branch_props = {}
         else:
             base_branch_props = lazy_dict({}, self.repository.branchprop_list.get_properties, self.base_path, self.base_revnum)
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
-            old_svk_features = parse_svk_features(base_branch_props.get(SVN_PROP_SVK_MERGE, ""))
-            svk_features = set(old_svk_features)
+            new_svk_merges = update_svk_features(base_branch_props.get(SVN_PROP_SVK_MERGE, ""), merges)
+            if new_svk_merges is not None:
+                self._svnprops[SVN_PROP_SVK_MERGE] = new_svk_merges
 
-            # SVK compatibility
-            for merge in merges:
-                try:
-                    svk_features.add(_revision_id_to_svk_feature(merge))
-                except InvalidRevisionId:
-                    pass
-
-            if old_svk_features != svk_features:
-                self._svnprops[SVN_PROP_SVK_MERGE] = serialize_svk_features(svk_features)
+            new_mergeinfo = update_mergeinfo(self.repository, base_branch_props.get(properties.PROP_MERGEINFO, ""), self.base_revid, merges)
+            if new_mergeinfo is not None:
+                self._svnprops[properties.PROP_MERGEINFO] = new_mergeinfo
 
     def mutter(self, text, *args):
         if 'commit' in debug.debug_flags:
@@ -608,7 +639,7 @@ def replay_delta(builder, old_tree, new_tree):
             touch_id(old_parent_id)
 
 
-def push_new(target_repository, target_branch_path, source, 
+def push_new(target_repository, target_branch_path, source, stop_revision,
              push_metadata=True):
     """Push a revision into Subversion, creating a new branch.
 
@@ -619,18 +650,19 @@ def push_new(target_repository, target_branch_path, source,
     :param source: Branch to pull the revision from
     """
     assert isinstance(source, Branch)
-    history = source.revision_history()
-    revhistory = list(history)
-    start_revid = NULL_REVISION
-    while len(revhistory) > 0:
-        revid = revhistory.pop()
+    revhistory = list(source.repository.iter_reverse_revision_history(stop_revision))
+    history = list(revhistory)
+    history.reverse()
+    start_revid_parent = NULL_REVISION
+    start_revid = stop_revision
+    for revid in revhistory:
         # We've found the revision to push if there is a revision 
         # which LHS parent is present or if this is the first revision.
-        if (len(revhistory) == 0 or 
-            target_repository.has_revision(revhistory[-1])):
-            start_revid = revid
+        if target_repository.has_revision(revid):
+            start_revid_parent = revid
             break
-
+        start_revid = revid
+    assert start_revid is not None
     # Get commit builder but specify that target_branch_path should
     # be created and copied from (copy_path, copy_revnum)
     class ImaginaryBranch(object):
@@ -644,23 +676,18 @@ def push_new(target_repository, target_branch_path, source,
             return self.repository.get_config()
 
         def revision_id_to_revno(self, revid):
-            if revid is None:
+            if revid is NULL_REVISION:
                 return 0
             return history.index(revid)
 
         def last_revision_info(self):
             """See Branch.last_revision_info()."""
             last_revid = self.last_revision()
-            if last_revid is None:
-                return (0, NULL_REVISION)
-            return (history.index(last_revid), last_revid)
+            return (self.revision_id_to_revno(last_revid), last_revid)
 
         def last_revision(self):
             """See Branch.last_revision()."""
-            parents = source.repository.get_parent_map(start_revid)[start_revid]
-            if parents == []:
-                return NULL_REVISION
-            return parents[0]
+            return start_revid_parent
 
         def get_branch_path(self, revnum=None):
             """See SvnBranch.get_branch_path()."""
@@ -688,8 +715,7 @@ def dpush(target, source, stop_revision=None):
             if graph.is_ancestor(stop_revision, target.last_revision()):
                 return
             raise DivergedBranches(self, other)
-        todo = target.repository.lhs_missing_revisions(source.revision_history(), 
-                                                     stop_revision)
+        todo = target.mainline_missing_revisions(source, stop_revision)
         revid_map = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -757,7 +783,7 @@ def push(target, source, revision_id, push_metadata=True):
     # revision on top of which to commit
     if push_metadata:
         if rev.parent_ids == []:
-            base_revid = None
+            base_revid = NULL_REVISION
         else:
             base_revid = rev.parent_ids[0]
     else:
@@ -765,8 +791,9 @@ def push(target, source, revision_id, push_metadata=True):
 
     source.lock_read()
     try:
-        revid = push_revision_tree(target, target.get_config(), source.repository, base_revid, 
-                                   revision_id, rev, push_metadata=push_metadata)
+        revid = push_revision_tree(target, target.get_config(), 
+                                   source.repository, base_revid, revision_id, 
+                                   rev, push_metadata=push_metadata)
     finally:
         source.unlock()
 

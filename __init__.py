@@ -364,27 +364,31 @@ class cmd_svn_push(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        bzrdir = BzrDir.open(location)
-        if revision is not None:
-            if len(revision) > 1:
-                raise BzrCommandError(
-                    'bzr svn-push --revision takes exactly one revision' 
-                    ' identifier')
-            revision_id = revision[0].as_revision_id(source_branch)
-        else:
-            revision_id = None
+        source_branch.lock_read()
         try:
-            target_branch = bzrdir.open_branch()
-            target_branch.lock_write()
+            bzrdir = BzrDir.open(location)
+            if revision is not None:
+                if len(revision) > 1:
+                    raise BzrCommandError(
+                        'bzr svn-push --revision takes exactly one revision' 
+                        ' identifier')
+                revision_id = revision[0].as_revision_id(source_branch)
+            else:
+                revision_id = None
             try:
-                target_branch.pull(source_branch, revision_id)
-            finally:
-                target_branch.unlock()
-        except NotBranchError:
-            target_branch = bzrdir.import_branch(source_branch, revision_id)
-        # We successfully created the target, remember it
-        if source_branch.get_push_location() is None or remember:
-            source_branch.set_push_location(target_branch.base)
+                target_branch = bzrdir.open_branch()
+                target_branch.lock_write()
+                try:
+                    target_branch.pull(source_branch, stop_revision=revision_id)
+                finally:
+                    target_branch.unlock()
+            except NotBranchError:
+                target_branch = bzrdir.import_branch(source_branch, revision_id)
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+        finally:
+            source_branch.unlock()
 
 register_command(cmd_svn_push)
 

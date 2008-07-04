@@ -850,3 +850,37 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
                 self.client_get_prop("dc/trunk", SVN_PROP_BZR_REVISION_ID+"trunk0"))
 
 
+class TestPushTwice(TestCaseWithSubversionRepository):
+    def test_push_twice(self):
+        # bug 208566
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        foo = trunk.add_dir("trunk/foo")
+        foo.add_file("trunk/foo/bla").modify("data")
+        dc.add_dir("branches")
+        dc.close()
+
+        svndir = BzrDir.open(repos_url+"/trunk")
+        os.mkdir("dc")
+        bzrdir = svndir.sprout("dc")
+        wt = bzrdir.open_workingtree()
+        revid = wt.commit(message="Commit from Bzr")
+        expected_history = wt.branch.revision_history()
+
+        svndir1 = BzrDir.open(repos_url+"/branches/a")
+        svndir1.import_branch(wt.branch)
+        self.assertEquals(expected_history, svndir1.open_branch().revision_history())
+
+        svndir2 = BzrDir.open(repos_url+"/branches/b")
+        svndir2.import_branch(wt.branch)
+        self.assertEquals(expected_history, svndir2.open_branch().revision_history())
+
+        revid = wt.commit(message="Commit from Bzr")
+        expected_history = wt.branch.revision_history()
+
+        svndir1.open_branch().pull(wt.branch)
+        self.assertEquals(expected_history, svndir1.open_branch().revision_history())
+        svndir2.open_branch().pull(wt.branch)
+        self.assertEquals(expected_history, svndir2.open_branch().revision_history())

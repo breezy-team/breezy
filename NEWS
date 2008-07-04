@@ -28,6 +28,10 @@ bzr-svn 0.4.11    UNRELEASED
   
    * Add new "dpush" command that works similar to git-svn's dcommit.
 
+   * Support proper Bazaar tags. (#81102)
+
+   * Set mergeinfo properties when pushing merges. (write part of #131323)
+
   BUG FIXES
 
    * More efficient use of mutter.
@@ -70,6 +74,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Fix inconsistent revision iteration when branches' parents were moved but 
      not changed. (#237901)
+
+   * Avoid assumption that a revision can only occur in one branch. (#208566)
 
 bzr-svn 0.4.10  2008-05-12
 

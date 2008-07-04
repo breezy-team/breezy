@@ -19,7 +19,7 @@
 from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError
+from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError, NoSuchTag
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -27,6 +27,7 @@ from bzrlib.trace import mutter
 import os
 from unittest import TestCase
 
+from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.branch import FakeControlFiles, SvnBranchFormat
 from bzrlib.plugins.svn.convert import load_dumpfile
 from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
@@ -45,6 +46,84 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_repository("a")
         branch = Branch.open(repos_url)
         self.assertEqual("", branch.get_branch_path())
+
+    def test_tags_dict(self):
+        repos_url = self.make_repository("a")
+       
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/foo")
+        dc.add_dir("trunk")
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
+
+    def test_tag_set(self):
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.add_dir("tags")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file("trunk/bla").modify()
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        b.tags.set_tag("mytag", b.repository.generate_revision_id(1, "trunk", b.repository.get_mapping()))
+
+        self.assertEquals(core.NODE_DIR, 
+                b.repository.transport.check_path("tags/mytag", 3))
+
+    def test_tags_delete(self):
+        repos_url = self.make_repository("a")
+       
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/foo")
+        dc.add_dir("trunk")
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
+        b.tags.delete_tag("foo")
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals([], b.tags.get_tag_dict().keys())
+
+    def test_tag_lookup(self):
+        repos_url = self.make_repository("a")
+       
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/foo")
+        dc.add_dir("trunk")
+        dc.close()
+
+        b = Branch.open(repos_url + "/trunk")
+        self.assertEquals(b.repository.generate_revision_id(1, "tags/foo", b.repository.get_mapping()), b.tags.lookup_tag("foo"))
+
+    def test_tag_lookup_nonexistant(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+       
+        b = Branch.open(repos_url + "/trunk")
+        self.assertRaises(NoSuchTag, b.tags.lookup_tag, "foo")
+
+    def test_tags_delete_nonexistent(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk")
+        dc.close()
+       
+        b = Branch.open(repos_url + "/trunk")
+        self.assertRaises(NoSuchTag, b.tags.delete_tag, "foo")
 
     def test_get_branch_path_old(self):
         repos_url = self.make_repository("a")
