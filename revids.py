@@ -199,6 +199,8 @@ class RevisionIdMapCache(CacheTable):
         create table if not exists revids_seen (scheme text, max_revnum int);
         create unique index if not exists scheme on revids_seen (scheme);
         """)
+        # Revisions ids are quite expensive
+        self._commit_interval = 5
 
     def set_last_revnum_checked(self, layout, revnum):
         """Remember the latest revision number that has been checked
@@ -208,6 +210,7 @@ class RevisionIdMapCache(CacheTable):
         :param revnum: Revision number.
         """
         self.cachedb.execute("replace into revids_seen (scheme, max_revnum) VALUES (?, ?)", (layout, revnum))
+        self.commit_conditionally()
 
     def last_revnum_checked(self, layout):
         """Retrieve the latest revision number that has been checked 
@@ -281,3 +284,4 @@ class RevisionIdMapCache(CacheTable):
             self.cachedb.execute(
                 "insert into revmap (revid,path,min_revnum,max_revnum,scheme) VALUES (?,?,?,?,?)",
                 (revid, branch, min_revnum, max_revnum, scheme))
+        self.commit_conditionally()

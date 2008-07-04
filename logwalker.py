@@ -99,7 +99,6 @@ class LogCache(CacheTable):
     
     def __init__(self, cache_db=None):
         CacheTable.__init__(self, cache_db)
-        self.commit_countdown = 1000
 
     def _create_table(self):
         self.cachedb.executescript("""
@@ -114,6 +113,7 @@ class LogCache(CacheTable):
             create unique index if not exists revprop_rev_name on revprop(rev, name);
             create unique index if not exists revinfo_rev on revinfo(rev);
         """)
+        self._commit_interval = 1000
     
     def find_latest_change(self, path, revnum):
         if path == "":
@@ -243,16 +243,6 @@ class LogCache(CacheTable):
         if saved_revnum is None:
             return 0
         return saved_revnum
-
-    def commit(self):
-        """Commit the cache database."""
-        self.cachedb.commit()
-        self.commit_countdown = 1000
-
-    def commit_conditionally(self):
-        self.commit_countdown -= 1
-        if self.commit_countdown <= 0:
-            self.commit()
 
 
 class CachingLogWalker(CacheTable):
