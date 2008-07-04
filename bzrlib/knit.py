@@ -2680,11 +2680,44 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
+        if True or len(self._knit._fallback_vfs) > 0:
+            # stacked knits can't use the fast path at present.
+            return self._simple_annotate(key)
         records = self._get_build_graph(key)
         if key in self._ghosts:
             raise errors.RevisionNotPresent(key, self._knit)
         self._annotate_records(records)
         return self._annotated_lines[key]
+
+    def _simple_annotate(self, key):
+        """Return annotated fulltext, rediffing from the full texts.
+
+        This is slow but makes no assumptions about the repository
+        being able to produce line deltas.
+        """
+        # TODO: this code generates a parent maps of present ancestors; it
+        # could be split out into a separate method, and probably should use
+        # iter_ancestry instead. -- mbp and robertc 20080704
+        graph = Graph(self._knit)
+        head_cache = _mod_graph.FrozenHeadsCache(graph)
+        search = graph._make_breadth_first_searcher([key])
+        keys = set()
+        while True:
+            try:
+                present, ghosts = search.next_with_ghosts()
+            except StopIteration:
+                break
+            keys.update(present)
+        parent_map = self._knit.get_parent_map(keys)
+        parent_cache = {}
+        reannotate = annotate.reannotate
+        for record in self._knit.get_record_stream(keys, 'topological', True):
+            key = record.key
+            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            parent_cache[key] = list(
+                reannotate(parent_lines, fulltext, key, None, head_cache))
+        return parent_cache[key]
 
 
 try:
