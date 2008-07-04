@@ -2423,8 +2423,22 @@ class cmd_check(Command):
             entries are modified, but the file contents are not.  It does not
             indicate a problem.
 
-    If no objects are specified, Bazaar will check all of the objects that it
-    finds.
+    If no restrictions are specified, all Bazaar data that is found at the given
+    location will be checked.
+
+    :Examples:
+
+        Check the tree and branch at 'foo'::
+
+            bzr check --tree --branch foo
+
+        Check only the repository at 'bar'::
+
+            bzr check --repo bar
+
+        Check everything at 'baz'::
+
+            bzr check baz
     """
 
     _see_also = ['reconcile']
