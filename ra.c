@@ -1544,6 +1544,109 @@ static PyObject *ra_get_locations(PyObject *self, PyObject *args)
 	apr_pool_destroy(temp_pool);
 	return ret;
 }
+
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+static PyObject *range_to_tuple(svn_merge_range_t *range)
+{
+	return Py_BuildValue("(llb)", range->start, range->end, range->inheritable);
+}
+
+static PyObject *merge_rangelist_to_list(apr_array_header_t *rangelist)
+{
+	PyObject *ret;
+	int i;
+
+	ret = PyList_New(rangelist->nelts);
+
+	for (i = 0; i < rangelist->nelts; i++) {
+		PyObject *pyval = range_to_tuple(APR_ARRAY_IDX(rangelist, i, svn_merge_range_t *));
+		if (pyval == NULL)
+			return NULL;
+		PyList_SetItem(ret, i, pyval);
+	}
+	return ret;
+}
+
+static PyObject *mergeinfo_to_dict(svn_mergeinfo_t mergeinfo, apr_pool_t *temp_pool)
+{
+	PyObject *ret = PyDict_New();
+	char *key;
+	apr_ssize_t klen;
+	apr_hash_index_t *idx;
+	apr_array_header_t *range;
+
+	for (idx = apr_hash_first(temp_pool, mergeinfo); idx != NULL; 
+		idx = apr_hash_next(idx)) {
+		PyObject *pyval;
+		apr_hash_this(idx, (const void **)&key, &klen, (void **)&range);
+		pyval = merge_rangelist_to_list(range);
+		if (pyval == NULL)
+			return NULL;
+		PyDict_SetItemString(ret, key, pyval);
+	}
+
+	return ret;
+}
+#endif
+
+static PyObject *ra_mergeinfo(PyObject *self, PyObject *args)
+{
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+	apr_array_header_t *apr_paths;
+	apr_pool_t *temp_pool;
+	svn_mergeinfo_catalog_t catalog;
+	apr_ssize_t klen;
+	apr_hash_index_t *idx;
+	svn_mergeinfo_t val;
+	char *key;
+	PyObject *ret;
+	svn_revnum_t revision = -1;
+	PyObject *paths;
+	svn_mergeinfo_inheritance_t inherit = svn_mergeinfo_explicit;
+	svn_boolean_t include_descendants;
+
+	if (!PyArg_ParseTuple(args, "O|lib", &paths, &revision, &inherit, &include_descendants))
+		return NULL;
+
+	temp_pool = Pool(NULL);
+	if (temp_pool == NULL)
+		return NULL;
+
+	if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
+		apr_pool_destroy(temp_pool);
+		return NULL;
+	}
+
+	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_get_mergeinfo(ra->ra, 
+                     &catalog, apr_paths, revision, inherit, 
+					 include_descendants,
+                     temp_pool));
+
+	ret = PyDict_New();
+
+	if (catalog != NULL) {
+		for (idx = apr_hash_first(temp_pool, catalog); idx != NULL; 
+			idx = apr_hash_next(idx)) {
+			PyObject *pyval;
+			apr_hash_this(idx, (const void **)&key, &klen, (void **)&val);
+			pyval = mergeinfo_to_dict(val, temp_pool);
+			if (pyval == NULL) {
+				apr_pool_destroy(temp_pool);
+				return NULL;
+			}
+			PyDict_SetItemString(ret, key, pyval);
+		}
+	}
+
+	apr_pool_destroy(temp_pool);
+
+	return ret;
+#else
+	PyErr_SetString(PyExc_NotImplementedError, "mergeinfo is only supported in Subversion >= 1.5");
+	return NULL;
+#endif
+}
 	
 static PyObject *ra_get_file_revs(PyObject *self, PyObject *args)
 {
@@ -1607,6 +1710,7 @@ static PyMethodDef ra_methods[] = {
 	{ "get_locks", ra_get_locks, METH_VARARGS, NULL },
 	{ "lock", ra_lock, METH_VARARGS, NULL },
 	{ "unlock", ra_unlock, METH_VARARGS, NULL },
+	{ "mergeinfo", ra_mergeinfo, METH_VARARGS, NULL },
 	{ "has_capability", ra_has_capability, METH_VARARGS, NULL },
 	{ "check_path", ra_check_path, METH_VARARGS, NULL },
 	{ "get_lock", ra_get_lock, METH_VARARGS, NULL },
@@ -2467,6 +2571,12 @@ void initra(void)
 	PyModule_AddIntConstant(mod, "DIRENT_TIME", SVN_DIRENT_TIME);
 	PyModule_AddIntConstant(mod, "DIRENT_LAST_AUTHOR", SVN_DIRENT_LAST_AUTHOR);
 	PyModule_AddIntConstant(mod, "DIRENT_ALL", SVN_DIRENT_ALL);
+
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+	PyModule_AddIntConstant(mod, "MERGEINFO_EXPLICIT", svn_mergeinfo_explicit);
+	PyModule_AddIntConstant(mod, "MERGEINFO_INHERITED", svn_mergeinfo_inherited);
+	PyModule_AddIntConstant(mod, "MERGEINFO_NEAREST_ANCESTOR", svn_mergeinfo_nearest_ancestor);
+#endif
 
 #ifdef SVN_VER_REVISION
 	PyModule_AddIntConstant(mod, "SVN_REVISION", SVN_VER_REVISION);
