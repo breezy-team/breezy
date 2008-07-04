@@ -24,6 +24,7 @@ from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision,
 from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.tag import BasicTags
+from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import core, wc
@@ -64,7 +65,13 @@ class SubversionTags(BasicTags):
     def set_tag(self, tag_name, tag_target):
         path = self.layout.get_tag_path(tag_name, self.project)
         parent = urlutils.dirname(path)
-        (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
+        try:
+            (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
+        except NoSuchRevision:
+            mutter("not setting tag %s; unknown revision %s", tag_name, tag_target)
+            return
+        if from_bp == path:
+            return
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
         deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
         try:
@@ -122,6 +129,15 @@ class SubversionTags(BasicTags):
             ci.close()
         finally:
             self.repository.transport.add_connection(conn)
+
+    def _set_tag_dict(self, dest_dict):
+        cur_dict = self.get_tag_dict()
+        for k,v in dest_dict.iteritems():
+            if cur_dict.get(k) != v:
+                self.set_tag(k, v)
+        for k in cur_dict:
+            if k not in dest_dict:
+                self.delete_tag(k)
 
 
 class SvnBranch(Branch):
@@ -407,6 +423,7 @@ class SvnBranch(Branch):
                     raise NotImplementedError('overwrite not supported for '
                                               'Subversion branches')
                 raise
+            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
         finally:
@@ -537,6 +554,9 @@ class SvnBranch(Branch):
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
 
+    def supports_tags(self):
+        return self._format.supports_tags()
+
     __repr__ = __str__
 
 
@@ -564,3 +584,5 @@ class SvnBranchFormat(BranchFormat):
         """See BranchFormat.initialize()."""
         raise NotImplementedError(self.initialize)
 
+    def supports_tags(self):
+        return True
