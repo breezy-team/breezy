@@ -664,7 +664,7 @@ static void py_progress_func(apr_off_t progress, apr_off_t total, void *baton, a
 	if (fn == Py_None) {
 		return;
 	}
-	ret = PyObject_CallFunction(fn, "ll", progress, total);
+	ret = PyObject_CallFunction(fn, "LL", progress, total);
 	/* TODO: What to do with exceptions raised here ? */
 	Py_XDECREF(ret);
 }
@@ -1459,12 +1459,12 @@ static PyObject *ra_lock(PyObject *self, PyObject *args)
 		rev = (svn_revnum_t *)apr_palloc(temp_pool, sizeof(svn_revnum_t));
 		*rev = PyLong_AsLong(v);
 		apr_hash_set(hash_path_revs, PyString_AsString(k), PyString_Size(k), 
-					 PyString_AsString(v));
+					 rev);
 	}
 	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_lock(ra->ra, hash_path_revs, comment, steal_lock,
 					 py_lock_func, lock_func, temp_pool));
 	apr_pool_destroy(temp_pool);
-	return NULL;
+	Py_RETURN_NONE;
 }
 
 static PyObject *ra_get_locks(PyObject *self, PyObject *args)
@@ -1647,6 +1647,50 @@ static PyObject *ra_mergeinfo(PyObject *self, PyObject *args)
 	return NULL;
 #endif
 }
+
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+static svn_error_t *py_location_segment_receiver(svn_location_segment_t *segment, void *baton, apr_pool_t *pool)
+{
+	PyObject *fn = baton, *ret;
+
+	ret = PyObject_CallFunction(fn, "llz", segment->range_start, segment->range_end, segment->path);
+	if (ret == NULL)
+		return py_svn_error();
+	Py_XDECREF(ret);
+	return NULL;
+}
+#endif
+
+static PyObject *ra_get_location_segments(PyObject *self, PyObject *args)
+{
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+	svn_revnum_t peg_revision, start_revision, end_revision;
+	char *path;
+	PyObject *py_rcvr;
+	apr_pool_t *temp_pool;
+
+	if (!PyArg_ParseTuple(args, "slllO", &path, &peg_revision, &start_revision, 
+						  &end_revision, &py_rcvr))
+		return NULL;
+
+	temp_pool = Pool(NULL);
+	if (temp_pool == NULL)
+		return NULL;
+
+	RUN_RA_WITH_POOL(temp_pool, ra, svn_ra_get_location_segments(ra->ra, 
+					 path, peg_revision, start_revision, end_revision,
+					 py_location_segment_receiver, 
+					 py_rcvr, temp_pool));
+
+	apr_pool_destroy(temp_pool);
+	Py_RETURN_NONE;
+#else
+	PyErr_SetString(PyExc_NotImplementedError, "mergeinfo is only supported in Subversion >= 1.5");
+	return NULL;
+#endif
+}
+
 	
 static PyObject *ra_get_file_revs(PyObject *self, PyObject *args)
 {
@@ -1711,6 +1755,7 @@ static PyMethodDef ra_methods[] = {
 	{ "lock", ra_lock, METH_VARARGS, NULL },
 	{ "unlock", ra_unlock, METH_VARARGS, NULL },
 	{ "mergeinfo", ra_mergeinfo, METH_VARARGS, NULL },
+	{ "get_location_segments", ra_get_location_segments, METH_VARARGS, NULL },
 	{ "has_capability", ra_has_capability, METH_VARARGS, NULL },
 	{ "check_path", ra_check_path, METH_VARARGS, NULL },
 	{ "get_lock", ra_get_lock, METH_VARARGS, NULL },

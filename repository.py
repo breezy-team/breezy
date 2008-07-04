@@ -43,7 +43,7 @@ from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZ
                      get_default_mapping, parse_revision_id, 
                      parse_svn_dateprop)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
-from bzrlib.plugins.svn.parents import SqliteCachingParentsProvider
+from bzrlib.plugins.svn.parents import DiskCachingParentsProvider
 from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
 from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
@@ -198,7 +198,7 @@ class SvnRepository(Repository):
             cachedir_transport = get_transport(cache_dir)
             self.fileid_map = CachingFileIdMap(cachedir_transport, self.fileid_map)
             self.revmap = CachingRevidMap(self.revmap, self.cachedb)
-            self._real_parents_provider = SqliteCachingParentsProvider(self._real_parents_provider)
+            self._real_parents_provider = DiskCachingParentsProvider(self._real_parents_provider, cachedir_transport)
 
         self.branchprop_list = PathPropertyProvider(self._log)
 
@@ -527,7 +527,7 @@ class SvnRepository(Repository):
         rev = Revision(revision_id=revision_id, parent_ids=revmeta.get_parent_ids(mapping),
                        inventory_sha1="")
 
-        mapping.import_revision(svn_revprops, svn_fileprops, rev)
+        mapping.import_revision(svn_revprops, svn_fileprops, self.uuid, path, revnum, rev)
 
         return rev
 

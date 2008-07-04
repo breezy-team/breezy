@@ -83,21 +83,29 @@ def parse_mergeinfo_property(text):
         assert path.startswith("/")
         ret[path] = []
         for range in ranges.split(","):
+            if range[-1] == "*":
+                inheritable = False
+                range = range[:-1]
+            else:
+                inheritable = True
             try:
                 (start, end) = range.split("-", 1)
-                ret[path].append((int(start), int(end)))
+                ret[path].append((int(start), int(end), inheritable))
             except ValueError:
-                ret[path].append((int(range), int(range)))
+                ret[path].append((int(range), int(range), inheritable))
 
     return ret
 
 
 def generate_mergeinfo_property(merges):
-    def formatrange((start, end)):
+    def formatrange((start, end, inheritable)):
+        suffix = ""
+        if not inheritable:
+            suffix = "*"
         if start == end:
-            return "%d" % (start, )
+            return "%d%s" % (start, suffix)
         else:
-            return "%d-%d" % (start, end)
+            return "%d-%d%s" % (start, end, suffix)
     text = ""
     for (path, ranges) in merges.items():
         assert path.startswith("/")
@@ -106,33 +114,34 @@ def generate_mergeinfo_property(merges):
 
 
 def range_includes_revnum(ranges, revnum):
-    i = bisect.bisect(ranges, (revnum, revnum))
+    i = bisect.bisect(ranges, (revnum, revnum, True))
     if i == 0:
         return False
-    (start, end) = ranges[i-1]
+    (start, end, inheritable) = ranges[i-1]
     return (start <= revnum <= end)
 
 
-def range_add_revnum(ranges, revnum):
-    item = (revnum, revnum)
+def range_add_revnum(ranges, revnum, inheritable=True):
+    # TODO: Deal with inheritable
+    item = (revnum, revnum, inheritable)
     if len(ranges) == 0:
         ranges.append(item)
         return ranges
     i = bisect.bisect(ranges, item)
     if i > 0:
-        (start, end) = ranges[i-1]
+        (start, end, inh) = ranges[i-1]
         if (start <= revnum <= end):
             # already there
             return ranges
         if end == revnum-1:
             # Extend previous range
-            ranges[i-1] = (start, end+1)
+            ranges[i-1] = (start, end+1, inh)
             return ranges
     if i < len(ranges):
-        (start, end) = ranges[i]
+        (start, end, inh) = ranges[i]
         if start-1 == revnum:
             # Extend next range
-            ranges[i] = (start-1, end)
+            ranges[i] = (start-1, end, inh)
             return ranges
     ranges.insert(i, item)
     return ranges

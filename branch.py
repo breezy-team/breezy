@@ -26,7 +26,7 @@ from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.tag import BasicTags
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn import core, wc
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client, get_config
 from bzrlib.plugins.svn.commit import push
@@ -37,6 +37,7 @@ from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.repository import SvnRepository
 from bzrlib.plugins.svn.transport import bzr_to_svn_url
 
+import os
 
 class FakeControlFiles(object):
     """Dummy implementation of ControlFiles.
@@ -177,7 +178,8 @@ class SvnBranch(Branch):
 
         :param relpath: path from the repository root.
         """
-        assert relpath.startswith(self.get_branch_path())
+        assert relpath.startswith(self.get_branch_path()), \
+                "expected %s prefix, got %s" % (self.get_branch_path(), relpath)
         return relpath[len(self.get_branch_path()):].strip("/")
 
     def get_branch_path(self, revnum=None):
@@ -255,16 +257,28 @@ class SvnBranch(Branch):
         :param revision_id: Tip of the checkout.
         :return: WorkingTree object of the checkout.
         """
-        if revision_id is None:
-            rev = "HEAD"
+        from bzrlib.plugins.svn.workingtree import update_wc
+        if revision_id is not None:
+            revnum = self.lookup_revision_id(revision_id)
         else:
-            rev = self.lookup_revision_id(revision_id)
+            revnum = self.get_revnum()
 
         svn_url = bzr_to_svn_url(self.base)
-        client_ctx = Client(auth=create_auth_baton(svn_url))
-        client_ctx.checkout(svn_url, to_location, rev, "HEAD", True)
-
-        return WorkingTree.open(to_location)
+        os.mkdir(to_location)
+        wc.ensure_adm(to_location, self.repository.uuid, svn_url,
+                      bzr_to_svn_url(self.repository.base), revnum)
+        adm = wc.WorkingCopy(None, to_location, write_lock=True)
+        try:
+            conn = self.repository.transport.connections.get(svn_url)
+            try:
+                update_wc(adm, to_location, conn, revnum)
+            finally:
+                if not conn.busy:
+                    self.repository.transport.add_connection(conn)
+        finally:
+            adm.close()
+        wt = WorkingTree.open(to_location)
+        return wt
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
                         accelerator_tree=None, hardlink=False):

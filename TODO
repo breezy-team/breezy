@@ -1,7 +1,6 @@
 todo:
 - generate deltas rather than fulltexts when creating file id maps
 - BzrDir.create_branch() should set the revision id to NULL_REVISION
-- avoid extra connect in logwalker?
 - tests for setting svk:merge from .bzr checkout
 - tests for http-specific SvnRaTransport._request_path() code
 - tests for auth.py
@@ -9,7 +8,6 @@ todo:
  - svn-import without scheme specified should guess
  - bzr missing
 - transform file ids in workingtree in svn-upgrade
-- support tags (#81102)
 - more efficient implementation of get_revision_delta() to speed up bzr log -v
 - nestedtree support
 - lookup_revision_id()'s result depends on the current branching scheme, 

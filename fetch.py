@@ -127,7 +127,9 @@ class RevisionBuildEditor(object):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=self.revmeta.get_parent_ids(self.mapping))
 
-        self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, rev)
+        self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
+                                     self.revmeta.repository.uuid, self.revmeta.branch_path,
+                                     self.revmeta.revnum, rev)
 
         signature = self.revmeta.revprops.get(SVN_REVPROP_BZR_SIGNATURE)
 

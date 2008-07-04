@@ -67,6 +67,9 @@ class SvnRemoteAccess(BzrDir):
             return SvnRepository(self, self.root_transport)
         raise NoSvnRepositoryPresent(self.root_transport.base)
 
+    def break_lock(self):
+        pass
+
     def find_repository(self):
         """Open the repository associated with this BzrDir.
         

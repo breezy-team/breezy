@@ -833,7 +833,7 @@ class InterToSvnRepository(InterRepository):
             while not self.target.has_revision(revision_id):
                 todo.append(revision_id)
                 try:
-                    revision_id = self.source.get_parent_map(revision_id)[revision_id][0]
+                    revision_id = self.source.get_parent_map([revision_id])[revision_id][0]
                 except KeyError:
                     # We hit a ghost
                     break

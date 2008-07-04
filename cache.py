@@ -81,8 +81,19 @@ class CacheTable(object):
             self.cachedb = sqlite3.connect(":memory:")
         else:
             self.cachedb = cache_db
+        self._commit_interval = 500
         self._create_table()
         self.cachedb.commit()
+        self._commit_countdown = self._commit_interval
+
+    def commit(self):
+        self.cachedb.commit()
+        self._commit_countdown = self._commit_interval
+
+    def commit_conditionally(self):
+        self._commit_countdown -= 1
+        if self._commit_countdown <= 0:
+            self.commit()
 
     def _create_table(self):
         pass

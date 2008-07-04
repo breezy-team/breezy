@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Access to stored Subversion basis trees."""
 
-from bzrlib import osutils, urlutils
+from bzrlib import osutils, urlutils, ui
 from bzrlib.branch import Branch
 from bzrlib.inventory import Inventory, InventoryDirectory, TreeReference
 from bzrlib.revision import CURRENT_REVISION
@@ -27,7 +27,7 @@ import md5
 from cStringIO import StringIO
 import urllib
 
-from bzrlib.plugins.svn import errors, properties, core, wc
+from bzrlib.plugins.svn import core, errors, properties, wc
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
 
 
@@ -78,6 +78,7 @@ class SvnRevisionTree(RevisionTree):
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
         conn = repository.transport.get_connection()
+        conn.progress_func = prog
         try:
             reporter = conn.do_switch(
                 self.revnum, "", True, 
@@ -85,6 +86,7 @@ class SvnRevisionTree(RevisionTree):
             reporter.set_path("", 0, True, None)
             reporter.finish()
         finally:
+            conn.progress_func = None
             repository.transport.add_connection(conn)
 
     def get_file_lines(self, file_id):

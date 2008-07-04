@@ -54,6 +54,18 @@ from bzrlib.plugins.svn.wc import *
 import os
 import urllib
 
+def update_wc(adm, basedir, conn, revnum):
+    # FIXME: honor SVN_CONFIG_SECTION_HELPERS:SVN_CONFIG_OPTION_DIFF3_CMD
+    # FIXME: honor SVN_CONFIG_SECTION_MISCELLANY:SVN_CONFIG_OPTION_USE_COMMIT_TIMES
+    # FIXME: honor SVN_CONFIG_SECTION_MISCELLANY:SVN_CONFIG_OPTION_PRESERVED_CF_EXTS
+    editor = adm.get_update_editor(basedir, False, True)
+    assert editor is not None
+    reporter = conn.do_update(revnum, "", True, editor)
+    adm.crawl_revisions(basedir, reporter, restore_files=False, 
+                        recurse=True, use_commit_times=False)
+    # FIXME: handle externals
+
+
 def generate_ignore_list(ignore_map):
     """Create a list of ignores, ordered by directory.
     
@@ -141,8 +153,28 @@ class SvnWorkingTree(WorkingTree):
     def apply_inventory_delta(self, changes):
         raise NotImplementedError(self.apply_inventory_delta)
 
-    def update(self, change_reporter=None):
-        self.client_ctx.update([self.basedir.encode("utf-8")], "HEAD", True)
+    def _update(self, revnum=None):
+        if revnum is None:
+            # FIXME: should be able to use -1 here
+            revnum = self.branch.get_revnum()
+        adm = self._get_wc(write_lock=True)
+        try:
+            conn = self.branch.repository.transport.connections.get(bzr_to_svn_url(self.branch.base))
+            try:
+                update_wc(adm, self.basedir, conn, revnum)
+            finally:
+                self.branch.repository.transport.add_connection(conn)
+        finally:
+            adm.close()
+        return revnum
+
+    def update(self, change_reporter=None, possible_transports=None, revnum=None):
+        orig_revnum = self.base_revnum
+        self.base_revnum = self._update(revnum)
+        self.base_revid = self.branch.generate_revision_id(self.base_revnum)
+        self.base_tree = None
+        self.read_working_inventory()
+        return self.base_revnum - orig_revnum
 
     def remove(self, files, verbose=False, to_file=None):
         # FIXME: Use to_file argument
@@ -347,13 +379,13 @@ class SvnWorkingTree(WorkingTree):
         if revid is None or revid == NULL_REVISION:
             self.base_revid = revid
             self.base_revnum = 0
-            self.base_tree = RevisionTree(self, Inventory(), revid)
+            self.base_tree = None
             return
 
         rev = self.branch.lookup_revision_id(revid)
         self.base_revnum = rev
         self.base_revid = revid
-        self.base_tree = SvnBasisTree(self)
+        self.base_tree = None
 
         # TODO: Implement more efficient version
         newrev = self.branch.repository.get_revision(revid)
@@ -378,7 +410,8 @@ class SvnWorkingTree(WorkingTree):
                 if entry == "":
                     continue
 
-                subwc = WorkingCopy(wc, os.path.join(self.basedir, path, entry))
+                subwc = WorkingCopy(wc, os.path.join(self.basedir, path, entry), 
+                                   write_lock=True)
                 try:
                     update_settings(subwc, os.path.join(path, entry))
                 finally:
@@ -539,11 +572,15 @@ class SvnWorkingTree(WorkingTree):
         if self.base_revid is None or self.base_revid == NULL_REVISION:
             return self.branch.repository.revision_tree(self.base_revid)
 
+        if self.base_tree is None:
+            self.base_tree = SvnBasisTree(self)
+
         return self.base_tree
 
     def pull(self, source, overwrite=False, stop_revision=None, 
              delta_reporter=None, possible_transports=None):
         # FIXME: Use delta_reporter
+        # FIXME: Use source
         # FIXME: Use overwrite
         result = PullResult()
         result.source_branch = source
@@ -552,9 +589,12 @@ class SvnWorkingTree(WorkingTree):
         (result.old_revno, result.old_revid) = self.branch.last_revision_info()
         if stop_revision is None:
             stop_revision = self.branch.last_revision()
-        rev = self.branch.lookup_revision_id(stop_revision)
-        fetched = self.client_ctx.update(self.basedir, rev, True)
+        revnumber = self.branch.lookup_revision_id(stop_revision)
+        fetched = self._update(revnum)
+        self.base_revnum = fetched
         self.base_revid = self.branch.generate_revision_id(fetched)
+        self.base_tree = None
+        self.read_working_inventory()
         result.new_revid = self.base_revid
         result.new_revno = self.branch.revision_id_to_revno(result.new_revid)
         return result

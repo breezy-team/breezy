@@ -13,11 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib.plugins.svn.cache import CacheTable
+from bzrlib import debug, errors
+from bzrlib.knit import make_file_factory
+from bzrlib.trace import mutter
+from bzrlib.revision import NULL_REVISION
+from bzrlib.versionedfile import ConstantMapper
 
-class SqliteCachingParentsProvider(object):
-    def __init__(self, actual, cachedb=None):
-        self.cache = ParentsCache(cachedb)
+class DiskCachingParentsProvider(object):
+    def __init__(self, actual, cachetransport):
+        self.cache = ParentsCache(cachetransport)
         self.actual = actual
 
     def get_parent_map(self, keys):
@@ -30,28 +34,32 @@ class SqliteCachingParentsProvider(object):
             else:
                 ret[k] = parents
         if len(todo):
-            ret.update(self.actual.get_parent_map(todo))
+            newfound = self.actual.get_parent_map(todo)
+            for revid, parents in newfound.items():
+                if revid == NULL_REVISION:
+                    continue
+                self.cache.insert_parents(revid, parents)
+            ret.update(newfound)
         return ret
 
 
-class ParentsCache(CacheTable):
-    def _create_table(self):
-        self.cachedb.executescript("""
-        create table if not exists parent (revision text, parent text);
-        create index if not exists parent_revision on parent (revision);
-        """)
+PARENTMAP_VERSION = 1
+
+
+class ParentsCache(object):
+
+    def __init__(self, cache_transport):
+        mapper = ConstantMapper("parentmap-v%d" % PARENTMAP_VERSION)
+        self.parentmap_knit = make_file_factory(True, mapper)(cache_transport)
 
     def insert_parents(self, revid, parents):
-        self.mutter('insert parents: %r -> %r', revid, parents)
-        for parent in parents:
-            self.cachedb.execute("insert into parent (revision, parent) VALUES (?, ?)", (revid, parent))
+        self.parentmap_knit.add_lines((revid,), [(r, ) for r in parents], [])
 
     def lookup_parents(self, revid):
-        self.mutter('lookup parents: %r', revid)
-        ret = []
-        for row in self.cachedb.execute("select parent from parent where revision = ?", (revid,)).fetchall():
-            ret.append(row[0])
-        if ret == []:
+        if "cache" in debug.debug_flags:
+            mutter('lookup parents: %r', revid)
+        try:
+            return [r for (r,) in self.parentmap_knit.get_parent_map([(revid,)])[(revid,)]]
+        except KeyError:
             return None
-        return tuple(ret)
 
