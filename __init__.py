@@ -310,10 +310,11 @@ def find_credits(repository, revid):
     repository.lock_read()
     try:
         ancestry = filter(lambda x: x is not None, repository.get_ancestry(revid))
+        revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            revs = repository.get_revisions(ancestry)
-            for rev,delta in izip(revs, repository.get_deltas_for_revisions(revs)):
+            for i, (rev,delta) in enumerate(izip(revs, repository.get_deltas_for_revisions(revs))):
+                pb.update("analysing revisions", i, len(revs))
                 # Don't count merges
                 if len(rev.parent_ids) > 1:
                     continue
