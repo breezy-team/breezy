@@ -2385,12 +2385,14 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate consistency of branch history.
+    """Validate working tree structure, branch consistency and repository
+    history.
 
-    This command checks various invariants about the branch storage to
-    detect data corruption or bzr bugs.
+    This command checks various invariants about branch and repository storage
+    to detect data corruption or bzr bugs.
 
-    Output fields:
+    The working tree and branch checks will only give output if a problem is
+    detected. The output fields of the repository check are:
 
         revisions: This is just the number of revisions checked.  It doesn't
             indicate a problem.
@@ -2408,42 +2410,14 @@ class cmd_check(Command):
     """
 
     _see_also = ['reconcile']
-    takes_args = ['branch?']
+    takes_args = ['path?']
     takes_options = ['verbose']
 
-    def run(self, branch=None, verbose=False):
-        from bzrlib.check import check
-        if branch is None:
-            branch_obj = Branch.open_containing('.')[0]
-        else:
-            branch_obj = Branch.open(branch)
-        check(branch_obj, verbose)
-        # bit hacky, check the tree parent is accurate
-        try:
-            if branch is None:
-                tree = WorkingTree.open_containing('.')[0]
-            else:
-                tree = WorkingTree.open(branch)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
-        else:
-            # This is a primitive 'check' for tree state. Currently this is not
-            # integrated into the main check logic as yet.
-            tree.lock_read()
-            try:
-                tree_basis = tree.basis_tree()
-                tree_basis.lock_read()
-                try:
-                    repo_basis = tree.branch.repository.revision_tree(
-                        tree.last_revision())
-                    if len(list(repo_basis.iter_changes(tree_basis))):
-                        raise errors.BzrCheckError(
-                            "Mismatched basis inventory content.")
-                    tree._validate()
-                finally:
-                    tree_basis.unlock()
-            finally:
-                tree.unlock()
+    def run(self, path=None, verbose=False):
+        from bzrlib.check import check_dwim
+        if path is None:
+            path = '.'
+        check_dwim(path, verbose)
 
 
 class cmd_upgrade(Command):
