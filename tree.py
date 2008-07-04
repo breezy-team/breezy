@@ -78,7 +78,6 @@ class SvnRevisionTree(RevisionTree):
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
         conn = repository.transport.get_connection()
-        conn.progress_func = prog
         try:
             reporter = conn.do_switch(
                 self.revnum, "", True, 
@@ -86,7 +85,6 @@ class SvnRevisionTree(RevisionTree):
             reporter.set_path("", 0, True, None)
             reporter.finish()
         finally:
-            conn.progress_func = None
             repository.transport.add_connection(conn)
 
     def get_file_lines(self, file_id):
