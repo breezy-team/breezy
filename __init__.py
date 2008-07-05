@@ -391,9 +391,9 @@ class cmd_merge_upstream(Command):
       try:
         package = find_changelog(tree, False)[0].package
       except MissingChangelogError:
-        raise BzrCommandError("There is no changelog to rertrieve the package "
+        raise BzrCommandError("There is no changelog to retrieve the package "
                               "information from, please use the --package "
-                              "option to give the name of the package")
+                              "option to give the name of the package.")
 
     orig_dir = config.orig_dir or '../tarballs'
     orig_dir = os.path.join(tree.basedir, orig_dir)
