@@ -30,6 +30,10 @@ connection even for requests that urllib2 doesn't expect to contain body data.
 
 And a custom Request class that lets us track redirections, and
 handle authentication schemes.
+
+For coherency with python libraries, we use capitalized header names throughout
+the code, even if the header names will be titled just before sending the
+request (see AbstractHTTPHandler.do_open).
 """
 
 DEBUG = 0
@@ -309,7 +313,8 @@ class _ConnectRequest(Request):
         # confused
         Request.__init__(self, 'CONNECT', request.get_full_url(),
                          connection=request.connection)
-        assert request.proxied_host is not None
+        if request.proxied_host is None:
+            raise AssertionError()
         self.proxied_host = request.proxied_host
 
     def get_selector(self):
@@ -406,10 +411,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        # FIXME: Spell it User-*A*gent once we
-                        # know how to properly avoid bogus
-                        # urllib2 using capitalize() for headers
-                        # instead of title(sp?).
                         'User-agent': 'bzr/%s (urllib)' % bzrlib_version,
                         'Accept': '*/*',
                         }
@@ -502,13 +503,21 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         The request will be retried once if it fails.
         """
         connection = request.connection
-        assert connection is not None, \
-            'Cannot process a request without a connection'
+        if connection is None:
+            raise AssertionError(
+                'Cannot process a request without a connection')
 
         # Get all the headers
         headers = {}
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
+        # Some servers or proxies will choke on headers not properly
+        # cased. httplib/urllib/urllib2 all use capitalize to get canonical
+        # header names, but only python2.5 urllib2 use title() to fix them just
+        # before sending the request. And not all versions of python 2.5 do
+        # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
+        # ourself below.
+        headers = dict((name.title(), val) for name, val in headers.iteritems())
 
         try:
             method = request.get_method()
@@ -595,7 +604,6 @@ class HTTPSHandler(AbstractHTTPHandler):
 
     def https_open(self, request):
         connection = request.connection
-        assert isinstance(connection, HTTPSConnection)
         if connection.sock is None and \
                 connection.proxied_host is not None and \
                 request.get_method() != 'CONNECT' : # Don't loop
@@ -1333,7 +1341,9 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
 
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
-            raise errors.TransportError('Server refuses to fullfil the request')
+            raise errors.TransportError(
+                'Server refuses to fulfill the request (403 Forbidden)'
+                ' for %s' % req.get_full_url())
         else:
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'

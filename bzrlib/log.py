@@ -336,8 +336,8 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 
     :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
     """
-    which_revs = _enumerate_history(branch)
-    if not which_revs:
+    branch_revno, branch_last_revision = branch.last_revision_info()
+    if branch_revno == 0:
         return None, None, None, None
 
     # For mainline generation, map start_revision and end_revision to 
@@ -350,7 +350,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if start_revision is None:
         start_revno = 1
     else:
-        if isinstance(start_revision,RevisionInfo):
+        if isinstance(start_revision, RevisionInfo):
             start_rev_id = start_revision.rev_id
             start_revno = start_revision.revno or 1
         else:
@@ -359,11 +359,11 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     
     end_rev_id = None
     if end_revision is None:
-        end_revno = len(which_revs)
+        end_revno = branch_revno
     else:
-        if isinstance(end_revision,RevisionInfo):
+        if isinstance(end_revision, RevisionInfo):
             end_rev_id = end_revision.rev_id
-            end_revno = end_revision.revno or len(which_revs)
+            end_revno = end_revision.revno or branch_revno
         else:
             branch.check_real_revno(end_revision)
             end_revno = end_revision
@@ -375,20 +375,29 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         raise BzrCommandError("Start revision must be older than "
                               "the end revision.")
 
-    # list indexes are 0-based; revisions are 1-based
-    cut_revs = which_revs[(start_revno-1):(end_revno)]
-    if not cut_revs:
+    if end_revno < start_revno:
         return None, None, None, None
+    cur_revno = branch_revno
+    rev_nos = {}
+    mainline_revs = []
+    for revision_id in branch.repository.iter_reverse_revision_history(
+                        branch_last_revision):
+        if cur_revno < start_revno:
+            # We have gone far enough, but we always add 1 more revision
+            rev_nos[revision_id] = cur_revno
+            mainline_revs.append(revision_id)
+            break
+        if cur_revno <= end_revno:
+            rev_nos[revision_id] = cur_revno
+            mainline_revs.append(revision_id)
+        cur_revno -= 1
+    else:
+        # We walked off the edge of all revisions, so we add a 'None' marker
+        mainline_revs.append(None)
 
-    # convert the revision history to a dictionary:
-    rev_nos = dict((k, v) for v, k in cut_revs)
+    mainline_revs.reverse()
 
     # override the mainline to look like the revision history.
-    mainline_revs = [revision_id for index, revision_id in cut_revs]
-    if cut_revs[0][0] == 1:
-        mainline_revs.insert(0, None)
-    else:
-        mainline_revs.insert(0, which_revs[start_revno-2][1])
     return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
 
@@ -456,30 +465,37 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # find all the revisions that change the specific file
-    file_weave = branch.repository.weave_store.get_weave(file_id,
-                branch.repository.get_transaction())
-    weave_modifed_revisions = set(file_weave.versions())
     # build the ancestry of each revision in the graph
     # - only listing the ancestors that change the specific file.
     graph = branch.repository.get_graph()
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
+    # mainline_revisions always includes an extra revision at the beginning, so
+    # don't request it.
     parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revisions) if value is not None))
+        graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
     sorted_rev_list = topo_sort(parent_map.items())
+    text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
+    modified_text_versions = branch.repository.texts.get_parent_map(text_keys)
     ancestry = {}
     for rev in sorted_rev_list:
+        text_key = (file_id, rev)
         parents = parent_map[rev]
-        if rev not in weave_modifed_revisions and len(parents) == 1:
+        if text_key not in modified_text_versions and len(parents) == 1:
             # We will not be adding anything new, so just use a reference to
             # the parent ancestry.
             rev_ancestry = ancestry[parents[0]]
         else:
             rev_ancestry = set()
-            if rev in weave_modifed_revisions:
+            if text_key in modified_text_versions:
                 rev_ancestry.add(rev)
             for parent in parents:
+                if parent not in ancestry:
+                    # parent is a Ghost, which won't be present in
+                    # sorted_rev_list, but we may access it later, so create an
+                    # empty node for it
+                    ancestry[parent] = set()
                 rev_ancestry = rev_ancestry.union(ancestry[parent])
         ancestry[rev] = rev_ancestry
 
@@ -496,7 +512,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # filter from the view the revisions that did not change or merge 
     # the specific file
     return [(r, n, d) for r, n, d in view_revs_iter
-            if r in weave_modifed_revisions or is_merging_rev(r)]
+            if (file_id, r) in modified_text_versions or is_merging_rev(r)]
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
@@ -516,8 +532,10 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
+    # mainline_revisions always includes an extra revision at the beginning, so
+    # don't request it.
     parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revs) if value is not None))
+        graph.iter_ancestry(mainline_revs[1:]) if value is not None))
     # filter out ghosts; merge_sort errors on ghosts.
     rev_graph = _strip_NULL_ghosts(parent_map)
     merge_sorted_revisions = merge_sort(
@@ -548,7 +566,6 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
         if val[2] == _depth:
             zd_revisions.append([val])
         else:
-            assert val[2] > _depth
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:

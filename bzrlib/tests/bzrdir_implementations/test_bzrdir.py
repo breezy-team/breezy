@@ -36,7 +36,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check
+from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -125,15 +125,16 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertEqual(left_repo.get_revision(rev_id),
                         right_repo.get_revision(rev_id))
                 # inventories
-                left_inv_weave = left_repo.get_inventory_weave()
-                right_inv_weave = right_repo.get_inventory_weave()
-                self.assertEqual(set(left_inv_weave.versions()),
-                    set(right_inv_weave.versions()))
+                left_inv_weave = left_repo.inventories
+                right_inv_weave = right_repo.inventories
+                self.assertEqual(set(left_inv_weave.keys()),
+                    set(right_inv_weave.keys()))
                 # XXX: currently this does not handle indirectly referenced
                 # inventories (e.g. where the inventory is a delta basis for
                 # one that is fully present but that the revid for that
                 # inventory is not yet present.)
-                self.assertEqual(set(left_inv_weave.versions()), set(all_revs))
+                self.assertEqual(set(left_inv_weave.keys()),
+                    set(left_repo.revisions.keys()))
                 left_trees = left_repo.revision_trees(all_revs)
                 right_trees = right_repo.revision_trees(all_revs)
                 for left_tree, right_tree in izip(left_trees, right_trees):
@@ -142,14 +143,15 @@ class TestBzrDir(TestCaseWithBzrDir):
                 text_index = left_repo._generate_text_key_index()
                 self.assertEqual(text_index,
                     right_repo._generate_text_key_index())
+                desired_files = []
                 for file_id, revision_id in text_index.iterkeys():
-                    left_weave = left_repo.weave_store.get_weave(
-                        file_id, left_repo.get_transaction())
-                    right_weave = right_repo.weave_store.get_weave(
-                        file_id, right_repo.get_transaction())
-                    self.assertEqual(
-                        left_weave.get_text(revision_id),
-                        right_weave.get_text(revision_id))
+                    desired_files.append(
+                        (file_id, revision_id, (file_id, revision_id)))
+                left_texts = list(left_repo.iter_files_bytes(desired_files))
+                right_texts = list(right_repo.iter_files_bytes(desired_files))
+                left_texts.sort()
+                right_texts.sort()
+                self.assertEqual(left_texts, right_texts)
                 # signatures
                 for rev_id in all_revs:
                     try:
@@ -306,7 +308,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/merge-hashes',
                                      './.bzr/repository',
                                      ])
-        self.assertRepositoryHasSameItems(tree.branch.repository, repo)
+        self.assertRepositoryHasSameItems(tree.branch.repository,
+            target.open_repository())
 
     def test_clone_bzrdir_repository_under_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -536,6 +539,20 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertRepositoryHasSameItems(tree.branch.repository,
             target.open_repository())
         target.open_workingtree().revert()
+
+    def test_clone_on_transport_preserves_repo_format(self):
+        if self.bzrdir_format == bzrdir.format_registry.make_bzrdir('default'):
+            format = 'knit'
+        else:
+            format = None
+        source_branch = self.make_branch('source', format=format)
+        # Ensure no format data is cached
+        a_dir = bzrlib.branch.Branch.open_from_transport(
+            self.get_transport('source')).bzrdir
+        target_transport = a_dir.root_transport.clone('..').clone('target')
+        target_bzrdir = a_dir.clone_on_transport(target_transport)
+        target_repo = target_bzrdir.open_repository()
+        self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):
         tree = self.make_branch_and_tree('source')
@@ -1467,7 +1484,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
+            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
+                         False)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')

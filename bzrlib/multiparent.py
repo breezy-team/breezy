@@ -33,16 +33,30 @@ from bzrlib.util import bencode
 from bzrlib.tuned_gzip import GzipFile
 
 
+def topo_iter_keys(vf, keys=None):
+    if keys is None:
+        keys = vf.keys()
+    parents = vf.get_parent_map(keys)
+    return _topo_iter(parents, keys)
+
 def topo_iter(vf, versions=None):
-    seen = set()
-    descendants = {}
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
+    return _topo_iter(parents, versions)
+
+def _topo_iter(parents, versions):
+    seen = set()
+    descendants = {}
     def pending_parents(version):
+        if parents[version] is None:
+            return []
         return [v for v in parents[version] if v in versions and
                 v not in seen]
     for version_id in versions:
+        if parents[version_id] is None:
+            # parentless
+            continue
         for parent_id in parents[version_id]:
             descendants.setdefault(parent_id, []).append(version_id)
     cur = [v for v in versions if len(pending_parents(v)) == 0]
@@ -57,7 +71,6 @@ def topo_iter(vf, versions=None):
             yield version_id
             seen.add(version_id)
         cur = next
-    assert len(seen) == len(versions)
 
 
 class MultiParent(object):
@@ -195,7 +208,8 @@ class MultiParent(object):
             elif cur_line[0] == '\n':
                 hunks[-1].lines[-1] += '\n'
             else:
-                assert cur_line[0] == 'c', cur_line[0]
+                if not (cur_line[0] == 'c'):
+                    raise AssertionError(cur_line[0])
                 parent, parent_pos, child_pos, num_lines =\
                     [int(v) for v in cur_line.split(' ')[1:]]
                 hunks.append(ParentText(parent, parent_pos, child_pos,
@@ -370,7 +384,8 @@ class BaseVersionedFile(object):
         :param single_parent: If true, omit all but one parent text, (but
             retain parent metadata).
         """
-        assert no_cache or not verify
+        if not (no_cache or not verify):
+            raise ValueError()
         revisions = set(vf.versions())
         total = len(revisions)
         pb = ui.ui_factory.nested_progress_bar()
@@ -382,7 +397,7 @@ class BaseVersionedFile(object):
                     if [p for p in parents if p not in self._parents] != []:
                         continue
                     lines = [a + ' ' + l for a, l in
-                             vf.annotate_iter(revision)]
+                             vf.annotate(revision)]
                     if snapshots is None:
                         force_snapshot = None
                     else:
@@ -394,7 +409,8 @@ class BaseVersionedFile(object):
                         self.clear_cache()
                         vf.clear_cache()
                         if verify:
-                            assert lines == self.get_line_list([revision])[0]
+                            if not (lines == self.get_line_list([revision])[0]):
+                                raise AssertionError()
                             self.clear_cache()
                     pb.update('Importing revisions',
                               (total - len(revisions)) + len(added), total)

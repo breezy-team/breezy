@@ -22,7 +22,7 @@ import os
 import sys
 
 # update this on each release
-_script_version = (1, 4, 0)
+_script_version = (1, 6, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -59,14 +59,43 @@ if '--profile-imports' in sys.argv:
     profile_imports.install()
     profiling = True
 
+if sys.platform == 'darwin':
+    # jameinel says this hack is to force python to honor the LANG setting,
+    # even on Darwin.  Otherwise it is apparently hardcoded to Mac-Roman,
+    # which is incorrect for the normal Terminal.app which wants UTF-8.  
+    #
+    # "It might be that I should be setting the "system locale" somewhere else
+    # on the system, rather than setting LANG=en_US.UTF-8 in .bashrc.
+    # Switching to 'posix' and setting LANG worked for me." 
+    #
+    # So we can remove this if someone works out the right way to tell Mac
+    # Python which encoding to use.  -- mbp 20080703
+    sys.platform = 'posix'
+    try:
+        import locale
+    finally:
+        sys.platform = 'darwin'
+else:
+    import locale
+
+try:
+    locale.setlocale(locale.LC_ALL, '')
+except locale.Error, e:
+    sys.stderr.write('bzr: warning: %s\n'
+                     '  bzr could not set the application locale.\n'
+                     '  Although this should be no problem for bzr itself,\n'
+                     '  it might cause problems with some plugins.\n'
+                     '  To investigate the issue, look at the output\n'
+                     '  of the locale(1p) tool available on POSIX systems.\n'
+                     % e)
 
 try:
     import bzrlib
 except ImportError, e:
     sys.stderr.write("bzr: ERROR: "
-                     "Couldn't import bzrlib and dependencies.\n"
-                     "Please check bzrlib is on your PYTHONPATH.\n"
-                     "\n")
+        "Couldn't import bzrlib and dependencies.\n"
+        "Please check the directory containing bzrlib is on your PYTHONPATH.\n"
+        "\n")
     raise
 
 if bzrlib.version_info[:3] != _script_version:
@@ -129,4 +158,4 @@ if __name__ == '__main__':
         bzrlib.trace._trace_file.flush()
     os._exit(exit_val)
 else:
-    pass    # should this give an error? - it can't be used as a lib
+    raise ImportError("The bzr script cannot be imported.")

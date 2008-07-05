@@ -135,11 +135,10 @@ class TestUpgrade(TestCaseWithTransport):
         # 'dir-20051005095101-da1441ea3fa6917a'
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertNotEqual(
-            [],
-            repo.weave_store.get_weave(
-                'dir-20051005095101-da1441ea3fa6917a',
-                repo.get_transaction()).versions())
+        text_keys = repo.texts.keys()
+        dir_keys = [key for key in text_keys if key[0] ==
+                'dir-20051005095101-da1441ea3fa6917a']
+        self.assertNotEqual([], dir_keys)
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)
@@ -155,7 +154,7 @@ class TestUpgrade(TestCaseWithTransport):
         upgrade('.', bzrdir.BzrDirFormat6())
         transport = get_transport('.')
         transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
-        assert not transport.has('.bzr/stat-cache')
+        self.assertFalse(transport.has('.bzr/stat-cache'))
         # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
         transport.delete_tree('backup.bzr')

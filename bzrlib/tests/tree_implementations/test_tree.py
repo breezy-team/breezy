@@ -69,7 +69,7 @@ class TestReference(TestCaseWithTree):
 
     def skip_if_no_reference(self, tree):
         if not getattr(tree, 'supports_tree_reference', lambda: False)():
-            raise tests.TestSkipped('Tree references not supported')
+            raise tests.TestNotApplicable('Tree references not supported')
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -88,6 +88,8 @@ class TestReference(TestCaseWithTree):
 
     def test_get_reference_revision(self):
         tree = self.create_nested()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1', tree.get_reference_revision('sub-root', path))
 
@@ -96,7 +98,7 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         entry = tree.inventory['sub-root']
-        self.assertEqual([(tree.abspath('subtree'), 'sub-root')],
+        self.assertEqual([(u'subtree', 'sub-root')],
             list(tree.iter_references()))
 
     def test_get_root_id(self):
@@ -189,3 +191,15 @@ class TestConflicts(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self._convert_tree(work_tree)
         self.assertIsInstance(tree.conflicts(), conflicts.ConflictList)
+
+
+class TestIterEntriesByDir(TestCaseWithTree):
+
+    def test_iteration_order(self):
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d/', 'a/d/e', 'f/', 'f/g'])
+        work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
+        tree = self._convert_tree(work_tree)
+        output_order = [p for p, e in tree.iter_entries_by_dir()]
+        self.assertEqual(['', 'a', 'f', 'a/b', 'a/d', 'a/b/c', 'a/d/e', 'f/g'],
+                         output_order)

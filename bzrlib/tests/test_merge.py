@@ -450,34 +450,49 @@ class TestMerge(TestCaseWithTransport):
         finally:
             tree_file.close()
 
+    def test_merge_add_into_deleted_root(self):
+        # Yes, people actually do this.  And report bugs if it breaks.
+        source = self.make_branch_and_tree('source', format='rich-root-pack')
+        self.build_tree(['source/foo/'])
+        source.add('foo', 'foo-id')
+        source.commit('Add foo')
+        target = source.bzrdir.sprout('target').open_workingtree()
+        subtree = target.extract('foo-id')
+        subtree.commit('Delete root')
+        self.build_tree(['source/bar'])
+        source.add('bar', 'bar-id')
+        source.commit('Add bar')
+        subtree.merge_from_branch(source.branch)
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
-        self.vf = knit.KnitVersionedFile('root', self.get_transport(),
-                                         create=True)
-        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
-                                                                   [self.vf])
+        mapper = versionedfile.PrefixMapper()
+        factory = knit.make_file_factory(True, mapper)
+        self.vf = factory(self.get_transport())
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root')
+        self.plan_merge_vf.fallback_versionedfiles.append(self.vf)
 
-    def add_version(self, version_id, parents, text):
-        self.vf.add_lines(version_id, parents, [c+'\n' for c in text])
+    def add_version(self, key, parents, text):
+        self.vf.add_lines(key, parents, [c+'\n' for c in text])
 
-    def add_uncommitted_version(self, version_id, parents, text):
-        self.plan_merge_vf.add_lines(version_id, parents,
+    def add_uncommitted_version(self, key, parents, text):
+        self.plan_merge_vf.add_lines(key, parents,
                                      [c+'\n' for c in text])
 
     def setup_plan_merge(self):
-        self.add_version('A', [], 'abc')
-        self.add_version('B', ['A'], 'acehg')
-        self.add_version('C', ['A'], 'fabg')
-        return _PlanMerge('B', 'C', self.plan_merge_vf)
+        self.add_version(('root', 'A'), [], 'abc')
+        self.add_version(('root', 'B'), [('root', 'A')], 'acehg')
+        self.add_version(('root', 'C'), [('root', 'A')], 'fabg')
+        return _PlanMerge('B', 'C', self.plan_merge_vf, ('root',))
 
     def setup_plan_merge_uncommitted(self):
-        self.add_version('A', [], 'abc')
-        self.add_uncommitted_version('B:', ['A'], 'acehg')
-        self.add_uncommitted_version('C:', ['A'], 'fabg')
-        return _PlanMerge('B:', 'C:', self.plan_merge_vf)
+        self.add_version(('root', 'A'), [], 'abc')
+        self.add_uncommitted_version(('root', 'B:'), [('root', 'A')], 'acehg')
+        self.add_uncommitted_version(('root', 'C:'), [('root', 'A')], 'fabg')
+        return _PlanMerge('B:', 'C:', self.plan_merge_vf, ('root',))
 
     def test_unique_lines(self):
         plan = self.setup_plan_merge()
@@ -491,18 +506,19 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual(set([0, 3]), plan._find_new('C'))
 
     def test_find_new2(self):
-        self.add_version('A', [], 'abc')
-        self.add_version('B', ['A'], 'abcde')
-        self.add_version('C', ['A'], 'abcefg')
-        self.add_version('D', ['A', 'B', 'C'], 'abcdegh')
-        my_plan = _PlanMerge('B', 'D', self.plan_merge_vf)
+        self.add_version(('root', 'A'), [], 'abc')
+        self.add_version(('root', 'B'), [('root', 'A')], 'abcde')
+        self.add_version(('root', 'C'), [('root', 'A')], 'abcefg')
+        self.add_version(('root', 'D'),
+            [('root', 'A'), ('root', 'B'), ('root', 'C')], 'abcdegh')
+        my_plan = _PlanMerge('B', 'D', self.plan_merge_vf, ('root',))
         self.assertEqual(set([5, 6]), my_plan._find_new('D'))
         self.assertEqual(set(), my_plan._find_new('A'))
 
     def test_find_new_no_ancestors(self):
-        self.add_version('A', [], 'abc')
-        self.add_version('B', [], 'xyz')
-        my_plan = _PlanMerge('A', 'B', self.vf)
+        self.add_version(('root', 'A'), [], 'abc')
+        self.add_version(('root', 'B'), [], 'xyz')
+        my_plan = _PlanMerge('A', 'B', self.vf, ('root',))
         self.assertEqual(set([0, 1, 2]), my_plan._find_new('A'))
 
     def test_plan_merge(self):
@@ -562,10 +578,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
             list(_PlanMerge._subtract_plans(old_plan, new_plan)))
 
     def setup_merge_with_base(self):
-        self.add_version('COMMON', [], 'abc')
-        self.add_version('THIS', ['COMMON'], 'abcd')
-        self.add_version('BASE', ['COMMON'], 'eabc')
-        self.add_version('OTHER', ['BASE'], 'eafb')
+        self.add_version(('root', 'COMMON'), [], 'abc')
+        self.add_version(('root', 'THIS'), [('root', 'COMMON')], 'abcd')
+        self.add_version(('root', 'BASE'), [('root', 'COMMON')], 'eabc')
+        self.add_version(('root', 'OTHER'), [('root', 'BASE')], 'eafb')
 
     def test_plan_merge_with_base(self):
         self.setup_merge_with_base()
@@ -614,13 +630,15 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                          ], list(plan))
 
     def test_plan_lca_merge_with_criss_cross(self):
-        self.add_version('ROOT', [], 'abc')
+        self.add_version(('root', 'ROOT'), [], 'abc')
         # each side makes a change
-        self.add_version('REV1', ['ROOT'], 'abcd')
-        self.add_version('REV2', ['ROOT'], 'abce')
+        self.add_version(('root', 'REV1'), [('root', 'ROOT')], 'abcd')
+        self.add_version(('root', 'REV2'), [('root', 'ROOT')], 'abce')
         # both sides merge, discarding others' changes
-        self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
-        self.add_version('LCA2', ['REV1', 'REV2'], 'fabce')
+        self.add_version(('root', 'LCA1'),
+            [('root', 'REV1'), ('root', 'REV2')], 'abcd')
+        self.add_version(('root', 'LCA2'),
+            [('root', 'REV1'), ('root', 'REV2')], 'fabce')
         plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
         self.assertEqual([('new-b', 'f\n'),
                           ('unchanged', 'a\n'),
@@ -628,6 +646,15 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'c\n'),
                           ('conflicted-a', 'd\n'),
                           ('conflicted-b', 'e\n'),
+                         ], list(plan))
+
+    def test_plan_lca_merge_with_null(self):
+        self.add_version(('root', 'A'), [], 'ab')
+        self.add_version(('root', 'B'), [], 'bc')
+        plan = self.plan_merge_vf.plan_lca_merge('A', 'B')
+        self.assertEqual([('new-a', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('new-b', 'c\n'),
                          ], list(plan))
 
 
