@@ -339,8 +339,8 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         self.fileprops.export_fileid_map(fileids, revprops, fileprops)
         self.revprops.export_fileid_map(fileids, revprops, fileprops)
 
-    def import_revision(self, svn_revprops, fileprops, revnum, rev):
-        self.fileprops.import_revision(svn_revprops, fileprops, rev)
-        self.revprops.import_revision(svn_revprops, fileprops, rev)
+    def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
+        self.fileprops.import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)
+        self.revprops.import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)
 
 
