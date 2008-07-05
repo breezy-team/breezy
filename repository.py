@@ -741,7 +741,10 @@ class SvnRepository(Repository):
                 paths = it.next()[1]
                 del paths[bp]
                 if not changes.changes_path(paths, bp, False):
-                    (bp, _, rev, _) = it.next()
+                    try:
+                        (bp, _, rev, _) = it.next()
+                    except StopIteration:
+                        pass
                 
                 tags[nick] = self.generate_revision_id(rev, bp, mapping)
         finally:
