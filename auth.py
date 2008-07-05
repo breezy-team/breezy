@@ -172,9 +172,10 @@ def create_auth_baton(url):
 
     # Specify Subversion providers first, because they use file data
     # rather than prompting the user.
-    providers = auth_config.get_svn_auth_providers()
-    providers += [get_ssl_client_cert_pw_provider(1)]
+    providers = []
     providers += get_stock_svn_providers()
+    providers += auth_config.get_svn_auth_providers()
+    providers += [get_ssl_client_cert_pw_provider(1)]
 
     auth_baton = ra.Auth(providers)
     if creds is not None:
