@@ -54,8 +54,9 @@ http://bazaar-vcs.org/HistoryHorizon
 
 The Bazaar revno's differ from the Subversion revno's
 -----------------------------------------------------
-That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository. If you 
-would like to use Subversion revision numbers, use the "svn:" revision specifier. For example:
+That's right. Bazaar revision numbers are per-branch, whereas Subversion 
+revno's are per-repository. If you would like to use Subversion revision 
+numbers, use the "svn:" revision specifier. For example:
 
 ::
 
@@ -118,9 +119,9 @@ can not be losslessly mapped to existing Subversion metadata.
 
 It is possible to push changes to Subversion without
 setting that metadata by using the ``bzr dpush`` command. 
-Since revisions created in Subversion this way are actually (slightly) different 
-from the matching revisions in the local branch, it is necessary for the dpush command 
-to rebase your branch to the remote branch after pushing.
+Since revisions created in Subversion this way are actually (slightly) 
+different from the matching revisions in the local branch, it is necessary for 
+the dpush command to rebase your branch to the remote branch after pushing.
 
 You would get a DivergedBranches error when pulling from a svn branch you have 
 just pushed to. 
@@ -142,9 +143,10 @@ e.g.::
 Is it possible to not use the on-disk cache?
 --------------------------------------------
 
-Yes, simply set ``use-cache = False`` for the repository in question in ~/.bazaar/subversion.conf. 
-This will of course have some consequences for the performance of bzr-svn since it 
-will have to re-fetch data.
+Yes, simply set ``use-cache = False`` for the repository in question in 
+~/.bazaar/subversion.conf. 
+This will of course have some consequences for the performance of bzr-svn 
+since it will have to re-fetch data.
 
 ..
 	vim: ft=rest
