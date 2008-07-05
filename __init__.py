@@ -405,7 +405,8 @@ class cmd_merge_upstream(Command):
       raise BzrCommandError("The target file %s already exists, and is either "
                             "different to the new upstream tarball, or they "
                             "are of different formats. Either delete the target "
-                            "file, or use it as the argument to import.")
+                            "file, or use it as the argument to import." % \
+                            dest_name)
     filename = os.path.join(orig_dir, dest_name)
 
     try:
