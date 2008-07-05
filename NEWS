@@ -14,6 +14,10 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * ``bzr send'' documents and better supports `emacsclient' (proper
+      escaping of mail headers and handling of the MUA Mew).
+      (Christophe Troestler)
+
   BUGFIXES:
 
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be

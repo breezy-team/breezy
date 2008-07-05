@@ -343,23 +343,23 @@ class EmacsMail(ExternalMailClient):
         (cond
          ((eq agent 'sendmail-user-agent)
           (progn
-	    (mail-text)
-	    (newline)
-	    (if (functionp 'etach-attach)
-	      (etach-attach file)
-	      (mail-attach-file file))))
+            (mail-text)
+            (newline)
+            (if (functionp 'etach-attach)
+              (etach-attach file)
+              (mail-attach-file file))))
          ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
           (progn
-	    (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
-	 ((eq agent 'mew-user-agent)
-	  (progn
-	    (mew-draft-prepare-attachments)
-	    (mew-attach-link file (file-name-nondirectory file))
-	    (let* ((nums (mew-syntax-nums))
-	           (syntax (mew-syntax-get-entry mew-encode-syntax nums)))
-	      (mew-syntax-set-cd syntax "BZR merge")
-	      (mew-encode-syntax-print mew-encode-syntax))
-	    (mew-header-goto-body)))
+            (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
+         ((eq agent 'mew-user-agent)
+          (progn
+            (mew-draft-prepare-attachments)
+            (mew-attach-link file (file-name-nondirectory file))
+            (let* ((nums (mew-syntax-nums))
+                   (syntax (mew-syntax-get-entry mew-encode-syntax nums)))
+              (mew-syntax-set-cd syntax "BZR merge")
+              (mew-encode-syntax-print mew-encode-syntax))
+            (mew-header-goto-body)))
          (t
           (message "Unhandled MUA, report it on bazaar@lists.canonical.com")))
       (error "File %s does not exist." file))))
