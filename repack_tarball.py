@@ -119,9 +119,27 @@ def repack_tarball(orig_name, new_name, target_dir=None):
           gz.write(old_tar_content_decompressed)
         finally:
           gz.close()
+      elif orig_name.endswith('.zip') or zipfile.is_zipfile(orig_name):
+        # TarFileCompat may be easier, but it's buggy (Python issue 3039).
+        # method/code has been adopted from the patch there.
+        import zipfile
+        import calendar
+        try:
+            from cStringIO import StringIO
+        except ImportError:
+            from StringIO import StringIO
+        zip = zipfile.ZipFile(orig_name, 'r')
+        tgz = tarfile.open(new_name, "w|gz")
+        for zinfo in zip.infolist():
+          bytes = zip.read(zinfo.filename)
+          tinfo = tarfile.TarInfo(zinfo.filename)
+          tinfo.size = len(bytes)
+          tinfo.mtime = calendar.timegm(zinfo.date_time)
+          tgz.addfile(tinfo, StringIO(bytes))
+        tgz.close()
+
       else:
         raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
-      # TODO: handle zip files.
     finally:
       trans_file.close()
 
