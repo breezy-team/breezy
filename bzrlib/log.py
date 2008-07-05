@@ -635,23 +635,14 @@ class LogFormatter(object):
             return name
         return address
 
-    def show_properties(self, properties):
+    def show_properties(self, revision, indent):
         """Displays the custom properties returned by each registered handler.
         
-        If a registered handler raise an error, it's silently logged and the
-        next handler in the registry is executed.
+        If a registered handler raises a error it is propagated.
         """
-        filtered_props = properties.copy()
-        if 'branch-nick' in filtered_props: 
-            del filtered_props['branch-nick']
-        for key, handler in custom_properties_handler_registry.iteritems():
-            try:
-                for key, value in handler(filtered_props).items():
-                    self.to_file.write(key + ': ' + value + '\n')
-            except:
-                mutter('custom property handler: %s raised an error', 
-                        key)
-                trace.log_exception_quietly()
+        for key, handler in properties_handler_registry.iteritems():
+            for key, value in handler(revision).items():
+                self.to_file.write(indent + key + ': ' + value + '\n')
 
 
 class LongLogFormatter(LogFormatter):
@@ -674,7 +665,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
-        self.show_properties(revision.rev.properties)
+        self.show_properties(revision.rev.properties, indent)
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
@@ -892,4 +883,4 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  search=None)
 
 
-custom_properties_handler_registry = registry.Registry()
+properties_handler_registry = registry.Registry()
