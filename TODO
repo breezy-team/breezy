@@ -1,0 +1,5 @@
+Todo for groupcompress:
+
+ * layers - gc reader/writer and vf layers should be separate
+ * mpdiff usage
+ * other stuff from design
