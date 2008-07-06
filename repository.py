@@ -736,16 +736,20 @@ class SvnRepository(Repository):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for project, bp, nick in layout.get_tags(revnum, project=project, pb=pb):
-                it = self.iter_changes(bp, revnum, mapping, pb=pb, limit=2)
-                rev = revnum
-                paths = it.next()[1]
-                if paths.has_key(bp):
-                    del paths[bp]
-                    if not changes.changes_path(paths, bp, False):
-                        try:
-                            (bp, _, rev, _) = it.next()
-                        except StopIteration:
-                            pass
+                npb = ui.ui_factory.nested_progress_bar()
+                try:
+                    it = self.iter_changes(bp, revnum, mapping, pb=npb, limit=2)
+                    rev = revnum
+                    paths = it.next()[1]
+                    if paths.has_key(bp):
+                        del paths[bp]
+                        if not changes.changes_path(paths, bp, False):
+                            try:
+                                (bp, _, rev, _) = it.next()
+                            except StopIteration:
+                                pass
+                finally:
+                    npb.finished()
                 
                 tags[nick] = self.generate_revision_id(rev, bp, mapping)
         finally:
