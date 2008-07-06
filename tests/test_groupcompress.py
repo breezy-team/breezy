@@ -20,6 +20,7 @@
 import zlib
 
 from bzrlib import tests
+from bzrlib.osutils import sha_strings
 from bzrlib.plugins.groupcompress import errors, groupcompress
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -47,3 +48,111 @@ def load_tests(standard_tests, module, loader):
     return standard_tests
 
 
+class TestGroupCompressor(TestCaseWithTransport):
+    """Tests for GroupCompressor"""
+
+    def test_empty_delta(self):
+        compressor = groupcompress.GroupCompressor(True)
+        self.assertEqual([], compressor.lines)
+
+    def test_one_nosha_delta(self):
+        # diff against NUKK
+        compressor = groupcompress.GroupCompressor(True)
+        sha1, end_point = compressor.compress(('label',),
+            ['strange\n', 'common\n'], None)
+        self.assertEqual(sha_strings(['strange\n', 'common\n']), sha1)
+        expected_lines = [
+            'label: label\n',
+            'sha1: %s\n' % sha1,
+            '0,0,3\n',
+            'strange\n',
+            'common\n',
+            '\n', # the last \n in a text is removed, which allows safe
+            # serialisation of lines without trailing \n.
+            ]
+        self.assertEqual(expected_lines, compressor.lines)
+        self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+    def test_two_nosha_delta(self):
+        compressor = groupcompress.GroupCompressor(True)
+        sha1_1, _ = compressor.compress(('label',),
+            ['strange\n', 'common\n'], None)
+        sha1_2, end_point = compressor.compress(('newlabel',),
+            ['common\n', 'different\n'], None)
+        self.assertEqual(sha_strings(['common\n', 'different\n']), sha1_2)
+        expected_lines = [
+            'label: label\n',
+            'sha1: %s\n' % sha1_1,
+            '0,0,3\n',
+            'strange\n',
+            'common\n',
+            '\n',
+            'label: newlabel\n',
+            'sha1: %s\n' % sha1_2,
+            # Delete what we don't want. Perhaps we want an implicit
+            # delete all to keep from bloating with useless delete
+            # instructions.
+            '0,4,0\n',
+            # add the new lines
+            '5,5,1\n',
+            'different\n',
+            ]
+        self.assertEqual(expected_lines, compressor.lines)
+        self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+    def test_three_nosha_delta(self):
+        # The first interesting test: make a change that should use lines from
+        # both parents.
+        compressor = groupcompress.GroupCompressor(True)
+        sha1_1, end_point = compressor.compress(('label',),
+            ['strange\n', 'common\n'], None)
+        sha1_2, _ = compressor.compress(('newlabel',),
+            ['common\n', 'different\n', 'moredifferent\n'], None)
+        sha1_3, end_point = compressor.compress(('label3',),
+            ['new\n', 'common\n', 'different\n', 'moredifferent\n'], None)
+        self.assertEqual(
+            sha_strings(['new\n', 'common\n', 'different\n', 'moredifferent\n']),
+            sha1_3)
+        expected_lines = [
+            'label: label\n',
+            'sha1: %s\n' % sha1_1,
+            '0,0,3\n',
+            'strange\n',
+            'common\n',
+            '\n',
+            'label: newlabel\n',
+            'sha1: %s\n' % sha1_2,
+            # Delete what we don't want. Perhaps we want an implicit
+            # delete all to keep from bloating with useless delete
+            # instructions.
+            '0,4,0\n',
+            # add the new lines
+            '5,5,2\n',
+            'different\n',
+            'moredifferent\n',
+            'label: label3\n',
+            'sha1: %s\n' % sha1_3,
+            # Delete what we don't want. Perhaps we want an implicit
+            # delete all to keep from bloating with useless delete
+            # instructions.
+            # replace 'strange' with 'new'
+            '0,4,1\n',
+            'new\n',
+            # delete from after common up to differnet
+            '5,10,0\n',
+            # add new \n
+            '12,12,1\n',
+            '\n',
+            ]
+        self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
+        self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+    def test_stats(self):
+        compressor = groupcompress.GroupCompressor(True)
+        compressor.compress(('label',),
+            ['strange\n', 'common\n'], None)
+        compressor.compress(('newlabel',),
+            ['common\n', 'different\n', 'moredifferent\n'], None)
+        compressor.compress(('label3',),
+            ['new\n', 'common\n', 'different\n', 'moredifferent\n'], None)
+        self.assertAlmostEqual(0.3, compressor.ratio(), 1)
