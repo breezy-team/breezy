@@ -18,11 +18,9 @@ bzr-svn 0.4.11    UNRELEASED
 
      * Username and password prompting will now always work.
 
-   * Now uses absolute imports and no longer adds plugin directory to the system path.
-
-   * Basic support for stacked branches.
-
-   * Avoid reopening connections to branch and repository when finding branches. (#243749)
+   * The "svn+https://..." syntax has been deprecated. It still works in the 
+     current release but will be removed in the future. If you are unable to 
+	 get a repository to work without the svn+ prefix, please file a bug.
 
   FEATURES
   
@@ -32,7 +30,13 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Set mergeinfo properties when pushing merges. (write part of #131323)
 
+   * Basic support for stacked branches.
+
+   * Avoid reopening connections to branch and repository when finding branches. (#243749)
+
   BUG FIXES
+
+   * Now uses absolute imports and no longer adds plugin directory to the system path.
 
    * More efficient use of mutter.
 

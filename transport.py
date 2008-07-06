@@ -19,7 +19,7 @@ import bzrlib
 from bzrlib import debug, urlutils
 from bzrlib.errors import (NoSuchFile, TransportNotPossible, 
                            FileExists, NotLocalUrl, InvalidURL)
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 from bzrlib.transport import Transport
 
 import bzrlib.plugins.svn
@@ -68,6 +68,15 @@ def _url_unescape_uri(url):
     return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
 
 
+svnplus_warning_showed = False
+
+def warn_svnplus(url):
+    global svnplus_warning_showed
+    if not svnplus_warning_showed:
+        warning("The svn+ syntax is deprecated, use %s instead.", url)
+        svnplus_warning_showed = True
+
+
 def bzr_to_svn_url(url):
     """Convert a Bazaar URL to a URL understood by Subversion.
 
@@ -77,6 +86,7 @@ def bzr_to_svn_url(url):
         url.startswith("svn+file://") or
         url.startswith("svn+https://")):
         url = url[len("svn+"):] # Skip svn+
+        warn_svnplus(url)
 
     if url.startswith("http"):
         # Without this, URLs with + in them break
