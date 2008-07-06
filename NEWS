@@ -76,6 +76,10 @@ IN DEVELOPMENT
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
 
+    * New registry for custom log displayers and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
+
   DOCUMENTATION:
 
     * Updated developer documentation.
@@ -1084,10 +1088,6 @@ bzr 1.3rc1 2008-03-16
 
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
-    
-    * New registry for custom log displayers and the method in 
-      LongLogFormatter to display the custom properties returned by the 
-      registered handlers. (Guillermo Gonzalez, #162469)
 
   DOCUMENTATION:
 

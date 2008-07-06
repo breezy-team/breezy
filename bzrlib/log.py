@@ -63,7 +63,6 @@ from bzrlib import (
     config,
     lazy_regex,
     registry,
-    trace,
     )
 from bzrlib.errors import (
     BzrCommandError,
