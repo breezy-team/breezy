@@ -419,15 +419,25 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
     def test_fetch_copy_subdir(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/trunk/mydir/a': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/branches/tmp': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "Second Message")
-        self.client_copy("dc/trunk/mydir", "dc/branches/tmp/abranch")
-        self.client_commit("dc", "Third Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        mydir = trunk.add_dir("trunk/mydir")
+        mydir.add_file("trunk/mydir/a").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.add_dir("branches")
+        branches.add_dir("branches/tmp")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        tmp = branches.open_dir("branches/tmp")
+        tmp.add_dir("branches/tmp/abranch", "trunk/mydir")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
@@ -1465,19 +1475,21 @@ Node-copyfrom-path: x
             oldrepos.generate_revision_id(2, "", mapping)))
 
     def test_fetch_copy_root_id_kept(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('d')
 
-        self.build_tree({'dc/trunk': None, 
-                         'dc/trunk/hosts': 'hej1'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "created trunk and added hosts") #1
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir('trunk')
+        trunk.add_file("trunk/hosts").modify("hej1")
+        dc.close()
 
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "added branches") #2
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("branches")
+        dc.close()
 
-        self.client_copy("dc/trunk", "dc/branches/foobranch")
-        self.client_commit("dc", "added branch foobranch") #3
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        branches.add_dir("branches/foobranch", "trunk")
+        dc.close()
 
         repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
         set_branching_scheme(repos, TrunkBranchingScheme())
