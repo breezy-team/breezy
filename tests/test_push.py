@@ -100,6 +100,23 @@ class TestDPush(TestCaseWithSubversionRepository):
                 r.get_mapping()) for rev in (c.get_latest_revnum()-1, c.get_latest_revnum())]), 
                 set(revid_map.values()))
  
+    def test_diverged(self):
+        dc = self.commit_editor()
+        foo = dc.open_dir("foo")
+        foo.add_file("foo/bar").modify("data")
+        dc.close()
+
+        svndir = BzrDir.open(self.repos_url)
+
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.assertRaises(DivergedBranches, 
+                          dpush, svndir.open_branch(),
+                          self.bzrdir.open_branch())
+
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):

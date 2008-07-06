@@ -714,7 +714,7 @@ def dpush(target, source, stop_revision=None):
                                                         stop_revision):
             if graph.is_ancestor(stop_revision, target.last_revision()):
                 return
-            raise DivergedBranches(self, other)
+            raise DivergedBranches(source, target)
         todo = target.mainline_missing_revisions(source, stop_revision)
         revid_map = {}
         pb = ui.ui_factory.nested_progress_bar()
