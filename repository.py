@@ -457,8 +457,8 @@ class SvnRepository(Repository):
         assert isinstance(path, str)
         assert isinstance(revnum, int)
 
-        iterator = self.iter_reverse_branch_changes(path, revnum, mapping=mapping, 
-                                                    limit=2)
+        iterator = self.iter_reverse_branch_changes(path, revnum, 
+                                                      mapping=mapping, limit=2)
         revmeta = iterator.next()
         assert revmeta.branch_path == path
         assert revmeta.revnum == revnum
@@ -739,12 +739,13 @@ class SvnRepository(Repository):
                 it = self.iter_changes(bp, revnum, mapping, pb=pb, limit=2)
                 rev = revnum
                 paths = it.next()[1]
-                del paths[bp]
-                if not changes.changes_path(paths, bp, False):
-                    try:
-                        (bp, _, rev, _) = it.next()
-                    except StopIteration:
-                        pass
+                if paths.has_key(bp):
+                    del paths[bp]
+                    if not changes.changes_path(paths, bp, False):
+                        try:
+                            (bp, _, rev, _) = it.next()
+                        except StopIteration:
+                            pass
                 
                 tags[nick] = self.generate_revision_id(rev, bp, mapping)
         finally:

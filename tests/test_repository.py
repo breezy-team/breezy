@@ -402,19 +402,59 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                           branches[0].base)
 
     def test_find_tags(self):
-        repos_url = self.make_client('a', 'dc')
-        self.build_tree({
-            'dc/tags/brancha': None,
-            'dc/tags/branchab': None,
-            'dc/tags/brancha/data': "data", 
-            "dc/tags/branchab/data":"data"})
-        self.client_add("dc/tags")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/brancha").add_file("tags/brancha/data").modify()
+        tags.add_dir("tags/branchab").add_file("tags/branchab/data").modify()
+        dc.close()
+
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, TrunkBranchingScheme())
         tags = repos.find_tags()
         self.assertEquals({"brancha": repos.generate_revision_id(1, "tags/brancha", repos.get_mapping()),
                            "branchab": repos.generate_revision_id(1, "tags/branchab", repos.get_mapping())}, tags)
+
+    def test_find_tags_unmodified(self):
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk").add_file("trunk/data").modify()
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/brancha", "trunk")
+        dc.close()
+
+        repos = Repository.open(repos_url)
+        set_branching_scheme(repos, TrunkBranchingScheme())
+        tags = repos.find_tags()
+        self.assertEquals({"brancha": repos.generate_revision_id(1, "trunk", repos.get_mapping())}, tags)
+
+    def test_find_tags_modified(self):
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("trunk").add_file("trunk/data").modify()
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.add_dir("tags")
+        tags.add_dir("tags/brancha", "trunk")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        tags = dc.open_dir("tags")
+        brancha = tags.open_dir("tags/brancha")
+        brancha.add_file("tags/brancha/release-notes").modify()
+        dc.close()
+
+        repos = Repository.open(repos_url)
+        set_branching_scheme(repos, TrunkBranchingScheme())
+        tags = repos.find_tags()
+        self.assertEquals({"brancha": repos.generate_revision_id(3, "tags/brancha", repos.get_mapping())}, tags)
 
     def test_find_branchpaths_moved(self):
         repos_url = self.make_client("a", "dc")
