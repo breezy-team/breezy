@@ -687,7 +687,7 @@ def parse_revision_id(revid):
     """Try to parse a Subversion revision id.
     
     :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, mapping)
+    :return: tuple with (uuid, branch_path, revno, mapping)
     """
     if not revid.startswith("svn-"):
         raise InvalidRevisionId(revid, None)

@@ -34,6 +34,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Avoid reopening connections to branch and repository when finding branches. (#243749)
 
+   * Show Subversion revision numbers in log output. (#161830)
+
   BUG FIXES
 
    * Now uses absolute imports and no longer adds plugin directory to the system path.
