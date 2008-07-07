@@ -721,51 +721,27 @@ class cmd_push(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
+        Option('reference',
+            help='Create a stacked branch that refers to another branch '
+                'for the commit history. Only the work not present in the '
+                'referenced branch is included in the branch created.',
+            type=unicode),
+        Option('stacked',
+            help='Create a stacked branch that references the public location '
+                'of the parent branch. See --reference for more information.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False, revision=None,
-            use_existing_dir=False,
-            directory=None):
-        # FIXME: Way too big!  Put this into a function called from the
-        # command.
+        create_prefix=False, verbose=False, revision=None,
+        use_existing_dir=False, directory=None, reference=None, stacked=False):
+        from bzrlib.push import _show_push_branch
+
+        # Get the source branch and revision_id
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
-        stored_loc = br_from.get_push_location()
-        if location is None:
-            if stored_loc is None:
-                raise errors.BzrCommandError("No push location known or specified.")
-            else:
-                display_url = urlutils.unescape_for_display(stored_loc,
-                        self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
-                location = stored_loc
-
-        to_transport = transport.get_transport(location)
-
-        br_to = repository_to = dir_to = None
-        try:
-            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
-        except errors.NotBranchError:
-            pass # Didn't find anything
-        else:
-            # If we can open a branch, use its direct repository, otherwise see
-            # if there is a repository without a branch.
-            try:
-                br_to = dir_to.open_branch()
-            except errors.NotBranchError:
-                # Didn't find a branch, can we find a repository?
-                try:
-                    repository_to = dir_to.find_repository()
-                except errors.NoRepositoryPresent:
-                    pass
-            else:
-                # Found a branch, so we must have found a repository
-                repository_to = br_to.repository
-
         if revision is not None:
             if len(revision) == 1:
                 revision_id = revision[0].in_history(br_from).rev_id
@@ -775,112 +751,41 @@ class cmd_push(Command):
         else:
             revision_id = br_from.last_revision()
 
-        push_result = None
-        if verbose:
-            old_rh = []
-        if dir_to is None:
-            # The destination doesn't exist; create it.
-            # XXX: Refactor the create_prefix/no_create_prefix code into a
-            #      common helper function
+        # Get the reference branch, if any
+        if reference is not None:
+            reference = urlutils.normalize_url(reference)
+        elif stacked:
+            reference = None
+            parent_url = br_from.get_parent()
+            if parent_url:
+                parent = Branch.open(parent_url)
+                reference = parent.get_public_branch()
+                if not reference:
+                    # I considered excluding non-http url's here, thus forcing
+                    # 'public' branches only, but that only works for some
+                    # users, so it's best to just depend on the user spotting an
+                    # error by the feedback given to them. RBC 20080227.
+                    reference = parent_url
+            if not reference:
+                raise errors.BzrCommandError(
+                    "Could not determine branch to refer to.")
 
-            def make_directory(transport):
-                transport.mkdir('.')
-                return transport
+        # Get the destination location
+        if location is None:
+            stored_loc = br_from.get_push_location()
+            if stored_loc is None:
+                raise errors.BzrCommandError(
+                    "No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
 
-            def redirected(redirected_transport, e, redirection_notice):
-                return transport.get_transport(e.get_target_url())
-
-            try:
-                to_transport = transport.do_catching_redirections(
-                    make_directory, to_transport, redirected)
-            except errors.FileExists:
-                if not use_existing_dir:
-                    raise errors.BzrCommandError("Target directory %s"
-                         " already exists, but does not have a valid .bzr"
-                         " directory. Supply --use-existing-dir to push"
-                         " there anyway." % location)
-            except errors.NoSuchFile:
-                if not create_prefix:
-                    raise errors.BzrCommandError("Parent directory of %s"
-                        " does not exist."
-                        "\nYou may supply --create-prefix to create all"
-                        " leading parent directories."
-                        % location)
-                _create_prefix(to_transport)
-            except errors.TooManyRedirections:
-                raise errors.BzrCommandError("Too many redirections trying "
-                                             "to make %s." % location)
-
-            # Now the target directory exists, but doesn't have a .bzr
-            # directory. So we need to create it, along with any work to create
-            # all of the dependent branches, etc.
-            dir_to = br_from.bzrdir.clone_on_transport(to_transport,
-                                                       revision_id=revision_id)
-            br_to = dir_to.open_branch()
-            # TODO: Some more useful message about what was copied
-            note('Created new branch.')
-            # We successfully created the target, remember it
-            if br_from.get_push_location() is None or remember:
-                br_from.set_push_location(br_to.base)
-        elif repository_to is None:
-            # we have a bzrdir but no branch or repository
-            # XXX: Figure out what to do other than complain.
-            raise errors.BzrCommandError("At %s you have a valid .bzr control"
-                " directory, but not a branch or repository. This is an"
-                " unsupported configuration. Please move the target directory"
-                " out of the way and try again."
-                % location)
-        elif br_to is None:
-            # We have a repository but no branch, copy the revisions, and then
-            # create a branch.
-            repository_to.fetch(br_from.repository, revision_id=revision_id)
-            br_to = br_from.clone(dir_to, revision_id=revision_id)
-            note('Created new branch.')
-            if br_from.get_push_location() is None or remember:
-                br_from.set_push_location(br_to.base)
-        else: # We have a valid to branch
-            # We were able to connect to the remote location, so remember it
-            # we don't need to successfully push because of possible divergence.
-            if br_from.get_push_location() is None or remember:
-                br_from.set_push_location(br_to.base)
-            if verbose:
-                old_rh = br_to.revision_history()
-            try:
-                try:
-                    tree_to = dir_to.open_workingtree()
-                except errors.NotLocalUrl:
-                    warning("This transport does not update the working " 
-                            "tree of: %s. See 'bzr help working-trees' for "
-                            "more information." % br_to.base)
-                    push_result = br_from.push(br_to, overwrite,
-                                               stop_revision=revision_id)
-                except errors.NoWorkingTree:
-                    push_result = br_from.push(br_to, overwrite,
-                                               stop_revision=revision_id)
-                else:
-                    tree_to.lock_write()
-                    try:
-                        push_result = br_from.push(tree_to.branch, overwrite,
-                                                   stop_revision=revision_id)
-                        tree_to.update()
-                    finally:
-                        tree_to.unlock()
-            except errors.DivergedBranches:
-                raise errors.BzrCommandError('These branches have diverged.'
-                                        '  Try using "merge" and then "push".')
-        if push_result is not None:
-            push_result.report(self.outf)
-        elif verbose:
-            new_rh = br_to.revision_history()
-            if old_rh != new_rh:
-                # Something changed
-                from bzrlib.log import show_changed_revisions
-                show_changed_revisions(br_to, old_rh, new_rh,
-                                       to_file=self.outf)
-        else:
-            # we probably did a clone rather than a push, so a message was
-            # emitted above
-            pass
+        _show_push_branch(br_from, revision_id, location, self.outf,
+            verbose=verbose, overwrite=overwrite, remember=remember,
+            reference=reference, create_prefix=create_prefix,
+            use_existing_dir=use_existing_dir)
 
 
 class cmd_branch(Command):
@@ -900,11 +805,16 @@ class cmd_branch(Command):
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.')]
+        help='Hard-link working tree files where possible.'),
+        Option('stacked',
+            help='Create a stacked branch referring to the source branch. '
+                'The new branch will depend on the availability of the source '
+                'branch for all operations.'),
+        ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False):
+            hardlink=False, stacked=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -939,14 +849,23 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink)
+                                            hardlink=hardlink, stacked=stacked)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
-                msg = "The branch %s has no revision %s." % (from_location, revision[0])
+                msg = "The branch %s has no revision %s." % (from_location,
+                    revision[0])
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
-            note('Branched %d revision(s).' % branch.revno())
+            # If the source branch is stacked, the new branch may
+            # be stacked whether we asked for that explicitly or not.
+            # We therefore need a try/except here and not just 'if stacked:'
+            try:
+                note('Created new stacked branch referring to %s.' %
+                    branch.get_stacked_on())
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat), e:
+                note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
 

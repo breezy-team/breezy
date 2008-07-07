@@ -97,6 +97,63 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+    def assertShallow(self, branch_revid, stacked_on):
+        """Assert that the branch 'newbranch' has been published correctly."""
+        new_branch = branch.Branch.open('newbranch')
+        # The branch refers to the mainline
+        self.assertEqual(stacked_on, new_branch.get_stacked_on())
+        # and the branch's work was pushed
+        self.assertTrue(new_branch.repository.has_revision(branch_revid))
+        # but the mainline's was not included
+        repo = new_branch.bzrdir.open_repository()
+        revids = repo.all_revision_ids()
+        if len(revids) != 1:
+            self.fail("wrong revisions in shallow repository:\n  %r"
+                % (revids,))
+
+    def test_branch_stacked_branch_also_stacked_same_reference(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.branch.set_stacked_on(trunk_tree.branch.base)
+        # with some work on it
+        branch_tree.commit('moar work plz')
+        # branching our local branch gives us a new stacked branch pointing at
+        # mainline.
+        out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        self.assertShallow(branch_tree.last_revision(),
+            trunk_tree.branch.base)
+
+    def test_branch_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        out, err = self.run_bzr(['branch', '--stacked', 'mainline',
+            'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        new_tree = WorkingTree.open('newbranch')
+        new_revid = new_tree.commit('new work')
+        self.assertShallow(new_revid, trunk_tree.branch.base)
+
+    def test_branch_stacked_from_smart_server(self):
+        # We can branch stacking on a smart server
+        from bzrlib.smart.server import SmartTCPServer_for_testing
+        self.transport_server = SmartTCPServer_for_testing
+        trunk = self.make_branch('mainline', format='development')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 
