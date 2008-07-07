@@ -387,6 +387,7 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
+    @convert_svn_error
     def mkdir(self, relpath, message="Creating directory"):
         conn = self.get_connection()
         self.mutter('svn mkdir %s' % (relpath,))
@@ -443,6 +444,7 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
+    @convert_svn_error
     def get_commit_editor(self, revprops, done_cb=None, 
                           lock_token=None, keep_locks=False):
         conn = self._open_real_transport()
