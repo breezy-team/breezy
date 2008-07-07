@@ -644,7 +644,7 @@ def local_time_offset(t=None):
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     
 def format_date(t, offset=0, timezone='original', date_fmt=None,
-                show_offset=True):
+                show_offset=True, local_weekday=False):
     """Return a formatted date string.
 
     :param t: Seconds since the epoch.
@@ -673,9 +673,14 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
     else:
         offset_str = ''
-    # day of week depends on locale, so we do this ourself
-    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
-    return (time.strftime(date_fmt, tt) +  offset_str)
+    if local_weekday:
+        date_str = time.strftime(date_fmt, tt)
+        if not isinstance(date_str, unicode):
+            date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+    else:
+        date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
+        date_str = time.strftime(date_fmt, tt)
+    return date_str + offset_str
 
 
 def compact_date(when):
