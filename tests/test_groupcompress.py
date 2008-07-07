@@ -64,7 +64,7 @@ class TestGroupCompressor(TestCaseWithTransport):
         expected_lines = [
             'label: label\n',
             'sha1: %s\n' % sha1,
-            '0,0,3\n',
+            'i,3\n',
             'strange\n',
             'common\n',
             '\n', # the last \n in a text is removed, which allows safe
@@ -77,26 +77,22 @@ class TestGroupCompressor(TestCaseWithTransport):
         compressor = groupcompress.GroupCompressor(True)
         sha1_1, _ = compressor.compress(('label',),
             ['strange\n', 'common\n'], None)
+        expected_lines = list(compressor.lines)
         sha1_2, end_point = compressor.compress(('newlabel',),
             ['common\n', 'different\n'], None)
         self.assertEqual(sha_strings(['common\n', 'different\n']), sha1_2)
-        expected_lines = [
-            'label: label\n',
-            'sha1: %s\n' % sha1_1,
-            '0,0,3\n',
-            'strange\n',
-            'common\n',
-            '\n',
+        expected_lines.extend([
             'label: newlabel\n',
             'sha1: %s\n' % sha1_2,
-            # Delete what we don't want. Perhaps we want an implicit
-            # delete all to keep from bloating with useless delete
-            # instructions.
-            '0,4,0\n',
-            # add the new lines
-            '5,5,1\n',
+            # copy the line common
+            'c,4,1\n',
+            # add the line different
+            'i,1\n',
             'different\n',
-            ]
+            # copy the line \n. Note that when we filter on encoding-overhead
+            # this will become a fresh insert instead
+            'c,5,1\n',
+            ])
         self.assertEqual(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
@@ -108,42 +104,26 @@ class TestGroupCompressor(TestCaseWithTransport):
             ['strange\n', 'common\n'], None)
         sha1_2, _ = compressor.compress(('newlabel',),
             ['common\n', 'different\n', 'moredifferent\n'], None)
+        expected_lines = list(compressor.lines)
         sha1_3, end_point = compressor.compress(('label3',),
             ['new\n', 'common\n', 'different\n', 'moredifferent\n'], None)
         self.assertEqual(
             sha_strings(['new\n', 'common\n', 'different\n', 'moredifferent\n']),
             sha1_3)
-        expected_lines = [
-            'label: label\n',
-            'sha1: %s\n' % sha1_1,
-            '0,0,3\n',
-            'strange\n',
-            'common\n',
-            '\n',
-            'label: newlabel\n',
-            'sha1: %s\n' % sha1_2,
-            # Delete what we don't want. Perhaps we want an implicit
-            # delete all to keep from bloating with useless delete
-            # instructions.
-            '0,4,0\n',
-            # add the new lines
-            '5,5,2\n',
-            'different\n',
-            'moredifferent\n',
+        expected_lines.extend([
             'label: label3\n',
             'sha1: %s\n' % sha1_3,
-            # Delete what we don't want. Perhaps we want an implicit
-            # delete all to keep from bloating with useless delete
-            # instructions.
-            # replace 'strange' with 'new'
-            '0,4,1\n',
+            # insert new
+            'i,1\n',
             'new\n',
-            # delete from after common up to differnet
-            '5,10,0\n',
-            # add new \n
-            '12,12,1\n',
-            '\n',
-            ]
+            # copy the line common
+            'c,4,1\n',
+            # copy the lines different, moredifferent
+            'c,10,2\n',
+            # copy the line \n. Note that when we filter on encoding-overhead
+            # this will become a fresh insert instead
+            'c,5,1\n',
+            ])
         self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 

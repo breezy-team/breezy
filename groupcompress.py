@@ -39,9 +39,14 @@ def parse(lines):
     next = lines.next
     print next(), next()
     for header in lines:
-        start, end, count = [int(n) for n in header.split(',')]
-        contents = [next() for i in xrange(count)]
-        result.append((start, end, count, contents))
+        op = header[0]
+        numbers = header[2:]
+        numbers = [int(n) for n in header[2:].split(',')]
+        if op == 'c':
+            result.append((op, numbers[0], numbers[1], None))
+        else:
+            contents = [next() for i in xrange(numbers[0])]
+            result.append((op, None, numbers[0], contents))
     return result
 
 def apply_delta(basis, delta):
@@ -50,13 +55,11 @@ def apply_delta(basis, delta):
     last_offset = 0
     # eq ranges occur where gaps occur
     # start, end refer to offsets in basis
-    for start, end, count, delta_lines in delta:
-        if last_offset != start: # copy an eq range
-            lines.extend(basis[last_offset:start])
-        lines[start:end] = delta_lines
-        last_offset = end
-    if last_offset != len(basis):
-        lines.extend(basis[last_offset:])
+    for op, start, count, delta_lines in delta:
+        if op == 'c':
+            lines.extend(basis[start:start+count])
+        else:
+            lines.extend(delta_lines)
     trim_encoding_newline(lines)
     return lines
 
@@ -69,7 +72,20 @@ def trim_encoding_newline(lines):
 
 
 class GroupCompressor(object):
-    """Produce a serialised group of compressed texts."""
+    """Produce a serialised group of compressed texts.
+    
+    It contains code very similar to SequenceMatcher because of having a similar
+    task. However some key differences apply:
+     - there is no junk, we want a minimal edit not a human readable diff.
+     - we don't filter very common lines (because we don't know where a good
+       range will start, and after the first text we want to be emitting minmal
+       edits only.
+     - we chain the left side, not the right side
+     - we incrementally update the adjacency matrix as new lines are provided.
+     - we look for matches in all of the left side, so the routine which does
+       the analagous task of find_longest_match does not need to filter on the
+       left side.
+    """
 
     def __init__(self, delta=True):
         """Create a GroupCompressor.
@@ -80,6 +96,8 @@ class GroupCompressor(object):
         self.lines = []
         self.endpoint = 0
         self.input_bytes = 0
+        # line: set(locations it appears at), set(N+1 for N in locations)
+        self.line_locations = {}
 
     def compress(self, key, lines, expected_sha):
         """Compress lines with label key.
@@ -104,25 +122,71 @@ class GroupCompressor(object):
         new_lines = []
         new_lines.append('label: %s\n' % label)
         new_lines.append('sha1: %s\n' % sha1)
-        if 0:
-            delta_seq = diff.difflib.SequenceMatcher(
-                None, self.lines, lines)
-        else:
-            delta_seq = patiencediff.PatienceSequenceMatcher(
-                None, self.lines, lines)
-        diff_hunks = []
-        for op in delta_seq.get_opcodes():
-            if op[0] == 'equal':
-                continue
-            diff_hunks.append((op[1], op[2], op[4]-op[3], lines[op[3]:op[4]]))
-        for start, end, count, new in diff_hunks:
-            new_lines.append('%d,%d,%d\n' % (start, end, count))
-            new_lines.extend(new)
-        self.endpoint += sum(map(len, new_lines))
-        self.lines.extend(new_lines)
+        pos = 0
+        line_locations = self.line_locations
+        accumulator = []
+        copying = False
+        new_len = 0
+        new_start = 0
+        # We either copy a range (while there are reusable lines) or we 
+        # insert new lines. To find reusable lines we traverse 
+        while pos < len(lines):
+            line = lines[pos]
+            if line not in line_locations:
+                if copying:
+                    # flush the copy
+                    copy_start = min(copy_ends) - copy_len
+                    new_lines.append("c,%d,%d\n" % (copy_start,copy_len))
+                    copying = False
+                    new_start = pos
+                    new_len = 1
+                else:
+                    new_len += 1
+            else:
+                if copying:
+                    locations, next = line_locations[line]
+                    next_locations = locations.intersection(copy_ends)
+                    if len(next_locations):
+                        # range continues
+                        copy_len += 1
+                        copy_ends = set(loc + 1 for loc in next_locations)
+                    else:
+                        # range stops, flush and start a new copy range
+                        copy_start = min(copy_ends) - copy_len
+                        new_lines.append("c,%d,%d\n" % (copy_start,copy_len))
+                        copy_len = 1
+                        copy_ends = next
+                else:
+                    # Flush
+                    if new_len:
+                        new_lines.append("i,%d\n" % new_len)
+                        new_lines.extend(lines[new_start:new_start+new_len])
+                    # setup a copy
+                    copy_len = 1
+                    copy_ends = line_locations[line][1]
+                    copying = True
+            pos += 1
+        if copying:
+            copy_start = min(copy_ends) - copy_len
+            new_lines.append("c,%d,%d\n" % (copy_start,copy_len))
+        elif new_len:
+            new_lines.append("i,%d\n" % new_len)
+            new_lines.extend(lines[new_start:new_start+new_len])
+
+        self.output_lines(new_lines)
         trim_encoding_newline(lines)
         self.input_bytes += sum(map(len, lines))
         return sha1, self.endpoint
+
+    def output_lines(self, new_lines):
+        self.endpoint += sum(map(len, new_lines))
+        offset = len(self.lines)
+        self.lines.extend(new_lines)
+        for pos, line in enumerate(new_lines):
+            indices, next_lines = self.line_locations.setdefault(line,
+                (set(), set()))
+            indices.add(pos + offset)
+            next_lines.add(pos + offset + 1)
 
     def ratio(self):
         """Return the overall compression ratio."""
@@ -224,7 +288,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # double handling for now. Make it work until then.
         bytes = ''.join(lines)
         record = FulltextContentFactory(key, parents, None, bytes)
-        sha1 = self._insert_record_stream([record])
+        sha1 = self._insert_record_stream([record]).next()
         return sha1, len(bytes), None
 
     def _check_add(self, key, lines, random_id, check_content):
@@ -267,6 +331,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for record in stream:
             found_sha1, end_point = compressor.compress(record.key,
                 split_lines(record.get_bytes_as('fulltext')), record.sha1)
+            yield found_sha1
 
 class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
