@@ -739,8 +739,7 @@ class SvnRepository(Repository):
                 npb = ui.ui_factory.nested_progress_bar()
                 try:
                     it = self.iter_changes(bp, revnum, mapping, pb=npb, limit=2)
-                    rev = revnum
-                    paths = it.next()[1]
+                    (bp, paths, rev, _) = it.next()
                     if paths.has_key(bp):
                         del paths[bp]
                         if not changes.changes_path(paths, bp, False):
