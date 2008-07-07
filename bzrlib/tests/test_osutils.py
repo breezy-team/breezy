@@ -267,6 +267,14 @@ class TestOSUtils(TestCaseInTempDir):
     def test_format_date(self):
         self.assertRaises(errors.UnsupportedTimezoneFormat,
             osutils.format_date, 0, timezone='foo')
+        self.assertIsInstance(osutils.format_date(0, local_weekday=False),
+            str)
+        self.assertIsInstance(osutils.format_date(0, local_weekday=True),
+            unicode)
+        # Testing for the actual value of the weekday without
+        # duplicating the code from format_date is difficult.
+        # Instead blackbox.test_locale should check for localized
+        # dates once they do occur in output strings.
 
     def test_dereference_path(self):
         self.requireFeature(SymlinkFeature)
