@@ -17,7 +17,14 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from bzrlib import diff, pack, patiencediff
+from bzrlib import (
+    annotate,
+    diff,
+    graph as _mod_graph,
+    pack,
+    patiencediff,
+    )
+from bzrlib.graph import Graph
 from bzrlib.knit import _DirectPackAccess
 from bzrlib.osutils import (
     contains_whitespace,
@@ -290,6 +297,29 @@ class GroupCompressVersionedFiles(VersionedFiles):
         record = FulltextContentFactory(key, parents, None, bytes)
         sha1 = self._insert_record_stream([record]).next()
         return sha1, len(bytes), None
+
+    def annotate(self, key):
+        """See VersionedFiles.annotate."""
+        graph = Graph(self)
+        head_cache = _mod_graph.FrozenHeadsCache(graph)
+        search = graph._make_breadth_first_searcher([key])
+        keys = set()
+        while True:
+            try:
+                present, ghosts = search.next_with_ghosts()
+            except StopIteration:
+                break
+            keys.update(present)
+        parent_map = self.get_parent_map(keys)
+        parent_cache = {}
+        reannotate = annotate.reannotate
+        for record in self.get_record_stream(keys, 'topological', True):
+            key = record.key
+            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            parent_cache[key] = list(
+                reannotate(parent_lines, fulltext, key, None, head_cache))
+        return parent_cache[key]
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
