@@ -176,7 +176,8 @@ class SvnWorkingTree(WorkingTree):
         self.read_working_inventory()
         return self.base_revnum - orig_revnum
 
-    def remove(self, files, verbose=False, to_file=None):
+    def remove(self, files, verbose=False, to_file=None, keep_files=True, 
+               force=False):
         # FIXME: Use to_file argument
         # FIXME: Use verbose argument
         assert isinstance(files, list)
