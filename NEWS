@@ -14,7 +14,8 @@ bzr-svn 0.4.11    UNRELEASED
 
      * KeyboardInterrupts are now no longer swallowed.  (#242217)
 
-     * Crash bug trying to access sites that use self-signed certificates. (#238529)
+     * Crash bug trying to access sites that use self-signed certificates. 
+       (#238529)
 
      * Username and password prompting will now always work.
 
@@ -32,13 +33,15 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Basic support for stacked branches.
 
-   * Avoid reopening connections to branch and repository when finding branches. (#243749)
+   * Avoid reopening connections to branch and repository when finding 
+     branches. (#243749)
 
    * Show Subversion revision numbers in log output. (#161830)
 
   BUG FIXES
 
-   * Now uses absolute imports and no longer adds plugin directory to the system path.
+   * Now uses absolute imports and no longer adds plugin directory to the 
+     system path.
 
    * More efficient use of mutter.
 
@@ -74,7 +77,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Convert redirect requests received from Subversion. (#229848)
 
-   * New function for finding path children that's faster and more correct. (#240954)
+   * New function for finding path children that's faster and more correct. 
+     (#240954)
 
    * Support cloning bzr-svn branches (will clone to rich-root-pack). (#229819)
 
@@ -85,9 +89,9 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Several fixes for dealing with non-acii characters. (#128496)
 
-   * Re-use RA connections as much as possible. bzr-svn should in general now have 
-     no more than 2 TCP/IP connections to the same Subversion repository open
-	 at the same time. (#183824)
+   * Re-use RA connections as much as possible. bzr-svn should in general now 
+     have no more than 2 TCP/IP connections to the same Subversion repository 
+     open at the same time. (#183824)
 
 bzr-svn 0.4.10  2008-05-12
 
