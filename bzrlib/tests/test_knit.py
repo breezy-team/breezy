@@ -1431,11 +1431,15 @@ class TestStacking(KnitTests):
         # directly.
         basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
         basis.calls = []
-        self.assertRaises(RevisionNotPresent, test.annotate, key_basis)
-        raise KnownFailure("Annotation on stacked knits currently fails.")
         details = test.annotate(key_basis)
         self.assertEqual([(key_basis, 'foo\n'), (key_basis, 'bar\n')], details)
-        self.assertEqual([("annotate", key_basis)], basis.calls)
+        # Not optimised to date:
+        # self.assertEqual([("annotate", key_basis)], basis.calls)
+        self.assertEqual([('get_parent_map', set([key_basis])),
+            ('get_parent_map', set([key_basis])),
+            ('get_parent_map', set([key_basis])),
+            ('get_record_stream', [key_basis], 'unordered', True)],
+            basis.calls)
 
     def test_check(self):
         # check() must not check the fallback files, it's none of its business.
