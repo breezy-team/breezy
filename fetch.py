@@ -364,7 +364,7 @@ class FileBuildEditor(object):
             # properties.PROP_EXECUTABLE_VALUE, but that's not 
             # how SVN behaves. It appears to consider the presence 
             # of the property sufficient to mark it executable.
-            self.is_executable = (value != None)
+            self.is_executable = (value is not None)
         elif (name == properties.PROP_SPECIAL):
             self.is_symlink = (value != None)
         elif name == properties.PROP_ENTRY_COMMITTED_REV:
@@ -401,6 +401,8 @@ class FileBuildEditor(object):
         assert self.is_symlink in (True, False)
 
         if self.file_id in self.editor.inventory:
+            if self.is_executable is None:
+                self.is_executable = self.editor.inventory[self.file_id].executable
             del self.editor.inventory[self.file_id]
 
         if self.is_symlink:
@@ -418,8 +420,7 @@ class FileBuildEditor(object):
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             assert ie.text_size is not None
-            if self.is_executable is not None:
-                ie.executable = self.is_executable
+            ie.executable = self.is_executable
 
         self.file_stream = None
 

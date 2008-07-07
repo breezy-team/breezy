@@ -1585,6 +1585,31 @@ Node-copyfrom-path: x
         self.assertTrue(inv1[inv1.path2id("bla")].executable)
         self.assertTrue(inv1[inv1.path2id("blie")].executable)
 
+    def test_fetch_executable_persists(self):
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        bla = dc.add_file("bla")
+        bla.modify('data')
+        bla.change_prop("svn:executable", "*")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("bla").modify("data2")
+        dc.close()
+
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
+        inv1 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(1, "", mapping))
+        self.assertTrue(inv1[inv1.path2id("bla")].executable)
+        inv2 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(2, "", mapping))
+        self.assertTrue(inv2[inv2.path2id("bla")].executable)
+
     def test_fetch_symlink(self):
         if not has_symlinks():
             return
