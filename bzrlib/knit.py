@@ -2714,10 +2714,17 @@ class _KnitAnnotator(object):
         for record in self._knit.get_record_stream(keys, 'topological', True):
             key = record.key
             fulltext = split_lines(record.get_bytes_as('fulltext'))
-            parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            parents = parent_map[key]
+            if parents is not None:
+                parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            else:
+                parent_lines = []
             parent_cache[key] = list(
                 reannotate(parent_lines, fulltext, key, None, head_cache))
-        return parent_cache[key]
+        try:
+            return parent_cache[key]
+        except KeyError, e:
+            raise errors.RevisionNotPresent(key, self._knit)
 
 
 try:
