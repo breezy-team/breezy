@@ -19,6 +19,7 @@
 import errno
 
 from bzrlib import (
+    atomicfile,
     config,
     globbing,
     )
@@ -205,3 +206,38 @@ def add_runtime_ignores(ignores):
 def get_runtime_ignores():
     """Get the current set of runtime ignores."""
     return _runtime_ignores
+
+
+def tree_ignores_add_patterns(tree, name_pattern_list):
+    """Retrieve a list of ignores from the ignore file in a tree.
+
+    :param tree: Tree to retrieve the ignore list from.
+    :return: 
+    """
+    ifn = tree.abspath('.bzrignore')
+    if tree.has_filename(ifn):
+        f = open(ifn, 'rt')
+        try:
+            igns = f.read().decode('utf-8')
+        finally:
+            f.close()
+    else:
+        igns = ""
+
+    # TODO: If the file already uses crlf-style termination, maybe
+    # we should use that for the newly added lines?
+
+    if igns and igns[-1] != '\n':
+        igns += '\n'
+    for name_pattern in name_pattern_list:
+        igns += name_pattern + '\n'
+
+    f = atomicfile.AtomicFile(ifn, 'wb')
+    try:
+        f.write(igns.encode('utf-8'))
+        f.commit()
+    finally:
+        f.close()
+
+    if not tree.path2id('.bzrignore'):
+        tree.add(['.bzrignore'])
