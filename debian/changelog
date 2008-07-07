@@ -2,6 +2,8 @@ bzr-builddeb (1.0) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Support +bzr for snapshots as well as ~bzr.
+  * Lock the tree before starting as remote trees are more strict about this,
+    meaning there were problems with remote branches.
 
  -- James Westby <james.westby@canonical.com>  Fri, 13 Jun 2008 15:03:53 +0100
 
