@@ -266,11 +266,11 @@ class cmd_svn_import(Command):
 
         from_repos.lock_read()
         try:
-            scheme = repository_guess_scheme(from_repos, from_repos.get_latest_revnum())
+            (guessed_scheme, scheme) = repository_guess_scheme(from_repos, from_repos.get_latest_revnum())
 
             if prefix is not None:
                 prefix = prefix.strip("/") + "/"
-                if scheme.is_branch(prefix):
+                if guessed_scheme.is_branch(prefix):
                     raise BzrCommandError("%s appears to contain a branch. " 
                             "For individual branches, use 'bzr branch'." % from_location)
 

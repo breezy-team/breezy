@@ -170,7 +170,7 @@ def repository_guess_scheme(repository, last_revnum, branch_path=None):
         pb.finished()
     mutter("Guessed branching scheme: %r, guess scheme to use: %r" % 
             (guessed_scheme, scheme))
-    return scheme
+    return (guessed_scheme, scheme)
 
 
 def config_set_scheme(repository, scheme, mandatory=False):
@@ -210,7 +210,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
                 return cls(scheme)
 
         last_revnum = repository.get_latest_revnum()
-        scheme = repository_guess_scheme(repository, last_revnum, _hinted_branch_path)
+        (guessed_scheme, scheme) = repository_guess_scheme(repository, last_revnum, _hinted_branch_path)
         if last_revnum > 20:
             config_set_scheme(repository, scheme, mandatory=False)
 
