@@ -56,23 +56,50 @@ def parse_externals_description(base_url, val):
               as value. revnum is the revision number and is 
               set to None if not applicable.
     """
+    def is_url(u):
+        return ("://" in u)
     ret = {}
     for l in val.splitlines():
         if l == "" or l[0] == "#":
             continue
-        pts = l.rsplit(None, 2) 
-        if len(pts) == 3:
-            if not pts[1].startswith("-r"):
+        pts = l.rsplit(None, 3) 
+        if len(pts) == 4:
+            if pts[0] == "-r": # -r X URL DIR
+                revno = int(pts[1])
+                path = pts[3]
+                relurl = pts[2]
+            elif pts[1] == "-r": # DIR -r X URL
+                revno = int(pts[2])
+                path = pts[0]
+                relurl = pts[3]
+            else:
                 raise InvalidExternalsDescription()
-            ret[pts[0]] = (int(pts[1][2:]), urlutils.join(base_url, pts[2]))
+        elif len(pts) == 3:
+            if pts[1].startswith("-r"): # DIR -rX URL
+                revno = int(pts[1][2:])
+                path = pts[0]
+                relurl = pts[2]
+            elif pts[0].startswith("-r"): # -rX URL DIR
+                revno = int(pts[0][2:])
+                path = pts[2]
+                relurl = pts[1]
+            else:
+                raise InvalidExternalsDescription()
         elif len(pts) == 2:
-            if pts[1].startswith("//"):
-                raise NotImplementedError("Relative to the scheme externals not yet supported")
-            if pts[1].startswith("^/"):
-                raise NotImplementedError("Relative to the repository root externals not yet supported")
-            ret[pts[0]] = (None, urlutils.join(base_url, pts[1]))
+            if not is_url(pts[0]):
+                relurl = pts[1]
+                path = pts[0]
+            else:
+                relurl = pts[0]
+                path = pts[1]
+            revno = None
         else:
             raise InvalidExternalsDescription()
+        if relurl.startswith("//"):
+            raise NotImplementedError("Relative to the scheme externals not yet supported")
+        if relurl.startswith("^/"):
+            raise NotImplementedError("Relative to the repository root externals not yet supported")
+        ret[path] = (revno, urlutils.join(base_url, relurl))
     return ret
 
 

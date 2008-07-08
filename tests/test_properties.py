@@ -48,6 +48,18 @@ class TestExternalsParser(TestCase):
 third-party/skins              http://skins.red-bean.com/repositories/skinproj
 third-party/skins/toolkit -r21 http://svn.red-bean.com/repos/skin-maker"""))
 
+    def test_parse_externals_space_revno(self):
+        self.assertEqual({
+            'third-party/skins/toolkit': (21, "http://svn.red-bean.com/repos/skin-maker")},
+            properties.parse_externals_description("http://example.com",
+"""third-party/skins/toolkit -r 21 http://svn.red-bean.com/repos/skin-maker"""))
+
+    def test_parse_externals_swapped(self):
+        self.assertEqual({'third-party/sounds': (None, "http://sounds.red-bean.com/repos")},
+            properties.parse_externals_description("http://example.com",
+"""http://sounds.red-bean.com/repos         third-party/sounds
+"""))
+
     def test_parse_comment(self):
         self.assertEqual({
             'third-party/sounds': (None, "http://sounds.red-bean.com/repos")
