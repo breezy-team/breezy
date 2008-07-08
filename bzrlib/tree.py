@@ -23,10 +23,11 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    conflicts as _mod_conflicts,
     delta,
     osutils,
     revision as _mod_revision,
-    conflicts as _mod_conflicts,
+    rules,
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
@@ -176,10 +177,26 @@ class Tree(object):
     def iter_entries_by_dir(self, specific_file_ids=None):
         """Walk the tree in 'by_dir' order.
 
-        This will yield each entry in the tree as a (path, entry) tuple. The
-        order that they are yielded is: the contents of a directory are 
-        preceeded by the parent of a directory, and all the contents of a 
-        directory are grouped together.
+        This will yield each entry in the tree as a (path, entry) tuple.
+        The order that they are yielded is:
+
+        Directories are walked in a depth-first lexicographical order,
+        however, whenever a directory is reached, all of its direct child
+        nodes are yielded in  lexicographical order before yielding the
+        grandchildren.
+
+        For example, in the tree::
+
+           a/
+             b/
+               c
+             d/
+               e
+           f/
+             g
+
+        The yield order (ignoring root) would be::
+          a, f, a/b, a/d, a/b/c, a/d/e, f/g
         """
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids)
@@ -253,6 +270,15 @@ class Tree(object):
             These must point to the same object.
         """
         raise NotImplementedError(self.get_file_mtime)
+
+    def get_file_size(self, file_id):
+        """Return the size of a file in bytes.
+
+        This applies only to regular files.  If invoked on directories or
+        symlinks, it will return None.
+        :param file_id: The file-id of the file
+        """
+        raise NotImplementedError(self.get_file_size)
 
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
@@ -349,6 +375,7 @@ class Tree(object):
                                  last_revision_base)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
         def file_revision(revision_tree):
             revision_tree.lock_read()
             try:
@@ -363,18 +390,19 @@ class Tree(object):
                 except:
                     yield self.repository.revision_tree(revision_id)
 
-        if getattr(self, '_get_weave', None) is None:
+        if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_revisions = [file_revision(t) for t in iter_parent_trees()]
-            vf.add_lines(last_revision, parent_revisions,
+            parent_keys = [(file_id, file_revision(t)) for t in
+                iter_parent_trees()]
+            vf.add_lines((file_id, last_revision), parent_keys,
                          self.get_file(file_id).readlines())
             repo = self.branch.repository
-            transaction = repo.get_transaction()
-            base_vf = repo.weave_store.get_weave(file_id, transaction)
+            base_vf = repo.texts
         else:
             last_revision = file_revision(self)
-            base_vf = self._get_weave(file_id)
-        vf.fallback_versionedfiles.append(base_vf)
+            base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
         return last_revision
 
     inventory = property(_get_inventory,
@@ -423,6 +451,7 @@ class Tree(object):
         """
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_six)
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys
@@ -500,6 +529,37 @@ class Tree(object):
         """
         raise NotImplementedError(self.walkdirs)
 
+    def iter_search_rules(self, path_names, pref_names=None,
+        _default_searcher=rules._per_user_searcher):
+        """Find the preferences for filenames in a tree.
+
+        :param path_names: an iterable of paths to find attributes for.
+          Paths are given relative to the root of the tree.
+        :param pref_names: the list of preferences to lookup - None for all
+        :param _default_searcher: private parameter to assist testing - don't use
+        :return: an iterator of tuple sequences, one per path-name.
+          See _RulesSearcher.get_items for details on the tuple sequence.
+        """
+        searcher = self._get_rules_searcher(_default_searcher)
+        if searcher is not None:
+            if pref_names is not None:
+                for path in path_names:
+                    yield searcher.get_selected_items(path, pref_names)
+            else:
+                for path in path_names:
+                    yield searcher.get_items(path)
+
+    @needs_read_lock
+    def _get_rules_searcher(self, default_searcher):
+        """Get the RulesSearcher for this tree given the default one."""
+        searcher = default_searcher
+        file_id = self.path2id(rules.RULES_TREE_FILENAME)
+        if file_id is not None:
+            ini_file = self.get_file(file_id)
+            searcher = rules._StackedRulesSearcher(
+                [rules._IniBasedRulesSearcher(ini_file), default_searcher])
+        return searcher
+
 
 class EmptyTree(Tree):
 
@@ -519,7 +579,6 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        assert self._inventory[file_id].kind == "directory"
         return "directory"
 
     def list_files(self, include_root=False):
@@ -568,7 +627,6 @@ def file_status(filename, old_tree, new_tree):
         # what happened to the file that used to have
         # this name.  There are two possibilities: either it was
         # deleted entirely, or renamed.
-        assert old_id
         if new_inv.has_id(old_id):
             return 'X', old_inv.id2path(old_id), new_inv.id2path(old_id)
         else:
@@ -895,17 +953,3 @@ class InterTree(InterObject):
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
-
-
-# This was deprecated before 0.12, but did not have an official warning
-@symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
-def RevisionTree(*args, **kwargs):
-    """RevisionTree has moved to bzrlib.revisiontree.RevisionTree()
-
-    Accessing it as bzrlib.tree.RevisionTree has been deprecated as of
-    bzr 0.12.
-    """
-    from bzrlib.revisiontree import RevisionTree as _RevisionTree
-    return _RevisionTree(*args, **kwargs)
- 
-

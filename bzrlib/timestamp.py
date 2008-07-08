@@ -47,7 +47,8 @@ def format_highres_date(t, offset=0):
     >>> format_highres_date(1152428738.867522, 19800)
     'Sun 2006-07-09 12:35:38.867522001 +0530'
     """
-    assert isinstance(t, float)
+    if not isinstance(t, float):
+        raise ValueError(t)
 
     # This has to be formatted for "original" date, so that the
     # revision XML entry will be reproduced faithfully.
@@ -55,7 +56,8 @@ def format_highres_date(t, offset=0):
         offset = 0
     tt = time.gmtime(t + offset)
 
-    return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
+    return (osutils.weekdays[tt[6]] +
+            time.strftime(" %Y-%m-%d %H:%M:%S", tt)
             # Get the high-res seconds, but ignore the 0
             + ('%.9f' % (t - int(t)))[1:]
             + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
@@ -99,6 +101,11 @@ def unpack_highres_date(date):
     ...      break
 
     """
+    # Weekday parsing is locale sensitive, so drop the weekday
+    space_loc = date.find(' ')
+    if space_loc == -1 or date[:space_loc] not in osutils.weekdays:
+        raise ValueError(
+            'Date string does not contain a day of week: %r' % date)
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to
     # parse it
@@ -106,7 +113,7 @@ def unpack_highres_date(date):
     if dot_loc == -1:
         raise ValueError(
             'Date string does not contain high-precision seconds: %r' % date)
-    base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
+    base_time = time.strptime(date[space_loc:dot_loc], " %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
 
@@ -129,8 +136,9 @@ def format_patch_date(secs, offset=0):
 
     Inverse of parse_patch_date.
     """
-    assert offset % 60 == 0, \
-        "can't represent timezone %s offset by fractional minutes" % offset
+    if offset % 60 != 0:
+        raise ValueError(
+        "can't represent timezone %s offset by fractional minutes" % offset)
     # so that we don't need to do calculations on pre-epoch times, 
     # which doesn't work with win32 python gmtime, we always
     # give the epoch in utc
@@ -151,8 +159,9 @@ def parse_patch_date(date_str):
     """
     secs_str = date_str[:-6]
     offset_str = date_str[-5:]
-    assert len(offset_str) == 5, \
-            "invalid timezone %r" % offset_str
+    if len(offset_str) != 5:
+        raise ValueError(
+            "invalid timezone %r" % offset_str)
     offset_hours, offset_mins = offset_str[:3], offset_str[3:]
     offset = int(offset_hours) * 3600 + int(offset_mins) * 60
     tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')

@@ -47,10 +47,11 @@ class TestReconcile(TestCaseWithRepository):
     def checkNoBackupInventory(self, aBzrDir):
         """Check that there is no backup inventory in aBzrDir."""
         repo = aBzrDir.open_repository()
-        self.assertRaises(errors.NoSuchFile,
-                          repo.control_weaves.get_weave,
-                          'inventory.backup',
-                          repo.get_transaction())
+        # Remote repository, and possibly others, do not have 
+        # _transport.
+        if getattr(repo, '_transport', None) is not None:
+            for path in repo._transport.list_dir('.'):
+                self.assertFalse('inventory.backup' in path)
 
 
 class TestsNeedingReweave(TestReconcile):
@@ -76,9 +77,7 @@ class TestsNeedingReweave(TestReconcile):
             inv.root.revision = revision_id
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
-            vf = repo.weave_store.get_weave_or_empty(root_id,
-                repo.get_transaction())
-            vf.add_lines(revision_id, [], [])
+            repo.texts.add_lines((root_id, revision_id), [], [])
             rev = bzrlib.revision.Revision(timestamp=0,
                                            timezone=None,
                                            committer="Foo Bar <foo@example.com>",
@@ -195,11 +194,14 @@ class TestsNeedingReweave(TestReconcile):
 
     def check_missing_was_removed(self, repo):
         if repo._reconcile_backsup_inventory:
-            backup = repo.control_weaves.get_weave('inventory.backup',
-                                                   repo.get_transaction())
-            self.assertTrue('missing' in backup.versions())
-        self.assertRaises(errors.RevisionNotPresent,
-                          repo.get_inventory, 'missing')
+            backed_up = False
+            for path in repo._transport.list_dir('.'):
+                if 'inventory.backup' in path:
+                    backed_up = True
+            self.assertTrue(backed_up)
+            # Not clear how to do this at an interface level:
+            # self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.NoSuchRevision, repo.get_inventory, 'missing')
 
     def test_reweave_inventory_without_revision_reconciler(self):
         # smoke test for the all in one Reconciler class,
@@ -325,9 +327,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         inv.root.revision = 'wrong-secondary-parent'
         if repo.supports_rich_root():
             root_id = inv.root.file_id
-            vf = repo.weave_store.get_weave_or_empty(root_id,
-                repo.get_transaction())
-            vf.add_lines('wrong-secondary-parent', [], [])
+            repo.texts.add_lines((root_id, 'wrong-secondary-parent'), [], [])
         sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -345,9 +345,14 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         t = get_transport(self.get_url()).clone('wrong-first-parent')
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()
-        g = repo.get_revision_graph()
-        if tuple(g['wrong-first-parent']) == ('1', '2'):
-            raise TestSkipped('wrong-first-parent is not setup for testing')
+        repo.lock_read()
+        try:
+            g = repo.get_graph()
+            if g.get_parent_map(['wrong-first-parent'])['wrong-first-parent'] \
+                == ('1', '2'):
+                raise TestSkipped('wrong-first-parent is not setup for testing')
+        finally:
+            repo.unlock()
         self.checkUnreconciled(d, repo.reconcile())
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format
@@ -357,8 +362,12 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         # and no garbage inventories
         self.assertEqual(0, reconciler.garbage_inventories)
         # and should have been fixed:
-        g = repo.get_revision_graph()
-        self.assertEqual(('1', '2'), g['wrong-first-parent'])
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        g = repo.get_graph()
+        self.assertEqual(
+            {'wrong-first-parent':('1', '2')},
+            g.get_parent_map(['wrong-first-parent']))
 
     def test_reconcile_wrong_order_secondary_inventory(self):
         # a wrong order in the parents for inventories is ignored.

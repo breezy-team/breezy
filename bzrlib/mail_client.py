@@ -306,6 +306,94 @@ class XDGEmail(ExternalMailClient):
         return commandline
 
 
+class EmacsMail(ExternalMailClient):
+    """Call emacsclient to have a mail buffer.
+
+    This only work for emacs >= 22.1 due to recent -e/--eval support.
+
+    The good news is that this implementation will work with all mail
+    agents registered against ``mail-user-agent``. So there is no need
+    to instantiate ExternalMailClient for each and every GNU Emacs
+    MUA.
+
+    Users just have to ensure that ``mail-user-agent`` is set according
+    to their tastes.
+    """
+
+    _client_commands = ['emacsclient']
+
+    def _prepare_send_function(self):
+        """Write our wrapper function into a temporary file.
+
+        This temporary file will be loaded at runtime in
+        _get_compose_commandline function.
+
+        FIXME: this function does not remove the file. That's a wanted
+        behaviour since _get_compose_commandline won't run the send
+        mail function directly but return the eligible command line.
+        Removing our temporary file here would prevent our sendmail
+        function to work.
+
+        A possible workaround could be to load the function here with
+        emacsclient --eval '(load temp)' but this is not robust since
+        emacs could have been stopped between here and the call to
+        mail client.
+        """
+
+        _defun = r"""(defun bzr-add-mime-att (file)
+  "Attach FILe to a mail buffer as a MIME attachment."
+  (let ((agent mail-user-agent))
+    (mail-text)
+    (newline)
+    (if (and file (file-exists-p file))
+        (cond
+         ((eq agent 'sendmail-user-agent)
+          (etach-attach file))
+         ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
+          (mml-attach-file file "text/x-patch" "BZR merge" "attachment"))
+         (t
+          (message "Unhandled MUA")))
+      (error "File %s does not exist." file))))
+"""
+
+        fd, temp_file = tempfile.mkstemp(prefix="emacs-bzr-send-",
+                                         suffix=".el")
+        try:
+            os.write(fd, _defun)
+        finally:
+            os.close(fd) # Just close the handle but do not remove the file.
+        return temp_file
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        commandline = ["--eval"]
+
+        _to = "nil"
+        _subject = "nil"
+
+        if to is not None:
+            _to = ("\"%s\"" % self._encode_safe(to))
+        if subject is not None:
+            _subject = ("\"%s\"" % self._encode_safe(subject))
+
+        # Funcall the default mail composition function
+        # This will work with any mail mode including default mail-mode
+        # User must tweak mail-user-agent variable to tell what function
+        # will be called inside compose-mail.
+        mail_cmd = "(compose-mail %s %s)" % (_to, _subject)
+        commandline.append(mail_cmd)
+
+        # Try to attach a MIME attachment using our wrapper function
+        if attach_path is not None:
+            # Do not create a file if there is no attachment
+            lmmform = '(load "%s")' % self._prepare_send_function()
+            mmform  = '(bzr-add-mime-att "%s")' % \
+                self._encode_path(attach_path, 'attachment')
+            commandline.append(lmmform)
+            commandline.append(mmform)
+
+        return commandline
+
+
 class MAPIClient(ExternalMailClient):
     """Default Windows mail client launched using MAPI."""
 
@@ -346,11 +434,11 @@ class DefaultMail(MailClient):
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mimie_subtype, extension)
 
-    def compose_merge_request(self, to, subject, directive):
+    def compose_merge_request(self, to, subject, directive, basename=None):
         """See MailClient.compose_merge_request"""
         try:
             return self._mail_client().compose_merge_request(to, subject,
-                                                             directive)
+                    directive, basename=basename)
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
-                          directive)
+                          directive, basename=basename)

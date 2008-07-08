@@ -141,8 +141,9 @@ class VersionInfoBuilder(object):
         rev_hist = self._branch.revision_history()
         if self._working_tree is not None:
             last_rev = self._working_tree.last_revision()
-            assert last_rev in rev_hist, \
-                "Working Tree's last revision not in branch.revision_history"
+            if last_rev not in rev_hist:
+                raise AssertionError(
+                    "Working Tree's last revision not in branch.revision_history")
             rev_hist = rev_hist[:rev_hist.index(last_rev)+1]
 
         repository =  self._branch.repository
@@ -174,35 +175,6 @@ class VersionInfoBuilder(object):
 
 
 format_registry = registry.Registry()
-
-
-@deprecated_function(one_zero)
-def register_builder(format, module, class_name):
-    """Register a version info format.
-
-    :param format: The short name of the format, this will be used as the
-        lookup key.
-    :param module: The string name to the module where the format class
-        can be found
-    :param class_name: The string name of the class to instantiate
-    """
-    format_registry.register_lazy(format, module, class_name)
-
-
-@deprecated_function(one_zero)
-def get_builder(format):
-    """Get a handle to the version info builder class
-
-    :param format: The lookup key supplied to register_builder
-    :return: A class, which follows the VersionInfoBuilder api.
-    """
-    return format_registry.get(format)
-
-
-@deprecated_function(one_zero)
-def get_builder_formats():
-    """Get the possible list of formats"""
-    return format_registry.keys()
 
 
 format_registry.register_lazy(

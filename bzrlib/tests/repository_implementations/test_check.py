@@ -20,7 +20,6 @@
 
 from bzrlib import (
     errors,
-    inventory,
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable

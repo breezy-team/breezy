@@ -57,7 +57,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         python_dll = "python%d%d.dll" % sys.version_info[:2]
         to_file.write(os.path.join(basedir, python_dll) + ' ')
     # and now version of python interpreter
-    to_file.write('.'.join(map(str, sys.version_info)))
+    to_file.write(bzrlib._format_version_tuple(sys.version_info))
     to_file.write('\n')
 
     to_file.write("  Python standard library:" + ' ')

@@ -83,6 +83,7 @@ class LaunchpadDirectory(object):
 
         if _lp_login is None:
             _lp_login = get_lp_login()
+        _warned_login = False
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)
             if self._requires_launchpad_login(scheme, netloc, path, query,
@@ -90,6 +91,12 @@ class LaunchpadDirectory(object):
                 # Only accept launchpad.net bzr+ssh URLs if we know
                 # the user's Launchpad login:
                 if _lp_login is None:
+                    if not _warned_login:
+                        trace.warning('You have not informed bzr of your '
+                                'launchpad login. If you are attempting a\n'
+                                'write operation and it fails, run '
+                                '"bzr launchpad-login YOUR_ID" and try again.')
+                        _warned_login = True
                     continue
                 url = urlunsplit((scheme, '%s@%s' % (_lp_login, netloc),
                                   path, query, fragment))

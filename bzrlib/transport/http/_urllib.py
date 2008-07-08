@@ -48,7 +48,6 @@ class HttpTransport_urllib(http.HttpTransportBase):
             self._opener = _from_transport._opener
         else:
             self._opener = self._opener_class()
-        self._remote_is_at_least_1_2 = True
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -133,7 +132,10 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def _post(self, body_bytes):
         abspath = self._remote_path('.bzr/smart')
-        response = self._perform(Request('POST', abspath, body_bytes))
+        # We include 403 in accepted_errors so that send_http_smart_request can
+        # handle a 403.  Otherwise a 403 causes an unhandled TransportError.
+        response = self._perform(Request('POST', abspath, body_bytes,
+                                         accepted_errors=[200, 403]))
         code = response.code
         data = handle_response(abspath, code, response.info(), response)
         return code, data
