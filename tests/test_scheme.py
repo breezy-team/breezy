@@ -613,51 +613,59 @@ class TestGuessBranchingSchemeFromPath(TestCase):
 
 class TestGuessBranchingSchemeFromHistory(TestCase):
     def test_simple(self):
-        scheme = guess_scheme_from_history([
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([
             ({"trunk": ('M', None, None)}, 0, None)], 1)
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(0, scheme.level)
+        self.assertEquals(guess_scheme, actual_scheme)
+        self.assertIsInstance(actual_scheme, TrunkBranchingScheme)
+        self.assertEqual(0, actual_scheme.level)
 
     def test_simple_with_relpath(self):
-        scheme = guess_scheme_from_history([
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([
             ({"trunk": ('M', None, None)}, 0, None)], 1, 
             relpath="trunk")
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(0, scheme.level)
+        self.assertEquals(guess_scheme, actual_scheme)
+        self.assertIsInstance(actual_scheme, TrunkBranchingScheme)
+        self.assertEqual(0, actual_scheme.level)
 
     def test_simple_prefer_relpath(self):
-        scheme = guess_scheme_from_history([
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([
             ({"trunk": ('M', None, None)}, 1, None),
             ({"trunk": ('M', None, None)}, 2, None),
             ({"trunk/bar": ('M', None, None)}, 3, None),
             ], 3, 
             relpath="trunk/bar")
-        self.assertIsInstance(scheme, SingleBranchingScheme)
-        self.assertEqual("trunk/bar", scheme.path)
+        self.assertIsInstance(guess_scheme, TrunkBranchingScheme)
+        self.assertEqual(0, guess_scheme.level)
+        self.assertIsInstance(actual_scheme, SingleBranchingScheme)
+        self.assertEqual("trunk/bar", actual_scheme.path)
 
     def test_simple_notwant_single(self):
-        scheme = guess_scheme_from_history([
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([
             ({"foo": ('M', None, None)}, 1, None),
             ({"foo": ('M', None, None)}, 2, None),
             ({"foo/bar": ('M', None, None)}, 3, None),
             ], 3)
-        self.assertIsInstance(scheme, NoBranchingScheme)
+        self.assertEquals(guess_scheme, actual_scheme)
+        self.assertIsInstance(actual_scheme, NoBranchingScheme)
 
     def test_simple_no_bp_common(self):
-        scheme = guess_scheme_from_history([
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([
             ({"foo": ('M', None, None)}, 1, None),
             ({"trunk": ('M', None, None)}, 2, None),
             ({"trunk": ('M', None, None)}, 3, None),
             ], 3)
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEquals(guess_scheme, actual_scheme)
+        self.assertIsInstance(actual_scheme, TrunkBranchingScheme)
 
     def test_simple_no_history(self):
-        scheme = guess_scheme_from_history([], 0)
-        self.assertIsInstance(scheme, NoBranchingScheme)
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([], 0)
+        self.assertIs(guess_scheme, None)
+        self.assertIsInstance(actual_scheme, NoBranchingScheme)
 
     def test_simple_no_history_bp(self):
-        scheme = guess_scheme_from_history([], 0, "trunk")
-        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        (guess_scheme, actual_scheme) = guess_scheme_from_history([], 0, "trunk")
+        self.assertEquals(guess_scheme, None)
+        self.assertIsInstance(actual_scheme, TrunkBranchingScheme)
 
 
 class SchemeFromBranchListTests(TestCase):

@@ -460,7 +460,9 @@ def guess_scheme_from_history(changed_paths, last_revnum,
     :param last_revnum: Number of entries in changed_paths.
     :param relpath: Branch path that should be accepted by the branching 
                     scheme as a branch.
-    :return: Branching scheme instance that matches best.
+    :return: Tuple with branching scheme that best matches history and 
+             branching scheme instance that best matches but also considers
+             relpath a valid branch path.
     """
     potentials = {}
     pb = ui.ui_factory.nested_progress_bar()
@@ -484,17 +486,22 @@ def guess_scheme_from_history(changed_paths, last_revnum,
 
     mutter('potential branching schemes: %r' % entries)
 
+    if len(entries) > 0:
+        best_match = scheme_cache[entries[0][0]]
+    else:
+        best_match = None
+
     if relpath is None:
-        if len(entries) == 0:
-            return NoBranchingScheme()
-        return scheme_cache[entries[0][0]]
+        if best_match is None:
+            return (None, NoBranchingScheme())
+        return (best_match, best_match)
 
     for (schemename, _) in entries:
         scheme = scheme_cache[schemename]
         if scheme.is_branch(relpath):
-            return scheme
+            return (best_match, scheme)
 
-    return guess_scheme_from_branch_path(relpath)
+    return (best_match, guess_scheme_from_branch_path(relpath))
 
 
 def scheme_from_branch_list(branch_list):
