@@ -208,6 +208,9 @@ def get_scheme(schemename):
 class cmd_svn_import(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
+    To save disk space, only branches will be created by default 
+    (no working trees). To create a tree for a branch, run "bzr co" in 
+    it.
     """
     takes_args = ['from_location', 'to_location?']
     takes_options = [Option('trees', help='Create working trees.'),
