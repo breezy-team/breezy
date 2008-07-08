@@ -42,12 +42,17 @@ class SvnRepositoryConfig(IniBasedConfig):
         if not self.uuid in self._get_parser():
             self._get_parser()[self.uuid] = {}
 
-    def set_branching_scheme(self, scheme, mandatory=False):
+    def set_branching_scheme(self, scheme, guessed_scheme, mandatory=False):
         """Change the branching scheme.
 
         :param scheme: New branching scheme.
+        :param guessed_scheme: Guessed scheme.
         """
         self.set_user_option('branching-scheme', str(scheme))
+        if (guessed_scheme != scheme or 
+            self.get_user_option('branching-scheme-guess') is not None):
+            self.set_user_option('branching-scheme-guess', 
+                                 guessed_scheme or scheme)
         if (mandatory or 
             self.get_user_option('branching-scheme-mandatory') is not None):
             self.set_user_option('branching-scheme-mandatory', str(mandatory))
@@ -74,6 +79,18 @@ class SvnRepositoryConfig(IniBasedConfig):
         """
         from mapping3.scheme import BranchingScheme
         schemename = self._get_user_option("branching-scheme", use_global=False)
+        if schemename is not None:
+            return BranchingScheme.find_scheme(schemename.encode('ascii'))
+        return None
+
+    def get_guessed_branching_scheme(self):
+        """Get the guessed branching scheme.
+
+        :return: BranchingScheme instance.
+        """
+        from mapping3.scheme import BranchingScheme
+        schemename = self._get_user_option("branching-scheme-guess", 
+                                           use_global=False)
         if schemename is not None:
             return BranchingScheme.find_scheme(schemename.encode('ascii'))
         return None

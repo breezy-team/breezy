@@ -40,6 +40,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Extend "bzr help svn".
 
+   * Warn when trying to clone a repository root as a branch. (#244638)
+
   BUG FIXES
 
    * Now uses absolute imports and no longer adds plugin directory to the 

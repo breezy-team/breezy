@@ -311,6 +311,9 @@ class SvnRepository(Repository):
             return self._layout
         return self.get_mapping().get_mandated_layout(self)
 
+    def get_guessed_layout(self):
+        return self.get_mapping().get_guessed_layout(self)
+
     def _warn_if_deprecated(self):
         # This class isn't deprecated
         pass

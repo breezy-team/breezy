@@ -20,6 +20,7 @@ from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
                            NoWorkingTree, AlreadyBranchError)
+from bzrlib.trace import warning
 from bzrlib.transport.local import LocalTransport
 
 from bzrlib.plugins.svn import core
@@ -57,6 +58,12 @@ class SvnRemoteAccess(BzrDir):
         Not supported on Subversion connections.
         """
         raise NotImplementedError(SvnRemoteAccess.clone)
+
+    def sprout(self, *args, **kwargs):
+        if (self.branch_path == "" and 
+            not self.find_repository().get_guessed_layout().is_branch("")):
+            warning('Cloning Subversion repository as branch. To import the individual branches in the repository, use "bzr svn-import".')
+        return super(SvnRemoteAccess, self).sprout(*args, **kwargs)
 
     def open_repository(self, _unsupported=False):
         """Open the repository associated with this BzrDir.
