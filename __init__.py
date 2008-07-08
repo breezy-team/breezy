@@ -261,8 +261,6 @@ class cmd_svn_import(Command):
             from_repos = from_dir.find_repository()
             prefix = urlutils.relative_url(from_repos.base, from_location)
             prefix = prefix.encode("utf-8")
-            self.outf.write("Importing branches with prefix %s\n" % 
-                    urlutils.unescape_for_display(prefix, self.outf.encoding))
 
         from_repos.lock_read()
         try:
@@ -273,6 +271,9 @@ class cmd_svn_import(Command):
                 if guessed_scheme.is_branch(prefix):
                     raise BzrCommandError("%s appears to contain a branch. " 
                             "For individual branches, use 'bzr branch'." % from_location)
+
+                self.outf.write("Importing branches with prefix /%s\n" % 
+                    urlutils.unescape_for_display(prefix, self.outf.encoding))
 
             if not isinstance(from_repos, SvnRepository):
                 raise BzrCommandError(
