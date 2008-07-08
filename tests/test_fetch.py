@@ -1502,35 +1502,38 @@ Node-copyfrom-path: x
         self.assertEqual(mapping.generate_file_id(repos.uuid, 1, "trunk", u""), tree.inventory.root.file_id)
 
     def test_fetch_odd(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('d')
 
-        self.build_tree({'dc/trunk': None, 
-                         'dc/trunk/hosts': 'hej1'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "created trunk and added hosts") #1
-        self.client_update("dc")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/hosts").modify('hej1')
+        dc.close()
 
-        self.build_tree({'dc/trunk/hosts': 'hej2'})
-        self.client_commit("dc", "rev 2") #2
-        self.client_update("dc")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.open_file("trunk/hosts").modify("hej2")
+        dc.close()
 
-        self.build_tree({'dc/trunk/hosts': 'hej3'})
-        self.client_commit("dc", "rev 3") #3
-        self.client_update("dc")
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.open_file("trunk/hosts").modify("hej3")
+        dc.close()
 
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "added branches") #4
-        self.client_update("dc")
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("branches")
+        dc.close()
 
-        self.client_copy("dc/trunk", "dc/branches/foobranch")
-        self.client_commit("dc", "added branch foobranch") #5
-        self.client_update("dc")
+        dc = self.get_commit_editor(repos_url)
+        dc.open_dir("branches").add_dir("branches/foobranch", "trunk")
+        dc.close()
 
-        self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
-        self.client_commit("dc", "foohosts") #6
+        dc = self.get_commit_editor(repos_url)
+        branches = dc.open_dir("branches")
+        foobranch = branches.open_dir("branches/foobranch")
+        foobranch.open_file("branches/foobranch/hosts").modify('foohosts')
+        dc.close()
 
-        repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
+        repos = remote.SvnRemoteAccess(SvnRaTransport(repos_url), format.SvnRemoteFormat()).find_repository()
         set_branching_scheme(repos, TrunkBranchingScheme())
 
         mapping = repos.get_mapping()
