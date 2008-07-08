@@ -58,6 +58,8 @@ The following features are currently present:
 
 .. _SVK: http://svk.elixus.org/
 
+- Writes svn:mergeinfo property used by Subversion 1.5.
+
 - Generates consistent file ids and revision ids. Two branches made using 
   this plugin of the same Subversion branch will result in *exactly* the same 
   Bazaar branch.

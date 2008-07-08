@@ -29,7 +29,7 @@ bzr-svn also adds two new commands to Bazaar:
  - bzr svn-import
  - bzr dpush
 
-For frequently asked questions about bzr-svn, see the bzr-svn FAQ.
+For more information about bzr-svn, see the bzr-svn FAQ.
 
 """
 import bzrlib
