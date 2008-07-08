@@ -19,6 +19,7 @@
 #include <Python.h>
 #include <apr_general.h>
 #include <svn_wc.h>
+#include <svn_path.h>
 #include <structmember.h>
 #include <stdbool.h>
 
@@ -425,7 +426,7 @@ static PyObject *adm_get_prop_diffs(PyObject *self, PyObject *args)
 	if (temp_pool == NULL)
 		return NULL;
 	RUN_SVN_WITH_POOL(temp_pool, svn_wc_get_prop_diffs(&propchanges, &original_props, 
-				path, admobj->adm, temp_pool));
+				svn_path_canonicalize(path, temp_pool), admobj->adm, temp_pool));
 	py_propchanges = PyList_New(propchanges->nelts);
 	for (i = 0; i < propchanges->nelts; i++) {
 		el = APR_ARRAY_IDX(propchanges, i, svn_prop_t);
