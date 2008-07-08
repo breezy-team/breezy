@@ -1108,7 +1108,10 @@ class ReconcilePacker(Packer):
 
 
 class RepositoryPackCollection(object):
-    """Management of packs within a repository."""
+    """Management of packs within a repository.
+    
+    :ivar _names: map of {pack_name: (index_size,)}
+    """
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport):
