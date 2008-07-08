@@ -98,18 +98,24 @@ class TestBranch(ExternalBase):
         self.assertEqual(source_stat, target_stat)
 
     def assertShallow(self, branch_revid, stacked_on):
-        """Assert that the branch 'newbranch' has been published correctly."""
+        """Assert that the branch 'newbranch' has been published correctly.
+        
+        :param stacked_on: url of a branch this one is stacked upon.
+        :param branch_revid: a revision id that should be present in the 
+            stacked branch but not the reference branch.
+        """
         new_branch = branch.Branch.open('newbranch')
         # The branch refers to the mainline
         self.assertEqual(stacked_on, new_branch.get_stacked_on())
         # and the branch's work was pushed
         self.assertTrue(new_branch.repository.has_revision(branch_revid))
-        # but the mainline's was not included
-        repo = new_branch.bzrdir.open_repository()
-        revids = repo.all_revision_ids()
-        if len(revids) != 1:
-            self.fail("wrong revisions in shallow repository:\n  %r"
-                % (revids,))
+        # XXX: we might like to also test that the basis revisions are not
+        # stored in the stacked repository, but it does too good a job of
+        # hiding them -- I'm not sure how to ask it for just that. -- mbp
+        # 20080708 but the mainline's was not included
+        stacked_on_branch = branch.Branch.open(stacked_on)
+        if stacked_on_branch.repository.has_revision(branch_revid):
+            self.fail("stacked revision present in base repository")
 
     def test_branch_stacked_branch_also_stacked_same_reference(self):
         # We have a mainline
