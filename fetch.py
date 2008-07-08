@@ -539,6 +539,7 @@ class InterFromSvnRepository(InterRepository):
                 if pb:
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)
+                assert prev != revid
                 lhs_parent[prev] = revid
                 meta_map[revid] = revmeta
                 if revid in checked:
@@ -601,7 +602,7 @@ class InterFromSvnRepository(InterRepository):
             for (revid, parent_revid, revmeta) in revids:
                 pb.update('copying revision', num, len(revids))
 
-                assert parent_revid is not None
+                assert parent_revid is not None and parent_revid != revid
 
                 if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
@@ -625,6 +626,8 @@ class InterFromSvnRepository(InterRepository):
                     conn = None
                     try:
                         conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
+
+                        assert editor.revnum > parent_revnum or start_empty
 
                         if parent_branch != editor.branch_path:
                             reporter = conn.do_switch(editor.revnum, "", True, 
