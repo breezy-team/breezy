@@ -476,11 +476,20 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 adapters[adapter_key] = adapter
                 return adapter
         adapters = {}
-        compressor = GroupCompressor(self._delta)
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
+        compressor = GroupCompressor(self._delta)
         keys_to_add = []
         basis_end = 0
+        groups = 1
+        def flush():
+            compressed = zlib.compress(''.join(compressor.lines))
+            index, start, length = self._access.add_raw_records(
+                [(None, len(compressed))], compressed)[0]
+            nodes = []
+            for key, reads, refs in keys_to_add:
+                nodes.append((key, "%d %d %s" % (start, length, reads), refs))
+            self._index.add_records(nodes, random_id=random_id)
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -498,13 +507,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
             keys_to_add.append((record.key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
-        compressed = zlib.compress(''.join(compressor.lines))
-        index, start, length = self._access.add_raw_records(
-            [(None, len(compressed))], compressed)[0]
-        nodes = []
-        for key, reads, refs in keys_to_add:
-            nodes.append((key, "%d %d %s" % (start, length, reads), refs))
-        self._index.add_records(nodes, random_id=random_id)
+            if basis_end > 1024 * 1024 * 20:
+                flush()
+                compressor = GroupCompressor(self._delta)
+                keys_to_add = []
+                basis_end = 0
+                groups += 1
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
