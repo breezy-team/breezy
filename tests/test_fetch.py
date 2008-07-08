@@ -1616,12 +1616,15 @@ Node-copyfrom-path: x
     def test_fetch_symlink(self):
         if not has_symlinks():
             return
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data"})
-        os.symlink('bla', 'dc/mylink')
-        self.client_add("dc/bla")
-        self.client_add("dc/mylink")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("data")
+        l = dc.add_file("mylink")
+        l.modify("link bla")
+        l.change_prop("svn:special", "*")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
