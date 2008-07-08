@@ -149,38 +149,6 @@ Other features currently held back by Bazaars feature set:
    
   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 
-Requirements
-------------
-
-Bazaar
-~~~~~~
-
-You will need a recent version of Bazaar, usually the release of Bazaar 
-released in the same month as the release of bzr-svn you are using. bzr-svn 
-will warn if the Bazaar release used is too old or too new.
-
-SQLite
-~~~~~~
-
-If you are using Python 2.4, you will need to have the pysqlite module installed. 
-Python 2.5 and higher have sqlite support built in. 
-
-Subversion development files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You need the Subversion libraries, including the development files. This should
-be readily packaged for most platforms. The package name for Debian 
-and Debian-based distributions such as Ubuntu is ``libsvn-dev``. 
- 
-bzr-rebase
-~~~~~~~~~~
-
-In order to be able to use the ``svn-upgrade`` command (for those 
-who used versions of bzr-svn older than 0.4.0), you will need the `bzr-rebase`_ 
-plugin.
-
-.. _bzr-rebase: http://bazaar-vcs.org/Rebase
-
 Bugs
 ----
 
@@ -189,27 +157,14 @@ https://launchpad.net/bzr-svn/.
 
 The wiki for this plugin is at http://bazaar-vcs.org/BzrForeignBranches/Subversion.
 
-Installation
-------------
-
-Simply place this directory in ~/.bazaar/plugins and you should be able 
-to check out branches from Subversion using bzr. Make sure the directory 
-name is 'svn'. The plugin has to be built as well by running ``make``.
-
 Development
 -----------
 
 Unit testing
 ~~~~~~~~~~~~
-To run the bzr-svn testsuite, simply run 'bzr selftest --starting-with=bazaar.plugins.svn' or 
+To run the bzr-svn testsuite, simply run 
+'bzr selftest --starting-with=bazaar.plugins.svn' or 
 run 'make check' in the top-level bzr-svn directory.
-
-Credits
--------
-bzr-svn was written by JelmerVernooij_ with the help from various other people. See 
-the AUTHORS file for a full list of contributors.
-
-.. _JelmerVernooij: http://samba.org/~jelmer/
 
 ..
 	vim: ft=rest
