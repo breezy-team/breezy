@@ -48,7 +48,9 @@ class SvnRepositoryConfig(IniBasedConfig):
         :param scheme: New branching scheme.
         """
         self.set_user_option('branching-scheme', str(scheme))
-        self.set_user_option('branching-scheme-mandatory', str(mandatory))
+        if (mandatory or 
+            self.get_user_option('branching-scheme-mandatory') is not None):
+            self.set_user_option('branching-scheme-mandatory', str(mandatory))
 
     def _get_user_option(self, name, use_global=True):
         try:
