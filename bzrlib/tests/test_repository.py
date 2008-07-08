@@ -1399,7 +1399,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)
         # the pack should be correctly initialised
-        sizes = packs._names[name][1]
+        sizes = packs._names[name]
         rev_index = GraphIndex(packs._index_transport, name + '.rix', sizes[0])
         inv_index = GraphIndex(packs._index_transport, name + '.iix', sizes[1])
         txt_index = GraphIndex(packs._index_transport, name + '.tix', sizes[2])
