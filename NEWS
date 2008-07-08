@@ -171,12 +171,6 @@ bzr-svn 0.4.10  2008-05-12
 
 bzr-svn 0.4.9    2008-03-23
 
-  CHANGES
-
-   * The Python-Subversion bindings are no longer necessary. Instead, 
-     bzr-svn now comes with its own Python bindings for the Subversion 
-     libraries.
-
   FEATURES
 
    * Set revision properties when possible.
