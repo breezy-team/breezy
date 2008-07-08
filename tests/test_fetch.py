@@ -1616,12 +1616,15 @@ Node-copyfrom-path: x
     def test_fetch_symlink(self):
         if not has_symlinks():
             return
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data"})
-        os.symlink('bla', 'dc/mylink')
-        self.client_add("dc/bla")
-        self.client_add("dc/mylink")
-        self.client_commit("dc", "My Message")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("data")
+        l = dc.add_file("mylink")
+        l.modify("link bla")
+        l.change_prop("svn:special", "*")
+        dc.close()
+
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
@@ -1633,6 +1636,26 @@ Node-copyfrom-path: x
                 oldrepos.generate_revision_id(1, "", mapping))
         self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
         self.assertEqual('bla', inv1[inv1.path2id("mylink")].symlink_target)
+
+    def test_fetch_special_non_symlink(self):
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        l = dc.add_file("mylink")
+        l.modify("")
+        l.change_prop("svn:special", "*")
+        dc.close()
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(1, "", mapping)))
+        inv1 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(1, "", mapping))
+        self.assertEqual('file', inv1[inv1.path2id("mylink")].kind)
 
     def test_fetch_symlink_kind_change(self):
         repos_url = self.make_repository('d')

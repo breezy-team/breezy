@@ -346,6 +346,7 @@ class FileBuildEditor(object):
         self.file_id = file_id
         self.file_data = data
         self.is_symlink = is_symlink
+        self.is_special = None
         self.file_parents = file_parents
         self.is_executable = None
         self.file_stream = None
@@ -366,7 +367,7 @@ class FileBuildEditor(object):
             # of the property sufficient to mark it executable.
             self.is_executable = (value is not None)
         elif (name == properties.PROP_SPECIAL):
-            self.is_symlink = (value != None)
+            self.is_special = (value != None)
         elif name == properties.PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name == properties.PROP_EXTERNALS:
@@ -397,6 +398,9 @@ class FileBuildEditor(object):
 
         self.editor.texts.add_lines((self.file_id, self.editor.revid), 
                 [(self.file_id, revid) for revid in self.file_parents], lines)
+
+        if self.is_special is not None:
+            self.is_symlink = (self.is_special and len(lines) > 0 and lines[0].startswith("link "))
 
         assert self.is_symlink in (True, False)
 

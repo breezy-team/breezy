@@ -145,8 +145,6 @@ class DirectoryTreeEditor(object):
 
     def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
         path = path.decode("utf-8")
-        self.is_symlink = False
-        self.is_executable = False
         return FileTreeEditor(self.tree, path)
 
     def close(self):
@@ -158,6 +156,7 @@ class FileTreeEditor(object):
         self.tree = tree
         self.path = path
         self.is_executable = False
+        self.is_special = None
         self.is_symlink = False
         self.last_file_rev = None
 
@@ -165,7 +164,7 @@ class FileTreeEditor(object):
         if name == properties.PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == properties.PROP_SPECIAL:
-            self.is_symlink = (value != None)
+            self.is_special = (value is not None)
         elif name == properties.PROP_EXTERNALS:
             mutter('%r property on file!', name)
         elif name == properties.PROP_ENTRY_COMMITTED_REV:
@@ -183,17 +182,21 @@ class FileTreeEditor(object):
 
     def close(self, checksum=None):
         file_id, revision_id = self.tree.id_map[self.path]
-        if self.is_symlink:
-            ie = self.tree._inventory.add_path(self.path, 'symlink', file_id)
-        else:
-            ie = self.tree._inventory.add_path(self.path, 'file', file_id)
-        ie.revision = revision_id
 
         if self.file_stream:
             self.file_stream.seek(0)
             file_data = self.file_stream.read()
         else:
             file_data = ""
+
+        if self.is_special is not None:
+            self.is_symlink = (self.is_special and file_data.startswith("link "))
+
+        if self.is_symlink:
+            ie = self.tree._inventory.add_path(self.path, 'symlink', file_id)
+        else:
+            ie = self.tree._inventory.add_path(self.path, 'file', file_id)
+        ie.revision = revision_id
 
         actual_checksum = md5.new(file_data).hexdigest()
         assert(checksum is None or checksum == actual_checksum,
@@ -233,16 +236,22 @@ class SvnBasisTree(RevisionTree):
 
         def add_file_to_inv(relpath, id, revid, adm):
             (propchanges, props) = adm.get_prop_diffs(self.workingtree.abspath(relpath).encode("utf-8"))
+            abspath = self._abspath(relpath)
             if props.has_key(properties.PROP_SPECIAL):
+                is_symlink = (open(abspath).read(5) == "link ")
+            else:
+                is_symlink = False
+
+            if is_symlink:
                 ie = self._inventory.add_path(relpath, 'symlink', id)
-                ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
+                ie.symlink_target = open(abspath).read()[len("link "):]
                 ie.text_sha1 = None
                 ie.text_size = None
                 ie.text_id = None
                 ie.executable = False
             else:
                 ie = self._inventory.add_path(relpath, 'file', id)
-                data = osutils.fingerprint_file(open(self._abspath(relpath)))
+                data = osutils.fingerprint_file(open(abspath))
                 ie.text_sha1 = data['sha1']
                 ie.text_size = data['size']
                 ie.executable = props.has_key(properties.PROP_EXECUTABLE)
