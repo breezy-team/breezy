@@ -84,14 +84,6 @@ specified in the `mapping specification`_.
 
 .. _mapping specification: BzrForeignBranches/Subversion/mapping
 
-Support
--------
-Ask bzr-svn related questions on the `Bazaar mailing list`_ or in the 
-#bzr IRC channel on Freenode_.
-
-.. _Bazaar mailing list: http://lists.canonical.com/listinfo/bazaar/
-.. _Freenode: http://www.freenode.net/
-
 Limitations
 -----------
 
@@ -149,6 +141,14 @@ Other features currently held back by Bazaars feature set:
    
   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 
+Support
+-------
+Ask bzr-svn related questions on the `Bazaar mailing list`_ or in the 
+#bzr IRC channel on Freenode_.
+
+.. _Bazaar mailing list: http://lists.canonical.com/listinfo/bazaar/
+.. _Freenode: http://www.freenode.net/
+
 Bugs
 ----
 
@@ -156,15 +156,6 @@ Please file bug reports in launchpad. The product URL for bzr-svn is
 https://launchpad.net/bzr-svn/. 
 
 The wiki for this plugin is at http://bazaar-vcs.org/BzrForeignBranches/Subversion.
-
-Development
------------
-
-Unit testing
-~~~~~~~~~~~~
-To run the bzr-svn testsuite, simply run 
-'bzr selftest --starting-with=bazaar.plugins.svn' or 
-run 'make check' in the top-level bzr-svn directory.
 
 ..
 	vim: ft=rest
