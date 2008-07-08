@@ -3073,7 +3073,11 @@ class _UnicodeFilenameFeature(Feature):
 
     def _probe(self):
         try:
-            os.stat(u'\u03b1')
+            # Check for character combinations unlikely to be covered by any
+            # single non-unicode encoding. We use the characters
+            # - greek small letter alpha (U+03B1) and
+            # - braille pattern dots-123456 (U+283F).
+            os.stat(u'\u03b1\u283f')
         except UnicodeEncodeError:
             return False
         except (IOError, OSError):
