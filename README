@@ -115,8 +115,7 @@ therefore ignored for the time being:
 
 - 'svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
   nested branches and the other way around. This can't be implemented 
-  this until Bazaars nested branch support lands. AaronBentley's work 
-  in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
+  until Bazaars nested branch support lands.
 
 
 Future Enhancements
@@ -202,7 +201,8 @@ Development
 
 Unit testing
 ~~~~~~~~~~~~
-To run the bzr-svn testsuite, simply run 'bzr selftest svn'
+To run the bzr-svn testsuite, simply run 'bzr selftest --starting-with=bazaar.plugins.svn' or 
+run 'make check' in the top-level bzr-svn directory.
 
 Credits
 -------
