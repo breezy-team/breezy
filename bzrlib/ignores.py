@@ -18,6 +18,7 @@
 
 import errno
 
+import bzrlib
 from bzrlib import (
     atomicfile,
     config,
@@ -214,7 +215,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     :param tree: Tree to retrieve the ignore list from.
     :return: 
     """
-    ifn = tree.abspath('.bzrignore')
+    ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):
         f = open(ifn, 'rt')
         try:
