@@ -2155,6 +2155,16 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.check_changes(up_rev_tree2.changes_from(up_rev_tree1),
                 modified=["README"])
 
+    def test_is_native_version(self):
+        version1 = Version("0.1-0ubuntu1")
+        version2 = Version("0.2-1")
+        self.tree1.commit("one")
+        self.db1.tag_version(version1)
+        self.tree1.commit("two", revprops={'deb-native': "True"})
+        self.db1.tag_version(version2)
+        self.assertFalse(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
+
     def test_import_native(self):
         version = Version("1.0")
         builder = SourcePackageBuilder("package", version, native=True)
@@ -2165,6 +2175,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         up_rh1 = self.up_tree1.branch.revision_history()
         self.assertEqual(len(rh1), 1)
         self.assertEqual(len(up_rh1), 0)
+        self.assertTrue(self.db1.is_version_native(version))
 
     def test_import_native_two(self):
         version1 = Version("1.0")
@@ -2194,6 +2205,8 @@ class DistributionBranchTests(TestCaseWithTransport):
                 modified=["debian/changelog", "COPYING"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+        self.assertTrue(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
 
 
 class SourcePackageBuilder(object):

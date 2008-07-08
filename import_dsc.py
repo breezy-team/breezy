@@ -1172,6 +1172,22 @@ class DistributionBranch(object):
         self.upstream_tree.branch.tags.set_tag(tag_name,
                 self.upstream_tree.branch.last_revision())
 
+    def is_version_native(self, version):
+        """Determines whether the given version is native.
+
+        :param version: the Version object to test. Must be present in
+            the branch.
+        :return: True if the version is was recorded as native when
+            imported, False otherwise.
+        """
+        revid = self.revid_of_version(version)
+        rev = self.tree.branch.repository.get_revision(revid)
+        try:
+            prop = rev.properties["deb-native"]
+            return prop == "True"
+        except KeyError:
+            return False
+
     def branch_to_pull_version_from(self, version, md5):
         """Checks whether this upload is a pull from a lesser branch.
 
@@ -1480,7 +1496,8 @@ class DistributionBranch(object):
               sep = "\n"
         return (message, author)
 
-    def import_debian(self, debian_part, version, parents, md5):
+    def import_debian(self, debian_part, version, parents, md5,
+            native=False):
         """Import the debian part of a source package.
 
         :param debian_part: the path of a directory containing the unpacked
@@ -1518,7 +1535,10 @@ class DistributionBranch(object):
         if message is None:
             message = 'Import packaging changes for version %s' % \
                         (str(version),)
-        self.tree.commit(message, author=author, revprops={"deb-md5":md5})
+        revprops={"deb-md5":md5}
+        if native:
+            revprops['deb-native'] = "True"
+        self.tree.commit(message, author=author, revprops=revprops)
         self.tag_version(version)
 
     def _get_dsc_part(self, dsc, end):
@@ -1638,7 +1658,8 @@ class DistributionBranch(object):
             self.pull_version_from_branch(pull_branch, version, native=True)
         else:
             parents = self.get_native_parents(version, versions)
-            self.import_debian(debian_part, version, parents, md5)
+            self.import_debian(debian_part, version, parents, md5,
+                    native=True)
 
     def import_package(self, dsc_filename):
         """Import a source package.
