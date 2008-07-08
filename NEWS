@@ -38,6 +38,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Show Subversion revision numbers in log output. (#161830)
 
+   * Extend "bzr help svn".
+
   BUG FIXES
 
    * Now uses absolute imports and no longer adds plugin directory to the 

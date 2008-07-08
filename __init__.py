@@ -14,8 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""
-Support for Subversion branches
+"""Support for Subversion branches
+
+Bazaar can be used with Subversion branches through the bzr-svn plugin.
+
+Most Bazaar commands should work fine with Subversion branches. The following 
+commands at the moment do not:
+
+ - bzr uncommit
+ - bzr push --overwrite
+
+bzr-svn also adds two new commands to Bazaar:
+
+ - bzr svn-import
+ - bzr dpush
+
+For frequently asked questions about bzr-svn, see the bzr-svn FAQ.
+
 """
 import bzrlib
 from bzrlib import log
