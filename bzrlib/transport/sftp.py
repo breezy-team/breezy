@@ -527,10 +527,11 @@ class SFTPTransport(ConnectedTransport):
                 stat = self._get_sftp().lstat(abspath)
                 mode = mode & 0777 # can't set special bits anyway
                 if mode != stat.st_mode & 0777:
-                    if stat.st_mode > 01000:
-                        warning('The server set a suid or sgid bit on '
-                                '%s.  If you want to preserve it, use '
-                                '"umask 0%03o" on the server.'
+                    if stat.st_mode & 06000:
+                        warning('About to chmod %s over sftp, which will result'
+                                ' in its suid or sgid bits being cleared.  If'
+                                ' you want to preserve those bits, change your '
+                                ' environment on the server to use umask 0%03o.'
                                 % (abspath, 0777 - mode))
                     self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
