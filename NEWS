@@ -41,6 +41,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr log --long`` with a ghost in your mainline now handles that
+      ghost properly. (John Arbash Meinel, #243536)
+
     * ``check`` handles the split-up .bzr layout correctly, so no longer
       requires a branch to be present.
       (Daniel Watkins, #64783)
