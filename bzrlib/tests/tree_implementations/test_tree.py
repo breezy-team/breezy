@@ -56,8 +56,8 @@ class TestPlanFileMerge(TestCaseWithTree):
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
         self.assertEqual([
-            ('killed-b', 'b\n'),
             ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
             ('unchanged', 'c\n'),
             ('unchanged', 'd\n'),
             ('new-a', 'e\n'),
