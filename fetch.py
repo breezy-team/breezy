@@ -17,6 +17,7 @@
 
 import bzrlib
 from bzrlib import osutils, ui, urlutils
+from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.repository import InterRepository
@@ -541,7 +542,10 @@ class InterFromSvnRepository(InterRepository):
         meta_map = {}
         lhs_parent = {}
         def check_revid(revision_id):
-            (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
+            try:
+                (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
+            except NoSuchRevision:
+                return # Ghost
             for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
                 if pb:
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
