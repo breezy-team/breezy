@@ -522,12 +522,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version(('root', 'B'), [], 'xyz')
         my_plan = _PlanMerge('A', 'B', self.plan_merge_vf, ('root',))
         self.assertEqual([
-                          ('new-a', 'a\n'),
-                          ('new-a', 'b\n'),
-                          ('new-a', 'c\n'),
                           ('new-b', 'x\n'),
                           ('new-b', 'y\n'),
-                          ('new-b', 'z\n')],
+                          ('new-b', 'z\n'),
+                          ('new-a', 'a\n'),
+                          ('new-a', 'b\n'),
+                          ('new-a', 'c\n')],
                           list(my_plan.plan_merge()))
 
     def test_plan_merge(self):
@@ -538,10 +538,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'a\n'),
                           ('killed-a', 'b\n'),
                           ('killed-b', 'c\n'),
+                          ('new-b', 'g\n'),
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
-                          ('new-a', 'g\n'),
-                          ('new-b', 'g\n')],
+                          ('new-a', 'g\n')],
                          list(plan))
 
     def test_plan_merge_uncommitted_files(self):
@@ -552,10 +552,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'a\n'),
                           ('killed-a', 'b\n'),
                           ('killed-b', 'c\n'),
+                          ('new-b', 'g\n'),
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
-                          ('new-a', 'g\n'),
-                          ('new-b', 'g\n')],
+                          ('new-a', 'g\n')],
                          list(plan))
 
     def test_subtract_plans(self):

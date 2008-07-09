@@ -27,6 +27,7 @@ from bzrlib import (
     patiencediff,
     registry,
     revision as _mod_revision,
+    tsort,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -1423,69 +1424,65 @@ class _PlanMerge(_PlanMergeBase):
     def _find_recursive_lcas(self):
         """Find all the ancestors back to a unique lca"""
         cur_ancestors = (self.a_key, self.b_key)
-        ancestor_keys = [cur_ancestors]
         # graph.find_lca(uncommon, keys) now returns plain NULL_REVISION,
-        # rather than a key tuple, but everything else expects tuples, so we
-        # adapt the result to be normalized, this way we don't have to special
-        # case _get_interesting_texts, etc.
-        null_key = self._key_prefix + (NULL_REVISION,)
+        # rather than a key tuple. We will just map that directly to no common
+        # ancestors.
+        parent_map = {}
         while True:
             next_lcas = self.graph.find_lca(*cur_ancestors)
-            ancestor_keys.append(next_lcas)
+            # Map a plain NULL_REVISION to a simple no-ancestors
+            if next_lcas == set([NULL_REVISION]):
+                next_lcas = ()
+            for rev_key in cur_ancestors:
+                # These don't need to be properly sorted, because
+                # weave.add_lines() just treats them as a set.
+                parent_map[rev_key] = tuple(next_lcas)
             if len(next_lcas) == 0:
-                ancestor_keys[-1] = [null_key]
-                self.vf.add_lines(null_key, [], [])
                 break
             elif len(next_lcas) == 1:
-                if next_lcas == set([NULL_REVISION]):
-                    ancestor_keys[-1] = [null_key]
-                    self.vf.add_lines(null_key, [], [])
+                parent_map[next_lcas.pop()] = ()
                 break
             cur_ancestors = next_lcas
-        ancestor_keys.reverse()
-        return ancestor_keys
+        return parent_map
 
-    def _get_interesting_texts(self, lca_keys):
+    def _get_interesting_texts(self, parent_map):
         """Return a dict of texts we are interested in.
 
         Note that the input is in key tuples, but the output is in plain
         revision ids.
 
-        :param lca_keys: The output from _find_recursive_lcas
+        :param parent_map: The output from _find_recursive_lcas
         :return: A dict of {'revision_id':lines} as returned by
             _PlanMergeBase.get_lines()
         """
-        all_revision_ids = set()
-        # lcas are in keys, but get_lines works in revision_ids
-        for ancestor_keys in lca_keys:
-            all_revision_ids.update([key[-1] for key in ancestor_keys])
-        all_revision_ids.add(self.a_rev)
-        all_revision_ids.add(self.b_rev)
+        all_revision_keys = set(parent_map)
+        all_revision_keys.add(self.a_key)
+        all_revision_keys.add(self.b_key)
 
-        all_texts = self.get_lines(all_revision_ids)
+        # Everything else is in 'keys' but get_lines is in 'revision_ids'
+        all_texts = self.get_lines([k[-1] for k in all_revision_keys])
         return all_texts
 
     def _build_weave(self):
         from bzrlib import weave
         self._weave = weave.Weave(weave_name='in_memory_weave',
                                   allow_reserved=True)
-        lca_keys = self._find_recursive_lcas()
+        parent_map = self._find_recursive_lcas()
 
-        all_texts = self._get_interesting_texts(lca_keys)
+        all_texts = self._get_interesting_texts(parent_map)
 
-        last_parents = ()
-        for ancestor_keys in lca_keys:
-            for ancestor_key in ancestor_keys:
-                ancestor = ancestor_key[-1]
-                if self._weave.has_version(ancestor):
-                    # Most likely this happened because one node purely
-                    # dominated another in the per-file graph. That is okay, we
-                    # already have it in the weave, and the plan should be very
-                    # straightforward.
-                    continue
-                self._weave.add_lines(ancestor, last_parents,
-                                      all_texts[ancestor])
-            last_parents = [a[-1] for a in ancestor_keys]
+        # Note: Unfortunately, the order given by topo_sort will effect the
+        # ordering resolution in the output. Specifically, if you add A then B,
+        # then in the output text A lines will show up before B lines. And, of
+        # course, topo_sort doesn't guarantee any real ordering.
+        # Maybe we want to use merge_sorted? Though we would need to add a
+        # 'pseudo' node for the tip.
+        for key in tsort.topo_sort(parent_map):
+            parent_keys = parent_map[key]
+            revision_id = key[-1]
+            parent_ids = [k[-1] for k in parent_keys]
+            self._weave.add_lines(revision_id, parent_ids,
+                                  all_texts[revision_id])
 
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
