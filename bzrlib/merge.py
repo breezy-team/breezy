@@ -1258,9 +1258,12 @@ class _PlanMergeBase(object):
         self._last_lines_revision_id = None
         self._cached_matching_blocks = {}
         self._key_prefix = key_prefix
-        lines = self.get_lines([a_rev, b_rev])
-        self.lines_a = lines[a_rev]
-        self.lines_b = lines[b_rev]
+        self._precache_tip_lines()
+
+    def _precache_tip_lines(self):
+        lines = self.get_lines([self.a_rev, self.b_rev])
+        self.lines_a = lines[self.a_rev]
+        self.lines_b = lines[self.b_rev]
 
     def get_lines(self, revisions):
         """Get lines for revisions from the backing VersionedFiles.
@@ -1392,59 +1395,118 @@ class _PlanMerge(_PlanMergeBase):
     """Plan an annotate merge using on-the-fly annotation"""
 
     def __init__(self, a_rev, b_rev, vf, key_prefix):
-        _PlanMergeBase.__init__(self, a_rev, b_rev, vf, key_prefix)
-        graph = Graph(vf)
-        # XXX: There is probably a better API to use to examine less history.
-        a_ancestry = set(chain(*graph._make_breadth_first_searcher(
-            [key_prefix + (a_rev,)])))
-        b_ancestry = set(chain(*graph._make_breadth_first_searcher(
-            [key_prefix + (b_rev,)])))
-        self.uncommon = set(key[-1] for key in
-            a_ancestry.symmetric_difference(b_ancestry))
+        super(_PlanMerge, self).__init__(a_rev, b_rev, vf, key_prefix)
+        self.a_key = self._key_prefix + (self.a_rev,)
+        self.b_key = self._key_prefix + (self.b_rev,)
+        self.graph = Graph(self.vf)
+        # heads = self.graph.heads((self.a_key, self.b_key))
+        # if len(heads) == 1:
+        #     # one side dominates, so we can just return its values, yay for
+        #     # per-file graphs
+        #     # Ideally we would know that before we get this far
+        #     self._head_key = heads.pop()
+        #     if self._head_key == self.a_key:
+        #         other = b_rev
+        #     else:
+        #         other = a_rev
+        #     mutter('found dominating revision for %s\n%s > %s', self.vf,
+        #            self._head_key[-1], other)
+        #     self._weave = None
+        # else:
+        self._head_key = None
+        self._build_weave()
 
-    def _determine_status(self, revision_id, unique_line_numbers):
-        """Determines the status unique lines versus all lcas.
+    def _precache_tip_lines(self):
+        # Turn this into a no-op, because we will do this later
+        pass
 
-        Basically, determines why the line is unique to this revision.
+    def _find_recursive_lcas(self):
+        """Find all the ancestors back to a unique lca"""
+        cur_ancestors = (self.a_key, self.b_key)
+        ancestor_keys = [cur_ancestors]
+        # graph.find_lca(uncommon, keys) now returns plain NULL_REVISION,
+        # rather than a key tuple, but everything else expects tuples, so we
+        # adapt the result to be normalized, this way we don't have to special
+        # case _get_interesting_texts, etc.
+        null_key = self._key_prefix + (NULL_REVISION,)
+        while True:
+            next_lcas = self.graph.find_lca(*cur_ancestors)
+            ancestor_keys.append(next_lcas)
+            if len(next_lcas) == 0:
+                ancestor_keys[-1] = [null_key]
+                self.vf.add_lines(null_key, [], [])
+                break
+            elif len(next_lcas) == 1:
+                if next_lcas == set([NULL_REVISION]):
+                    ancestor_keys[-1] = [null_key]
+                    self.vf.add_lines(null_key, [], [])
+                break
+            cur_ancestors = next_lcas
+        ancestor_keys.reverse()
+        return ancestor_keys
 
-        A line may be determined new or killed, but not both.
+    def _get_interesting_texts(self, lca_keys):
+        """Return a dict of texts we are interested in.
 
-        :param revision_id: The id of the revision in which the lines are
-            unique
-        :param unique_line_numbers: The line numbers of unique lines.
-        :return a tuple of (new_this, killed_other):
+        Note that the input is in key tuples, but the output is in plain
+        revision ids.
+
+        :param lca_keys: The output from _find_recursive_lcas
+        :return: A dict of {'revision_id':lines} as returned by
+            _PlanMergeBase.get_lines()
         """
-        new = self._find_new(revision_id)
-        killed = set(unique_line_numbers).difference(new)
-        return new, killed
+        all_revision_ids = set()
+        # lcas are in keys, but get_lines works in revision_ids
+        for ancestor_keys in lca_keys:
+            all_revision_ids.update([key[-1] for key in ancestor_keys])
+        all_revision_ids.add(self.a_rev)
+        all_revision_ids.add(self.b_rev)
 
-    def _find_new(self, version_id):
-        """Determine which lines are new in the ancestry of this version.
+        all_texts = self.get_lines(all_revision_ids)
+        return all_texts
 
-        If a lines is present in this version, and not present in any
-        common ancestor, it is considered new.
+    def _build_weave(self):
+        from bzrlib import weave
+        self._weave = weave.Weave(weave_name='in_memory_weave',
+                                  allow_reserved=True)
+        lca_keys = self._find_recursive_lcas()
+
+        all_texts = self._get_interesting_texts(lca_keys)
+
+        last_parents = ()
+        for ancestor_keys in lca_keys:
+            for ancestor_key in ancestor_keys:
+                ancestor = ancestor_key[-1]
+                if self._weave.has_version(ancestor):
+                    # Most likely this happened because one node purely
+                    # dominated another in the per-file graph. That is okay, we
+                    # already have it in the weave, and the plan should be very
+                    # straightforward.
+                    continue
+                self._weave.add_lines(ancestor, last_parents,
+                                      all_texts[ancestor])
+            last_parents = [a[-1] for a in ancestor_keys]
+
+    def plan_merge(self):
+        """Generate a 'plan' for merging the two revisions.
+
+        This involves comparing their texts and determining the cause of
+        differences.  If text A has a line and text B does not, then either the
+        line was added to text A, or it was deleted from B.  Once the causes
+        are combined, they are written out in the format described in
+        VersionedFile.plan_merge
         """
-        if version_id not in self.uncommon:
-            return set()
-        key = self._key_prefix + (version_id,)
-        parent_map = self.vf.get_parent_map([key])
-        parents = tuple(parent[-1] for parent in parent_map[key])
-        if len(parents) == 0:
-            return set(range(len(self.get_lines([version_id])[version_id])))
-        new = None
-        for parent in parents:
-            blocks = self._get_matching_blocks(version_id, parent)
-            result, unused = self._unique_lines(blocks)
-            parent_new = self._find_new(parent)
-            for i, j, n in blocks:
-                for ii, jj in [(i+r, j+r) for r in range(n)]:
-                    if jj in parent_new:
-                        result.append(ii)
-            if new is None:
-                new = set(result)
+        if self._head_key is not None: # There was a single head
+            if self._head_key == self.a_key:
+                plan = 'new-a'
             else:
-                new.intersection_update(result)
-        return new
+                if self._head_key != self.b_key:
+                    raise AssertionError('There was an invalid head: %s != %s'
+                                         % (self.b_key, self._head_key))
+                plan = 'new-b'
+            lines = self.get_lines([self._head_key[-1]])[self._head_key[-1]]
+            return ((plan, line) for line in lines)
+        return self._weave.plan_merge(self.a_rev, self.b_rev)
 
 
 class _PlanLCAMerge(_PlanMergeBase):

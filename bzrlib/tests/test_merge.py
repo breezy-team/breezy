@@ -500,26 +500,35 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
             plan._get_matching_blocks('B', 'C')),
             ([1, 2, 3], [0, 2]))
 
-    def test_find_new(self):
-        plan = self.setup_plan_merge()
-        self.assertEqual(set([2, 3, 4]), plan._find_new('B'))
-        self.assertEqual(set([0, 3]), plan._find_new('C'))
-
-    def test_find_new2(self):
+    def test_plan_merge_cherrypick(self):
         self.add_version(('root', 'A'), [], 'abc')
         self.add_version(('root', 'B'), [('root', 'A')], 'abcde')
         self.add_version(('root', 'C'), [('root', 'A')], 'abcefg')
         self.add_version(('root', 'D'),
             [('root', 'A'), ('root', 'B'), ('root', 'C')], 'abcdegh')
         my_plan = _PlanMerge('B', 'D', self.plan_merge_vf, ('root',))
-        self.assertEqual(set([5, 6]), my_plan._find_new('D'))
-        self.assertEqual(set(), my_plan._find_new('A'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('unchanged', 'e\n'),
+                          ('new-b', 'g\n'),
+                          ('new-b', 'h\n')],
+                          list(my_plan.plan_merge()))
 
-    def test_find_new_no_ancestors(self):
+    def test_plan_merge_no_common_ancestor(self):
         self.add_version(('root', 'A'), [], 'abc')
         self.add_version(('root', 'B'), [], 'xyz')
-        my_plan = _PlanMerge('A', 'B', self.vf, ('root',))
-        self.assertEqual(set([0, 1, 2]), my_plan._find_new('A'))
+        my_plan = _PlanMerge('A', 'B', self.plan_merge_vf, ('root',))
+        self.assertEqual([
+                          ('new-a', 'a\n'),
+                          ('new-a', 'b\n'),
+                          ('new-a', 'c\n'),
+                          ('new-b', 'x\n'),
+                          ('new-b', 'y\n'),
+                          ('new-b', 'z\n')],
+                          list(my_plan.plan_merge()))
 
     def test_plan_merge(self):
         self.setup_plan_merge()
@@ -527,11 +536,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual([
                           ('new-b', 'f\n'),
                           ('unchanged', 'a\n'),
+                          ('killed-a', 'b\n'),
                           ('killed-b', 'c\n'),
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
-                          ('killed-a', 'b\n'),
-                          ('unchanged', 'g\n')],
+                          ('new-a', 'g\n'),
+                          ('new-b', 'g\n')],
                          list(plan))
 
     def test_plan_merge_uncommitted_files(self):
@@ -540,11 +550,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual([
                           ('new-b', 'f\n'),
                           ('unchanged', 'a\n'),
+                          ('killed-a', 'b\n'),
                           ('killed-b', 'c\n'),
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
-                          ('killed-a', 'b\n'),
-                          ('unchanged', 'g\n')],
+                          ('new-a', 'g\n'),
+                          ('new-b', 'g\n')],
                          list(plan))
 
     def test_subtract_plans(self):
@@ -662,8 +673,21 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version(('root', 'A'), [('root', 'C')], 'b')
         self.add_version(('root', 'B'), [('root', 'C')], '')
         plan = self.plan_merge_vf.plan_merge('A', 'B')
-        self.assertEqual([('new-a', 'b\n'),
-                          ('killed-both', 'a\n')
+        self.assertEqual([('killed-both', 'a\n'),
+                          ('new-a', 'b\n'),
+                         ], list(plan))
+
+    def test_plan_merge_with_move_and_change(self):
+        self.add_version(('root', 'C'), [], 'abcd')
+        self.add_version(('root', 'A'), [('root', 'C')], 'acbd')
+        self.add_version(('root', 'B'), [('root', 'C')], 'aBcd')
+        plan = self.plan_merge_vf.plan_merge('A', 'B')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-a', 'c\n'),
+                          ('killed-b', 'b\n'),
+                          ('new-b', 'B\n'),
+                          ('killed-a', 'c\n'),
+                          ('unchanged', 'd\n'),
                          ], list(plan))
 
 
@@ -703,30 +727,34 @@ class TestMergeImplementation(object):
         self.assertFileEqual('d\na\nb\nc\n', 'this/file1')
         self.assertFileEqual('d\na\nb\n', 'this/file2')
 
-    def test_merge_delete_and_change(self):
+    def test_merge_move_and_change(self):
         this_tree = self.make_branch_and_tree('this')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
         self.build_tree_contents([
-            ('this/file1', 'a\nb\n'),
+            ('this/file1', 'line 1\nline 2\nline 3\nline 4\n'),
         ])
         this_tree.add('file1',)
         this_tree.commit('Added file')
         other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
         self.build_tree_contents([
-            ('other/file1', 'a\nc\n'),
+            ('other/file1', 'line 1\nline 2 to 2.1\nline 3\nline 4\n'),
         ])
-        other_tree.commit('Changed b to c')
+        other_tree.commit('Swapped 2 & 3')
         self.build_tree_contents([
-            ('this/file1', 'a\n'),
+            ('this/file1', 'line 1\nline 3\nline 2\nline 4\n'),
         ])
-        this_tree.commit('Deleted b')
+        this_tree.commit('Changed 2 to 2.1')
         self.do_merge(this_tree, other_tree)
-        self.assertFileEqual('a\n'
+        self.assertFileEqual('line 1\n'
             '<<<<<<< TREE\n'
+            'line 3\n'
+            'line 2\n'
             '=======\n'
-            'c\n'
-            '>>>>>>> MERGE-SOURCE\n', 'this/file1')
+            'line 2 to 2.1\n'
+            'line 3\n'
+            '>>>>>>> MERGE-SOURCE\n'
+            'line 4\n', 'this/file1')
 
 
 class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
@@ -742,3 +770,7 @@ class TestWeaveMerge(TestCaseWithTransport, TestMergeImplementation):
 class TestLCAMerge(TestCaseWithTransport, TestMergeImplementation):
 
     merge_type = _mod_merge.LCAMerger
+
+    def test_merge_move_and_change(self):
+        self.expectFailure("lca merge doesn't conflict for move and change",
+            super(TestLCAMerge, self).test_merge_move_and_change)
