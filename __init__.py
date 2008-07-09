@@ -90,7 +90,7 @@ def sort_by_committer(a_repo, revids):
             committers.setdefault(email, []).append(rev)
     finally:
         pb.finished()
-    
+
     return committers
 
 
@@ -112,11 +112,10 @@ def get_info(a_repo, revision):
 
 def get_diff_info(a_repo, start_rev, end_rev):
     """Get only the info for new revisions between the two revisions
-    
+
     This lets us figure out what has actually changed between 2 revisions.
     """
     pb = ui.ui_factory.nested_progress_bar()
-    committers = {}
     a_repo.lock_read()
     try:
         pb.note('getting ancestry 1')
@@ -124,22 +123,13 @@ def get_diff_info(a_repo, start_rev, end_rev):
         pb.note('getting ancestry 2')
         ancestry = a_repo.get_ancestry(end_rev)[1:]
         ancestry = [rev for rev in ancestry if rev not in start_ancestry]
-        pb.note('getting revisions')
-        revisions = a_repo.get_revisions(ancestry)
 
-        for count, rev in enumerate(revisions):
-            pb.update('checking', count, len(ancestry))
-            try:
-                email = config.extract_email_address(rev.get_apparent_author())
-            except errors.BzrError:
-                email = rev.get_apparent_author()
-            committers.setdefault(email, []).append(rev)
+        committers = sort_by_committer(a_repo, ancestry)
     finally:
         a_repo.unlock()
         pb.finished()
 
-    info = collapse_by_person(committers)
-    return info
+    return collapse_by_person(committers)
 
 
 def display_info(info, to_file, gather_class_stats=None):
