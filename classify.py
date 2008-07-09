@@ -1,6 +1,7 @@
 """Classify a commit based on the types of files it changed."""
 
-from bzrlib import urlutils 
+import os.path
+from bzrlib import urlutils
 from bzrlib.trace import mutter
 
 
@@ -12,22 +13,21 @@ def classify_filename(name):
         None if determining the file type failed.
     """
     # FIXME: Use mime types? Ohcount? 
-    basename = urlutils.basename(name)
-    try:
-        extension = basename.split(".")[1]
-        if extension in ("c", "h", "py", "cpp", "rb", "ac"):
-            return "code"
-        if extension in ("html", "xml", "txt", "rst", "TODO"):
-            return "documentation"
-        if extension in ("po"):
-            return "translation"
-        if extension in ("svg", "png", "jpg"):
-            return "art"
-    except IndexError:
+    extension = os.path.splitext(name)[1]
+    if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac"):
+        return "code"
+    if extension in (".html", ".xml", ".txt", ".rst", ".TODO"):
+        return "documentation"
+    if extension in (".po",):
+        return "translation"
+    if extension in (".svg", ".png", ".jpg"):
+        return "art"
+    if not extension:
+        basename = urlutils.basename(name)
         if basename in ("README", "NEWS", "TODO", 
                         "AUTHORS", "COPYING"):
             return "documentation"
-        if basename in ("Makefile"):
+        if basename in ("Makefile",):
             return "code"
 
     mutter("don't know how to classify %s", name)

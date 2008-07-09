@@ -5,6 +5,8 @@ from bzrlib.plugins.stats.classify import classify_filename, classify_delta
 class TestClassify(TestCase):
     def test_classify_code(self):
         self.assertEquals("code", classify_filename("foo/bar.c"))
+        self.assertEquals("code", classify_filename("foo/bar.pl"))
+        self.assertEquals("code", classify_filename("foo/bar.pm"))
 
     def test_classify_documentation(self):
         self.assertEquals("documentation", classify_filename("bla.html"))
@@ -20,3 +22,6 @@ class TestClassify(TestCase):
 
     def test_classify_doc_hardcoded(self):
         self.assertEquals("documentation", classify_filename("README"))
+
+    def test_classify_multiple_periods(self):
+        self.assertEquals("documentation", classify_filename("foo.bla.html"))
