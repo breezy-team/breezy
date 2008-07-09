@@ -533,6 +533,19 @@ class MergeSortTests(TestCase):
             mainline_revisions=[None, 'A']
             )
 
+    def test_mainline_revs_with_ghost(self):
+        # We have a mainline, but the end of it is actually a ghost
+        # The graph that is passed to tsort has had ghosts filtered out, but
+        # the mainline history has not.
+        self.assertSortAndIterate(
+            {'B':[],
+             'C':['B']}.items(),
+            'C',
+            [(0, 'C', 0, (2,), False),
+             (1, 'B', 0, (1,), True),
+             ],
+             True, mainline_revisions=['A', 'B', 'C'])
+
     def test_parallel_root_sequence_numbers_increase_with_merges(self):
         """When there are parallel roots, check their revnos."""
         self.assertSortAndIterate(
