@@ -19,7 +19,7 @@ from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset,
                            LockError, NotBranchError, PermissionDenied, 
                            DependencyNotPresent, NoRepositoryPresent,
                            TransportError, UnexpectedEndOfContainerError,
-                           RedirectRequested)
+                           RedirectRequested, NoSuchRevision)
 
 import urllib
 from bzrlib.plugins.svn import core
@@ -55,6 +55,13 @@ ERR_UNKNOWN_CAPABILITY = 200026
 ERR_AUTHN_NO_PROVIDER = 215001
 ERR_RA_DAV_RELOCATED = 175011
 ERR_FS_NOT_FILE = 160017
+
+
+class InvalidBzrSvnRevision(NoSuchRevision):
+    _fmt = """Revision id %(revid)s was added incorrectly"""
+
+    def __init__(self, revid):
+        self.revid = revid
 
 
 class NotSvnBranchPath(NotBranchError):

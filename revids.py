@@ -22,7 +22,7 @@ from bzrlib.trace import mutter
 
 from bzrlib.plugins.svn.cache import CacheTable
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import InvalidPropertyValue, ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_DIRECTORY
+from bzrlib.plugins.svn.errors import InvalidPropertyValue, ERR_FS_NO_SUCH_REVISION, ERR_FS_NOT_DIRECTORY, InvalidBzrSvnRevision
 from bzrlib.plugins.svn.mapping import (parse_revision_id, BzrSvnMapping, 
                      SVN_PROP_BZR_REVISION_ID, parse_revid_property)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
@@ -112,7 +112,7 @@ class RevidMap(object):
                             scheme.is_branch(revmeta.branch_path))
                     return (revmeta.branch_path, revmeta.revnum, BzrSvnMappingv3FileProps(scheme))
 
-        raise AssertionError("Revision id %s was added incorrectly" % revid)
+        raise InvalidBzrSvnRevision(revid)
 
 
 class CachingRevidMap(object):
