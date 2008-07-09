@@ -4,7 +4,7 @@ Content Filters
 Content formats
 ---------------
 
-Bazaar's format conversion allows you to store files in a different
+Bazaar's content filtering allows you to store files in a different
 format from the copy in your working tree.  This lets you, or your
 co-developers, use Windows development tools that expect CRLF files
 on projects that use other line-ending conventions. Among other things,

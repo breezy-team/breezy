@@ -18,6 +18,11 @@
 """Working tree content filtering support.
 
 A filter consists of a read converter, write converter pair.
+The content in the working tree is called the convenience format
+while the content actually stored in called the canonical format.
+The read converter produces canonical content from convenience
+content while the writer goes the other way.
+
 Converters have the following signatures::
 
     read_converter(chunks) -> chunks
@@ -51,8 +56,8 @@ class ContentFilter(object):
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
  
-        :param reader: function for converting external to internal content
-        :param writer: function for converting internal to external content
+        :param reader: function for converting convenience to canonical content
+        :param writer: function for converting canonical to convenience content
         """
         self.reader = reader
         self.writer = writer
@@ -140,6 +145,7 @@ _filter_stacks_registry = registry.Registry()
 
 
 # Cache of preferences -> stack
+# TODO: make this per branch (say) rather than global
 _stack_cache = {}
 
 
@@ -169,7 +175,7 @@ def _get_filter_stack_for(preferences):
     
     :param preferences: a sequence of (name,value) tuples where
       name is the preference name and
-      value is the key into the filter stack map regsitered
+      value is the key into the filter stack map registered
       for that preference.
     """
     if preferences is None:
