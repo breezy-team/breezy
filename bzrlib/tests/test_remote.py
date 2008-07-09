@@ -541,7 +541,8 @@ class TestBranchSetLastRevision(tests.TestCase):
         client.add_success_response('ok')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         branch._ensure_real = lambda: None
         branch.lock_write()
         client._calls = []
@@ -597,7 +598,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         client.add_success_response('ok')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         # This is a hack to work around the problem that RemoteBranch currently
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
@@ -672,7 +674,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         client.add_success_response('ok')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         # This is a hack to work around the problem that RemoteBranch currently
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
@@ -723,7 +726,8 @@ class TestBranchLockWrite(tests.TestCase):
         transport = transport.clone('quack')
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         self.assertRaises(errors.UnlockableTransport, branch.lock_write)
         self.assertEqual(
             [('call', 'Branch.lock_write', ('quack/', '', ''))],
