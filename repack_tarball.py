@@ -23,6 +23,7 @@ import os
 import tarfile
 import bz2
 import sha
+from zipfile import is_zipfile
 
 from bzrlib.errors import (
                            FileExists,
@@ -54,12 +55,11 @@ def repack_tarball(orig_name, new_name, target_dir=None):
                        will be created if non-existant.
   :type target_dir: string
   :return: None
-  :warning: .zip files are currently unsupported.
   :throws NoSuchFile: if orig_name doesn't exist.
   :throws NotADirectory: if target_dir exists and is not a directory.
   :throws FileExists: if the target filename (after considering target_dir)
                       exists, and is not identical to the source.
-  :throes BzrCommandError: if the source isn't supported for repacking.
+  :throws BzrCommandError: if the source isn't supported for repacking.
   """
   if target_dir is not None:
     if not os.path.exists(target_dir):
@@ -119,24 +119,13 @@ def repack_tarball(orig_name, new_name, target_dir=None):
           gz.write(old_tar_content_decompressed)
         finally:
           gz.close()
-      elif orig_name.endswith('.zip') or zipfile.is_zipfile(orig_name):
-        # TarFileCompat may be easier, but it's buggy (Python issue 3039).
-        # method/code has been adopted from the patch there.
-        import zipfile
-        import calendar
-        try:
-            from cStringIO import StringIO
-        except ImportError:
-            from StringIO import StringIO
-        zip = zipfile.ZipFile(orig_name, 'r')
-        tgz = tarfile.open(new_name, "w|gz")
-        for zinfo in zip.infolist():
-          bytes = zip.read(zinfo.filename)
-          tinfo = tarfile.TarInfo(zinfo.filename)
-          tinfo.size = len(bytes)
-          tinfo.mtime = calendar.timegm(zinfo.date_time)
-          tgz.addfile(tinfo, StringIO(bytes))
-        tgz.close()
+      elif orig_name.endswith('.zip') or is_zipfile(orig_name):
+        import tempfile
+        import shutil
+        tmpdir = tempfile.mkdtemp()
+        os.system('unzip -q -d %s %s' % (tmpdir, orig_name))
+        os.system('cd %s ; tar czf %s *' % (tmpdir, new_name))
+        shutil.rmtree(tmpdir)
 
       else:
         raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
