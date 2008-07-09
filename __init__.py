@@ -520,7 +520,7 @@ class cmd_svn_branching_scheme(Command):
             if repository_wide:
                 set_property_scheme(repos, scheme)
             else:
-                config_set_scheme(repos, scheme, mandatory=True)
+                config_set_scheme(repos, scheme, None, mandatory=True)
         elif scheme is not None:
             info(scheme_str(scheme))
 

@@ -185,7 +185,7 @@ def config_set_scheme(repository, scheme, guessed_scheme, mandatory=False):
 
 def set_branching_scheme(repository, scheme, mandatory=False):
     repository.get_mapping().scheme = scheme
-    config_set_scheme(repository, scheme, mandatory)
+    config_set_scheme(repository, scheme, scheme, mandatory)
 
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
