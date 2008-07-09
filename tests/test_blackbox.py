@@ -85,6 +85,7 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         self.run_bzr("add dc/foofile")
         self.run_bzr("commit -m msg dc")
         self.run_bzr("dpush -d dc %s" % repos_url)
+        self.check_output("3\n", "revno dc")
         self.check_output("", "status dc")
 
     def test_dpush_wt_diff(self):

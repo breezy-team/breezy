@@ -98,7 +98,7 @@ class RevisionMetadata(object):
     def get_parent_ids(self, mapping):
         lhs_parent = self.get_lhs_parent(mapping)
         if lhs_parent == NULL_REVISION:
-            return ()
+            return (NULL_REVISION,)
         return (lhs_parent,) + self.get_rhs_parents(mapping)
 
     def __hash__(self):
@@ -482,18 +482,11 @@ class SvnRepository(Repository):
             except NoSuchRevision:
                 continue
 
-            mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
-            parent_ids = (mainline_parent,)
-            
-            if mainline_parent != NULL_REVISION:
+            svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
+            svn_revprops = self._log.revprop_list(revnum)
+            revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
 
-                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-                svn_revprops = self._log.revprop_list(revnum)
-                revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
-
-                parent_ids += revmeta.get_rhs_parents(mapping)
-
-            parent_map[revision_id] = parent_ids
+            parent_map[revision_id] = revmeta.get_parent_ids(mapping)
         return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
@@ -527,8 +520,11 @@ class SvnRepository(Repository):
 
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
 
+        parent_ids = revmeta.get_parent_ids(mapping)
+        if parent_ids == (NULL_REVISION,):
+            parent_ids = ()
         rev = Revision(revision_id=revision_id, 
-                       parent_ids=revmeta.get_parent_ids(mapping),
+                       parent_ids=parent_ids,
                        inventory_sha1="")
 
         rev.svn_revision = revnum

@@ -125,7 +125,11 @@ class RevisionBuildEditor(object):
         """
 
         # Commit SVN revision properties to a Revision object
-        rev = Revision(revision_id=revid, parent_ids=self.revmeta.get_parent_ids(self.mapping))
+        parent_ids = self.revmeta.get_parent_ids(self.mapping)
+        if parent_ids == (NULL_REVISION,):
+            parent_ids = ()
+        rev = Revision(revision_id=revid, 
+                       parent_ids=parent_ids)
 
         self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
                                      self.revmeta.repository.uuid, self.revmeta.branch_path,
@@ -537,29 +541,24 @@ class InterFromSvnRepository(InterRepository):
         meta_map = {}
         lhs_parent = {}
         def check_revid(revision_id):
-            prev = None
             (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
             for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
                 if pb:
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)
-                assert prev != revid
-                lhs_parent[prev] = revid
+                parent_ids = revmeta.get_parent_ids(mapping)
+                lhs_parent[revid] = parent_ids[0]
                 meta_map[revid] = revmeta
                 if revid in checked:
                     # This revision (and its ancestry) has already been checked
-                    prev = None
                     break
                 if fetch_rhs_ancestry:
-                    extra.update(revmeta.get_rhs_parents(mapping))
+                    extra.update(parent_ids[1:])
                 if not self.target.has_revision(revid):
                     revs.append(revid)
                 elif not find_ghosts:
-                    prev = None
                     break
                 checked.add(revid)
-                prev = revid
-            lhs_parent[prev] = NULL_REVISION
 
         check_revid(revision_id)
 
@@ -604,6 +603,7 @@ class InterFromSvnRepository(InterRepository):
 
         try:
             for (revid, parent_revid, revmeta) in revids:
+                assert revid != NULL_REVISION
                 pb.update('copying revision', num, len(revids))
 
                 assert parent_revid is not None and parent_revid != revid
