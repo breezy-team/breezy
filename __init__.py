@@ -86,8 +86,12 @@ def sort_by_committer(a_repo, revids):
         revisions = a_repo.get_revisions(revids)
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
-            email = config.parse_username(rev.get_apparent_author())[1]
-            committers.setdefault(email, []).append(rev)
+            name, email = config.parse_username(rev.get_apparent_author())
+            if email:
+                key = email, None
+            else:
+                key = email, name
+            committers.setdefault(key, []).append(rev)
     finally:
         pb.finished()
 
@@ -145,7 +149,7 @@ def display_info(info, to_file, gather_class_stats=None):
                                   reverse=True)
         to_file.write('%4d %s <%s>\n'
                       % (count, sorted_fullnames[0][1],
-                         sorted_emails[0][1]))
+                         sorted_emails[0][1][0]))
         if len(sorted_fullnames) > 1:
             print '     Other names:'
             for count, fname in sorted_fullnames[1:]:
@@ -156,7 +160,7 @@ def display_info(info, to_file, gather_class_stats=None):
                     to_file.write("%s\n" % (fname,))
         if len(sorted_emails) > 1:
             print '     Other email addresses:'
-            for count, email in sorted_emails:
+            for count, (email, disambig) in sorted_emails:
                 to_file.write('     %4d ' % (count,))
                 if email == '':
                     to_file.write("''\n")
@@ -360,7 +364,7 @@ def test_suite():
     from bzrlib.tests import TestLoader
     suite = TestSuite()
     loader = TestLoader()
-    testmod_names = [ 'test_classify']
+    testmod_names = [ 'test_classify', 'test_stats']
     suite.addTest(loader.loadTestsFromModuleNames(['%s.%s' % (__name__, i) for i in testmod_names]))
     return suite
 
