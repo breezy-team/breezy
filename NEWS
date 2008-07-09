@@ -14,6 +14,11 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * ``bzr (re)merge --weave`` will now use a real Weave algorithm,
+      rather than the annotation-based merged it was using. It does so by
+      building up a Weave of the important texts, without needing to build
+      the full ancestry. (John Arbash Meinel, #238895)
+
     * Remembered locations can be specified by aliases, e.g. :parent, :public,
       :submit.  (Aaron Bentley)
 
