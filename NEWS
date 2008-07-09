@@ -27,6 +27,10 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * ``bzr send`` documents and better supports ``emacsclient`` (proper
+      escaping of mail headers and handling of the MUA Mew).
+      (Christophe Troestler)
+
     * Remembered locations can be specified by aliases, e.g. :parent, :public,
       :submit.  (Aaron Bentley)
 

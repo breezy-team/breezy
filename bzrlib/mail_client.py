@@ -328,31 +328,40 @@ class EmacsMail(ExternalMailClient):
         This temporary file will be loaded at runtime in
         _get_compose_commandline function.
 
-        FIXME: this function does not remove the file. That's a wanted
+        This function does not remove the file.  That's a wanted
         behaviour since _get_compose_commandline won't run the send
         mail function directly but return the eligible command line.
         Removing our temporary file here would prevent our sendmail
-        function to work.
-
-        A possible workaround could be to load the function here with
-        emacsclient --eval '(load temp)' but this is not robust since
-        emacs could have been stopped between here and the call to
-        mail client.
+        function to work.  (The file is deleted by some elisp code
+        after being read by Emacs.)
         """
 
         _defun = r"""(defun bzr-add-mime-att (file)
-  "Attach FILe to a mail buffer as a MIME attachment."
+  "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
-    (mail-text)
-    (newline)
     (if (and file (file-exists-p file))
         (cond
          ((eq agent 'sendmail-user-agent)
-          (etach-attach file))
+          (progn
+            (mail-text)
+            (newline)
+            (if (functionp 'etach-attach)
+              (etach-attach file)
+              (mail-attach-file file))))
          ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
-          (mml-attach-file file "text/x-patch" "BZR merge" "attachment"))
+          (progn
+            (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
+         ((eq agent 'mew-user-agent)
+          (progn
+            (mew-draft-prepare-attachments)
+            (mew-attach-link file (file-name-nondirectory file))
+            (let* ((nums (mew-syntax-nums))
+                   (syntax (mew-syntax-get-entry mew-encode-syntax nums)))
+              (mew-syntax-set-cd syntax "BZR merge")
+              (mew-encode-syntax-print mew-encode-syntax))
+            (mew-header-goto-body)))
          (t
-          (message "Unhandled MUA")))
+          (message "Unhandled MUA, report it on bazaar@lists.canonical.com")))
       (error "File %s does not exist." file))))
 """
 
@@ -371,9 +380,10 @@ class EmacsMail(ExternalMailClient):
         _subject = "nil"
 
         if to is not None:
-            _to = ("\"%s\"" % self._encode_safe(to))
+            _to = ("\"%s\"" % self._encode_safe(to).replace('"', '\\"'))
         if subject is not None:
-            _subject = ("\"%s\"" % self._encode_safe(subject))
+            _subject = ("\"%s\"" %
+                        self._encode_safe(subject).replace('"', '\\"'))
 
         # Funcall the default mail composition function
         # This will work with any mail mode including default mail-mode
@@ -385,11 +395,14 @@ class EmacsMail(ExternalMailClient):
         # Try to attach a MIME attachment using our wrapper function
         if attach_path is not None:
             # Do not create a file if there is no attachment
-            lmmform = '(load "%s")' % self._prepare_send_function()
+            elisp = self._prepare_send_function()
+            lmmform = '(load "%s")' % elisp
             mmform  = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')
+            rmform = '(delete-file "%s")' % elisp
             commandline.append(lmmform)
             commandline.append(mmform)
+            commandline.append(rmform)
 
         return commandline
 
