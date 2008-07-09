@@ -519,7 +519,20 @@ class SFTPTransport(ConnectedTransport):
         try:
             self._get_sftp().mkdir(abspath, local_mode)
             if mode is not None:
-                self._get_sftp().chmod(abspath, mode=mode)
+                # chmod a dir through sftp will erase any sgid bit set
+                # on the server side.  So, if the bit mode are already
+                # set, avoid the chmod.  If the mode is not fine but
+                # the sgid bit is set, report a warning to the user
+                # with the umask fix.
+                stat = self._get_sftp().lstat(abspath)
+                mode = mode & 0777 # can't set special bits anyway
+                if mode != stat.st_mode & 0777:
+                    if stat.st_mode > 01000:
+                        warning('The server set a suid or sgid bit on '
+                                '%s.  If you want to preserve it, use '
+                                '"umask 0%03o" on the server.'
+                                % (abspath, 0777 - mode))
+                    self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
