@@ -128,6 +128,7 @@ class RevisionBuildEditor(object):
         parent_ids = self.revmeta.get_parent_ids(self.mapping)
         if parent_ids == (NULL_REVISION,):
             parent_ids = ()
+        assert not NULL_REVISION in parent_ids, "parents: %r" % parent_ids
         rev = Revision(revision_id=revid, 
                        parent_ids=parent_ids)
 
@@ -503,7 +504,7 @@ class InterFromSvnRepository(InterRepository):
         parents = graph.get_parent_map(needed)
         return [(revid, parents[revid][0], meta_map[revid]) for revid in needed]
 
-    def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
+    def _find_branches(self, branches, find_ghosts=False, pb=None):
         set_needed = set()
         ret_needed = list()
         checked = set()
@@ -513,7 +514,7 @@ class InterFromSvnRepository(InterRepository):
             try:
                 nestedpb = ui.ui_factory.nested_progress_bar()
                 for rev in self._find_until(branch.last_revision(), find_ghosts=find_ghosts, 
-                                            fetch_rhs_ancestry=False, pb=nestedpb, checked=checked):
+                                            pb=nestedpb, checked=checked):
                     if rev[0] not in set_needed:
                         ret_needed.append(rev)
                         set_needed.add(rev[0])
@@ -521,13 +522,12 @@ class InterFromSvnRepository(InterRepository):
                 nestedpb.finished()
         return ret_needed
 
-    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False, pb=None,
+    def _find_until(self, revision_id, find_ghosts=False, pb=None,
                     checked=None):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
         :param find_ghosts: Find ghosts
-        :param fetch_rhs_ancestry: Fetch right hand side ancestors
         :return: Tuple with revisions missing and a dictionary with 
             parents for those revision.
         """
@@ -552,8 +552,7 @@ class InterFromSvnRepository(InterRepository):
                 if revid in checked:
                     # This revision (and its ancestry) has already been checked
                     break
-                if fetch_rhs_ancestry:
-                    extra.update(parent_ids[1:])
+                extra.update(parent_ids[1:])
                 if not self.target.has_revision(revid):
                     revs.append(revid)
                 elif not find_ghosts:
@@ -664,7 +663,7 @@ class InterFromSvnRepository(InterRepository):
                 nested_pb.finished()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              branches=None, fetch_rhs_ancestry=False):
+              branches=None):
         """Fetch revisions. """
         if revision_id == NULL_REVISION:
             return
@@ -682,11 +681,11 @@ class InterFromSvnRepository(InterRepository):
             try:
                 if branches is not None:
                     needed = self._find_branches(branches, find_ghosts, 
-                                fetch_rhs_ancestry, pb=nested_pb)
+                                pb=nested_pb)
                 elif revision_id is None:
                     needed = self._find_all(self.source.get_mapping(), pb=nested_pb)
                 else:
-                    needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry, pb=nested_pb)
+                    needed = self._find_until(revision_id, find_ghosts, pb=nested_pb)
             finally:
                 nested_pb.finished()
 

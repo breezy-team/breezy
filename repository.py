@@ -96,10 +96,23 @@ class RevisionMetadata(object):
         return tuple(self.repository._svk_merged_revisions(self.branch_path, self.revnum, mapping, self.fileprops, previous))
 
     def get_parent_ids(self, mapping):
+        parents_cache = getattr(self.repository._real_parents_provider, "_cache", None)
+        if parents_cache is not None:
+            parent_ids = parents_cache.lookup_parents(self.get_revision_id(mapping))
+            if parent_ids is not None:
+                return parent_ids
+
         lhs_parent = self.get_lhs_parent(mapping)
         if lhs_parent == NULL_REVISION:
-            return (NULL_REVISION,)
-        return (lhs_parent,) + self.get_rhs_parents(mapping)
+            parent_ids = (NULL_REVISION,)
+        else:
+            parent_ids = (lhs_parent,) + self.get_rhs_parents(mapping)
+
+        if parents_cache is not None:
+            parents_cache.insert_parents(self.get_revision_id(mapping), 
+                                         parent_ids)
+
+        return parent_ids
 
     def __hash__(self):
         return hash((self.__class__, self.repository.uuid, self.branch_path, self.revnum))
@@ -204,7 +217,6 @@ class SvnRepository(Repository):
 
     def get_revmap(self):
         return self.revmap
-
    
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)

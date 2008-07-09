@@ -21,14 +21,14 @@ from bzrlib.versionedfile import ConstantMapper
 
 class DiskCachingParentsProvider(object):
     def __init__(self, actual, cachetransport):
-        self.cache = ParentsCache(cachetransport)
+        self._cache = ParentsCache(cachetransport)
         self.actual = actual
 
     def get_parent_map(self, keys):
         ret = {}
         todo = set()
         for k in keys:
-            parents = self.cache.lookup_parents(k)
+            parents = self._cache.lookup_parents(k)
             if parents is None:
                 todo.add(k)
             else:
@@ -38,7 +38,7 @@ class DiskCachingParentsProvider(object):
             for revid, parents in newfound.items():
                 if revid == NULL_REVISION:
                     continue
-                self.cache.insert_parents(revid, parents)
+                self._cache.insert_parents(revid, parents)
             ret.update(newfound)
         return ret
 
@@ -53,13 +53,15 @@ class ParentsCache(object):
         self.parentmap_knit = make_file_factory(True, mapper)(cache_transport)
 
     def insert_parents(self, revid, parents):
+        if "cache" in debug.debug_flags:
+            mutter('insert parents: %r -> %r', revid, parents)
         self.parentmap_knit.add_lines((revid,), [(r, ) for r in parents], [])
 
     def lookup_parents(self, revid):
         if "cache" in debug.debug_flags:
             mutter('lookup parents: %r', revid)
         try:
-            return [r for (r,) in self.parentmap_knit.get_parent_map([(revid,)])[(revid,)]]
+            return tuple([r for (r,) in self.parentmap_knit.get_parent_map([(revid,)])[(revid,)]])
         except KeyError:
             return None
 
