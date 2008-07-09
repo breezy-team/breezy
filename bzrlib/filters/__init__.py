@@ -141,6 +141,7 @@ def internal_size_sha_file_byname(name, filters):
 
 
 # The registry of filter stacks indexed by name.
+# See register_filter_stack_map for details on the registered values.
 _filter_stacks_registry = registry.Registry()
 
 
@@ -188,6 +189,7 @@ def _get_filter_stack_for(preferences):
         try:
             stacks_by_values = _filter_stacks_registry.get(k)
         except KeyError:
+            # Some preferences may not have associated filters
             continue
         items = stacks_by_values.get(v)
         if items:
