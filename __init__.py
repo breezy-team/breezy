@@ -201,9 +201,9 @@ class cmd_committer_statistics(commands.Command):
             last_rev = wt.last_revision()
 
         if revision is not None:
-            last_rev = revision[0].in_history(a_branch).rev_id
+            last_rev = revision[0].as_revision_id(a_branch)
             if len(revision) > 1:
-                alternate_rev = revision[1].in_history(a_branch).rev_id
+                alternate_rev = revision[1].as_revision_id(a_branch)
 
         a_branch.lock_read()
         try:
@@ -352,7 +352,7 @@ class cmd_credits(commands.Command):
             last_rev = wt.last_revision()
 
         if revision is not None:
-            last_rev = revision[0].in_history(a_branch).rev_id
+            last_rev = revision[0].as_revision_id(a_branch)
 
         a_branch.lock_read()
         try:
