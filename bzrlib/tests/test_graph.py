@@ -1312,6 +1312,36 @@ class TestGraphFindDistanceToNull(TestGraphBase):
         self.assertFindDistance(6, graph, 'g', [('i', 8)])
 
 
+class TestFindMergeOrder(TestGraphBase):
+
+    def assertMergeOrder(self, expected, graph, tip, base_revisions):
+        self.assertEqual(expected, graph.find_merge_order(tip, base_revisions))
+
+    def test_parents(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertMergeOrder(['rev3', 'rev2b'], graph, 'rev4',
+                                                        ['rev3', 'rev2b'])
+        self.assertMergeOrder(['rev3', 'rev2b'], graph, 'rev4',
+                                                        ['rev2b', 'rev3'])
+
+    def test_ancestors(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertMergeOrder(['rev1', 'rev2b'], graph, 'rev4',
+                                                        ['rev1', 'rev2b'])
+        self.assertMergeOrder(['rev1', 'rev2b'], graph, 'rev4',
+                                                        ['rev2b', 'rev1'])
+
+    def test_shortcut_one_ancestor(self):
+        # When we have enough info, we can stop searching
+        graph = self.make_breaking_graph(ancestry_1, ['rev3', 'rev2b', 'rev4'])
+        # Single ancestors shortcut right away
+        self.assertMergeOrder(['rev3'], graph, 'rev4', ['rev3'])
+
+    def test_shortcut_after_one_ancestor(self):
+        graph = self.make_breaking_graph(ancestry_1, ['rev2a', 'rev2b'])
+        self.assertMergeOrder(['rev3', 'rev1'], graph, 'rev4', ['rev1', 'rev3'])
+
+
 class TestCachingParentsProvider(tests.TestCase):
 
     def setUp(self):

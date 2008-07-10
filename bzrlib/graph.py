@@ -766,6 +766,53 @@ class Graph(object):
             common_walker.start_searching(new_common)
         return candidate_heads
 
+    def find_merge_order(self, tip_revision_id, lca_revision_ids):
+        """Find the order that each revision was merged into tip.
+
+        This basically just walks backwards with a stack, and walks left-first
+        until it finds a node to stop.
+        """
+        if len(lca_revision_ids) == 1:
+            return list(lca_revision_ids)
+        looking_for = set(lca_revision_ids)
+        # TODO: Is there a way we could do this "faster" by batching up the
+        # get_parent_map requests?
+        # TODO: Should we also be culling the ancestry search right away? We
+        # could add looking_for to the "stop" list, and walk their
+        # ancestry in batched mode. The flip side is it might mean we walk a
+        # lot of "stop" nodes, rather than only the minimum.
+        # Then again, without it we may trace back into ancestry we could have
+        # stopped early.
+        stack = [tip_revision_id]
+        found = []
+        stop = set()
+        while stack and looking_for:
+            next = stack.pop()
+            stop.add(next)
+            if next in looking_for:
+                found.append(next)
+                looking_for.remove(next)
+                if len(looking_for) == 1:
+                    found.append(looking_for.pop())
+                    break
+                continue
+            parent_ids = self.get_parent_map([next]).get(next, None)
+            if not parent_ids: # Ghost, nothing to search here
+                continue
+            for parent_id in reversed(parent_ids):
+                # TODO: (performance) We see the parent at this point, but we
+                #       wait to mark it until later to make sure we get left
+                #       parents before right parents. However, instead of
+                #       waiting until we have traversed enough parents, we
+                #       could instead note that we've found it, and once all
+                #       parents are in the stack, just reverse iterate the
+                #       stack for them.
+                if parent_id not in stop:
+                    # this will need to be searched
+                    stack.append(parent_id)
+                stop.add(parent_id)
+        return found
+
     def find_unique_lca(self, left_revision, right_revision,
                         count_steps=False):
         """Find a unique LCA.

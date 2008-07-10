@@ -1433,14 +1433,18 @@ class _PlanMerge(_PlanMergeBase):
             # Map a plain NULL_REVISION to a simple no-ancestors
             if next_lcas == set([NULL_REVISION]):
                 next_lcas = ()
+            # Order the lca's based on when they were merged into the first
+            # tip. While weave merge uses a set() of active revisions, the
+            # order of insertion *does* effect the implicit ordering of the
+            # texts.
+            next_lcas = tuple(self.graph.find_merge_order(cur_ancestors[0],
+                                                          next_lcas))
             for rev_key in cur_ancestors:
-                # These don't need to be properly sorted, because
-                # weave.add_lines() just treats them as a set.
-                parent_map[rev_key] = tuple(next_lcas)
+                parent_map[rev_key] = next_lcas
             if len(next_lcas) == 0:
                 break
             elif len(next_lcas) == 1:
-                parent_map[next_lcas.pop()] = ()
+                parent_map[next_lcas[0]] = ()
                 break
             else:
                 # More than 2 lca's, fall back to grabbing all nodes between
@@ -1454,7 +1458,7 @@ class _PlanMerge(_PlanMergeBase):
                     # No common base to find, use the full ancestry
                     unique_lca = None
                 else:
-                    unique_lca = cur_lcas.pop()
+                    unique_lca = list(cur_lcas)[0]
                 parent_map.update(self._find_unique_parents(next_lcas,
                                                             unique_lca))
                 break
@@ -1521,9 +1525,16 @@ class _PlanMerge(_PlanMergeBase):
         # ordering resolution in the output. Specifically, if you add A then B,
         # then in the output text A lines will show up before B lines. And, of
         # course, topo_sort doesn't guarantee any real ordering.
-        # Maybe we want to use merge_sorted? Though we would need to add a
-        # 'pseudo' node for the tip.
-        for key in tsort.topo_sort(parent_map):
+        # So we use merge_sort, and add a fake node on the tip.
+        # This ensures that left-hand parents will always be inserted into the
+        # weave before right-hand parents.
+        tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
+        parent_map[tip_key] = (self.a_key, self.b_key)
+
+        for seq_num, key, depth, eom in reversed(tsort.merge_sort(parent_map,
+                                                                  tip_key)):
+            if key == tip_key:
+                continue
             parent_keys = parent_map[key]
             revision_id = key[-1]
             parent_ids = [k[-1] for k in parent_keys]

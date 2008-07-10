@@ -508,10 +508,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'a\n'),
                           ('killed-a', 'b\n'),
                           ('killed-b', 'c\n'),
-                          ('new-b', 'g\n'),
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
-                          ('new-a', 'g\n')],
+                          ('new-a', 'g\n'),
+                          ('new-b', 'g\n')],
                          list(plan))
 
     def test_plan_merge_cherrypick(self):
@@ -536,12 +536,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version(('root', 'B'), [], 'xyz')
         my_plan = _PlanMerge('A', 'B', self.plan_merge_vf, ('root',))
         self.assertEqual([
-                          ('new-b', 'x\n'),
-                          ('new-b', 'y\n'),
-                          ('new-b', 'z\n'),
                           ('new-a', 'a\n'),
                           ('new-a', 'b\n'),
-                          ('new-a', 'c\n')],
+                          ('new-a', 'c\n'),
+                          ('new-b', 'x\n'),
+                          ('new-b', 'y\n'),
+                          ('new-b', 'z\n')],
                           list(my_plan.plan_merge()))
 
     def test_plan_merge_uncommitted_files(self):
@@ -552,15 +552,73 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'a\n'),
                           ('killed-a', 'b\n'),
                           ('killed-b', 'c\n'),
-                          ('new-b', 'g\n'),
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
-                          ('new-a', 'g\n')],
+                          ('new-a', 'g\n'),
+                          ('new-b', 'g\n')],
+                         list(plan))
+
+    def test_plan_merge_insert_order(self):
+        """Weave merges are sensitive to the order of insertion.
+        
+        Specifically for overlapping regions, it effects which region gets put
+        'first'. And when a user resolves an overlapping merge, if they use the
+        same ordering, then the lines match the parents, if they don't only
+        *some* of the lines match.
+        """
+        self.add_version(('root', 'A'), [], 'abcdef')
+        self.add_version(('root', 'B'), [('root', 'A')], 'abwxcdef')
+        self.add_version(('root', 'C'), [('root', 'A')], 'abyzcdef')
+        # Merge, and resolve the conflict by adding *both* sets of lines
+        # If we get the ordering wrong, these will look like new lines in D,
+        # rather than carried over from B, C
+        self.add_version(('root', 'D'), [('root', 'B'), ('root', 'C')],
+                         'abwxyzcdef')
+        # Supersede the lines in B and delete the lines in C, which will
+        # conflict if they are treated as being in D
+        self.add_version(('root', 'E'), [('root', 'C'), ('root', 'B')],
+                         'abnocdef')
+        # Same thing for the lines in C
+        self.add_version(('root', 'F'), [('root', 'C')], 'abpqcdef')
+        plan = self.plan_merge_vf.plan_merge('D', 'E')
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'w\n'),
+                          ('killed-b', 'x\n'),
+                          ('killed-b', 'y\n'),
+                          ('killed-b', 'z\n'),
+                          ('new-b', 'n\n'),
+                          ('new-b', 'o\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n')],
+                         list(plan))
+        plan = self.plan_merge_vf.plan_merge('E', 'D')
+        # Going in the opposite direction shows the effect of the opposite plan
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('new-b', 'w\n'),
+                          ('new-b', 'x\n'),
+                          ('killed-a', 'y\n'),
+                          ('killed-a', 'z\n'),
+                          ('killed-both', 'w\n'),
+                          ('killed-both', 'x\n'),
+                          ('new-a', 'n\n'),
+                          ('new-a', 'o\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n')],
                          list(plan))
 
     def test_plan_merge_criss_cross(self):
         # This is specificly trying to trigger problems when using limited
         # ancestry and weaves. The ancestry graph looks like:
+        #       XX      unused ancestor, should not show up in the weave
+        #       |
         #       A       Unique LCA
         #       |\
         #       B \     Introduces a line 'foo'
@@ -581,7 +639,8 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         #   'foo', it should appear as superseding the value in F (since it
         #   came from B), rather than conflict because of the resolution during
         #   C & D.
-        self.add_version(('root', 'A'), [], 'abcdef')
+        self.add_version(('root', 'XX'), [], 'qrs')
+        self.add_version(('root', 'A'), [('root', 'XX')], 'abcdef')
         self.add_version(('root', 'B'), [('root', 'A')], 'axcdef')
         self.add_version(('root', 'C'), [('root', 'B')], 'axcdefg')
         self.add_version(('root', 'D'), [('root', 'B')], 'haxcdef')
