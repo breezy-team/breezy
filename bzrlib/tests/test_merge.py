@@ -596,6 +596,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual([
                           ('unchanged', 'h\n'),
                           ('unchanged', 'a\n'),
+                          ('killed-base', 'b\n'),
                           ('killed-b', 'x\n'),
                           ('new-b', 'z\n'),
                           ('unchanged', 'c\n'),

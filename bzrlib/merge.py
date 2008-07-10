@@ -591,7 +591,7 @@ class Merge3Merger(object):
         """
         result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
-                include_unchanged=True, specific_files=self.interesting_files,
+                include_unchanged=False, specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
@@ -1442,8 +1442,54 @@ class _PlanMerge(_PlanMergeBase):
             elif len(next_lcas) == 1:
                 parent_map[next_lcas.pop()] = ()
                 break
+            else:
+                # More than 2 lca's, fall back to grabbing all nodes between
+                # this and the unique lca.
+                mutter('More than 2 LCAs, falling back to all nodes for: %s',
+                       cur_ancestors)
+                cur_lcas = next_lcas
+                while len(cur_lcas) > 1:
+                    cur_lcas = self.graph.find_lca(*cur_lcas)
+                if len(cur_lcas) == 0:
+                    # No common base to find, use the full ancestry
+                    unique_lca = None
+                else:
+                    unique_lca = cur_lcas.pop()
+                parent_map.update(self._find_unique_parents(next_lcas,
+                                                            unique_lca))
+                break
             cur_ancestors = next_lcas
         return parent_map
+
+    def _find_unique_parents(self, tip_keys, base_key):
+        """Find ancestors of tip that aren't ancestors of base.
+        
+        :param tip_keys: Nodes that are interesting
+        :param base_key: Cull all ancestors of this node
+        :return: The parent map for all revisions between tip_keys and
+            base_key. base_key will be included. References to nodes outside of
+            the ancestor set will also be removed.
+        """
+        # TODO: (performance) We could also "collapse" the graph at this point,
+        #       to remove uninteresting linear chains of revisions.
+        # TODO: this would be simpler if find_unique_ancestors took a list
+        #       instead of a single tip, internally it supports it, but it
+        #       isn't a "backwards compatible" api change.
+        if base_key is None:
+            parent_map = dict(self.graph.iter_ancestry(tip_keys))
+        else:
+            interesting = set()
+            for tip in tip_keys:
+                interesting.update(
+                    self.graph.find_unique_ancestors(tip, [base_key]))
+            parent_map = self.graph.get_parent_map(interesting)
+            parent_map[base_key] = ()
+        culled_parent_map = {}
+        for key, parent_keys in parent_map.iteritems():
+            culled_parent_keys = tuple([p for p in parent_keys
+                                           if p in parent_map])
+            culled_parent_map[key] = culled_parent_keys
+        return culled_parent_map
 
     def _get_interesting_texts(self, parent_map):
         """Return a dict of texts we are interested in.
