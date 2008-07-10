@@ -324,6 +324,7 @@ def test_suite():
             'test_config',
             'test_convert',
             'test_core',
+            'test_delta',
             'test_errors',
             'test_fetch',
             'test_fileids', 
