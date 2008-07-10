@@ -87,6 +87,10 @@ class lazy_dict(object):
         self._ensure_init()
         return self.dict.items()
 
+    def __iter__(self):
+        self._ensure_init()
+        return self.dict.__iter__()
+
     def __repr__(self):
         self._ensure_init()
         return repr(self.dict)
