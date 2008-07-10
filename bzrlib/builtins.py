@@ -4194,7 +4194,7 @@ class cmd_send(Command):
                 raise errors.BzrCommandError('No submit branch known or'
                                              ' specified')
             if remembered_submit_branch:
-                note('Using saved location: %s', submit_branch)
+                note('Using saved location "%s" to determine what changes to submit.', submit_branch)
 
             if mail_to is None:
                 submit_config = Branch.open(submit_branch).get_config()
