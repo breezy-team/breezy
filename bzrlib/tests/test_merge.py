@@ -500,6 +500,20 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
             plan._get_matching_blocks('B', 'C')),
             ([1, 2, 3], [0, 2]))
 
+    def test_plan_merge(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_merge('B', 'C')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-a', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-b', 'g\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('new-a', 'g\n')],
+                         list(plan))
+
     def test_plan_merge_cherrypick(self):
         self.add_version(('root', 'A'), [], 'abc')
         self.add_version(('root', 'B'), [('root', 'A')], 'abcde')
@@ -530,20 +544,6 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('new-a', 'c\n')],
                           list(my_plan.plan_merge()))
 
-    def test_plan_merge(self):
-        self.setup_plan_merge()
-        plan = self.plan_merge_vf.plan_merge('B', 'C')
-        self.assertEqual([
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-a', 'b\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-b', 'g\n'),
-                          ('new-a', 'e\n'),
-                          ('new-a', 'h\n'),
-                          ('new-a', 'g\n')],
-                         list(plan))
-
     def test_plan_merge_uncommitted_files(self):
         self.setup_plan_merge_uncommitted()
         plan = self.plan_merge_vf.plan_merge('B:', 'C:')
@@ -556,6 +556,54 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('new-a', 'e\n'),
                           ('new-a', 'h\n'),
                           ('new-a', 'g\n')],
+                         list(plan))
+
+    def test_plan_merge_criss_cross(self):
+        # This is specificly trying to trigger problems when using limited
+        # ancestry and weaves. The ancestry graph looks like:
+        #       A       Unique LCA
+        #       |\
+        #       B \     Introduces a line 'foo'
+        #      / \ \
+        #     C   D E   C & D both have 'foo', E has different changes
+        #     |\ /| |
+        #     | X | |
+        #     |/ \|/
+        #     F   G      All of C, D, E are merged into F and G, so they are
+        #                all common ancestors.
+        #
+        # The specific issue with weaves:
+        #   B introduced a text ('foo') that is present in both C and D.
+        #   If we do not include B (because it isn't an ancestor of E), then
+        #   the A=>C and A=>D look like both sides independently introduce the
+        #   text ('foo'). If F does not modify the text, it would still appear
+        #   to have deleted on of the versions from C or D. If G then modifies
+        #   'foo', it should appear as superseding the value in F (since it
+        #   came from B), rather than conflict because of the resolution during
+        #   C & D.
+        self.add_version(('root', 'A'), [], 'abcdef')
+        self.add_version(('root', 'B'), [('root', 'A')], 'axcdef')
+        self.add_version(('root', 'C'), [('root', 'B')], 'axcdefg')
+        self.add_version(('root', 'D'), [('root', 'B')], 'haxcdef')
+        self.add_version(('root', 'E'), [('root', 'A')], 'abcdyf')
+        self.add_version(('root', 'F'),
+                         [('root', 'C'), ('root', 'D'), ('root', 'E')],
+                         'haxcdyfg') #Simple combining of all texts
+        self.add_version(('root', 'G'),
+                         [('root', 'C'), ('root', 'D'), ('root', 'E')],
+                         'hazcdyfg') #combining and supersede 'x'
+        plan = self.plan_merge_vf.plan_merge('F', 'G')
+        self.assertEqual([
+                          ('unchanged', 'h\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'x\n'),
+                          ('new-b', 'z\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('killed-base', 'e\n'),
+                          ('unchanged', 'y\n'),
+                          ('unchanged', 'f\n'),
+                          ('unchanged', 'g\n')],
                          list(plan))
 
     def test_subtract_plans(self):
