@@ -49,6 +49,10 @@ class lazy_dict(object):
         self._ensure_init()
         return self.dict.__getitem__(key)
 
+    def __delitem__(self, key):
+        self._ensure_init()
+        return self.dict.__delitem__(key)
+
     def __setitem__(self, key, value):
         self._ensure_init()
         return self.dict.__setitem__(key, value)
