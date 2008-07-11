@@ -67,7 +67,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
                  version=Version('0.1-1'),
                  distributions='unstable',
                  urgency='low',
-                 author='James Westby <jw+debian@jameswestby.net',
+                 author='James Westby <jw+debian@jameswestby.net>',
                  date='Thu,  3 Aug 2006 19:16:22 +0100',
                  )
     cl.add_change('');
@@ -138,7 +138,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
                  version=Version('0.1-1'),
                  distributions='unstable',
                  urgency='low',
-                 author='James Westby <jw+debian@jameswestby.net',
+                 author='James Westby <jw+debian@jameswestby.net>',
                  date='Thu,  3 Aug 2006 19:16:22 +0100',
                  )
     cl.add_change('');
@@ -366,7 +366,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
                  version=Version('0.1-1'),
                  distributions='unstable',
                  urgency='low',
-                 author='James Westby <jw+debian@jameswestby.net',
+                 author='James Westby <jw+debian@jameswestby.net>',
                  date='Thu,  3 Aug 2006 19:16:22 +0100',
                  )
     cl.add_change('');

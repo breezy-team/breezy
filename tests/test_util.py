@@ -69,6 +69,7 @@ bzr-builddeb (0.17) unstable; urgency=low
     needed currently.
 
  -- James Westby <jw+debian@jameswestby.net>  Sun, 17 Jun 2007 18:48:28 +0100
+
 """
 
 
@@ -78,7 +79,7 @@ class FindChangelogTests(TestCaseWithTransport):
     f = open(filename, 'wb')
     try:
       f.write(cl_block1)
-      f.write(""" 
+      f.write("""\
 bzr-builddeb (0.16.2) unstable; urgency=low
 
   * loosen the dependency on bzr. bzr-builddeb seems to be not be broken
