@@ -847,7 +847,7 @@ class KnitVersionedFiles(VersionedFiles):
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
         # no basis.
-        keys = self.keys()
+        keys = self._index.keys()
         parent_map = self.get_parent_map(keys)
         for key in keys:
             if self._index.get_method(key) != 'fulltext':
@@ -856,6 +856,8 @@ class KnitVersionedFiles(VersionedFiles):
                     raise errors.KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
+        for fallback_vfs in self._fallback_vfs:
+            fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
