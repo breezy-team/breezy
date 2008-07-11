@@ -1297,19 +1297,27 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.tree1 = self.make_branch_and_tree('unstable')
         self.up_tree1 = self.make_branch_and_tree('unstable-upstream')
         self.name1 = "debian-unstable"
-        self.db1 = DistributionBranch(self.name1, self.tree1, self.up_tree1)
+        self.db1 = DistributionBranch(self.name1, self.tree1.branch,
+                self.up_tree1.branch, tree=self.tree1,
+                upstream_tree=self.up_tree1)
         self.tree2 = self.make_branch_and_tree('experimental')
         self.up_tree2 = self.make_branch_and_tree('experimental-upstream')
         self.name2 = "debian-experimental"
-        self.db2 = DistributionBranch(self.name2, self.tree2, self.up_tree2)
+        self.db2 = DistributionBranch(self.name2, self.tree2.branch,
+                self.up_tree2.branch, tree=self.tree2,
+                upstream_tree=self.up_tree2)
         self.tree3 = self.make_branch_and_tree('gutsy')
         self.up_tree3 = self.make_branch_and_tree('gutsy-upstream')
         self.name3 = "ubuntu-gutsy"
-        self.db3 = DistributionBranch(self.name3, self.tree3, self.up_tree3)
+        self.db3 = DistributionBranch(self.name3, self.tree3.branch,
+                self.up_tree3.branch, tree=self.tree3,
+                upstream_tree=self.up_tree3)
         self.tree4 = self.make_branch_and_tree('hardy')
         self.up_tree4 = self.make_branch_and_tree('hardy-upstream')
         self.name4 = "ubuntu-hardy"
-        self.db4 = DistributionBranch(self.name4, self.tree4, self.up_tree4)
+        self.db4 = DistributionBranch(self.name4, self.tree4.branch,
+                self.up_tree4.branch, tree=self.tree4,
+                upstream_tree=self.up_tree4)
         self.set = DistributionBranchSet()
         self.set.add_branch(self.db1)
         self.set.add_branch(self.db2)
@@ -1334,6 +1342,8 @@ class DistributionBranchTests(TestCaseWithTransport):
         db = self.db1
         self.assertNotEqual(db, None)
         self.assertEqual(db.name, self.name1)
+        self.assertEqual(db.branch, self.tree1.branch)
+        self.assertEqual(db.upstream_branch, self.up_tree1.branch)
         self.assertEqual(db.tree, self.tree1)
         self.assertEqual(db.upstream_tree, self.up_tree1)
 

@@ -937,17 +937,23 @@ class DistributionBranch(object):
     have a total ordering with respect to these relationships.
     """
 
-    def __init__(self, name, tree, upstream_tree):
+    def __init__(self, name, branch, upstream_branch, tree=None,
+            upstream_tree=None):
         """Create a distribution branch.
 
         :param name: a String which is used as a descriptive name.
-        :param tree: a working tree that the packages are imported in to.
-        :param upstream_tree: a working tree that the upstream snapshots
-            are imported in to.
+        :param branch: the Branch for the packaging part.
+        :param upstream_branch: the Branch for the upstream part, if any.
         """
         self.name = name
+        self.branch = branch
+        self.upstream_branch = upstream_branch
         self.tree = tree
         self.upstream_tree = upstream_tree
+        if self.tree is not None:
+            assert self.upstream_tree is not None
+        if self.upstream_tree is not None:
+            assert self.tree is not None
         self.get_lesser_branches = None
         self.get_greater_branches = None
 
@@ -1034,9 +1040,8 @@ class DistributionBranch(object):
         :return: True if this branch contains the specified version of the
             package. False otherwise.
         """
-        branch = self.tree.branch
         tag_name = self.tag_name(version)
-        return self._has_version(branch, tag_name, md5=md5)
+        return self._has_version(self.branch, tag_name, md5=md5)
 
     def has_upstream_version(self, version, md5=None):
         """Whether this branch contains the upstream version specified.
@@ -1053,9 +1058,8 @@ class DistributionBranch(object):
         :return: True if the upstream branch contains the specified upstream
             version of the package. False otherwise.
         """
-        branch = self.upstream_tree.branch
         tag_name = self.upstream_tag_name(version)
-        return self._has_version(branch, tag_name, md5=md5)
+        return self._has_version(self.upstream_branch, tag_name, md5=md5)
 
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
@@ -1133,7 +1137,7 @@ class DistributionBranch(object):
             revision id of. The Version must be present in the branch.
         :return: the revision id corresponding to that version
         """
-        return self.tree.branch.tags.lookup_tag(self.tag_name(version))
+        return self.branch.tags.lookup_tag(self.tag_name(version))
 
     def revid_of_upstream_version(self, version):
         """Returns the revision id corresponding to the upstream version.
@@ -1145,7 +1149,7 @@ class DistributionBranch(object):
             of the version
         """
         tag_name = self.upstream_tag_name(version)
-        return self.upstream_tree.branch.tags.lookup_tag(tag_name)
+        return self.upstream_branch.tags.lookup_tag(tag_name)
 
     def tag_version(self, version):
         """Tags the branch's last revision with the given version.
@@ -1156,8 +1160,8 @@ class DistributionBranch(object):
         :param version: the Version object to derive the tag name from.
         """
         tag_name = self.tag_name(version)
-        self.tree.branch.tags.set_tag(tag_name,
-                self.tree.branch.last_revision())
+        self.branch.tags.set_tag(tag_name,
+                self.branch.last_revision())
 
     def tag_upstream_version(self, version):
         """Tags the upstream branch's last revision with an upstream version.
@@ -1169,8 +1173,8 @@ class DistributionBranch(object):
             part of the version number to derive the tag name from.
         """
         tag_name = self.upstream_tag_name(version)
-        self.upstream_tree.branch.tags.set_tag(tag_name,
-                self.upstream_tree.branch.last_revision())
+        self.upstream_branch.tags.set_tag(tag_name,
+                self.upstream_branch.last_revision())
 
     def is_version_native(self, version):
         """Determines whether the given version is native.
@@ -1181,7 +1185,7 @@ class DistributionBranch(object):
             imported, False otherwise.
         """
         revid = self.revid_of_version(version)
-        rev = self.tree.branch.repository.get_revision(revid)
+        rev = self.branch.repository.get_revision(revid)
         try:
             prop = rev.properties["deb-native"]
             return prop == "True"
@@ -1210,23 +1214,23 @@ class DistributionBranch(object):
         assert md5 is not None, \
             ("It's not a good idea to use branch_to_pull_version_from with "
              "md5 == None, as you may pull the wrong revision.")
-        self.tree.branch.lock_read()
+        self.branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
                 if branch.has_version(version, md5=md5):
                     # Check that they haven't diverged
-                    branch.tree.branch.lock_read()
+                    branch.branch.lock_read()
                     try:
-                        graph = branch.tree.branch.repository.get_graph(
-                                self.tree.branch.repository)
-                        if len(graph.heads([branch.tree.branch.last_revision(),
-                                    self.tree.branch.last_revision()])) == 1:
+                        graph = branch.branch.repository.get_graph(
+                                self.branch.repository)
+                        if len(graph.heads([branch.branch.last_revision(),
+                                    self.branch.last_revision()])) == 1:
                             return branch
                     finally:
-                        branch.tree.branch.unlock()
+                        branch.branch.unlock()
             return None
         finally:
-            self.tree.branch.unlock()
+            self.branch.unlock()
 
     def branch_to_pull_upstream_from(self, version, md5):
         """Checks whether this upstream is a pull from a lesser branch.
@@ -1249,13 +1253,13 @@ class DistributionBranch(object):
         assert md5 is not None, \
             ("It's not a good idea to use branch_to_pull_upstream_from with "
              "md5 == None, as you may pull the wrong revision.")
-        up_branch = self.upstream_tree.branch
+        up_branch = self.upstream_branch
         up_branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
                 if branch.has_upstream_version(version, md5=md5):
                     # Check for divergenge.
-                    other_up_branch = branch.upstream_tree.branch
+                    other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
                     try:
                         graph = other_up_branch.repository.get_graph(
@@ -1317,8 +1321,8 @@ class DistributionBranch(object):
                 mutter("Adding merge from lesser of %s for version %s from "
                     "branch %s" % (revid, str(merged[0]), branch.name))
                 #FIXME: should this really be here?
-                branch.tree.branch.tags.merge_to(self.tree.branch.tags)
-                self.tree.branch.fetch(branch.tree.branch,
+                branch.branch.tags.merge_to(self.branch.tags)
+                self.branch.fetch(branch.branch,
                         last_revision=revid)
         for branch in self.get_greater_branches():
             merged, missing_versions = \
@@ -1329,8 +1333,8 @@ class DistributionBranch(object):
                 mutter("Adding merge from greater of %s for version %s from "
                     "branch %s" % (revid, str(merged[0]), branch.name))
                 #FIXME: should this really be here?
-                branch.tree.branch.tags.merge_to(self.tree.branch.tags)
-                self.tree.branch.fetch(branch.tree.branch,
+                branch.branch.tags.merge_to(self.branch.tags)
+                self.branch.fetch(branch.branch,
                         last_revision=revid)
         return parents
 
@@ -1352,12 +1356,13 @@ class DistributionBranch(object):
         pull_revision = pull_branch.revid_of_upstream_version(version)
         mutter("Pulling upstream part of %s from revision %s of %s" % \
                 (str(version), pull_revision, pull_branch.name))
-        up_pull_branch = pull_branch.upstream_tree.branch
+        up_pull_branch = pull_branch.upstream_branch
+        assert self.upstream_tree is not None, \
+            "Can't pull upstream with no tree"
         self.upstream_tree.pull(up_pull_branch,
                 stop_revision=pull_revision)
         self.tag_upstream_version(version)
-        self.tree.branch.fetch(self.upstream_tree.branch,
-                last_revision=pull_revision)
+        self.branch.fetch(self.upstream_branch, last_revision=pull_revision)
 
     def pull_version_from_branch(self, pull_branch, version, native=False):
         """Pull a version from a particular branch.
@@ -1383,8 +1388,8 @@ class DistributionBranch(object):
         pull_revision = pull_branch.revid_of_version(version)
         mutter("%s already has version %s so pulling from revision %s"
                 % (pull_branch.name, str(version), pull_revision))
-        self.tree.pull(pull_branch.tree.branch,
-                stop_revision=pull_revision)
+        assert self.tree is not None, "Can't pull branch with no tree"
+        self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         self.tag_version(version)
         if not native and not self.has_upstream_version(version):
             if pull_branch.has_upstream_version(version):
@@ -1458,16 +1463,20 @@ class DistributionBranch(object):
         # the branches writeable by others.
         mutter("Importing upstream version %s from %s" \
                 % (version, upstream_part))
+        assert self.upstream_tree is not None, \
+            "Can't import upstream with no tree"
         other_branches = self.get_other_branches()
-        upstream_trees = [o.upstream_tree for o in other_branches]
+        def get_last_revision_tree(br):
+            return br.repository.revision_tree(br.last_revision())
+        upstream_trees = [get_last_revision_tree(o.upstream_branch)
+            for o in other_branches]
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
                 revprops={"deb-md5":md5})
         self.tag_upstream_version(version)
-        self.tree.branch.fetch(self.upstream_tree.branch,
-                last_revision=revid)
+        self.branch.fetch(self.upstream_branch, last_revision=revid)
 
     def _get_commit_message_from_changelog(self):
         """Retrieves the messages from the last section of debian/changelog.
@@ -1510,6 +1519,7 @@ class DistributionBranch(object):
         """
         mutter("Importing debian part for version %s from %s, with parents "
                 "%s" % (str(version), debian_part, str(parents)))
+        assert self.tree is not None, "Can't import with no tree"
         # First we move the branch to the first parent
         if parents:
             parent_revid = parents[0]
@@ -1518,10 +1528,13 @@ class DistributionBranch(object):
         self.tree.pull(self.tree.branch, overwrite=True,
                 stop_revision=parent_revid)
         other_branches = self.get_other_branches()
-        debian_trees = [o.tree for o in other_branches]
+        def get_last_revision_tree(br):
+            return br.repository.revision_tree(br.last_revision())
+        debian_trees = [get_last_revision_tree(o.branch)
+            for o in other_branches]
         parent_trees = []
         for parent in parents:
-            parent_trees.append(self.tree.branch.repository.revision_tree(
+            parent_trees.append(self.branch.repository.revision_tree(
                         parent))
         import_dir(self.tree, debian_part,
                 file_ids_from=parent_trees + debian_trees)
