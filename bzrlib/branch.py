@@ -1977,6 +1977,7 @@ class BzrBranch5(BzrBranch):
 
 
 class BzrBranch7(BzrBranch5):
+    """A branch with support for a fallback repository."""
 
     def _get_fallback_repository(self, url):
         """Get the repository we fallback to at url."""
