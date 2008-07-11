@@ -478,6 +478,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
     def add_version(self, key, parents, text):
         self.vf.add_lines(key, parents, [c+'\n' for c in text])
 
+    def add_rev(self, prefix, revision_id, parents, text):
+        self.add_version((prefix, revision_id), [(prefix, p) for p in parents],
+                         text)
+
     def add_uncommitted_version(self, key, parents, text):
         self.plan_merge_vf.add_lines(key, parents,
                                      [c+'\n' for c in text])
@@ -543,6 +547,107 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('new-b', 'y\n'),
                           ('new-b', 'z\n')],
                           list(my_plan.plan_merge()))
+
+    def test_plan_merge_tail_ancestors(self):
+        # The graph looks like this:
+        #       A       # Common to all ancestors
+        #      / \
+        #     B   C     # Ancestors of E, only common to one side
+        #     |\ /|
+        #     D E F     # D, F are unique to G, H respectively
+        #     |/ \|     # E is the LCA for G & H, and the unique LCA for
+        #     G   H     # I, J
+        #     |\ /|
+        #     | X |
+        #     |/ \|
+        #     I   J     # criss-cross merge of G, H
+        #
+        # In this situation, a simple pruning of ancestors of E will leave D &
+        # F "dangling", which looks like they introduce lines different from
+        # the ones in E, but in actuality C&B introduced the lines, and they
+        # are already present in E
+
+        # Introduce the base text
+        self.add_rev('root', 'A', [], 'abc')
+        # Introduces a new line B
+        self.add_rev('root', 'B', ['A'], 'aBbc')
+        # Introduces a new line C
+        self.add_rev('root', 'C', ['A'], 'abCc')
+        # Introduce new line D
+        self.add_rev('root', 'D', ['B'], 'DaBbc')
+        # Merges B and C by just incorporating both
+        self.add_rev('root', 'E', ['B', 'C'], 'aBbCc')
+        # Introduce new line F
+        self.add_rev('root', 'F', ['C'], 'abCcF')
+        # Merge D & E by just combining the texts
+        self.add_rev('root', 'G', ['D', 'E'], 'DaBbCc')
+        # Merge F & E by just combining the texts
+        self.add_rev('root', 'H', ['F', 'E'], 'aBbCcF')
+        # Merge G & H by just combining texts
+        self.add_rev('root', 'I', ['G', 'H'], 'DaBbCcF')
+        # Merge G & H but supersede an old line in B
+        self.add_rev('root', 'J', ['H', 'G'], 'DaJbCcF')
+        plan = self.plan_merge_vf.plan_merge('I', 'J')
+        self.assertEqual([
+                          ('unchanged', 'D\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'B\n'),
+                          ('new-b', 'J\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'C\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'F\n')],
+                         list(plan))
+
+    def test_plan_merge_tail_triple_ancestors(self):
+        # The graph looks like this:
+        #       A       # Common to all ancestors
+        #      / \
+        #     B   C     # Ancestors of E, only common to one side
+        #     |\ /|
+        #     D E F     # D, F are unique to G, H respectively
+        #     |/|\|     # E is the LCA for G & H, and the unique LCA for
+        #     G Q H     # I, J
+        #     |\ /|     # Q is just an extra node which is merged into both
+        #     | X |     # I and J
+        #     |/ \|
+        #     I   J     # criss-cross merge of G, H
+        #
+        # This is the same as the test_plan_merge_tail_ancestors, except we add
+        # a third LCA that doesn't add new lines, but will trigger our more
+        # involved ancestry logic
+
+        self.add_rev('root', 'A', [], 'abc')
+        self.add_rev('root', 'B', ['A'], 'aBbc')
+        self.add_rev('root', 'C', ['A'], 'abCc')
+        self.add_rev('root', 'D', ['B'], 'DaBbc')
+        self.add_rev('root', 'E', ['B', 'C'], 'aBbCc')
+        self.add_rev('root', 'F', ['C'], 'abCcF')
+        self.add_rev('root', 'G', ['D', 'E'], 'DaBbCc')
+        self.add_rev('root', 'H', ['F', 'E'], 'aBbCcF')
+        self.add_rev('root', 'Q', ['E'], 'aBbCc')
+        self.add_rev('root', 'I', ['G', 'Q', 'H'], 'DaBbCcF')
+        # Merge G & H but supersede an old line in B
+        self.add_rev('root', 'J', ['H', 'Q', 'G'], 'DaJbCcF')
+        plan = self.plan_merge_vf.plan_merge('I', 'J')
+        # This has a slight incorrect value, as it considers the lines in A to
+        # be 'killed-base', because they show up as new in both B and C, and
+        # then E has to resolve which ones are the 'real' ones.
+        # However, I believe this is okay as the important lines will all
+        # derive from E.
+        self.assertEqual([
+                          ('unchanged', 'D\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'B\n'),
+                          ('new-b', 'J\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-base', 'c\n'), # Not technically correct
+                          ('killed-base', 'a\n'), # as they came from A
+                          ('killed-base', 'b\n'), # but the final text is right
+                          ('unchanged', 'C\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'F\n')],
+                         list(plan))
 
     def test_plan_merge_uncommitted_files(self):
         self.setup_plan_merge_uncommitted()

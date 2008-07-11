@@ -1449,7 +1449,7 @@ class _PlanMerge(_PlanMergeBase):
             elif len(next_lcas) == 1:
                 parent_map[list(next_lcas)[0]] = ()
                 break
-            else:
+            elif len(next_lcas) > 2:
                 # More than 2 lca's, fall back to grabbing all nodes between
                 # this and the unique lca.
                 mutter('More than 2 LCAs, falling back to all nodes for: %s',
@@ -1492,10 +1492,34 @@ class _PlanMerge(_PlanMergeBase):
             parent_map = self.graph.get_parent_map(interesting)
             parent_map[base_key] = ()
         culled_parent_map = {}
+        extra_base_ancestors = set()
         for key, parent_keys in parent_map.iteritems():
             culled_parent_keys = tuple([p for p in parent_keys
                                            if p in parent_map])
+            if not culled_parent_keys and key is not base_key:
+                # We have another 'tail', make sure to bring it into the
+                # ancestry, so that we don't think all of its lines are unique.
+                lcas = self.graph.find_lca(key, base_key)
+                if lcas == set([NULL_REVISION]):
+                    lcas = ()
+                if len(lcas) == 0:
+                    # Nothing to do, no common ancestor
+                    pass
+                else:
+                    # Technically, this isn't 100% correct, but it is better
+                    # than nothing. If we have more than 1 LCA, we probably
+                    # should keep tracking the rabbit down the hole, so that we
+                    # get proper annotations for lines.  For now, though, we
+                    # just add the first lca, and live with it
+                    lca = list(lcas)[0]
+                    extra_base_ancestors.add(lca)
+                    culled_parent_keys = (lca,)
+                    if lca not in culled_parent_map:
+                        culled_parent_map[lca] = ()
             culled_parent_map[key] = culled_parent_keys
+        if extra_base_ancestors:
+            culled_parent_map[base_key] = self.graph.find_merge_order(base_key,
+                                                            extra_base_ancestors)
         return culled_parent_map
 
     def _get_interesting_texts(self, parent_map):
