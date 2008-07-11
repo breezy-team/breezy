@@ -2041,6 +2041,9 @@ class _KnitGraphIndex(object):
         self.has_graph = parents
         self._is_locked = is_locked
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._graph_index)
+
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
         
