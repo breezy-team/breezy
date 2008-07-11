@@ -1400,22 +1400,22 @@ class _PlanMerge(_PlanMergeBase):
         self.a_key = self._key_prefix + (self.a_rev,)
         self.b_key = self._key_prefix + (self.b_rev,)
         self.graph = Graph(self.vf)
-        # heads = self.graph.heads((self.a_key, self.b_key))
-        # if len(heads) == 1:
-        #     # one side dominates, so we can just return its values, yay for
-        #     # per-file graphs
-        #     # Ideally we would know that before we get this far
-        #     self._head_key = heads.pop()
-        #     if self._head_key == self.a_key:
-        #         other = b_rev
-        #     else:
-        #         other = a_rev
-        #     mutter('found dominating revision for %s\n%s > %s', self.vf,
-        #            self._head_key[-1], other)
-        #     self._weave = None
-        # else:
-        self._head_key = None
-        self._build_weave()
+        heads = self.graph.heads((self.a_key, self.b_key))
+        if len(heads) == 1:
+            # one side dominates, so we can just return its values, yay for
+            # per-file graphs
+            # Ideally we would know that before we get this far
+            self._head_key = heads.pop()
+            if self._head_key == self.a_key:
+                other = b_rev
+            else:
+                other = a_rev
+            mutter('found dominating revision for %s\n%s > %s', self.vf,
+                   self._head_key[-1], other)
+            self._weave = None
+        else:
+            self._head_key = None
+            self._build_weave()
 
     def _precache_tip_lines(self):
         # Turn this into a no-op, because we will do this later

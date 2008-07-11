@@ -525,12 +525,14 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version(('root', 'D'),
             [('root', 'A'), ('root', 'B'), ('root', 'C')], 'abcdegh')
         my_plan = _PlanMerge('B', 'D', self.plan_merge_vf, ('root',))
+        # We shortcut when one text supersedes the other in the per-file graph.
+        # We don't actually need to compare the texts at this point.
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('unchanged', 'e\n'),
+                          ('new-b', 'a\n'),
+                          ('new-b', 'b\n'),
+                          ('new-b', 'c\n'),
+                          ('new-b', 'd\n'),
+                          ('new-b', 'e\n'),
                           ('new-b', 'g\n'),
                           ('new-b', 'h\n')],
                           list(my_plan.plan_merge()))
