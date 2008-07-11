@@ -1522,11 +1522,14 @@ class DistributionBranch(object):
         assert self.tree is not None, "Can't import with no tree"
         # First we move the branch to the first parent
         if parents:
-            parent_revid = parents[0]
-        else:
-            parent_revid = NULL_REVISION
-        self.tree.pull(self.tree.branch, overwrite=True,
-                stop_revision=parent_revid)
+            if self.branch.last_revision() == NULL_REVISION:
+                parent_revid = parents[0]
+                self.tree.pull(self.tree.branch, overwrite=True,
+                        stop_revision=parent_revid)
+            elif parents[0] != self.branch.last_revision():
+                mutter("Adding current tip as parent: %s"
+                        % self.branch.last_revision())
+                parents.insert(0, self.branch.last_revision())
         other_branches = self.get_other_branches()
         def get_last_revision_tree(br):
             return br.repository.revision_tree(br.last_revision())

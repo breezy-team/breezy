@@ -2165,6 +2165,54 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.check_changes(up_rev_tree2.changes_from(up_rev_tree1),
                 modified=["README"])
 
+    def test_sync_to_other_branch(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.1-1ubuntu1")
+        version3 = Version("0.2-1")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_upstream_file("README", "foo")
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        self.db2.import_package(builder.dsc_name())
+        builder.new_version(version2)
+        builder.add_upstream_file("README", "bar")
+        builder.add_default_control()
+        builder.build()
+        self.db2.import_package(builder.dsc_name())
+        builder = SourcePackageBuilder("package", version1)
+        builder.new_version(version3)
+        builder.add_upstream_file("README", "baz")
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        self.db2.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        rh2 = self.tree2.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        up_rh2 = self.up_tree2.branch.revision_history()
+        self.assertEqual(len(rh1), 3)
+        self.assertEqual(len(rh2), 4)
+        self.assertEqual(len(up_rh1), 2)
+        self.assertEqual(len(up_rh2), 2)
+        self.assertEqual(rh1[0], up_rh1[0])
+        self.assertEqual(rh2[0], up_rh2[0])
+        self.assertEqual(rh1[0], rh2[0])
+        self.assertEqual(rh1[1], rh2[1])
+        self.assertNotEqual(rh1[2], rh2[2])
+        self.assertEqual(up_rh1[1], up_rh2[1])
+        rev_tree1 = self.tree2.branch.repository.revision_tree(rh2[2])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
+        rev_tree3 = self.tree2.branch.repository.revision_tree(rh2[3])
+        self.assertEqual(rev_tree1.get_parent_ids(), [rh2[1]])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1], up_rh1[1]])
+        self.assertEqual(rev_tree3.get_parent_ids(), [rh2[2], rh1[2]])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                modified=["README", "debian/changelog"])
+        self.check_changes(rev_tree3.changes_from(rev_tree2))
+        self.check_changes(rev_tree3.changes_from(rev_tree1),
+                modified=["README", "debian/changelog"])
+
     def test_is_native_version(self):
         version1 = Version("0.1-0ubuntu1")
         version2 = Version("0.2-1")
@@ -2297,6 +2345,9 @@ class SourcePackageBuilder(object):
             orig_basedir = basedir + ".orig"
             shutil.copytree(basedir, orig_basedir)
             cmd = "dpkg-source -sa -b %s" % (basedir)
+            if os.path.exists("%s_%s.orig.tar.gz"
+                    % (self.name, self._cl.version.upstream_version)):
+                cmd = "dpkg-source -ss -b %s" % (basedir)
         else:
             cmd = "dpkg-source -sn -b %s" % (basedir)
         self._make_files(self.debian_files, basedir)
