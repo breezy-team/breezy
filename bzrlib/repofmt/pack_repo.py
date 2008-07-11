@@ -1778,42 +1778,44 @@ class KnitPackRepository(KnitRepository):
         parent_map = self.get_parent_map(revision_ids)
         return [parent_map.get(r, None) for r in revision_ids]
 
-    def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map
-
-        This implementation accesses the combined revision index to provide
-        answers.
-        """
-        self._pack_collection.ensure_loaded()
-        index = self._pack_collection.revision_index.combined_index
-        keys = set(keys)
-        if None in keys:
-            raise ValueError('get_parent_map(None) is not valid')
-        if _mod_revision.NULL_REVISION in keys:
-            keys.discard(_mod_revision.NULL_REVISION)
-            found_parents = {_mod_revision.NULL_REVISION:()}
-        else:
-            found_parents = {}
-        search_keys = set((revision_id,) for revision_id in keys)
-        for index, key, value, refs in index.iter_entries(search_keys):
-            parents = refs[0]
-            if not parents:
-                parents = (_mod_revision.NULL_REVISION,)
-            else:
-                parents = tuple(parent[0] for parent in parents)
-            found_parents[key[0]] = parents
-        return found_parents
-
-    def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        revision_ids = set(revision_ids)
-        result = revision_ids.intersection(
-            set([None, _mod_revision.NULL_REVISION]))
-        revision_ids.difference_update(result)
-        index = self._pack_collection.revision_index.combined_index
-        keys = [(revision_id,) for revision_id in revision_ids]
-        result.update(node[1][0] for node in index.iter_entries(keys))
-        return result
+##     def get_parent_map(self, keys):
+##         """See graph._StackedParentsProvider.get_parent_map
+## 
+##         This implementation accesses the combined revision index to provide
+##         answers.
+##         """
+##         # get the map from the revisions versionedfile so that it stacks
+##         # properly
+##         self._pack_collection.ensure_loaded()
+##         index = self._pack_collection.revision_index.combined_index
+##         keys = set(keys)
+##         if None in keys:
+##             raise ValueError('get_parent_map(None) is not valid')
+##         if _mod_revision.NULL_REVISION in keys:
+##             keys.discard(_mod_revision.NULL_REVISION)
+##             found_parents = {_mod_revision.NULL_REVISION:()}
+##         else:
+##             found_parents = {}
+##         search_keys = set((revision_id,) for revision_id in keys)
+##         for index, key, value, refs in index.iter_entries(search_keys):
+##             parents = refs[0]
+##             if not parents:
+##                 parents = (_mod_revision.NULL_REVISION,)
+##             else:
+##                 parents = tuple(parent[0] for parent in parents)
+##             found_parents[key[0]] = parents
+##         return found_parents
+## 
+##     def has_revisions(self, revision_ids):
+##         """See Repository.has_revisions()."""
+##         revision_ids = set(revision_ids)
+##         result = revision_ids.intersection(
+##             set([None, _mod_revision.NULL_REVISION]))
+##         revision_ids.difference_update(result)
+##         index = self._pack_collection.revision_index.combined_index
+##         keys = [(revision_id,) for revision_id in revision_ids]
+##         result.update(node[1][0] for node in index.iter_entries(keys))
+##         return result
 
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
