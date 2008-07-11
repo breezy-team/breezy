@@ -1129,29 +1129,6 @@ class TestDevelopment0Subtree(TestKnitPackNoSubtrees):
 
 class TestExternalDevelopment1(object):
 
-    def test_error_mismatched_format(self):
-        # this first implementation uses the internal pack list from each
-        # repository and thus needs the same format in both sides.
-        base = self.make_repository('base', format='pack-0.92')
-        repo = self.make_repository('repo', format=self.get_format())
-        self.assertRaises(errors.IncompatibleRepositories,
-            repo.add_fallback_repository, base)
-
-    def test_ensure_loaded_gets_other_repositories(self):
-        tree = self.make_branch_and_tree('base', format=self.get_format())
-        repo = self.make_repository('repo', format=self.get_format())
-        repo.add_fallback_repository(tree.branch.repository)
-        tree.commit('foo')
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        repo._pack_collection.ensure_loaded()
-        packs_repo = repo._pack_collection.all_packs()
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        packs_base = tree.branch.repository._pack_collection.all_packs()
-        self.assertEqual(packs_base, packs_repo)
-        self.assertEqual(1, len(packs_base))
-
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
         base.commit('foo')
