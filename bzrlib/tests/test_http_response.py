@@ -39,6 +39,7 @@ Some properties are common to all kinds:
 
 from cStringIO import StringIO
 import httplib
+import rfc822
 
 from bzrlib import (
     errors,
@@ -265,11 +266,13 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     The two last ranges are contiguous. This only rarely occurs (should not in
     fact) in real uses but may lead to hard to track bugs.
     """
+    def _boundary(self):
+        return "separation"
 
     def setUp(self):
         super(TestRangeFileMultipleRanges, self).setUp()
 
-        boundary = 'separation'
+        boundary = self._boundary()
 
         content = ''
         self.first_range_start = 25
@@ -289,7 +292,10 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         # supposed to call the following before using seek or read since it
         # requires knowing the *response* headers (in that case the boundary
         # which is part of the Content-Type header).
-        self._file.set_boundary(boundary)
+        #
+        # Note that all parameters in real HTTPReponse instances are 
+        # passed through rfc822.unquote, so we should too
+        self._file.set_boundary(rfc822.unquote(boundary))
 
     def _boundary_line(self, boundary):
         """Helper to build the formatted boundary line."""
@@ -394,6 +400,20 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         self.assertEquals(self.alpha.upper(), f.read())
         self.assertRaises(errors.InvalidHttpResponse, f.read, 1)
 
+class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
+    """Perform the same tests as TestRangeFileMultipleRanges, but uses 
+    an angle-bracket quoted boundary string like IIS 6.0 and 7.0
+    
+    This reveals a bug caused by 
+    
+    - The bad implementation of RFC 822 unquoting in Python (angles are not quotes),
+    coupled with 
+    - The bad implementation of RFC 2046 in IIS (angles are not permitted chars in boundary lines).
+    
+    
+    """
+    def _boundary(self):
+        return "<q1w2e3r4t5y6u7i8o9p0zaxscdvfbgnhmjklkl>" # IIS 6 and 7 use this value
 
 class TestRangeFileVarious(tests.TestCase):
     """Tests RangeFile aspects not covered elsewhere."""
