@@ -1428,23 +1428,26 @@ class _PlanMerge(_PlanMergeBase):
         # rather than a key tuple. We will just map that directly to no common
         # ancestors.
         parent_map = {}
+        mutter('finding lcas for:\n%s, %s', self.a_rev, self.b_rev)
         while True:
             next_lcas = self.graph.find_lca(*cur_ancestors)
             # Map a plain NULL_REVISION to a simple no-ancestors
             if next_lcas == set([NULL_REVISION]):
                 next_lcas = ()
-            # Order the lca's based on when they were merged into the first
-            # tip. While weave merge uses a set() of active revisions, the
-            # order of insertion *does* effect the implicit ordering of the
-            # texts.
-            next_lcas = tuple(self.graph.find_merge_order(cur_ancestors[0],
-                                                          next_lcas))
+            # Order the lca's based on when they were merged into the tip
+            # While the actual merge portion of weave merge uses a set() of
+            # active revisions, the order of insertion *does* effect the
+            # implicit ordering of the texts.
             for rev_key in cur_ancestors:
-                parent_map[rev_key] = next_lcas
+                ordered_parents = tuple(self.graph.find_merge_order(rev_key,
+                                                                    next_lcas))
+                mutter('found %s => %s', rev_key[-1], [p[-1] for p
+                                                       in ordered_parents])
+                parent_map[rev_key] = ordered_parents
             if len(next_lcas) == 0:
                 break
             elif len(next_lcas) == 1:
-                parent_map[next_lcas[0]] = ()
+                parent_map[list(next_lcas)[0]] = ()
                 break
             else:
                 # More than 2 lca's, fall back to grabbing all nodes between
@@ -1531,15 +1534,19 @@ class _PlanMerge(_PlanMergeBase):
         tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
         parent_map[tip_key] = (self.a_key, self.b_key)
 
+        ordering = []
         for seq_num, key, depth, eom in reversed(tsort.merge_sort(parent_map,
                                                                   tip_key)):
             if key == tip_key:
                 continue
+        # for key in tsort.topo_sort(parent_map):
             parent_keys = parent_map[key]
             revision_id = key[-1]
+            ordering.append(revision_id)
             parent_ids = [k[-1] for k in parent_keys]
             self._weave.add_lines(revision_id, parent_ids,
                                   all_texts[revision_id])
+        mutter('order in weave: %s', ordering)
 
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
