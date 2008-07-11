@@ -1617,7 +1617,7 @@ class DistributionBranch(object):
     def get_changelog_from_source(self, dir):
         cl_filename = os.path.join(dir, "debian", "changelog")
         cl = Changelog()
-        cl.parse_changelog(open(cl_filename).read())
+        cl.parse_changelog(open(cl_filename).read(), strict=False)
         return cl
 
     def extract_dsc(self, dsc_filename):
