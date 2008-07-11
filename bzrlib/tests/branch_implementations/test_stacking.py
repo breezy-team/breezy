@@ -16,7 +16,11 @@
 
 """Tests for Branch.get_stacked_on and set_stacked_on."""
 
-from bzrlib import errors
+from bzrlib import (
+    bzrdir,
+    errors,
+    )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
@@ -45,7 +49,40 @@ class TestStacking(TestCaseWithBranch):
         branch.set_stacked_on(None)
         self.assertRaises(errors.NotStacked, branch.get_stacked_on)
 
-    def test_set_stacked_on_fetches(self):
+    def assertRevisionInRepository(self, repo_path, revid):
+        """Check that a revision is in a repository, disregarding stacking."""
+        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        self.assertTrue(repo.has_revision(revid))
+
+    def assertRevisionNotInRepository(self, repo_path, revid):
+        """Check that a revision is not in a repository, disregarding stacking."""
+        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        self.assertFalse(repo.has_revision(revid))
+
+    def test_get_graph_stacked(self):
+        """A stacked repository shows the graph of its parent."""
+        trunk_tree = self.make_branch_and_tree('mainline')
+        trunk_revid = trunk_tree.commit('mainline')
+        # make a new branch, and stack on the existing one.  we don't use
+        # sprout(stacked=True) here because if that is buggy and copies data
+        # it would cause a false pass of this test.
+        new_branch = self.make_branch('new_branch')
+        try:
+            new_branch.set_stacked_on(trunk_tree.branch.base)
+        except (errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            raise TestNotApplicable(e)
+        # reading the graph from the stacked branch's repository should see
+        # data from the stacked-on branch
+        new_repo = new_branch.repository
+        new_repo.lock_read()
+        try:
+            self.assertEqual(new_repo.get_parent_map([trunk_revid]),
+                {trunk_revid: (NULL_REVISION, )})
+        finally:
+            new_repo.unlock()
+
+    def test_sprout_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline')
         trunk_revid = trunk_tree.commit('mainline')
@@ -53,8 +90,9 @@ class TestStacking(TestCaseWithBranch):
         try:
             new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
         except (errors.UnstackableBranchFormat,
-            errors.UnstackableRepositoryFormat):
-            # not a testable combination.
-            return
+            errors.UnstackableRepositoryFormat), e:
+            raise TestNotApplicable(e)
+        # stacked repository
+        self.assertRevisionNotInRepository('newbranch', trunk_revid)
         new_tree = new_dir.open_workingtree()
         new_tree.commit('something local')
