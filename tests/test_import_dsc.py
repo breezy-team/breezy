@@ -2051,14 +2051,12 @@ class DistributionBranchTests(TestCaseWithTransport):
     def test_import_package_init_from_other(self):
         version1 = Version("0.1-1")
         version2 = Version("0.2-1")
-        up_revid1 = self.up_tree1.commit("upstream one")
-        self.db1.tag_upstream_version(version1)
-        self.tree1.pull(self.up_tree1.branch)
-        revid1 = self.tree1.commit("one")
-        self.db1.tag_version(version1)
         builder = SourcePackageBuilder("package", version1)
-        builder.new_version(version2)
         builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        self.db1.upstream_tree = None
+        builder.new_version(version2)
         builder.build()
         self.db2.import_package(builder.dsc_name())
         self.assertEqual(len(self.up_tree2.branch.revision_history()), 2)

@@ -1610,7 +1610,7 @@ class DistributionBranch(object):
             pull_revid = branch.revid_of_upstream_version(pull_version)
             mutter("Initialising upstream from %s, version %s" \
                     % (str(branch), str(pull_version)))
-            up_pull_branch = branch.upstream_tree.branch
+            up_pull_branch = branch.upstream_branch
             self.upstream_tree.pull(up_pull_branch,
                     stop_revision=pull_revid)
 
