@@ -773,6 +773,45 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'g\n')],
                          list(plan))
 
+    def assertRemoveExternalReferences(self, filtered_parent_map,
+                                       child_map, tails, parent_map):
+        """Assert results for _PlanMerge._remove_external_references."""
+        (act_filtered_parent_map, act_child_map,
+         act_tails) = _PlanMerge._remove_external_references(parent_map)
+
+        # The parent map *should* preserve ordering, but the ordering of
+        # children is not strictly defined
+        # child_map = dict((k, sorted(children))
+        #                  for k, children in child_map.iteritems())
+        # act_child_map = dict(k, sorted(children)
+        #                      for k, children in act_child_map.iteritems())
+        self.assertEqual(filtered_parent_map, act_filtered_parent_map)
+        self.assertEqual(child_map, act_child_map)
+        self.assertEqual(sorted(tails), sorted(act_tails))
+
+    def test__remove_external_references(self):
+        # First, nothing to remove
+        self.assertRemoveExternalReferences({3: [2], 2: [1], 1: []},
+            {1: [2], 2: [3], 3: []}, [1], {3: [2], 2: [1], 1: []})
+        # The reverse direction
+        self.assertRemoveExternalReferences({1: [2], 2: [3], 3: []},
+            {3: [2], 2: [1], 1: []}, [3], {1: [2], 2: [3], 3: []})
+        # Extra references
+        self.assertRemoveExternalReferences({3: [2], 2: [1], 1: []},
+            {1: [2], 2: [3], 3: []}, [1], {3: [2, 4], 2: [1, 5], 1: [6]})
+        # Multiple tails
+        self.assertRemoveExternalReferences(
+            {4: [2, 3], 3: [], 2: [1], 1: []},
+            {1: [2], 2: [4], 3: [4], 4: []},
+            [1, 3],
+            {4: [2, 3], 3: [5], 2: [1], 1: [6]})
+        # Multiple children
+        self.assertRemoveExternalReferences(
+            {1: [3], 2: [3, 4], 3: [], 4: []},
+            {1: [], 2: [], 3: [1, 2], 4: [2]},
+            [3, 4],
+            {1: [3], 2: [3, 4], 3: [5], 4: []})
+
     def test_subtract_plans(self):
         old_plan = [
         ('unchanged', 'a\n'),

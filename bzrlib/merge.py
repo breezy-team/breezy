@@ -1491,36 +1491,41 @@ class _PlanMerge(_PlanMergeBase):
                     self.graph.find_unique_ancestors(tip, [base_key]))
             parent_map = self.graph.get_parent_map(interesting)
             parent_map[base_key] = ()
-        culled_parent_map = {}
-        extra_base_ancestors = set()
-        for key, parent_keys in parent_map.iteritems():
-            culled_parent_keys = tuple([p for p in parent_keys
-                                           if p in parent_map])
-            if not culled_parent_keys and key is not base_key:
-                # We have another 'tail', make sure to bring it into the
-                # ancestry, so that we don't think all of its lines are unique.
-                lcas = self.graph.find_lca(key, base_key)
-                if lcas == set([NULL_REVISION]):
-                    lcas = ()
-                if len(lcas) == 0:
-                    # Nothing to do, no common ancestor
-                    pass
-                else:
-                    # Technically, this isn't 100% correct, but it is better
-                    # than nothing. If we have more than 1 LCA, we probably
-                    # should keep tracking the rabbit down the hole, so that we
-                    # get proper annotations for lines.  For now, though, we
-                    # just add the first lca, and live with it
-                    lca = list(lcas)[0]
-                    extra_base_ancestors.add(lca)
-                    culled_parent_keys = (lca,)
-                    if lca not in culled_parent_map:
-                        culled_parent_map[lca] = ()
-            culled_parent_map[key] = culled_parent_keys
-        if extra_base_ancestors:
-            culled_parent_map[base_key] = self.graph.find_merge_order(base_key,
-                                                            extra_base_ancestors)
+        culled_parent_map, child_map, tails = self._remove_external_references(
+            parent_map)
         return culled_parent_map
+
+    @staticmethod
+    def _remove_external_references(parent_map):
+        """Remove references that go outside of the parent map.
+
+        :param parent_map: Something returned from Graph.get_parent_map(keys)
+        :return: (filtered_parent_map, child_map, tails)
+            filtered_parent_map is parent_map without external references
+            child_map is the {parent_key: [child_keys]} mapping
+            tails is a list of nodes that do not have any parents in the map
+        """
+        # TODO: The basic effect of this function seems more generic than
+        #       _PlanMerge. But the specific details of building a child_map,
+        #       and computing tails seems very specific to _PlanMerge.
+        #       Still, should this be in Graph land?
+        filtered_parent_map = {}
+        child_map = {}
+        tails = []
+        for key, parent_keys in parent_map.iteritems():
+            culled_parent_keys = [p for p in parent_keys if p in parent_map]
+            if not culled_parent_keys:
+                tails.append(key)
+            for parent_key in culled_parent_keys:
+                child_map.setdefault(parent_key, []).append(key)
+            # TODO: Do we want to do this, it adds overhead for every node,
+            #       just to say that the node has no children
+            child_map.setdefault(key, [])
+            filtered_parent_map[key] = culled_parent_keys
+        return filtered_parent_map, child_map, tails
+
+    def _prune_tails(self, parent_map, tails_to_remove, child_map):
+        """Remove tails from the parent map."""
 
     def _get_interesting_texts(self, parent_map):
         """Return a dict of texts we are interested in.
