@@ -29,21 +29,17 @@ import socket
 import sys
 import urllib
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
     urlutils,
     )
-from bzrlib.smart.protocol import (
-    MESSAGE_VERSION_THREE,
-    REQUEST_VERSION_TWO,
-    SmartClientRequestProtocolOne,
-    SmartServerRequestProtocolOne,
-    SmartServerRequestProtocolTwo,
-    build_server_protocol_three
-    )
+from bzrlib.smart import protocol
 from bzrlib.transport import ssh
+""")
 
 
 def _get_protocol_factory_for_bytes(bytes):
@@ -67,14 +63,14 @@ def _get_protocol_factory_for_bytes(bytes):
         root_client_path.  unused_bytes are any bytes that were not part of a
         protocol version marker.
     """
-    if bytes.startswith(MESSAGE_VERSION_THREE):
-        protocol_factory = build_server_protocol_three
-        bytes = bytes[len(MESSAGE_VERSION_THREE):]
-    elif bytes.startswith(REQUEST_VERSION_TWO):
-        protocol_factory = SmartServerRequestProtocolTwo
-        bytes = bytes[len(REQUEST_VERSION_TWO):]
+    if bytes.startswith(protocol.MESSAGE_VERSION_THREE):
+        protocol_factory = protocol.build_server_protocol_three
+        bytes = bytes[len(protocol.MESSAGE_VERSION_THREE):]
+    elif bytes.startswith(protocol.REQUEST_VERSION_TWO):
+        protocol_factory = protocol.SmartServerRequestProtocolTwo
+        bytes = bytes[len(protocol.REQUEST_VERSION_TWO):]
     else:
-        protocol_factory = SmartServerRequestProtocolOne
+        protocol_factory = protocol.SmartServerRequestProtocolOne
     return protocol_factory, bytes
 
 
