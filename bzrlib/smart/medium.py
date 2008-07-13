@@ -485,7 +485,7 @@ class SmartClientMedium(object):
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
-                client_protocol = SmartClientRequestProtocolOne(medium_request)
+                client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
             except errors.SmartProtocolError, e:
