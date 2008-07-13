@@ -1384,3 +1384,41 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+
+class TestCollapseLinearRegions(tests.TestCase):
+
+    def assertCollapsed(self, collapsed, original):
+        self.assertEqual(collapsed,
+                         _mod_graph.collapse_linear_regions(original))
+
+    def test_collapse_nothing(self):
+        d = {1:[2, 3], 2:[], 3:[]}
+        self.assertCollapsed(d, d)
+        d = {1:[2], 2:[3, 4], 3:[5], 4:[5], 5:[]}
+        self.assertCollapsed(d, d)
+
+    def test_collapse_chain(self):
+        # Any time we have a linear chain, we should be able to collapse
+        d = {1:[2], 2:[3], 3:[4], 4:[5], 5:[]}
+        self.assertCollapsed({1:[5], 5:[]}, d)
+        d = {5:[4], 4:[3], 3:[2], 2:[1], 1:[]}
+        self.assertCollapsed({5:[1], 1:[]}, d)
+        d = {5:[3], 3:[4], 4:[1], 1:[2], 2:[]}
+        self.assertCollapsed({5:[2], 2:[]}, d)
+
+    def test_collapse_with_multiple_children(self):
+        #    7
+        #    |
+        #    6
+        #   / \
+        #  4   5
+        #  |   |
+        #  3   2
+        #   \ /
+        #    1
+        #
+        # 4 and 5 cannot be removed because 6 has 2 children
+        # 3 and 2 cannot be removed because 1 has 2 parents
+        d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
+        self.assertCollapsed(d, d)

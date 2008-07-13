@@ -1444,3 +1444,78 @@ class SearchResult(object):
         """
         return self._keys
 
+
+def collapse_linear_regions(parent_map):
+    """Collapse regions of the graph that are 'linear'.
+
+    For example::
+
+      A:[B], B:[C]
+
+    can be collapsed by removing B and getting::
+
+      A:[C]
+
+    :param parent_map: A dictionary mapping children to their parents
+    :return: Another dictionary with 'linear' chains collapsed
+    """
+    # Note: this isn't a strictly minimal collapse. For example:
+    #   A
+    #  / \
+    # B   C
+    #  \ /
+    #   D
+    #   |
+    #   E
+    # Will not have 'D' removed, even though 'E' could fit. Also:
+    #   A
+    #   |    A
+    #   B => |
+    #   |    C
+    #   C
+    # A and C are both kept because they are edges of the graph. We *could* get
+    # rid of A if we wanted.
+    #   A
+    #  / \
+    # B   C
+    # |   |
+    # D   E
+    #  \ /
+    #   F
+    # Will not have any nodes removed, even though you do have an
+    # 'uninteresting' linear D->B and E->C
+    children = {}
+    for child, parents in parent_map.iteritems():
+        children.setdefault(child, [])
+        for p in parents:
+            children.setdefault(p, []).append(child)
+
+    orig_children = dict(children)
+    removed = set()
+    result = dict(parent_map)
+    for node in parent_map:
+        parents = result[node]
+        if len(parents) == 1:
+            parent_children = children[parents[0]]
+            if len(parent_children) != 1:
+                # This is not the only child
+                continue
+            node_children = children[node]
+            if len(node_children) != 1:
+                continue
+            child_parents = result.get(node_children[0], None)
+            if child_parents is None:
+                import pdb; pdb.set_trace()
+            if len(child_parents) != 1:
+                # This is not its only parent
+                continue
+            assert child_parents[0] == node
+            # The child of this node only points at it, and the parent only has
+            # this as a child. remove this node, and join the others together
+            result[node_children[0]] = parents
+            children[parents[0]] = node_children
+            del result[node]
+            del children[node]
+            removed.add(node)
+
+    return result

@@ -23,6 +23,7 @@ import warnings
 from bzrlib import (
     debug,
     errors,
+    graph as _mod_graph,
     osutils,
     patiencediff,
     registry,
@@ -1462,6 +1463,12 @@ class _PlanMerge(_PlanMergeBase):
                     unique_lca = None
                 else:
                     unique_lca = list(cur_lcas)[0]
+                    if unique_lca == NULL_REVISION:
+                        # find_lca will return a plain 'NULL_REVISION' rather
+                        # than a key tuple when there is no common ancestor, we
+                        # prefer to just use None, because it doesn't confuse
+                        # _get_interesting_texts()
+                        unique_lca = None
                 parent_map.update(self._find_unique_parents(next_lcas,
                                                             unique_lca))
                 break
@@ -1484,6 +1491,11 @@ class _PlanMerge(_PlanMergeBase):
         #       isn't a "backwards compatible" api change.
         if base_key is None:
             parent_map = dict(self.graph.iter_ancestry(tip_keys))
+            # We remove NULL_REVISION because it isn't a proper tuple key, and
+            # thus confuses things like _get_interesting_texts, and our logic
+            # to add the texts into the memory weave.
+            if NULL_REVISION in parent_map:
+                parent_map.pop(NULL_REVISION)
         else:
             interesting = set()
             for tip in tip_keys:
@@ -1494,8 +1506,11 @@ class _PlanMerge(_PlanMergeBase):
         culled_parent_map, child_map, tails = self._remove_external_references(
             parent_map)
         # Remove all the tails but base_key
-        tails.remove(base_key)
-        self._prune_tails(culled_parent_map, child_map, tails)
+        if base_key is not None:
+            tails.remove(base_key)
+            self._prune_tails(culled_parent_map, child_map, tails)
+        # Now remove all the uninteresting 'linear' regions
+        # simple_map = _mod_graph.collapse_linear_regions(culled_parent_map)
         return culled_parent_map
 
     @staticmethod
@@ -1566,6 +1581,8 @@ class _PlanMerge(_PlanMergeBase):
         all_revision_keys.add(self.a_key)
         all_revision_keys.add(self.b_key)
 
+        if NULL_REVISION in all_revision_keys:
+            import pdb; pdb.set_trace()
         # Everything else is in 'keys' but get_lines is in 'revision_ids'
         all_texts = self.get_lines([k[-1] for k in all_revision_keys])
         return all_texts

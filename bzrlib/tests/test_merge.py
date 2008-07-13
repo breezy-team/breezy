@@ -643,6 +643,46 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'F\n')],
                          list(plan))
 
+    def test_plan_merge_2_tail_triple_ancestors(self):
+        # The graph looks like this:
+        #     A   B     # 2 tails going back to NULL
+        #     |\ /|
+        #     D E F     # D, is unique to G, F to H
+        #     |/|\|     # E is the LCA for G & H, and the unique LCA for
+        #     G Q H     # I, J
+        #     |\ /|     # Q is just an extra node which is merged into both
+        #     | X |     # I and J
+        #     |/ \|
+        #     I   J     # criss-cross merge of G, H (and Q)
+        #
+
+        # This is meant to test after hitting a 3-way LCA, and multiple tail
+        # ancestors (only have NULL_REVISION in common)
+
+        self.add_rev('root', 'A', [], 'abc')
+        self.add_rev('root', 'B', [], 'def')
+        self.add_rev('root', 'D', ['A'], 'Dabc')
+        self.add_rev('root', 'E', ['A', 'B'], 'abcdef')
+        self.add_rev('root', 'F', ['B'], 'defF')
+        self.add_rev('root', 'G', ['D', 'E'], 'Dabcdef')
+        self.add_rev('root', 'H', ['F', 'E'], 'abcdefF')
+        self.add_rev('root', 'Q', ['E'], 'abcdef')
+        self.add_rev('root', 'I', ['G', 'Q', 'H'], 'DabcdefF')
+        # Merge G & H but supersede an old line in B
+        self.add_rev('root', 'J', ['H', 'Q', 'G'], 'DabcdJfF')
+        plan = self.plan_merge_vf.plan_merge('I', 'J')
+        self.assertEqual([
+                          ('unchanged', 'D\n'),
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('killed-b', 'e\n'),
+                          ('new-b', 'J\n'),
+                          ('unchanged', 'f\n'),
+                          ('unchanged', 'F\n')],
+                         list(plan))
+
     def test_plan_merge_uncommitted_files(self):
         self.setup_plan_merge_uncommitted()
         plan = self.plan_merge_vf.plan_merge('B:', 'C:')
