@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from bzrlib import tests
 from bzrlib.builtins import cmd_init
 from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
 
@@ -27,6 +28,8 @@ class TestInit(TestCaseWithConnectionHookedTransport):
 
     def test_init(self):
         cmd = cmd_init()
+        # We don't care about the ouput but 'outf' should be defined
+        cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url())
-        self.assertEquals(1, len(self.connections))
+        self.assertEquals(2, len(self.connections))
 

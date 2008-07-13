@@ -26,7 +26,11 @@ class TestSharedRepo(TestCaseInTempDir):
 
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository a")
-        self.assertEqual(out, "")
+        self.assertEqual(out, 
+"""Shared repository with trees (format: pack-0.92)
+Location:
+  shared repository: a
+""")
         self.assertEqual(err, "")
         dir = BzrDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
