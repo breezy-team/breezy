@@ -878,7 +878,7 @@ class GraphIndex(object):
             if len(elements) != self._expected_elements:
                 raise errors.BadIndexData(self)
             # keys are tuples
-            key = tuple(elements[:self._key_length])
+            key = tuple(intern(element) for element in elements[:self._key_length])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
