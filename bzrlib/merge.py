@@ -1493,6 +1493,9 @@ class _PlanMerge(_PlanMergeBase):
             parent_map[base_key] = ()
         culled_parent_map, child_map, tails = self._remove_external_references(
             parent_map)
+        # Remove all the tails but base_key
+        tails.remove(base_key)
+        self._prune_tails(culled_parent_map, child_map, tails)
         return culled_parent_map
 
     @staticmethod
@@ -1524,8 +1527,30 @@ class _PlanMerge(_PlanMergeBase):
             filtered_parent_map[key] = culled_parent_keys
         return filtered_parent_map, child_map, tails
 
-    def _prune_tails(self, parent_map, tails_to_remove, child_map):
-        """Remove tails from the parent map."""
+    @staticmethod
+    def _prune_tails(parent_map, child_map, tails_to_remove):
+        """Remove tails from the parent map.
+        
+        This will remove the supplied revisions until no more children have 0
+        parents.
+
+        :param parent_map: A dict of {child: [parents]}, this dictionary will
+            be modified in place.
+        :param tails_to_remove: A list of tips that should be removed,
+            this list will be consumed
+        :param child_map: The reverse dict of parent_map ({parent: [children]})
+            this dict will be modified
+        :return: None, parent_map will be modified in place.
+        """
+        while tails_to_remove:
+            next = tails_to_remove.pop()
+            parent_map.pop(next)
+            children = child_map.pop(next)
+            for child in children:
+                child_parents = parent_map[child]
+                child_parents.remove(next)
+                if len(child_parents) == 0:
+                    tails_to_remove.append(child)
 
     def _get_interesting_texts(self, parent_map):
         """Return a dict of texts we are interested in.

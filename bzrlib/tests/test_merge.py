@@ -632,20 +632,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         # Merge G & H but supersede an old line in B
         self.add_rev('root', 'J', ['H', 'Q', 'G'], 'DaJbCcF')
         plan = self.plan_merge_vf.plan_merge('I', 'J')
-        # This has a slight incorrect value, as it considers the lines in A to
-        # be 'killed-base', because they show up as new in both B and C, and
-        # then E has to resolve which ones are the 'real' ones.
-        # However, I believe this is okay as the important lines will all
-        # derive from E.
         self.assertEqual([
                           ('unchanged', 'D\n'),
                           ('unchanged', 'a\n'),
                           ('killed-b', 'B\n'),
                           ('new-b', 'J\n'),
                           ('unchanged', 'b\n'),
-                          ('killed-base', 'c\n'), # Not technically correct
-                          ('killed-base', 'a\n'), # as they came from A
-                          ('killed-base', 'b\n'), # but the final text is right
                           ('unchanged', 'C\n'),
                           ('unchanged', 'c\n'),
                           ('unchanged', 'F\n')],
@@ -811,6 +803,38 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
             {1: [], 2: [], 3: [1, 2], 4: [2]},
             [3, 4],
             {1: [3], 2: [3, 4], 3: [5], 4: []})
+
+    def assertPruneTails(self, pruned_map, tails, parent_map):
+        child_map = {}
+        for key, parent_keys in parent_map.iteritems():
+            child_map.setdefault(key, [])
+            for pkey in parent_keys:
+                child_map.setdefault(pkey, []).append(key)
+        _PlanMerge._prune_tails(parent_map, child_map, tails)
+        self.assertEqual(pruned_map, parent_map)
+
+    def test__prune_tails(self):
+        # Nothing requested to prune
+        self.assertPruneTails({1: [], 2: [], 3: []}, [],
+                              {1: [], 2: [], 3: []})
+        # Prune a single entry
+        self.assertPruneTails({1: [], 3: []}, [2],
+                              {1: [], 2: [], 3: []})
+        # Prune a chain
+        self.assertPruneTails({1: []}, [3],
+                              {1: [], 2: [3], 3: []})
+        # Prune a chain with a diamond
+        self.assertPruneTails({1: []}, [5],
+                              {1: [], 2: [3, 4], 3: [5], 4: [5], 5: []})
+        # Prune a partial chain
+        self.assertPruneTails({1: [6], 6:[]}, [5],
+                              {1: [2, 6], 2: [3, 4], 3: [5], 4: [5], 5: [],
+                               6: []})
+        # Prune a chain with multiple tips, that pulls out intermediates
+        self.assertPruneTails({1:[3], 3:[]}, [4, 5],
+                              {1: [2, 3], 2: [4, 5], 3: [], 4:[], 5:[]})
+        self.assertPruneTails({1:[3], 3:[]}, [5, 4],
+                              {1: [2, 3], 2: [4, 5], 3: [], 4:[], 5:[]})
 
     def test_subtract_plans(self):
         old_plan = [
