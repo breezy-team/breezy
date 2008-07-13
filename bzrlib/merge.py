@@ -1484,8 +1484,6 @@ class _PlanMerge(_PlanMergeBase):
             base_key. base_key will be included. References to nodes outside of
             the ancestor set will also be removed.
         """
-        # TODO: (performance) We could also "collapse" the graph at this point,
-        #       to remove uninteresting linear chains of revisions.
         # TODO: this would be simpler if find_unique_ancestors took a list
         #       instead of a single tip, internally it supports it, but it
         #       isn't a "backwards compatible" api change.
@@ -1510,8 +1508,8 @@ class _PlanMerge(_PlanMergeBase):
             tails.remove(base_key)
             self._prune_tails(culled_parent_map, child_map, tails)
         # Now remove all the uninteresting 'linear' regions
-        # simple_map = _mod_graph.collapse_linear_regions(culled_parent_map)
-        return culled_parent_map
+        simple_map = _mod_graph.collapse_linear_regions(culled_parent_map)
+        return simple_map
 
     @staticmethod
     def _remove_external_references(parent_map):
