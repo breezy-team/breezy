@@ -1060,7 +1060,7 @@ class KnitVersionedFiles(VersionedFiles):
         return text_map, final_content
 
     def get_parent_map(self, keys):
-        """Get a map of the parents of keys.
+        """Get a map of the graph parents of keys.
 
         :param keys: The keys to look up parents for.
         :return: A mapping from keys to parents. Absent keys are absent from

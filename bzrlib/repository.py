@@ -1729,26 +1729,27 @@ class Repository(object):
         parent_map = self.get_parent_map(revision_ids)
         return [parent_map.get(r, None) for r in revision_ids]
 
-    def get_parent_map(self, keys):
+    def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
-        parent_map = {}
-        for revision_id in keys:
-            if revision_id is None:
-                raise ValueError('get_parent_map(None) is not valid')
+        # revisions index works in keys; this just works in revisions
+        # therefore wrap and unwrap
+        query_keys = []
+        result = {}
+        for revision_id in revision_ids:
             if revision_id == _mod_revision.NULL_REVISION:
-                parent_map[revision_id] = ()
+                result[revision_id] = ()
+            elif revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             else:
-                try:
-                    parent_id_list = self.get_revision(revision_id).parent_ids
-                except errors.NoSuchRevision:
-                    pass
-                else:
-                    if len(parent_id_list) == 0:
-                        parent_ids = (_mod_revision.NULL_REVISION,)
-                    else:
-                        parent_ids = tuple(parent_id_list)
-                    parent_map[revision_id] = parent_ids
-        return parent_map
+                query_keys.append((revision_id ,))
+        for ((revision_id,), parent_keys) in \
+                self.revisions.get_parent_map(query_keys).iteritems():
+            if parent_keys:
+                result[revision_id] = tuple(parent_revid
+                    for (parent_revid,) in parent_keys)
+            else:
+                result[revision_id] = (_mod_revision.NULL_REVISION,)
+        return result
 
     def _make_parents_provider(self):
         return self
