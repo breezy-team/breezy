@@ -21,7 +21,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestNotApplicable
+from bzrlib.tests import TestNotApplicable, KnownFailure
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -113,15 +113,19 @@ class TestStacking(TestCaseWithBranch):
         new_tree = new_dir.open_workingtree()
         new_tree.commit('something local')
 
-    def test_clone_from_stacked_branch(self):
+    def prepare_for_clone(self):
+        tree = self.make_branch_and_tree('stacked-on')
+        tree.commit('Added foo')
+        stacked_bzrdir = tree.branch.bzrdir.sprout(
+            'stacked', tree.branch.last_revision(), stacked=True)
+        return stacked_bzrdir
+
+    def test_clone_from_stacked_branch_preserve_stacking(self):
         # We can clone from the bzrdir of a stacked branch. If
         # preserve_stacking is True, the cloned branch is stacked on the
         # same branch as the original.
-        tree = self.make_branch_and_tree('stacked-on')
-        tree.commit('Added foo')
         try:
-            stacked_bzrdir = tree.branch.bzrdir.sprout(
-                'stacked', tree.branch.last_revision(), stacked=True)
+            stacked_bzrdir = self.prepare_for_clone()
         except (errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
             # not a testable combination.
@@ -134,8 +138,23 @@ class TestStacking(TestCaseWithBranch):
         except (errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
             pass
-        cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
-                                                       preserve_stacking=False)
+
+    def test_clone_from_stacked_branch_no_preserve_stacking(self):
+        try:
+            stacked_bzrdir = self.prepare_for_clone()
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            # not a testable combination.
+            return
+        try:
+            cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
+                preserve_stacking=False)
+        except errors.NoSuchRevision:
+            raise KnownFailure(
+                'Pack-to-pack fetch does not handle stacking properly.'
+                ' (#248506)')
+        else:
+            self.fail('Expected a failure due to broken fetching.')
         unstacked_branch = cloned_unstacked_bzrdir.open_branch()
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
                           unstacked_branch.get_stacked_on)

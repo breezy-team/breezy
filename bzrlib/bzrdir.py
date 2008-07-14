@@ -373,7 +373,7 @@ class BzrDir(object):
         return bzrdir.create_branch()
 
     def determine_repository_policy(self, force_new_repo=False, stack_on=None,
-                                    stack_on_pwd=None):
+                                    stack_on_pwd=None, require_stacking=False):
         """Return an object representing a policy to use.
 
         This controls whether a new repository is created, or a shared
@@ -413,9 +413,10 @@ class BzrDir(object):
                 return None, False
             if repository:
                 return UseExistingRepository(repository, stack_on,
-                                             stack_on_pwd), True
+                    stack_on_pwd, require_stacking=require_stacking), True
             else:
-                return CreateRepository(self, stack_on, stack_on_pwd), True
+                return CreateRepository(self, stack_on, stack_on_pwd,
+                    require_stacking=require_stacking), True
 
         if not force_new_repo:
             if stack_on is None:
@@ -425,10 +426,12 @@ class BzrDir(object):
             else:
                 try:
                     return UseExistingRepository(self.open_repository(),
-                                                 stack_on, stack_on_pwd)
+                        stack_on, stack_on_pwd,
+                        require_stacking=require_stacking)
                 except errors.NoRepositoryPresent:
                     pass
-        return CreateRepository(self, stack_on, stack_on_pwd)
+        return CreateRepository(self, stack_on, stack_on_pwd,
+                                require_stacking=require_stacking)
 
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
@@ -1069,7 +1072,7 @@ class BzrDir(object):
                 source_repository = None
             stacked_branch_url = None
         repository_policy = result.determine_repository_policy(
-            force_new_repo, stacked_branch_url)
+            force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo = repository_policy.acquire_repository()
         if source_repository is not None:
             result_repo.fetch(source_repository, revision_id=revision_id)
@@ -2765,15 +2768,17 @@ class RepositoryAcquisitionPolicy(object):
     for a branch that is being created.  The most basic policy decision is
     whether to create a new repository or use an existing one.
     """
-    def __init__(self, stack_on, stack_on_pwd):
+    def __init__(self, stack_on, stack_on_pwd, require_stacking):
         """Constructor.
 
         :param stack_on: A location to stack on
         :param stack_on_pwd: If stack_on is relative, the location it is
             relative to.
+        :param require_stacking: If True, it is a failure to not stack.
         """
         self._stack_on = stack_on
         self._stack_on_pwd = stack_on_pwd
+        self._require_stacking = require_stacking
 
     def configure_branch(self, branch):
         """Apply any configuration data from this policy to the branch.
@@ -2794,7 +2799,8 @@ class RepositoryAcquisitionPolicy(object):
         try:
             branch.set_stacked_on(stack_on)
         except errors.UnstackableBranchFormat:
-            pass
+            if self._require_stacking:
+                raise
 
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
@@ -2818,7 +2824,8 @@ class RepositoryAcquisitionPolicy(object):
         try:
             repository.add_fallback_repository(stacked_repo)
         except errors.UnstackableRepositoryFormat:
-            pass
+            if self._require_stacking:
+                raise
 
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Acquire a repository for this bzrdir.
@@ -2836,7 +2843,8 @@ class RepositoryAcquisitionPolicy(object):
 class CreateRepository(RepositoryAcquisitionPolicy):
     """A policy of creating a new repository"""
 
-    def __init__(self, bzrdir, stack_on=None, stack_on_pwd=None):
+    def __init__(self, bzrdir, stack_on=None, stack_on_pwd=None,
+                 require_stacking=False):
         """
         Constructor.
         :param bzrdir: The bzrdir to create the repository on.
@@ -2844,7 +2852,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         :param stack_on_pwd: If stack_on is relative, the location it is
             relative to.
         """
-        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd)
+        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd,
+                                             require_stacking)
         self._bzrdir = bzrdir
 
     def acquire_repository(self, make_working_trees=None, shared=False):
@@ -2862,7 +2871,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 class UseExistingRepository(RepositoryAcquisitionPolicy):
     """A policy of reusing an existing repository"""
 
-    def __init__(self, repository, stack_on=None, stack_on_pwd=None):
+    def __init__(self, repository, stack_on=None, stack_on_pwd=None,
+                 require_stacking=False):
         """Constructor.
 
         :param repository: The repository to use.
@@ -2870,7 +2880,8 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
         :param stack_on_pwd: If stack_on is relative, the location it is
             relative to.
         """
-        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd)
+        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd,
+                                             require_stacking)
         self._repository = repository
 
     def acquire_repository(self, make_working_trees=None, shared=False):
