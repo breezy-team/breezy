@@ -218,12 +218,13 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
-            self._cleanupLogFile(test)
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
+            import pdb; pdb.post_mortem(err[2])
             if self.stop_early:
                 self.stop()
+            self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -235,12 +236,13 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
-            self._cleanupLogFile(test)
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
+            import pdb; pdb.post_mortem(err[2])
             if self.stop_early:
                 self.stop()
+            self._cleanupLogFile(test)
 
     def addSuccess(self, test):
         """Tell result that test completed successfully.
