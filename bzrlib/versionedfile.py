@@ -890,7 +890,7 @@ class VersionedFiles(object):
                 knit_keys.update(parent_keys)
         missing_keys = keys - set(parent_map)
         if missing_keys:
-            raise errors.RevisionNotPresent(missing_keys.pop(), self)
+            raise errors.RevisionNotPresent(list(missing_keys)[0], self)
         # We need to filter out ghosts, because we can't diff against them.
         maybe_ghosts = knit_keys - keys
         ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
