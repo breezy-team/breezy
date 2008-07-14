@@ -1129,6 +1129,29 @@ class TestDevelopment0Subtree(TestKnitPackNoSubtrees):
 
 class TestExternalDevelopment1(object):
 
+    # mixin class for testing stack-supporting development formats
+
+    def test_compatible_cross_formats(self):
+        # early versions of the packing code relied on pack internals to
+        # stack, but the current version should be able to stack on any
+        # format.
+        repo = self.make_repository('repo', format=self.get_format())
+        if repo.supports_rich_root():
+            # can only stack on repositories that have compatible internal
+            # metadata
+            matching_format_name = 'pack-0.92-subtree'
+            mismatching_format_name = 'pack-0.92'
+        else:
+            matching_format_name = 'pack-0.92'
+            mismatching_format_name = 'pack-0.92-subtree'
+        base = self.make_repository('base', format=matching_format_name)
+        repo.add_fallback_repository(base)
+        # you can't stack on something with incompatible data
+        bad_repo = self.make_repository('mismatch',
+            format=mismatching_format_name)
+        self.assertRaises(errors.IncompatibleRepositories,
+            repo.add_fallback_repository, bad_repo)
+
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
         base.commit('foo')
