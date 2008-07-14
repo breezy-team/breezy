@@ -221,7 +221,6 @@ class ExtendedTestResult(unittest._TextTestResult):
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
-            import pdb; pdb.post_mortem(err[2])
             if self.stop_early:
                 self.stop()
             self._cleanupLogFile(test)
@@ -239,7 +238,6 @@ class ExtendedTestResult(unittest._TextTestResult):
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
-            import pdb; pdb.post_mortem(err[2])
             if self.stop_early:
                 self.stop()
             self._cleanupLogFile(test)
