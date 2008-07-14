@@ -33,8 +33,10 @@ from bzrlib.branch import (BranchFormat,
                            )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
 from bzrlib.smart.server import (
-    SmartTCPServer_for_testing,
     ReadonlySmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing_v2_only,
+    SmartTCPServer_for_testing,
+    SmartTCPServer_for_testing_v2_only,
     )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
@@ -50,9 +52,10 @@ class BranchTestProviderAdapter(tests.TestScenarioApplier):
     """
 
     def __init__(self, transport_server, transport_readonly_server, formats,
-        vfs_transport_factory=None):
+        vfs_transport_factory=None, name_suffix=''):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
+        self._name_suffix = name_suffix
         self.scenarios = self.formats_to_scenarios(formats)
     
     def formats_to_scenarios(self, formats):
@@ -66,6 +69,7 @@ class BranchTestProviderAdapter(tests.TestScenarioApplier):
             # so we have a conditional here to handle them.
             scenario_name = getattr(branch_format, '__name__',
                 branch_format.__class__.__name__)
+            scenario_name += self._name_suffix
             scenario = (scenario_name, {
                 "transport_server":self._transport_server,
                 "transport_readonly_server":self._transport_readonly_server,
@@ -179,12 +183,26 @@ def load_tests(basic_tests, module, loader):
     # add the tests for the sub modules
     tests.adapt_modules(test_branch_implementations, adapter, loader, result)
 
+    # Add RemoteBranch tests, which need a special server.
     adapt_to_smart_server = BranchTestProviderAdapter(
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
         [(RemoteBranchFormat(), RemoteBzrDirFormat())],
-        MemoryServer
-        )
+        MemoryServer,
+        name_suffix='-default')
+    tests.adapt_modules(test_branch_implementations,
+                        adapt_to_smart_server,
+                        loader,
+                        result)
+
+    # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
+    # server.
+    adapt_to_smart_server = BranchTestProviderAdapter(
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        MemoryServer,
+        name_suffix='-v2')
     tests.adapt_modules(test_branch_implementations,
                         adapt_to_smart_server,
                         loader,

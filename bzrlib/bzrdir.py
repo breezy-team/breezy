@@ -44,12 +44,14 @@ from bzrlib import (
     graph,
     lockable_files,
     lockdir,
+    osutils,
     registry,
     remote,
     revision as _mod_revision,
     symbol_versioning,
     ui,
     urlutils,
+    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
@@ -60,10 +62,9 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
+from bzrlib.repository import Repository
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart import protocol
-from bzrlib.store.revision.text import TextRevisionStore
-from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
@@ -894,6 +895,31 @@ class BzrDir(object):
         bzrdir, relpath = klass.open_containing(location)
         tree, branch = bzrdir._get_tree_branch()
         return tree, branch, relpath
+
+    @classmethod
+    def open_containing_tree_branch_or_repository(klass, location):
+        """Return the working tree, branch and repo contained by a location.
+
+        Returns (tree, branch, repository, relpath).
+        If there is no tree containing the location, tree will be None.
+        If there is no branch containing the location, branch will be None.
+        If there is no repository containing the location, repository will be
+        None.
+        relpath is the portion of the path that is contained by the innermost
+        BzrDir.
+
+        If no tree, branch or repository is found, a NotBranchError is raised.
+        """
+        bzrdir, relpath = klass.open_containing(location)
+        try:
+            tree, branch = bzrdir._get_tree_branch()
+        except errors.NotBranchError:
+            try:
+                repo = bzrdir.find_repository()
+                return None, None, repo, relpath
+            except (errors.NoRepositoryPresent):
+                raise errors.NotBranchError(location)
+        return tree, branch, branch.repository, relpath
 
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
@@ -2116,14 +2142,18 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.mkdir('revision-store')
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
-        _revision_store = TextRevisionStore(TextStore(revision_transport,
-                                                      prefixed=False,
-                                                      compressed=True))
+        from bzrlib.xml5 import serializer_v5
+        from bzrlib.repofmt.weaverepo import RevisionTextStore
+        revision_store = RevisionTextStore(revision_transport,
+            serializer_v5, False, versionedfile.PrefixMapper(),
+            lambda:True, lambda:True)
         try:
-            transaction = WriteTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                _revision_store.add_revision(self.revisions[rev_id], transaction)
+                text = serializer_v5.write_revision_to_string(
+                    self.revisions[rev_id])
+                key = (rev_id,)
+                revision_store.add_lines(key, None, osutils.split_lines(text))
         finally:
             self.pb.clear()
             
@@ -2142,8 +2172,7 @@ class ConvertBzrDir4To5(Converter):
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev = self.branch.repository._revision_store.get_revision(rev_id,
-                self.branch.repository.get_transaction())
+            rev = self.branch.repository.get_revision(rev_id)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
@@ -2239,7 +2268,7 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository.weave_store.get(ie.text_id)
+            text = self.branch.repository._text_store.get(ie.text_id)
             file_lines = text.readlines()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
@@ -2293,16 +2322,17 @@ class ConvertBzrDir5To6(Converter):
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):
-                    file_id = os.path.splitext(filename)[0]
+                    file_id, suffix = os.path.splitext(filename)
                 else:
                     file_id = filename
-                prefix_dir = store.hash_prefix(file_id)
+                    suffix = ''
+                new_name = store._mapper.map((file_id,)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.move(filename, new_name)
                 except errors.NoSuchFile: # catches missing dirs strangely enough
-                    store_transport.mkdir(prefix_dir)
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.mkdir(osutils.dirname(new_name))
+                    store_transport.move(filename, new_name)
         self.bzrdir.transport.put_bytes(
             'branch-format',
             BzrDirFormat6().get_format_string(),

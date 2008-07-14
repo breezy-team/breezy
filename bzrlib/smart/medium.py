@@ -29,21 +29,17 @@ import socket
 import sys
 import urllib
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
     urlutils,
     )
-from bzrlib.smart.protocol import (
-    MESSAGE_VERSION_THREE,
-    REQUEST_VERSION_TWO,
-    SmartClientRequestProtocolOne,
-    SmartServerRequestProtocolOne,
-    SmartServerRequestProtocolTwo,
-    build_server_protocol_three
-    )
+from bzrlib.smart import protocol
 from bzrlib.transport import ssh
+""")
 
 
 def _get_protocol_factory_for_bytes(bytes):
@@ -67,14 +63,14 @@ def _get_protocol_factory_for_bytes(bytes):
         root_client_path.  unused_bytes are any bytes that were not part of a
         protocol version marker.
     """
-    if bytes.startswith(MESSAGE_VERSION_THREE):
-        protocol_factory = build_server_protocol_three
-        bytes = bytes[len(MESSAGE_VERSION_THREE):]
-    elif bytes.startswith(REQUEST_VERSION_TWO):
-        protocol_factory = SmartServerRequestProtocolTwo
-        bytes = bytes[len(REQUEST_VERSION_TWO):]
+    if bytes.startswith(protocol.MESSAGE_VERSION_THREE):
+        protocol_factory = protocol.build_server_protocol_three
+        bytes = bytes[len(protocol.MESSAGE_VERSION_THREE):]
+    elif bytes.startswith(protocol.REQUEST_VERSION_TWO):
+        protocol_factory = protocol.SmartServerRequestProtocolTwo
+        bytes = bytes[len(protocol.REQUEST_VERSION_TWO):]
     else:
-        protocol_factory = SmartServerRequestProtocolOne
+        protocol_factory = protocol.SmartServerRequestProtocolOne
     return protocol_factory, bytes
 
 
@@ -440,9 +436,45 @@ class SmartClientMedium(object):
         self._protocol_version = None
         self._done_hello = False
         # Be optimistic: we assume the remote end can accept new remote
-        # requests until we get an error saying otherwise.  (1.2 adds some
-        # requests that send bodies, which confuses older servers.)
-        self._remote_is_at_least_1_2 = True
+        # requests until we get an error saying otherwise.
+        # _remote_version_is_before tracks the bzr version the remote side
+        # can be based on what we've seen so far.
+        self._remote_version_is_before = None
+
+    def _is_remote_before(self, version_tuple):
+        """Is it possible the remote side supports RPCs for a given version?
+
+        Typical use::
+
+            needed_version = (1, 2)
+            if medium._is_remote_before(needed_version):
+                fallback_to_pre_1_2_rpc()
+            else:
+                try:
+                    do_1_2_rpc()
+                except UnknownSmartMethod:
+                    medium._remember_remote_is_before(needed_version)
+                    fallback_to_pre_1_2_rpc()
+
+        :seealso: _remember_remote_is_before
+        """
+        if self._remote_version_is_before is None:
+            # So far, the remote side seems to support everything
+            return False
+        return version_tuple >= self._remote_version_is_before
+
+    def _remember_remote_is_before(self, version_tuple):
+        """Tell this medium that the remote side is older the given version.
+
+        :seealso: _is_remote_before
+        """
+        if (self._remote_version_is_before is not None and
+            version_tuple > self._remote_version_is_before):
+            raise AssertionError(
+                "_remember_remote_is_before(%r) called, but "
+                "_remember_remote_is_before(%r) was called previously."
+                % (version_tuple, self._remote_version_is_before))
+        self._remote_version_is_before = version_tuple
 
     def protocol_version(self):
         """Find out if 'hello' smart request works."""
@@ -453,7 +485,7 @@ class SmartClientMedium(object):
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
-                client_protocol = SmartClientRequestProtocolOne(medium_request)
+                client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
             except errors.SmartProtocolError, e:

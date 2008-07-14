@@ -34,8 +34,13 @@ from bzrlib.index import (
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
-from bzrlib.knit import KnitGraphIndex, _PackAccess, _KnitData
-from bzrlib.osutils import rand_chars
+from bzrlib.knit import (
+    KnitPlainFactory,
+    KnitVersionedFiles,
+    _KnitGraphIndex,
+    _DirectPackAccess,
+    )
+from bzrlib.osutils import rand_chars, split_lines
 from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
 from bzrlib import tsort
@@ -43,7 +48,6 @@ from bzrlib import tsort
 from bzrlib import (
     bzrdir,
     errors,
-    knit,
     lockable_files,
     lockdir,
     osutils,
@@ -65,7 +69,6 @@ from bzrlib.repository import (
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
-from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import (
     mutter,
@@ -91,11 +94,6 @@ class PackCommitBuilder(CommitBuilder):
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
-    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
-        return self.repository._pack_collection._add_text_to_weave(file_id,
-            self._new_revision_id, new_lines, parents, nostore_sha,
-            self.random_revid)
-
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
         return set([key[1] for key in self._file_graph.heads(keys)])
@@ -116,11 +114,6 @@ class PackRootCommitBuilder(RootCommitBuilder):
             revprops=revprops, revision_id=revision_id)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
-
-    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
-        return self.repository._pack_collection._add_text_to_weave(file_id,
-            self._new_revision_id, new_lines, parents, nostore_sha,
-            self.random_revid)
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
@@ -458,7 +451,8 @@ class AggregateIndex(object):
         """Create an AggregateIndex."""
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([])
-        self.knit_access = _PackAccess(self.index_to_pack)
+        self.data_access = _DirectPackAccess(self.index_to_pack)
+        self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):
         """Replace the current mappings with fresh ones.
@@ -510,12 +504,12 @@ class AggregateIndex(object):
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
-        self.knit_access.set_writer(pack._writer, index, pack.access_tuple())
+        self.data_access.set_writer(pack._writer, index, pack.access_tuple())
         self.add_callback = index.add_nodes
 
     def clear(self):
         """Reset all the aggregate data to nothing."""
-        self.knit_access.set_writer(None, None, (None, None))
+        self.data_access.set_writer(None, None, (None, None))
         self.index_to_pack.clear()
         del self.combined_index._indices[:]
         self.add_callback = None
@@ -531,7 +525,7 @@ class AggregateIndex(object):
         if (self.add_callback is not None and
             getattr(index, 'add_nodes', None) == self.add_callback):
             self.add_callback = None
-            self.knit_access.set_writer(None, None, (None, None))
+            self.data_access.set_writer(None, None, (None, None))
 
 
 class Packer(object):
@@ -590,6 +584,8 @@ class Packer(object):
                 return None
             else:
                 self.revision_ids = frozenset(self.revision_ids)
+                self.revision_keys = frozenset((revid,) for revid in
+                    self.revision_ids)
         if pb is None:
             self.pb = ui.ui_factory.nested_progress_bar()
         else:
@@ -764,7 +760,7 @@ class Packer(object):
 
     def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb):
         # for record verification
-        knit_data = _KnitData(None)
+        knit = KnitVersionedFiles(None, None)
         # plan a readv on each source pack:
         # group by pack
         nodes = sorted(nodes)
@@ -796,7 +792,7 @@ class Packer(object):
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
                 # check the header only
-                df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                df, _ = knit._parse_record_header(key, raw_data)
                 df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
@@ -825,10 +821,10 @@ class Packer(object):
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
         output_lines, pb, readv_group_iter, total_items):
         # for record verification
-        knit_data = _KnitData(None)
+        knit = KnitVersionedFiles(None, None)
         # for line extraction when requested (inventories only)
         if output_lines:
-            factory = knit.KnitPlainFactory()
+            factory = KnitPlainFactory()
         record_index = 0
         pb.update("Copied record", record_index, total_items)
         for index, readv_vector, node_vector in readv_group_iter:
@@ -838,19 +834,18 @@ class Packer(object):
             for (names, read_func), (key, eol_flag, references) in \
                 izip(reader.iter_records(), node_vector):
                 raw_data = read_func(None)
-                version_id = key[-1]
                 if output_lines:
                     # read the entire thing
-                    content, _ = knit_data._parse_record(version_id, raw_data)
+                    content, _ = knit._parse_record(key[-1], raw_data)
                     if len(references[-1]) == 0:
                         line_iterator = factory.get_fulltext_content(content)
                     else:
                         line_iterator = factory.get_linedelta_content(content)
                     for line in line_iterator:
-                        yield line, version_id
+                        yield line, key
                 else:
                     # check the header only
-                    df, _ = knit_data._parse_record_header(version_id, raw_data)
+                    df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
@@ -912,7 +907,7 @@ class Packer(object):
         """Use up the inv_lines generator and setup a text key filter."""
         repo = self._pack_collection.repo
         fileid_revisions = repo._find_file_ids_from_xml_inventory_lines(
-            inv_lines, self.revision_ids)
+            inv_lines, self.revision_keys)
         text_filter = []
         for fileid, file_revids in fileid_revisions.iteritems():
             text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
@@ -1065,16 +1060,15 @@ class ReconcilePacker(Packer):
             self.new_pack.text_index,
             ('blank', ), 1,
             add_nodes_callback=self.new_pack.text_index.add_nodes)
-        knit_index = KnitGraphIndex(file_id_index,
-            add_callback=file_id_index.add_nodes,
-            deltas=True, parents=True)
-        output_knit = knit.KnitVersionedFile('reconcile-texts',
-            self._pack_collection.transport,
-            index=knit_index,
-            access_method=_PackAccess(
-                {self.new_pack.text_index:self.new_pack.access_tuple()},
-                (self.new_pack._writer, self.new_pack.text_index)),
-            factory=knit.KnitPlainFactory())
+        data_access = _DirectPackAccess(
+                {self.new_pack.text_index:self.new_pack.access_tuple()})
+        data_access.set_writer(self.new_pack._writer, self.new_pack.text_index,
+            self.new_pack.access_tuple())
+        output_texts = KnitVersionedFiles(
+            _KnitGraphIndex(self.new_pack.text_index,
+                add_callback=self.new_pack.text_index.add_nodes,
+                deltas=True, parents=True, is_locked=repo.is_locked),
+            data_access=data_access, max_delta_chain=200)
         for key, parent_keys in bad_texts:
             # We refer to the new pack to delta data being output.
             # A possible improvement would be to catch errors on short reads
@@ -1087,17 +1081,10 @@ class ReconcilePacker(Packer):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                         (key, parent_keys))
                 parents.append(parent_key[1])
-            source_weave = repo.weave_store.get_weave(key[0], transaction)
-            text_lines = source_weave.get_lines(key[1])
-            # adapt the 'knit' to the current file_id.
-            file_id_index = GraphIndexPrefixAdapter(
-                self.new_pack.text_index,
-                (key[0], ), 1,
-                add_nodes_callback=self.new_pack.text_index.add_nodes)
-            knit_index._graph_index = file_id_index
-            knit_index._add_callback = file_id_index.add_nodes
-            output_knit.add_lines_with_ghosts(
-                key[1], parents, text_lines, random_id=True, check_content=False)
+            text_lines = split_lines(repo.texts.get_record_stream(
+                [key], 'unordered', True).next().get_bytes_as('fulltext'))
+            output_texts.add_lines(key, parent_keys, text_lines,
+                random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
@@ -1121,7 +1108,10 @@ class ReconcilePacker(Packer):
 
 
 class RepositoryPackCollection(object):
-    """Management of packs within a repository."""
+    """Management of packs within a repository.
+    
+    :ivar _names: map of {pack_name: (index_size,)}
+    """
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport):
@@ -1167,18 +1157,6 @@ class RepositoryPackCollection(object):
         self.text_index.add_index(pack.text_index, pack)
         self.signature_index.add_index(pack.signature_index, pack)
         
-    def _add_text_to_weave(self, file_id, revision_id, new_lines, parents,
-        nostore_sha, random_revid):
-        file_id_index = GraphIndexPrefixAdapter(
-            self.text_index.combined_index,
-            (file_id, ), 1,
-            add_nodes_callback=self.text_index.add_callback)
-        self.repo._text_knit._index._graph_index = file_id_index
-        self.repo._text_knit._index._add_callback = file_id_index.add_nodes
-        return self.repo._text_knit.add_lines_with_ghosts(
-            revision_id, parents, new_lines, nostore_sha=nostore_sha,
-            random_id=random_revid, check_content=False)[0:2]
-
     def all_packs(self):
         """Return a list of all the Pack objects this repository has.
 
@@ -1208,10 +1186,8 @@ class RepositoryPackCollection(object):
         :return: True if packing took place.
         """
         # XXX: Should not be needed when the management of indices is sane.
-        
-        total_revisions = self._local_revision_index().key_count()
-        total_packs = len(list(collection for collection, sizes in
-            self._names.values() if collection is self))
+        total_revisions = self.revision_index.combined_index.key_count()
+        total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
             return False
         # XXX: the following may want to be a class, to pack with a given
@@ -1223,8 +1199,6 @@ class RepositoryPackCollection(object):
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
         for pack in self.all_packs():
-            if self._names[pack.name][0] is not self:
-                continue
             revision_count = pack.get_revision_count()
             if revision_count == 0:
                 # revision less packs are not generated by normal operation,
@@ -1265,15 +1239,6 @@ class RepositoryPackCollection(object):
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
 
-    def _local_revision_index(self):
-        """Return a combined index for all the local packs only."""
-        index = CombinedGraphIndex([])
-        for name, (collection, sizes) in self._names.items():
-            if collection is not self:
-                continue
-            index.insert_index(0, self.get_pack_by_name(name).revision_index)
-        return index
-
     def lock_names(self):
         """Acquire the mutex around the pack-names index.
         
@@ -1285,14 +1250,13 @@ class RepositoryPackCollection(object):
     def pack(self):
         """Pack the pack collection totally."""
         self.ensure_loaded()
-        total_packs = len(list(collection for collection, sizes in
-            self._names.values() if collection is self))
+        total_packs = len(self._names)
         if total_packs < 2:
             # This is arguably wrong because we might not be optimal, but for
             # now lets leave it in. (e.g. reconcile -> one pack. But not
             # optimal.
             return
-        total_revisions = self._local_revision_index().key_count()
+        total_revisions = self.revision_index.combined_index.key_count()
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Packing repository %s, which has %d pack files, '
@@ -1302,8 +1266,6 @@ class RepositoryPackCollection(object):
         pack_distribution = [1]
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            if self._names[pack.name][0] is not self:
-                continue
             pack_operations[-1][0] += pack.get_revision_count()
             pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
@@ -1357,27 +1319,13 @@ class RepositoryPackCollection(object):
             raise errors.ObjectNotLocked(self.repo)
         if self._names is None:
             self._names = {}
-            # Get fallback repository packs.
-            # TODO: we really should try local packs first and thus order the
-            # indices appropriately.
-            self._names.update(self.fallback_packs_details())
-            # Now the local packs.
             self._packs_at_load = set()
             for index, key, value in self._iter_disk_pack_index():
                 name = key[0]
-                self._names[name] = (self, self._parse_index_sizes(value))
+                self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
         # populate all the metadata.
         self.all_packs()
-
-    def fallback_packs_details(self):
-        """Return a dict of name -> (collection, index) size tuples."""
-        result = {}
-        for repo in self.repo._fallback_repositories:
-            collection = repo._pack_collection
-            for index, key, value in collection._iter_disk_pack_index():
-                result[key[0]] = (collection, self._parse_index_sizes(value))
-        return result
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
@@ -1386,20 +1334,17 @@ class RepositoryPackCollection(object):
     def get_pack_by_name(self, name):
         """Get a Pack object by name.
 
-        If previously accessed this returns from the self._packs_by_name cache.
-
         :param name: The name of the pack - e.g. '123456'
         :return: A Pack object.
         """
         try:
             return self._packs_by_name[name]
         except KeyError:
-            collection = self._names[name][0]
             rev_index = self._make_index(name, '.rix')
             inv_index = self._make_index(name, '.iix')
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
-            result = ExistingPack(collection._pack_transport, name, rev_index,
+            result = ExistingPack(self._pack_transport, name, rev_index,
                 inv_index, txt_index, sig_index)
             self.add_pack_to_memory(result)
             return result
@@ -1414,7 +1359,7 @@ class RepositoryPackCollection(object):
         if a_new_pack.name in self._names:
             raise errors.BzrError(
                 'Pack %r already exists in %s' % (a_new_pack.name, self))
-        self._names[a_new_pack.name] = self, tuple(a_new_pack.index_sizes)
+        self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
     def _iter_disk_pack_index(self):
@@ -1428,12 +1373,11 @@ class RepositoryPackCollection(object):
                 ).iter_all_entries()
 
     def _make_index(self, name, suffix):
-        collection = self._names[name][0]
         size_offset = self._suffix_offsets[suffix]
         index_name = name + suffix
-        index_size = self._names[name][1][size_offset]
+        index_size = self._names[name][size_offset]
         return GraphIndex(
-            collection._index_transport, index_name, index_size)
+            self._index_transport, index_name, index_size)
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -1608,9 +1552,7 @@ class RepositoryPackCollection(object):
                 disk_nodes.add((key, value))
             # do a two-way diff against our original content
             current_nodes = set()
-            for name, (collection, sizes) in self._names.iteritems():
-                if collection is not self:
-                    continue
+            for name, sizes in self._names.iteritems():
                 current_nodes.add(
                     ((name, ), ' '.join(str(size) for size in sizes)))
             deleted_nodes = self._packs_at_load - current_nodes
@@ -1631,18 +1573,18 @@ class RepositoryPackCollection(object):
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
-        new_names = self.fallback_packs_details()
-        for key, value in disk_nodes:
-            new_names[key[0]] = self, self._parse_index_sizes(value)
+        new_names = dict(disk_nodes)
         # drop no longer present nodes
         for pack in self.all_packs():
-            if pack.name not in new_names:
+            if (pack.name,) not in new_names:
                 self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
-        for name, (collection, sizes) in new_names.iteritems():
+        for key, value in disk_nodes:
+            name = key[0]
+            sizes = self._parse_index_sizes(value)
             if name in self._names:
                 # existing
-                if sizes != self._names[name][1]:
+                if sizes != self._names[name]:
                     # the pack for name has had its indices replaced - rare but
                     # important to handle. XXX: probably can never happen today
                     # because the three-way merge code above does not handle it
@@ -1656,7 +1598,7 @@ class RepositoryPackCollection(object):
                     self.get_pack_by_name(name)
             else:
                 # new
-                self._names[name] = collection, sizes
+                self._names[name] = sizes
                 self.get_pack_by_name(name)
 
     def _clear_obsolete_packs(self):
@@ -1686,19 +1628,10 @@ class RepositoryPackCollection(object):
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
 
-        # reused revision and signature knits may need updating
-        #
-        # "Hysterical raisins. client code in bzrlib grabs those knits outside
-        # of write groups and then mutates it inside the write group."
-        if self.repo._revision_knit is not None:
-            self.repo._revision_knit._index._add_callback = \
-                self.revision_index.add_callback
-        if self.repo._signature_knit is not None:
-            self.repo._signature_knit._index._add_callback = \
-                self.signature_index.add_callback
-        # create a reused knit object for text addition in commit.
-        self.repo._text_knit = self.repo.weave_store.get_weave_or_empty(
-            'all-texts', None)
+        self.repo.inventories._index._add_callback = self.inventory_index.add_callback
+        self.repo.revisions._index._add_callback = self.revision_index.add_callback
+        self.repo.signatures._index._add_callback = self.signature_index.add_callback
+        self.repo.texts._index._add_callback = self.text_index.add_callback
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
@@ -1726,168 +1659,64 @@ class RepositoryPackCollection(object):
         self.repo._text_knit = None
 
 
-class KnitPackRevisionStore(KnitRevisionStore):
-    """An object to adapt access from RevisionStore's to use KnitPacks.
-
-    This class works by replacing the original RevisionStore.
-    We need to do this because the KnitPackRevisionStore is less
-    isolated in its layering - it uses services from the repo.
-    """
-
-    def __init__(self, repo, transport, revisionstore):
-        """Create a KnitPackRevisionStore on repo with revisionstore.
-
-        This will store its state in the Repository, use the
-        indices to provide a KnitGraphIndex,
-        and at the end of transactions write new indices.
-        """
-        KnitRevisionStore.__init__(self, revisionstore.versioned_file_store)
-        self.repo = repo
-        self._serializer = revisionstore._serializer
-        self.transport = transport
-
-    def get_revision_file(self, transaction):
-        """Get the revision versioned file object."""
-        if getattr(self.repo, '_revision_knit', None) is not None:
-            return self.repo._revision_knit
-        self.repo._pack_collection.ensure_loaded()
-        add_callback = self.repo._pack_collection.revision_index.add_callback
-        # setup knit specific objects
-        knit_index = KnitGraphIndex(
-            self.repo._pack_collection.revision_index.combined_index,
-            add_callback=add_callback)
-        self.repo._revision_knit = knit.KnitVersionedFile(
-            'revisions', self.transport.clone('..'),
-            self.repo.bzrdir._get_file_mode(),
-            create=False,
-            index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
-            access_method=self.repo._pack_collection.revision_index.knit_access)
-        return self.repo._revision_knit
-
-    def get_signature_file(self, transaction):
-        """Get the signature versioned file object."""
-        if getattr(self.repo, '_signature_knit', None) is not None:
-            return self.repo._signature_knit
-        self.repo._pack_collection.ensure_loaded()
-        add_callback = self.repo._pack_collection.signature_index.add_callback
-        # setup knit specific objects
-        knit_index = KnitGraphIndex(
-            self.repo._pack_collection.signature_index.combined_index,
-            add_callback=add_callback, parents=False)
-        self.repo._signature_knit = knit.KnitVersionedFile(
-            'signatures', self.transport.clone('..'),
-            self.repo.bzrdir._get_file_mode(),
-            create=False,
-            index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
-            access_method=self.repo._pack_collection.signature_index.knit_access)
-        return self.repo._signature_knit
-
-
-class KnitPackTextStore(VersionedFileStore):
-    """Presents a TextStore abstraction on top of packs.
-
-    This class works by replacing the original VersionedFileStore.
-    We need to do this because the KnitPackRevisionStore is less
-    isolated in its layering - it uses services from the repo and shares them
-    with all the data written in a single write group.
-    """
-
-    def __init__(self, repo, transport, weavestore):
-        """Create a KnitPackTextStore on repo with weavestore.
-
-        This will store its state in the Repository, use the
-        indices FileNames to provide a KnitGraphIndex,
-        and at the end of transactions write new indices.
-        """
-        # don't call base class constructor - it's not suitable.
-        # no transient data stored in the transaction
-        # cache.
-        self._precious = False
-        self.repo = repo
-        self.transport = transport
-        self.weavestore = weavestore
-        # XXX for check() which isn't updated yet
-        self._transport = weavestore._transport
-
-    def get_weave_or_empty(self, file_id, transaction):
-        """Get a 'Knit' backed by the .tix indices.
-
-        The transaction parameter is ignored.
-        """
-        self.repo._pack_collection.ensure_loaded()
-        add_callback = self.repo._pack_collection.text_index.add_callback
-        # setup knit specific objects
-        file_id_index = GraphIndexPrefixAdapter(
-            self.repo._pack_collection.text_index.combined_index,
-            (file_id, ), 1, add_nodes_callback=add_callback)
-        knit_index = KnitGraphIndex(file_id_index,
-            add_callback=file_id_index.add_nodes,
-            deltas=True, parents=True)
-        return knit.KnitVersionedFile('text:' + file_id,
-            self.transport.clone('..'),
-            None,
-            index=knit_index,
-            access_method=self.repo._pack_collection.text_index.knit_access,
-            factory=knit.KnitPlainFactory())
-
-    get_weave = get_weave_or_empty
-
-    def __iter__(self):
-        """Generate a list of the fileids inserted, for use by check."""
-        self.repo._pack_collection.ensure_loaded()
-        ids = set()
-        for index, key, value, refs in \
-            self.repo._pack_collection.text_index.combined_index.iter_all_entries():
-            ids.add(key[0])
-        return iter(ids)
-
-
-class InventoryKnitThunk(object):
-    """An object to manage thunking get_inventory_weave to pack based knits."""
-
-    def __init__(self, repo, transport):
-        """Create an InventoryKnitThunk for repo at transport.
-
-        This will store its state in the Repository, use the
-        indices FileNames to provide a KnitGraphIndex,
-        and at the end of transactions write a new index..
-        """
-        self.repo = repo
-        self.transport = transport
-
-    def get_weave(self):
-        """Get a 'Knit' that contains inventory data."""
-        self.repo._pack_collection.ensure_loaded()
-        add_callback = self.repo._pack_collection.inventory_index.add_callback
-        # setup knit specific objects
-        knit_index = KnitGraphIndex(
-            self.repo._pack_collection.inventory_index.combined_index,
-            add_callback=add_callback, deltas=True, parents=True)
-        return knit.KnitVersionedFile(
-            'inventory', self.transport.clone('..'),
-            self.repo.bzrdir._get_file_mode(),
-            create=False,
-            index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
-            access_method=self.repo._pack_collection.inventory_index.knit_access)
-
-
 class KnitPackRepository(KnitRepository):
-    """Repository with knit objects stored inside pack containers."""
+    """Repository with knit objects stored inside pack containers.
+    
+    The layering for a KnitPackRepository is:
 
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-        control_store, text_store, _commit_builder_class, _serializer):
+    Graph        |  HPSS    | Repository public layer |
+    ===================================================
+    Tuple based apis below, string based, and key based apis above
+    ---------------------------------------------------
+    KnitVersionedFiles
+      Provides .texts, .revisions etc
+      This adapts the N-tuple keys to physical knit records which only have a
+      single string identifier (for historical reasons), which in older formats
+      was always the revision_id, and in the mapped code for packs is always
+      the last element of key tuples.
+    ---------------------------------------------------
+    GraphIndex
+      A separate GraphIndex is used for each of the
+      texts/inventories/revisions/signatures contained within each individual
+      pack file. The GraphIndex layer works in N-tuples and is unaware of any
+      semantic value.
+    ===================================================
+    
+    """
+
+    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+        _serializer):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
-            _revision_store, control_store, text_store, _commit_builder_class,
-            _serializer)
+            _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self,
-            self._transport,
+        self._pack_collection = RepositoryPackCollection(self, self._transport,
             index_transport,
             self._transport.clone('upload'),
             self._transport.clone('packs'))
-        self._revision_store = KnitPackRevisionStore(self, index_transport, self._revision_store)
-        self.weave_store = KnitPackTextStore(self, index_transport, self.weave_store)
-        self._inv_thunk = InventoryKnitThunk(self, index_transport)
+        self.inventories = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
+                add_callback=self._pack_collection.inventory_index.add_callback,
+                deltas=True, parents=True, is_locked=self.is_locked),
+            data_access=self._pack_collection.inventory_index.data_access,
+            max_delta_chain=200)
+        self.revisions = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.revision_index.combined_index,
+                add_callback=self._pack_collection.revision_index.add_callback,
+                deltas=False, parents=True, is_locked=self.is_locked),
+            data_access=self._pack_collection.revision_index.data_access,
+            max_delta_chain=0)
+        self.signatures = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.signature_index.combined_index,
+                add_callback=self._pack_collection.signature_index.add_callback,
+                deltas=False, parents=False, is_locked=self.is_locked),
+            data_access=self._pack_collection.signature_index.data_access,
+            max_delta_chain=0)
+        self.texts = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.text_index.combined_index,
+                add_callback=self._pack_collection.text_index.add_callback,
+                deltas=True, parents=True, is_locked=self.is_locked),
+            data_access=self._pack_collection.text_index.data_access,
+            max_delta_chain=200)
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.) 
         # Another way to represent this would be a decorator around the control
@@ -1902,15 +1731,6 @@ class KnitPackRepository(KnitRepository):
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
-
-    def _add_fallback_repository_check(self, repository):
-        """Check that this repository can fallback to repository safely.
-        
-        :param repository: A repository to fallback to.
-        :return: True if the repositories can stack ok.
-        """
-        return (InterRepository._same_model(self, repository) and
-            self._format.__class__ == repository._format.__class__)
 
     def _find_inconsistent_revision_parents(self):
         """Find revisions with incorrectly cached parents.
@@ -1958,43 +1778,6 @@ class KnitPackRepository(KnitRepository):
         parent_map = self.get_parent_map(revision_ids)
         return [parent_map.get(r, None) for r in revision_ids]
 
-    def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map
-
-        This implementation accesses the combined revision index to provide
-        answers.
-        """
-        self._pack_collection.ensure_loaded()
-        index = self._pack_collection.revision_index.combined_index
-        keys = set(keys)
-        if None in keys:
-            raise ValueError('get_parent_map(None) is not valid')
-        if _mod_revision.NULL_REVISION in keys:
-            keys.discard(_mod_revision.NULL_REVISION)
-            found_parents = {_mod_revision.NULL_REVISION:()}
-        else:
-            found_parents = {}
-        search_keys = set((revision_id,) for revision_id in keys)
-        for index, key, value, refs in index.iter_entries(search_keys):
-            parents = refs[0]
-            if not parents:
-                parents = (_mod_revision.NULL_REVISION,)
-            else:
-                parents = tuple(parent[0] for parent in parents)
-            found_parents[key[0]] = parents
-        return found_parents
-
-    def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        revision_ids = set(revision_ids)
-        result = revision_ids.intersection(
-            set([None, _mod_revision.NULL_REVISION]))
-        revision_ids.difference_update(result)
-        index = self._pack_collection.revision_index.combined_index
-        keys = [(revision_id,) for revision_id in revision_ids]
-        result.update(node[1][0] for node in index.iter_entries(keys))
-        return result
-
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
@@ -2013,9 +1796,6 @@ class KnitPackRepository(KnitRepository):
 
     def _commit_write_group(self):
         return self._pack_collection._commit_write_group()
-
-    def get_inventory_weave(self):
-        return self._inv_thunk.get_weave()
 
     def get_transaction(self):
         if self._write_lock_count:
@@ -2036,6 +1816,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             from bzrlib import transactions
             self._transaction = transactions.WriteTransaction()
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         self._refresh_data()
 
     def lock_read(self):
@@ -2043,6 +1826,9 @@ class KnitPackRepository(KnitRepository):
             self._write_lock_count += 1
         else:
             self.control_files.lock_read()
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         self._refresh_data()
 
     def leave_lock_in_place(self):
@@ -2084,8 +1870,12 @@ class KnitPackRepository(KnitRepository):
                 transaction = self._transaction
                 self._transaction = None
                 transaction.finish()
+                for repo in self._fallback_repositories:
+                    repo.unlock()
         else:
             self.control_files.unlock()
+            for repo in self._fallback_repositories:
+                repo.unlock()
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
@@ -2115,44 +1905,6 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     _serializer = None
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
-
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        return VersionedFileStore(
-            repo_transport,
-            prefixed=False,
-            file_mode=control_files._file_mode,
-            versionedfile_class=knit.make_file_knit,
-            versionedfile_kwargs={'factory': knit.KnitPlainFactory()},
-            )
-
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        versioned_file_store = VersionedFileStore(
-            repo_transport,
-            file_mode=control_files._file_mode,
-            prefixed=False,
-            precious=True,
-            versionedfile_class=knit.make_file_knit,
-            versionedfile_kwargs={'delta': False,
-                                  'factory': knit.KnitPlainFactory(),
-                                 },
-            escaped=True,
-            )
-        return KnitRevisionStore(versioned_file_store)
-
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-        return self._get_versioned_file_store('knits',
-                                  transport,
-                                  control_files,
-                                  versionedfile_class=knit.make_file_knit,
-                                  versionedfile_kwargs={
-                                      'create_parent_dir': True,
-                                      'delay_create': True,
-                                      'dir_mode': control_files._dir_mode,
-                                  },
-                                  escaped=True)
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.
@@ -2185,16 +1937,107 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-            'lock', lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
+                                'lock', lockdir.LockDir)
         return self.repository_class(_format=self,
                               a_bzrdir=a_bzrdir,
                               control_files=control_files,
-                              _revision_store=_revision_store,
-                              control_store=control_store,
-                              text_store=text_store,
+                              _commit_builder_class=self._commit_builder_class,
+                              _serializer=self._serializer)
+
+
+class RepositoryFormatKnitPack1(RepositoryFormatPack):
+    """A no-subtrees parameterized Pack repository.
+
+    This format was introduced in 0.92.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs containing knits without subtree support"
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPack(MetaDirRepositoryFormat):
+    """Format logic for pack structured repositories.
+
+    This repository format has:
+     - a list of packs in pack-names
+     - packs in packs/NAME.pack
+     - indices in indices/NAME.{iix,six,tix,rix}
+     - knit deltas in the packs, knit indices mapped to the indices.
+     - thunk objects to support the knits programming API.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+    """
+
+    # Set this attribute in derived classes to control the repository class
+    # created by open and initialize.
+    repository_class = None
+    # Set this attribute in derived classes to control the
+    # _commit_builder_class that the repository objects will have passed to
+    # their constructor.
+    _commit_builder_class = None
+    # Set this attribute in derived clases to control the _serializer that the
+    # repository objects will have passed to their constructor.
+    _serializer = None
+    # External references are not supported in pack repositories yet.
+    supports_external_lookups = False
+
+    def initialize(self, a_bzrdir, shared=False):
+        """Create a pack based repository.
+
+        :param a_bzrdir: bzrdir to contain the new repository; must already
+            be initialized.
+        :param shared: If true the repository will be initialized as a shared
+                       repository.
+        """
+        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        dirs = ['indices', 'obsolete_packs', 'packs', 'upload']
+        builder = GraphIndexBuilder()
+        files = [('pack-names', builder.finish())]
+        utf8_files = [('format', self.get_format_string())]
+        
+        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
+        return self.open(a_bzrdir=a_bzrdir, _found=True)
+
+    def open(self, a_bzrdir, _found=False, _override_transport=None):
+        """See RepositoryFormat.open().
+        
+        :param _override_transport: INTERNAL USE ONLY. Allows opening the
+                                    repository at a slightly different url
+                                    than normal. I.e. during 'upgrade'.
+        """
+        if not _found:
+            format = RepositoryFormat.find_format(a_bzrdir)
+        if _override_transport is not None:
+            repo_transport = _override_transport
+        else:
+            repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = lockable_files.LockableFiles(repo_transport,
+                                'lock', lockdir.LockDir)
+        return self.repository_class(_format=self,
+                              a_bzrdir=a_bzrdir,
+                              control_files=control_files,
                               _commit_builder_class=self._commit_builder_class,
                               _serializer=self._serializer)
 

@@ -17,6 +17,7 @@
 """Tests for Repository.add_fallback_repository."""
 
 from bzrlib import errors
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 
@@ -33,4 +34,14 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         repo.add_fallback_repository(tree.branch.repository)
         # the repository has been added correctly if we can query against it.
         revision_id = tree.commit('1st post')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        # can see all revisions
         self.assertEqual(set([revision_id]), set(repo.all_revision_ids()))
+        # and can also query the parent map, either on the revisions
+        # versionedfiles, which works in tuple keys...
+        self.assertEqual({(revision_id,): ()},
+            repo.revisions.get_parent_map([(revision_id,)]))
+        # ... or on the repository directly...
+        self.assertEqual({revision_id: (NULL_REVISION,)},
+            repo.get_parent_map([revision_id]))

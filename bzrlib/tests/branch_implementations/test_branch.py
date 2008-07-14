@@ -58,7 +58,8 @@ class TestBranch(TestCaseWithBranch):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         graph = tree.branch.repository.get_graph()
-        ancestry_graph = graph.get_parent_map(tree.branch.repository.all_revision_ids())
+        ancestry_graph = graph.get_parent_map(
+            tree.branch.repository.all_revision_ids())
         self.assertEqual({'rev-1':('null:',),
                           'rev-2':('rev-1', ),
                           'rev-1.1.1':('rev-1', ),
@@ -165,7 +166,7 @@ class TestBranch(TestCaseWithBranch):
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
 
-        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.bzrdir.sprout('b', revision_id='1').open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
@@ -281,6 +282,7 @@ class TestBranch(TestCaseWithBranch):
                 branch.repository.commit_write_group()
         finally:
             branch.unlock()
+        # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')

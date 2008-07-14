@@ -858,6 +858,17 @@ class BadFileKindError(BzrError):
         BzrError.__init__(self, filename=filename, kind=kind)
 
 
+class BadFilenameEncoding(BzrError):
+
+    _fmt = ('Filename %(filename)r is not valid in your current filesystem'
+            ' encoding %(fs_encoding)s')
+
+    def __init__(self, filename, fs_encoding):
+        BzrError.__init__(self)
+        self.filename = filename
+        self.fs_encoding = fs_encoding
+
+
 class ForbiddenControlFileError(BzrError):
 
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
@@ -2741,6 +2752,28 @@ class NoSuchAlias(BzrError):
         BzrError.__init__(self, alias_name=alias_name)
 
 
+class DirectoryLookupFailure(BzrError):
+    """Base type for lookup errors."""
+
+    pass
+
+
+class InvalidLocationAlias(DirectoryLookupFailure):
+
+    _fmt = '"%(alias_name)s" is not a valid location alias.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
+
+
+class UnsetLocationAlias(DirectoryLookupFailure):
+
+    _fmt = 'No %(alias_name)s location assigned.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
+
+
 class CannotBindAddress(BzrError):
 
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
@@ -2748,3 +2781,11 @@ class CannotBindAddress(BzrError):
     def __init__(self, host, port, orig_error):
         BzrError.__init__(self, host=host, port=port,
             orig_error=orig_error[1])
+
+
+class UnknownRules(BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        BzrError.__init__(self, unknowns_str=", ".join(unknowns))

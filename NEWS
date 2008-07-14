@@ -10,10 +10,149 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * New ``pre_change_branch_tip`` hook that is called before the
+      branch tip is moved, while the branch is write-locked.  See the User
+      Reference for signature details.  (Andrew Bennetts)
+
+    * Rule-based preferences can now be defined for selected files in
+      selected branches, allowing commands and plugins to provide
+      custom behaviour for files matching defined patterns.
+      See ``Rule-based preferences`` (part of ``Configuring Bazaar``)
+      in the User Guide and ``bzr help rules`` for more information.
+      (Ian Clatworthy)
+
+    * Sites may suggest a branch to stack new branches on.  (Aaron Bentley)
+
     * Stacked branches are now supported. See ``bzr help branch`` and 
       ``bzr help push``. (Robert Collins)
 
-    * Sites may suggest a branch to stack new branches on.  (Aaron Bentley)
+  IMPROVEMENTS:
+
+    * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
+      to stdout; also ``tar`` and ``tbz2``.
+      (Martin Pool)
+
+    * ``bzr send`` documents and better supports ``emacsclient`` (proper
+      escaping of mail headers and handling of the MUA Mew).
+      (Christophe Troestler)
+
+    * Remembered locations can be specified by aliases, e.g. :parent, :public,
+      :submit.  (Aaron Bentley)
+
+    * The smart protocol now has improved support for setting branches'
+      revision info directly.  This makes operations like push
+      faster.  The new request method name is
+      ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
+
+  BUG FIXES:
+
+    * ``bzr log --long`` with a ghost in your mainline now handles that
+      ghost properly. (John Arbash Meinel, #243536)
+
+    * ``check`` handles the split-up .bzr layout correctly, so no longer
+      requires a branch to be present.
+      (Daniel Watkins, #64783)
+
+    * Clearer message about how to set the PYTHONPATH if bzrlib can't be
+      loaded. 
+      (Martin Pool, #205230)
+
+    * Errors about missing libraries are now shown without a traceback,
+      and with a suggestion to install the library.  The full traceback is 
+      still in ``.bzr.log`` and can be shown with ``-Derror``.
+      (Martin Pool, #240161)
+
+    * Handle urls such as ftp://user@host.com@www.host.com where the user
+      name contains an @.
+      (Neil Martinsen-Burrell, #228058)
+
+    * ``needs_read_lock`` and ``needs_write_lock`` now suppress an error during
+      ``unlock`` if there was an error in the original function. This helps
+      most when there is a failure with a smart server action, since often the
+      connection closes and we cannot unlock.
+      (Andrew Bennetts, John Arbash Meinel, #125784)
+
+    * Obsolete hidden command ``bzr fetch`` removed.
+      (Martin Pool, #172870)
+
+    * Raise the correct exception when doing ``-rbefore:0`` or ``-c0``.
+      (John Arbash Meinel, #239933)
+
+    * You can now compare file revisions in Windows diff programs from 
+      Cygwin Bazaar.
+      (Matt McClure, #209281)
+
+    * revision_history now tolerates mainline ghosts for Branch format 6.
+      (Aaron Bentley, #235055)
+
+    * Set locale from environment for third party libs.
+      (Martin von Gagern, #128496)
+
+  DOCUMENTATION:
+
+    * Updated developer documentation.
+      (Martin Pool)
+
+  TESTING:
+
+   * ``-Dmemory`` will cause /proc/PID/status to be catted before bzr
+     exits, allowing low-key analysis of peak memory use. (Robert Collins)
+
+   * ``TestCaseWithTransport.make_branch_and_tree`` tries harder to return
+     a tree with a ``branch`` attribute of the right format.  This was
+     preventing some ``RemoteBranch`` tests from actually running with
+     ``RemoteBranch`` instances.  (Andrew Bennetts)
+
+  API CHANGES:
+
+    * Removed ``Repository.text_store``, ``control_store``, etc.  Instead,
+      there are new attributes ``texts, inventories, revisions,
+      signatures``, each of which is a ``VersionedFiles``.  See the
+      Repository docstring for more details.
+      (Robert Collins)
+
+    * ``Branch.pull`` now accepts an ``_override_hook_target`` optional
+      parameter.  If you have a subclass of ``Branch`` that overrides
+      ``pull`` then you should add this parameter.  (Andrew Bennetts)
+
+    * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.
+      (Daniel Watkins)
+
+    * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
+      These methods are bad APIs because they write directly to sys.stdout.
+      bzrlib does not use them internally, and there are no direct tests
+      for them. (Alexander Belchenko)
+
+  INTERNALS:
+
+    * ``cat`` command no longer uses ``Tree.print_file()`` internally.
+      (Alexander Belchenko)
+
+    * New class method ``BzrDir.open_containing_tree_branch_or_repository``
+      which eases the discovery of the tree, the branch and the repository
+      containing a given location.
+      (Daniel Watkins)
+
+    * New ``versionedfile.KeyMapper`` interface to abstract out the access to
+      underlying .knit/.kndx etc files in repositories with partitioned
+      storage. (Robert Collins)
+
+    * Obsolete developer-use command ``weave-join`` has been removed.
+      (Robert Collins)
+
+    * ``RemoteToOtherFetcher`` and ``get_data_stream_for_search`` removed,
+      to support new ``VersionedFiles`` layering.
+      (Robert Collins)
+
+
+bzr 1.6beta2 2008-06-10
+-----------------------
+
+This release contains further progress towards our 1.6 goals of shallow
+repositories, and contains a fix for some user-affecting bugs in the
+repository layer.  Building working trees during checkout and branch is
+now faster.
 
   BUG FIXES:
 
@@ -22,6 +161,13 @@ IN DEVELOPMENT
       reading from the repository.)
       (Martin Pool, Andrew Bennetts, Robert Collins, #234748)
 
+    * ``bzr status`` was breaking if you merged the same revision twice.
+      (John Arbash Meinel, #235407)
+
+    * Fix infinite loop consuming 100% CPU when a connection is lost while
+      reading a response body via the smart protocol v1 or v2.
+      (Andrew Bennetts)
+      
     * Inserting a bundle which changes the contents of a file with no trailing
       end of line, causing a knit snapshot in a 'knits' repository will no longer
       cause KnitCorrupt. (Robert Collins)
@@ -49,11 +195,6 @@ IN DEVELOPMENT
 
     * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
       (Ian Clatworthy, Aaron Bentley)
-
-  BUGFIXES:
-
-    * ``bzr status`` was breaking if you merged the same revision twice.
-      (John Arbash Meinel, #235407)
 
   DOCUMENTATION:
 

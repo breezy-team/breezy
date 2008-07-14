@@ -134,7 +134,7 @@ class cmd_status(Command):
     
     Note that --short or -S gives status flags for each item, similar
     to Subversion's status command. To get output similar to svn -q,
-    use bzr -SV.
+    use bzr status -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -1855,27 +1855,12 @@ class cmd_unknowns(Command):
 class cmd_ignore(Command):
     """Ignore specified files or patterns.
 
+    See ``bzr help patterns`` for details on the syntax of patterns.
+
     To remove patterns from the ignore list, edit the .bzrignore file.
-
-    Trailing slashes on patterns are ignored. 
-    If the pattern contains a slash or is a regular expression, it is compared 
-    to the whole path from the branch root.  Otherwise, it is compared to only
-    the last component of the path.  To match a file only in the root 
-    directory, prepend './'.
-
-    Ignore patterns specifying absolute paths are not allowed.
-
-    Ignore patterns may include globbing wildcards such as::
-
-      ? - Matches any single character except '/'
-      * - Matches 0 or more characters except '/'
-      /**/ - Matches 0 or more directories in a path
-      [a-z] - Matches a single character from within a group of characters
- 
-    Ignore patterns may also be Python regular expressions.  
-    Regular expression ignore patterns are identified by a 'RE:' prefix 
-    followed by the regular expression.  Regular expression ignore patterns
-    may not include named or numbered groups.
+    After adding, editing or deleting that file either indirectly by
+    using this command or directly by using an editor, be sure to commit
+    it.
 
     Note: ignore patterns containing shell wildcards must be quoted from 
     the shell on Unix.
@@ -1902,7 +1887,7 @@ class cmd_ignore(Command):
             bzr ignore "RE:(?!debian/).*"
     """
 
-    _see_also = ['status', 'ignored']
+    _see_also = ['status', 'ignored', 'patterns']
     takes_args = ['name_pattern*']
     takes_options = [
         Option('old-default-rules',
@@ -1910,7 +1895,7 @@ class cmd_ignore(Command):
         ]
     
     def run(self, name_pattern_list=None, old_default_rules=None):
-        from bzrlib.atomicfile import AtomicFile
+        from bzrlib import ignores
         if old_default_rules is not None:
             # dump the rules and exit
             for pattern in ignores.OLD_DEFAULTS:
@@ -1927,34 +1912,7 @@ class cmd_ignore(Command):
                 raise errors.BzrCommandError(
                     "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
-        ifn = tree.abspath('.bzrignore')
-        if os.path.exists(ifn):
-            f = open(ifn, 'rt')
-            try:
-                igns = f.read().decode('utf-8')
-            finally:
-                f.close()
-        else:
-            igns = ''
-
-        # TODO: If the file already uses crlf-style termination, maybe
-        # we should use that for the newly added lines?
-
-        if igns and igns[-1] != '\n':
-            igns += '\n'
-        for name_pattern in name_pattern_list:
-            igns += name_pattern + '\n'
-
-        f = AtomicFile(ifn, 'wb')
-        try:
-            f.write(igns.encode('utf-8'))
-            f.commit()
-        finally:
-            f.close()
-
-        if not tree.path2id('.bzrignore'):
-            tree.add(['.bzrignore'])
-
+        ignores.tree_ignores_add_patterns(tree, name_pattern_list)
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         tree.lock_read()
@@ -2119,14 +2077,15 @@ class cmd_cat(Command):
                 raise errors.BzrCommandError("%r is not present in revision %s"
                                                 % (filename, revision_id))
             else:
-                rev_tree.print_file(old_file_id)
+                content = rev_tree.get_file_text(old_file_id)
         elif cur_file_id is not None:
-            rev_tree.print_file(cur_file_id)
+            content = rev_tree.get_file_text(cur_file_id)
         elif old_file_id is not None:
-            rev_tree.print_file(old_file_id)
+            content = rev_tree.get_file_text(old_file_id)
         else:
             raise errors.BzrCommandError("%r is not present in revision %s" %
                                          (filename, revision_id))
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -2318,12 +2277,14 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate consistency of branch history.
+    """Validate working tree structure, branch consistency and repository
+    history.
 
-    This command checks various invariants about the branch storage to
-    detect data corruption or bzr bugs.
+    This command checks various invariants about branch and repository storage
+    to detect data corruption or bzr bugs.
 
-    Output fields:
+    The working tree and branch checks will only give output if a problem is
+    detected. The output fields of the repository check are:
 
         revisions: This is just the number of revisions checked.  It doesn't
             indicate a problem.
@@ -2341,42 +2302,14 @@ class cmd_check(Command):
     """
 
     _see_also = ['reconcile']
-    takes_args = ['branch?']
+    takes_args = ['path?']
     takes_options = ['verbose']
 
-    def run(self, branch=None, verbose=False):
-        from bzrlib.check import check
-        if branch is None:
-            branch_obj = Branch.open_containing('.')[0]
-        else:
-            branch_obj = Branch.open(branch)
-        check(branch_obj, verbose)
-        # bit hacky, check the tree parent is accurate
-        try:
-            if branch is None:
-                tree = WorkingTree.open_containing('.')[0]
-            else:
-                tree = WorkingTree.open(branch)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
-        else:
-            # This is a primitive 'check' for tree state. Currently this is not
-            # integrated into the main check logic as yet.
-            tree.lock_read()
-            try:
-                tree_basis = tree.basis_tree()
-                tree_basis.lock_read()
-                try:
-                    repo_basis = tree.branch.repository.revision_tree(
-                        tree.last_revision())
-                    if len(list(repo_basis.iter_changes(tree_basis))):
-                        raise errors.BzrCheckError(
-                            "Mismatched basis inventory content.")
-                    tree._validate()
-                finally:
-                    tree_basis.unlock()
-            finally:
-                tree.unlock()
+    def run(self, path=None, verbose=False):
+        from bzrlib.check import check_dwim
+        if path is None:
+            path = '.'
+        check_dwim(path, verbose)
 
 
 class cmd_upgrade(Command):
@@ -3274,20 +3207,6 @@ class cmd_shell_complete(Command):
         shellcomplete.shellcomplete(context)
 
 
-class cmd_fetch(Command):
-    """Copy in history from another branch but don't merge it.
-
-    This is an internal method used for pull and merge.
-    """
-    hidden = True
-    takes_args = ['from_branch', 'to_branch']
-    def run(self, from_branch, to_branch):
-        from bzrlib.fetch import Fetcher
-        from_b = Branch.open(from_branch)
-        to_b = Branch.open(to_branch)
-        Fetcher(to_b, from_b)
-
-
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
     
@@ -4101,7 +4020,8 @@ class cmd_send(Command):
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
     specific clients are "evolution", "kmail", "mutt", and "thunderbird";
-    generic options are "default", "editor", "mapi", and "xdg-email".
+    generic options are "default", "editor", "emacsclient", "mapi", and
+    "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
@@ -4590,5 +4510,5 @@ from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, cmd_weave_join, \
+from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text
