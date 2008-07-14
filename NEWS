@@ -10,6 +10,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * New ``pre_change_branch_tip`` hook that is called before the
+      branch tip is moved, while the branch is write-locked.  See the User
+      Reference for signature details.  (Andrew Bennetts)
+
     * Rule-based preferences can now be defined for selected files in
       selected branches, allowing commands and plugins to provide
       custom behaviour for files matching defined patterns.
@@ -26,6 +30,10 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * ``bzr send`` documents and better supports ``emacsclient`` (proper
+      escaping of mail headers and handling of the MUA Mew).
+      (Christophe Troestler)
+
     * Remembered locations can be specified by aliases, e.g. :parent, :public,
       :submit.  (Aaron Bentley)
 
@@ -35,6 +43,13 @@ IN DEVELOPMENT
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
 
   BUG FIXES:
+
+    * ``bzr log --long`` with a ghost in your mainline now handles that
+      ghost properly. (John Arbash Meinel, #243536)
+
+    * ``check`` handles the split-up .bzr layout correctly, so no longer
+      requires a branch to be present.
+      (Daniel Watkins, #64783)
 
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be
       loaded. 
@@ -68,12 +83,18 @@ IN DEVELOPMENT
     * revision_history now tolerates mainline ghosts for Branch format 6.
       (Aaron Bentley, #235055)
 
+    * Set locale from environment for third party libs.
+      (Martin von Gagern, #128496)
+
   DOCUMENTATION:
 
     * Updated developer documentation.
       (Martin Pool)
 
   TESTING:
+
+   * ``-Dmemory`` will cause /proc/PID/status to be catted before bzr
+     exits, allowing low-key analysis of peak memory use. (Robert Collins)
 
    * ``TestCaseWithTransport.make_branch_and_tree`` tries harder to return
      a tree with a ``branch`` attribute of the right format.  This was
@@ -92,6 +113,10 @@ IN DEVELOPMENT
       parameter.  If you have a subclass of ``Branch`` that overrides
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
+    * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.
+      (Daniel Watkins)
+
     * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
       These methods are bad APIs because they write directly to sys.stdout.
       bzrlib does not use them internally, and there are no direct tests
@@ -101,6 +126,11 @@ IN DEVELOPMENT
 
     * ``cat`` command no longer uses ``Tree.print_file()`` internally.
       (Alexander Belchenko)
+
+    * New class method ``BzrDir.open_containing_tree_branch_or_repository``
+      which eases the discovery of the tree, the branch and the repository
+      containing a given location.
+      (Daniel Watkins)
 
     * New ``versionedfile.KeyMapper`` interface to abstract out the access to
       underlying .knit/.kndx etc files in repositories with partitioned

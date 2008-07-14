@@ -351,7 +351,13 @@ class MergeSorter(object):
             if parent is None:
                 # end of mainline_revisions history
                 continue
-            if self._graph[revision][0] == parent:
+            graph_parent_ids = self._graph[revision]
+            if not graph_parent_ids:
+                # We ran into a ghost, skip over it, this is a workaround for
+                # bug #243536, the _graph has had ghosts stripped, but the
+                # mainline_revisions have not
+                continue
+            if graph_parent_ids[0] == parent:
                 continue
             # remove it from its prior spot
             self._graph[revision].remove(parent)

@@ -698,9 +698,6 @@ class ShortLogFormatter(LogFormatter):
 
     def log_revision(self, revision):
         to_file = self.to_file
-        date_str = format_date(revision.rev.timestamp,
-                               revision.rev.timezone or 0,
-                               self.show_timezone)
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'

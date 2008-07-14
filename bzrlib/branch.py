@@ -1134,6 +1134,12 @@ class BranchHooks(Hooks):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
+        # Introduced in 1.6
+        # Invoked before the tip of a branch changes.
+        # the api signature is
+        # (params) where params is a ChangeBranchTipParams with the members
+        # (branch, old_revno, new_revno, old_revid, new_revid)
+        self['pre_change_branch_tip'] = []
         # Introduced in 1.4
         # Invoked after the tip of a branch changes.
         # the api signature is
@@ -1174,6 +1180,14 @@ class ChangeBranchTipParams(object):
         self.new_revno = new_revno
         self.old_revid = old_revid
         self.new_revid = new_revid
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+    
+    def __repr__(self):
+        return "<%s of %s from (%s, %s) to (%s, %s)>" % (
+            self.__class__.__name__, self.branch, 
+            self.old_revno, self.old_revid, self.new_revno, self.new_revid)
 
 
 class BzrBranchFormat4(BranchFormat):
@@ -1571,6 +1585,17 @@ class BzrBranch(Branch):
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
+    def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
+        """Run the pre_change_branch_tip hooks."""
+        hooks = Branch.hooks['pre_change_branch_tip']
+        if not hooks:
+            return
+        old_revno, old_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            hook(params)
+ 
     def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
         """Run the post_change_branch_tip hooks."""
         hooks = Branch.hooks['post_change_branch_tip']
@@ -1602,6 +1627,7 @@ class BzrBranch(Branch):
         history = self._lefthand_history(revision_id)
         if len(history) != revno:
             raise AssertionError('%d != %d' % (len(history), revno))
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self.set_revision_history(history)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
@@ -2039,6 +2065,7 @@ class BzrBranch7(BzrBranch5):
         old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
