@@ -2287,6 +2287,34 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertTrue(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
 
+    def test_import_native_two_unrelated(self):
+        version1 = Version("1.0")
+        version2 = Version("1.1")
+        builder = SourcePackageBuilder("package", version1, native=True)
+        builder.add_default_control()
+        builder.add_upstream_file("README", "foo")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder = SourcePackageBuilder("package", version2, native=True)
+        builder.add_default_control()
+        builder.add_upstream_file("README", "bar")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 2)
+        self.assertEqual(len(up_rh1), 0)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[0])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[1])
+        self.assertEqual(rev_tree1.get_parent_ids(), [])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[0]])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                modified=["README", "debian/changelog"])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+        self.assertTrue(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
+
 
 class SourcePackageBuilder(object):
 

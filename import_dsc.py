@@ -1530,6 +1530,13 @@ class DistributionBranch(object):
                 mutter("Adding current tip as parent: %s"
                         % self.branch.last_revision())
                 parents.insert(0, self.branch.last_revision())
+        elif self.branch.last_revision() != NULL_REVISION:
+            # We were told to import with no parents. That's not
+            # right, so import with the current parent. Should
+            # perhaps be fixed in the methods to determine the parents.
+            mutter("Told to import with no parents. Adding current tip "
+                   "as the single parent")
+            parents = [self.branch.last_revision()]
         other_branches = self.get_other_branches()
         def get_last_revision_tree(br):
             return br.repository.revision_tree(br.last_revision())
