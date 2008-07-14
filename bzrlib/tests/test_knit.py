@@ -1442,9 +1442,9 @@ class TestStacking(KnitTests):
             basis.calls)
 
     def test_check(self):
-        # check() must not check the fallback files, it's none of its business.
+        # At the moment checking a stacked knit does implicitly check the
+        # fallback files.  
         basis, test = self.get_basis_and_test_knit()
-        basis.check = None
         test.check()
 
     def test_get_parent_map(self):

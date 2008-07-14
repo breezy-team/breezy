@@ -535,6 +535,9 @@ class RecordingVersionedFilesDecorator(object):
         return self._backing_vf.add_lines(key, parents, lines, parent_texts,
             left_matching_blocks, nostore_sha, random_id, check_content)
 
+    def check(self):
+        self._backing_vf.check()
+
     def get_parent_map(self, keys):
         self.calls.append(("get_parent_map", copy(keys)))
         return self._backing_vf.get_parent_map(keys)

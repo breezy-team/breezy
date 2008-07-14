@@ -847,7 +847,7 @@ class KnitVersionedFiles(VersionedFiles):
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
         # no basis.
-        keys = self.keys()
+        keys = self._index.keys()
         parent_map = self.get_parent_map(keys)
         for key in keys:
             if self._index.get_method(key) != 'fulltext':
@@ -856,6 +856,8 @@ class KnitVersionedFiles(VersionedFiles):
                     raise errors.KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
+        for fallback_vfs in self._fallback_vfs:
+            fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
@@ -1058,7 +1060,7 @@ class KnitVersionedFiles(VersionedFiles):
         return text_map, final_content
 
     def get_parent_map(self, keys):
-        """Get a map of the parents of keys.
+        """Get a map of the graph parents of keys.
 
         :param keys: The keys to look up parents for.
         :return: A mapping from keys to parents. Absent keys are absent from
@@ -2040,6 +2042,9 @@ class _KnitGraphIndex(object):
                 "parent tracking.")
         self.has_graph = parents
         self._is_locked = is_locked
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._graph_index)
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.

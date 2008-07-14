@@ -181,6 +181,8 @@ class RemoteBzrDir(BzrDir):
             format.supports_tree_reference = (response[3] == 'yes')
             # No wire format to check this yet.
             format.supports_external_lookups = (response[4] == 'yes')
+            # Used to support creating a real format instance when needed.
+            format._creating_bzrdir = self
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
@@ -239,7 +241,10 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     def initialize(self, a_bzrdir, shared=False):
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            raise AssertionError('%r is not a RemoteBzrDir' % (a_bzrdir,))
+            prior_repo = self._creating_bzrdir.open_repository()
+            prior_repo._ensure_real()
+            return prior_repo._real_repository._format.initialize(
+                a_bzrdir, shared=shared)
         return a_bzrdir.create_repository(shared=shared)
     
     def open(self, a_bzrdir):
@@ -308,6 +313,8 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
+        # Additional places to query for data.
+        self._fallback_repositories = []
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -699,6 +706,17 @@ class RemoteRepository(object):
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
         return builder
+
+    def add_fallback_repository(self, repository):
+        """Add a repository to use for looking up data not held locally.
+        
+        :param repository: A repository.
+        """
+        if not self._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # We need to accumulate additional repositories here, to pass them in
+        # on various RPC's.
+        self._fallback_repositories.append(repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1301,6 +1319,18 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
+    def get_stacked_on(self):
+        """Get the URL this branch is stacked against.
+
+        :raises NotStacked: If the branch is not stacked.
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.get_stacked_on()
+
     def lock_read(self):
         if not self._lock_mode:
             self._lock_mode = 'r'
@@ -1507,6 +1537,17 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_parent(url)
         
+    def set_stacked_on(self, stacked_location):
+        """Set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.set_stacked_on(stacked_location)
+
     def sprout(self, to_bzrdir, revision_id=None):
         # Like Branch.sprout, except that it sprouts a branch in the default
         # format, because RemoteBranches can't be created at arbitrary URLs.

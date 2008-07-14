@@ -524,6 +524,29 @@ class Repository(object):
         attempted.
         """
 
+    def add_fallback_repository(self, repository):
+        """Add a repository to use for looking up data not held locally.
+        
+        :param repository: A repository.
+        """
+        if not self._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        if not self._add_fallback_repository_check(repository):
+            raise errors.IncompatibleRepositories(self, repository)
+        self._fallback_repositories.append(repository)
+        self.texts.add_fallback_versioned_files(repository.texts)
+        self.inventories.add_fallback_versioned_files(repository.inventories)
+        self.revisions.add_fallback_versioned_files(repository.revisions)
+        self.signatures.add_fallback_versioned_files(repository.signatures)
+
+    def _add_fallback_repository_check(self, repository):
+        """Check that this repository can fallback to repository safely.
+        
+        :param repository: A repository to fallback to.
+        :return: True if the repositories can stack ok.
+        """
+        return InterRepository._same_model(self, repository)
+
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
         
@@ -597,9 +620,10 @@ class Repository(object):
     def all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
-        This is deprecated because code should generally work on the graph
-        reachable from a particular revision, and ignore any other revisions
-        that might be present.  There is no direct replacement method.
+        This is conceptually deprecated because code should generally work on
+        the graph reachable from a particular revision, and ignore any other
+        revisions that might be present.  There is no direct replacement
+        method.
         """
         if 'evil' in debug.debug_flags:
             mutter_callsite(2, "all_revision_ids is linear with history.")
@@ -665,6 +689,8 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._write_group = None
+        # Additional places to query for data.
+        self._fallback_repositories = []
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -718,11 +744,16 @@ class Repository(object):
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
         result = self.control_files.lock_write(token=token)
+        for repo in self._fallback_repositories:
+            # Writes don't affect fallback repos
+            repo.lock_read()
         self._refresh_data()
         return result
 
     def lock_read(self):
         self.control_files.lock_read()
+        for repo in self._fallback_repositories:
+            repo.lock_read()
         self._refresh_data()
 
     def get_physical_lock_status(self):
@@ -962,6 +993,8 @@ class Repository(object):
                 raise errors.BzrError(
                     'Must end write groups before releasing write locks.')
         self.control_files.unlock()
+        for repo in self._fallback_repositories:
+            repo.unlock()
 
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
@@ -1696,26 +1729,27 @@ class Repository(object):
         parent_map = self.get_parent_map(revision_ids)
         return [parent_map.get(r, None) for r in revision_ids]
 
-    def get_parent_map(self, keys):
+    def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
-        parent_map = {}
-        for revision_id in keys:
-            if revision_id is None:
-                raise ValueError('get_parent_map(None) is not valid')
+        # revisions index works in keys; this just works in revisions
+        # therefore wrap and unwrap
+        query_keys = []
+        result = {}
+        for revision_id in revision_ids:
             if revision_id == _mod_revision.NULL_REVISION:
-                parent_map[revision_id] = ()
+                result[revision_id] = ()
+            elif revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             else:
-                try:
-                    parent_id_list = self.get_revision(revision_id).parent_ids
-                except errors.NoSuchRevision:
-                    pass
-                else:
-                    if len(parent_id_list) == 0:
-                        parent_ids = (_mod_revision.NULL_REVISION,)
-                    else:
-                        parent_ids = tuple(parent_id_list)
-                    parent_map[revision_id] = parent_ids
-        return parent_map
+                query_keys.append((revision_id ,))
+        for ((revision_id,), parent_keys) in \
+                self.revisions.get_parent_map(query_keys).iteritems():
+            if parent_keys:
+                result[revision_id] = tuple(parent_revid
+                    for (parent_revid,) in parent_keys)
+            else:
+                result[revision_id] = (_mod_revision.NULL_REVISION,)
+        return result
 
     def _make_parents_provider(self):
         return self
@@ -2264,6 +2298,17 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment0Subtree',
     )
+format_registry.register_lazy(
+    "Bazaar development format 1 (needs bzr.dev from before 1.6)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment1',
+    )
+format_registry.register_lazy(
+    ("Bazaar development format 1 with subtree support "
+        "(needs bzr.dev from before 1.6)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment1Subtree',
+    )
 # 1.3->1.4 go below here
 
 
@@ -2674,7 +2719,9 @@ class InterPackRepo(InterSameDataRepository):
             # to fetch from all packs to one without
             # inventory parsing etc, IFF nothing to be copied is in the target.
             # till then:
-            revision_ids = self.source.all_revision_ids()
+            source_revision_ids = frozenset(self.source.all_revision_ids())
+            revision_ids = source_revision_ids - \
+                frozenset(self.target.get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
             index = self.target._pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
@@ -2721,18 +2768,33 @@ class InterPackRepo(InterSameDataRepository):
         if not find_ghosts and revision_id is not None:
             return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
+            # Find ghosts: search for revisions pointing from one repository to
+            # the other, and vice versa, anywhere in the history of revision_id.
+            graph = self.target.get_graph(other_repository=self.source)
+            searcher = graph._make_breadth_first_searcher([revision_id])
+            found_ids = set()
+            while True:
+                try:
+                    next_revs, ghosts = searcher.next_with_ghosts()
+                except StopIteration:
+                    break
+                if revision_id in ghosts:
+                    raise errors.NoSuchRevision(self.source, revision_id)
+                found_ids.update(next_revs)
+                found_ids.update(ghosts)
+            found_ids = frozenset(found_ids)
+            # Double query here: should be able to avoid this by changing the
+            # graph api further.
+            result_set = found_ids - frozenset(
+                self.target.get_graph().get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target.all_revision_ids())
-        result_set = set(source_ids).difference(target_ids)
+            # source_ids is the worst possible case we may need to pull.
+            # now we want to filter source_ids against what we actually
+            # have in target, but don't try to check for existence where we know
+            # we do not have a revision as that would be pointless.
+            target_ids = set(self.target.all_revision_ids())
+            result_set = set(source_ids).difference(target_ids)
         return self.source.revision_ids_to_search_result(result_set)
 
 

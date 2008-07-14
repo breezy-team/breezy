@@ -21,6 +21,9 @@ IN DEVELOPMENT
       in the User Guide and ``bzr help rules`` for more information.
       (Ian Clatworthy)
 
+    * Stacked branches are now supported. See ``bzr help branch`` and 
+      ``bzr help push``. (Robert Collins)
+
   IMPROVEMENTS:
 
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
@@ -39,7 +42,7 @@ IN DEVELOPMENT
       faster.  The new request method name is
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
 
-  BUGFIXES:
+  BUG FIXES:
 
     * ``bzr log --long`` with a ghost in your mainline now handles that
       ghost properly. (John Arbash Meinel, #243536)
@@ -209,6 +212,9 @@ now faster.
       ancestor). (John Arbash Meinel, #235407)
 
   INTERNALS:
+
+    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``stacked`` to control
+      creating stacked branches. (Robert Collins)
 
     * Knit record serialisation is now stricter on what it will accept, to
       guard against potential internal bugs, or broken input. (Robert Collins)
