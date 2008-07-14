@@ -30,8 +30,8 @@ from debian_bundle.changelog import Version, Changelog
 
 from bzrlib.config import ConfigObj
 from bzrlib.conflicts import TextConflict
-from bzrlib.errors import FileExists, UncommittedChanges
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.errors import FileExists, UncommittedChanges, DivergedBranches
+from bzrlib.tests import TestCaseWithTransport, KnownFailure
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.errors import ImportError, OnlyImportSingleDsc
@@ -2210,6 +2210,29 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.check_changes(rev_tree3.changes_from(rev_tree2))
         self.check_changes(rev_tree3.changes_from(rev_tree1),
                 modified=["README", "debian/changelog"])
+
+    def test_pull_from_other(self):
+        version1 = Version("0.1-1")
+        version2 = Version("0.2-1")
+        version3 = Version("0.3-1")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        self.db2.import_package(builder.dsc_name())
+        builder.new_version(version2)
+        builder.build()
+        self.db2.import_package(builder.dsc_name())
+        builder.new_version(version3)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        try:
+            self.db2.import_package(builder.dsc_name())
+        except DivergedBranches:
+            raise KnownFailure("Pulling from another branch after "
+                    "merge the other way fails due to assuming the "
+                    "upstream branch can be pulled too, but we never "
+                    "merge upstream branches.")
 
     def test_is_native_version(self):
         version1 = Version("0.1-0ubuntu1")
