@@ -108,13 +108,14 @@ class RangeFile(object):
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
-            
+
         if boundary_line != '--' + self._boundary + '\r\n':
             # rfc822.unquote() incorrectly unquotes strings enclosed in <>
             # IIS 6 and 7 incorrectly wrap boundary strings in <>
             # together they make a beautiful bug, which we will be gracious
             # about here
-            if self._unquote_boundary(boundary_line) != '--' + self._boundary + '\r\n':
+            if (self._unquote_boundary(boundary_line) != 
+                '--' + self._boundary + '\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
                     "Expected a boundary (%s) line, got '%s'" % (self._boundary,
