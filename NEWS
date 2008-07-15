@@ -44,6 +44,12 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Bazaar is now able to be a client to the web server of IIS 6 and 7.
+      The broken implementations of RFC822 in Python and RFC2046 in IIS
+      combined with boundary-line checking in Bazaar previously made this
+      impossible. (NB, IIS 5 does not suffer from this problem).
+      (Adrian Wilkins, #247585)
+
     * ``bzr log --long`` with a ghost in your mainline now handles that
       ghost properly. (John Arbash Meinel, #243536)
 
