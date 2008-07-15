@@ -138,7 +138,7 @@ class TestBranch(ExternalBase):
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
             format='development')
-        branch_tree.branch.set_stacked_on(trunk_tree.branch.base)
+        branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
         branch_tree.commit('moar work plz')
         # branching our local branch gives us a new stacked branch pointing at

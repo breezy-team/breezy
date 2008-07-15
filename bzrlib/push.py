@@ -114,7 +114,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             dir_to = br_from.bzrdir._format.initialize_on_transport(to_transport)
             br_from.repository._format.initialize(dir_to)
             br_to = br_from._format.initialize(dir_to)
-            br_to.set_stacked_on(reference)
+            br_to.set_stacked_on_url(reference)
             # and copy the data up.
             br_from.push(br_to)
         else:

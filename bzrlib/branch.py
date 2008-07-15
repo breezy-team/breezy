@@ -347,7 +347,7 @@ class Branch(object):
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
 
-    def set_stacked_on(self, url):
+    def set_stacked_on_url(self, url):
         """Set the URL this branch is stacked against.
 
         :raises UnstackableBranchFormat: If the branch does not support
@@ -355,7 +355,7 @@ class Branch(object):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        raise NotImplementedError(self.set_stacked_on)
+        raise NotImplementedError(self.set_stacked_on_url)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -1871,7 +1871,7 @@ class BzrBranch(Branch):
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
 
-    def set_stacked_on(self, url):
+    def set_stacked_on_url(self, url):
         raise errors.UnstackableBranchFormat(self._format, self.base)
 
 
@@ -2193,7 +2193,7 @@ class BzrBranch7(BzrBranch5):
         self.get_config().set_user_option('append_revisions_only', value,
             warn_masked=True)
 
-    def set_stacked_on(self, url):
+    def set_stacked_on_url(self, url):
         self._check_stackable_repo()
         if not url:
             try:
@@ -2309,7 +2309,7 @@ class BzrBranch6(BzrBranch7):
     def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)
 
-    def set_stacked_on(self, url):
+    def set_stacked_on_url(self, url):
         raise errors.UnstackableBranchFormat(self._format, self.base)
 
 

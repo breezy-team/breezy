@@ -1059,7 +1059,7 @@ class BzrDir(object):
         else:
             result_branch = result.create_branch()
         if stacked_branch_url is not None:
-            result_branch.set_stacked_on(stacked_branch_url)
+            result_branch.set_stacked_on_url(stacked_branch_url)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (

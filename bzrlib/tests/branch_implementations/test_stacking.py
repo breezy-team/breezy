@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for Branch.get_stacked_on_url and set_stacked_on."""
+"""Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
 from bzrlib import (
     bzrdir,
@@ -27,7 +27,7 @@ from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 class TestStacking(TestCaseWithBranch):
 
-    def test_get_set_stacked_on(self):
+    def test_get_set_stacked_on_url(self):
         # branches must either:
         # raise UnstackableBranchFormat or
         # raise UnstackableRepositoryFormat or
@@ -39,14 +39,14 @@ class TestStacking(TestCaseWithBranch):
             errors.UnstackableRepositoryFormat,
             )
         try:
-            branch.set_stacked_on(target.base)
+            branch.set_stacked_on_url(target.base)
         except old_format_errors:
             # if the set failed, so must the get
             self.assertRaises(old_format_errors, branch.get_stacked_on_url)
             return
         # now we have a stacked branch:
         self.assertEqual(target.base, branch.get_stacked_on_url())
-        branch.set_stacked_on(None)
+        branch.set_stacked_on_url(None)
         self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
 
     def assertRevisionInRepository(self, repo_path, revid):
@@ -68,7 +68,7 @@ class TestStacking(TestCaseWithBranch):
         # it would cause a false pass of this test.
         new_branch = self.make_branch('new_branch')
         try:
-            new_branch.set_stacked_on(trunk_tree.branch.base)
+            new_branch.set_stacked_on_url(trunk_tree.branch.base)
         except (errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             raise TestNotApplicable(e)
