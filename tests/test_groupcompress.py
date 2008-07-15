@@ -85,13 +85,13 @@ class TestGroupCompressor(TestCaseWithTransport):
             'label: newlabel\n',
             'sha1: %s\n' % sha1_2,
             # copy the line common
-            'c,4,1\n',
+            'c,72,7\n',
             # add the line different
             'i,1\n',
             'different\n',
             # copy the line \n. Note that when we filter on encoding-overhead
             # this will become a fresh insert instead
-            'c,5,1\n',
+            'c,79,1\n',
             ])
         self.assertEqual(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -117,12 +117,12 @@ class TestGroupCompressor(TestCaseWithTransport):
             'i,1\n',
             'new\n',
             # copy the line common
-            'c,4,1\n',
+            'c,72,7\n',
             # copy the lines different, moredifferent
-            'c,10,2\n',
+            'c,154,24\n',
             # copy the line \n. Note that when we filter on encoding-overhead
             # this will become a fresh insert instead
-            'c,5,1\n',
+            'c,79,1\n',
             ])
         self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
         self.assertEqual(sum(map(len, expected_lines)), end_point)

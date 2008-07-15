@@ -78,7 +78,7 @@ def apply_delta(basis, delta):
     # start, end refer to offsets in basis
     for op, start, count, delta_lines in delta:
         if op == 'c':
-            lines.extend(basis[start:start+count])
+            lines.append(basis[start:start+count])
         else:
             lines.extend(delta_lines)
     trim_encoding_newline(lines)
@@ -115,6 +115,7 @@ class GroupCompressor(object):
         """
         self._delta = delta
         self.lines = []
+        self.line_offsets = []
         self.endpoint = 0
         self.input_bytes = 0
         # line: set(locations it appears at), set(N+1 for N in locations)
@@ -158,7 +159,12 @@ class GroupCompressor(object):
                 if copying:
                     # flush the copy
                     copy_start = min(copy_ends) - copy_len
-                    new_lines.append("c,%d,%d\n" % (copy_start,copy_len))
+                    stop_byte = self.line_offsets[copy_start + copy_len - 1]
+                    if copy_start == 0:
+                        start_byte = 0
+                    else:
+                        start_byte = self.line_offsets[copy_start - 1]
+                    new_lines.append("c,%d,%d\n" % (start_byte, stop_byte - start_byte))
                     copying = False
                     new_start = pos
                     new_len = 1
@@ -175,7 +181,12 @@ class GroupCompressor(object):
                     else:
                         # range stops, flush and start a new copy range
                         copy_start = min(copy_ends) - copy_len
-                        new_lines.append("c,%d,%d\n" % (copy_start,copy_len))
+                        stop_byte = self.line_offsets[copy_start + copy_len - 1]
+                        if copy_start == 0:
+                            start_byte = 0
+                        else:
+                            start_byte = self.line_offsets[copy_start - 1]
+                        new_lines.append("c,%d,%d\n" % (start_byte, stop_byte - start_byte))
                         copy_len = 1
                         copy_ends = next
                 else:
@@ -190,7 +201,12 @@ class GroupCompressor(object):
             pos += 1
         if copying:
             copy_start = min(copy_ends) - copy_len
-            new_lines.append("c,%d,%d\n" % (copy_start,copy_len))
+            stop_byte = self.line_offsets[copy_start + copy_len - 1]
+            if copy_start == 0:
+                start_byte = 0
+            else:
+                start_byte = self.line_offsets[copy_start - 1]
+            new_lines.append("c,%d,%d\n" % (start_byte, stop_byte - start_byte))
         elif new_len:
             new_lines.append("i,%d\n" % new_len)
             new_lines.extend(lines[new_start:new_start+new_len])
@@ -204,25 +220,33 @@ class GroupCompressor(object):
         return sha1, self.endpoint
 
     def extract(self, key):
-        """Extract a key previously added to the compressor."""
+        """Extract a key previously added to the compressor.
+        
+        :param key: The key to extract.
+        :return: An iterable over bytes and the sha1.
+        """
         delta_details = self.labels_deltas[key]
         delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
         label, sha1, delta = parse(delta_lines)
         if label != key:
             raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-        lines = apply_delta(self.lines, delta)
+        # Perhaps we want to keep the line offsets too in memory at least?
+        lines = apply_delta(''.join(self.lines), delta)
         sha1 = sha_strings(lines)
         return lines, sha1
 
     def output_lines(self, new_lines):
-        self.endpoint += sum(map(len, new_lines))
+        endpoint = self.endpoint
         offset = len(self.lines)
-        self.lines.extend(new_lines)
         for pos, line in enumerate(new_lines):
+            self.lines.append(line)
+            endpoint += len(line)
+            self.line_offsets.append(endpoint)
             indices, next_lines = self.line_locations.setdefault(line,
                 (set(), set()))
             indices.add(pos + offset)
             next_lines.add(pos + offset + 1)
+        self.endpoint = endpoint
 
     def ratio(self):
         """Return the overall compression ratio."""
@@ -462,7 +486,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
                 basis = plain[:index_memo[3]]
-                basis = StringIO(basis).readlines()
+                # basis = StringIO(basis).readlines()
                 #basis = split_lines(plain[:last_end])
                 lines = apply_delta(basis, delta)
             bytes = ''.join(lines)
