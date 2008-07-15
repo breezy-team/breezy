@@ -292,7 +292,7 @@ class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment0Subtree):
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     formats = (RepositoryFormatPackGCPlain, RepositoryFormatPackGCRichRoot,
         RepositoryFormatPackGCSubtrees)
-    if isinstance(source._format, formats) or isinstance(target, formats):
+    if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:
         return orig_method(source, target)
