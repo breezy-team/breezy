@@ -28,8 +28,70 @@ facilities.
 Documentation
 =============
 
-See DESIGN in the groupcompress osurc.e
+See DESIGN in the groupcompress source.
 """
+
+
+
+from bzrlib.bzrdir import format_registry
+format_registry.register_metadir('gc-plain',
+    'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlain',
+    help='pack-0.92 with btree index and group compress. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    experimental=True,
+    )
+
+format_registry.register_metadir('gc-rich-root',
+    'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCRichRoot',
+    help='rich-root-pack with btree index and group compress. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    experimental=True,
+    )
+
+format_registry.register_metadir('gc-subtrees',
+    'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCSubtrees',
+    help='pack-0.92-subtress with btree index and group compress. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    experimental=True,
+    )
+
+from bzrlib.repository import format_registry as repo_registry
+repo_registry.register_lazy(
+    'Bazaar development format - btree+gc (needs bzr.dev from 1.6)\n',
+    'bzrlib.plugins.groupcompress.repofmt',
+    'RepositoryFormatPackGCPlain',
+    )
+from bzrlib.repository import format_registry as repo_registry
+repo_registry.register_lazy(
+    'Bazaar development format - btree+gc-rich-root (needs bzr.dev from 1.6)\n',
+    'bzrlib.plugins.groupcompress.repofmt',
+    'RepositoryFormatPackGCRichRoot',
+    )
+
+from bzrlib.repository import format_registry as repo_registry
+repo_registry.register_lazy(
+    'Bazaar development format - btree+gc-subtrees (needs bzr.dev from 1.6)\n',
+    'bzrlib.plugins.groupcompress.repofmt',
+    'RepositoryFormatPackGCSubtrees',
+    )
+
+
+
 def test_suite():
     # Thunk across to load_tests for niceness with older bzr versions
     from bzrlib.tests import TestLoader

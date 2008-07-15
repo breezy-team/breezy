@@ -39,6 +39,7 @@ from bzrlib.osutils import (
     split_lines,
     )
 from bzrlib.plugins.index2.btree_index import BTreeBuilder
+from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
     AbsentContentFactory,
@@ -233,7 +234,7 @@ def make_pack_factory(graph, delta, keylength):
         writer = pack.ContainerWriter(stream.write)
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
-            deltas=delta, add_callback=graph_index.add_nodes)
+            add_callback=graph_index.add_nodes)
         access = _DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
@@ -570,14 +571,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
 class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
-    def __init__(self, graph_index, is_locked, deltas=False, parents=True,
+    def __init__(self, graph_index, is_locked, parents=True,
         add_callback=None):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
         :param is_locked: A callback to check whether the object should answer
             queries.
-        :param deltas: Allow delta-compressed records.
         :param parents: If True, record knits parents, if not do not record 
             parents.
         :param add_callback: If not None, allow additions to the index and call
@@ -588,13 +588,7 @@ class _GCGraphIndex(object):
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
-        self._deltas = deltas
         self._parents = parents
-        if deltas and not parents:
-            # XXX: TODO: Delta tree and parent graph should be conceptually
-            # separate.
-            raise errors.KnitCorrupt(self, "Cannot do delta compression without "
-                "parent tracking.")
         self.has_graph = parents
         self._is_locked = is_locked
 
