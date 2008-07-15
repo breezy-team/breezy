@@ -513,6 +513,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 keys_to_add = []
                 basis_end = 0
                 groups += 1
+        if len(keys_to_add):
+            flush()
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
