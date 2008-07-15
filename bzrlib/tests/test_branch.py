@@ -325,7 +325,7 @@ class TestBranch6(TestBranch67, TestCaseWithTransport):
 
     def test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on)
+        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on_url)
 
 
 class TestBranch7(TestBranch67, TestCaseWithTransport):
@@ -349,17 +349,17 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
 
     def _test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
 
     def test_stack_and_unstack(self):
         branch = self.make_branch('a', format=self.get_format_name())
         target = self.make_branch_and_tree('b', format=self.get_format_name())
         branch.set_stacked_on(target.branch.base)
-        self.assertEqual(target.branch.base, branch.get_stacked_on())
+        self.assertEqual(target.branch.base, branch.get_stacked_on_url())
         revid = target.commit('foo')
         self.assertTrue(branch.repository.has_revision(revid))
         branch.set_stacked_on(None)
-        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
         self.assertFalse(branch.repository.has_revision(revid))
 
     def test_open_opens_stacked_reference(self):

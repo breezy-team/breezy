@@ -1006,7 +1006,7 @@ class BzrDir(object):
                 stacked_branch_url = self.root_transport.base
             else:
                 try:
-                    stacked_branch_url = source_branch.get_stacked_on()
+                    stacked_branch_url = source_branch.get_stacked_on_url()
                 except (errors.NotStacked, errors.UnstackableBranchFormat,
                     errors.UnstackableRepositoryFormat):
                     stacked_branch_url = None

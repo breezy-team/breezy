@@ -107,7 +107,7 @@ class TestBranch(ExternalBase):
         """
         new_branch = branch.Branch.open('newbranch')
         # The branch refers to the mainline
-        self.assertEqual(stacked_on, new_branch.get_stacked_on())
+        self.assertEqual(stacked_on, new_branch.get_stacked_on_url())
         # and the branch's work was pushed
         self.assertTrue(new_branch.repository.has_revision(branch_revid))
         # The newly committed revision shoud be present in the stacked branch,

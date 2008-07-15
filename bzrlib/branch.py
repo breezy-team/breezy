@@ -331,14 +331,14 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
 
         :raises NotStacked: If the branch is not stacked.
         :raises UnstackableBranchFormat: If the branch does not support
             stacking.
         """
-        raise NotImplementedError(self.get_stacked_on)
+        raise NotImplementedError(self.get_stacked_on_url)
 
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""
@@ -1837,7 +1837,7 @@ class BzrBranch(Branch):
         except errors.InvalidURLJoin, e:
             raise errors.InaccessibleParent(parent, self.base)
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)
 
     def set_push_location(self, location):
@@ -2016,7 +2016,7 @@ class BzrBranch7(BzrBranch5):
 
     def _open_hook(self):
         try:
-            url = self.get_stacked_on()
+            url = self.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
             errors.UnstackableBranchFormat):
             pass
@@ -2178,7 +2178,7 @@ class BzrBranch7(BzrBranch5):
         """See Branch.get_old_bound_location"""
         return self._get_bound_location(False)
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         self._check_stackable_repo()
         stacked_url = self._get_config_location('stacked_on_location')
         if stacked_url is None:
@@ -2197,7 +2197,7 @@ class BzrBranch7(BzrBranch5):
         self._check_stackable_repo()
         if not url:
             try:
-                old_url = self.get_stacked_on()
+                old_url = self.get_stacked_on_url()
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
                 return
@@ -2306,7 +2306,7 @@ class BzrBranch6(BzrBranch7):
     i.e. stacking.
     """
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)
 
     def set_stacked_on(self, url):

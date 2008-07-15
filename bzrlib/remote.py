@@ -1319,7 +1319,7 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
 
         :raises NotStacked: If the branch is not stacked.
@@ -1329,7 +1329,7 @@ class RemoteBranch(branch.Branch):
             stacking.
         """
         self._ensure_real()
-        return self._real_branch.get_stacked_on()
+        return self._real_branch.get_stacked_on_url()
 
     def lock_read(self):
         if not self._lock_mode:

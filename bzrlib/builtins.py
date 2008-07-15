@@ -862,7 +862,7 @@ class cmd_branch(Command):
             # We therefore need a try/except here and not just 'if stacked:'
             try:
                 note('Created new stacked branch referring to %s.' %
-                    branch.get_stacked_on())
+                    branch.get_stacked_on_url())
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:
                 note('Branched %d revision(s).' % branch.revno())

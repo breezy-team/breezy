@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for Branch.get_stacked_on and set_stacked_on."""
+"""Tests for Branch.get_stacked_on_url and set_stacked_on."""
 
 from bzrlib import (
     bzrdir,
@@ -42,12 +42,12 @@ class TestStacking(TestCaseWithBranch):
             branch.set_stacked_on(target.base)
         except old_format_errors:
             # if the set failed, so must the get
-            self.assertRaises(old_format_errors, branch.get_stacked_on)
+            self.assertRaises(old_format_errors, branch.get_stacked_on_url)
             return
         # now we have a stacked branch:
-        self.assertEqual(target.base, branch.get_stacked_on())
+        self.assertEqual(target.base, branch.get_stacked_on_url())
         branch.set_stacked_on(None)
-        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""

@@ -142,7 +142,7 @@ def _gather_related_branches(branch):
     locs.add_url('parent branch', branch.get_parent())
     locs.add_url('submit branch', branch.get_submit_branch())
     try:
-        locs.add_url('stacked on', branch.get_stacked_on())
+        locs.add_url('stacked on', branch.get_stacked_on_url())
     except (errors.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
         errors.NotStacked):
         pass
