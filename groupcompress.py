@@ -38,7 +38,7 @@ from bzrlib.osutils import (
     sha_strings,
     split_lines,
     )
-from bzrlib.plugins.index2.repofmt import InMemoryBTree
+from bzrlib.plugins.index2.btree_index import BTreeBuilder
 from bzrlib.versionedfile import (
     adapter_registry,
     AbsentContentFactory,
@@ -227,7 +227,7 @@ def make_pack_factory(graph, delta, keylength):
         ref_length = 0
         if graph:
             ref_length += 1
-        graph_index = InMemoryBTree(reference_lists=ref_length,
+        graph_index = BTreeBuilder(reference_lists=ref_length,
             key_elements=keylength)
         stream = transport.open_write_stream('newpack')
         writer = pack.ContainerWriter(stream.write)
