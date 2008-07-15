@@ -347,6 +347,13 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         self.assertRaises(errors.UnstackableRepositoryFormat,
             branch.set_stacked_on, target.base)
 
+    def test_clone_stacked_on_unstackable_repo(self):
+        repo = self.make_repository('a', format='dirstate-tags')
+        control = repo.bzrdir
+        branch = _mod_branch.BzrBranchFormat7().initialize(control)
+        # Calling clone should not raise UnstackableRepositoryFormat.
+        cloned_bzrdir = control.clone('cloned')
+
     def _test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
         self.assertRaises(errors.NotStacked, branch.get_stacked_on)
