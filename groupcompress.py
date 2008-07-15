@@ -17,6 +17,7 @@
 
 """Core compression logic for compressing streams of related files."""
 
+from itertools import izip
 from cStringIO import StringIO
 import zlib
 
@@ -145,6 +146,7 @@ class GroupCompressor(object):
         new_lines = []
         new_lines.append('label: %s\n' % label)
         new_lines.append('sha1: %s\n' % sha1)
+        index_lines = [False, False]
         pos = 0
         line_locations = self.line_locations
         accumulator = []
@@ -164,7 +166,18 @@ class GroupCompressor(object):
                         start_byte = 0
                     else:
                         start_byte = self.line_offsets[copy_start - 1]
-                    new_lines.append("c,%d,%d\n" % (start_byte, stop_byte - start_byte))
+                    bytes = stop_byte - start_byte
+                    copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
+                    insert_instruction = "i,%d\n" % copy_len
+                    if (bytes + len(insert_instruction) >
+                        len(copy_control_instruction)):
+                        new_lines.append(copy_control_instruction)
+                        index_lines.append(False)
+                    else:
+                        # inserting is shorter than copying, so insert.
+                        new_lines.append(insert_instruction)
+                        new_lines.extend(lines[new_start:new_start+copy_len])
+                        index_lines.extend([False]*(copy_len + 1))
                     copying = False
                     new_start = pos
                     new_len = 1
@@ -186,18 +199,33 @@ class GroupCompressor(object):
                             start_byte = 0
                         else:
                             start_byte = self.line_offsets[copy_start - 1]
-                        new_lines.append("c,%d,%d\n" % (start_byte, stop_byte - start_byte))
+                        bytes = stop_byte - start_byte
+                        copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
+                        insert_instruction = "i,%d\n" % copy_len
+                        if (bytes + len(insert_instruction) >
+                            len(copy_control_instruction)):
+                            new_lines.append(copy_control_instruction)
+                            index_lines.append(False)
+                        else:
+                            # inserting is shorter than copying, so insert.
+                            new_lines.append(insert_instruction)
+                            new_lines.extend(lines[new_start:new_start+copy_len])
+                            index_lines.extend([False]*(copy_len + 1))
                         copy_len = 1
                         copy_ends = next
+                        new_start = pos
                 else:
                     # Flush
                     if new_len:
                         new_lines.append("i,%d\n" % new_len)
                         new_lines.extend(lines[new_start:new_start+new_len])
+                        index_lines.append(False)
+                        index_lines.extend([True]*new_len)
                     # setup a copy
                     copy_len = 1
                     copy_ends = line_locations[line][1]
                     copying = True
+                    new_start = pos
             pos += 1
         if copying:
             copy_start = min(copy_ends) - copy_len
@@ -206,13 +234,25 @@ class GroupCompressor(object):
                 start_byte = 0
             else:
                 start_byte = self.line_offsets[copy_start - 1]
-            new_lines.append("c,%d,%d\n" % (start_byte, stop_byte - start_byte))
+            bytes = stop_byte - start_byte
+            copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
+            insert_instruction = "i,%d\n" % copy_len
+            if (bytes + len(insert_instruction) >
+                len(copy_control_instruction)):
+                new_lines.append(copy_control_instruction)
+                index_lines.append(False)
+            else:
+                # inserting is shorter than copying, so insert.
+                new_lines.append(insert_instruction)
+                new_lines.extend(lines[new_start:new_start+copy_len])
+                index_lines.extend([False]*(copy_len + 1))
         elif new_len:
             new_lines.append("i,%d\n" % new_len)
             new_lines.extend(lines[new_start:new_start+new_len])
-
+            index_lines.append(False)
+            index_lines.extend([True]*new_len)
         delta_start = (self.endpoint, len(self.lines))
-        self.output_lines(new_lines)
+        self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
         self.input_bytes += sum(map(len, lines))
         delta_end = (self.endpoint, len(self.lines))
@@ -235,17 +275,24 @@ class GroupCompressor(object):
         sha1 = sha_strings(lines)
         return lines, sha1
 
-    def output_lines(self, new_lines):
+    def output_lines(self, new_lines, index_lines):
+        """Output some lines.
+
+        :param new_lines: The lines to output.
+        :param index_lines: A boolean flag for each line - when True, index
+            that line.
+        """
         endpoint = self.endpoint
         offset = len(self.lines)
-        for pos, line in enumerate(new_lines):
+        for (pos, line), index in izip(enumerate(new_lines), index_lines):
             self.lines.append(line)
             endpoint += len(line)
             self.line_offsets.append(endpoint)
-            indices, next_lines = self.line_locations.setdefault(line,
-                (set(), set()))
-            indices.add(pos + offset)
-            next_lines.add(pos + offset + 1)
+            if index:
+                indices, next_lines = self.line_locations.setdefault(line,
+                    (set(), set()))
+                indices.add(pos + offset)
+                next_lines.add(pos + offset + 1)
         self.endpoint = endpoint
 
     def ratio(self):

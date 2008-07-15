@@ -89,9 +89,9 @@ class TestGroupCompressor(TestCaseWithTransport):
             # add the line different
             'i,1\n',
             'different\n',
-            # copy the line \n. Note that when we filter on encoding-overhead
-            # this will become a fresh insert instead
-            'c,79,1\n',
+            # Insert the trailing newline.
+            'i,1\n',
+            '\n'
             ])
         self.assertEqual(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -120,9 +120,9 @@ class TestGroupCompressor(TestCaseWithTransport):
             'c,72,7\n',
             # copy the lines different, moredifferent
             'c,154,24\n',
-            # copy the line \n. Note that when we filter on encoding-overhead
-            # this will become a fresh insert instead
-            'c,79,1\n',
+            # Insert the trailing newline.
+            'i,1\n',
+            '\n'
             ])
         self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
         self.assertEqual(sum(map(len, expected_lines)), end_point)
