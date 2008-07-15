@@ -136,3 +136,18 @@ class TestGroupCompressor(TestCaseWithTransport):
         compressor.compress(('label3',),
             ['new\n', 'common\n', 'different\n', 'moredifferent\n'], None)
         self.assertAlmostEqual(0.3, compressor.ratio(), 1)
+
+    def test_extract_from_compressor(self):
+        # Knit fetching will try to reconstruct texts locally which results in
+        # reading something that is in the compressor stream already.
+        compressor = groupcompress.GroupCompressor(True)
+        sha_1,  _ = compressor.compress(('label',),
+            ['strange\n', 'common\n'], None)
+        sha_2, _ = compressor.compress(('newlabel',),
+            ['common\n', 'different\n', 'moredifferent\n'], None)
+        # get the first out
+        self.assertEqual((['strange\n', 'common\n'], sha_1),
+            compressor.extract(('label',)))
+        # and the second
+        self.assertEqual((['common\n', 'different\n', 'moredifferent\n'],
+            sha_2), compressor.extract(('newlabel',)))

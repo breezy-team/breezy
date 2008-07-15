@@ -119,6 +119,7 @@ class GroupCompressor(object):
         self.input_bytes = 0
         # line: set(locations it appears at), set(N+1 for N in locations)
         self.line_locations = {}
+        self.labels_deltas = {}
 
     def compress(self, key, lines, expected_sha):
         """Compress lines with label key.
@@ -194,10 +195,24 @@ class GroupCompressor(object):
             new_lines.append("i,%d\n" % new_len)
             new_lines.extend(lines[new_start:new_start+new_len])
 
+        delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines)
         trim_encoding_newline(lines)
         self.input_bytes += sum(map(len, lines))
+        delta_end = (self.endpoint, len(self.lines))
+        self.labels_deltas[key] = (delta_start, delta_end)
         return sha1, self.endpoint
+
+    def extract(self, key):
+        """Extract a key previously added to the compressor."""
+        delta_details = self.labels_deltas[key]
+        delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
+        label, sha1, delta = parse(delta_lines)
+        if label != key:
+            raise AssertionError("wrong key: %r, wanted %r" % (label, key))
+        lines = apply_delta(self.lines, delta)
+        sha1 = sha_strings(lines)
+        return lines, sha1
 
     def output_lines(self, new_lines):
         self.endpoint += sum(map(len, new_lines))
@@ -212,6 +227,7 @@ class GroupCompressor(object):
     def ratio(self):
         """Return the overall compression ratio."""
         return float(self.input_bytes) / float(self.endpoint)
+
 
 def make_pack_factory(graph, delta, keylength):
     """Create a factory for creating a pack based groupcompress.
@@ -262,6 +278,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._index = index
         self._access = access
         self._delta = delta
+        self._unadded_refs = {}
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -380,6 +397,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             source_results.append(new_result)
             result.update(new_result)
             missing.difference_update(set(new_result))
+        if self._unadded_refs:
+            for key in missing:
+                if key in self._unadded_refs:
+                    result[key] = self._unadded_refs[key]
         return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
@@ -409,29 +430,41 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
                 locations.iteritems())
+            local = frozenset(keys).intersection(set(self._unadded_refs))
+            for key in local:
+                parent_map[key] = self._unadded_refs[key]
+                locations[key] = None
             present_keys = topo_sort(parent_map)
             # Now group by source:
         else:
             present_keys = locations.keys()
+            local = frozenset(keys).intersection(set(self._unadded_refs))
+            for key in local:
+                present_keys.append(key)
+                locations[key] = None
         absent_keys = keys.difference(set(locations))
         for key in absent_keys:
             yield AbsentContentFactory(key)
         for key in present_keys:
-            index_memo, _, parents, (method, _) = locations[key]
-            # read
-            read_memo = index_memo[0:3]
-            zdata = self._access.get_raw_records([read_memo]).next()
-            # decompress
-            plain = zlib.decompress(zdata)
-            # parse
-            delta_lines = split_lines(plain[index_memo[3]:index_memo[4]])
-            label, sha1, delta = parse(delta_lines)
-            if label != key:
-                raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-            basis = plain[:index_memo[3]]
-            basis = StringIO(basis).readlines()
-            #basis = split_lines(plain[:last_end])
-            lines = apply_delta(basis, delta)
+            if key in self._unadded_refs:
+                lines, sha1 = self._compressor.extract(key)
+                parents = self._unadded_refs[key]
+            else:
+                index_memo, _, parents, (method, _) = locations[key]
+                # read
+                read_memo = index_memo[0:3]
+                zdata = self._access.get_raw_records([read_memo]).next()
+                # decompress
+                plain = zlib.decompress(zdata)
+                # parse
+                delta_lines = split_lines(plain[index_memo[3]:index_memo[4]])
+                label, sha1, delta = parse(delta_lines)
+                if label != key:
+                    raise AssertionError("wrong key: %r, wanted %r" % (label, key))
+                basis = plain[:index_memo[3]]
+                basis = StringIO(basis).readlines()
+                #basis = split_lines(plain[:last_end])
+                lines = apply_delta(basis, delta)
             bytes = ''.join(lines)
             yield FulltextContentFactory(key, parents, sha1, bytes)
             
@@ -479,12 +512,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
         adapters = {}
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
-        compressor = GroupCompressor(self._delta)
+        self._compressor = GroupCompressor(self._delta)
+        self._unadded_refs = {}
         keys_to_add = []
         basis_end = 0
         groups = 1
         def flush():
-            compressed = zlib.compress(''.join(compressor.lines))
+            compressed = zlib.compress(''.join(self._compressor.lines))
             index, start, length = self._access.add_raw_records(
                 [(None, len(compressed))], compressed)[0]
             nodes = []
@@ -502,20 +536,24 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 adapter = get_adapter(adapter_key)
                 bytes = adapter.get_bytes(record,
                     record.get_bytes_as(record.storage_kind))
-            found_sha1, end_point = compressor.compress(record.key,
+            found_sha1, end_point = self._compressor.compress(record.key,
                 split_lines(bytes), record.sha1)
+            self._unadded_refs[record.key] = record.parents
             yield found_sha1
             keys_to_add.append((record.key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
             if basis_end > 1024 * 1024 * 20:
                 flush()
-                compressor = GroupCompressor(self._delta)
+                self._compressor = GroupCompressor(self._delta)
+                self._unadded_refs = {}
                 keys_to_add = []
                 basis_end = 0
                 groups += 1
         if len(keys_to_add):
             flush()
+        self._compressor = None
+        self._unadded_refs = {}
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
