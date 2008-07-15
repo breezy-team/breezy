@@ -1072,7 +1072,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My 2")
         self.client_set_prop("dc/trunk", "some:property", "some other data\n")
         self.client_commit("dc", "My 4")
-        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos = Repository.open(repos_url)
         self.assertEquals([('trunk', {'trunk': (u'M', None, -1)}, 3), 
                            ('trunk', {'trunk': (u'M', None, -1)}, 2), 
                            ('trunk', {'trunk/bla': (u'A', None, -1), 'trunk': (u'A', None, -1)}, 1)], 
@@ -1098,7 +1098,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/branches")
         self.client_commit("dc", "foohosts") #4
 
-        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos = Repository.open(repos_url)
         set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f",format=format.get_rich_root_format())
         newrepos = dir.create_repository()

@@ -403,7 +403,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dc.add_file("bla").modify("data2")
         dc.close()
 
-        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)

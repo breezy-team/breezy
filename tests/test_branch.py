@@ -182,7 +182,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
     def test_num_revnums(self):
         repos_url = self.make_repository('a')
-        bzrdir = BzrDir.open("svn+"+repos_url)
+        bzrdir = BzrDir.open(repos_url)
         branch = bzrdir.open_branch()
         self.assertEqual(branch.generate_revision_id(0),
                          branch.last_revision())
@@ -191,7 +191,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.add_file("foo").modify()
         dc.close()
         
-        bzrdir = BzrDir.open("svn+"+repos_url)
+        bzrdir = BzrDir.open(repos_url)
         branch = bzrdir.open_branch()
         repos = bzrdir.find_repository()
         
@@ -204,20 +204,20 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.open_file("foo").modify()
         dc.close()
 
-        branch = Branch.open("svn+"+repos_url)
-        repos = Repository.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
+        repos = Repository.open(repos_url)
 
         self.assertEqual(repos.generate_revision_id(2, "", mapping),
                 branch.last_revision())
 
     def test_set_revision_history(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         self.assertRaises(NotImplementedError, branch.set_revision_history, [])
 
     def test_break_lock(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         branch.control_files.break_lock()
 
     def test_repr(self):
@@ -227,33 +227,33 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
     def test_get_physical_lock_status(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         self.assertFalse(branch.get_physical_lock_status())
 
     def test_set_push_location(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         self.assertRaises(NotImplementedError, branch.set_push_location, [])
 
     def test_get_parent(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         self.assertEqual(None, branch.get_parent())
 
     def test_append_revision(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         branch.append_revision([])
 
     def test_get_push_location(self):
         repos_url = self.make_repository('a')
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         self.assertIs(None, branch.get_push_location())
 
     def test_revision_history(self):
         repos_url = self.make_repository('a')
 
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
         self.assertEqual([branch.generate_revision_id(0)], 
                 branch.revision_history())
 
@@ -263,8 +263,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
                 "42 mycommit\n")
         dc.close()
         
-        branch = Branch.open("svn+"+repos_url)
-        repos = Repository.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
+        repos = Repository.open(repos_url)
         
         mapping = repos.get_mapping()
 
@@ -276,8 +276,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.open_file("foo").modify()
         dc.close()
 
-        branch = Branch.open("svn+"+repos_url)
-        repos = Repository.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
+        repos = Repository.open(repos_url)
 
         mapping = repos.get_mapping()
 
@@ -338,7 +338,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.add_file("foo").modify()
         dc.close()
 
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
 
         self.assertIs(None, branch.nick)
 
@@ -349,7 +349,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.add_dir("trunk")
         dc.close()
 
-        branch = Branch.open("svn+"+repos_url+"/trunk")
+        branch = Branch.open(repos_url+"/trunk")
 
         self.assertEqual("trunk", branch.nick)
 
@@ -362,7 +362,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
                 "properties: \n\tbranch-nick: mybranch\n")
         dc.close()
 
-        branch = Branch.open("svn+"+repos_url)
+        branch = Branch.open(repos_url)
 
         rev = branch.repository.get_revision(branch.last_revision())
 
@@ -647,7 +647,7 @@ foohosts""")
 
         os.mkdir("new")
 
-        url = "svn+"+repos_url+"/branches/foobranch"
+        url = repos_url+"/branches/foobranch"
         mutter('open %r' % url)
         olddir = BzrDir.open(url)
 
@@ -700,7 +700,7 @@ foohosts""")
         trunk.add_file("trunk/hosts").modify()
         dc.close()
 
-        url = "svn+"+repos_url+"/trunk"
+        url = repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
         newtree = oldbranch.create_checkout("e")
@@ -737,7 +737,7 @@ foohosts""")
         trunk.open_file("trunk/hosts").modify()
         dc.close()
 
-        url = "svn+"+repos_url+"/trunk"
+        url = repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
         newtree = oldbranch.create_checkout("e", revision_id=
