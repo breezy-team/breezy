@@ -32,6 +32,11 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * ``bzr (re)merge --weave`` will now use a standard Weave algorithm,
+      rather than the annotation-based merge it was using. It does so by
+      building up a Weave of the important texts, without needing to build
+      the full ancestry. (John Arbash Meinel, #238895)
+
     * ``bzr send`` documents and better supports ``emacsclient`` (proper
       escaping of mail headers and handling of the MUA Mew).
       (Christophe Troestler)
