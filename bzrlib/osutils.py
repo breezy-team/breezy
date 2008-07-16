@@ -53,12 +53,6 @@ from bzrlib import (
     )
 """)
 
-try:
-    import win32file
-except:
-    have_win32file = False
-else:
-    have_win32file = True
 
 import bzrlib
 from bzrlib import symbol_versioning
@@ -1197,9 +1191,7 @@ def _walkdirs_utf8(top, prefix=""):
         pass to os functions to affect the file in question. (such as os.lstat)
     """
     fs_encoding = _fs_enc.upper()
-    if (have_win32file):
-        return _walkdirs_utf8_win32_find_file(top, prefix=prefix)
-    elif (sys.platform == 'win32' or
+    if (sys.platform == 'win32' or
         fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
         return _walkdirs_unicode_to_utf8(top, prefix=prefix)
     else:
@@ -1322,10 +1314,6 @@ def _walkdirs_utf8_win32_find_file(top, prefix=""):
     """
     Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
     Unicode paths.
-    This is currently the fallback code path when the filesystem encoding is
-    not UTF-8. It may be better to implement an alternative so that we can
-    safely handle paths that are not properly decodable in the current
-    encoding.
     """
     import operator
     _utf8_encode = codecs.getencoder('utf8')
@@ -1337,18 +1325,7 @@ def _walkdirs_utf8_win32_find_file(top, prefix=""):
     _file = _formats[stat.S_IFREG]
 
     # Possible attributes:
-    # 
-    # FILE_ATTRIBUTE_ARCHIVE 
-    # FILE_ATTRIBUTE_COMPRESSED 
-    # FILE_ATTRIBUTE_DIRECTORY 
-    # FILE_ATTRIBUTE_HIDDEN 
-    # FILE_ATTRIBUTE_NORMAL 
-    # FILE_ATTRIBUTE_OFFLINE 
-    # FILE_ATTRIBUTE_READONLY 
-    # FILE_ATTRIBUTE_SYSTEM 
-    # FILE_ATTRIBUTE_TEMPORARY 
     DIRECTORY = win32file.FILE_ATTRIBUTE_DIRECTORY
-    NORMAL = win32file.FILE_ATTRIBUTE_NORMAL
 
     pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
     while pending:

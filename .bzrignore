@@ -49,3 +49,4 @@ bzrlib/_*_c.so
 bzrlib/_*_c.pyd
 # generated help topics
 doc/en/user-reference/*.txt
+bzrlib/_walkdirs_win32.c
