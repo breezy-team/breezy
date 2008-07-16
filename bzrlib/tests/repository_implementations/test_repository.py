@@ -688,7 +688,7 @@ class TestRepository(TestCaseWithRepository):
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
         if self.repository_format == RepositoryFormat7():
-            raise KnownFailure(
+            raise TestNotApplicable(
                 "Cannot fetch weaves over smart protocol.")
         remote_repo = self.make_remote_repository('remote')
         local_bzrdir = self.make_bzrdir('local')
@@ -707,7 +707,7 @@ class TestRepository(TestCaseWithRepository):
         weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
                          RepositoryFormat7()]
         if self.repository_format in weave_formats:
-            raise KnownFailure(
+            raise TestNotApplicable(
                 "Cannot fetch weaves over smart protocol.")
         remote_repo = self.make_remote_repository('remote')
         remote_branch = remote_repo.bzrdir.create_branch()

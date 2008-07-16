@@ -88,6 +88,10 @@ class RemoteBzrDir(BzrDir):
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
 
+    def cloning_metadir(self):
+        self._ensure_real()
+        return self._real_bzrdir.cloning_metadir()
+
     def create_repository(self, shared=False):
         self._ensure_real()
         self._real_bzrdir.create_repository(shared=shared)
@@ -218,10 +222,11 @@ class RemoteBzrDir(BzrDir):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
         self._ensure_real()
         return self._real_bzrdir.clone(url, revision_id=revision_id,
-            force_new_repo=force_new_repo)
+            force_new_repo=force_new_repo, preserve_stacking=preserve_stacking)
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):

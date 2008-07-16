@@ -21,6 +21,8 @@ IN DEVELOPMENT
       in the User Guide and ``bzr help rules`` for more information.
       (Ian Clatworthy)
 
+    * Sites may suggest a branch to stack new branches on.  (Aaron Bentley)
+
     * Stacked branches are now supported. See ``bzr help branch`` and 
       ``bzr help push``. (Robert Collins)
 
@@ -43,6 +45,12 @@ IN DEVELOPMENT
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
 
   BUG FIXES:
+
+    * Bazaar is now able to be a client to the web server of IIS 6 and 7.
+      The broken implementations of RFC822 in Python and RFC2046 in IIS
+      combined with boundary-line checking in Bazaar previously made this
+      impossible. (NB, IIS 5 does not suffer from this problem).
+      (Adrian Wilkins, #247585)
 
     * ``bzr log --long`` with a ghost in your mainline now handles that
       ghost properly. (John Arbash Meinel, #243536)
@@ -210,6 +218,9 @@ now faster.
       tree twice, or merge an ancestor of an existing merge, it will only
       record the newest. (If you merge a descendent, it will replace its
       ancestor). (John Arbash Meinel, #235407)
+
+    * ``RepositoryPolicy.__init__`` now requires stack_on and stack_on_pwd,
+      through the derived classes do not.  (Aaron Bentley)
 
   INTERNALS:
 

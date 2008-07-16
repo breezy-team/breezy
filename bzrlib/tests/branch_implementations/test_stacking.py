@@ -21,7 +21,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestNotApplicable
+from bzrlib.tests import TestNotApplicable, KnownFailure
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -48,6 +48,22 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual(target.base, branch.get_stacked_on_url())
         branch.set_stacked_on_url(None)
         self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
+
+    def test_get_set_stacked_on_relative(self):
+        # Branches can be stacked on other branches using relative paths.
+        branch = self.make_branch('branch')
+        target = self.make_branch('target')
+        old_format_errors = (
+            errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat,
+            )
+        try:
+            branch.set_stacked_on_url('../target')
+        except old_format_errors:
+            # if the set failed, so must the get
+            self.assertRaises(old_format_errors, branch.get_stacked_on_url)
+            return
+        self.assertEqual('../target', branch.get_stacked_on_url())
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
@@ -120,4 +136,82 @@ class TestStacking(TestCaseWithBranch):
         # of course it's still in the mainline
         self.assertRevisionInRepository('mainline', trunk_revid)
         # and now we're no longer stacked
-        self.assertIs(new_branch.get_stacked_on_url(), None)
+        self.assertRaises(errors.NotStacked,
+            new_branch.get_stacked_on_url)
+
+    def prepare_for_clone(self):
+        tree = self.make_branch_and_tree('stacked-on')
+        tree.commit('Added foo')
+        stacked_bzrdir = tree.branch.bzrdir.sprout(
+            'stacked', tree.branch.last_revision(), stacked=True)
+        return stacked_bzrdir
+
+    def test_clone_from_stacked_branch_preserve_stacking(self):
+        # We can clone from the bzrdir of a stacked branch. If
+        # preserve_stacking is True, the cloned branch is stacked on the
+        # same branch as the original.
+        try:
+            stacked_bzrdir = self.prepare_for_clone()
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            # not a testable combination.
+            return
+        cloned_bzrdir = stacked_bzrdir.clone('cloned', preserve_stacking=True)
+        try:
+            self.assertEqual(
+                stacked_bzrdir.open_branch().get_stacked_on_url(),
+                cloned_bzrdir.open_branch().get_stacked_on_url())
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            pass
+
+    def test_clone_from_stacked_branch_no_preserve_stacking(self):
+        try:
+            stacked_bzrdir = self.prepare_for_clone()
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            # not a testable combination.
+            return
+        try:
+            cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
+                preserve_stacking=False)
+        except errors.NoSuchRevision:
+            raise KnownFailure(
+                'Pack-to-pack fetch does not handle stacking properly.'
+                ' (#248506)')
+        else:
+            self.fail('Expected a failure due to broken fetching.')
+        unstacked_branch = cloned_unstacked_bzrdir.open_branch()
+        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+                          unstacked_branch.get_stacked_on_url)
+
+    def test_no_op_preserve_stacking(self):
+        """With no stacking, preserve_stacking should be a no-op."""
+        branch = self.make_branch('source')
+        cloned_bzrdir = branch.bzrdir.clone('cloned', preserve_stacking=True)
+        self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
+                          cloned_bzrdir.open_branch().get_stacked_on_url)
+
+    def test_sprout_stacking_policy_handling(self):
+        """Obey policy where possible, ignore otherwise."""
+        stack_on = self.make_branch('stack-on')
+        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir.get_config().set_default_stack_on('stack-on')
+        source = self.make_branch('source')
+        target = source.bzrdir.sprout('target').open_branch()
+        try:
+            self.assertEqual('../stack-on', target.get_stacked_on_url())
+        except errors.UnstackableBranchFormat:
+            pass
+
+    def test_clone_stacking_policy_handling(self):
+        """Obey policy where possible, ignore otherwise."""
+        stack_on = self.make_branch('stack-on')
+        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir.get_config().set_default_stack_on('stack-on')
+        source = self.make_branch('source')
+        target = source.bzrdir.clone('target').open_branch()
+        try:
+            self.assertEqual('../stack-on', target.get_stacked_on_url())
+        except errors.UnstackableBranchFormat:
+            pass
