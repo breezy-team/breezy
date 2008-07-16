@@ -209,7 +209,7 @@ class TestStacking(TestCaseWithBranch):
         except errors.UnstackableBranchFormat:
             pass
 
-    def test_fetch_copies_from_stacked_on(self):
+    def prepare_stacked_on_fetch(self):
         stack_on = self.make_branch_and_tree('stack-on')
         stack_on.commit('first commit', rev_id='rev1')
         try:
@@ -218,5 +218,16 @@ class TestStacking(TestCaseWithBranch):
                 errors.UnstackableBranchFormat):
             raise TestNotApplicable('Format does not support stacking.')
         unstacked = self.make_repository('unstacked')
-        unstacked.fetch(stacked_dir.open_branch().repository, 'rev1')
+        return stacked_dir.open_workingtree(), unstacked
+
+    def test_fetch_copies_from_stacked_on(self):
+        stacked, unstacked = self.prepare_stacked_on_fetch()
+        unstacked.fetch(stacked.branch.repository, 'rev1')
         unstacked.get_revision('rev1')
+
+    def test_fetch_copies_from_stacked_on_and_stacked(self):
+        stacked, unstacked = self.prepare_stacked_on_fetch()
+        stacked.commit('second commit', rev_id='rev2')
+        unstacked.fetch(stacked.branch.repository, 'rev2')
+        unstacked.get_revision('rev1')
+        unstacked.get_revision('rev2')
