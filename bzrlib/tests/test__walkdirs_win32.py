@@ -41,11 +41,20 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def assertWalkdirs(self, expected, top, prefix=''):
         from bzrlib._walkdirs_win32 import (
-            Win32Finder,
+            _walkdirs_utf8_win32_find_file as walkdirs_utf8,
             )
-        finder = Win32Finder(top, prefix=prefix)
-        result = list(finder)
+        finder = walkdirs_utf8(top, prefix=prefix)
+        result = []
+        for dirname, dirblock in finder:
+            block_no_stat = [info[:3] + info[4:] for info in dirblock]
+            result.append((dirname, block_no_stat))
         self.assertEqual(expected, result)
 
     def test_empty_directory(self):
         self.assertWalkdirs([(('', u'.'), [])], u'.')
+
+    def test_file_in_dir(self):
+        self.build_tree(['foo'])
+        self.assertWalkdirs([
+            (('', u'.'), [('foo', 'foo', 'file', u'./foo')])
+            ], u'.')

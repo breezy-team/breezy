@@ -52,14 +52,19 @@ cdef extern from "_walkdirs_win32.h":
     cdef int FindNextFileW(HANDLE search, WIN32_FIND_DATAW *data)
     cdef int FindClose(HANDLE search)
 
+    cdef DWORD FILE_ATTRIBUTE_READONLY
     cdef DWORD FILE_ATTRIBUTE_DIRECTORY
 
     cdef int GetLastError()
+
+    # Wide character functions
+    DWORD wcslen(WCHAR *)
 
 
 cdef extern from "Python.h":
     WCHAR *PyUnicode_AS_UNICODE(object)
     Py_ssize_t PyUnicode_GET_SIZE(object)
+    object PyUnicode_FromUnicode(WCHAR *, Py_ssize_t)
 
 
 import codecs
@@ -83,24 +88,6 @@ class _Win32Stat(object):
         """Create a new Stat object, based on the WIN32_FIND_DATA tuple"""
         pass
 
-    def set_stuff(self):
-        (attrib, ctime, atime, wtime, size_high, size_low,
-         res0, res1, name, alt_name) = win32_find_data_record
-        self.st_ctime = int(ctime)
-        self.st_mtime = int(wtime)
-        self.st_atime = int(atime)
-        self.st_size = (size_high * 1<<32) + size_low
-
-        mode_bits = 0100666 # writeable file, the most common
-        if (win32file.FILE_ATTRIBUTE_READONLY & attrib ==
-            win32file.FILE_ATTRIBUTE_READONLY):
-            mode_bits ^= 0222 # remove writable bits
-        if (win32file.FILE_ATTRIBUTE_DIRECTORY & attrib ==
-            win32file.FILE_ATTRIBUTE_DIRECTORY):
-            # Remove the FILE bit, set the DIR bit, and set the EXEC bits
-            mode_bits ^= 0140111
-        self.st_mode = mode_bits
-
     def __repr__(self):
         """Repr is the same as a Stat object.
 
@@ -118,8 +105,8 @@ cdef class Win32Finder:
     cdef object _prefix
 
     cdef object _utf8_encode
-    cdef object _directory
-    cdef object _file
+    cdef object _directory_kind
+    cdef object _file_kind
 
     cdef object _pending
     cdef object _last_dirblock
@@ -129,8 +116,8 @@ cdef class Win32Finder:
         self._prefix = prefix
 
         self._utf8_encode = codecs.getencoder('utf8')
-        self._directory = osutils._directory_kind
-        self._file = osutils._formats[stat.S_IFREG]
+        self._directory_kind = osutils._directory_kind
+        self._file_kind = osutils._formats[stat.S_IFREG]
 
         self._pending = [(osutils.safe_utf8(prefix), None, None, None,
                           osutils.safe_unicode(top))]
@@ -139,7 +126,53 @@ cdef class Win32Finder:
     def __iter__(self):
         return self
 
-    def _get_files_in(self, directory):
+    cdef object _get_name(self, WIN32_FIND_DATAW *data):
+        """Extract the Unicode name for this file/dir."""
+        name_unicode = PyUnicode_FromUnicode(data.cFileName,
+                                             wcslen(data.cFileName))
+        return name_unicode
+
+    cdef int _get_mode_bits(self, WIN32_FIND_DATAW *data):
+        cdef int mode_bits
+
+        mode_bits = 0100666 # writeable file, the most common
+        if data.dwFileAttributes & FILE_ATTRIBUTE_READONLY == FILE_ATTRIBUTE_READONLY:
+            mode_bits ^= 0222 # remove the write bits
+        if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == FILE_ATTRIBUTE_DIRECTORY:
+            # Remove the FILE bit, set the DIR bit, and set the EXEC bits
+            mode_bits ^= 0140111
+        return mode_bits
+
+    cdef object _get_size(self, WIN32_FIND_DATAW *data):
+        return long(data.nFileSizeLow) + (long(data.nFileSizeHigh) << 32)
+
+    cdef object _get_stat_value(self, WIN32_FIND_DATAW *data):
+        """Get the filename and the stat information."""
+        statvalue = _Win32Stat()
+        statvalue.st_mode = self._get_mode_bits(data)
+        # TODO: Convert the filetimes
+        statvalue.st_ctime = 0
+        statvalue.st_atime = 0
+        statvalue.st_mtime = 0
+        statvalue.st_size = self._get_size(data)
+        return statvalue
+
+    cdef object _get_kind(self, WIN32_FIND_DATAW *data):
+        if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
+            return self._directory_kind
+        return self._file_kind
+
+    cdef int _should_skip(self, WIN32_FIND_DATAW *data):
+        """Is this '.' or '..' so we should skip it?"""
+        if (data.cFileName[0] != c'.'):
+            return False
+        if data.cFileName[1] == c'\0':
+            return True
+        if data.cFileName[1] == c'.' and data.cFileName[2] == c'\0':
+            return True
+        return False
+
+    def _get_files_in(self, directory, relprefix):
         cdef WIN32_FIND_DATAW search_data
         cdef HANDLE hFindFile
         cdef int last_err
@@ -163,12 +196,18 @@ cdef class Win32Finder:
             result = 1
             while result:
                 # Skip '.' and '..'
-                if (search_data.cFileName[0] == c'.'
-                    and (search_data.cFileName[1] == c'\0'
-                         or (search_data.cFileName[1] == c'.'
-                             and search_data.cFileName[2] == c'\0'))):
+                if self._should_skip(&search_data):
                     result = FindNextFileW(hFindFile, &search_data)
                     continue
+                name_unicode = self._get_name(&search_data)
+                name_utf8 = self._utf8_encode(name_unicode)[0]
+                relpath = relprefix + name_utf8
+                abspath = directory + name_unicode
+                append((relpath, name_utf8, 
+                        self._get_kind(&search_data),
+                        self._get_stat_value(&search_data),
+                        abspath))
+
                 result = FindNextFileW(hFindFile, &search_data)
         finally:
             result = FindClose(hFindFile)
@@ -197,7 +236,7 @@ cdef class Win32Finder:
             # we do this here, because we allow the user to modified the
             # queue before the next iteration
             for d in reversed(self._last_dirblock):
-                if d[2] == _directory:
+                if d[2] == self._directory_kind:
                     self._pending.append(d)
 
         if not self._pending:
@@ -213,7 +252,7 @@ cdef class Win32Finder:
             relprefix = ''
         top_slash = top + '/'
 
-        dirblock = self._get_files_in(top_slash)
+        dirblock = self._get_files_in(top_slash, relprefix)
         dirblock.sort(key=operator.itemgetter(1))
         self._last_dirblock = dirblock
         return (relroot, top), dirblock
@@ -224,50 +263,4 @@ def _walkdirs_utf8_win32_find_file(top, prefix=""):
 
     This uses the find files api to both list the files and to stat them.
     """
-    cdef WIN32_FIND_DATAW find_data
-
-    _utf8_encode = codecs.getencoder('utf8')
-
-    # WIN32_FIND_DATA object looks like:
-    # (FILE_ATTRIBUTES, createTime, accessTime, writeTime, nFileSizeHigh,
-    #  nFileSizeLow, reserved0, reserved1, name, alternateFilename)
-    _directory = osutils._directory_kind
-    _file = osutils._formats[stat.S_IFREG]
-
-    # Possible attributes:
-    DIRECTORY = FILE_ATTRIBUTE_DIRECTORY
-
-    pending = [(osutils.safe_utf8(prefix), None, None, None,
-                osutils.safe_unicode(top))]
-    while pending:
-        relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
-        else:
-            relprefix = ''
-        top_slash = top + '/'
-        top_star = top_slash + '*'
-
-        dirblock = []
-        append = dirblock.append
-        for record in FindFilesIterator(top_star):
-            name = record[-2]
-            if name in ('.', '..'):
-                continue
-            attrib = record[0]
-            statvalue = osutils._Win32Stat(record)
-            name_utf8 = _utf8_encode(name)[0]
-            abspath = top_slash + name
-            if DIRECTORY & attrib == DIRECTORY:
-                kind = _directory
-            else:
-                kind = _file
-            append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        dirblock.sort(key=operator.itemgetter(1))
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        for d in reversed(dirblock):
-            if d[2] == _directory:
-                pending.append(d)
-
+    return Win32Finder(top, prefix=prefix)
