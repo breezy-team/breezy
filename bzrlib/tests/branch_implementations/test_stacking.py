@@ -172,15 +172,8 @@ class TestStacking(TestCaseWithBranch):
                 errors.UnstackableRepositoryFormat):
             # not a testable combination.
             return
-        try:
-            cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
-                preserve_stacking=False)
-        except errors.NoSuchRevision:
-            raise KnownFailure(
-                'Pack-to-pack fetch does not handle stacking properly.'
-                ' (#248506)')
-        else:
-            self.fail('Expected a failure due to broken fetching.')
+        cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
+            preserve_stacking=False)
         unstacked_branch = cloned_unstacked_bzrdir.open_branch()
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
                           unstacked_branch.get_stacked_on_url)
@@ -215,3 +208,26 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         except errors.UnstackableBranchFormat:
             pass
+
+    def prepare_stacked_on_fetch(self):
+        stack_on = self.make_branch_and_tree('stack-on')
+        stack_on.commit('first commit', rev_id='rev1')
+        try:
+            stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
+        except (errors.UnstackableRepositoryFormat,
+                errors.UnstackableBranchFormat):
+            raise TestNotApplicable('Format does not support stacking.')
+        unstacked = self.make_repository('unstacked')
+        return stacked_dir.open_workingtree(), unstacked
+
+    def test_fetch_copies_from_stacked_on(self):
+        stacked, unstacked = self.prepare_stacked_on_fetch()
+        unstacked.fetch(stacked.branch.repository, 'rev1')
+        unstacked.get_revision('rev1')
+
+    def test_fetch_copies_from_stacked_on_and_stacked(self):
+        stacked, unstacked = self.prepare_stacked_on_fetch()
+        stacked.commit('second commit', rev_id='rev2')
+        unstacked.fetch(stacked.branch.repository, 'rev2')
+        unstacked.get_revision('rev1')
+        unstacked.get_revision('rev2')
