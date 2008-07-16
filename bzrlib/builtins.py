@@ -3556,10 +3556,7 @@ class cmd_testament(Command):
             testament_class = StrictTestament
         else:
             testament_class = Testament
-        if branch == '.':
-            b = Branch.open_containing(branch)[0]
-        else:
-            b = Branch.open(branch)
+        b = WorkingTree.open_containing(branch)[0].branch
         b.lock_read()
         try:
             if revision is None:
