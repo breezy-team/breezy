@@ -318,14 +318,14 @@ class TestBranch6(TestBranch67, TestCaseWithTransport):
     def get_format_name_subtree(self):
         return "dirstate-with-subtree"
 
-    def test_set_stacked_on_errors(self):
+    def test_set_stacked_on_url_errors(self):
         branch = self.make_branch('a', format=self.get_format_name())
         self.assertRaises(errors.UnstackableBranchFormat,
-            branch.set_stacked_on, None)
+            branch.set_stacked_on_url, None)
 
     def test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on)
+        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on_url)
 
 
 class TestBranch7(TestBranch67, TestCaseWithTransport):
@@ -339,13 +339,13 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
     def get_format_name_subtree(self):
         return "development-subtree"
 
-    def test_set_stacked_on_unstackable_repo(self):
+    def test_set_stacked_on_url_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
         control = repo.bzrdir
         branch = _mod_branch.BzrBranchFormat7().initialize(control)
         target = self.make_branch('b')
         self.assertRaises(errors.UnstackableRepositoryFormat,
-            branch.set_stacked_on, target.base)
+            branch.set_stacked_on_url, target.base)
 
     def test_clone_stacked_on_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
@@ -356,23 +356,23 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
 
     def _test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
 
     def test_stack_and_unstack(self):
         branch = self.make_branch('a', format=self.get_format_name())
         target = self.make_branch_and_tree('b', format=self.get_format_name())
-        branch.set_stacked_on(target.branch.base)
-        self.assertEqual(target.branch.base, branch.get_stacked_on())
+        branch.set_stacked_on_url(target.branch.base)
+        self.assertEqual(target.branch.base, branch.get_stacked_on_url())
         revid = target.commit('foo')
         self.assertTrue(branch.repository.has_revision(revid))
-        branch.set_stacked_on(None)
-        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        branch.set_stacked_on_url(None)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
         self.assertFalse(branch.repository.has_revision(revid))
 
     def test_open_opens_stacked_reference(self):
         branch = self.make_branch('a', format=self.get_format_name())
         target = self.make_branch_and_tree('b', format=self.get_format_name())
-        branch.set_stacked_on(target.branch.base)
+        branch.set_stacked_on_url(target.branch.base)
         branch = branch.bzrdir.open_branch()
         revid = target.commit('foo')
         self.assertTrue(branch.repository.has_revision(revid))

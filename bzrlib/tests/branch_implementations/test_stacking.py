@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for Branch.get_stacked_on and set_stacked_on."""
+"""Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
 from bzrlib import (
     bzrdir,
@@ -27,7 +27,7 @@ from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 class TestStacking(TestCaseWithBranch):
 
-    def test_get_set_stacked_on(self):
+    def test_get_set_stacked_on_url(self):
         # branches must either:
         # raise UnstackableBranchFormat or
         # raise UnstackableRepositoryFormat or
@@ -39,15 +39,15 @@ class TestStacking(TestCaseWithBranch):
             errors.UnstackableRepositoryFormat,
             )
         try:
-            branch.set_stacked_on(target.base)
+            branch.set_stacked_on_url(target.base)
         except old_format_errors:
             # if the set failed, so must the get
-            self.assertRaises(old_format_errors, branch.get_stacked_on)
+            self.assertRaises(old_format_errors, branch.get_stacked_on_url)
             return
         # now we have a stacked branch:
-        self.assertEqual(target.base, branch.get_stacked_on())
-        branch.set_stacked_on(None)
-        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        self.assertEqual(target.base, branch.get_stacked_on_url())
+        branch.set_stacked_on_url(None)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
 
     def test_get_set_stacked_on_relative(self):
         # Branches can be stacked on other branches using relative paths.
@@ -58,12 +58,12 @@ class TestStacking(TestCaseWithBranch):
             errors.UnstackableRepositoryFormat,
             )
         try:
-            branch.set_stacked_on('../target')
+            branch.set_stacked_on_url('../target')
         except old_format_errors:
             # if the set failed, so must the get
-            self.assertRaises(old_format_errors, branch.get_stacked_on)
+            self.assertRaises(old_format_errors, branch.get_stacked_on_url)
             return
-        self.assertEqual('../target', branch.get_stacked_on())
+        self.assertEqual('../target', branch.get_stacked_on_url())
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
@@ -84,7 +84,7 @@ class TestStacking(TestCaseWithBranch):
         # it would cause a false pass of this test.
         new_branch = self.make_branch('new_branch')
         try:
-            new_branch.set_stacked_on(trunk_tree.branch.base)
+            new_branch.set_stacked_on_url(trunk_tree.branch.base)
         except (errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             raise TestNotApplicable(e)
@@ -111,7 +111,33 @@ class TestStacking(TestCaseWithBranch):
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         new_tree = new_dir.open_workingtree()
-        new_tree.commit('something local')
+        new_branch_revid = new_tree.commit('something local')
+        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionInRepository('newbranch', new_branch_revid)
+
+    def test_unstack_fetches(self):
+        """Removing the stacked-on branch pulls across all data"""
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline')
+        trunk_revid = trunk_tree.commit('revision on mainline')
+        # and make branch from it which is stacked
+        try:
+            new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        except (errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            raise TestNotApplicable(e)
+        # stacked repository
+        self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        # now when we unstack that should implicitly fetch, to make sure that
+        # the branch will still work
+        new_branch = new_dir.open_branch()
+        new_branch.set_stacked_on_url(None)
+        self.assertRevisionInRepository('newbranch', trunk_revid)
+        # of course it's still in the mainline
+        self.assertRevisionInRepository('mainline', trunk_revid)
+        # and now we're no longer stacked
+        self.assertRaises(errors.NotStacked,
+            new_branch.get_stacked_on_url)
 
     def prepare_for_clone(self):
         tree = self.make_branch_and_tree('stacked-on')
@@ -133,8 +159,8 @@ class TestStacking(TestCaseWithBranch):
         cloned_bzrdir = stacked_bzrdir.clone('cloned', preserve_stacking=True)
         try:
             self.assertEqual(
-                stacked_bzrdir.open_branch().get_stacked_on(),
-                cloned_bzrdir.open_branch().get_stacked_on())
+                stacked_bzrdir.open_branch().get_stacked_on_url(),
+                cloned_bzrdir.open_branch().get_stacked_on_url())
         except (errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
             pass
@@ -157,14 +183,14 @@ class TestStacking(TestCaseWithBranch):
             self.fail('Expected a failure due to broken fetching.')
         unstacked_branch = cloned_unstacked_bzrdir.open_branch()
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
-                          unstacked_branch.get_stacked_on)
+                          unstacked_branch.get_stacked_on_url)
 
     def test_no_op_preserve_stacking(self):
         """With no stacking, preserve_stacking should be a no-op."""
         branch = self.make_branch('source')
         cloned_bzrdir = branch.bzrdir.clone('cloned', preserve_stacking=True)
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
-                          cloned_bzrdir.open_branch().get_stacked_on)
+                          cloned_bzrdir.open_branch().get_stacked_on_url)
 
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
@@ -174,7 +200,7 @@ class TestStacking(TestCaseWithBranch):
         source = self.make_branch('source')
         target = source.bzrdir.sprout('target').open_branch()
         try:
-            self.assertEqual('../stack-on', target.get_stacked_on())
+            self.assertEqual('../stack-on', target.get_stacked_on_url())
         except errors.UnstackableBranchFormat:
             pass
 
@@ -186,6 +212,6 @@ class TestStacking(TestCaseWithBranch):
         source = self.make_branch('source')
         target = source.bzrdir.clone('target').open_branch()
         try:
-            self.assertEqual('../stack-on', target.get_stacked_on())
+            self.assertEqual('../stack-on', target.get_stacked_on_url())
         except errors.UnstackableBranchFormat:
             pass

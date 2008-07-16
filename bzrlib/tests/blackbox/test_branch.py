@@ -107,7 +107,7 @@ class TestBranch(ExternalBase):
         """
         new_branch = branch.Branch.open('newbranch')
         # The branch refers to the mainline
-        self.assertEqual(stacked_on, new_branch.get_stacked_on())
+        self.assertEqual(stacked_on, new_branch.get_stacked_on_url())
         # and the branch's work was pushed
         self.assertTrue(new_branch.repository.has_revision(branch_revid))
         # The newly committed revision shoud be present in the stacked branch,
@@ -138,7 +138,7 @@ class TestBranch(ExternalBase):
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
             format='development')
-        branch_tree.branch.set_stacked_on(trunk_tree.branch.base)
+        branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
         branch_tree.commit('moar work plz')
         # branching our local branch gives us a new stacked branch pointing at

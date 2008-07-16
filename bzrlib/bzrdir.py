@@ -208,7 +208,7 @@ class BzrDir(object):
                 local_repo = local_branch.repository
             if preserve_stacking:
                 try:
-                    stack_on = local_branch.get_stacked_on()
+                    stack_on = local_branch.get_stacked_on_url()
                 except (errors.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -1060,7 +1060,7 @@ class BzrDir(object):
                 stacked_branch_url = self.root_transport.base
             else:
                 try:
-                    stacked_branch_url = source_branch.get_stacked_on()
+                    stacked_branch_url = source_branch.get_stacked_on_url()
                 except (errors.NotStacked, errors.UnstackableBranchFormat,
                     errors.UnstackableRepositoryFormat):
                     stacked_branch_url = None
@@ -2797,7 +2797,7 @@ class RepositoryAcquisitionPolicy(object):
             except errors.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:
-            branch.set_stacked_on(stack_on)
+            branch.set_stacked_on_url(stack_on)
         except errors.UnstackableBranchFormat:
             if self._require_stacking:
                 raise

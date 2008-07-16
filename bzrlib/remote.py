@@ -1324,7 +1324,7 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
 
         :raises NotStacked: If the branch is not stacked.
@@ -1334,7 +1334,7 @@ class RemoteBranch(branch.Branch):
             stacking.
         """
         self._ensure_real()
-        return self._real_branch.get_stacked_on()
+        return self._real_branch.get_stacked_on_url()
 
     def lock_read(self):
         if not self._lock_mode:
@@ -1542,7 +1542,7 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_parent(url)
         
-    def set_stacked_on(self, stacked_location):
+    def set_stacked_on_url(self, stacked_location):
         """Set the URL this branch is stacked against.
 
         :raises UnstackableBranchFormat: If the branch does not support
@@ -1551,7 +1551,7 @@ class RemoteBranch(branch.Branch):
             stacking.
         """
         self._ensure_real()
-        return self._real_branch.set_stacked_on(stacked_location)
+        return self._real_branch.set_stacked_on_url(stacked_location)
 
     def sprout(self, to_bzrdir, revision_id=None):
         # Like Branch.sprout, except that it sprouts a branch in the default

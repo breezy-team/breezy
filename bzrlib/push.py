@@ -107,14 +107,14 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 # if the from format is stackable, this will either work or
                 # trigger NotStacked. If it's not, an error will be given to
                 # the user.
-                br_from.get_stacked_on()
+                br_from.get_stacked_on_url()
             except errors.NotStacked:
                 pass
             # now we need to sprout the repository,
             dir_to = br_from.bzrdir._format.initialize_on_transport(to_transport)
             br_from.repository._format.initialize(dir_to)
             br_to = br_from._format.initialize(dir_to)
-            br_to.set_stacked_on(reference)
+            br_to.set_stacked_on_url(reference)
             # and copy the data up.
             br_from.push(br_to)
         else:

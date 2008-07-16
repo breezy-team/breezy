@@ -285,7 +285,7 @@ class TestPush(ExternalBase):
         """Assert that the branch 'published' has been published correctly."""
         published_branch = Branch.open('published')
         # The published branch refers to the mainline
-        self.assertEqual(stacked_on, published_branch.get_stacked_on())
+        self.assertEqual(stacked_on, published_branch.get_stacked_on_url())
         # and the branch's work was pushed
         self.assertTrue(published_branch.repository.has_revision(branch_revid))
 

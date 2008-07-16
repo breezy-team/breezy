@@ -451,13 +451,13 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         child_branch, new_child_transport = self.prepare_default_stacking()
         new_child = child_branch.bzrdir.clone_on_transport(new_child_transport)
         self.assertEqual(child_branch.base,
-                         new_child.open_branch().get_stacked_on())
+                         new_child.open_branch().get_stacked_on_url())
 
     def test_sprout_obeys_stacking_policy(self):
         child_branch, new_child_transport = self.prepare_default_stacking()
         new_child = child_branch.bzrdir.sprout(new_child_transport.base)
         self.assertEqual(child_branch.base,
-                         new_child.open_branch().get_stacked_on())
+                         new_child.open_branch().get_stacked_on_url())
 
     def test_add_fallback_repo_handles_absolute_urls(self):
         stack_on = self.make_branch('stack_on', format='development1')
@@ -477,7 +477,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         policy = bzrdir.UseExistingRepository(stacked.repository,
             '.', stack_on.base)
         policy.configure_branch(stacked)
-        self.assertEqual('..', stacked.get_stacked_on())
+        self.assertEqual('..', stacked.get_stacked_on_url())
 
     def test_relative_branch_stacking_to_absolute(self):
         stack_on = self.make_branch('stack_on', format='development1')
@@ -486,7 +486,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
             '.', self.get_readonly_url('stack_on'))
         policy.configure_branch(stacked)
         self.assertEqual(self.get_readonly_url('stack_on'),
-                         stacked.get_stacked_on())
+                         stacked.get_stacked_on_url())
 
 
 class ChrootedTests(TestCaseWithTransport):
