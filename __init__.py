@@ -176,7 +176,9 @@ def display_info(info, to_file, gather_class_stats=None):
             print '     Contributions:'
             classes, total = gather_class_stats(revs)
             for name,count in sorted(classes.items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0]))):
-                to_file.write("     %4.0f%% %s\n" % ((float(count) / total) * 100.0, "Unknown" if name is None else name))
+	    	if name == None:
+			name = "Unknown"
+                to_file.write("     %4.0f%% %s\n" % ((float(count) / total) * 100.0, name))
 
 
 class cmd_committer_statistics(commands.Command):
@@ -216,7 +218,9 @@ class cmd_committer_statistics(commands.Command):
             a_branch.unlock()
         def fetch_class_stats(revs):
             return gather_class_stats(a_branch.repository, revs)
-        display_info(info, self.outf, fetch_class_stats if show_class else None)
+	if not show_class:
+		fetch_class_stats = None
+        display_info(info, self.outf, fetch_class_stats)
 
 
 commands.register_command(cmd_committer_statistics)
