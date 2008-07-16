@@ -284,6 +284,10 @@ class GraphIndex(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__,
+            self._transport.abspath(self._name))
+
     def _buffer_all(self):
         """Buffer all the index data.
 

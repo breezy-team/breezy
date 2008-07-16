@@ -19,7 +19,7 @@
 
 import os
 
-from bzrlib import branch, bzrdir
+from bzrlib import (branch, bzrdir, repository)
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import HardlinkFeature
@@ -96,6 +96,84 @@ class TestBranch(ExternalBase):
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
+
+    def check_shallow_branch(self, branch_revid, stacked_on):
+        """Assert that the branch 'newbranch' has been published correctly.
+        
+        :param stacked_on: url of a branch this one is stacked upon.
+        :param branch_revid: a revision id that should be the only 
+            revision present in the stacked branch, and it should not be in
+            the reference branch.
+        """
+        new_branch = branch.Branch.open('newbranch')
+        # The branch refers to the mainline
+        self.assertEqual(stacked_on, new_branch.get_stacked_on_url())
+        # and the branch's work was pushed
+        self.assertTrue(new_branch.repository.has_revision(branch_revid))
+        # The newly committed revision shoud be present in the stacked branch,
+        # but not in the stacked-on branch.  Because stacking is set up by the
+        # branch object, if we open the stacked branch's repository directly,
+        # bypassing the branch, we see only what's in the stacked repository.
+        stacked_repo = bzrdir.BzrDir.open('newbranch').open_repository()
+        stacked_repo_revisions = set(stacked_repo.all_revision_ids())
+        if len(stacked_repo_revisions) != 1:
+            self.fail("wrong revisions in stacked repository: %r"
+                % (stacked_repo_revisions,))
+
+    def assertRevisionInRepository(self, repo_path, revid):
+        """Check that a revision is in a repository, disregarding stacking."""
+        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        self.assertTrue(repo.has_revision(revid))
+
+    def assertRevisionNotInRepository(self, repo_path, revid):
+        """Check that a revision is not in a repository, disregarding stacking."""
+        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        self.assertFalse(repo.has_revision(revid))
+
+    def test_branch_stacked_branch_also_stacked_same_reference(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
+        # with some work on it
+        branch_tree.commit('moar work plz')
+        # branching our local branch gives us a new stacked branch pointing at
+        # mainline.
+        out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        self.check_shallow_branch(branch_tree.last_revision(),
+            trunk_tree.branch.base)
+
+    def test_branch_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development')
+        original_revid = trunk_tree.commit('mainline')
+        self.assertRevisionInRepository('mainline', original_revid)
+        # and a branch from it which is stacked
+        out, err = self.run_bzr(['branch', '--stacked', 'mainline',
+            'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        self.assertRevisionNotInRepository('newbranch', original_revid)
+        new_tree = WorkingTree.open('newbranch')
+        new_revid = new_tree.commit('new work')
+        self.check_shallow_branch(new_revid, trunk_tree.branch.base)
+
+    def test_branch_stacked_from_smart_server(self):
+        # We can branch stacking on a smart server
+        from bzrlib.smart.server import SmartTCPServer_for_testing
+        self.transport_server = SmartTCPServer_for_testing
+        trunk = self.make_branch('mainline', format='development')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

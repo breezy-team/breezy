@@ -110,7 +110,7 @@ class WeaveContentFactory(ContentFactory):
     def __init__(self, version, weave):
         """Create a WeaveContentFactory for version from weave."""
         ContentFactory.__init__(self)
-        self.sha1 = weave.get_sha1s([version])[0]
+        self.sha1 = weave.get_sha1s([version])[version]
         self.key = (version,)
         parents = weave.get_parent_map([version])[version]
         self.parents = tuple((parent,) for parent in parents)
@@ -766,7 +766,10 @@ class Weave(VersionedFile):
 
     def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1s()."""
-        return [self._sha1s[self._lookup(v)] for v in version_ids]
+        result = {}
+        for v in version_ids:
+            result[v] = self._sha1s[self._lookup(v)]
+        return result
 
     def num_versions(self):
         """How many versions are in this weave?"""

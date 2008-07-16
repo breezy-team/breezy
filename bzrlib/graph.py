@@ -1275,6 +1275,8 @@ class _BreadthFirstSearcher(object):
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
+            if parents is None:
+                continue
             new_found_parents = [p for p in parents if p not in self.seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually

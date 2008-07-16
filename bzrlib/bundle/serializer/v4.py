@@ -354,7 +354,8 @@ class BundleWriteOperation(object):
         mpdiffs = vf.make_mpdiffs(ordered_keys)
         sha1s = vf.get_sha1s(ordered_keys)
         parent_map = vf.get_parent_map(ordered_keys)
-        for mpdiff, item_key, sha1, in zip(mpdiffs, ordered_keys, sha1s):
+        for mpdiff, item_key, in zip(mpdiffs, ordered_keys):
+            sha1 = sha1s[item_key]
             parents = [key[-1] for key in parent_map[item_key]]
             text = ''.join(mpdiff.to_patch())
             # Infer file id records as appropriate.
