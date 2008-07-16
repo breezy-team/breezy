@@ -356,6 +356,12 @@ class TreeTransformBase(object):
         except OSError, e:
             if e.errno == errno.ENOENT:
                 return
+            elif e.errno == errno.ENOTDIR:
+                # If the file is in a directory that was a file in
+                # tree on disk ENOTDIR will be raised. This error tells
+                # us that the file is not present on disk, so we handle
+                # it the same as ENOENT. See bug 248448.
+                return
             else:
                 raise
         if typefunc(mode):

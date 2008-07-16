@@ -83,6 +83,9 @@ IN DEVELOPMENT
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
 
+    * Handle a file turning in to a directory in TreeTransform.
+      (James Westby, #248448)
+
   DOCUMENTATION:
 
     * Updated developer documentation.
