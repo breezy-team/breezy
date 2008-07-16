@@ -548,7 +548,7 @@ class SvnBranch(Branch):
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         raise UnstackableBranchFormat(self._format, self.base)
 
     def __str__(self):
