@@ -212,6 +212,59 @@ class Graph(object):
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
 
+    def find_distance_to_null(self, target_revision_id, known_revision_ids):
+        """Find the left-hand distance to the NULL_REVISION.
+
+        (This can also be considered the revno of a branch at
+        target_revision_id.)
+
+        :param target_revision_id: A revision_id which we would like to know
+            the revno for.
+        :param known_revision_ids: [(revision_id, revno)] A list of known
+            revno, revision_id tuples. We'll use this to seed the search.
+        """
+        # Map from revision_ids to a known value for their revno
+        known_revnos = dict(known_revision_ids)
+        cur_tip = target_revision_id
+        num_steps = 0
+        NULL_REVISION = revision.NULL_REVISION
+        known_revnos[NULL_REVISION] = 0
+
+        searching_known_tips = list(known_revnos.keys())
+
+        unknown_searched = {}
+
+        while cur_tip not in known_revnos:
+            unknown_searched[cur_tip] = num_steps
+            num_steps += 1
+            to_search = set([cur_tip])
+            to_search.update(searching_known_tips)
+            parent_map = self.get_parent_map(to_search)
+            parents = parent_map.get(cur_tip, None)
+            if not parents: # An empty list or None is a ghost
+                raise errors.GhostRevisionsHaveNoRevno(target_revision_id,
+                                                       cur_tip)
+            cur_tip = parents[0]
+            next_known_tips = []
+            for revision_id in searching_known_tips:
+                parents = parent_map.get(revision_id, None)
+                if not parents:
+                    continue
+                next = parents[0]
+                next_revno = known_revnos[revision_id] - 1
+                if next in unknown_searched:
+                    # We have enough information to return a value right now
+                    return next_revno + unknown_searched[next]
+                if next in known_revnos:
+                    continue
+                known_revnos[next] = next_revno
+                next_known_tips.append(next)
+            searching_known_tips = next_known_tips
+
+        # We reached a known revision, so just add in how many steps it took to
+        # get there.
+        return known_revnos[cur_tip] + num_steps
+
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
 
@@ -1175,6 +1228,8 @@ class _BreadthFirstSearcher(object):
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
+            if parents is None:
+                continue
             new_found_parents = [p for p in parents if p not in self.seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually

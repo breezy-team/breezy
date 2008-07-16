@@ -1803,6 +1803,19 @@ class TestVersionOneFeaturesInProtocolOne(
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
 
+    def test_client_read_body_bytes_interrupted_connection(self):
+        server_bytes = "ok\n999\nincomplete body"
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            input, output, 'base')
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(True)
+        self.assertRaises(
+            errors.ConnectionReset, smart_protocol.read_body_bytes)
+
 
 class TestVersionOneFeaturesInProtocolTwo(
     TestSmartProtocol, CommonSmartProtocolTestMixin):
@@ -2029,6 +2042,20 @@ class TestVersionOneFeaturesInProtocolTwo(
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
 
+    def test_client_read_body_bytes_interrupted_connection(self):
+        server_bytes = (self.response_marker +
+                        "success\nok\n999\nincomplete body")
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            input, output, 'base')
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(True)
+        self.assertRaises(
+            errors.ConnectionReset, smart_protocol.read_body_bytes)
+
 
 class TestSmartProtocolTwoSpecificsMixin(object):
 
@@ -2153,6 +2180,22 @@ class TestSmartProtocolTwoSpecificsMixin(object):
             _mod_request.FailedSmartServerResponse(('error arg1', 'arg2'))]
         stream = smart_protocol.read_streamed_body()
         self.assertEqual(expected_chunks, list(stream))
+
+    def test_streamed_body_bytes_interrupted_connection(self):
+        body_header = 'chunked\n'
+        incomplete_body_chunk = "9999\nincomplete chunk"
+        server_bytes = (protocol.RESPONSE_VERSION_TWO +
+                        "success\nok\n" + body_header + incomplete_body_chunk)
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            input, output, 'base')
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(True)
+        stream = smart_protocol.read_streamed_body()
+        self.assertRaises(errors.ConnectionReset, stream.next)
 
     def test_client_read_response_tuple_sets_response_status(self):
         server_bytes = protocol.RESPONSE_VERSION_TWO + "success\nok\n"
@@ -2338,7 +2381,22 @@ class TestProtocolThree(TestSmartProtocol):
 
 class TestConventionalResponseHandler(tests.TestCase):
 
-    def test_interrupted_body_stream(self):
+    def make_response_handler(self, response_bytes):
+        from bzrlib.smart.message import ConventionalResponseHandler
+        response_handler = ConventionalResponseHandler()
+        protocol_decoder = protocol.ProtocolThreeDecoder(response_handler)
+        # put decoder in desired state (waiting for message parts)
+        protocol_decoder.state_accept = protocol_decoder._state_accept_expecting_message_part
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            StringIO(response_bytes), output, 'base')
+        medium_request = client_medium.get_request()
+        medium_request.finished_writing()
+        response_handler.setProtoAndMediumRequest(
+            protocol_decoder, medium_request)
+        return response_handler
+
+    def test_body_stream_interrupted_by_error(self):
         interrupted_body_stream = (
             'oS' # successful response
             's\0\0\0\x02le' # empty args
@@ -2348,23 +2406,30 @@ class TestConventionalResponseHandler(tests.TestCase):
             's\0\0\0\x0el5:error3:abce' # bencoded error
             'e' # message end
             )
-        from bzrlib.smart.message import ConventionalResponseHandler
-        response_handler = ConventionalResponseHandler()
-        protocol_decoder = protocol.ProtocolThreeDecoder(response_handler)
-        # put decoder in desired state (waiting for message parts)
-        protocol_decoder.state_accept = protocol_decoder._state_accept_expecting_message_part
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(
-            StringIO(interrupted_body_stream), output, 'base')
-        medium_request = client_medium.get_request()
-        medium_request.finished_writing()
-        response_handler.setProtoAndMediumRequest(
-            protocol_decoder, medium_request)
+        response_handler = self.make_response_handler(interrupted_body_stream)
         stream = response_handler.read_streamed_body()
         self.assertEqual('chunk one', stream.next())
         self.assertEqual('chunk two', stream.next())
         exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
         self.assertEqual(('error', 'abc'), exc.error_tuple)
+
+    def test_body_stream_interrupted_by_connection_lost(self):
+        interrupted_body_stream = (
+            'oS' # successful response
+            's\0\0\0\x02le' # empty args
+            'b\0\0\xff\xffincomplete chunk')
+        response_handler = self.make_response_handler(interrupted_body_stream)
+        stream = response_handler.read_streamed_body()
+        self.assertRaises(errors.ConnectionReset, stream.next)
+
+    def test_read_body_bytes_interrupted_by_connection_lost(self):
+        interrupted_body_stream = (
+            'oS' # successful response
+            's\0\0\0\x02le' # empty args
+            'b\0\0\xff\xffincomplete chunk')
+        response_handler = self.make_response_handler(interrupted_body_stream)
+        self.assertRaises(
+            errors.ConnectionReset, response_handler.read_body_bytes)
 
 
 class TestMessageHandlerErrors(tests.TestCase):
@@ -2566,6 +2631,38 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             'e', # end
             output.getvalue())
 
+    def test_call_writes_just_once(self):
+        """A bodyless request is written to the medium all at once."""
+        medium_request = StubMediumRequest()
+        encoder = protocol.ProtocolThreeRequester(medium_request)
+        encoder.call('arg1', 'arg2', 'arg3')
+        self.assertEqual(
+            ['accept_bytes', 'finished_writing'], medium_request.calls)
+
+    def test_call_with_body_bytes_writes_just_once(self):
+        """A request with body bytes is written to the medium all at once."""
+        medium_request = StubMediumRequest()
+        encoder = protocol.ProtocolThreeRequester(medium_request)
+        encoder.call_with_body_bytes(('arg', 'arg'), 'body bytes')
+        self.assertEqual(
+            ['accept_bytes', 'finished_writing'], medium_request.calls)
+
+
+class StubMediumRequest(object):
+    """A stub medium request that tracks the number of times accept_bytes is
+    called.
+    """
+
+    def __init__(self):
+        self.calls = []
+        self._medium = 'dummy medium'
+
+    def accept_bytes(self, bytes):
+        self.calls.append('accept_bytes')
+
+    def finished_writing(self):
+        self.calls.append('finished_writing')
+
 
 class TestResponseEncodingProtocolThree(tests.TestCase):
 
@@ -2587,6 +2684,56 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
             's\x00\x00\x00\x20l13:UnknownMethod11:method namee'
             # end of message
             'e')
+
+
+class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
+    """Tests for buffering of responses.
+
+    We want to avoid doing many small writes when one would do, to avoid
+    unnecessary network overhead.
+    """
+
+    def setUp(self):
+        self.writes = []
+        self.responder = protocol.ProtocolThreeResponder(self.writes.append)
+
+    def assertWriteCount(self, expected_count):
+        self.assertEqual(
+            expected_count, len(self.writes),
+            "Too many writes: %r" % (self.writes,))
+        
+    def test_send_error_writes_just_once(self):
+        """An error response is written to the medium all at once."""
+        self.responder.send_error(Exception('An exception string.'))
+        self.assertWriteCount(1)
+
+    def test_send_response_writes_just_once(self):
+        """A normal response with no body is written to the medium all at once.
+        """
+        response = _mod_request.SuccessfulSmartServerResponse(('arg', 'arg'))
+        self.responder.send_response(response)
+        self.assertWriteCount(1)
+
+    def test_send_response_with_body_writes_just_once(self):
+        """A normal response with a monolithic body is written to the medium
+        all at once.
+        """
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('arg', 'arg'), body='body bytes')
+        self.responder.send_response(response)
+        self.assertWriteCount(1)
+
+    def test_send_response_with_body_stream_writes_once_per_chunk(self):
+        """A normal response with a stream body is written to the medium
+        writes to the medium once per chunk.
+        """
+        # Construct a response with stream with 2 chunks in it.
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
+        self.responder.send_response(response)
+        # We will write 3 times: exactly once for each chunk, plus a final
+        # write to end the response.
+        self.assertWriteCount(3)
 
 
 class TestSmartClientUnicode(tests.TestCase):
@@ -2627,7 +2774,7 @@ class TestSmartClientUnicode(tests.TestCase):
         self.assertCallDoesNotBreakMedium('method', ('args',), u'body')
 
 
-class MockMedium(object):
+class MockMedium(medium.SmartClientMedium):
     """A mock medium that can be used to test _SmartClient.
     
     It can be given a series of requests to expect (and responses it should
@@ -2644,10 +2791,9 @@ class MockMedium(object):
     """
 
     def __init__(self):
-        self.base = 'dummy base'
+        super(MockMedium, self).__init__('dummy base')
         self._mock_request = _MockMediumRequest(self)
         self._expected_events = []
-        self._protocol_version = None
         
     def expect_request(self, request_bytes, response_bytes,
                        allow_partial_read=False):
@@ -2784,6 +2930,9 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         # medium, and the smart_client returns the response from the server.
         self.assertEqual(('response value',), result)
         self.assertEqual([], medium._expected_events)
+        # Also, the v3 works then the server should be assumed to support RPCs
+        # introduced in 1.6.
+        self.assertFalse(medium._is_remote_before((1, 6)))
 
     def test_version_two_server(self):
         """If the server only speaks protocol 2, the client will first try
@@ -2822,6 +2971,10 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         self.assertEqual(('another response',), result)
         self.assertEqual([], medium._expected_events)
 
+        # Also, because v3 is not supported, the client medium should assume
+        # that RPCs introduced in 1.6 aren't supported either.
+        self.assertTrue(medium._is_remote_before((1, 6)))
+
     def test_unknown_version(self):
         """If the server does not use any known (or at least supported)
         protocol version, a SmartProtocolError is raised.
@@ -2843,7 +2996,40 @@ class Test_SmartClientVersionDetection(tests.TestCase):
             errors.SmartProtocolError,
             smart_client.call, 'method-name', 'arg 1', 'arg 2')
         self.assertEqual([], medium._expected_events)
+
+    def test_first_response_is_error(self):
+        """If the server replies with an error, then the version detection
+        should be complete.
         
+        This test is very similar to test_version_two_server, but catches a bug
+        we had in the case where the first reply was an error response.
+        """
+        medium = MockMedium()
+        smart_client = client._SmartClient(medium, headers={})
+        message_start = protocol.MESSAGE_VERSION_THREE + '\x00\x00\x00\x02de'
+        # Issue a request that gets an error reply in a non-default protocol
+        # version.
+        medium.expect_request(
+            message_start +
+            's\x00\x00\x00\x10l11:method-nameee',
+            'bzr response 2\nfailed\n\n')
+        medium.expect_disconnect()
+        medium.expect_request(
+            'bzr request 2\nmethod-name\n',
+            'bzr response 2\nfailed\nFooBarError\n')
+        err = self.assertRaises(
+            errors.ErrorFromSmartServer,
+            smart_client.call, 'method-name')
+        self.assertEqual(('FooBarError',), err.error_tuple)
+        # Now the medium should have remembered the protocol version, so
+        # subsequent requests will use the remembered version immediately.
+        medium.expect_request(
+            'bzr request 2\nmethod-name\n',
+            'bzr response 2\nsuccess\nresponse value\n')
+        result = smart_client.call('method-name')
+        self.assertEqual(('response value',), result)
+        self.assertEqual([], medium._expected_events)
+
 
 class Test_SmartClient(tests.TestCase):
 

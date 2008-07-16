@@ -795,6 +795,17 @@ def run_bzr(argv):
             ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
+        if 'memory' in debug.debug_flags:
+            try:
+                status_file = file('/proc/%s/status' % os.getpid(), 'rb')
+            except IOError:
+                pass
+            else:
+                status = status_file.read()
+                status_file.close()
+                trace.note("Process status after command:")
+                for line in status.splitlines():
+                    trace.note(line)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
@@ -828,7 +839,7 @@ def main(argv):
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
         from bzrlib import symbol_versioning
-        symbol_versioning.suppress_deprecation_warnings()
+        symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
         argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:

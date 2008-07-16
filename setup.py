@@ -346,9 +346,12 @@ elif 'py2exe' in sys.argv:
     packs, mods = mf.get_result()
     additional_packages.update(packs)
 
+    # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
+    # in on Vista.
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes + mods,
                                "excludes": ["Tkinter", "medusa", "tools"],
+                               "dll_excludes": ["MSWSOCK.dll"],
                                "dist_dir": "win32_bzr.exe",
                               },
                    }

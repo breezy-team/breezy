@@ -40,6 +40,7 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.osutils import getcwd
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 from bzrlib.tests.http_server import HttpServer
@@ -57,7 +58,8 @@ class TestBranch(TestCaseWithBranch):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         graph = tree.branch.repository.get_graph()
-        ancestry_graph = graph.get_parent_map(tree.branch.repository.all_revision_ids())
+        ancestry_graph = graph.get_parent_map(
+            tree.branch.repository.all_revision_ids())
         self.assertEqual({'rev-1':('null:',),
                           'rev-2':('rev-1', ),
                           'rev-1.1.1':('rev-1', ),
@@ -164,7 +166,7 @@ class TestBranch(TestCaseWithBranch):
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
 
-        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.bzrdir.sprout('b', revision_id='1').open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
@@ -280,6 +282,7 @@ class TestBranch(TestCaseWithBranch):
                 branch.repository.commit_write_group()
         finally:
             branch.unlock()
+        # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -303,6 +306,36 @@ class TestBranch(TestCaseWithBranch):
         d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
+
+    def test_missing_revisions(self):
+        t1 = self.make_branch_and_tree('b1')
+        rev1 = t1.commit('one')
+        t2 = t1.bzrdir.sprout('b2').open_workingtree()
+        rev2 = t1.commit('two')
+        rev3 = t1.commit('three')
+
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch))
+
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=1))
+        self.assertEqual([rev2],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=2))
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=3))
+
+        self.assertRaises(errors.NoSuchRevision,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=4)
+
+        rev4 = t2.commit('four')
+        self.assertRaises(errors.DivergedBranches,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch)
 
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.

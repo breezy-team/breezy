@@ -562,6 +562,16 @@ class InvalidURLJoin(PathError):
         PathError.__init__(self, base, reason)
 
 
+class InvalidRebaseURLs(PathError):
+
+    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
+
+    def __init__(self, from_, to):
+        self.from_ = from_
+        self.to = to
+        PathError.__init__(self, from_, 'URLs differ by more than path.')
+
+
 class UnavailableRepresentation(InternalBzrError):
 
     _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
@@ -846,6 +856,17 @@ class BadFileKindError(BzrError):
 
     def __init__(self, filename, kind):
         BzrError.__init__(self, filename=filename, kind=kind)
+
+
+class BadFilenameEncoding(BzrError):
+
+    _fmt = ('Filename %(filename)r is not valid in your current filesystem'
+            ' encoding %(fs_encoding)s')
+
+    def __init__(self, filename, fs_encoding):
+        BzrError.__init__(self)
+        self.filename = filename
+        self.fs_encoding = fs_encoding
 
 
 class ForbiddenControlFileError(BzrError):
@@ -2253,6 +2274,17 @@ class SSHVendorNotFound(BzrError):
             " Please set BZR_SSH environment variable.")
 
 
+class GhostRevisionsHaveNoRevno(BzrError):
+    """When searching for revnos, if we encounter a ghost, we are stuck"""
+
+    _fmt = ("Could not determine revno for {%(revision_id)s} because"
+            " its ancestry shows a ghost at {%(ghost_revision_id)s}")
+
+    def __init__(self, revision_id, ghost_revision_id):
+        self.revision_id = revision_id
+        self.ghost_revision_id = ghost_revision_id
+
+        
 class GhostRevisionUnusableHere(BzrError):
 
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
@@ -2712,6 +2744,36 @@ class UnableEncodePath(BzrError):
         self.user_encoding = osutils.get_user_encoding()
 
 
+class NoSuchAlias(BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        BzrError.__init__(self, alias_name=alias_name)
+
+
+class DirectoryLookupFailure(BzrError):
+    """Base type for lookup errors."""
+
+    pass
+
+
+class InvalidLocationAlias(DirectoryLookupFailure):
+
+    _fmt = '"%(alias_name)s" is not a valid location alias.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
+
+
+class UnsetLocationAlias(DirectoryLookupFailure):
+
+    _fmt = 'No %(alias_name)s location assigned.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
+
+
 class CannotBindAddress(BzrError):
 
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
@@ -2719,3 +2781,11 @@ class CannotBindAddress(BzrError):
     def __init__(self, host, port, orig_error):
         BzrError.__init__(self, host=host, port=port,
             orig_error=orig_error[1])
+
+
+class UnknownRules(BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        BzrError.__init__(self, unknowns_str=", ".join(unknowns))

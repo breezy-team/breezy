@@ -39,16 +39,19 @@ from warnings import warn
 
 import bzrlib
 from bzrlib import (
+    config,
     errors,
     graph,
     lockable_files,
     lockdir,
+    osutils,
     registry,
     remote,
     revision as _mod_revision,
     symbol_versioning,
     ui,
     urlutils,
+    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
@@ -59,10 +62,9 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
+from bzrlib.repository import Repository
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart import protocol
-from bzrlib.store.revision.text import TextRevisionStore
-from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
@@ -155,61 +157,80 @@ class BzrDir(object):
                 format.get_format_description(),
                 basedir)
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
         """Clone this bzrdir and its contents to url verbatim.
 
-        If url's last component does not exist, it will be created.
-
-        if revision_id is not None, then the clone operation may tune
+        :param url: The url create the clone at.  If url's last component does
+            not exist, it will be created.
+        :param revision_id: The tip revision-id to use for any branch or
+            working tree.  If not None, then the clone operation may tune
             itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target 
+        :param force_new_repo: Do not use a shared repository for the target
                                even if one is available.
+        :param preserve_stacking: When cloning a stacked branch, stack the
+            new branch on top of the other branch's stacked-on branch.
         """
         return self.clone_on_transport(get_transport(url),
                                        revision_id=revision_id,
-                                       force_new_repo=force_new_repo)
+                                       force_new_repo=force_new_repo,
+                                       preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
-                           force_new_repo=False):
+                           force_new_repo=False, preserve_stacking=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
-        If the target directory does not exist, it will be created.
-
-        if revision_id is not None, then the clone operation may tune
+        :param transport: The transport for the location to produce the clone
+            at.  If the target directory does not exist, it will be created.
+        :param revision_id: The tip revision-id to use for any branch or
+            working tree.  If not None, then the clone operation may tune
             itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target 
+        :param force_new_repo: Do not use a shared repository for the target,
                                even if one is available.
+        :param preserve_stacking: When cloning a stacked branch, stack the
+            new branch on top of the other branch's stacked-on branch.
         """
         transport.ensure_base()
         result = self.cloning_metadir().initialize_on_transport(transport)
         repository_policy = None
+        stack_on = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
+        try:
+            local_branch = self.open_branch()
+        except errors.NotBranchError:
+            local_branch = None
+        else:
+            # enable fallbacks when branch is not a branch reference
+            if local_branch.repository.has_same_location(local_repo):
+                local_repo = local_branch.repository
+            if preserve_stacking:
+                try:
+                    stack_on = local_branch.get_stacked_on_url()
+                except (errors.UnstackableBranchFormat,
+                        errors.UnstackableRepositoryFormat,
+                        errors.NotStacked):
+                    pass
+
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo)
+                force_new_repo, stack_on)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
             result_repo.fetch(local_repo, revision_id=revision_id)
+        else:
+            result_repo = None
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
-        try:
-            local_branch = self.open_branch()
-        except errors.NotBranchError:
-            pass
-        else:
+        if local_branch is not None:
             result_branch = local_branch.clone(result, revision_id=revision_id)
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
-        try:
-            result_repo = result.find_repository()
-        except errors.NoRepositoryPresent:
-            result_repo = None
         if result_repo is None or result_repo.make_working_trees():
             try:
                 self.open_workingtree().clone(result)
@@ -351,14 +372,32 @@ class BzrDir(object):
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
-    def determine_repository_policy(self, force_new_repo=False):
+    def determine_repository_policy(self, force_new_repo=False, stack_on=None,
+                                    stack_on_pwd=None, require_stacking=False):
         """Return an object representing a policy to use.
 
         This controls whether a new repository is created, or a shared
         repository used instead.
+
+        If stack_on is supplied, will not seek a containing shared repo.
+        :param force_new_repo: If True, require a new repository to be created.
+        :param stack_on: If supplied, the location to stack on.  If not
+            supplied, a default_stack_on location may be used.
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
         """
         def repository_policy(found_bzrdir):
+            stack_on = None
+            stack_on_pwd = None
+            config = found_bzrdir.get_config()
             stop = False
+            if config is not None:
+                stack_on = config.get_default_stack_on()
+                if stack_on is not None:
+                    stack_on_pwd = found_bzrdir.root_transport.base
+                    stop = True
+                    note('Using default stacking branch %s at %s', stack_on,
+                         stack_on_pwd)
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
@@ -373,15 +412,26 @@ class BzrDir(object):
             if not stop:
                 return None, False
             if repository:
-                return UseExistingRepository(repository), True
+                return UseExistingRepository(repository, stack_on,
+                    stack_on_pwd, require_stacking=require_stacking), True
             else:
-                return CreateRepository(self), True
+                return CreateRepository(self, stack_on, stack_on_pwd,
+                    require_stacking=require_stacking), True
 
         if not force_new_repo:
-            policy = self._find_containing(repository_policy)
-            if policy is not None:
-                return policy
-        return CreateRepository(self)
+            if stack_on is None:
+                policy = self._find_containing(repository_policy)
+                if policy is not None:
+                    return policy
+            else:
+                try:
+                    return UseExistingRepository(self.open_repository(),
+                        stack_on, stack_on_pwd,
+                        require_stacking=require_stacking)
+                except errors.NoRepositoryPresent:
+                    pass
+        return CreateRepository(self, stack_on, stack_on_pwd,
+                                require_stacking=require_stacking)
 
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
@@ -648,7 +698,12 @@ class BzrDir(object):
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_workingtree_transport)
-        
+
+    def get_config(self):
+        if getattr(self, '_get_config', None) is None:
+            return None
+        return self._get_config()
+
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
         
@@ -844,6 +899,31 @@ class BzrDir(object):
         tree, branch = bzrdir._get_tree_branch()
         return tree, branch, relpath
 
+    @classmethod
+    def open_containing_tree_branch_or_repository(klass, location):
+        """Return the working tree, branch and repo contained by a location.
+
+        Returns (tree, branch, repository, relpath).
+        If there is no tree containing the location, tree will be None.
+        If there is no branch containing the location, branch will be None.
+        If there is no repository containing the location, repository will be
+        None.
+        relpath is the portion of the path that is contained by the innermost
+        BzrDir.
+
+        If no tree, branch or repository is found, a NotBranchError is raised.
+        """
+        bzrdir, relpath = klass.open_containing(location)
+        try:
+            tree, branch = bzrdir._get_tree_branch()
+        except errors.NotBranchError:
+            try:
+                repo = bzrdir.find_repository()
+                return None, None, repo, relpath
+            except (errors.NoRepositoryPresent):
+                raise errors.NotBranchError(location)
+        return tree, branch, branch.repository, relpath
+
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
 
@@ -947,7 +1027,7 @@ class BzrDir(object):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
-               accelerator_tree=None, hardlink=False):
+               accelerator_tree=None, hardlink=False, stacked=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -966,6 +1046,8 @@ class BzrDir(object):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
+        :param stacked: If true, create a stacked branch referring to the
+            location of this control directory.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -974,40 +1056,36 @@ class BzrDir(object):
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
+            if stacked:
+                stacked_branch_url = self.root_transport.base
+            else:
+                try:
+                    stacked_branch_url = source_branch.get_stacked_on_url()
+                except (errors.NotStacked, errors.UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat):
+                    stacked_branch_url = None
         except errors.NotBranchError:
             source_branch = None
             try:
                 source_repository = self.open_repository()
             except errors.NoRepositoryPresent:
                 source_repository = None
-        if force_new_repo:
-            result_repo = None
-        else:
-            try:
-                result_repo = result.find_repository()
-            except errors.NoRepositoryPresent:
-                result_repo = None
-        if source_repository is None and result_repo is not None:
-            pass
-        elif source_repository is None and result_repo is None:
-            # no repo available, make a new one
-            result.create_repository()
-        elif source_repository is not None and result_repo is None:
-            # have source, and want to make a new target repo
-            result_repo = source_repository.sprout(result,
-                                                   revision_id=revision_id)
-        else:
-            # fetch needed content into target.
-            if source_repository is not None:
-                # would rather do 
-                # source_repository.copy_content_into(result_repo,
-                #                                     revision_id=revision_id)
-                # so we can override the copy method
-                result_repo.fetch(source_repository, revision_id=revision_id)
+            stacked_branch_url = None
+        repository_policy = result.determine_repository_policy(
+            force_new_repo, stacked_branch_url, require_stacking=stacked)
+        result_repo = repository_policy.acquire_repository()
+        if source_repository is not None:
+            result_repo.fetch(source_repository, revision_id=revision_id)
+
+        # Create/update the result branch
         if source_branch is not None:
-            source_branch.sprout(result, revision_id=revision_id)
+            result_branch = source_branch.sprout(result,
+                revision_id=revision_id)
         else:
-            result.create_branch()
+            result_branch = result.create_branch()
+        repository_policy.configure_branch(result_branch)
+
+        # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
@@ -1028,12 +1106,10 @@ class BzrDir(object):
                 basis = wt.basis_tree()
                 basis.lock_read()
                 subtrees = basis.iter_references()
-                recurse_branch = wt.branch
             elif source_branch is not None:
                 basis = source_branch.basis_tree()
                 basis.lock_read()
                 subtrees = basis.iter_references()
-                recurse_branch = source_branch
             else:
                 subtrees = []
                 basis = None
@@ -1043,7 +1119,8 @@ class BzrDir(object):
                     sublocation = source_branch.reference_parent(file_id, path)
                     sublocation.bzrdir.sprout(target,
                         basis.get_reference_revision(file_id, path),
-                        force_new_repo=force_new_repo, recurse=recurse)
+                        force_new_repo=force_new_repo, recurse=recurse,
+                        stacked=stacked)
             finally:
                 if basis is not None:
                     basis.unlock()
@@ -1069,8 +1146,15 @@ class BzrDirPreSplitOut(BzrDir):
         """Produce a metadir suitable for cloning with."""
         return self._format.__class__()
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
-        """See BzrDir.clone()."""
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
+        """See BzrDir.clone().
+
+        force_new_repo has no effect, since this family of formats always
+        require a new repository.
+        preserve_stacking has no effect, since no source branch using this
+        family of formats can be stacked, so there is no stacking to preserve.
+        """
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
@@ -1183,8 +1267,11 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False):
+               hardlink=False, stacked=False):
         """See BzrDir.sprout()."""
+        if stacked:
+            raise errors.UnstackableBranchFormat(
+                self._format, self.root_transport.base)
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
@@ -1427,6 +1514,9 @@ class BzrDirMeta1(BzrDir):
             recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
+
+    def _get_config(self):
+        return config.BzrDirConfig(self.transport)
 
 
 class BzrDirFormat(object):
@@ -2055,14 +2145,18 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.mkdir('revision-store')
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
-        _revision_store = TextRevisionStore(TextStore(revision_transport,
-                                                      prefixed=False,
-                                                      compressed=True))
+        from bzrlib.xml5 import serializer_v5
+        from bzrlib.repofmt.weaverepo import RevisionTextStore
+        revision_store = RevisionTextStore(revision_transport,
+            serializer_v5, False, versionedfile.PrefixMapper(),
+            lambda:True, lambda:True)
         try:
-            transaction = WriteTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                _revision_store.add_revision(self.revisions[rev_id], transaction)
+                text = serializer_v5.write_revision_to_string(
+                    self.revisions[rev_id])
+                key = (rev_id,)
+                revision_store.add_lines(key, None, osutils.split_lines(text))
         finally:
             self.pb.clear()
             
@@ -2081,8 +2175,7 @@ class ConvertBzrDir4To5(Converter):
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev = self.branch.repository._revision_store.get_revision(rev_id,
-                self.branch.repository.get_transaction())
+            rev = self.branch.repository.get_revision(rev_id)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
@@ -2178,7 +2271,7 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository.weave_store.get(ie.text_id)
+            text = self.branch.repository._text_store.get(ie.text_id)
             file_lines = text.readlines()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
@@ -2232,16 +2325,17 @@ class ConvertBzrDir5To6(Converter):
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):
-                    file_id = os.path.splitext(filename)[0]
+                    file_id, suffix = os.path.splitext(filename)
                 else:
                     file_id = filename
-                prefix_dir = store.hash_prefix(file_id)
+                    suffix = ''
+                new_name = store._mapper.map((file_id,)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.move(filename, new_name)
                 except errors.NoSuchFile: # catches missing dirs strangely enough
-                    store_transport.mkdir(prefix_dir)
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.mkdir(osutils.dirname(new_name))
+                    store_transport.move(filename, new_name)
         self.bzrdir.transport.put_bytes(
             'branch-format',
             BzrDirFormat6().get_format_string(),
@@ -2403,14 +2497,24 @@ class ConvertMetaToMeta(Converter):
             pass
         else:
             # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups
+            # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
             from bzrlib import branch as _mod_branch
-            if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
-                self.target_format.get_branch_format().__class__ is
-                _mod_branch.BzrBranchFormat6):
-                branch_converter = _mod_branch.Converter5to6()
+            old = branch._format.__class__
+            new = self.target_format.get_branch_format().__class__
+            while old != new:
+                if (old == _mod_branch.BzrBranchFormat5 and
+                    new in (_mod_branch.BzrBranchFormat6,
+                        _mod_branch.BzrBranchFormat7)):
+                    branch_converter = _mod_branch.Converter5to6()
+                elif (old == _mod_branch.BzrBranchFormat6 and
+                    new == _mod_branch.BzrBranchFormat7):
+                    branch_converter = _mod_branch.Converter6to7()
+                else:
+                    raise errors.BadConversionTarget("No converter", new)
                 branch_converter.convert(branch)
+                branch = self.bzrdir.open_branch()
+                old = branch._format.__class__
         try:
             tree = self.bzrdir.open_workingtree(recommend_upgrade=False)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
@@ -2664,13 +2768,64 @@ class RepositoryAcquisitionPolicy(object):
     for a branch that is being created.  The most basic policy decision is
     whether to create a new repository or use an existing one.
     """
+    def __init__(self, stack_on, stack_on_pwd, require_stacking):
+        """Constructor.
+
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        :param require_stacking: If True, it is a failure to not stack.
+        """
+        self._stack_on = stack_on
+        self._stack_on_pwd = stack_on_pwd
+        self._require_stacking = require_stacking
 
     def configure_branch(self, branch):
         """Apply any configuration data from this policy to the branch.
 
-        Default implementation does nothing.
+        Default implementation sets repository stacking.
         """
-        pass
+        if self._stack_on is None:
+            return
+        if self._stack_on_pwd is None:
+            stack_on = self._stack_on
+        else:
+            try:
+                stack_on = urlutils.rebase_url(self._stack_on,
+                    self._stack_on_pwd,
+                    branch.bzrdir.root_transport.base)
+            except errors.InvalidRebaseURLs:
+                stack_on = self._get_full_stack_on()
+        try:
+            branch.set_stacked_on_url(stack_on)
+        except errors.UnstackableBranchFormat:
+            if self._require_stacking:
+                raise
+
+    def _get_full_stack_on(self):
+        """Get a fully-qualified URL for the stack_on location."""
+        if self._stack_on is None:
+            return None
+        if self._stack_on_pwd is None:
+            return self._stack_on
+        else:
+            return urlutils.join(self._stack_on_pwd, self._stack_on)
+
+    def _add_fallback(self, repository):
+        """Add a fallback to the supplied repository, if stacking is set."""
+        stack_on = self._get_full_stack_on()
+        if stack_on is None:
+            return
+        stacked_dir = BzrDir.open(stack_on)
+        try:
+            stacked_repo = stacked_dir.open_branch().repository
+        except errors.NotBranchError:
+            stacked_repo = stacked_dir.open_repository()
+        try:
+            repository.add_fallback_repository(stacked_repo)
+        except errors.UnstackableRepositoryFormat:
+            if self._require_stacking:
+                raise
 
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Acquire a repository for this bzrdir.
@@ -2688,8 +2843,17 @@ class RepositoryAcquisitionPolicy(object):
 class CreateRepository(RepositoryAcquisitionPolicy):
     """A policy of creating a new repository"""
 
-    def __init__(self, bzrdir):
-        RepositoryAcquisitionPolicy.__init__(self)
+    def __init__(self, bzrdir, stack_on=None, stack_on_pwd=None,
+                 require_stacking=False):
+        """
+        Constructor.
+        :param bzrdir: The bzrdir to create the repository on.
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        """
+        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd,
+                                             require_stacking)
         self._bzrdir = bzrdir
 
     def acquire_repository(self, make_working_trees=None, shared=False):
@@ -2698,6 +2862,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         Creates the desired repository in the bzrdir we already have.
         """
         repository = self._bzrdir.create_repository(shared=shared)
+        self._add_fallback(repository)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
@@ -2706,8 +2871,17 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 class UseExistingRepository(RepositoryAcquisitionPolicy):
     """A policy of reusing an existing repository"""
 
-    def __init__(self, repository):
-        RepositoryAcquisitionPolicy.__init__(self)
+    def __init__(self, repository, stack_on=None, stack_on_pwd=None,
+                 require_stacking=False):
+        """Constructor.
+
+        :param repository: The repository to use.
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        """
+        RepositoryAcquisitionPolicy.__init__(self, stack_on, stack_on_pwd,
+                                             require_stacking)
         self._repository = repository
 
     def acquire_repository(self, make_working_trees=None, shared=False):
@@ -2715,6 +2889,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
         Returns an existing repository to use
         """
+        self._add_fallback(self._repository)
         return self._repository
 
 
@@ -2802,27 +2977,27 @@ format_registry.register_metadir('rich-root-pack',
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
-        'Repositories in this format can only be read by bzr.dev. '
+        'Repositories and branches in this format can only be read by bzr.dev. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     alias=True,
     )
 format_registry.register_metadir('development-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0Subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
     help='Current development format, subtree variant. Can convert data to and '
-        'from pack-0.92 (and anything compatible with pack-0.92) format '
-        'repositories. Repositories in this format can only be read by '
-        'bzr.dev. Please read '
+        'from pack-0.92-subtree (and anything compatible with '
+        'pack-0.92-subtree) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     alias=True,
@@ -2850,4 +3025,27 @@ format_registry.register_metadir('development0-subtree',
     hidden=True,
     experimental=True,
     )
+format_registry.register_metadir('development1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
+    help='A branch and pack based repository that supports stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development1-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
+    help='A branch and pack based repository that supports stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+# The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')

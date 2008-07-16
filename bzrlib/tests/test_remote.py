@@ -187,9 +187,8 @@ class FakeClient(_SmartClient):
 class FakeMedium(medium.SmartClientMedium):
 
     def __init__(self, client_calls, base):
-        self._remote_is_at_least_1_2 = True
+        medium.SmartClientMedium.__init__(self, base)
         self._client_calls = client_calls
-        self.base = base
 
     def disconnect(self):
         self._client_calls.append(('disconnect medium',))
@@ -252,6 +251,34 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
                 '../xyz/', scheme + '//host/path', '../xyz/')
             self.assertRemotePathHTTP(
                 'xyz/', scheme + '//host/path', 'xyz/')
+
+
+class Test_ClientMedium_remote_is_at_least(tests.TestCase):
+    """Tests for the behaviour of client_medium.remote_is_at_least."""
+
+    def test_initially_unlimited(self):
+        """A fresh medium assumes that the remote side supports all
+        versions.
+        """
+        client_medium = medium.SmartClientMedium('dummy base')
+        self.assertFalse(client_medium._is_remote_before((99, 99)))
+    
+    def test__remember_remote_is_before(self):
+        """Calling _remember_remote_is_before ratchets down the known remote
+        version.
+        """
+        client_medium = medium.SmartClientMedium('dummy base')
+        # Mark the remote side as being less than 1.6.  The remote side may
+        # still be 1.5.
+        client_medium._remember_remote_is_before((1, 6))
+        self.assertTrue(client_medium._is_remote_before((1, 6)))
+        self.assertFalse(client_medium._is_remote_before((1, 5)))
+        # Calling _remember_remote_is_before again with a lower value works.
+        client_medium._remember_remote_is_before((1, 5))
+        self.assertTrue(client_medium._is_remote_before((1, 5)))
+        # You cannot call _remember_remote_is_before with a larger value.
+        self.assertRaises(
+            AssertionError, client_medium._remember_remote_is_before, (1, 9))
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -614,6 +641,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
             def set_last_revision_info(self, revno, revision_id):
                 self.calls.append(
                     ('set_last_revision_info', revno, revision_id))
+            def _clear_cached_state(self):
+                pass
         real_branch = StubRealBranch()
         branch._real_branch = real_branch
         self.lock_remote_branch(branch)
@@ -883,7 +912,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_unknown_method_response('Repository,get_parent_map')
         client.add_success_response_with_body('', 'ok')
-        self.assertTrue(client._medium._remote_is_at_least_1_2)
+        self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
         expected_deprecations = [
             'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
@@ -898,7 +927,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
               ('quack/', ''))],
             client._calls)
         # The medium is now marked as being connected to an older server
-        self.assertFalse(client._medium._remote_is_at_least_1_2)
+        self.assertTrue(client._medium._is_remote_before((1, 2)))
 
     def test_get_parent_map_fallback_parentless_node(self):
         """get_parent_map falls back to get_revision_graph on old servers.  The
@@ -915,7 +944,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(rev_id, 'ok')
-        client._medium._remote_is_at_least_1_2 = False
+        client._medium._remember_remote_is_before((1, 2))
         expected_deprecations = [
             'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
             'in version 1.4.']
@@ -1153,66 +1182,3 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         self.assertFalse(isinstance(dest_repo, RemoteRepository))
         self.assertTrue(isinstance(src_repo, RemoteRepository))
         src_repo.copy_content_into(dest_repo)
-
-
-class TestRepositoryStreamKnitData(TestRemoteRepository):
-
-    def make_pack_file(self, records):
-        pack_file = StringIO()
-        pack_writer = pack.ContainerWriter(pack_file.write)
-        pack_writer.begin()
-        for bytes, names in records:
-            pack_writer.add_bytes_record(bytes, names)
-        pack_writer.end()
-        pack_file.seek(0)
-        return pack_file
-
-    def make_pack_stream(self, records):
-        pack_serialiser = pack.ContainerSerialiser()
-        yield pack_serialiser.begin()
-        for bytes, names in records:
-            yield pack_serialiser.bytes_record(bytes, names)
-        yield pack_serialiser.end()
-
-    def test_bad_pack_from_server(self):
-        """A response with invalid data (e.g. it has a record with multiple
-        names) triggers an exception.
-        
-        Not all possible errors will be caught at this stage, but obviously
-        malformed data should be.
-        """
-        record = ('bytes', [('name1',), ('name2',)])
-        pack_stream = self.make_pack_stream([record])
-        transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_success_response_with_body(pack_stream, 'ok')
-        search = graph.SearchResult(set(['revid']), set(), 1, set(['revid']))
-        stream = repo.get_data_stream_for_search(search)
-        self.assertRaises(errors.SmartProtocolError, list, stream)
-    
-    def test_backwards_compatibility(self):
-        """If the server doesn't recognise this request, fallback to VFS."""
-        repo, client = self.setup_fake_client_and_repository('path')
-        client.add_unknown_method_response(
-            'Repository.stream_revisions_chunked')
-        self.mock_called = False
-        repo._real_repository = MockRealRepository(self)
-        search = graph.SearchResult(set(['revid']), set(), 1, set(['revid']))
-        repo.get_data_stream_for_search(search)
-        self.assertTrue(self.mock_called)
-        self.failIf(client.expecting_body,
-            "The protocol has been left in an unclean state that will cause "
-            "TooManyConcurrentRequests errors.")
-
-
-class MockRealRepository(object):
-    """Helper class for TestRepositoryStreamKnitData.test_unknown_method."""
-
-    def __init__(self, test):
-        self.test = test
-
-    def get_data_stream_for_search(self, search):
-        self.test.assertEqual(set(['revid']), search.get_keys())
-        self.test.mock_called = True
-
-

@@ -386,6 +386,9 @@ request_handlers.register_lazy(
     'Branch.set_last_revision_info', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionInfo')
 request_handlers.register_lazy(
+    'Branch.set_last_revision_ex', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetLastRevisionEx')
+request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
     'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')
@@ -427,14 +430,6 @@ request_handlers.register_lazy('Repository.gather_stats',
 request_handlers.register_lazy('Repository.get_parent_map',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGetParentMap')
-request_handlers.register_lazy(
-    'Repository.stream_knit_data_for_revisions',
-    'bzrlib.smart.repository',
-    'SmartServerRepositoryStreamKnitDataForRevisions')
-request_handlers.register_lazy(
-    'Repository.stream_revisions_chunked',
-    'bzrlib.smart.repository',
-    'SmartServerRepositoryStreamRevisionsChunked')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(

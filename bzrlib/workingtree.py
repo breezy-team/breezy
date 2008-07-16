@@ -246,6 +246,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # permitted to do this.
             self._set_inventory(_inventory, dirty=False)
         self._detect_case_handling()
+        self._rules_searcher = None
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -396,7 +397,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
-        except errors.RevisionNotPresent:
+        except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
             # occured. If the revision is present, its a problem, if its not
             # its a ghost.
@@ -724,6 +725,25 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
             mode=self._control_files._file_mode)
 
+    def _filter_parent_ids_by_ancestry(self, revision_ids):
+        """Check that all merged revisions are proper 'heads'.
+
+        This will always return the first revision_id, and any merged revisions
+        which are 
+        """
+        if len(revision_ids) == 0:
+            return revision_ids
+        graph = self.branch.repository.get_graph()
+        heads = graph.heads(revision_ids)
+        new_revision_ids = revision_ids[:1]
+        for revision_id in revision_ids[1:]:
+            if revision_id in heads and revision_id not in new_revision_ids:
+                new_revision_ids.append(revision_id)
+        if new_revision_ids != revision_ids:
+            trace.mutter('requested to set revision_ids = %s,'
+                         ' but filtered to %s', revision_ids, new_revision_ids)
+        return new_revision_ids
+
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
@@ -742,6 +762,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         for revision_id in revision_ids:
             _mod_revision.check_not_reserved_id(revision_id)
 
+        revision_ids = self._filter_parent_ids_by_ancestry(revision_ids)
+
         if len(revision_ids) > 0:
             self.set_last_revision(revision_ids[0])
         else:
@@ -758,6 +780,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         self._check_parents_for_ghosts(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
 
         if len(parent_ids) == 0:
             leftmost_parent_id = _mod_revision.NULL_REVISION
@@ -1568,7 +1592,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if subf == '.bzr':
                     continue
                 if subf not in dir_entry.children:
-                    subf_norm, can_access = osutils.normalized_filename(subf)
+                    try:
+                        (subf_norm,
+                         can_access) = osutils.normalized_filename(subf)
+                    except UnicodeDecodeError:
+                        path_os_enc = path.encode(osutils._fs_enc)
+                        relpath = path_os_enc + '/' + subf
+                        raise errors.BadFilenameEncoding(relpath,
+                                                         osutils._fs_enc)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)
@@ -2429,6 +2460,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
+    @needs_read_lock
+    def _check(self):
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = self.branch.repository.revision_tree(
+                self.last_revision())
+            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
+
     def _validate(self):
         """Validate internal structures.
 
@@ -2439,6 +2484,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :return: None. An exception should be raised if there is an error.
         """
         return
+
+    @needs_read_lock
+    def _get_rules_searcher(self, default_searcher):
+        """See Tree._get_rules_searcher."""
+        if self._rules_searcher is None:
+            self._rules_searcher = super(WorkingTree,
+                self)._get_rules_searcher(default_searcher)
+        return self._rules_searcher
 
 
 class WorkingTree2(WorkingTree):

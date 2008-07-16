@@ -103,15 +103,22 @@ class MetaTestLog(TestCase):
                               'a test message\n')
 
 
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        tests.UnicodeFilename._probe()
+
+
 class TestTreeShape(TestCaseInTempDir):
 
     def test_unicode_paths(self):
+        self.requireFeature(tests.UnicodeFilename)
+
         filename = u'hell\u00d8'
-        try:
-            self.build_tree_contents([(filename, 'contents of hello')])
-        except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding())
+        self.build_tree_contents([(filename, 'contents of hello')])
         self.failUnlessExists(filename)
 
 
@@ -126,8 +133,8 @@ class TestTransportProviderAdapter(TestCase):
     """
 
     def test_get_transport_permutations(self):
-        # this checks that we the module get_test_permutations call
-        # is made by the adapter get_transport_test_permitations method.
+        # this checks that get_test_permutations defined by the module is
+        # called by the adapter get_transport_test_permutations method.
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
@@ -139,11 +146,10 @@ class TestTransportProviderAdapter(TestCase):
                          adapter.get_transport_test_permutations(MockModule()))
 
     def test_adapter_checks_all_modules(self):
-        # this checks that the adapter returns as many permurtations as
-        # there are in all the registered# transport modules for there
-        # - we assume if this matches its probably doing the right thing
-        # especially in combination with the tests for setting the right
-        # classes below.
+        # this checks that the adapter returns as many permutations as there
+        # are in all the registered transport modules - we assume if this
+        # matches its probably doing the right thing especially in combination
+        # with the tests for setting the right classes below.
         from bzrlib.tests.test_transport_implementations \
             import TransportTestProviderAdapter
         from bzrlib.transport import _get_transport_modules
@@ -235,86 +241,67 @@ class TestBzrDirProviderAdapter(TestCase):
             adapter.scenarios)
 
 
-class TestRepositoryProviderAdapter(TestCase):
+class TestRepositoryParameterisation(TestCase):
     """A group of tests that test the repository implementation test adapter."""
-
-    def test_constructor(self):
-        # check that constructor parameters are passed through to the
-        # scenarios.
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        server1 = "a"
-        server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
-        adapter = RepositoryTestProviderAdapter(server1, server2, formats)
-        self.assertEqual([
-            ('str',
-             {'bzrdir_format': 'C',
-              'repository_format': 'c',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
-            ('str',
-             {'bzrdir_format': 'D',
-              'repository_format': 'd',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
-            adapter.scenarios)
 
     def test_setting_vfs_transport(self):
         """The vfs_transport_factory can be set optionally."""
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        formats = [("a", "b"), ("c", "d")]
-        adapter = RepositoryTestProviderAdapter(None, None, formats,
+        from bzrlib.tests.repository_implementations import formats_to_scenarios
+        scenarios = formats_to_scenarios(
+            [("(one)", "a", "b"), ("(two)", "c", "d")],
+            None,
+            None,
             vfs_transport_factory="vfs")
         self.assertEqual([
-            ('str',
+            ('str(one)',
              {'bzrdir_format': 'b',
               'repository_format': 'a',
               'transport_readonly_server': None,
               'transport_server': None,
               'vfs_transport_factory': 'vfs'}),
-            ('str',
+            ('str(two)',
              {'bzrdir_format': 'd',
               'repository_format': 'c',
               'transport_readonly_server': None,
               'transport_server': None,
               'vfs_transport_factory': 'vfs'})],
-            adapter.scenarios)
+            scenarios)
 
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        no_vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
-            [], None)
-        vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
-            [], vfs_transport_factory="vfs")
+        from bzrlib.tests.repository_implementations import formats_to_scenarios
+        formats = [("(c)", "c", "C"), ("(d)", 1, "D")]
+        no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
+            None)
+        vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
+            vfs_transport_factory="vfs")
         # no_vfs generate scenarios without vfs_transport_factor
-        formats = [("c", "C"), (1, "D")]
         self.assertEqual([
-            ('str',
+            ('str(c)',
              {'bzrdir_format': 'C',
               'repository_format': 'c',
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'}),
-            ('int',
+            ('int(d)',
              {'bzrdir_format': 'D',
               'repository_format': 1,
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'})],
-            no_vfs_adapter.formats_to_scenarios(formats))
+            no_vfs_scenarios)
         self.assertEqual([
-            ('str',
+            ('str(c)',
              {'bzrdir_format': 'C',
               'repository_format': 'c',
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'}),
-            ('int',
+            ('int(d)',
              {'bzrdir_format': 'D',
               'repository_format': 1,
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'})],
-            vfs_adapter.formats_to_scenarios(formats))
+            vfs_scenarios)
 
 
 class TestTestScenarioApplier(TestCase):
@@ -394,61 +381,6 @@ class TestInterRepositoryProviderAdapter(TestCase):
               'transport_readonly_server': 'b',
               'transport_server': 'a'})],
             adapter.formats_to_scenarios(formats))
-
-
-class TestInterVersionedFileProviderAdapter(TestCase):
-    """A group of tests that test the InterVersionedFile test adapter."""
-
-    def test_scenarios(self):
-        # check that constructor parameters are passed through to the adapted
-        # test.
-        from bzrlib.tests.interversionedfile_implementations \
-            import InterVersionedFileTestProviderAdapter
-        server1 = "a"
-        server2 = "b"
-        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
-        adapter = InterVersionedFileTestProviderAdapter(server1, server2, formats)
-        self.assertEqual([
-            ('str',
-             {'interversionedfile_class':str,
-              'transport_readonly_server': 'b',
-              'transport_server': 'a',
-              'versionedfile_factory': 'C1',
-              'versionedfile_factory_to': 'C2'}),
-            ('int',
-             {'interversionedfile_class': int,
-              'transport_readonly_server': 'b',
-              'transport_server': 'a',
-              'versionedfile_factory': 'D1',
-              'versionedfile_factory_to': 'D2'})],
-            adapter.scenarios)
-
-
-class TestRevisionStoreProviderAdapter(TestCase):
-    """A group of tests that test the RevisionStore test adapter."""
-
-    def test_scenarios(self):
-        # check that constructor parameters are passed through to the adapted
-        # test.
-        from bzrlib.tests.revisionstore_implementations \
-            import RevisionStoreTestProviderAdapter
-        # revision stores need a store factory - i.e. RevisionKnit
-        #, a readonly and rw transport 
-        # transport servers:
-        server1 = "a"
-        server2 = "b"
-        store_factories = ["c", "d"]
-        adapter = RevisionStoreTestProviderAdapter(server1, server2, store_factories)
-        self.assertEqual([
-            ('c',
-             {'store_factory': 'c',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
-            ('d',
-             {'store_factory': 'd',
-              'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
-            adapter.scenarios)
 
 
 class TestWorkingTreeProviderAdapter(TestCase):
@@ -1050,6 +982,15 @@ class TestTestResult(TestCase):
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
 
+class TestUnicodeFilenameFeature(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilenameFeature._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        tests.UnicodeFilenameFeature._probe()
+
+
 class TestRunner(TestCase):
 
     def dummy_test(self):
@@ -1349,6 +1290,8 @@ class SampleTestCase(TestCase):
     def _test_pass(self):
         pass
 
+class _TestException(Exception):
+    pass
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
@@ -1511,6 +1454,61 @@ class TestTestCase(TestCase):
             ('stopTest', test),
             ],
             result.calls)
+
+    def test_assert_list_raises_on_generator(self):
+        def generator_which_will_raise():
+            # This will not raise until after the first yield
+            yield 1
+            raise _TestException()
+
+        e = self.assertListRaises(_TestException, generator_which_will_raise)
+        self.assertIsInstance(e, _TestException)
+
+        e = self.assertListRaises(Exception, generator_which_will_raise)
+        self.assertIsInstance(e, _TestException)
+
+    def test_assert_list_raises_on_plain(self):
+        def plain_exception():
+            raise _TestException()
+            return []
+
+        e = self.assertListRaises(_TestException, plain_exception)
+        self.assertIsInstance(e, _TestException)
+
+        e = self.assertListRaises(Exception, plain_exception)
+        self.assertIsInstance(e, _TestException)
+
+    def test_assert_list_raises_assert_wrong_exception(self):
+        class _NotTestException(Exception):
+            pass
+
+        def wrong_exception():
+            raise _NotTestException()
+
+        def wrong_exception_generator():
+            yield 1
+            yield 2
+            raise _NotTestException()
+
+        # Wrong exceptions are not intercepted
+        self.assertRaises(_NotTestException,
+            self.assertListRaises, _TestException, wrong_exception)
+        self.assertRaises(_NotTestException,
+            self.assertListRaises, _TestException, wrong_exception_generator)
+
+    def test_assert_list_raises_no_exception(self):
+        def success():
+            return []
+
+        def success_generator():
+            yield 1
+            yield 2
+
+        self.assertRaises(AssertionError,
+            self.assertListRaises, _TestException, success)
+
+        self.assertRaises(AssertionError,
+            self.assertListRaises, _TestException, success_generator)
 
 
 @symbol_versioning.deprecated_function(zero_eleven)

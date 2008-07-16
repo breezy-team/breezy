@@ -704,6 +704,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         while not _body_decoder.finished_reading:
             bytes_wanted = min(_body_decoder.next_read_size(), max_read)
             bytes = self._request.read_bytes(bytes_wanted)
+            if bytes == '':
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "Connection lost while reading response body.")
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
         self._body_buffer = StringIO(_body_decoder.read_pending_data())
@@ -805,6 +809,10 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         while not _body_decoder.finished_reading:
             bytes_wanted = min(_body_decoder.next_read_size(), max_read)
             bytes = self._request.read_bytes(bytes_wanted)
+            if bytes == '':
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "Connection lost while reading streamed body.")
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):
                 if 'hpss' in debug.debug_flags and type(body_bytes) is str:
@@ -1014,7 +1022,16 @@ class _ProtocolThreeEncoder(object):
     response_marker = request_marker = MESSAGE_VERSION_THREE
 
     def __init__(self, write_func):
-        self._write_func = write_func
+        self._buf = ''
+        self._real_write_func = write_func
+
+    def _write_func(self, bytes):
+        self._buf += bytes
+
+    def flush(self):
+        if self._buf:
+            self._real_write_func(self._buf)
+            self._buf = ''
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
@@ -1046,6 +1063,7 @@ class _ProtocolThreeEncoder(object):
 
     def _write_end(self):
         self._write_func('e')
+        self.flush()
 
     def _write_prefixed_body(self, bytes):
         self._write_func('b')
@@ -1101,6 +1119,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         elif response.body_stream is not None:
             for chunk in response.body_stream:
                 self._write_prefixed_body(chunk)
+                self.flush()
         self._write_end()
         
 
