@@ -592,7 +592,7 @@ class Merge3Merger(object):
         """
         result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
-                include_unchanged=False, specific_files=self.interesting_files,
+                include_unchanged=True, specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
@@ -1429,7 +1429,6 @@ class _PlanMerge(_PlanMergeBase):
         # rather than a key tuple. We will just map that directly to no common
         # ancestors.
         parent_map = {}
-        mutter('finding lcas for:\n%s, %s', self.a_rev, self.b_rev)
         while True:
             next_lcas = self.graph.find_lca(*cur_ancestors)
             # Map a plain NULL_REVISION to a simple no-ancestors
@@ -1442,8 +1441,6 @@ class _PlanMerge(_PlanMergeBase):
             for rev_key in cur_ancestors:
                 ordered_parents = tuple(self.graph.find_merge_order(rev_key,
                                                                     next_lcas))
-                mutter('found %s => %s', rev_key[-1], [p[-1] for p
-                                                       in ordered_parents])
                 parent_map[rev_key] = ordered_parents
             if len(next_lcas) == 0:
                 break
@@ -1453,8 +1450,8 @@ class _PlanMerge(_PlanMergeBase):
             elif len(next_lcas) > 2:
                 # More than 2 lca's, fall back to grabbing all nodes between
                 # this and the unique lca.
-                mutter('More than 2 LCAs, falling back to all nodes for: %s',
-                       cur_ancestors)
+                mutter('More than 2 LCAs, falling back to all nodes for:'
+                       ' %s, %s\n=> %s', self.a_key, self.b_key, cur_ancestors)
                 cur_lcas = next_lcas
                 while len(cur_lcas) > 1:
                     cur_lcas = self.graph.find_lca(*cur_lcas)
@@ -1579,8 +1576,6 @@ class _PlanMerge(_PlanMergeBase):
         all_revision_keys.add(self.a_key)
         all_revision_keys.add(self.b_key)
 
-        if NULL_REVISION in all_revision_keys:
-            import pdb; pdb.set_trace()
         # Everything else is in 'keys' but get_lines is in 'revision_ids'
         all_texts = self.get_lines([k[-1] for k in all_revision_keys])
         return all_texts
@@ -1603,7 +1598,6 @@ class _PlanMerge(_PlanMergeBase):
         tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
         parent_map[tip_key] = (self.a_key, self.b_key)
 
-        ordering = []
         for seq_num, key, depth, eom in reversed(tsort.merge_sort(parent_map,
                                                                   tip_key)):
             if key == tip_key:
@@ -1611,11 +1605,9 @@ class _PlanMerge(_PlanMergeBase):
         # for key in tsort.topo_sort(parent_map):
             parent_keys = parent_map[key]
             revision_id = key[-1]
-            ordering.append(revision_id)
             parent_ids = [k[-1] for k in parent_keys]
             self._weave.add_lines(revision_id, parent_ids,
                                   all_texts[revision_id])
-        mutter('order in weave: %s', ordering)
 
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
@@ -1634,7 +1626,8 @@ class _PlanMerge(_PlanMergeBase):
                     raise AssertionError('There was an invalid head: %s != %s'
                                          % (self.b_key, self._head_key))
                 plan = 'new-b'
-            lines = self.get_lines([self._head_key[-1]])[self._head_key[-1]]
+            head_rev = self._head_key[-1]
+            lines = self.get_lines([head_rev])[head_rev]
             return ((plan, line) for line in lines)
         return self._weave.plan_merge(self.a_rev, self.b_rev)
 

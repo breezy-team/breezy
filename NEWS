@@ -15,7 +15,7 @@ IN DEVELOPMENT
       (Martin Pool)
 
     * ``bzr (re)merge --weave`` will now use a real Weave algorithm,
-      rather than the annotation-based merged it was using. It does so by
+      rather than the annotation-based merge it was using. It does so by
       building up a Weave of the important texts, without needing to build
       the full ancestry. (John Arbash Meinel, #238895)
 

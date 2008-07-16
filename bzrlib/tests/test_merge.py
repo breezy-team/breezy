@@ -1058,11 +1058,11 @@ class TestMergeImplementation(object):
         self.build_tree_contents([
             ('other/file1', 'line 1\nline 2 to 2.1\nline 3\nline 4\n'),
         ])
-        other_tree.commit('Swapped 2 & 3')
+        other_tree.commit('Changed 2 to 2.1')
         self.build_tree_contents([
             ('this/file1', 'line 1\nline 3\nline 2\nline 4\n'),
         ])
-        this_tree.commit('Changed 2 to 2.1')
+        this_tree.commit('Swapped 2 & 3')
         self.do_merge(this_tree, other_tree)
         self.assertFileEqual('line 1\n'
             '<<<<<<< TREE\n'

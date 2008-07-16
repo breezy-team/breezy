@@ -656,9 +656,6 @@ class Weave(VersionedFile):
                 # not in either revision
                 yield 'irrelevant', line
 
-        # This doesn't seem to be used anymore
-        # yield 'unchanged', ''           # terminator
-
     def _extract(self, versions):
         """Yield annotation of lines in included set.
 

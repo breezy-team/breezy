@@ -1504,12 +1504,9 @@ def collapse_linear_regions(parent_map):
             if len(node_children) != 1:
                 continue
             child_parents = result.get(node_children[0], None)
-            if child_parents is None:
-                import pdb; pdb.set_trace()
             if len(child_parents) != 1:
                 # This is not its only parent
                 continue
-            assert child_parents[0] == node
             # The child of this node only points at it, and the parent only has
             # this as a child. remove this node, and join the others together
             result[node_children[0]] = parents

@@ -1414,11 +1414,11 @@ class TestCollapseLinearRegions(tests.TestCase):
         #   / \
         #  4   5
         #  |   |
-        #  3   2
+        #  2   3
         #   \ /
         #    1
         #
         # 4 and 5 cannot be removed because 6 has 2 children
-        # 3 and 2 cannot be removed because 1 has 2 parents
+        # 2 and 3 cannot be removed because 1 has 2 parents
         d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
         self.assertCollapsed(d, d)
