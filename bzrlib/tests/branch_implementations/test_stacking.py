@@ -95,4 +95,29 @@ class TestStacking(TestCaseWithBranch):
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         new_tree = new_dir.open_workingtree()
-        new_tree.commit('something local')
+        new_branch_revid = new_tree.commit('something local')
+        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionInRepository('newbranch', new_branch_revid)
+
+    def test_unstack_fetches(self):
+        """Removing the stacked-on branch pulls across all data"""
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline')
+        trunk_revid = trunk_tree.commit('revision on mainline')
+        # and make branch from it which is stacked
+        try:
+            new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        except (errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            raise TestNotApplicable(e)
+        # stacked repository
+        self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        # now when we unstack that should implicitly fetch, to make sure that
+        # the branch will still work
+        new_branch = new_dir.open_branch()
+        new_branch.set_stacked_on_url(None)
+        self.assertRevisionInRepository('newbranch', trunk_revid)
+        # of course it's still in the mainline
+        self.assertRevisionInRepository('mainline', trunk_revid)
+        # and now we're no longer stacked
+        self.assertIs(new_branch.get_stacked_on_url(), None)
