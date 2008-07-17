@@ -615,6 +615,13 @@ class LogFormatter(object):
         only relevant if supports_merge_revisions is not True.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
+
+    Plugins can register functions to show custom revision properties using
+    the properties_handler_registry. The registered function
+    must respect the following interface description:
+        def my_show_properties(properties_dict):
+            # code that returns a dict {'name':'value'} of the properties 
+            # to be shown
     """
 
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
@@ -644,6 +651,15 @@ class LogFormatter(object):
             return name
         return address
 
+    def show_properties(self, revision, indent):
+        """Displays the custom properties returned by each registered handler.
+        
+        If a registered handler raises an error it is propagated.
+        """
+        for key, handler in properties_handler_registry.iteritems():
+            for key, value in handler(revision).items():
+                self.to_file.write(indent + key + ': ' + value + '\n')
+
 
 class LongLogFormatter(LogFormatter):
 
@@ -665,6 +681,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
+        self.show_properties(revision.rev, indent)
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
@@ -878,3 +895,5 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  end_revision=len(new_rh),
                  search=None)
 
+
+properties_handler_registry = registry.Registry()
