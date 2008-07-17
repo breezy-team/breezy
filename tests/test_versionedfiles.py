@@ -18,8 +18,7 @@ from bzrlib.graph import DictParentsProvider
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, VirtualRevisionTexts, 
-                                               VirtualInventoryTexts, VirtualSignatureTexts,
-                                               VirtualVersionedFiles)
+                                               VirtualInventoryTexts, VirtualSignatureTexts)
 
 
 class BasicSvnTextsTests:
@@ -42,35 +41,6 @@ class BasicSvnTextsTests:
 class SvnTextsTests(TestCase,BasicSvnTextsTests):
     def setUp(self):
         self.texts = SvnTexts(self)
-
-
-class VirtualTextsTests(TestCase,BasicSvnTextsTests):
-    def get_parent_map(self, keys):
-        return DictParentsProvider(self.parent_map).get_parent_map(keys)
-
-    def get_lines(self, key):
-        (k,) = key
-        if not k in self.lines:
-            return None
-        return self.lines[k]
-
-    def test_get_parent_map(self):
-        self.parent_map = {"G": ("A", "B")}
-        self.assertEquals({("G",): (("A",),("B",))}, self.texts.get_parent_map([("G",)]))
-
-    def test_get_sha1s(self):
-        self.lines = {"A": ["FOO"]}
-        self.assertEquals({("A",): osutils.sha_strings(["FOO"])}, 
-                self.texts.get_sha1s([("A",), ("B",)]))
-
-    def test_get_record_stream(self):
-        self.lines = {"A": ["FOO"]}
-        it = self.texts.get_record_stream([("A",)], "unordered", True)
-        record = it.next()
-        self.assertEquals("FOO", record.get_bytes_as("fulltext"))
-
-    def setUp(self):
-        self.texts = VirtualVersionedFiles(self.get_parent_map, self.get_lines)
 
 
 class VirtualRevisionTextsTests(TestCase,BasicSvnTextsTests):
