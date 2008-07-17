@@ -304,6 +304,10 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """
 
     def __init__(self, transport_server, transport_readonly_server, formats):
+        """Create a TreeTestProviderAdapter.
+
+        :param formats: [workingtree_format]
+        """
         super(TreeTestProviderAdapter, self).__init__(transport_server,
             transport_readonly_server, formats)
         # now adjust the scenarios and add the non-working-tree tree scenarios.
