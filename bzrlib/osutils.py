@@ -1191,14 +1191,14 @@ def _walkdirs_utf8(top, prefix=""):
         pass to os functions to affect the file in question. (such as os.lstat)
     """
     fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32'):
+    if sys.platform == 'win32':
         try:
             from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
         except ImportError:
             return _walkdirs_unicode_to_utf8(top, prefix=prefix)
         else:
             return _walkdirs_utf8_win32_find_file(top, prefix=prefix)
-    if (fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
+    if fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'): # ascii
         return _walkdirs_unicode_to_utf8(top, prefix=prefix)
     else:
         return _walkdirs_fs_utf8(top, prefix=prefix)
@@ -1276,15 +1276,6 @@ def _walkdirs_unicode_to_utf8(top, prefix=""):
 
         # push the user specified dirs from dirblock
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
-
-
-def _walkdirs_utf8_win32_find_file(top, prefix=""):
-    """
-    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
-    Unicode paths.
-    """
-    from bzrlib._walkdirs_win32 import Win32Finder
-    return Win32Finder(top, prefix=prefix)
 
 
 def copy_tree(from_path, to_path, handlers={}):

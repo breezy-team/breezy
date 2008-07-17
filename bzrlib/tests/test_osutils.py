@@ -981,6 +981,7 @@ class TestWalkDirs(TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file(self):
         self.requireFeature(WalkdirsWin32Feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
         name0u = u'0file-\xb6'
         name1u = u'1dir-\u062c\u0648'
         name2u = u'2file-\u0633'
@@ -1017,7 +1018,7 @@ class TestWalkDirs(TestCaseInTempDir):
                  ]
                 ),
             ]
-        result = list(osutils._walkdirs_utf8_win32_find_file(u'.'))
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 
@@ -1035,6 +1036,7 @@ class TestWalkDirs(TestCaseInTempDir):
         """make sure our Stat values are valid"""
         self.requireFeature(WalkdirsWin32Feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u])
@@ -1047,7 +1049,7 @@ class TestWalkDirs(TestCaseInTempDir):
         finally:
             f.close()
 
-        result = list(osutils._walkdirs_utf8_win32_find_file(u'.'))
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
         entry = result[0][1][0]
         self.assertEqual((name0, name0, 'file'), entry[:3])
         self.assertEqual(u'./' + name0u, entry[4])
@@ -1058,11 +1060,12 @@ class TestWalkDirs(TestCaseInTempDir):
         """make sure our Stat values are valid"""
         self.requireFeature(WalkdirsWin32Feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u + '/'])
 
-        result = list(osutils._walkdirs_utf8_win32_find_file(u'.'))
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
         entry = result[0][1][0]
         self.assertEqual((name0, name0, 'directory'), entry[:3])
         self.assertEqual(u'./' + name0u, entry[4])
