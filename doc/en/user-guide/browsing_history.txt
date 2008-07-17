@@ -70,7 +70,7 @@ a viewing tool (like ``less`` or ``more``) or redirect it
 like this::
 
   bzr cat -r -2 foo.py | less
-  bzr car -r 1 foo.py > /tmp/foo-1st-version.py
+  bzr cat -r 1 foo.py > /tmp/foo-1st-version.py
 
 Graphical history viewers
 -------------------------

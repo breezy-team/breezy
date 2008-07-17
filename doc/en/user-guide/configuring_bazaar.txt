@@ -46,3 +46,15 @@ the ``whoami`` command::
 For further details on the syntax and configuration settings supported, see
 `Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
 in the Bazaar User Reference.
+
+
+Rule-based preferences
+----------------------
+
+Some commands and plugins provide custom processing on files matching
+certain patterns. Branch-specific and per-user rule-based preferences
+are defined in ``.bzrrules`` and ``BZR_HOME/rules`` respectively.
+
+For further information on how rules are searched and the detailed syntax of
+the relevant files, see `Rules <../user-reference/bzr_man.html#rules>`_
+in the Bazaar User Reference.

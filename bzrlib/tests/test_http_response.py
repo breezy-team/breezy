@@ -225,6 +225,7 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
         self.assertEquals('', f.read(0))
         self.assertEquals('', f.read(1))
 
+
 class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a whole file whose size is known."""
 
@@ -253,6 +254,7 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         f._pos = 0 # Force an invalid pos
         self.assertRaises(errors.InvalidRange, f.read, 2)
 
+
 class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for multiple ranges.
 
@@ -266,10 +268,16 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     fact) in real uses but may lead to hard to track bugs.
     """
 
+    # The following is used to represent the boundary paramter defined
+    # in HTTP response headers and the boundary lines that separate
+    # multipart content.
+
+    boundary = "separation"
+
     def setUp(self):
         super(TestRangeFileMultipleRanges, self).setUp()
 
-        boundary = 'separation'
+        boundary = self.boundary
 
         content = ''
         self.first_range_start = 25
@@ -281,19 +289,22 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
             content += self._multipart_byterange(part, start, boundary,
                                                  file_size)
         # Final boundary
-        content += self._boundary_line(boundary)
+        content += self._boundary_line()
 
         self._file = response.RangeFile('Multiple_ranges_file',
                                         StringIO(content))
+        self.set_file_boundary()
+
+    def _boundary_line(self):
+        """Helper to build the formatted boundary line."""
+        return '--' + self.boundary + '\r\n'
+
+    def set_file_boundary(self):
         # Ranges are set by decoding the range headers, the RangeFile user is
         # supposed to call the following before using seek or read since it
         # requires knowing the *response* headers (in that case the boundary
         # which is part of the Content-Type header).
-        self._file.set_boundary(boundary)
-
-    def _boundary_line(self, boundary):
-        """Helper to build the formatted boundary line."""
-        return '--' + boundary + '\r\n'
+        self._file.set_boundary(self.boundary)
 
     def _multipart_byterange(self, data, offset, boundary, file_size='*'):
         """Encode a part of a file as a multipart/byterange MIME type.
@@ -311,7 +322,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         :return: a string containing the data encoded as it will appear in the
             HTTP response body.
         """
-        bline = self._boundary_line(boundary)
+        bline = self._boundary_line()
         # Each range begins with a boundary line
         range = bline
         # A range is described by a set of headers, but only 'Content-Range' is
@@ -393,6 +404,31 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         self.assertEquals(self.alpha, f.read())
         self.assertEquals(self.alpha.upper(), f.read())
         self.assertRaises(errors.InvalidHttpResponse, f.read, 1)
+
+
+class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
+    """Perform the same tests as TestRangeFileMultipleRanges, but uses 
+    an angle-bracket quoted boundary string like IIS 6.0 and 7.0
+    (but not IIS 5, which breaks the RFC in a different way
+    by using square brackets, not angle brackets)
+    
+    This reveals a bug caused by 
+    
+    - The bad implementation of RFC 822 unquoting in Python (angles are not 
+      quotes), coupled with 
+
+    - The bad implementation of RFC 2046 in IIS (angles are not permitted chars
+      in boundary lines).
+ 
+    """
+    # The boundary as it appears in boundary lines
+    # IIS 6 and 7 use this value
+    _boundary_trimmed = "q1w2e3r4t5y6u7i8o9p0zaxscdvfbgnhmjklkl"
+    boundary = '<' + _boundary_trimmed + '>'
+
+    def set_file_boundary(self):
+        # Emulate broken rfc822.unquote() here by removing angles
+        self._file.set_boundary(self._boundary_trimmed)
 
 
 class TestRangeFileVarious(tests.TestCase):

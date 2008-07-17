@@ -171,15 +171,6 @@ class TestFormat6(TestCaseWithTransport):
                           control.transport.get,
                           'ancestry.weave')
 
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction,
-            inv.add_lines, 'foo', [], [])
-
     def test_supports_external_lookups(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
@@ -209,6 +200,25 @@ class TestFormat7(TestCaseWithTransport):
                              'w\n'
                              'W\n',
                              t.get('inventory.weave').read())
+        # Creating a file with id Foo:Bar results in a non-escaped file name on
+        # disk.
+        control.create_branch()
+        tree = control.create_workingtree()
+        tree.add(['foo'], ['Foo:Bar'], ['file'])
+        tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
+        tree.commit('first post', rev_id='first')
+        self.assertEqualDiff(
+            '# bzr weave file v5\n'
+            'i\n'
+            '1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
+            'n first\n'
+            '\n'
+            'w\n'
+            '{ 0\n'
+            '. content\n'
+            '}\n'
+            'W\n',
+            t.get('weaves/74/Foo%3ABar.weave').read())
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -289,15 +299,6 @@ class TestFormat7(TestCaseWithTransport):
                              'W\n',
                              t.get('inventory.weave').read())
 
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction,
-            inv.add_lines, 'foo', [], [])
-
     def test_supports_external_lookups(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
@@ -325,13 +326,19 @@ class TestFormatKnit1(TestCaseWithTransport):
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
+        # Check per-file knits.
+        branch = control.create_branch()
+        tree = control.create_workingtree()
+        tree.add(['foo'], ['Nasty-IdC:'], ['file'])
+        tree.put_file_bytes_non_atomic('Nasty-IdC:', '')
+        tree.commit('1st post', rev_id='foo')
+        self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
+            '\nfoo fulltext 0 81  :')
 
-    def assertHasKnit(self, t, knit_name):
+    def assertHasKnit(self, t, knit_name, extra_content=''):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 8\n',
+        self.assertEqualDiff('# bzr knit index 8\n' + extra_content,
                              t.get(knit_name + '.kndx').read())
-        # no default content
-        self.assertTrue(t.has(knit_name + '.knit'))
 
     def check_knits(self, t):
         """check knit content for a repository."""
@@ -381,16 +388,6 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit1()
-        repo = self.make_repository('.', format=format)
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction,
-            inv.add_lines, 'foo', [], [])
-
     def test_deserialise_sets_root_revision(self):
         """We must have a inventory.root.revision
 
@@ -422,69 +419,6 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
         self.assertFalse(repo._format.supports_external_lookups)
-
-
-class KnitRepositoryStreamTests(test_knit.KnitTests):
-    """Tests for knitrepo._get_stream_as_bytes."""
-
-    def test_get_stream_as_bytes(self):
-        # Make a simple knit
-        k1 = self.make_test_knit()
-        k1.add_lines('text-a', [], test_knit.split_lines(test_knit.TEXT_1))
-        
-        # Serialise it, check the output.
-        bytes = knitrepo._get_stream_as_bytes(k1, ['text-a'])
-        data = bencode.bdecode(bytes)
-        format, record = data
-        self.assertEqual('knit-plain', format)
-        self.assertEqual(['text-a', ['fulltext'], []], record[:3])
-        self.assertRecordContentEqual(k1, 'text-a', record[3])
-
-    def test_get_stream_as_bytes_all(self):
-        """Get a serialised data stream for all the records in a knit.
-
-        Much like test_get_stream_all, except for get_stream_as_bytes.
-        """
-        k1 = self.make_test_knit()
-        # Insert the same data as BasicKnitTests.test_knit_join, as they seem
-        # to cover a range of cases (no parents, one parent, multiple parents).
-        test_data = [
-            ('text-a', [], test_knit.TEXT_1),
-            ('text-b', ['text-a'], test_knit.TEXT_1),
-            ('text-c', [], test_knit.TEXT_1),
-            ('text-d', ['text-c'], test_knit.TEXT_1),
-            ('text-m', ['text-b', 'text-d'], test_knit.TEXT_1),
-           ]
-        # This test is actually a bit strict as the order in which they're
-        # returned is not defined.  This matches the current (deterministic)
-        # behaviour.
-        expected_data_list = [
-            # version, options, parents
-            ('text-a', ['fulltext'], []),
-            ('text-b', ['line-delta'], ['text-a']),
-            ('text-m', ['line-delta'], ['text-b', 'text-d']),
-            ('text-c', ['fulltext'], []),
-            ('text-d', ['line-delta'], ['text-c']),
-            ]
-        for version_id, parents, lines in test_data:
-            k1.add_lines(version_id, parents, test_knit.split_lines(lines))
-
-        bytes = knitrepo._get_stream_as_bytes(
-            k1, ['text-a', 'text-b', 'text-m', 'text-c', 'text-d', ])
-
-        data = bencode.bdecode(bytes)
-        format = data.pop(0)
-        self.assertEqual('knit-plain', format)
-
-        for expected, actual in zip(expected_data_list, data):
-            expected_version = expected[0]
-            expected_options = expected[1]
-            expected_parents = expected[2]
-            version, options, parents, bytes = actual
-            self.assertEqual(expected_version, version)
-            self.assertEqual(expected_options, options)
-            self.assertEqual(expected_parents, parents)
-            self.assertRecordContentEqual(k1, version, bytes)
 
 
 class DummyRepository(object):
@@ -597,49 +531,6 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                                                         repo_b).__class__)
 
 
-class TestInterRemoteToOther(TestCaseWithTransport):
-
-    def make_remote_repository(self, path, backing_format=None):
-        """Make a RemoteRepository object backed by a real repository that will
-        be created at the given path."""
-        self.make_repository(path, format=backing_format)
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
-        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
-        remote_repo = remote_bzrdir.open_repository()
-        return remote_repo
-
-    def test_is_compatible_same_format(self):
-        """InterRemoteToOther is compatible with a remote repository and a
-        second repository that have the same format."""
-        local_repo = self.make_repository('local')
-        remote_repo = self.make_remote_repository('remote')
-        is_compatible = repository.InterRemoteToOther.is_compatible
-        self.assertTrue(
-            is_compatible(remote_repo, local_repo),
-            "InterRemoteToOther(%r, %r) is false" % (remote_repo, local_repo))
-          
-    def test_is_incompatible_different_format(self):
-        local_repo = self.make_repository('local', 'dirstate')
-        remote_repo = self.make_remote_repository('a', 'dirstate-with-subtree')
-        is_compatible = repository.InterRemoteToOther.is_compatible
-        self.assertFalse(
-            is_compatible(remote_repo, local_repo),
-            "InterRemoteToOther(%r, %r) is true" % (local_repo, remote_repo))
-
-    def test_is_incompatible_different_format_both_remote(self):
-        remote_repo_a = self.make_remote_repository(
-            'a', 'dirstate-with-subtree')
-        remote_repo_b = self.make_remote_repository('b', 'dirstate')
-        is_compatible = repository.InterRemoteToOther.is_compatible
-        self.assertFalse(
-            is_compatible(remote_repo_a, remote_repo_b),
-            "InterRemoteToOther(%r, %r) is true"
-            % (remote_repo_a, remote_repo_b))
-
-
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
@@ -674,27 +565,27 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format)
         tree.commit("Dull commit", rev_id="dull")
         revision_tree = tree.branch.repository.revision_tree('dull')
-        self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-            revision_tree.inventory.root.file_id)
+        revision_tree.lock_read()
+        try:
+            self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
+                revision_tree.inventory.root.file_id)
+        finally:
+            revision_tree.unlock()
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree('dull')
-        revision_tree.get_file_lines(revision_tree.inventory.root.file_id)
+        revision_tree.lock_read()
+        try:
+            revision_tree.get_file_lines(revision_tree.inventory.root.file_id)
+        finally:
+            revision_tree.unlock()
         tree.commit("Another dull commit", rev_id='dull2')
         revision_tree = tree.branch.repository.revision_tree('dull2')
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
         self.assertEqual('dull', revision_tree.inventory.root.revision)
-
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit3()
-        repo = self.make_repository('.', format=format)
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction,
-            inv.add_lines, 'foo', [], [])
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -773,9 +664,9 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         entry.revision = revision
         entry.text_size = 0
         inv.add(entry)
-        vf = repo.weave_store.get_weave_or_empty(file_id,
-                                                 repo.get_transaction())
-        vf.add_lines(revision, parents, ['line\n'])
+        text_key = (file_id, revision)
+        parent_keys = [(file_id, parent) for parent in parents]
+        repo.texts.add_lines(text_key, parent_keys, ['line\n'])
 
     def test_insert_from_broken_repo(self):
         """Inserting a data stream from a broken repository won't silently
@@ -783,19 +674,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        search = graph.SearchResult(set(['rev1a', 'rev2', 'rev3']),
-            set(), 3, ['rev1a', 'rev2', 'rev3'])
-        broken_repo.lock_read()
-        self.addCleanup(broken_repo.unlock)
-        stream = broken_repo.get_data_stream_for_search(search)
-        empty_repo.lock_write()
-        self.addCleanup(empty_repo.unlock)
-        empty_repo.start_write_group()
-        try:
-            self.assertRaises(
-                errors.KnitCorrupt, empty_repo.insert_data_stream, stream)
-        finally:
-            empty_repo.abort_write_group()
+        self.assertRaises(errors.RevisionNotPresent, empty_repo.fetch, broken_repo)
 
 
 class TestKnitPackNoSubtrees(TestCaseWithTransport):
@@ -819,11 +698,6 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.assertEqualDiff(
             "Bazaar pack repository format 1 (needs bzr 0.92)\n",
                              t.get('format').read())
-
-    def assertHasKndx(self, t, knit_name):
-        """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 8\n',
-                             t.get(knit_name + '.kndx').read())
 
     def assertHasNoKndx(self, t, knit_name):
         """Assert that knit_name has no index on t."""
@@ -1010,8 +884,7 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def _add_text(self, repo, fileid):
         """Add a text to the repository within a write group."""
-        vf =repo.weave_store.get_weave(fileid, repo.get_transaction())
-        vf.add_lines('samplerev+' + fileid, [], [])
+        repo.texts.add_lines((fileid, 'samplerev+'+fileid), [], [])
 
     def test_concurrent_writers_merge_new_packs(self):
         format = self.get_format()
@@ -1188,9 +1061,7 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
             inv.root.revision = revision_id
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, [])
-            vf = repo.weave_store.get_weave_or_empty(root_id,
-                repo.get_transaction())
-            vf.add_lines(revision_id, [], [])
+            repo.texts.add_lines((root_id, revision_id), [], [])
             rev = bzrlib.revision.Revision(timestamp=0,
                                            timezone=None,
                                            committer="Foo Bar <foo@example.com>",
@@ -1211,7 +1082,7 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         inv = missing_ghost.get_inventory('tip')
         self.assertRaises(errors.NoSuchRevision,
             missing_ghost.get_revision, 'ghost')
-        self.assertRaises(errors.RevisionNotPresent,
+        self.assertRaises(errors.NoSuchRevision,
             missing_ghost.get_inventory, 'ghost')
 
     def test_supports_external_lookups(self):
@@ -1235,7 +1106,7 @@ class TestDevelopment0(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development')
+            'development0')
 
     def check_format(self, t):
         self.assertEqualDiff(
@@ -1247,13 +1118,123 @@ class TestDevelopment0Subtree(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development-subtree')
+            'development0-subtree')
 
     def check_format(self, t):
         self.assertEqualDiff(
             "Bazaar development format 0 with subtree support "
             "(needs bzr.dev from before 1.3)\n",
             t.get('format').read())
+
+
+class TestExternalDevelopment1(object):
+
+    # mixin class for testing stack-supporting development formats
+
+    def test_compatible_cross_formats(self):
+        # early versions of the packing code relied on pack internals to
+        # stack, but the current version should be able to stack on any
+        # format.
+        repo = self.make_repository('repo', format=self.get_format())
+        if repo.supports_rich_root():
+            # can only stack on repositories that have compatible internal
+            # metadata
+            matching_format_name = 'pack-0.92-subtree'
+            mismatching_format_name = 'pack-0.92'
+        else:
+            matching_format_name = 'pack-0.92'
+            mismatching_format_name = 'pack-0.92-subtree'
+        base = self.make_repository('base', format=matching_format_name)
+        repo.add_fallback_repository(base)
+        # you can't stack on something with incompatible data
+        bad_repo = self.make_repository('mismatch',
+            format=mismatching_format_name)
+        self.assertRaises(errors.IncompatibleRepositories,
+            repo.add_fallback_repository, bad_repo)
+
+    def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
+        base = self.make_branch_and_tree('base', format=self.get_format())
+        base.commit('foo')
+        referencing = self.make_branch_and_tree('repo', format=self.get_format())
+        referencing.branch.repository.add_fallback_repository(base.branch.repository)
+        referencing.commit('bar')
+        new_instance = referencing.bzrdir.open_repository()
+        new_instance.lock_read()
+        self.addCleanup(new_instance.unlock)
+        new_instance._pack_collection.ensure_loaded()
+        self.assertEqual(1, len(new_instance._pack_collection.all_packs()))
+
+    def test_autopack_only_considers_main_repo_packs(self):
+        base = self.make_branch_and_tree('base', format=self.get_format())
+        base.commit('foo')
+        tree = self.make_branch_and_tree('repo', format=self.get_format())
+        tree.branch.repository.add_fallback_repository(base.branch.repository)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        # This test could be a little cheaper by replacing the packs
+        # attribute on the repository to allow a different pack distribution
+        # and max packs policy - so we are checking the policy is honoured
+        # in the test. But for now 11 commits is not a big deal in a single
+        # test.
+        for x in range(9):
+            tree.commit('commit %s' % x)
+        # there should be 9 packs:
+        index = GraphIndex(trans, 'pack-names', None)
+        self.assertEqual(9, len(list(index.iter_all_entries())))
+        # committing one more should coalesce to 1 of 10.
+        tree.commit('commit triggering pack')
+        index = GraphIndex(trans, 'pack-names', None)
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        # packing should not damage data
+        tree = tree.bzrdir.open_workingtree()
+        check_result = tree.branch.repository.check(
+            [tree.branch.last_revision()])
+        # We should have 50 (10x5) files in the obsolete_packs directory.
+        obsolete_files = list(trans.list_dir('obsolete_packs'))
+        self.assertFalse('foo' in obsolete_files)
+        self.assertFalse('bar' in obsolete_files)
+        self.assertEqual(50, len(obsolete_files))
+        # XXX: Todo check packs obsoleted correctly - old packs and indices
+        # in the obsolete_packs directory.
+        large_pack_name = list(index.iter_all_entries())[0][1][0]
+        # finally, committing again should not touch the large pack.
+        tree.commit('commit not triggering pack')
+        index = GraphIndex(trans, 'pack-names', None)
+        self.assertEqual(2, len(list(index.iter_all_entries())))
+        pack_names = [node[1][0] for node in index.iter_all_entries()]
+        self.assertTrue(large_pack_name in pack_names)
+
+
+class TestDevelopment1(TestKnitPackNoSubtrees, TestExternalDevelopment1):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 1 (needs bzr.dev from before 1.6)\n",
+            t.get('format').read())
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertTrue(repo._format.supports_external_lookups)
+
+
+class TestDevelopment1Subtree(TestKnitPackNoSubtrees, TestExternalDevelopment1):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development-subtree')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 1 with subtree support "
+            "(needs bzr.dev from before 1.6)\n",
+            t.get('format').read())
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertTrue(repo._format.supports_external_lookups)
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1418,14 +1399,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)
         # the pack should be correctly initialised
-        rev_index = GraphIndex(packs._index_transport, name + '.rix',
-            packs._names[name][0])
-        inv_index = GraphIndex(packs._index_transport, name + '.iix',
-            packs._names[name][1])
-        txt_index = GraphIndex(packs._index_transport, name + '.tix',
-            packs._names[name][2])
-        sig_index = GraphIndex(packs._index_transport, name + '.six',
-            packs._names[name][3])
+        sizes = packs._names[name]
+        rev_index = GraphIndex(packs._index_transport, name + '.rix', sizes[0])
+        inv_index = GraphIndex(packs._index_transport, name + '.iix', sizes[1])
+        txt_index = GraphIndex(packs._index_transport, name + '.tix', sizes[2])
+        sig_index = GraphIndex(packs._index_transport, name + '.six', sizes[3])
         self.assertEqual(pack_repo.ExistingPack(packs._pack_transport,
             name, rev_index, inv_index, txt_index, sig_index), pack_1)
         # and the same instance should be returned on successive calls.

@@ -33,8 +33,10 @@ from bzrlib.repofmt import (
     )
 from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
 from bzrlib.smart.server import (
-    SmartTCPServer_for_testing,
     ReadonlySmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing_v2_only,
+    SmartTCPServer_for_testing,
+    SmartTCPServer_for_testing_v2_only,
     )
 from bzrlib.tests import (
                           adapt_modules,
@@ -52,15 +54,20 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
     vfs_transport_factory=None):
     """Transform the input formats to a list of scenarios.
 
-    :param formats: A list of (scenario_name, scenario_info)
-        where the scenario_info is a dict that controls the test.
+    :param formats: A list of (scenario_name_suffix, repo_format)
+        where the scenario_name_suffix is to be appended to the format
+        name, and the repo_format is a RepositoryFormat subclass 
+        instance.
+    :returns: Scenarios of [(scenario_name, {parameter_name: value})]
     """
     result = []
-    for repository_format, bzrdir_format in formats:
-        scenario = (repository_format.__class__.__name__,
+    for scenario_name_suffix, repository_format in formats:
+        scenario_name = repository_format.__class__.__name__
+        scenario_name += scenario_name_suffix
+        scenario = (scenario_name,
             {"transport_server":transport_server,
              "transport_readonly_server":transport_readonly_server,
-             "bzrdir_format":bzrdir_format,
+             "bzrdir_format":repository_format._matchingbzrdir,
              "repository_format":repository_format,
              })
         # Only override the test's vfs_transport_factory if one was
@@ -73,9 +80,6 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
 
 def all_repository_format_scenarios():
     """Return a list of test scenarios for parameterising repository tests.
-    
-    :param formats: A list of (scenario_name, scenario_info)
-        where the scenario_info is a dict that controls the test.
     """
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
@@ -83,15 +87,20 @@ def all_repository_format_scenarios():
     # format_scenarios is all the implementations of Repository; i.e. all disk
     # formats plus RemoteRepository.
     format_scenarios = formats_to_scenarios(
-        [(format, format._matchingbzrdir) for format in all_formats],
+        [('', format) for format in all_formats],
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None)
     format_scenarios.extend(formats_to_scenarios(
-        [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        [('-default', RemoteRepositoryFormat())],
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
+        MemoryServer))
+    format_scenarios.extend(formats_to_scenarios(
+        [('-v2', RemoteRepositoryFormat())],
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
         MemoryServer))
     return format_scenarios
 
@@ -379,7 +388,6 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         else:
             count = 3
         return [
-            "%d inconsistent parents" % count,
             # will be gc'd
             r"unreferenced version: {rev2} in a-file-id",
             r"unreferenced version: {rev2b} in a-file-id",
@@ -390,6 +398,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             r"but should have \('rev2c',\)",
             r"a-file-id version rev4 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
+            "%d inconsistent parents" % count,
             ]
 
     def populate_repository(self, repo):
@@ -848,6 +857,7 @@ def load_tests(basic_tests, module, loader):
     result.addTests(basic_tests)
     prefix = 'bzrlib.tests.repository_implementations.'
     test_repository_modules = [
+        'test_add_fallback_repository',
         'test_break_lock',
         'test_check',
         # test_check_reconcile is intentionally omitted, see below.

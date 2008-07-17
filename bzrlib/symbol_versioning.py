@@ -138,6 +138,8 @@ def deprecated_function(deprecation_version):
         
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
+            from bzrlib import trace
+            trace.mutter_callsite(4, "Deprecated function called")
             warn(deprecation_string(callable, deprecation_version),
                 DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
@@ -164,6 +166,7 @@ def deprecated_method(deprecation_version):
         
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
+            from bzrlib import trace
             if callable.__name__ == '__init__':
                 symbol = "%s.%s" % (self.__class__.__module__,
                                     self.__class__.__name__,
@@ -173,6 +176,7 @@ def deprecated_method(deprecation_version):
                                        self.__class__.__name__,
                                        callable.__name__
                                        )
+            trace.mutter_callsite(4, "Deprecated method called")
             warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",

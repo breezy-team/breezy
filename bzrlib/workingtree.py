@@ -246,6 +246,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # permitted to do this.
             self._set_inventory(_inventory, dirty=False)
         self._detect_case_handling()
+        self._rules_searcher = None
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -396,7 +397,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
-        except errors.RevisionNotPresent:
+        except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
             # occured. If the revision is present, its a problem, if its not
             # its a ghost.
@@ -1591,7 +1592,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if subf == '.bzr':
                     continue
                 if subf not in dir_entry.children:
-                    subf_norm, can_access = osutils.normalized_filename(subf)
+                    try:
+                        (subf_norm,
+                         can_access) = osutils.normalized_filename(subf)
+                    except UnicodeDecodeError:
+                        path_os_enc = path.encode(osutils._fs_enc)
+                        relpath = path_os_enc + '/' + subf
+                        raise errors.BadFilenameEncoding(relpath,
+                                                         osutils._fs_enc)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)
@@ -2452,6 +2460,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
+    @needs_read_lock
+    def _check(self):
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = self.branch.repository.revision_tree(
+                self.last_revision())
+            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
+
     def _validate(self):
         """Validate internal structures.
 
@@ -2462,6 +2484,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :return: None. An exception should be raised if there is an error.
         """
         return
+
+    @needs_read_lock
+    def _get_rules_searcher(self, default_searcher):
+        """See Tree._get_rules_searcher."""
+        if self._rules_searcher is None:
+            self._rules_searcher = super(WorkingTree,
+                self)._get_rules_searcher(default_searcher)
+        return self._rules_searcher
 
 
 class WorkingTree2(WorkingTree):

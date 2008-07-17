@@ -464,9 +464,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # find all the revisions that change the specific file
-    file_weave = branch.repository.weave_store.get_weave(file_id,
-                branch.repository.get_transaction())
-    weave_modifed_revisions = set(file_weave.versions())
     # build the ancestry of each revision in the graph
     # - only listing the ancestors that change the specific file.
     graph = branch.repository.get_graph()
@@ -478,16 +475,19 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     parent_map = dict(((key, value) for key, value in
         graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
     sorted_rev_list = topo_sort(parent_map.items())
+    text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
+    modified_text_versions = branch.repository.texts.get_parent_map(text_keys)
     ancestry = {}
     for rev in sorted_rev_list:
+        text_key = (file_id, rev)
         parents = parent_map[rev]
-        if rev not in weave_modifed_revisions and len(parents) == 1:
+        if text_key not in modified_text_versions and len(parents) == 1:
             # We will not be adding anything new, so just use a reference to
             # the parent ancestry.
             rev_ancestry = ancestry[parents[0]]
         else:
             rev_ancestry = set()
-            if rev in weave_modifed_revisions:
+            if text_key in modified_text_versions:
                 rev_ancestry.add(rev)
             for parent in parents:
                 if parent not in ancestry:
@@ -511,7 +511,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # filter from the view the revisions that did not change or merge 
     # the specific file
     return [(r, n, d) for r, n, d in view_revs_iter
-            if r in weave_modifed_revisions or is_merging_rev(r)]
+            if (file_id, r) in modified_text_versions or is_merging_rev(r)]
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
@@ -615,6 +615,13 @@ class LogFormatter(object):
         only relevant if supports_merge_revisions is not True.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
+
+    Plugins can register functions to show custom revision properties using
+    the properties_handler_registry. The registered function
+    must respect the following interface description:
+        def my_show_properties(properties_dict):
+            # code that returns a dict {'name':'value'} of the properties 
+            # to be shown
     """
 
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
@@ -644,6 +651,15 @@ class LogFormatter(object):
             return name
         return address
 
+    def show_properties(self, revision, indent):
+        """Displays the custom properties returned by each registered handler.
+        
+        If a registered handler raises an error it is propagated.
+        """
+        for key, handler in properties_handler_registry.iteritems():
+            for key, value in handler(revision).items():
+                self.to_file.write(indent + key + ': ' + value + '\n')
+
 
 class LongLogFormatter(LogFormatter):
 
@@ -665,6 +681,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
+        self.show_properties(revision.rev, indent)
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
@@ -698,9 +715,6 @@ class ShortLogFormatter(LogFormatter):
 
     def log_revision(self, revision):
         to_file = self.to_file
-        date_str = format_date(revision.rev.timestamp,
-                               revision.rev.timezone or 0,
-                               self.show_timezone)
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
@@ -881,3 +895,5 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  end_revision=len(new_rh),
                  search=None)
 
+
+properties_handler_registry = registry.Registry()
