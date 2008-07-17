@@ -2193,8 +2193,8 @@ class VirtualVersionedFilesTests(TestCase):
         self.assertRaises(NotImplementedError, self.texts.insert_record_stream,
                           [])
 
-    def test_get_sha1s_nonexistant(self):
-        self.assertEquals({}, self.texts.get_sha1s([("NONEXISTANT",)]))
+    def test_get_sha1s_nonexistent(self):
+        self.assertEquals({}, self.texts.get_sha1s([("NONEXISTENT",)]))
 
     def test_get_sha1s(self):
         self._lines["key"] = ["dataline1", "dataline2"]

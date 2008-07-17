@@ -1355,7 +1355,8 @@ class VirtualVersionedFiles(VersionedFiles):
 
     def get_parent_map(self, keys):
         """See VersionedFiles.get_parent_map."""
-        return dict([((k,), tuple([(p,) for p in v])) for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
+        return dict([((k,), tuple([(p,) for p in v]))
+            for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s."""
@@ -1363,7 +1364,8 @@ class VirtualVersionedFiles(VersionedFiles):
         for (k,) in keys:
             lines = self._get_lines(k)
             if lines is not None:
-                assert isinstance(lines, list)
+                if not isinstance(lines, list):
+                    raise AssertionError
                 ret[(k,)] = osutils.sha_strings(lines)
         return ret
 
@@ -1372,7 +1374,8 @@ class VirtualVersionedFiles(VersionedFiles):
         for (k,) in list(keys):
             lines = self._get_lines(k)
             if lines is not None:
-                assert isinstance(lines, list)
+                if not isinstance(lines, list):
+                    raise AssertionError
                 yield FulltextContentFactory((k,), None, 
                         sha1=osutils.sha_strings(lines),
                         text=''.join(lines))
