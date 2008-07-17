@@ -96,6 +96,12 @@ cdef class _Win32Stat:
                      self.st_mtime, self.st_ctime))
 
 
+cdef object _get_name(WIN32_FIND_DATAW *data):
+    """Extract the Unicode name for this file/dir."""
+    return PyUnicode_FromUnicode(data.cFileName,
+                                 wcslen(data.cFileName))
+
+
 cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
     cdef int mode_bits
 
@@ -134,6 +140,17 @@ cdef double _ftime_to_timestamp(FILETIME *ft):
     return (val * 1.0e-7) - 11644473600.0
 
 
+cdef int _should_skip(WIN32_FIND_DATAW *data):
+    """Is this '.' or '..' so we should skip it?"""
+    if (data.cFileName[0] != c'.'):
+        return 0
+    if data.cFileName[1] == c'\0':
+        return 1
+    if data.cFileName[1] == c'.' and data.cFileName[2] == c'\0':
+        return 1
+    return 0
+
+
 cdef class Win32Finder:
     """A class which encapsulates the search of files in a given directory"""
 
@@ -159,12 +176,6 @@ cdef class Win32Finder:
     def __iter__(self):
         return self
 
-    cdef object _get_name(self, WIN32_FIND_DATAW *data):
-        """Extract the Unicode name for this file/dir."""
-        name_unicode = PyUnicode_FromUnicode(data.cFileName,
-                                             wcslen(data.cFileName))
-        return name_unicode
-
     cdef _Win32Stat _get_stat_value(self, WIN32_FIND_DATAW *data):
         """Get the filename and the stat information."""
         cdef _Win32Stat statvalue
@@ -183,16 +194,6 @@ cdef class Win32Finder:
         if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
             return self._directory_kind
         return self._file_kind
-
-    cdef int _should_skip(self, WIN32_FIND_DATAW *data):
-        """Is this '.' or '..' so we should skip it?"""
-        if (data.cFileName[0] != c'.'):
-            return False
-        if data.cFileName[1] == c'\0':
-            return True
-        if data.cFileName[1] == c'.' and data.cFileName[2] == c'\0':
-            return True
-        return False
 
     def _get_files_in(self, directory, relprefix):
         cdef WIN32_FIND_DATAW search_data
@@ -215,7 +216,7 @@ cdef class Win32Finder:
             result = 1
             while result:
                 # Skip '.' and '..'
-                if self._should_skip(&search_data):
+                if _should_skip(&search_data):
                     result = FindNextFileW(hFindFile, &search_data)
                     continue
                 name_unicode = self._get_name(&search_data)
