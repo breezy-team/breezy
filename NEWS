@@ -5,8 +5,14 @@ Bazaar Release Notes
 .. contents::
 
 
-IN DEVELOPMENT
---------------
+bzr 1.6beta2 2008-07-17
+-----------------------
+
+This release adds a new 'stacked branches' feature allowing branches to
+share storage without being in the same repository or on the same machine.
+(See the user guide for more details.)  It also adds a new hook, improved
+weaves, aliases for related locations, faster bzr+ssh push, and several
+bug fixes.
 
   FEATURES:
 
@@ -24,7 +30,9 @@ IN DEVELOPMENT
     * Sites may suggest a branch to stack new branches on.  (Aaron Bentley)
 
     * Stacked branches are now supported. See ``bzr help branch`` and 
-      ``bzr help push``. (Robert Collins)
+      ``bzr help push``.  Branches must be in the ``development1`` format
+      to stack, though the stacked-on branch can be of any format. 
+      (Robert Collins)
 
   IMPROVEMENTS:
 
