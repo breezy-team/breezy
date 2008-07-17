@@ -17,10 +17,9 @@ additional benefits:
 * Deleting the stacked branch really deletes the revisions (rather
   than leaving them in a shared repository).
 
-* Security is improved over shared repositories: developers with
-  access to a shared repository can programmatically get to all
-  revisions, while they cannot get to the local revisions in a stacked
-  branch in a secure location.
+* Security is improved over shared repositories, because the stacked-on
+  repository can be physically readonly to developers committing to stacked 
+  branches.
 
 These benefits make stacked branches ideal for various scenarios
 including experimental branches and code hosting sites.
@@ -60,7 +59,7 @@ Most changes on most projects build on an existing branch such as the
 branch stacked on one of these is easy to do using the ``push``
 command like this::
 
-  bzr push --stacked-on reference-url new-url
+  bzr push --stacked-on reference-url my-url
 
 This creates a new branch at ``my-url`` that is stacked on ``reference-url``
 and only contains the revisions in the current branch that are not already
@@ -74,13 +73,13 @@ will be implicit. For example::
   cd my-dir
   (hack, hack, hack)
   bzr commit -m "fix bug"
-  bzr push --stacked my-url
+  bzr push --stacked
 
 
 Limitations of stacked branches
 -------------------------------
 
 The important thing to remember about a stacked branch is that the
-stacked-on branch needs to be available for many operations. This is
+stacked-on branch needs to be available for almost all operations. This is
 not an issue when both branches are local or both branches are on the
 same server.
