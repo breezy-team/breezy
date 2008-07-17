@@ -843,50 +843,62 @@ class TestWalkDirs(TestCaseInTempDir):
 
     def _save_platform_info(self):
         cur_platform = sys.platform
+        cur_os_name = os.name
         cur_fs_enc = osutils._fs_enc
         cur_real_walkdirs_utf8 = osutils._real_walkdirs_utf8
         def restore():
             sys.platform = cur_platform
+            os.name = cur_os_name
             osutils._fs_enc = cur_fs_enc
             osutils._real_walkdirs_utf8 = cur_real_walkdirs_utf8
         self.addCleanup(restore)
 
-    def test__force_walkdirs_utf8_fs_utf8(self):
+    def assertWalkdirsUtf8Is(self, expected):
+        """Assert the right implementation for _walkdirs_utf8 is chosen."""
+        # Force it to redetect
+        osutils._real_walkdirs_utf8 = None
+        # Nothing to list, but should still trigger the selection logic
+        list(osutils._walkdirs_utf8('.'))
+        self.assertIs(expected, osutils._real_walkdirs_utf8)
+
+    def test_force_walkdirs_utf8_fs_utf8(self):
         self._save_platform_info()
         sys.platform = 'not-win32' # Avoid the win32 detection code
         osutils._fs_enc = 'UTF-8'
-        osutils._real_walkdirs_utf8 = None # Force a redetect
-        # Nothing to list, but should still trigger the selection logic
-        list(osutils._walkdirs_utf8('.'))
-        self.assertIs(osutils._walkdirs_fs_utf8, osutils._real_walkdirs_utf8)
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
 
-    def test__force_walkdirs_utf8_fs_ascii(self):
+    def test_force_walkdirs_utf8_fs_ascii(self):
         self._save_platform_info()
         sys.platform = 'not-win32' # Avoid the win32 detection code
         osutils._fs_enc = 'US-ASCII'
-        osutils._real_walkdirs_utf8 = None # Force a redetect
-        # Nothing to list, but should still trigger the selection logic
-        list(osutils._walkdirs_utf8('.'))
-        self.assertIs(osutils._walkdirs_fs_utf8, osutils._real_walkdirs_utf8)
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
 
-    def test__force_walkdirs_utf8_fs_ANSI(self):
+    def test_force_walkdirs_utf8_fs_ANSI(self):
         self._save_platform_info()
         sys.platform = 'not-win32' # Avoid the win32 detection code
         osutils._fs_enc = 'ANSI_X3.4-1968'
-        osutils._real_walkdirs_utf8 = None # Force a redetect
-        # Nothing to list, but should still trigger the selection logic
-        list(osutils._walkdirs_utf8('.'))
-        self.assertIs(osutils._walkdirs_fs_utf8, osutils._real_walkdirs_utf8)
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
 
-    def test__force_walkdirs_utf8_fs_latin1(self):
+    def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         sys.platform = 'not-win32' # Avoid the win32 detection code
         osutils._fs_enc = 'latin1'
-        osutils._real_walkdirs_utf8 = None # Force a redetect
-        # Nothing to list, but should still trigger the selection logic
-        list(osutils._walkdirs_utf8('.'))
-        self.assertIs(osutils._walkdirs_unicode_to_utf8,
-                      osutils._real_walkdirs_utf8)
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
+
+    def test_force_walkdirs_utf8_nt(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self._save_platform_info()
+        sys.platform = 'win32'
+        os.name = 'nt'
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        self.assertWalkdirsUtf8Is(_walkdirs_utf8_win32_find_file)
+
+    def test_force_walkdirs_utf8_nt(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self._save_platform_info()
+        sys.platform = 'win32'
+        os.name = 'NOT-nt'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
