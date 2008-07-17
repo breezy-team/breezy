@@ -1191,8 +1191,14 @@ def _walkdirs_utf8(top, prefix=""):
         pass to os functions to affect the file in question. (such as os.lstat)
     """
     fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32' or
-        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
+    if (sys.platform == 'win32'):
+        try:
+            from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        except ImportError:
+            return _walkdirs_unicode_to_utf8(top, prefix=prefix)
+        else:
+            return _walkdirs_utf8_win32_find_file(top, prefix=prefix)
+    if (fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
         return _walkdirs_unicode_to_utf8(top, prefix=prefix)
     else:
         return _walkdirs_fs_utf8(top, prefix=prefix)

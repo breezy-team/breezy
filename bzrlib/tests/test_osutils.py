@@ -1054,10 +1054,9 @@ class TestWalkDirs(TestCaseInTempDir):
     def assertStatIsCorrect(self, path, win32stat):
         os_stat = os.stat(path)
         self.assertEqual(os_stat.st_size, win32stat.st_size)
-        import pdb; pdb.set_trace()
-        self.assertEqual(int(os_stat.st_mtime), win32stat.st_mtime)
-        self.assertEqual(int(os_stat.st_ctime), win32stat.st_ctime)
-        self.assertEqual(int(os_stat.st_atime), win32stat.st_atime)
+        self.assertEqual(os_stat.st_mtime, win32stat.st_mtime)
+        self.assertEqual(os_stat.st_ctime, win32stat.st_ctime)
+        self.assertEqual(os_stat.st_atime, win32stat.st_atime)
         self.assertEqual(os_stat.st_dev, win32stat.st_dev)
         self.assertEqual(os_stat.st_ino, win32stat.st_ino)
         self.assertEqual(os_stat.st_mode, win32stat.st_mode)
