@@ -216,9 +216,12 @@ class cmd_committer_statistics(commands.Command):
                 info = get_info(a_branch.repository, last_rev)
         finally:
             a_branch.unlock()
-        def fetch_class_stats(revs):
-            return gather_class_stats(a_branch.repository, revs)
-        display_info(info, self.outf, fetch_class_stats if show_class else None)
+        if show_class:
+            def fetch_class_stats(revs):
+                return gather_class_stats(a_branch.repository, revs)
+        else:
+            fetch_class_stats = None
+        display_info(info, self.outf, fetch_class_stats)
 
 
 commands.register_command(cmd_committer_statistics)
