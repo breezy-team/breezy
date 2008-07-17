@@ -18,18 +18,18 @@
 
 
 cdef extern from "_walkdirs_win32.h":
-    cdef struct _HANDLE:
+    struct _HANDLE:
         pass
     ctypedef _HANDLE *HANDLE
     ctypedef unsigned long DWORD
     ctypedef long long __int64
     ctypedef unsigned short WCHAR
-    cdef struct _FILETIME:
+    struct _FILETIME:
         DWORD dwHighDateTime
         DWORD dwLowDateTime
     ctypedef _FILETIME FILETIME
 
-    cdef struct _WIN32_FIND_DATAW:
+    struct _WIN32_FIND_DATAW:
         DWORD dwFileAttributes
         FILETIME ftCreationTime
         FILETIME ftLastAccessTime
@@ -45,16 +45,16 @@ cdef extern from "_walkdirs_win32.h":
     # which fails due to 'incomplete type'
     ctypedef _WIN32_FIND_DATAW WIN32_FIND_DATAW
 
-    cdef HANDLE INVALID_HANDLE_VALUE
-    cdef HANDLE FindFirstFileW(WCHAR *path, WIN32_FIND_DATAW *data)
-    cdef int FindNextFileW(HANDLE search, WIN32_FIND_DATAW *data)
-    cdef int FindClose(HANDLE search)
+    HANDLE INVALID_HANDLE_VALUE
+    HANDLE FindFirstFileW(WCHAR *path, WIN32_FIND_DATAW *data)
+    int FindNextFileW(HANDLE search, WIN32_FIND_DATAW *data)
+    int FindClose(HANDLE search)
 
-    cdef DWORD FILE_ATTRIBUTE_READONLY
-    cdef DWORD FILE_ATTRIBUTE_DIRECTORY
-    cdef int ERROR_NO_MORE_FILES
+    DWORD FILE_ATTRIBUTE_READONLY
+    DWORD FILE_ATTRIBUTE_DIRECTORY
+    int ERROR_NO_MORE_FILES
 
-    cdef int GetLastError()
+    int GetLastError()
 
     # Wide character functions
     DWORD wcslen(WCHAR *)
