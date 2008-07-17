@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -289,11 +289,11 @@ class TestPush(ExternalBase):
         # and the branch's work was pushed
         self.assertTrue(published_branch.repository.has_revision(branch_revid))
 
-    def test_push_new_branch_reference(self):
-        """Pushing a new branch with --reference creates a stacked branch."""
+    def test_push_new_branch_stacked_on(self):
+        """Pushing a new branch with --stacked-on creates a stacked branch."""
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # we publish branch_tree with a reference to the mainline.
-        out, err = self.run_bzr(['push', '--reference', trunk_tree.branch.base,
+        out, err = self.run_bzr(['push', '--stacked-on', trunk_tree.branch.base,
             self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %

@@ -21,7 +21,7 @@ from bzrlib.trace import note, warning
 
 
 def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
-    overwrite=False, remember=False, reference=None, create_prefix=False,
+    overwrite=False, remember=False, stacked_on=None, create_prefix=False,
     use_existing_dir=False):
     """Push a branch to a location.
 
@@ -34,7 +34,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         have diverged from the source, otherwise the push fails
     :param remember: if True, store the location as the push location for
         the source branch
-    :param reference: the url of the branch, if any, to stack on;
+    :param stacked_on: the url of the branch, if any, to stack on;
         if set, only the revisions not in that branch are pushed
     :param create_prefix: if True, create the necessary parent directories
         at the destination if they don't already exist
@@ -101,7 +101,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Now the target directory exists, but doesn't have a .bzr
         # directory. So we need to create it, along with any work to create
         # all of the dependent branches, etc.
-        if reference is not None:
+        if stacked_on is not None:
             # This should be buried in the clone method itself. TODO.
             try:
                 # if the from format is stackable, this will either work or
@@ -114,7 +114,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             dir_to = br_from.bzrdir._format.initialize_on_transport(to_transport)
             br_from.repository._format.initialize(dir_to)
             br_to = br_from._format.initialize(dir_to)
-            br_to.set_stacked_on_url(reference)
+            br_to.set_stacked_on_url(stacked_on)
             # and copy the data up.
             br_from.push(br_to)
         else:
@@ -122,8 +122,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 revision_id=revision_id)
         br_to = dir_to.open_branch()
         # TODO: Some more useful message about what was copied
-        if reference is not None:
-            note('Created new stacked branch referring to %s.' % reference)
+        if stacked_on is not None:
+            note('Created new stacked branch referring to %s.' % stacked_on)
         else:
             note('Created new branch.')
         # We successfully created the target, remember it
@@ -140,7 +140,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     elif br_to is None:
         # We have a repository but no branch, copy the revisions, and then
         # create a branch.
-        if reference is not None:
+        if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "
                     "already exists at the destination location.")
         repository_to.fetch(br_from.repository, revision_id=revision_id)
@@ -149,7 +149,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(br_to.base)
     else: # We have a valid to branch
-        if reference is not None:
+        if stacked_on is not None:
             warning("Ignoring request for a stacked branch as branch "
                     "already exists at the destination location.")
         # We were able to connect to the remote location, so remember it.
