@@ -48,6 +48,10 @@ IN DEVELOPMENT
       revision info directly.  This makes operations like push
       faster.  The new request method name is
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
+      
+    * New registry for log properties handles  and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
 
   BUG FIXES:
 
