@@ -16,16 +16,19 @@
 
 """Tests for the osutils wrapper."""
 
+from cStringIO import StringIO
 import errno
 import os
 import socket
 import stat
 import sys
+import time
 
 import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    tests,
     win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
@@ -46,7 +49,8 @@ from bzrlib.tests import (
 from bzrlib.tests.file_utils import (
     FakeReadFile,
     )
-from cStringIO import StringIO
+from bzrlib.tests.test__walkdirs_win32 import WalkdirsWin32Feature
+
 
 class TestOSUtils(TestCaseInTempDir):
 
@@ -973,6 +977,99 @@ class TestWalkDirs(TestCaseInTempDir):
         result = list(osutils._walkdirs_unicode_to_utf8('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
+
+    def test__walkdirs_utf_win32_find_file(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        name0u = u'0file-\xb6'
+        name1u = u'1dir-\u062c\u0648'
+        name2u = u'2file-\u0633'
+        tree = [
+            name0u,
+            name1u + '/',
+            name1u + '/' + name0u,
+            name1u + '/' + name1u + '/',
+            name2u,
+            ]
+        self.build_tree(tree)
+        name0 = name0u.encode('utf8')
+        name1 = name1u.encode('utf8')
+        name2 = name2u.encode('utf8')
+
+        # All of the abspaths should be in unicode, all of the relative paths
+        # should be in utf8
+        expected_dirblocks = [
+                (('', '.'),
+                 [(name0, name0, 'file', './' + name0u),
+                  (name1, name1, 'directory', './' + name1u),
+                  (name2, name2, 'file', './' + name2u),
+                 ]
+                ),
+                ((name1, './' + name1u),
+                 [(name1 + '/' + name0, name0, 'file', './' + name1u
+                                                        + '/' + name0u),
+                  (name1 + '/' + name1, name1, 'directory', './' + name1u
+                                                            + '/' + name1u),
+                 ]
+                ),
+                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+                 [
+                 ]
+                ),
+            ]
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        self._filter_out_stat(result)
+        self.assertEqual(expected_dirblocks, result)
+
+    def assertStatIsCorrect(self, path, win32stat):
+        os_stat = os.stat(path)
+        self.assertEqual(os_stat.st_size, win32stat.st_size)
+        self.assertAlmostEqual(os_stat.st_mtime, win32stat.st_mtime, places=4)
+        self.assertAlmostEqual(os_stat.st_ctime, win32stat.st_ctime, places=4)
+        self.assertAlmostEqual(os_stat.st_atime, win32stat.st_atime, places=4)
+        self.assertEqual(os_stat.st_dev, win32stat.st_dev)
+        self.assertEqual(os_stat.st_ino, win32stat.st_ino)
+        self.assertEqual(os_stat.st_mode, win32stat.st_mode)
+
+    def test__walkdirs_utf_win32_find_file_stat_file(self):
+        """make sure our Stat values are valid"""
+        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        name0u = u'0file-\xb6'
+        name0 = name0u.encode('utf8')
+        self.build_tree([name0u])
+        # I hate to sleep() here, but I'm trying to make the ctime different
+        # from the mtime
+        time.sleep(2)
+        f = open(name0u, 'ab')
+        try:
+            f.write('just a small update')
+        finally:
+            f.close()
+
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        entry = result[0][1][0]
+        self.assertEqual((name0, name0, 'file'), entry[:3])
+        self.assertEqual(u'./' + name0u, entry[4])
+        self.assertStatIsCorrect(entry[4], entry[3])
+        self.assertNotEqual(entry[3].st_mtime, entry[3].st_ctime)
+
+    def test__walkdirs_utf_win32_find_file_stat_directory(self):
+        """make sure our Stat values are valid"""
+        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        name0u = u'0dir-\u062c\u0648'
+        name0 = name0u.encode('utf8')
+        self.build_tree([name0u + '/'])
+
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        entry = result[0][1][0]
+        self.assertEqual((name0, name0, 'directory'), entry[:3])
+        self.assertEqual(u'./' + name0u, entry[4])
+        self.assertStatIsCorrect(entry[4], entry[3])
 
     def assertPathCompare(self, path_less, path_greater):
         """check that path_less and path_greater compare correctly."""
