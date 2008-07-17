@@ -64,7 +64,17 @@ def get_svn_ra_transport(bzr_transport):
 
 def _url_unescape_uri(url):
     (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
-    path = urllib.unquote(path)
+    if scheme in ("http", "https"):
+        # Without this, URLs with + in them break
+        path = urllib.unquote(path)
+    return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+
+def _url_escape_uri(url):
+    (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
+    if scheme in ("http", "https"):
+        # Without this, URLs with + in them break
+        path = urllib.quote(path)
     return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
 
 
@@ -88,9 +98,7 @@ def bzr_to_svn_url(url):
         url = url[len("svn+"):] # Skip svn+
         warn_svnplus(url)
 
-    if url.startswith("http"):
-        # Without this, URLs with + in them break
-        url = _url_unescape_uri(url)
+    url = _url_unescape_uri(url)
 
     # The SVN libraries don't like trailing slashes...
     url = url.rstrip('/')
@@ -136,7 +144,7 @@ class ConnectionPool(object):
             return Connection(url)
         c = self.connections.pop()
         try:
-            c.reparent(url)
+            c.reparent(_url_escape_uri(url))
             return c
         except NotImplementedError:
             self.connections.add(c)

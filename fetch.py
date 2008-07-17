@@ -39,6 +39,7 @@ from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE,
 from bzrlib.plugins.svn.properties import parse_externals_description
 from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
+from bzrlib.plugins.svn.transport import _url_escape_uri
 from bzrlib.plugins.svn.tree import inventory_add_external
 
 def _escape_commit_message(message):
@@ -642,7 +643,7 @@ class InterFromSvnRepository(InterRepository):
 
                         if parent_branch != editor.branch_path:
                             reporter = conn.do_switch(editor.revnum, "", True, 
-                                urlutils.join(repos_root, editor.branch_path), 
+                                _url_escape_uri(urlutils.join(repos_root, editor.branch_path)), 
                                 editor)
                         else:
                             reporter = conn.do_update(editor.revnum, "", True, editor)

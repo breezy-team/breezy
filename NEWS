@@ -99,6 +99,9 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Cope with files that are special files but not symlinks. (#245788)
 
+   * Deliver encoded paths in URLs to Subversion in switch() and reparent()
+     functions. (#248892)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
