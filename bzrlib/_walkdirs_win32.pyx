@@ -21,7 +21,8 @@ cdef extern from "_walkdirs_win32.h":
     cdef struct _HANDLE:
         pass
     ctypedef _HANDLE *HANDLE
-    ctypedef unsigned int DWORD
+    ctypedef unsigned long DWORD
+    ctypedef unsigned long long __int64
     ctypedef unsigned short WCHAR
     cdef struct _FILETIME:
         DWORD dwHighDateTime
@@ -51,6 +52,7 @@ cdef extern from "_walkdirs_win32.h":
 
     cdef DWORD FILE_ATTRIBUTE_READONLY
     cdef DWORD FILE_ATTRIBUTE_DIRECTORY
+    cdef int ERROR_NO_MORE_FILES
 
     cdef int GetLastError()
 
@@ -62,9 +64,10 @@ cdef extern from "Python.h":
     WCHAR *PyUnicode_AS_UNICODE(object)
     Py_ssize_t PyUnicode_GET_SIZE(object)
     object PyUnicode_FromUnicode(WCHAR *, Py_ssize_t)
+    int PyList_Append(object, object) except -1
+    object PyUnicode_AsUTF8String(object)
 
 
-import codecs
 import operator
 import stat
 
@@ -101,7 +104,6 @@ cdef class Win32Finder:
     cdef object _top
     cdef object _prefix
 
-    cdef object _utf8_encode
     cdef object _directory_kind
     cdef object _file_kind
 
@@ -112,12 +114,10 @@ cdef class Win32Finder:
         self._top = top
         self._prefix = prefix
 
-        self._utf8_encode = codecs.getencoder('utf8')
         self._directory_kind = osutils._directory_kind
         self._file_kind = osutils._formats[stat.S_IFREG]
 
-        self._pending = [(osutils.safe_utf8(prefix), None, None, None,
-                          osutils.safe_unicode(top))]
+        self._pending = [(osutils.safe_utf8(prefix), osutils.safe_unicode(top))]
         self._last_dirblock = None
 
     def __iter__(self):
@@ -141,7 +141,11 @@ cdef class Win32Finder:
         return mode_bits
 
     cdef object _get_size(self, WIN32_FIND_DATAW *data):
-        return long(data.nFileSizeLow) + (long(data.nFileSizeHigh) << 32)
+        # Pyrex casts a DWORD into a PyLong anyway, so it is safe to do << 32
+        # on a DWORD
+        cdef __int64 val
+        val = ((<__int64>data.nFileSizeHigh) << 32) + data.nFileSizeLow
+        return val
 
     cdef object _get_stat_value(self, WIN32_FIND_DATAW *data):
         """Get the filename and the stat information."""
@@ -179,12 +183,14 @@ cdef class Win32Finder:
         It also uses the epoch 1601-01-01 rather than 1970-01-01
         (taken from posixmodule.c)
         """
+        cdef __int64 val
         # NB: This gives slightly different results versus casting to a 64-bit
         #     integer and doing integer math before casting into a floating
         #     point number. But the difference is in the sub millisecond range,
         #     which doesn't seem critical here.
-        return ((ft.dwHighDateTime * 429.4967296 + ft.dwLowDateTime * 1e-7)
-                - 11644473600.0)
+        # secs between epochs: 11,644,473,600
+        val = ((<__int64>ft.dwHighDateTime) << 32) + ft.dwLowDateTime
+        return (val / 1.0e7) - 11644473600.0
 
     def _get_files_in(self, directory, relprefix):
         cdef WIN32_FIND_DATAW search_data
@@ -196,15 +202,12 @@ cdef class Win32Finder:
         top_star = directory + '*'
 
         dirblock = []
-        append = dirblock.append
 
         query = PyUnicode_AS_UNICODE(top_star)
         hFindFile = FindFirstFileW(query, &search_data)
         if hFindFile == INVALID_HANDLE_VALUE:
             # Raise an exception? This path doesn't seem to exist
-            last_err = GetLastError()
-            # Could be last_err == ERROR_FILE_NOT_FOUND
-            return []
+            raise WindowsError(GetLastError(), top_star)
 
         try:
             result = 1
@@ -214,15 +217,22 @@ cdef class Win32Finder:
                     result = FindNextFileW(hFindFile, &search_data)
                     continue
                 name_unicode = self._get_name(&search_data)
-                name_utf8 = self._utf8_encode(name_unicode)[0]
+                name_utf8 = PyUnicode_AsUTF8String(name_unicode)
                 relpath = relprefix + name_utf8
                 abspath = directory + name_unicode
-                append((relpath, name_utf8, 
-                        self._get_kind(&search_data),
-                        self._get_stat_value(&search_data),
-                        abspath))
+                PyList_Append(dirblock, 
+                    (relpath, name_utf8, 
+                     self._get_kind(&search_data),
+                     self._get_stat_value(&search_data),
+                     abspath))
 
                 result = FindNextFileW(hFindFile, &search_data)
+            # FindNextFileW sets GetLastError() == ERROR_NO_MORE_FILES when it
+            # actually finishes. If we have anything else, then we have a
+            # genuine problem
+            last_err = GetLastError()
+            if last_err != ERROR_NO_MORE_FILES:
+                raise WindowsError(last_err)
         finally:
             result = FindClose(hFindFile)
             if result == 0:
@@ -230,32 +240,22 @@ cdef class Win32Finder:
                 pass
         return dirblock
 
-        # for record in FindFilesIterator(top_star):
-        #     name = record[-2]
-        #     if name in ('.', '..'):
-        #         continue
-        #     attrib = record[0]
-        #     statvalue = osutils._Win32Stat(record)
-        #     name_utf8 = _utf8_encode(name)[0]
-        #     abspath = top_slash + name
-        #     if DIRECTORY & attrib == DIRECTORY:
-        #         kind = _directory
-        #     else:
-        #         kind = _file
-        #     append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-
-    def __next__(self):
+    cdef _update_pending(self):
+        """If we had a result before, add the subdirs to pending."""
         if self._last_dirblock is not None:
             # push the entries left in the dirblock onto the pending queue
             # we do this here, because we allow the user to modified the
             # queue before the next iteration
             for d in reversed(self._last_dirblock):
                 if d[2] == self._directory_kind:
-                    self._pending.append(d)
-
+                    self._pending.append((d[0], d[-1]))
+            self._last_dirblock = None
+        
+    def __next__(self):
+        self._update_pending()
         if not self._pending:
             raise StopIteration()
-        relroot, _, _, _, top = self._pending.pop()
+        relroot, top = self._pending.pop()
         # NB: At the moment Pyrex doesn't support Unicode literals, which means
         # that all of these string literals are going to be upcasted to Unicode
         # at runtime... :(

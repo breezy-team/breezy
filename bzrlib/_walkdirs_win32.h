@@ -17,6 +17,8 @@
  */
 
 /* Header includes, etc for _walkdirs_win32
+ * Pyrex doesn't support #define, and defining WIN32_LEAN_AND_MEAN makes
+ * importing windows.h a lot less painful.
  */
 
 #define WIN32_LEAN_AND_MEAN

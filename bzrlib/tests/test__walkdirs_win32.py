@@ -16,6 +16,8 @@
 
 """Tests for the win32 walkdir extension."""
 
+import errno
+
 from bzrlib import tests
 
 
@@ -111,3 +113,10 @@ class TestWin32Finder(tests.TestCaseInTempDir):
         third_dirblock = self._remove_stat_from_dirblock(third_dirblock)
         self.assertEqual(('c', u'./c'), dir_info)
         self.assertEqual([('c/cc', 'cc', 'file', u'./c/cc')], third_dirblock)
+
+    def test_missing_dir(self):
+        e = self.assertRaises(WindowsError, list,
+                                self.walkdirs_utf8(u'no_such_dir'))
+        self.assertEqual(errno.ENOENT, e.errno)
+        self.assertEqual(3, e.winerror)
+        self.assertEqual((3, u'no_such_dir/*'), e.args)
