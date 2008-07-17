@@ -1198,7 +1198,7 @@ def _walkdirs_utf8(top, prefix=""):
     global _real_walkdirs_utf8
     if _real_walkdirs_utf8 is None:
         fs_encoding = _fs_enc.upper()
-        if sys.platform == 'win32' and os.name == 'nt':
+        if win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
             # TODO: We possibly could support Win98 by falling back to the
             #       original FindFirstFile, and using TCHAR instead of WCHAR,
