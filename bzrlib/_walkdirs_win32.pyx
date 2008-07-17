@@ -107,10 +107,10 @@ cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
 
     mode_bits = 0100666 # writeable file, the most common
     if data.dwFileAttributes & FILE_ATTRIBUTE_READONLY == FILE_ATTRIBUTE_READONLY:
-        mode_bits ^= 0222 # remove the write bits
+        mode_bits = mode ^ 0222 # remove the write bits
     if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == FILE_ATTRIBUTE_DIRECTORY:
         # Remove the FILE bit, set the DIR bit, and set the EXEC bits
-        mode_bits ^= 0140111
+        mode_bits = mode ^ 0140111
     return mode_bits
 
 
