@@ -176,6 +176,11 @@ cdef class Win32Finder:
     def __iter__(self):
         return self
 
+    cdef object _get_kind(self, WIN32_FIND_DATAW *data):
+        if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
+            return self._directory_kind
+        return self._file_kind
+
     cdef _Win32Stat _get_stat_value(self, WIN32_FIND_DATAW *data):
         """Get the filename and the stat information."""
         cdef _Win32Stat statvalue
@@ -189,11 +194,6 @@ cdef class Win32Finder:
         statvalue.st_ino = 0
         statvalue.st_dev = 0
         return statvalue
-
-    cdef object _get_kind(self, WIN32_FIND_DATAW *data):
-        if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
-            return self._directory_kind
-        return self._file_kind
 
     def _get_files_in(self, directory, relprefix):
         cdef WIN32_FIND_DATAW search_data
@@ -219,7 +219,7 @@ cdef class Win32Finder:
                 if _should_skip(&search_data):
                     result = FindNextFileW(hFindFile, &search_data)
                     continue
-                name_unicode = self._get_name(&search_data)
+                name_unicode = _get_name(&search_data)
                 name_utf8 = PyUnicode_AsUTF8String(name_unicode)
                 relpath = relprefix + name_utf8
                 abspath = directory + name_unicode

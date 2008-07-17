@@ -1283,8 +1283,8 @@ def _walkdirs_utf8_win32_find_file(top, prefix=""):
     Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
     Unicode paths.
     """
-    from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file as wd
-    return wd(top, prefix=prefix)
+    from bzrlib._walkdirs_win32 import Win32Finder
+    return Win32Finder(top, prefix=prefix)
 
 
 def copy_tree(from_path, to_path, handlers={}):

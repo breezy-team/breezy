@@ -16,6 +16,7 @@
 
 """Tests for the osutils wrapper."""
 
+from cStringIO import StringIO
 import errno
 import os
 import socket
@@ -48,38 +49,7 @@ from bzrlib.tests import (
 from bzrlib.tests.file_utils import (
     FakeReadFile,
     )
-from cStringIO import StringIO
-
-
-class _Win32FileFeature(tests.Feature):
-    """Test if win32file is available."""
-
-    def _probe(self):
-        try:
-            import win32file
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'win32file'
-
-Win32FileFeature = _Win32FileFeature()
-
-
-class TestWin32FileFeature(tests.TestCase):
-
-    def test_is_correct(self):
-        try:
-            import win32file
-        except ImportError:
-            self.assertFalse(Win32FileFeature.available())
-        else:
-            self.assertTrue(Win32FileFeature.available())
-
-    def test_name(self):
-        self.assertTrue('win32file' in str(Win32FileFeature))
+from bzrlib.tests.test__walkdirs_win32 import WalkdirsWin32Feature
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -1009,7 +979,7 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf_win32_find_file(self):
-        self.requireFeature(Win32FileFeature)
+        self.requireFeature(WalkdirsWin32Feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         name0u = u'0file-\xb6'
         name1u = u'1dir-\u062c\u0648'
@@ -1063,7 +1033,7 @@ class TestWalkDirs(TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(Win32FileFeature)
+        self.requireFeature(WalkdirsWin32Feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
@@ -1086,7 +1056,7 @@ class TestWalkDirs(TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(Win32FileFeature)
+        self.requireFeature(WalkdirsWin32Feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
