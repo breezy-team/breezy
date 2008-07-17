@@ -18,17 +18,14 @@
 
 
 cdef extern from "_walkdirs_win32.h":
-    cdef struct FINDFILE:
-        int low
-        int high
-
     cdef struct _HANDLE:
         pass
     ctypedef _HANDLE *HANDLE
     ctypedef unsigned int DWORD
     ctypedef unsigned short WCHAR
     cdef struct _FILETIME:
-        pass
+        DWORD dwHighDateTime
+        DWORD dwLowDateTime
     ctypedef _FILETIME FILETIME
 
     cdef struct _WIN32_FIND_DATAW:
@@ -151,9 +148,9 @@ cdef class Win32Finder:
         statvalue = _Win32Stat()
         statvalue.st_mode = self._get_mode_bits(data)
         # TODO: Convert the filetimes
-        statvalue.st_ctime = 0
-        statvalue.st_atime = 0
-        statvalue.st_mtime = 0
+        statvalue.st_ctime = self._ftime_to_timestamp(&data.ftCreationTime)
+        statvalue.st_atime = self._ftime_to_timestamp(&data.ftLastAccessTime)
+        statvalue.st_mtime = self._ftime_to_timestamp(&data.ftLastWriteTime)
         statvalue.st_size = self._get_size(data)
         return statvalue
 
@@ -171,6 +168,20 @@ cdef class Win32Finder:
         if data.cFileName[1] == c'.' and data.cFileName[2] == c'\0':
             return True
         return False
+
+    cdef double _ftime_to_timestamp(self, FILETIME *ft):
+        """Convert from a FILETIME struct into a floating point timestamp.
+
+        The fields of a FILETIME structure are the hi and lo part
+        of a 64-bit value expressed in 100 nanosecond units.
+        1e7 is one second in such units; 1e-7 the inverse.
+        429.4967296 is 2**32 / 1e7 or 2**32 * 1e-7.
+        It also uses the epoch 1601-01-01 rather than 1970-01-01
+        (taken from posixmodule.c)
+        """
+        # cdef double secs_between_epochs = 11644473600
+        return ((ft.dwHighDateTime * 429.4967296 + ft.dwLowDateTime * 1e-7)
+                - 11644473600.0)
 
     def _get_files_in(self, directory, relprefix):
         cdef WIN32_FIND_DATAW search_data

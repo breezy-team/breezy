@@ -1054,9 +1054,9 @@ class TestWalkDirs(TestCaseInTempDir):
     def assertStatIsCorrect(self, path, win32stat):
         os_stat = os.stat(path)
         self.assertEqual(os_stat.st_size, win32stat.st_size)
-        self.assertEqual(os_stat.st_mtime, win32stat.st_mtime)
-        self.assertEqual(os_stat.st_ctime, win32stat.st_ctime)
-        self.assertEqual(os_stat.st_atime, win32stat.st_atime)
+        self.assertAlmostEqual(os_stat.st_mtime, win32stat.st_mtime, places=4)
+        self.assertAlmostEqual(os_stat.st_ctime, win32stat.st_ctime, places=4)
+        self.assertAlmostEqual(os_stat.st_atime, win32stat.st_atime, places=4)
         self.assertEqual(os_stat.st_dev, win32stat.st_dev)
         self.assertEqual(os_stat.st_ino, win32stat.st_ino)
         self.assertEqual(os_stat.st_mode, win32stat.st_mode)
@@ -1082,6 +1082,7 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertEqual((name0, name0, 'file'), entry[:3])
         self.assertEqual(u'./' + name0u, entry[4])
         self.assertStatIsCorrect(entry[4], entry[3])
+        self.assertNotEqual(entry[3].st_mtime, entry[3].st_ctime)
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
