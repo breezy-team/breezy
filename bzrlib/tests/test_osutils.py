@@ -858,7 +858,7 @@ class TestWalkDirs(TestCaseInTempDir):
         # Force it to redetect
         osutils._real_walkdirs_utf8 = None
         # Nothing to list, but should still trigger the selection logic
-        list(osutils._walkdirs_utf8('.'))
+        self.assertEqual([(('', '.'), [])], list(osutils._walkdirs_utf8('.')))
         self.assertIs(expected, osutils._real_walkdirs_utf8)
 
     def test_force_walkdirs_utf8_fs_utf8(self):

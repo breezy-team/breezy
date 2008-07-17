@@ -107,10 +107,10 @@ cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
 
     mode_bits = 0100666 # writeable file, the most common
     if data.dwFileAttributes & FILE_ATTRIBUTE_READONLY == FILE_ATTRIBUTE_READONLY:
-        mode_bits = mode ^ 0222 # remove the write bits
+        mode_bits = mode_bits ^ 0222 # remove the write bits
     if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == FILE_ATTRIBUTE_DIRECTORY:
         # Remove the FILE bit, set the DIR bit, and set the EXEC bits
-        mode_bits = mode ^ 0140111
+        mode_bits = mode_bits ^ 0140111
     return mode_bits
 
 
@@ -206,7 +206,6 @@ cdef class Win32Finder:
         :return: A dirblock for all the files of the form
             [(utf8_relpath, utf8_fname, kind, _Win32Stat, unicode_abspath)]
         """
-        dirblock = self._get_files_in(top_slash, relprefix)
         cdef WIN32_FIND_DATAW search_data
         cdef HANDLE hFindFile
         cdef int last_err
