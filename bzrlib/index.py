@@ -877,7 +877,8 @@ class GraphIndex(object):
             elements = line.split('\0')
             if len(elements) != self._expected_elements:
                 raise errors.BadIndexData(self)
-            # keys are tuples
+            # keys are tuples. Each element is a string that may occur many
+            # times, so we intern them to save space. AB, RC, 200807
             key = tuple(intern(element) for element in elements[:self._key_length])
             if first_key is None:
                 first_key = key
