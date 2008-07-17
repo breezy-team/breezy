@@ -74,9 +74,12 @@ def generate_ignore_list(ignore_map):
     """
     ignores = []
     keys = ignore_map.keys()
-    keys.sort()
-    for k in keys:
-        ignores.append("./" + urlutils.join(k.strip("/"), ignore_map[k].strip("/")))
+    for k in sorted(keys):
+        elements = ["."]
+        if k.strip("/") != "":
+            elements.append(k.strip("/"))
+        elements.append(ignore_map[k].strip("/"))
+        ignores.append("/".join(elements))
     return ignores
 
 
