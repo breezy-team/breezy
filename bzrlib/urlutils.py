@@ -250,6 +250,11 @@ def _win32_local_path_from_url(url):
             raise errors.InvalidURL(url, 'Win32 UNC path urls'
                 ' have form file://HOST/path')
         return unescape(win32_url)
+
+    # allow empty paths so we can serve all roots
+    if win32_url == '///':
+        return '/'
+    
     # usual local path with drive letter
     if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
@@ -271,6 +276,9 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
+    if path == '/':
+        return 'file:///'
+
     win32_path = osutils._win32_abspath(path)
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):

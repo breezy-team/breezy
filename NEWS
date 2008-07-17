@@ -64,6 +64,11 @@ IN DEVELOPMENT
       requires a branch to be present.
       (Daniel Watkins, #64783)
 
+    * ``bzr serve --directory=/`` now correctly allows the whole
+      filesystem to be accessed on Windows, not just the root of the drive
+      that Python is running from.
+      (Adrian Wilkins, #240910)
+
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be
       loaded. 
       (Martin Pool, #205230)
