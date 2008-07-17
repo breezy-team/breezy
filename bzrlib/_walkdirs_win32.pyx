@@ -22,7 +22,7 @@ cdef extern from "_walkdirs_win32.h":
         pass
     ctypedef _HANDLE *HANDLE
     ctypedef unsigned long DWORD
-    ctypedef unsigned long long __int64
+    ctypedef long long __int64
     ctypedef unsigned short WCHAR
     cdef struct _FILETIME:
         DWORD dwHighDateTime
@@ -77,25 +77,15 @@ from bzrlib import osutils
 cdef class _Win32Stat:
     """Represent a 'stat' result generated from WIN32_FIND_DATA"""
 
-    cdef readonly object st_mode
-    cdef readonly object st_ctime
-    cdef readonly object st_mtime
-    cdef readonly object st_atime
-    cdef readonly object st_size
+    cdef readonly int st_mode
+    cdef readonly double st_ctime
+    cdef readonly double st_mtime
+    cdef readonly double st_atime
+    cdef readonly __int64 st_size
 
     # os.stat always returns 0, so we hard code it here
-    cdef readonly object st_dev
-    cdef readonly object st_ino
-
-    def __init__(self, st_mode, st_ctime, st_mtime, st_atime, st_size):
-        """Create a new Stat object, based on the WIN32_FIND_DATA tuple"""
-        self.st_mode = st_mode
-        self.st_ctime = st_ctime
-        self.st_mtime = st_mtime
-        self.st_atime = st_atime
-        self.st_size = st_size
-        self.st_dev = 0
-        self.st_ino = 0
+    cdef readonly int st_dev
+    cdef readonly int st_ino
 
     def __repr__(self):
         """Repr is the same as a Stat object.
@@ -105,6 +95,43 @@ cdef class _Win32Stat:
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, self.st_atime,
                      self.st_mtime, self.st_ctime))
 
+
+cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
+    cdef int mode_bits
+
+    mode_bits = 0100666 # writeable file, the most common
+    if data.dwFileAttributes & FILE_ATTRIBUTE_READONLY == FILE_ATTRIBUTE_READONLY:
+        mode_bits ^= 0222 # remove the write bits
+    if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == FILE_ATTRIBUTE_DIRECTORY:
+        # Remove the FILE bit, set the DIR bit, and set the EXEC bits
+        mode_bits ^= 0140111
+    return mode_bits
+
+
+cdef __int64 _get_size(WIN32_FIND_DATAW *data):
+    # Pyrex casts a DWORD into a PyLong anyway, so it is safe to do << 32
+    # on a DWORD
+    return ((<__int64>data.nFileSizeHigh) << 32) + data.nFileSizeLow
+
+
+cdef double _ftime_to_timestamp(FILETIME *ft):
+    """Convert from a FILETIME struct into a floating point timestamp.
+
+    The fields of a FILETIME structure are the hi and lo part
+    of a 64-bit value expressed in 100 nanosecond units.
+    1e7 is one second in such units; 1e-7 the inverse.
+    429.4967296 is 2**32 / 1e7 or 2**32 * 1e-7.
+    It also uses the epoch 1601-01-01 rather than 1970-01-01
+    (taken from posixmodule.c)
+    """
+    cdef __int64 val
+    # NB: This gives slightly different results versus casting to a 64-bit
+    #     integer and doing integer math before casting into a floating
+    #     point number. But the difference is in the sub millisecond range,
+    #     which doesn't seem critical here.
+    # secs between epochs: 11,644,473,600
+    val = ((<__int64>ft.dwHighDateTime) << 32) + ft.dwLowDateTime
+    return (val * 1.0e-7) - 11644473600.0
 
 
 cdef class Win32Finder:
@@ -138,32 +165,19 @@ cdef class Win32Finder:
                                              wcslen(data.cFileName))
         return name_unicode
 
-    cdef int _get_mode_bits(self, WIN32_FIND_DATAW *data):
-        cdef int mode_bits
-
-        mode_bits = 0100666 # writeable file, the most common
-        if data.dwFileAttributes & FILE_ATTRIBUTE_READONLY == FILE_ATTRIBUTE_READONLY:
-            mode_bits ^= 0222 # remove the write bits
-        if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == FILE_ATTRIBUTE_DIRECTORY:
-            # Remove the FILE bit, set the DIR bit, and set the EXEC bits
-            mode_bits ^= 0140111
-        return mode_bits
-
-    cdef object _get_size(self, WIN32_FIND_DATAW *data):
-        # Pyrex casts a DWORD into a PyLong anyway, so it is safe to do << 32
-        # on a DWORD
-        cdef __int64 val
-        val = ((<__int64>data.nFileSizeHigh) << 32) + data.nFileSizeLow
-        return val
-
     cdef _Win32Stat _get_stat_value(self, WIN32_FIND_DATAW *data):
         """Get the filename and the stat information."""
-        return _Win32Stat(self._get_mode_bits(data),
-            self._ftime_to_timestamp(&data.ftCreationTime),
-            self._ftime_to_timestamp(&data.ftLastWriteTime),
-            self._ftime_to_timestamp(&data.ftLastAccessTime),
-            self._get_size(data),
-            )
+        cdef _Win32Stat statvalue
+
+        statvalue = _Win32Stat()
+        statvalue.st_mode = _get_mode_bits(data)
+        statvalue.st_ctime = _ftime_to_timestamp(&data.ftCreationTime)
+        statvalue.st_mtime = _ftime_to_timestamp(&data.ftLastWriteTime)
+        statvalue.st_atime = _ftime_to_timestamp(&data.ftLastAccessTime)
+        statvalue.st_size = _get_size(data)
+        statvalue.st_ino = 0
+        statvalue.st_dev = 0
+        return statvalue
 
     cdef object _get_kind(self, WIN32_FIND_DATAW *data):
         if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
@@ -179,25 +193,6 @@ cdef class Win32Finder:
         if data.cFileName[1] == c'.' and data.cFileName[2] == c'\0':
             return True
         return False
-
-    cdef double _ftime_to_timestamp(self, FILETIME *ft):
-        """Convert from a FILETIME struct into a floating point timestamp.
-
-        The fields of a FILETIME structure are the hi and lo part
-        of a 64-bit value expressed in 100 nanosecond units.
-        1e7 is one second in such units; 1e-7 the inverse.
-        429.4967296 is 2**32 / 1e7 or 2**32 * 1e-7.
-        It also uses the epoch 1601-01-01 rather than 1970-01-01
-        (taken from posixmodule.c)
-        """
-        cdef __int64 val
-        # NB: This gives slightly different results versus casting to a 64-bit
-        #     integer and doing integer math before casting into a floating
-        #     point number. But the difference is in the sub millisecond range,
-        #     which doesn't seem critical here.
-        # secs between epochs: 11,644,473,600
-        val = ((<__int64>ft.dwHighDateTime) << 32) + ft.dwLowDateTime
-        return (val / 1.0e7) - 11644473600.0
 
     def _get_files_in(self, directory, relprefix):
         cdef WIN32_FIND_DATAW search_data
