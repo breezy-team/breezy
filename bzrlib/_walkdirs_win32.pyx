@@ -196,6 +196,17 @@ cdef class Win32Finder:
         return statvalue
 
     def _get_files_in(self, directory, relprefix):
+        """Return the dirblock for all files in the given directory.
+
+        :param directory: A path that can directly access the files on disk.
+            Should be a Unicode object.
+        :param relprefix: A psuedo path for these files (as inherited from the
+            original 'prefix=XXX' when instantiating this class.)
+            It should be a UTF-8 string.
+        :return: A dirblock for all the files of the form
+            [(utf8_relpath, utf8_fname, kind, _Win32Stat, unicode_abspath)]
+        """
+        dirblock = self._get_files_in(top_slash, relprefix)
         cdef WIN32_FIND_DATAW search_data
         cdef HANDLE hFindFile
         cdef int last_err
@@ -221,13 +232,11 @@ cdef class Win32Finder:
                     continue
                 name_unicode = _get_name(&search_data)
                 name_utf8 = PyUnicode_AsUTF8String(name_unicode)
-                relpath = relprefix + name_utf8
-                abspath = directory + name_unicode
                 PyList_Append(dirblock, 
-                    (relpath, name_utf8, 
+                    (relprefix + name_utf8, name_utf8, 
                      self._get_kind(&search_data),
                      self._get_stat_value(&search_data),
-                     abspath))
+                     directory + name_unicode))
 
                 result = FindNextFileW(hFindFile, &search_data)
             # FindNextFileW sets GetLastError() == ERROR_NO_MORE_FILES when it
@@ -240,7 +249,9 @@ cdef class Win32Finder:
             result = FindClose(hFindFile)
             if result == 0:
                 last_err = GetLastError()
-                pass
+                # TODO: We should probably raise an exception if FindClose
+                #       returns an error, however, I don't want to supress an
+                #       earlier Exception, so for now, I'm ignoring this
         return dirblock
 
     cdef _update_pending(self):
