@@ -74,19 +74,28 @@ import stat
 from bzrlib import osutils
 
 
-class _Win32Stat(object):
+cdef class _Win32Stat:
     """Represent a 'stat' result generated from WIN32_FIND_DATA"""
 
-    __slots__ = ['st_mode', 'st_ctime', 'st_mtime', 'st_atime',
-                 'st_size']
+    cdef readonly object st_mode
+    cdef readonly object st_ctime
+    cdef readonly object st_mtime
+    cdef readonly object st_atime
+    cdef readonly object st_size
 
     # os.stat always returns 0, so we hard code it here
-    st_dev = 0
-    st_ino = 0
+    cdef readonly object st_dev
+    cdef readonly object st_ino
 
-    def __init__(self):
+    def __init__(self, st_mode, st_ctime, st_mtime, st_atime, st_size):
         """Create a new Stat object, based on the WIN32_FIND_DATA tuple"""
-        pass
+        self.st_mode = st_mode
+        self.st_ctime = st_ctime
+        self.st_mtime = st_mtime
+        self.st_atime = st_atime
+        self.st_size = st_size
+        self.st_dev = 0
+        self.st_ino = 0
 
     def __repr__(self):
         """Repr is the same as a Stat object.
@@ -147,16 +156,14 @@ cdef class Win32Finder:
         val = ((<__int64>data.nFileSizeHigh) << 32) + data.nFileSizeLow
         return val
 
-    cdef object _get_stat_value(self, WIN32_FIND_DATAW *data):
+    cdef _Win32Stat _get_stat_value(self, WIN32_FIND_DATAW *data):
         """Get the filename and the stat information."""
-        statvalue = _Win32Stat()
-        statvalue.st_mode = self._get_mode_bits(data)
-        # TODO: Convert the filetimes
-        statvalue.st_ctime = self._ftime_to_timestamp(&data.ftCreationTime)
-        statvalue.st_atime = self._ftime_to_timestamp(&data.ftLastAccessTime)
-        statvalue.st_mtime = self._ftime_to_timestamp(&data.ftLastWriteTime)
-        statvalue.st_size = self._get_size(data)
-        return statvalue
+        return _Win32Stat(self._get_mode_bits(data),
+            self._ftime_to_timestamp(&data.ftCreationTime),
+            self._ftime_to_timestamp(&data.ftLastWriteTime),
+            self._ftime_to_timestamp(&data.ftLastAccessTime),
+            self._get_size(data),
+            )
 
     cdef object _get_kind(self, WIN32_FIND_DATAW *data):
         if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
