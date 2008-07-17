@@ -336,7 +336,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         if workingtree_format is None:
             workingtree_format = WorkingTreeFormat._default_format
         scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
-            workingtree_format, workingtree_format._matchingbzrdir)[1]
+            workingtree_format)[1]
         scenario_options["_workingtree_to_test_tree"] = converter
         return name, scenario_options
 
@@ -366,8 +366,7 @@ def load_tests(basic_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in
-         WorkingTreeFormat._formats.values() + _legacy_formats])
+        WorkingTreeFormat._formats.values() + _legacy_formats)
 
     # add the tests for the sub modules
     adapt_modules(test_tree_implementations, adapter, loader, result)
