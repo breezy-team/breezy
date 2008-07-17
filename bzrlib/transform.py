@@ -354,13 +354,11 @@ class TreeTransformBase(object):
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
         except OSError, e:
-            if e.errno == errno.ENOENT:
-                return
-            elif e.errno == errno.ENOTDIR:
-                # If the file is in a directory that was a file in
-                # tree on disk ENOTDIR will be raised. This error tells
-                # us that the file is not present on disk, so we handle
-                # it the same as ENOENT. See bug 248448.
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                # Either old_path doesn't exist, or the parent of the
+                # target is not a directory (but will be one eventually)
+                # Either way, we know it doesn't exist *right now*
+                # See also bug #248448
                 return
             else:
                 raise

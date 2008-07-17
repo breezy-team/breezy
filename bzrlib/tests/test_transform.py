@@ -1217,24 +1217,16 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_file_to_directory(self):
         wt = self.make_branch_and_tree('.')
-        f = open('foo', 'wb')
-        try:
-            f.write("contents\n")
-        finally:
-            f.close()
+        self.build_tree(['foo'])
         wt.add(['foo'])
-        wt.commit("one")
         tt = TreeTransform(wt)
-        try:
-            old_trans_id = tt.trans_id_tree_path("foo")
-            tt.delete_contents(old_trans_id)
-            tt.new_directory('foo', tt.root)
-            new_trans_id = tt.trans_id_tree_path("foo/bar")
-            tt.create_file(["new\n", "content\n"], new_trans_id)
-            tt.apply(no_conflicts=True)
-        except:
-            tt.finalize()
-            raise
+        self.addCleanup(tt.finalize)
+        old_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(old_trans_id)
+        tt.new_directory('foo', tt.root)
+        new_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.create_file(["new\n", "content\n"], new_trans_id)
+        tt.apply()
         self.failUnlessExists("foo/bar")
 
 
