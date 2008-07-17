@@ -55,7 +55,10 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of (scenario_name_suffix, repo_format)
-        where the scenario_info is a dict that controls the test.
+        where the scenario_name_suffix is to be appended to the format
+        name, and the repo_format is a RepositoryFormat subclass 
+        instance.
+    :returns: Scenarios of [(scenario_name, {parameter_name: value})]
     """
     result = []
     for scenario_name_suffix, repository_format in formats:
