@@ -822,6 +822,80 @@ class TestWalkDirs(TestCaseInTempDir):
                 new_dirblock.append((info[0], info[1], info[2], info[4]))
             dirblock[:] = new_dirblock
 
+    def test__walkdirs_utf8_selection(self):
+        # Just trigger the function once, to make sure it has selected a real
+        # implementation.
+        list(osutils._walkdirs_utf8('.'))
+        if WalkdirsWin32Feature.available():
+            # If the compiled form is available, make sure it is used
+            from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+            self.assertIs(_walkdirs_utf8_win32_find_file,
+                          osutils._real_walkdirs_utf8)
+        elif sys.platform == 'win32':
+            self.assertIs(osutils._walkdirs_unicode_to_utf8,
+                          osutils._real_walkdirs_utf8)
+        elif osutils._fs_enc.upper() in ('UTF-8', 'ASCII', 'ANSI_X3.4-1968'): # ascii
+            self.assertIs(osutils._walkdirs_fs_utf8,
+                          osutils._real_walkdirs_utf8)
+        else:
+            self.assertIs(osutils._walkdirs_unicode_to_utf8,
+                          osutils._real_walkdirs_utf8)
+
+    def _save_platform_info(self):
+        cur_winver = win32utils.winver
+        cur_fs_enc = osutils._fs_enc
+        cur_real_walkdirs_utf8 = osutils._real_walkdirs_utf8
+        def restore():
+            win32utils.winver = cur_winver
+            osutils._fs_enc = cur_fs_enc
+            osutils._real_walkdirs_utf8 = cur_real_walkdirs_utf8
+        self.addCleanup(restore)
+
+    def assertWalkdirsUtf8Is(self, expected):
+        """Assert the right implementation for _walkdirs_utf8 is chosen."""
+        # Force it to redetect
+        osutils._real_walkdirs_utf8 = None
+        # Nothing to list, but should still trigger the selection logic
+        self.assertEqual([(('', '.'), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertIs(expected, osutils._real_walkdirs_utf8)
+
+    def test_force_walkdirs_utf8_fs_utf8(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+
+    def test_force_walkdirs_utf8_fs_ascii(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'US-ASCII'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+
+    def test_force_walkdirs_utf8_fs_ANSI(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'ANSI_X3.4-1968'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+
+    def test_force_walkdirs_utf8_fs_latin1(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'latin1'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
+
+    def test_force_walkdirs_utf8_nt(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self._save_platform_info()
+        win32utils.winver = 'Windows NT'
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        self.assertWalkdirsUtf8Is(_walkdirs_utf8_win32_find_file)
+
+    def test_force_walkdirs_utf8_nt(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self._save_platform_info()
+        win32utils.winver = 'Windows 98'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
+
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
         name0 = u'0file-\xb6'

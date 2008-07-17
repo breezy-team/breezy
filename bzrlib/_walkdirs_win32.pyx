@@ -18,18 +18,18 @@
 
 
 cdef extern from "_walkdirs_win32.h":
-    cdef struct _HANDLE:
+    struct _HANDLE:
         pass
     ctypedef _HANDLE *HANDLE
     ctypedef unsigned long DWORD
     ctypedef long long __int64
     ctypedef unsigned short WCHAR
-    cdef struct _FILETIME:
+    struct _FILETIME:
         DWORD dwHighDateTime
         DWORD dwLowDateTime
     ctypedef _FILETIME FILETIME
 
-    cdef struct _WIN32_FIND_DATAW:
+    struct _WIN32_FIND_DATAW:
         DWORD dwFileAttributes
         FILETIME ftCreationTime
         FILETIME ftLastAccessTime
@@ -45,16 +45,16 @@ cdef extern from "_walkdirs_win32.h":
     # which fails due to 'incomplete type'
     ctypedef _WIN32_FIND_DATAW WIN32_FIND_DATAW
 
-    cdef HANDLE INVALID_HANDLE_VALUE
-    cdef HANDLE FindFirstFileW(WCHAR *path, WIN32_FIND_DATAW *data)
-    cdef int FindNextFileW(HANDLE search, WIN32_FIND_DATAW *data)
-    cdef int FindClose(HANDLE search)
+    HANDLE INVALID_HANDLE_VALUE
+    HANDLE FindFirstFileW(WCHAR *path, WIN32_FIND_DATAW *data)
+    int FindNextFileW(HANDLE search, WIN32_FIND_DATAW *data)
+    int FindClose(HANDLE search)
 
-    cdef DWORD FILE_ATTRIBUTE_READONLY
-    cdef DWORD FILE_ATTRIBUTE_DIRECTORY
-    cdef int ERROR_NO_MORE_FILES
+    DWORD FILE_ATTRIBUTE_READONLY
+    DWORD FILE_ATTRIBUTE_DIRECTORY
+    int ERROR_NO_MORE_FILES
 
-    cdef int GetLastError()
+    int GetLastError()
 
     # Wide character functions
     DWORD wcslen(WCHAR *)
@@ -107,10 +107,10 @@ cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
 
     mode_bits = 0100666 # writeable file, the most common
     if data.dwFileAttributes & FILE_ATTRIBUTE_READONLY == FILE_ATTRIBUTE_READONLY:
-        mode_bits ^= 0222 # remove the write bits
+        mode_bits = mode_bits ^ 0222 # remove the write bits
     if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == FILE_ATTRIBUTE_DIRECTORY:
         # Remove the FILE bit, set the DIR bit, and set the EXEC bits
-        mode_bits ^= 0140111
+        mode_bits = mode_bits ^ 0140111
     return mode_bits
 
 
@@ -196,6 +196,16 @@ cdef class Win32Finder:
         return statvalue
 
     def _get_files_in(self, directory, relprefix):
+        """Return the dirblock for all files in the given directory.
+
+        :param directory: A path that can directly access the files on disk.
+            Should be a Unicode object.
+        :param relprefix: A psuedo path for these files (as inherited from the
+            original 'prefix=XXX' when instantiating this class.)
+            It should be a UTF-8 string.
+        :return: A dirblock for all the files of the form
+            [(utf8_relpath, utf8_fname, kind, _Win32Stat, unicode_abspath)]
+        """
         cdef WIN32_FIND_DATAW search_data
         cdef HANDLE hFindFile
         cdef int last_err
@@ -221,13 +231,11 @@ cdef class Win32Finder:
                     continue
                 name_unicode = _get_name(&search_data)
                 name_utf8 = PyUnicode_AsUTF8String(name_unicode)
-                relpath = relprefix + name_utf8
-                abspath = directory + name_unicode
                 PyList_Append(dirblock, 
-                    (relpath, name_utf8, 
+                    (relprefix + name_utf8, name_utf8, 
                      self._get_kind(&search_data),
                      self._get_stat_value(&search_data),
-                     abspath))
+                     directory + name_unicode))
 
                 result = FindNextFileW(hFindFile, &search_data)
             # FindNextFileW sets GetLastError() == ERROR_NO_MORE_FILES when it
@@ -240,7 +248,9 @@ cdef class Win32Finder:
             result = FindClose(hFindFile)
             if result == 0:
                 last_err = GetLastError()
-                pass
+                # TODO: We should probably raise an exception if FindClose
+                #       returns an error, however, I don't want to supress an
+                #       earlier Exception, so for now, I'm ignoring this
         return dirblock
 
     cdef _update_pending(self):
