@@ -231,7 +231,7 @@ if sys.platform == 'win32':
     # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
     # right value.
     add_pyrex_extension('bzrlib._walkdirs_win32',
-                        define_macro=[('WIN32', None)])
+                        define_macros=[('WIN32', None)])
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
 
