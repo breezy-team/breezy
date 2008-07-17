@@ -179,7 +179,10 @@ cdef class Win32Finder:
         It also uses the epoch 1601-01-01 rather than 1970-01-01
         (taken from posixmodule.c)
         """
-        # cdef double secs_between_epochs = 11644473600
+        # NB: This gives slightly different results versus casting to a 64-bit
+        #     integer and doing integer math before casting into a floating
+        #     point number. But the difference is in the sub millisecond range,
+        #     which doesn't seem critical here.
         return ((ft.dwHighDateTime * 429.4967296 + ft.dwLowDateTime * 1e-7)
                 - 11644473600.0)
 
