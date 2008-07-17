@@ -78,6 +78,9 @@ IN DEVELOPMENT
       still in ``.bzr.log`` and can be shown with ``-Derror``.
       (Martin Pool, #240161)
 
+    * Fixed problem in branching from smart server.
+      (#249256, Michael Hudson, Martin Pool) 
+
     * Fetch from a stacked branch copies all required data.
       (Aaron Bentley, #248506)
 

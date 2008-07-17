@@ -242,7 +242,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the class level.
     """
 
-    _matchingbzrdir = RemoteBzrDirFormat
+    _matchingbzrdir = RemoteBzrDirFormat()
 
     def initialize(self, a_bzrdir, shared=False):
         if not isinstance(a_bzrdir, RemoteBzrDir):
