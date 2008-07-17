@@ -10,6 +10,39 @@ IN DEVELOPMENT
 
   FEATURES:
 
+
+  IMPROVEMENTS:
+
+    * Implemented a custom ``walkdirs_utf8`` implementation for win32.
+      This uses a pyrex extension to get direct access to the
+      ``FindFirstFileW`` style apis, rather than using ``listdir`` +
+      ``lstat``. Shows a very strong improvement in commands like
+      ``status`` and ``diff`` which have to iterate the working tree.
+      Anywhere from 2x-6x faster depending on the size of the tree (bigger
+      trees, bigger benefit.) (John Arbash Meinel)
+
+
+  BUG FIXES:
+
+
+  DOCUMENTATION:
+
+
+  TESTING:
+
+
+  API CHANGES:
+
+
+  INTERNALS:
+
+
+
+bzr 1.6beta3 2008-07-17
+-----------------------
+
+  FEATURES:
+
     * New ``pre_change_branch_tip`` hook that is called before the
       branch tip is moved, while the branch is write-locked.  See the User
       Reference for signature details.  (Andrew Bennetts)
