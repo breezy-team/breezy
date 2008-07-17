@@ -248,29 +248,6 @@ class TestBzrDirProviderAdapter(TestCase):
 class TestRepositoryParameterisation(TestCase):
     """A group of tests that test the repository implementation test adapter."""
 
-    def test_setting_vfs_transport(self):
-        """The vfs_transport_factory can be set optionally."""
-        from bzrlib.tests.repository_implementations import formats_to_scenarios
-        scenarios = formats_to_scenarios(
-            [("(one)", "a", "b"), ("(two)", "c", "d")],
-            None,
-            None,
-            vfs_transport_factory="vfs")
-        self.assertEqual([
-            ('str(one)',
-             {'bzrdir_format': 'b',
-              'repository_format': 'a',
-              'transport_readonly_server': None,
-              'transport_server': None,
-              'vfs_transport_factory': 'vfs'}),
-            ('str(two)',
-             {'bzrdir_format': 'd',
-              'repository_format': 'c',
-              'transport_readonly_server': None,
-              'transport_server': None,
-              'vfs_transport_factory': 'vfs'})],
-            scenarios)
-
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
