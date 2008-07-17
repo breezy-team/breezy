@@ -73,6 +73,9 @@ IN DEVELOPMENT
       still in ``.bzr.log`` and can be shown with ``-Derror``.
       (Martin Pool, #240161)
 
+    * Fixed problem in branching from smart server.
+      (#249256, Michael Hudson, Martin Pool) 
+
     * Handle urls such as ftp://user@host.com@www.host.com where the user
       name contains an @.
       (Neil Martinsen-Burrell, #228058)
