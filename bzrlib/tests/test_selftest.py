@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ from bzrlib import (
     repository,
     symbol_versioning,
     tests,
+    workingtree,
     )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import (
@@ -376,19 +377,20 @@ class TestWorkingTreeProviderAdapter(TestCase):
             import WorkingTreeTestProviderAdapter
         server1 = "a"
         server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
+        formats = [workingtree.WorkingTreeFormat2(),
+                   workingtree.WorkingTreeFormat3(),]
         adapter = WorkingTreeTestProviderAdapter(server1, server2, formats)
         self.assertEqual([
-            ('str',
-             {'bzrdir_format': 'C',
+            ('WorkingTreeFormat2',
+             {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': 'c'}),
-            ('str',
-             {'bzrdir_format': 'D',
+              'workingtree_format': formats[0]}),
+            ('WorkingTreeFormat3',
+             {'bzrdir_format': formats[1]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': 'd'})],
+              'workingtree_format': formats[1]})],
             adapter.scenarios)
 
 
@@ -408,12 +410,12 @@ class TestTreeProviderAdapter(TestCase):
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
         input_test = TestTreeProviderAdapter(
             "test_adapted_tests")
         server1 = "a"
         server2 = "b"
-        formats = [WorkingTreeFormat2(), WorkingTreeFormat3()]
+        formats = [workingtree.WorkingTreeFormat2(),
+                   workingtree.WorkingTreeFormat3(),]
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
@@ -422,7 +424,7 @@ class TestTreeProviderAdapter(TestCase):
         self.assertEqual(5, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
-        default_format = WorkingTreeFormat3
+        default_format = workingtree.WorkingTreeFormat3
         self.assertEqual(tests[0].workingtree_format, formats[0])
         self.assertEqual(tests[0].bzrdir_format, formats[0]._matchingbzrdir)
         self.assertEqual(tests[0].transport_server, server1)
