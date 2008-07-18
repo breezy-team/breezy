@@ -44,17 +44,17 @@ class TestIniBasedRulesSearcher(tests.TestCase):
 
     def test_get_items_file_missing(self):
         rs = self.make_searcher(None)
-        self.assertEquals([], rs.get_items('a.txt'))
-        self.assertEquals([], rs.get_selected_items('a.txt', ['foo']))
+        self.assertEquals((), rs.get_items('a.txt'))
+        self.assertEquals((), rs.get_selected_items('a.txt', ['foo']))
 
     def test_get_items_file_empty(self):
         rs = self.make_searcher("")
-        self.assertEquals([], rs.get_items('a.txt'))
-        self.assertEquals([], rs.get_selected_items('a.txt', ['foo']))
+        self.assertEquals((), rs.get_items('a.txt'))
+        self.assertEquals((), rs.get_selected_items('a.txt', ['foo']))
 
     def test_get_items_from_extension_match(self):
         rs = self.make_searcher("[name *.txt]\nfoo=bar\na=True\n")
-        self.assertEquals([], rs.get_items('a.py'))
+        self.assertEquals((), rs.get_items('a.py'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
             rs.get_items('a.txt'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
@@ -66,7 +66,7 @@ class TestIniBasedRulesSearcher(tests.TestCase):
         rs = self.make_searcher("[name ./a.txt]\nfoo=baz\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
-        self.assertEquals([], rs.get_items('dir/a.txt'))
+        self.assertEquals((), rs.get_items('dir/a.txt'))
 
     def test_get_items_match_first(self):
         rs = self.make_searcher(
