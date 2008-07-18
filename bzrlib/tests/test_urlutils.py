@@ -22,7 +22,7 @@ import sys
 
 from bzrlib import osutils, urlutils, win32utils
 import bzrlib
-from bzrlib.errors import InvalidURL, InvalidURLJoin
+from bzrlib.errors import InvalidURL, InvalidURLJoin, InvalidRebaseURLs
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -316,6 +316,8 @@ class TestUrlToPath(TestCase):
         #     to_url('C:/path/to/foo '))
         self.assertEqual('file:///C:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
+        
+        self.assertEqual('file:///', to_url('/'))
 
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
@@ -348,6 +350,7 @@ class TestUrlToPath(TestCase):
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+        self.assertEqual('/', from_url('file:///'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
@@ -614,3 +617,54 @@ class TestDeriveToLocation(TestCase):
         self.assertEqual("bar", derive("http://foo/bar"))
         self.assertEqual("bar", derive("bzr+ssh://foo/bar"))
         self.assertEqual("foo-bar", derive("lp:foo-bar"))
+
+
+class TestRebaseURL(TestCase):
+    """Test the behavior of rebase_url."""
+
+    def test_non_relative(self):
+        result = urlutils.rebase_url('file://foo', 'file://foo',
+                                     'file://foo/bar')
+        self.assertEqual('file://foo', result)
+        result = urlutils.rebase_url('/foo', 'file://foo',
+                                     'file://foo/bar')
+        self.assertEqual('/foo', result)
+
+    def test_different_ports(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar:80', 'http://bar:81')
+        self.assertEqual(str(e), "URLs differ by more than path:"
+                         " 'http://bar:80' and 'http://bar:81'")
+
+    def test_different_hosts(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar', 'http://baz')
+        self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
+                         " and 'http://baz'")
+
+    def test_different_protocol(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar', 'ftp://bar')
+        self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
+                         " and 'ftp://bar'")
+
+    def test_rebase_success(self):
+        self.assertEqual('../bar', urlutils.rebase_url('bar', 'http://baz/',
+                         'http://baz/qux'))
+        self.assertEqual('qux/bar', urlutils.rebase_url('bar',
+                         'http://baz/qux', 'http://baz/'))
+        self.assertEqual('.', urlutils.rebase_url('foo',
+                         'http://bar/', 'http://bar/foo/'))
+
+    def test_determine_relative_path(self):
+        self.assertEqual('../../baz/bar',
+                         urlutils.determine_relative_path(
+                         '/qux/quxx', '/baz/bar'))
+        self.assertEqual('..',
+                         urlutils.determine_relative_path(
+                         '/bar/baz', '/bar'))
+        self.assertEqual('baz',
+                         urlutils.determine_relative_path(
+                         '/bar', '/bar/baz'))
+        self.assertEqual('.', urlutils.determine_relative_path(
+                         '/bar', '/bar'))

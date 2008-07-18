@@ -59,30 +59,27 @@ from warnings import (
     warn,
     )
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+
 from bzrlib import (
     config,
-    lazy_regex,
-    registry,
+    errors,
+    repository as _mod_repository,
+    revision as _mod_revision,
+    revisionspec,
+    trace,
+    tsort,
     )
-from bzrlib.errors import (
-    BzrCommandError,
+""")
+
+from bzrlib import (
+    registry,
     )
 from bzrlib.osutils import (
     format_date,
     get_terminal_encoding,
     terminal_width,
-    )
-from bzrlib.repository import _strip_NULL_ghosts
-from bzrlib.revision import (
-    NULL_REVISION,
-    )
-from bzrlib.revisionspec import (
-    RevisionInfo,
-    )
-from bzrlib.trace import mutter
-from bzrlib.tsort import (
-    merge_sort,
-    topo_sort,
     )
 
 
@@ -204,7 +201,7 @@ def _show_log(branch,
         warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
-        mutter('get log for file_id %r', specific_fileid)
+        trace.mutter('get log for file_id %r', specific_fileid)
     generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
     allow_single_merge_revision = getattr(lf,
         'supports_single_merge_revision', False)
@@ -265,8 +262,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         generate_single_revision = ((start_rev_id == end_rev_id)
             and allow_single_merge_revision)
         if not generate_single_revision:
-            raise BzrCommandError('Selected log formatter only supports '
-                'mainline revisions.')
+            raise errors.BzrCommandError('Selected log formatter only supports'
+                ' mainline revisions.')
         generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
@@ -349,7 +346,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if start_revision is None:
         start_revno = 1
     else:
-        if isinstance(start_revision, RevisionInfo):
+        if isinstance(start_revision, revisionspec.RevisionInfo):
             start_rev_id = start_revision.rev_id
             start_revno = start_revision.revno or 1
         else:
@@ -360,19 +357,19 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if end_revision is None:
         end_revno = branch_revno
     else:
-        if isinstance(end_revision, RevisionInfo):
+        if isinstance(end_revision, revisionspec.RevisionInfo):
             end_rev_id = end_revision.rev_id
             end_revno = end_revision.revno or branch_revno
         else:
             branch.check_real_revno(end_revision)
             end_revno = end_revision
 
-    if ((start_rev_id == NULL_REVISION)
-        or (end_rev_id == NULL_REVISION)):
-        raise BzrCommandError('Logging revision 0 is invalid.')
+    if ((start_rev_id == _mod_revision.NULL_REVISION)
+        or (end_rev_id == _mod_revision.NULL_REVISION)):
+        raise errors.BzrCommandError('Logging revision 0 is invalid.')
     if start_revno > end_revno:
-        raise BzrCommandError("Start revision must be older than "
-                              "the end revision.")
+        raise errors.BzrCommandError("Start revision must be older than "
+                                     "the end revision.")
 
     if end_revno < start_revno:
         return None, None, None, None
@@ -474,7 +471,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # don't request it.
     parent_map = dict(((key, value) for key, value in
         graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
-    sorted_rev_list = topo_sort(parent_map.items())
+    sorted_rev_list = tsort.topo_sort(parent_map.items())
     text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
     modified_text_versions = branch.repository.texts.get_parent_map(text_keys)
     ancestry = {}
@@ -536,8 +533,8 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     parent_map = dict(((key, value) for key, value in
         graph.iter_ancestry(mainline_revs[1:]) if value is not None))
     # filter out ghosts; merge_sort errors on ghosts.
-    rev_graph = _strip_NULL_ghosts(parent_map)
-    merge_sorted_revisions = merge_sort(
+    rev_graph = _mod_repository._strip_NULL_ghosts(parent_map)
+    merge_sorted_revisions = tsort.merge_sort(
         rev_graph,
         mainline_revs[-1],
         mainline_revs,
@@ -615,6 +612,13 @@ class LogFormatter(object):
         only relevant if supports_merge_revisions is not True.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
+
+    Plugins can register functions to show custom revision properties using
+    the properties_handler_registry. The registered function
+    must respect the following interface description:
+        def my_show_properties(properties_dict):
+            # code that returns a dict {'name':'value'} of the properties 
+            # to be shown
     """
 
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
@@ -644,6 +648,15 @@ class LogFormatter(object):
             return name
         return address
 
+    def show_properties(self, revision, indent):
+        """Displays the custom properties returned by each registered handler.
+        
+        If a registered handler raises an error it is propagated.
+        """
+        for key, handler in properties_handler_registry.iteritems():
+            for key, value in handler(revision).items():
+                self.to_file.write(indent + key + ': ' + value + '\n')
+
 
 class LongLogFormatter(LogFormatter):
 
@@ -665,6 +678,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
+        self.show_properties(revision.rev, indent)
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
@@ -815,7 +829,7 @@ def log_formatter(name, *args, **kwargs):
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
-        raise BzrCommandError("unknown log formatter: %r" % name)
+        raise errors.BzrCommandError("unknown log formatter: %r" % name)
 
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
@@ -878,3 +892,5 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  end_revision=len(new_rh),
                  search=None)
 
+
+properties_handler_registry = registry.Registry()

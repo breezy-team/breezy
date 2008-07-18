@@ -562,6 +562,16 @@ class InvalidURLJoin(PathError):
         PathError.__init__(self, base, reason)
 
 
+class InvalidRebaseURLs(PathError):
+
+    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
+
+    def __init__(self, from_, to):
+        self.from_ = from_
+        self.to = to
+        PathError.__init__(self, from_, 'URLs differ by more than path.')
+
+
 class UnavailableRepresentation(InternalBzrError):
 
     _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
