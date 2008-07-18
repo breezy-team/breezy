@@ -23,6 +23,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr init`` and ``bzr init-repo`` will now print out the same as
+      ``bzr info`` if it completed successfully.
+      (Marius Kruger)
+
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
