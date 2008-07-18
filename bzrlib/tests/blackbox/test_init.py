@@ -106,6 +106,11 @@ Location:
         self.assertEqual('', out)
         self.failUnless(err.startswith('bzr: ERROR: Already a branch:'))
 
+    def test_init_branch_quiet(self):
+        out, err = self.run_bzr('init -q')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
     def test_init_existing_branch(self):
         self.run_bzr('init')
         out, err = self.run_bzr('init', retcode=3)

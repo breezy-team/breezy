@@ -35,7 +35,16 @@ Location:
         dir = BzrDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
-        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)        
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
+
+    def test_make_repository_quiet(self):
+        out, err = self.run_bzr("init-repository a -q")
+        self.assertEqual(out, "")
+        self.assertEqual(err, "")
+        dir = BzrDir.open('a')
+        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
     def test_init_repo_existing_dir(self):
         """Make repo in existing directory.
