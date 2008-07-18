@@ -1,0 +1,11 @@
+* Add tests for:
+  * global keyword values (including date formatting)
+  * filters
+
+* Support keywords that provide info from the last revision that changed a file:
+  * Updated
+  * Author
+  * Committer
+
+* UI polish:
+  * warning if bzr version too early

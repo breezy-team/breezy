@@ -15,14 +15,3 @@
 #
 
 """Tests for bzr-keywords."""
-
-
-from bzrlib.tests.TestUtil import TestLoader, TestSuite
-
-
-def test_suite():
-    module_names = [
-        'bzrlib.plugins.keywords.tests.test_conversion',
-        ]
-    loader = TestLoader()
-    return loader.loadTestsFromModuleNames(module_names)

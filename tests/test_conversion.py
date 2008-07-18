@@ -18,17 +18,12 @@
 
 
 from bzrlib import tests
-from bzrlib.plugins.keywords import expand_keywords
+from bzrlib.plugins.keywords import compress_keywords, expand_keywords
 
 
-# Sample keyword expansions
-_keywords = {
-    'Foo': 'FOO!',
-    'Bar': 'bar',
-    }
-
-
-# Sample unexpanded and expanded pairs
+# Sample unexpanded and expanded pairs for a keyword dictionary
+_keywords = {'Foo': 'FOO!', 'Bar': 'bar'}
+_keywords_dicts = [{'Foo': 'FOO!'}, {'Bar': 'bar'}]
 _samples = [
     ('$Foo$',           '$Foo: FOO! $'),
     ('$Foo',            '$Foo'),
@@ -43,9 +38,28 @@ _samples = [
     ]
 
 
-class TestKeywordConversion(tests.TestCase):
+class TestKeywordsConversion(tests.TestCase):
+
+    def test_compression(self):
+        # Test keyword expansion
+        for raw, cooked in _samples:
+            self.assertEqual(raw, compress_keywords(cooked))
 
     def test_expansion(self):
         # Test keyword expansion
         for raw, cooked in _samples:
-            self.assertEqual(cooked, expand_keywords(raw, _keywords))
+            self.assertEqual(cooked, expand_keywords(raw, [_keywords]))
+
+    def test_expansion_across_multiple_dictionaries(self):
+        # Check all still works when keywords in different dictionaries
+        for raw, cooked in _samples:
+            self.assertEqual(cooked, expand_keywords(raw, _keywords_dicts))
+
+    def test_expansion_ignored_when_unsafe(self):
+        kw_dict = {'Xxx': 'y$z'}
+        self.assertEqual('$Xxx$', expand_keywords('$Xxx$', [kw_dict]))
+
+    def test_expansion_ignored_if_already_expanded(self):
+        s = '$Xxx: old value $'
+        kw_dict = {'Xxx': 'new value'}
+        self.assertEqual(s, expand_keywords(s, [kw_dict]))
