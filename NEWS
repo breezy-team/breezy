@@ -27,6 +27,8 @@ IN DEVELOPMENT
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
 
+    * sftp transport: added missing `FileExists' case to
+      _translate_io_exception (Christophe Troestler, #123475)
 
   DOCUMENTATION:
 
