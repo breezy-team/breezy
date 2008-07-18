@@ -283,6 +283,7 @@ development.
 -Devil            Capture call sites that do expensive or badly-scaling
                   operations.
 -Dfetch           Trace history copying between repositories.
+-Dfilters         Emit information for debugging content filtering.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.
 -Dhpss            Trace smart protocol requests and responses.

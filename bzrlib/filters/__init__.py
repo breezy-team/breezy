@@ -62,6 +62,9 @@ class ContentFilter(object):
         self.reader = reader
         self.writer = writer
 
+    def __repr__(self):
+        return "reader: %s, writer: %s" % (self.reader,self.writer)
+
 
 class ContentFilterContext(object):
     """Object providing information that filters can use.

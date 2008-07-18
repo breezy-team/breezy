@@ -24,6 +24,7 @@ from cStringIO import StringIO
 import bzrlib
 from bzrlib import (
     conflicts as _mod_conflicts,
+    debug,
     delta,
     filters,
     osutils,
@@ -38,7 +39,7 @@ from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
-from bzrlib.trace import mutter, note
+from bzrlib.trace import note
 
 
 class Tree(object):
@@ -561,7 +562,10 @@ class Tree(object):
         if path is None:
             path = self.id2path(file_id)
         prefs = self.iter_search_rules([path], filter_pref_names).next()
-        return filters._get_filter_stack_for(prefs)
+        stk = filters._get_filter_stack_for(prefs)
+        if 'filters' in debug.debug_flags:
+            note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+        return stk
 
     def iter_search_rules(self, path_names, pref_names=None,
         _default_searcher=rules._per_user_searcher):
