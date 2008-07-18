@@ -21,6 +21,7 @@
 from bzrlib import errors
 from bzrlib.trace import info
 
+import apt_pkg
 from debian_bundle.changelog import Version
 import os
 
@@ -34,28 +35,29 @@ class VcsDirectory(object):
         else:
             version = None
 
-        f = os.popen("apt-cache showsrc %s" % name, "r")
+        apt_pkg.init()
+
+        sources = apt_pkg.GetPkgSrcRecords()
 
         urls = {}
-        for l in f.readlines():
-            if not ": " in l:
-                continue
-            (field, value) = l.strip("\n").split(": ", 1)
+        while sources.Lookup(name):
+            for l in sources.Record.splitlines():
+                if not ": " in l:
+                    continue
+                (field, value) = l.strip("\n").split(": ", 1)
 
-            if field == "Version": 
-                pkg_version = value
-            elif field.startswith("X-Vcs-") or field.startswith("Vcs-"):
-                vcs = field.split("-")[-1]
-                urls.setdefault(pkg_version,{})[vcs] = value
+                if field == "Version": 
+                    pkg_version = value
+                elif field.startswith("X-Vcs-") or field.startswith("Vcs-"):
+                    vcs = field.split("-")[-1]
+                    urls.setdefault(pkg_version,{})[vcs] = value
 
         if len(urls) == 0:
             raise errors.InvalidURL(path=url, extra='no URLs found')
 
         if version is None:
-            def cmpver(ver1, ver2):
-                return cmp(Version(ver1), Version(ver2))
             # Try the latest version
-            version = sorted(urls,cmp=cmpver)[0]
+            version = sorted(urls,cmp=apt_pkg.VersionCompare)[0]
 
         if not version in urls:
             raise errors.InvalidURL(path=url, extra='version %s not found' % version)
