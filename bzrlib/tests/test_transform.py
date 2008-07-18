@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1221,11 +1221,12 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         wt.add(['foo'])
         tt = TreeTransform(wt)
         self.addCleanup(tt.finalize)
-        old_trans_id = tt.trans_id_tree_path("foo")
-        tt.delete_contents(old_trans_id)
-        tt.new_directory('foo', tt.root)
-        new_trans_id = tt.trans_id_tree_path("foo/bar")
-        tt.create_file(["new\n", "content\n"], new_trans_id)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(foo_trans_id)
+        tt.create_directory(foo_trans_id)
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.create_file(["aa\n"], bar_trans_id)
+        tt.version_file("bar-1", bar_trans_id)
         tt.apply()
         self.failUnlessExists("foo/bar")
 
