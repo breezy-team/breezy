@@ -56,7 +56,8 @@ def format_highres_date(t, offset=0):
         offset = 0
     tt = time.gmtime(t + offset)
 
-    return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
+    return (osutils.weekdays[tt[6]] +
+            time.strftime(" %Y-%m-%d %H:%M:%S", tt)
             # Get the high-res seconds, but ignore the 0
             + ('%.9f' % (t - int(t)))[1:]
             + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
@@ -100,6 +101,11 @@ def unpack_highres_date(date):
     ...      break
 
     """
+    # Weekday parsing is locale sensitive, so drop the weekday
+    space_loc = date.find(' ')
+    if space_loc == -1 or date[:space_loc] not in osutils.weekdays:
+        raise ValueError(
+            'Date string does not contain a day of week: %r' % date)
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to
     # parse it
@@ -107,7 +113,7 @@ def unpack_highres_date(date):
     if dot_loc == -1:
         raise ValueError(
             'Date string does not contain high-precision seconds: %r' % date)
-    base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
+    base_time = time.strptime(date[space_loc:dot_loc], " %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
 

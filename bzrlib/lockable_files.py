@@ -15,23 +15,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
-import codecs
-#import traceback
-from warnings import warn
 
-import bzrlib
-from bzrlib.decorators import (needs_read_lock,
-        needs_write_lock)
-import bzrlib.errors as errors
-from bzrlib.errors import BzrError
-from bzrlib.osutils import file_iterator, safe_unicode
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import codecs
+import warnings
+
+from bzrlib import (
+    errors,
+    osutils,
+    transactions,
+    urlutils,
+    )
+""")
+
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from bzrlib.trace import mutter, note
-import bzrlib.transactions as transactions
-import bzrlib.urlutils as urlutils
 
 
 # XXX: The tracking here of lock counts and whether the lock is held is
@@ -59,6 +64,10 @@ class LockableFiles(object):
     the object is constructed.  In older formats OSLocks are used everywhere.
     in newer formats a LockDir is used for Repositories and Branches, and 
     OSLocks for the local filesystem.
+
+    This class is now deprecated; code should move to using the Transport 
+    directly for file operations and using the lock or CountedLock for 
+    locking.
     """
 
     # _lock_mode: None, or 'r' or 'w'
@@ -66,11 +75,6 @@ class LockableFiles(object):
     # _lock_count: If _lock_mode is true, a positive count of the number of
     # times the lock has been taken *by this process*.   
     
-    # If set to False (by a plugin, etc) BzrBranch will not set the
-    # mode on created files or directories
-    _set_file_mode = True
-    _set_dir_mode = True
-
     def __init__(self, transport, lock_name, lock_class):
         """Create a LockableFiles group
 
@@ -109,7 +113,7 @@ class LockableFiles(object):
         if self.is_locked():
             # do not automatically unlock; there should have been a
             # try/finally to unlock this.
-            warn("%r was gc'd while locked" % self)
+            warnings.warn("%r was gc'd while locked" % self)
 
     def break_lock(self):
         """Break the lock of this lockable files group if it is held.
@@ -123,10 +127,13 @@ class LockableFiles(object):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return urlutils.escape(safe_unicode(file_or_path))
+        return urlutils.escape(osutils.safe_unicode(file_or_path))
 
     def _find_modes(self):
-        """Determine the appropriate modes for files and directories."""
+        """Determine the appropriate modes for files and directories.
+        
+        :deprecated: Replaced by BzrDir._find_modes.
+        """
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:
@@ -140,55 +147,71 @@ class LockableFiles(object):
             self._dir_mode = (st.st_mode & 07777) | 00700
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~07111
-        if not self._set_dir_mode:
-            self._dir_mode = None
-        if not self._set_file_mode:
-            self._file_mode = None
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def controlfilename(self, file_or_path):
-        """Return location relative to branch."""
+        """Return location relative to branch.
+        
+        :deprecated: Use Transport methods instead.
+        """
         return self._transport.abspath(self._escape(file_or_path))
 
     @needs_read_lock
+    @deprecated_method(deprecated_in((1, 5, 0)))
     def get(self, relpath):
-        """Get a file as a bytestream."""
+        """Get a file as a bytestream.
+        
+        :deprecated: Use a Transport instead of LockableFiles.
+        """
         relpath = self._escape(relpath)
         return self._transport.get(relpath)
 
     @needs_read_lock
     @deprecated_method(deprecated_in((1, 5, 0)))
     def get_utf8(self, relpath):
-        """Get a file as a unicode stream."""
+        """Get a file as a unicode stream.
+        
+        :deprecated: Use a Transport instead of LockableFiles.
+        """
         relpath = self._escape(relpath)
         # DO NOT introduce an errors=replace here.
         return codecs.getreader('utf-8')(self._transport.get(relpath))
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put(self, path, file):
         """Write a file.
         
         :param path: The path to put the file, relative to the .bzr control
                      directory
-        :param f: A file-like or string object whose contents should be copied.
+        :param file: A file-like or string object whose contents should be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_bytes(self, path, a_string):
         """Write a string of bytes.
 
         :param path: The path to put the bytes, relative to the transport root.
-        :param string: A string object, whose exact bytes are to be copied.
+        :param a_string: A string object, whose exact bytes are to be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         self._transport.put_bytes(self._escape(path), a_string,
                                   mode=self._file_mode)
 
     @needs_write_lock
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_utf8(self, path, a_string):
         """Write a string, encoding as utf-8.
 
         :param path: The path to put the string, relative to the transport root.
         :param string: A string or unicode object whose contents should be copied.
+
+        :deprecated: Use Transport methods instead.
         """
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25
@@ -223,7 +246,6 @@ class LockableFiles(object):
         some other way, and need to synchronise this object's state with that
         fact.
         """
-        # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
@@ -234,7 +256,6 @@ class LockableFiles(object):
             return self._token_from_lock
         else:
             token_from_lock = self._lock.lock_write(token=token)
-            #note('write locking %s', self)
             #traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -243,14 +264,12 @@ class LockableFiles(object):
             return token_from_lock
 
     def lock_read(self):
-        # mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
                 raise ValueError("invalid lock mode %r" % (self._lock_mode,))
             self._lock_count += 1
         else:
             self._lock.lock_read()
-            #note('read locking %s', self)
             #traceback.print_stack()
             self._lock_mode = 'r'
             self._lock_count = 1
@@ -259,13 +278,11 @@ class LockableFiles(object):
             self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
-        # mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
             raise errors.LockNotHeld(self)
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
-            #note('unlocking %s', self)
             #traceback.print_stack()
             self._finish_transaction()
             try:

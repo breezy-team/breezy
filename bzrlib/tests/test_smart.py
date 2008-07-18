@@ -392,155 +392,213 @@ class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithMemoryTranspor
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchGetConfigFile(backing)
         branch = self.make_branch('.')
-        branch.control_files.put_utf8('branch.conf', 'foo bar baz')
+        branch._transport.put_bytes('branch.conf', 'foo bar baz')
         self.assertEqual(SmartServerResponse(('ok', ), 'foo bar baz'),
             request.execute(''))
 
 
-class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithMemoryTransport):
+class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
+    """Base test case for verbs that implement set_last_revision."""
 
-    def test_empty(self):
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
-        b = self.make_branch('.')
+    def setUp(self):
+        tests.TestCaseWithMemoryTransport.setUp(self)
+        backing_transport = self.get_transport()
+        self.request = self.request_class(backing_transport)
+        self.tree = self.make_branch_and_memory_tree('.')
+
+    def lock_branch(self):
+        b = self.tree.branch
         branch_token = b.lock_write()
         repo_token = b.repository.lock_write()
         b.repository.unlock()
-        try:
-            self.assertEqual(SmartServerResponse(('ok',)),
-                request.execute(
-                    '', branch_token, repo_token,
-                    'null:'))
-        finally:
-            b.unlock()
-
-    def test_not_present_revision_id(self):
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
-        b = self.make_branch('.')
-        branch_token = b.lock_write()
-        repo_token = b.repository.lock_write()
-        b.repository.unlock()
-        try:
-            revision_id = 'non-existent revision'
-            self.assertEqual(
-                SmartServerResponse(('NoSuchRevision', revision_id)),
-                request.execute(
-                    '', branch_token, repo_token,
-                    revision_id))
-        finally:
-            b.unlock()
-
-    def test_revision_id_present(self):
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
-        r2 = tree.commit('2nd commit')
-        tree.unlock()
-        branch_token = tree.branch.lock_write()
-        repo_token = tree.branch.repository.lock_write()
-        tree.branch.repository.unlock()
-        try:
-            self.assertEqual(
-                SmartServerResponse(('ok',)),
-                request.execute(
-                    '', branch_token, repo_token,
-                    rev_id_utf8))
-            self.assertEqual([rev_id_utf8], tree.branch.revision_history())
-        finally:
-            tree.branch.unlock()
-
-    def test_revision_id_present2(self):
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
-        r2 = tree.commit('2nd commit')
-        tree.unlock()
-        tree.branch.set_revision_history([])
-        branch_token = tree.branch.lock_write()
-        repo_token = tree.branch.repository.lock_write()
-        tree.branch.repository.unlock()
-        try:
-            self.assertEqual(
-                SmartServerResponse(('ok',)),
-                request.execute(
-                    '', branch_token, repo_token,
-                    rev_id_utf8))
-            self.assertEqual([rev_id_utf8], tree.branch.revision_history())
-        finally:
-            tree.branch.unlock()
-
-
-class TestSmartServerBranchRequestSetLastRevisionInfo(tests.TestCaseWithTransport):
-
-    def lock_branch(self, branch):
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
-        branch.repository.unlock()
-        self.addCleanup(branch.unlock)
         return branch_token, repo_token
 
-    def make_locked_branch(self, format=None):
-        branch = self.make_branch('.', format=format)
-        branch_token, repo_token = self.lock_branch(branch)
-        return branch, branch_token, repo_token
+    def unlock_branch(self):
+        self.tree.branch.unlock()
+        
+    def set_last_revision(self, revision_id, revno):
+        branch_token, repo_token = self.lock_branch()
+        response = self._set_last_revision(
+            revision_id, revno, branch_token, repo_token)
+        self.unlock_branch()
+        return response
 
-    def test_empty(self):
+    def assertRequestSucceeds(self, revision_id, revno):
+        response = self.set_last_revision(revision_id, revno)
+        self.assertEqual(SuccessfulSmartServerResponse(('ok',)), response)
+
+        
+class TestSetLastRevisionVerbMixin(object):
+    """Mixin test case for verbs that implement set_last_revision."""
+
+    def test_set_null_to_null(self):
         """An empty branch can have its last revision set to 'null:'."""
-        b, branch_token, repo_token = self.make_locked_branch()
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevisionInfo(
-            backing)
-        response = request.execute('', branch_token, repo_token, '0', 'null:')
-        self.assertEqual(SmartServerResponse(('ok',)), response)
+        self.assertRequestSucceeds('null:', 0)
 
-    def assertBranchLastRevisionInfo(self, expected_info, branch_relpath):
-        branch = bzrdir.BzrDir.open(branch_relpath).open_branch()
-        self.assertEqual(expected_info, branch.last_revision_info())
-
-    def test_branch_revision_info_is_updated(self):
-        """This method really does update the branch last revision info."""
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        tree.commit('First commit', rev_id='revision-1')
-        tree.commit('Second commit', rev_id='revision-2')
-        tree.unlock()
-        branch = tree.branch
-
-        branch_token, repo_token = self.lock_branch(branch)
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevisionInfo(
-            backing)
-        self.assertBranchLastRevisionInfo((2, 'revision-2'), '.')
-        response = request.execute(
-            '', branch_token, repo_token, '1', 'revision-1')
-        self.assertEqual(SmartServerResponse(('ok',)), response)
-        self.assertBranchLastRevisionInfo((1, 'revision-1'), '.')
-
-    def test_not_present_revid(self):
-        """Some branch formats will check that the revision is present in the
-        repository.  When that check fails, a NoSuchRevision error is returned
-        to the client.
+    def test_NoSuchRevision(self):
+        """If the revision_id is not present, the verb returns NoSuchRevision.
         """
-        # Make a knit format branch, because that format checks the values
-        # given to set_last_revision_info.
-        b, branch_token, repo_token = self.make_locked_branch(format='knit')
-        backing = self.get_transport()
-        request = smart.branch.SmartServerBranchRequestSetLastRevisionInfo(
-            backing)
-        response = request.execute(
-            '', branch_token, repo_token, '1', 'not-present')
+        revision_id = 'non-existent revision'
         self.assertEqual(
-            SmartServerResponse(('NoSuchRevision', 'not-present')), response)
+            FailedSmartServerResponse(('NoSuchRevision', revision_id)),
+            self.set_last_revision(revision_id, 1))
+
+    def make_tree_with_two_commits(self):
+        self.tree.lock_write()
+        self.tree.add('')
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        r1 = self.tree.commit('1st commit', rev_id=rev_id_utf8)
+        r2 = self.tree.commit('2nd commit', rev_id='rev-2')
+        self.tree.unlock()
+
+    def test_branch_last_revision_info_is_updated(self):
+        """A branch's tip can be set to a revision that is present in its
+        repository.
+        """
+        # Make a branch with an empty revision history, but two revisions in
+        # its repository.
+        self.make_tree_with_two_commits()
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        self.tree.branch.set_revision_history([])
+        self.assertEqual(
+            (0, 'null:'), self.tree.branch.last_revision_info())
+        # We can update the branch to a revision that is present in the
+        # repository.
+        self.assertRequestSucceeds(rev_id_utf8, 1)
+        self.assertEqual(
+            (1, rev_id_utf8), self.tree.branch.last_revision_info())
+
+    def test_branch_last_revision_info_rewind(self):
+        """A branch's tip can be set to a revision that is an ancestor of the
+        current tip.
+        """
+        self.make_tree_with_two_commits()
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        self.assertEqual(
+            (2, 'rev-2'), self.tree.branch.last_revision_info())
+        self.assertRequestSucceeds(rev_id_utf8, 1)
+        self.assertEqual(
+            (1, rev_id_utf8), self.tree.branch.last_revision_info())
+
+
+class TestSmartServerBranchRequestSetLastRevision(
+        SetLastRevisionTestBase, TestSetLastRevisionVerbMixin):
+    """Tests for Branch.set_last_revision verb."""
+
+    request_class = smart.branch.SmartServerBranchRequestSetLastRevision
+
+    def _set_last_revision(self, revision_id, revno, branch_token, repo_token):
+        return self.request.execute(
+            '', branch_token, repo_token, revision_id)
+
+
+class TestSmartServerBranchRequestSetLastRevisionInfo(
+        SetLastRevisionTestBase, TestSetLastRevisionVerbMixin):
+    """Tests for Branch.set_last_revision_info verb."""
+
+    request_class = smart.branch.SmartServerBranchRequestSetLastRevisionInfo
+
+    def _set_last_revision(self, revision_id, revno, branch_token, repo_token):
+        return self.request.execute(
+            '', branch_token, repo_token, revno, revision_id)
+
+    def test_NoSuchRevision(self):
+        """Branch.set_last_revision_info does not have to return
+        NoSuchRevision if the revision_id is absent.
+        """
+        raise tests.TestNotApplicable()
+
+
+class TestSmartServerBranchRequestSetLastRevisionEx(
+        SetLastRevisionTestBase, TestSetLastRevisionVerbMixin):
+    """Tests for Branch.set_last_revision_ex verb."""
+
+    request_class = smart.branch.SmartServerBranchRequestSetLastRevisionEx
+
+    def _set_last_revision(self, revision_id, revno, branch_token, repo_token):
+        return self.request.execute(
+            '', branch_token, repo_token, revision_id, 0, 0)
+
+    def assertRequestSucceeds(self, revision_id, revno):
+        response = self.set_last_revision(revision_id, revno)
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', revno, revision_id)),
+            response)
+        
+    def test_branch_last_revision_info_rewind(self):
+        """A branch's tip can be set to a revision that is an ancestor of the
+        current tip, but only if allow_overwrite_descendant is passed.
+        """
+        self.make_tree_with_two_commits()
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        self.assertEqual(
+            (2, 'rev-2'), self.tree.branch.last_revision_info())
+        # If allow_overwrite_descendant flag is 0, then trying to set the tip
+        # to an older revision ID has no effect.
+        branch_token, repo_token = self.lock_branch()
+        response = self.request.execute(
+            '', branch_token, repo_token, rev_id_utf8, 0, 0)
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', 2, 'rev-2')),
+            response)
+        self.assertEqual(
+            (2, 'rev-2'), self.tree.branch.last_revision_info())
+
+        # If allow_overwrite_descendant flag is 1, then setting the tip to an
+        # ancestor works.
+        response = self.request.execute(
+            '', branch_token, repo_token, rev_id_utf8, 0, 1)
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', 1, rev_id_utf8)),
+            response)
+        self.unlock_branch()
+        self.assertEqual(
+            (1, rev_id_utf8), self.tree.branch.last_revision_info())
+
+    def make_branch_with_divergent_history(self):
+        """Make a branch with divergent history in its repo.
+
+        The branch's tip will be 'child-2', and the repo will also contain
+        'child-1', which diverges from a common base revision.
+        """
+        self.tree.lock_write()
+        self.tree.add('')
+        r1 = self.tree.commit('1st commit')
+        revno_1, revid_1 = self.tree.branch.last_revision_info()
+        r2 = self.tree.commit('2nd commit', rev_id='child-1')
+        # Undo the second commit
+        self.tree.branch.set_last_revision_info(revno_1, revid_1)
+        self.tree.set_parent_ids([revid_1])
+        # Make a new second commit, child-2.  child-2 has diverged from
+        # child-1.
+        new_r2 = self.tree.commit('2nd commit', rev_id='child-2')
+        self.tree.unlock()
+        
+    def test_not_allow_diverged(self):
+        """If allow_diverged is not passed, then setting a divergent history
+        returns a Diverged error.
+        """
+        self.make_branch_with_divergent_history()
+        self.assertEqual(
+            FailedSmartServerResponse(('Diverged',)),
+            self.set_last_revision('child-1', 2))
+        # The branch tip was not changed.
+        self.assertEqual('child-2', self.tree.branch.last_revision())
+
+    def test_allow_diverged(self):
+        """If allow_diverged is passed, then setting a divergent history
+        succeeds.
+        """
+        self.make_branch_with_divergent_history()
+        branch_token, repo_token = self.lock_branch()
+        response = self.request.execute(
+            '', branch_token, repo_token, 'child-1', 1, 0)
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', 2, 'child-1')),
+            response)
+        self.unlock_branch()
+        # The branch tip was changed.
+        self.assertEqual('child-1', self.tree.branch.last_revision())
 
 
 class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
@@ -697,7 +755,7 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
             request.execute, 'subdir')
 
 
-class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
     def test_trivial_bzipped(self):
         # This tests that the wire encoding is actually bzipped
@@ -796,8 +854,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         request = smart.repository.SmartServerRepositoryGatherStats(backing)
         repository = self.make_repository('.')
         stats = repository.gather_stats()
-        size = stats['size']
-        expected_body = 'revisions: 0\nsize: %d\n' % size
+        expected_body = 'revisions: 0\n'
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('', '', 'no'))
 
@@ -816,11 +873,9 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         tree.unlock()
 
         stats = tree.branch.repository.gather_stats()
-        size = stats['size']
         expected_body = ('firstrev: 123456.200 3600\n'
                          'latestrev: 654321.400 0\n'
-                         'revisions: 2\n'
-                         'size: %d\n' % size)
+                         'revisions: 2\n')
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'no'))
@@ -841,12 +896,10 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         tree.unlock()
         stats = tree.branch.repository.gather_stats()
 
-        size = stats['size']
         expected_body = ('committers: 2\n'
                          'firstrev: 123456.200 3600\n'
                          'latestrev: 654321.400 0\n'
-                         'revisions: 2\n'
-                         'size: %d\n' % size)
+                         'revisions: 2\n')
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'yes'))
@@ -938,111 +991,6 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
             SmartServerResponse(('TokenMismatch',)), response)
 
 
-class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
-
-    def test_repository_tarball(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryTarball(backing)
-        repository = self.make_repository('.')
-        # make some extraneous junk in the repository directory which should
-        # not be copied
-        self.build_tree(['.bzr/repository/extra-junk'])
-        response = request.execute('', 'bz2')
-        self.assertEqual(('ok',), response.args)
-        # body should be a tbz2
-        body_file = StringIO(response.body)
-        body_tar = tarfile.open('body_tar.tbz2', fileobj=body_file,
-            mode='r|bz2')
-        # let's make sure there are some key repository components inside it.
-        # the tarfile returns directories with trailing slashes...
-        names = set([n.rstrip('/') for n in body_tar.getnames()])
-        self.assertTrue('.bzr/repository/lock' in names)
-        self.assertTrue('.bzr/repository/format' in names)
-        self.assertTrue('.bzr/repository/extra-junk' not in names,
-            "extraneous file present in tar file")
-
-
-class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithMemoryTransport):
-
-    def test_fetch_revisions(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        rev_id2_utf8 = u'\xc9'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
-        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
-        tree.unlock()
-
-        response = request.execute('', rev_id2_utf8)
-        self.assertEqual(('ok',), response.args)
-        unpacker = pack.ContainerReader(StringIO(response.body))
-        names = []
-        for [name], read_bytes in unpacker.iter_records():
-            names.append(name)
-            bytes = read_bytes(None)
-            # The bytes should be a valid bencoded string.
-            bencode.bdecode(bytes)
-            # XXX: assert that the bencoded knit records have the right
-            # contents?
-        
-    def test_no_such_revision_error(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
-        repo = self.make_repository('.')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute('', rev_id1_utf8)
-        self.assertEqual(
-            SmartServerResponse(('NoSuchRevision', rev_id1_utf8)),
-            response)
-
-
-class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithMemoryTransport):
-
-    def test_fetch_revisions(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
-            backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        rev_id2_utf8 = u'\xc9'.encode('utf-8')
-        tree.commit('1st commit', rev_id=rev_id1_utf8)
-        tree.commit('2nd commit', rev_id=rev_id2_utf8)
-        tree.unlock()
-
-        response = request.execute('')
-        self.assertEqual(None, response)
-        response = request.do_body("%s\n%s\n1" % (rev_id2_utf8, rev_id1_utf8))
-        self.assertEqual(('ok',), response.args)
-        parser = pack.ContainerPushParser()
-        names = []
-        for stream_bytes in response.body_stream:
-            parser.accept_bytes(stream_bytes)
-            for [name], record_bytes in parser.read_pending_records():
-                names.append(name)
-                # The bytes should be a valid bencoded string.
-                bencode.bdecode(record_bytes)
-                # XXX: assert that the bencoded knit records have the right
-                # contents?
-        
-    def test_no_such_revision_error(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
-            backing)
-        repo = self.make_repository('.')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute('')
-        self.assertEqual(None, response)
-        response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
-        self.assertEqual(
-            FailedSmartServerResponse(('NoSuchRevision', )),
-            response)
-
-
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 
     def test_is_readonly_no(self):
@@ -1062,6 +1010,13 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
+
+    def test_all_registrations_exist(self):
+        """All registered request_handlers can be found."""
+        # If there's a typo in a register_lazy call, this loop will fail with
+        # an AttributeError.
+        for key, item in smart.request.request_handlers.iteritems():
+            pass
 
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""

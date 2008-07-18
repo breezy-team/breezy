@@ -90,7 +90,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """, out)
         self.assertEqual('', err)
         tree1.commit('commit one')
@@ -148,12 +147,7 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch2.repository._revision_store.total_size(
-        branch2.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -200,15 +194,10 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (bound_tree._format.get_format_description(),
        branch3._format.get_format_description(),
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch3.repository._revision_store.total_size(
-        branch3.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -249,13 +238,8 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch4.repository._revision_store.total_size(
-        branch4.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -295,7 +279,6 @@ Branch history:
 
 Repository:
          1 revision
-         0 KiB
 """ % (datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
@@ -342,7 +325,6 @@ Branch history:
 
 Repository:
          1 revision
-         0 KiB
 """ % (datestring_first, datestring_first,
        ), out)
         self.assertEqual('', err)
@@ -385,13 +367,8 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch3.repository._revision_store.total_size(
-        branch3.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -430,13 +407,8 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch4.repository._revision_store.total_size(
-        branch4.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -476,7 +448,6 @@ Branch history:
 
 Repository:
          2 revisions
-         0 KiB
 """ % (datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
@@ -502,7 +473,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % (info.describe_format(repo.bzrdir, repo, branch, None),
        format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
@@ -528,7 +498,6 @@ Format:
 
 Repository:
          0 revisions
-         0 KiB
 """ % ('repo', format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -555,7 +524,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -615,13 +583,9 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -657,7 +621,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -699,13 +662,9 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
         tree3.commit('commit two')
@@ -749,13 +708,9 @@ Branch history:
 
 Repository:
          2 revisions
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -781,13 +736,9 @@ Branch history:
 
 Repository:
          2 revisions
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -804,11 +755,7 @@ Format:
 
 Repository:
          2 revisions
-         %d KiB
 """ % (format.repository_format.get_format_description(),
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -833,7 +780,6 @@ Create working tree for new branches inside the repository.
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -874,7 +820,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -919,13 +864,9 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -962,12 +903,8 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -1009,13 +946,9 @@ Branch history:
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -1034,11 +967,7 @@ Create working tree for new branches inside the repository.
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.repository_format.get_format_description(),
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ),
        out)
         self.assertEqual('', err)
@@ -1064,7 +993,6 @@ Create working tree for new branches inside the repository.
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1102,7 +1030,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -1238,7 +1165,6 @@ Branch history:
 %s
 Repository:
          0 revisions
-         0 KiB
 """ %  (description,
         format,
         tree_data,
@@ -1405,7 +1331,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % ('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1439,8 +1364,26 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """ % ('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
         tree.unlock()
+
+    def test_info_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development1')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        out, err = self.run_bzr('info newbranch')
+        self.assertEqual(
+"""Standalone tree (format: development1)
+Location:
+  branch root: newbranch
+
+Related branches:
+  parent branch: mainline
+     stacked on: mainline
+""", out)
+        self.assertEqual("", err)

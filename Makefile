@@ -21,6 +21,7 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs
 
@@ -28,7 +29,7 @@ all: extensions
 
 extensions:
 	@echo "building extension modules."
-	$(PYTHON) setup.py build_ext -i
+	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
 check: docs extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
@@ -83,17 +84,24 @@ derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
-doc_dir := doc/en/tutorials
-txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
+txt_files := $(wildcard doc/en/tutorials/*.txt) \
+	$(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
-	doc/index.txt
+	$(wildcard doc/es/guia-usario/*.txt) \
+	doc/es/mini-tutorial/index.txt \
+	doc/index.txt \
+	doc/index.es.txt
 non_txt_files := \
        doc/default.css \
        doc/en/quick-reference/quick-start-summary.svg \
        doc/en/quick-reference/quick-start-summary.png \
        doc/en/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/en/user-guide/images/*.png)
+       $(wildcard doc/en/user-guide/images/*.png) \
+       doc/es/referencia-rapida/referencia-rapida.svg \
+       doc/es/referencia-rapida/referencia-rapida.png \
+       doc/es/referencia-rapida/referencia-rapida.pdf \
+       $(wildcard doc/es/guia-usuario/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
@@ -163,7 +171,7 @@ clean-docs:
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
-	$(PYTHON) setup.py build_ext -i -f
+	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
@@ -171,7 +179,7 @@ exe:
 # win32 installer for bzr.exe
 installer: exe copy-docs
 	@echo *** Make windows installer
-	cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
+	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer
@@ -210,7 +218,7 @@ clean-win32: clean-docs
 dist: 
 	version=`./bzr version --short` && \
 	echo Building distribution of bzr $$version && \
-	expbasedir=`mktemp -d` && \
+	expbasedir=`mktemp -t -d tmp_bzr_dist.XXXXXXXXXX` && \
 	expdir=$$expbasedir/bzr-$$version && \
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
 	$(MAKE) clean && \
@@ -219,15 +227,17 @@ dist:
 	cp bzrlib/*.c $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
 	gpg --detach-sign $$tarball && \
-	echo $$tarball done.
+	echo $$tarball done. && \
+	rm -rf $$expbasedir
 
 # run all tests in a previously built tarball
 check-dist-tarball:
-	tmpdir=`mktemp -d` && \
+	tmpdir=`mktemp -t -d tmp_bzr_check_dist.XXXXXXXXXX` && \
 	version=`./bzr version --short` && \
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
 	tar Cxz $$tmpdir -f $$tarball && \
-	$(MAKE) -C $$tmpdir/bzr-$$version check 
+	$(MAKE) -C $$tmpdir/bzr-$$version check && \
+	rm -rf $$tmpdir
 
 
 # upload previously built tarball to the download directory on bazaar-vcs.org,

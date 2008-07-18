@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -138,6 +138,7 @@ class WorkingTree4(WorkingTree3):
         # if branch is at our basedir and is a format 6 or less
         # assume all other formats have their own control files.
         self._control_files = _control_files
+        self._transport = self._control_files._transport
         self._dirty = None
         #-------------
         # during a read or write lock these objects are set, and are
@@ -147,6 +148,7 @@ class WorkingTree4(WorkingTree3):
         #-------------
         self._setup_directory_is_tree_reference()
         self._detect_case_handling()
+        self._rules_searcher = None
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
@@ -528,6 +530,10 @@ class WorkingTree4(WorkingTree3):
         return iter(result)
 
     def iter_references(self):
+        if not self._repo_supports_tree_reference:
+            # When the repo doesn't support references, we will have nothing to
+            # return
+            return
         for key, tree_details in self.current_dirstate()._iter_entries():
             if tree_details[0][0] in ('a', 'r'): # absent, relocated
                 # not relevant to the working tree
@@ -535,10 +541,10 @@ class WorkingTree4(WorkingTree3):
             if not key[1]:
                 # the root is not a reference.
                 continue
-            path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
+            relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
             try:
-                if self._kind(path) == 'tree-reference':
-                    yield path, key[2]
+                if self._kind(relpath) == 'tree-reference':
+                    yield relpath, key[2]
             except errors.NoSuchFile:
                 # path is missing on disk.
                 continue
@@ -1085,9 +1091,21 @@ class WorkingTree4(WorkingTree3):
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
         real_trees = []
         ghosts = []
+
+        parent_ids = [rev_id for rev_id, tree in parents_list]
+        graph = self.branch.repository.get_graph()
+        heads = graph.heads(parent_ids)
+        accepted_revisions = set()
+
         # convert absent trees to the null tree, which we convert back to
         # missing on access.
         for rev_id, tree in parents_list:
+            if len(accepted_revisions) > 0:
+                # we always accept the first tree
+                if rev_id in accepted_revisions or rev_id not in heads:
+                    # We have already included either this tree, or its
+                    # descendent, so we skip it.
+                    continue
             _mod_revision.check_not_reserved_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
@@ -1095,6 +1113,7 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id,
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
+            accepted_revisions.add(rev_id)
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
         self._make_dirty(reset_inventory=False)
 
@@ -1308,7 +1327,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        control_files.put_utf8('format', self.get_format_string())
+        transport.put_bytes('format', self.get_format_string(),
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
@@ -1359,8 +1379,11 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
+                # delta_from_tree is safe even for DirStateRevisionTrees,
+                # because wt4.apply_inventory_delta does not mutate the input
+                # inventory entries.
                 transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink)
+                                     hardlink=hardlink, delta_from_tree=True)
             finally:
                 basis.unlock()
         finally:
@@ -1398,6 +1421,9 @@ class DirStateRevisionTree(Tree):
         self._inventory = None
         self._locked = 0
         self._dirstate_locked = False
+        self._repo_supports_tree_reference = getattr(
+            repository._format, "supports_tree_reference",
+            False)
 
     def __repr__(self):
         return "<%s of %s in %s>" % \
@@ -1406,8 +1432,9 @@ class DirStateRevisionTree(Tree):
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        w = self._get_weave(file_id)
-        return w.annotate(self.inventory[file_id].revision)
+        text_key = (file_id, self.inventory[file_id].revision)
+        annotations = self._repository.texts.annotate(text_key)
+        return [(key[-1], line) for (key, line) in annotations]
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,
@@ -1441,6 +1468,14 @@ class DirStateRevisionTree(Tree):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
+
+    def iter_references(self):
+        if not self._repo_supports_tree_reference:
+            # When the repo doesn't support references, we will have nothing to
+            # return
+            return iter([])
+        # Otherwise, fall back to the default implementation
+        return super(DirStateRevisionTree, self).iter_references()
 
     def _get_parent_index(self):
         """Return the index in the dirstate referenced by this tree."""
@@ -1565,25 +1600,18 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
-    def _get_weave(self, file_id):
-        return self._repository.weave_store.get_weave(file_id,
-                self._repository.get_transaction())
-
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):
-        entry = self._get_entry(file_id=file_id)[1]
-        if entry is None:
-            raise errors.NoSuchId(tree=self, file_id=file_id)
-        return self._get_weave(file_id).get_lines(entry[1][4])
+        return osutils.split_lines(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         return self.inventory[file_id].text_size
 
     def get_file_text(self, file_id):
-        return ''.join(self.get_file_lines(file_id))
+        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
@@ -1707,6 +1735,10 @@ class DirStateRevisionTree(Tree):
                 self._dirstate.unlock()
                 self._dirstate_locked = False
             self._repository.unlock()
+
+    @needs_read_lock
+    def supports_tree_reference(self):
+        return self._repo_supports_tree_reference
 
     def walkdirs(self, prefix=""):
         # TODO: jam 20070215 This is the lazy way by using the RevisionTree
@@ -2429,8 +2461,13 @@ class InterDirStateTree(InterTree):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
+                                try:
+                                    relpath_unicode = utf8_decode(current_path_info[0])[0]
+                                except UnicodeDecodeError:
+                                    raise errors.BadFilenameEncoding(
+                                        current_path_info[0], osutils._fs_enc)
                                 yield (None,
-                                    (None, utf8_decode(current_path_info[0])[0]),
+                                    (None, relpath_unicode),
                                     True,
                                     (False, False),
                                     (None, None),
@@ -2534,5 +2571,6 @@ class Converter3to4(object):
 
     def update_format(self, tree):
         """Change the format marker."""
-        tree._control_files.put_utf8('format',
-            self.target_format.get_format_string())
+        tree._transport.put_bytes('format',
+            self.target_format.get_format_string(),
+            mode=tree.bzrdir._get_file_mode())

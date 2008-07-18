@@ -218,12 +218,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
-            self._cleanupLogFile(test)
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
             if self.stop_early:
                 self.stop()
+            self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -235,12 +235,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
-            self._cleanupLogFile(test)
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
             if self.stop_early:
                 self.stop()
+            self._cleanupLogFile(test)
 
     def addSuccess(self, test):
         """Tell result that test completed successfully.
@@ -861,6 +861,10 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
+        if a == b + '\n':
+            message = 'first string is missing a final newline.\n'
+        if a + '\n' == b:
+            message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
         
@@ -919,8 +923,8 @@ class TestCase(unittest.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass:
-            return
+        except excClass, e:
+            return e
         else:
             if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
@@ -2182,7 +2186,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
-                return local_controldir.create_workingtree()
+                wt = local_controldir.create_workingtree()
+                if wt.branch._format != b._format:
+                    wt._branch = b
+                    # Make sure that assigning to wt._branch fixes wt.branch,
+                    # in case the implementation details of workingtree objects
+                    # change.
+                    self.assertIs(b, wt.branch)
+                return wt
             else:
                 return b.create_checkout(relpath, lightweight=True)
 
@@ -2658,10 +2669,8 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.inventory_implementations',
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
-                   'bzrlib.tests.interversionedfile_implementations',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.repository_implementations',
-                   'bzrlib.tests.revisionstore_implementations',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -2689,7 +2698,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_directory_service',
                    'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
-                   'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_filters',
@@ -2745,11 +2753,13 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.per_repository_reference',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionspec',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
+                   'bzrlib.tests.test_rules',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
@@ -2787,6 +2797,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
                    'bzrlib.tests.test_version_info',
+                   'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_win32utils',
@@ -2965,14 +2976,14 @@ def multiply_scenarios(scenarios_left, scenarios_right):
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
-        suite.addTests(adapter.adapt(test))
+    tests = loader.loadTestsFromModuleNames(mods_list)
+    adapt_tests(tests, adapter, suite)
 
 
-def adapt_tests(tests_list, adapter, loader, suite):
+def adapt_tests(tests_list, adapter, suite):
     """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in tests_list:
-        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
+    for test in iter_suite_tests(tests_list):
+        suite.addTests(adapter.adapt(test))
 
 
 def _rmtree_temp_dir(dirname):
@@ -3059,6 +3070,30 @@ class _OsFifoFeature(Feature):
 OsFifoFeature = _OsFifoFeature()
 
 
+class _UnicodeFilenameFeature(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            # Check for character combinations unlikely to be covered by any
+            # single non-unicode encoding. We use the characters
+            # - greek small letter alpha (U+03B1) and
+            # - braille pattern dots-123456 (U+283F).
+            os.stat(u'\u03b1\u283f')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilenameFeature = _UnicodeFilenameFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 
@@ -3139,6 +3174,37 @@ class _FTPServerFeature(Feature):
         return 'FTPServer'
 
 FTPServerFeature = _FTPServerFeature()
+
+
+class _UnicodeFilename(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilename = _UnicodeFilename()
+
+
+class _UTF8Filesystem(Feature):
+    """Is the filesystem UTF-8?"""
+
+    def _probe(self):
+        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
+            return True
+        return False
+
+UTF8Filesystem = _UTF8Filesystem()
 
 
 class _CaseInsensitiveFilesystemFeature(Feature):

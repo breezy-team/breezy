@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@ class cmd_status(Command):
     
     Note that --short or -S gives status flags for each item, similar
     to Subversion's status command. To get output similar to svn -q,
-    use bzr -SV.
+    use bzr status -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -721,51 +721,28 @@ class cmd_push(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
+        Option('stacked',
+            help='Create a stacked branch that references the public location '
+                'of the parent branch.'),
+        Option('stacked-on',
+            help='Create a stacked branch that refers to another branch '
+                'for the commit history. Only the work not present in the '
+                'referenced branch is included in the branch created.',
+            type=unicode),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False, revision=None,
-            use_existing_dir=False,
-            directory=None):
-        # FIXME: Way too big!  Put this into a function called from the
-        # command.
+        create_prefix=False, verbose=False, revision=None,
+        use_existing_dir=False, directory=None, stacked_on=None,
+        stacked=False):
+        from bzrlib.push import _show_push_branch
+
+        # Get the source branch and revision_id
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
-        stored_loc = br_from.get_push_location()
-        if location is None:
-            if stored_loc is None:
-                raise errors.BzrCommandError("No push location known or specified.")
-            else:
-                display_url = urlutils.unescape_for_display(stored_loc,
-                        self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
-                location = stored_loc
-
-        to_transport = transport.get_transport(location)
-
-        br_to = repository_to = dir_to = None
-        try:
-            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
-        except errors.NotBranchError:
-            pass # Didn't find anything
-        else:
-            # If we can open a branch, use its direct repository, otherwise see
-            # if there is a repository without a branch.
-            try:
-                br_to = dir_to.open_branch()
-            except errors.NotBranchError:
-                # Didn't find a branch, can we find a repository?
-                try:
-                    repository_to = dir_to.find_repository()
-                except errors.NoRepositoryPresent:
-                    pass
-            else:
-                # Found a branch, so we must have found a repository
-                repository_to = br_to.repository
-
         if revision is not None:
             if len(revision) == 1:
                 revision_id = revision[0].in_history(br_from).rev_id
@@ -775,112 +752,40 @@ class cmd_push(Command):
         else:
             revision_id = br_from.last_revision()
 
-        push_result = None
-        if verbose:
-            old_rh = []
-        if dir_to is None:
-            # The destination doesn't exist; create it.
-            # XXX: Refactor the create_prefix/no_create_prefix code into a
-            #      common helper function
+        # Get the stacked_on branch, if any
+        if stacked_on is not None:
+            stacked_on = urlutils.normalize_url(stacked_on)
+        elif stacked:
+            parent_url = br_from.get_parent()
+            if parent_url:
+                parent = Branch.open(parent_url)
+                stacked_on = parent.get_public_branch()
+                if not stacked_on:
+                    # I considered excluding non-http url's here, thus forcing
+                    # 'public' branches only, but that only works for some
+                    # users, so it's best to just depend on the user spotting an
+                    # error by the feedback given to them. RBC 20080227.
+                    stacked_on = parent_url
+            if not stacked_on:
+                raise errors.BzrCommandError(
+                    "Could not determine branch to refer to.")
 
-            def make_directory(transport):
-                transport.mkdir('.')
-                return transport
+        # Get the destination location
+        if location is None:
+            stored_loc = br_from.get_push_location()
+            if stored_loc is None:
+                raise errors.BzrCommandError(
+                    "No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
 
-            def redirected(redirected_transport, e, redirection_notice):
-                return transport.get_transport(e.get_target_url())
-
-            try:
-                to_transport = transport.do_catching_redirections(
-                    make_directory, to_transport, redirected)
-            except errors.FileExists:
-                if not use_existing_dir:
-                    raise errors.BzrCommandError("Target directory %s"
-                         " already exists, but does not have a valid .bzr"
-                         " directory. Supply --use-existing-dir to push"
-                         " there anyway." % location)
-            except errors.NoSuchFile:
-                if not create_prefix:
-                    raise errors.BzrCommandError("Parent directory of %s"
-                        " does not exist."
-                        "\nYou may supply --create-prefix to create all"
-                        " leading parent directories."
-                        % location)
-                _create_prefix(to_transport)
-            except errors.TooManyRedirections:
-                raise errors.BzrCommandError("Too many redirections trying "
-                                             "to make %s." % location)
-
-            # Now the target directory exists, but doesn't have a .bzr
-            # directory. So we need to create it, along with any work to create
-            # all of the dependent branches, etc.
-            dir_to = br_from.bzrdir.clone_on_transport(to_transport,
-                                                       revision_id=revision_id)
-            br_to = dir_to.open_branch()
-            # TODO: Some more useful message about what was copied
-            note('Created new branch.')
-            # We successfully created the target, remember it
-            if br_from.get_push_location() is None or remember:
-                br_from.set_push_location(br_to.base)
-        elif repository_to is None:
-            # we have a bzrdir but no branch or repository
-            # XXX: Figure out what to do other than complain.
-            raise errors.BzrCommandError("At %s you have a valid .bzr control"
-                " directory, but not a branch or repository. This is an"
-                " unsupported configuration. Please move the target directory"
-                " out of the way and try again."
-                % location)
-        elif br_to is None:
-            # We have a repository but no branch, copy the revisions, and then
-            # create a branch.
-            repository_to.fetch(br_from.repository, revision_id=revision_id)
-            br_to = br_from.clone(dir_to, revision_id=revision_id)
-            note('Created new branch.')
-            if br_from.get_push_location() is None or remember:
-                br_from.set_push_location(br_to.base)
-        else: # We have a valid to branch
-            # We were able to connect to the remote location, so remember it
-            # we don't need to successfully push because of possible divergence.
-            if br_from.get_push_location() is None or remember:
-                br_from.set_push_location(br_to.base)
-            if verbose:
-                old_rh = br_to.revision_history()
-            try:
-                try:
-                    tree_to = dir_to.open_workingtree()
-                except errors.NotLocalUrl:
-                    warning("This transport does not update the working " 
-                            "tree of: %s. See 'bzr help working-trees' for "
-                            "more information." % br_to.base)
-                    push_result = br_from.push(br_to, overwrite,
-                                               stop_revision=revision_id)
-                except errors.NoWorkingTree:
-                    push_result = br_from.push(br_to, overwrite,
-                                               stop_revision=revision_id)
-                else:
-                    tree_to.lock_write()
-                    try:
-                        push_result = br_from.push(tree_to.branch, overwrite,
-                                                   stop_revision=revision_id)
-                        tree_to.update()
-                    finally:
-                        tree_to.unlock()
-            except errors.DivergedBranches:
-                raise errors.BzrCommandError('These branches have diverged.'
-                                        '  Try using "merge" and then "push".')
-        if push_result is not None:
-            push_result.report(self.outf)
-        elif verbose:
-            new_rh = br_to.revision_history()
-            if old_rh != new_rh:
-                # Something changed
-                from bzrlib.log import show_changed_revisions
-                show_changed_revisions(br_to, old_rh, new_rh,
-                                       to_file=self.outf)
-        else:
-            # we probably did a clone rather than a push, so a message was
-            # emitted above
-            pass
+        _show_push_branch(br_from, revision_id, location, self.outf,
+            verbose=verbose, overwrite=overwrite, remember=remember,
+            stacked_on=stacked_on, create_prefix=create_prefix,
+            use_existing_dir=use_existing_dir)
 
 
 class cmd_branch(Command):
@@ -900,11 +805,16 @@ class cmd_branch(Command):
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.')]
+        help='Hard-link working tree files where possible.'),
+        Option('stacked',
+            help='Create a stacked branch referring to the source branch. '
+                'The new branch will depend on the availability of the source '
+                'branch for all operations.'),
+        ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False):
+            hardlink=False, stacked=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -939,14 +849,23 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink)
+                                            hardlink=hardlink, stacked=stacked)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
-                msg = "The branch %s has no revision %s." % (from_location, revision[0])
+                msg = "The branch %s has no revision %s." % (from_location,
+                    revision[0])
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
-            note('Branched %d revision(s).' % branch.revno())
+            # If the source branch is stacked, the new branch may
+            # be stacked whether we asked for that explicitly or not.
+            # We therefore need a try/except here and not just 'if stacked:'
+            try:
+                note('Created new stacked branch referring to %s.' %
+                    branch.get_stacked_on_url())
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat), e:
+                note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
 
@@ -1585,13 +1504,21 @@ class cmd_modified(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
+    takes_options = [
+            Option('null',
+                   help='Write an ascii NUL (\\0) separator '
+                   'between files rather than a newline.')
+            ]
 
     @display_command
-    def run(self):
+    def run(self, null=False):
         tree = WorkingTree.open_containing(u'.')[0]
         td = tree.changes_from(tree.basis_tree())
         for path, id, kind, text_modified, meta_modified in td.modified:
-            self.outf.write(path + '\n')
+            if null:
+                self.outf.write(path + '\0')
+            else:
+                self.outf.write(osutils.quotefn(path) + '\n')
 
 
 class cmd_added(Command):
@@ -1600,9 +1527,14 @@ class cmd_added(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
+    takes_options = [
+            Option('null',
+                   help='Write an ascii NUL (\\0) separator '
+                   'between files rather than a newline.')
+            ]
 
     @display_command
-    def run(self):
+    def run(self, null=False):
         wt = WorkingTree.open_containing(u'.')[0]
         wt.lock_read()
         try:
@@ -1619,7 +1551,10 @@ class cmd_added(Command):
                     path = inv.id2path(file_id)
                     if not os.access(osutils.abspath(path), os.F_OK):
                         continue
-                    self.outf.write(path + '\n')
+                    if null:
+                        self.outf.write(path + '\0')
+                    else:
+                        self.outf.write(osutils.quotefn(path) + '\n')
             finally:
                 basis.unlock()
         finally:
@@ -1820,7 +1755,8 @@ class cmd_ls(Command):
             Option('from-root',
                    help='Print paths relative to the root of the branch.'),
             Option('unknown', help='Print unknown files.'),
-            Option('versioned', help='Print versioned files.'),
+            Option('versioned', help='Print versioned files.',
+                   short_name='V'),
             Option('ignored', help='Print ignored files.'),
             Option('null',
                    help='Write an ascii NUL (\\0) separator '
@@ -1919,27 +1855,12 @@ class cmd_unknowns(Command):
 class cmd_ignore(Command):
     """Ignore specified files or patterns.
 
+    See ``bzr help patterns`` for details on the syntax of patterns.
+
     To remove patterns from the ignore list, edit the .bzrignore file.
-
-    Trailing slashes on patterns are ignored. 
-    If the pattern contains a slash or is a regular expression, it is compared 
-    to the whole path from the branch root.  Otherwise, it is compared to only
-    the last component of the path.  To match a file only in the root 
-    directory, prepend './'.
-
-    Ignore patterns specifying absolute paths are not allowed.
-
-    Ignore patterns may include globbing wildcards such as::
-
-      ? - Matches any single character except '/'
-      * - Matches 0 or more characters except '/'
-      /**/ - Matches 0 or more directories in a path
-      [a-z] - Matches a single character from within a group of characters
- 
-    Ignore patterns may also be Python regular expressions.  
-    Regular expression ignore patterns are identified by a 'RE:' prefix 
-    followed by the regular expression.  Regular expression ignore patterns
-    may not include named or numbered groups.
+    After adding, editing or deleting that file either indirectly by
+    using this command or directly by using an editor, be sure to commit
+    it.
 
     Note: ignore patterns containing shell wildcards must be quoted from 
     the shell on Unix.
@@ -1966,7 +1887,7 @@ class cmd_ignore(Command):
             bzr ignore "RE:(?!debian/).*"
     """
 
-    _see_also = ['status', 'ignored']
+    _see_also = ['status', 'ignored', 'patterns']
     takes_args = ['name_pattern*']
     takes_options = [
         Option('old-default-rules',
@@ -1974,7 +1895,7 @@ class cmd_ignore(Command):
         ]
     
     def run(self, name_pattern_list=None, old_default_rules=None):
-        from bzrlib.atomicfile import AtomicFile
+        from bzrlib import ignores
         if old_default_rules is not None:
             # dump the rules and exit
             for pattern in ignores.OLD_DEFAULTS:
@@ -1991,34 +1912,7 @@ class cmd_ignore(Command):
                 raise errors.BzrCommandError(
                     "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
-        ifn = tree.abspath('.bzrignore')
-        if os.path.exists(ifn):
-            f = open(ifn, 'rt')
-            try:
-                igns = f.read().decode('utf-8')
-            finally:
-                f.close()
-        else:
-            igns = ''
-
-        # TODO: If the file already uses crlf-style termination, maybe
-        # we should use that for the newly added lines?
-
-        if igns and igns[-1] != '\n':
-            igns += '\n'
-        for name_pattern in name_pattern_list:
-            igns += name_pattern + '\n'
-
-        f = AtomicFile(ifn, 'wb')
-        try:
-            f.write(igns.encode('utf-8'))
-            f.commit()
-        finally:
-            f.close()
-
-        if not tree.path2id('.bzrignore'):
-            tree.add(['.bzrignore'])
-
+        ignores.tree_ignores_add_patterns(tree, name_pattern_list)
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         tree.lock_read()
@@ -2183,14 +2077,15 @@ class cmd_cat(Command):
                 raise errors.BzrCommandError("%r is not present in revision %s"
                                                 % (filename, revision_id))
             else:
-                rev_tree.print_file(old_file_id)
+                content = rev_tree.get_file_text(old_file_id)
         elif cur_file_id is not None:
-            rev_tree.print_file(cur_file_id)
+            content = rev_tree.get_file_text(cur_file_id)
         elif old_file_id is not None:
-            rev_tree.print_file(old_file_id)
+            content = rev_tree.get_file_text(old_file_id)
         else:
             raise errors.BzrCommandError("%r is not present in revision %s" %
                                          (filename, revision_id))
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -2382,12 +2277,14 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate consistency of branch history.
+    """Validate working tree structure, branch consistency and repository
+    history.
 
-    This command checks various invariants about the branch storage to
-    detect data corruption or bzr bugs.
+    This command checks various invariants about branch and repository storage
+    to detect data corruption or bzr bugs.
 
-    Output fields:
+    The working tree and branch checks will only give output if a problem is
+    detected. The output fields of the repository check are:
 
         revisions: This is just the number of revisions checked.  It doesn't
             indicate a problem.
@@ -2405,42 +2302,14 @@ class cmd_check(Command):
     """
 
     _see_also = ['reconcile']
-    takes_args = ['branch?']
+    takes_args = ['path?']
     takes_options = ['verbose']
 
-    def run(self, branch=None, verbose=False):
-        from bzrlib.check import check
-        if branch is None:
-            branch_obj = Branch.open_containing('.')[0]
-        else:
-            branch_obj = Branch.open(branch)
-        check(branch_obj, verbose)
-        # bit hacky, check the tree parent is accurate
-        try:
-            if branch is None:
-                tree = WorkingTree.open_containing('.')[0]
-            else:
-                tree = WorkingTree.open(branch)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
-        else:
-            # This is a primitive 'check' for tree state. Currently this is not
-            # integrated into the main check logic as yet.
-            tree.lock_read()
-            try:
-                tree_basis = tree.basis_tree()
-                tree_basis.lock_read()
-                try:
-                    repo_basis = tree.branch.repository.revision_tree(
-                        tree.last_revision())
-                    if len(list(repo_basis.iter_changes(tree_basis))):
-                        raise errors.BzrCheckError(
-                            "Mismatched basis inventory content.")
-                    tree._validate()
-                finally:
-                    tree_basis.unlock()
-            finally:
-                tree.unlock()
+    def run(self, path=None, verbose=False):
+        from bzrlib.check import check_dwim
+        if path is None:
+            path = '.'
+        check_dwim(path, verbose)
 
 
 class cmd_upgrade(Command):
@@ -2538,6 +2407,76 @@ class cmd_nick(Command):
     @display_command
     def printme(self, branch):
         print branch.nick
+
+
+class cmd_alias(Command):
+    """Set/unset and display aliases.
+
+    :Examples:
+        Show the current aliases::
+
+            bzr alias
+
+        Show the alias specified for 'll'::
+
+            bzr alias ll
+
+        Set an alias for 'll'::
+
+            bzr alias ll="log --line -r-10..-1"
+
+        To remove an alias for 'll'::
+
+            bzr alias --remove ll
+
+    """
+    takes_args = ['name?']
+    takes_options = [
+        Option('remove', help='Remove the alias.'),
+        ]
+
+    def run(self, name=None, remove=False):
+        if remove:
+            self.remove_alias(name)
+        elif name is None:
+            self.print_aliases()
+        else:
+            equal_pos = name.find('=')
+            if equal_pos == -1:
+                self.print_alias(name)
+            else:
+                self.set_alias(name[:equal_pos], name[equal_pos+1:])
+
+    def remove_alias(self, alias_name):
+        if alias_name is None:
+            raise errors.BzrCommandError(
+                'bzr alias --remove expects an alias to remove.')
+        # If alias is not found, print something like:
+        # unalias: foo: not found
+        c = config.GlobalConfig()
+        c.unset_alias(alias_name)
+
+    @display_command
+    def print_aliases(self):
+        """Print out the defined aliases in a similar format to bash."""
+        aliases = config.GlobalConfig().get_aliases()
+        for key, value in sorted(aliases.iteritems()):
+            self.outf.write('bzr alias %s="%s"\n' % (key, value))
+
+    @display_command
+    def print_alias(self, alias_name):
+        from bzrlib.commands import get_alias
+        alias = get_alias(alias_name)
+        if alias is None:
+            self.outf.write("bzr alias: %s: not found\n" % alias_name)
+        else:
+            self.outf.write(
+                'bzr alias %s="%s"\n' % (alias_name, ' '.join(alias)))
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the global config."""
+        c = config.GlobalConfig()
+        c.set_alias(alias_name, alias_command)
 
 
 class cmd_selftest(Command):
@@ -2654,6 +2593,9 @@ class cmd_selftest(Command):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+
+        # Make deprecation warnings visible, unless -Werror is set
+        symbol_versioning.activate_deprecation_warnings(override=False)
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -3265,20 +3207,6 @@ class cmd_shell_complete(Command):
         shellcomplete.shellcomplete(context)
 
 
-class cmd_fetch(Command):
-    """Copy in history from another branch but don't merge it.
-
-    This is an internal method used for pull and merge.
-    """
-    hidden = True
-    takes_args = ['from_branch', 'to_branch']
-    def run(self, from_branch, to_branch):
-        from bzrlib.fetch import Fetcher
-        from_b = Branch.open(from_branch)
-        to_b = Branch.open(to_branch)
-        Fetcher(to_b, from_b)
-
-
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
     
@@ -3308,9 +3236,17 @@ class cmd_missing(Command):
         from bzrlib.missing import find_unmerged, iter_log_revisions
 
         if this:
-          mine_only = this
+            mine_only = this
         if other:
-          theirs_only = other
+            theirs_only = other
+        # TODO: We should probably check that we don't have mine-only and
+        #       theirs-only set, but it gets complicated because we also have
+        #       this and other which could be used.
+        restrict = 'all'
+        if mine_only:
+            restrict = 'local'
+        elif theirs_only:
+            restrict = 'remote'
 
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
@@ -3330,8 +3266,9 @@ class cmd_missing(Command):
         try:
             remote_branch.lock_read()
             try:
-                local_extra, remote_extra = find_unmerged(local_branch,
-                                                          remote_branch)
+                local_extra, remote_extra = find_unmerged(
+                    local_branch, remote_branch, restrict)
+
                 if log_format is None:
                     registry = log.log_formatter_registry
                     log_format = registry.get_default(local_branch)
@@ -3339,8 +3276,12 @@ class cmd_missing(Command):
                                 show_ids=show_ids,
                                 show_timezone='original')
                 if reverse is False:
-                    local_extra.reverse()
-                    remote_extra.reverse()
+                    if local_extra is not None:
+                        local_extra.reverse()
+                    if remote_extra is not None:
+                        remote_extra.reverse()
+
+                status_code = 0
                 if local_extra and not theirs_only:
                     self.outf.write("You have %d extra revision(s):\n" %
                                     len(local_extra))
@@ -3349,8 +3290,10 @@ class cmd_missing(Command):
                                         verbose):
                         lf.log_revision(revision)
                     printed_local = True
+                    status_code = 1
                 else:
                     printed_local = False
+
                 if remote_extra and not mine_only:
                     if printed_local is True:
                         self.outf.write("\n\n\n")
@@ -3360,11 +3303,19 @@ class cmd_missing(Command):
                                         remote_branch.repository,
                                         verbose):
                         lf.log_revision(revision)
-                if not remote_extra and not local_extra:
-                    status_code = 0
-                    self.outf.write("Branches are up to date.\n")
-                else:
                     status_code = 1
+
+                if mine_only and not local_extra:
+                    # We checked local, and found nothing extra
+                    self.outf.write('This branch is up to date.\n')
+                elif theirs_only and not remote_extra:
+                    # We checked remote, and found nothing extra
+                    self.outf.write('Other branch is up to date.\n')
+                elif not (mine_only or theirs_only or local_extra or
+                          remote_extra):
+                    # We checked both branches, and neither one had extra
+                    # revisions
+                    self.outf.write("Branches are up to date.\n")
             finally:
                 remote_branch.unlock()
         finally:
@@ -3456,7 +3407,10 @@ class cmd_testament(Command):
             testament_class = StrictTestament
         else:
             testament_class = Testament
-        b = WorkingTree.open_containing(branch)[0].branch
+        if branch == '.':
+            b = Branch.open_containing(branch)[0]
+        else:
+            b = Branch.open(branch)
         b.lock_read()
         try:
             if revision is None:
@@ -4069,7 +4023,8 @@ class cmd_send(Command):
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
     specific clients are "evolution", "kmail", "mutt", and "thunderbird";
-    generic options are "default", "editor", "mapi", and "xdg-email".
+    generic options are "default", "editor", "emacsclient", "mapi", and
+    "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
@@ -4425,17 +4380,22 @@ class cmd_reconfigure(Command):
     If none of these is available, --bind-to must be specified.
     """
 
+    _see_also = ['branches', 'checkouts', 'standalone-trees', 'working-trees']
     takes_args = ['location?']
     takes_options = [RegistryOption.from_kwargs('target_type',
                      title='Target type',
                      help='The type to reconfigure the directory to.',
                      value_switches=True, enum_switch=False,
-                     branch='Reconfigure to a branch.',
-                     tree='Reconfigure to a tree.',
-                     checkout='Reconfigure to a checkout.',
-                     lightweight_checkout='Reconfigure to a lightweight'
-                     ' checkout.',
-                     standalone='Reconfigure to be standalone.',
+                     branch='Reconfigure to be an unbound branch '
+                        'with no working tree.',
+                     tree='Reconfigure to be an unbound branch '
+                        'with a working tree.',
+                     checkout='Reconfigure to be a bound branch '
+                        'with a working tree.',
+                     lightweight_checkout='Reconfigure to be a lightweight'
+                     ' checkout (with no local history).',
+                     standalone='Reconfigure to be a standalone branch '
+                        '(i.e. stop using shared repository).',
                      use_shared='Reconfigure to use a shared repository.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
@@ -4558,5 +4518,5 @@ from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, cmd_weave_join, \
+from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text

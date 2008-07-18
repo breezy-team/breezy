@@ -104,6 +104,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0755, b.control_files._dir_mode)
         self.assertEqualMode(0644, b.control_files._file_mode)
+        self.assertEqualMode(0755, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b.bzrdir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
         open('a', 'wb').write('foo2\n')
@@ -124,6 +126,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
+        self.assertEqualMode(0775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
         open('a', 'wb').write('foo3\n')
         t.commit('foo3')
@@ -142,6 +146,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(02775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
+        self.assertEqualMode(02775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
         open('a', 'wb').write('foo4\n')
         t.commit('foo4')
@@ -151,43 +157,6 @@ class TestPermissions(TestCaseWithTransport):
         t.add('d')
         t.commit('new d')
         check_mode_r(self, '.bzr', 0664, 02775)
-
-    def test_disable_set_mode(self):
-        # TODO: jam 20051215 Ultimately, this test should probably test that
-        #                    extra chmod calls aren't being made
-        try:
-            transport = get_transport(self.get_url())
-            transport.put_bytes('my-lock', '')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-        finally:
-            LockableFiles._set_dir_mode = True
-            LockableFiles._set_file_mode = True
 
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
@@ -217,6 +186,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_local = t.branch
         self.assertEqualMode(0755, b_local.control_files._dir_mode)
         self.assertEqualMode(0644, b_local.control_files._file_mode)
+        self.assertEqualMode(0755, b_local.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b_local.bzrdir._get_file_mode())
 
         os.mkdir('sftp')
         sftp_url = self.get_url('sftp')
@@ -230,6 +201,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0755, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0644, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0755, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b_sftp.bzrdir._get_file_mode())
 
         open('local/a', 'wb').write('foo2\n')
         t_local.commit('foo2')
@@ -251,6 +224,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0775, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0664, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0775, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b_sftp.bzrdir._get_file_mode())
 
         open('local/a', 'wb').write('foo3\n')
         t_local.commit('foo3')

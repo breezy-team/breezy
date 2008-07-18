@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import (
+    errors,
     osutils,
     revision,
     symbol_versioning,
@@ -39,9 +40,9 @@ class RevisionTree(Tree):
         # construction - this will mean that we can change the constructor
         # with much less chance of breaking client code.
         self._repository = branch
-        self._weave_store = branch.weave_store
         self._inventory = inv
         self._revision_id = revision_id
+        self._rules_searcher = None
 
     def supports_tree_reference(self):
         return True
@@ -62,34 +63,33 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    def _get_weave(self, file_id):
-        return self._weave_store.get_weave(file_id,
-                self._repository.get_transaction())
-
     def get_file_lines(self, file_id):
-        ie = self._inventory[file_id]
-        weave = self._get_weave(file_id)
-        return weave.get_lines(ie.revision)
+        return osutils.split_lines(self.get_file_text(file_id))
 
     def get_file_text(self, file_id):
-        return ''.join(self.get_file_lines(file_id))
+        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def iter_files_bytes(self, desired_files):
-        """See Tree.extract_files_bytes.
+        """See Tree.iter_files_bytes.
 
         This version is implemented on top of Repository.extract_files_bytes"""
         repo_desired_files = [(f, self.inventory[f].revision, i)
                               for f, i in desired_files]
-        return self._repository.iter_files_bytes(repo_desired_files)
+        try:
+            for result in self._repository.iter_files_bytes(repo_desired_files):
+                yield result
+        except errors.RevisionNotPresent, e:
+            raise errors.NoSuchFile(e.revision_id)
 
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        w = self._get_weave(file_id)
-        return w.annotate(self.inventory[file_id].revision)
+        text_key = (file_id, self.inventory[file_id].revision)
+        annotations = self._repository.texts.annotate(text_key)
+        return [(key[-1], line) for key, line in annotations]
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
@@ -203,3 +203,10 @@ class RevisionTree(Tree):
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
                     pending.append(dir)
+
+    def _get_rules_searcher(self, default_searcher):
+        """See Tree._get_rules_searcher."""
+        if self._rules_searcher is None:
+            self._rules_searcher = super(RevisionTree,
+                self)._get_rules_searcher(default_searcher)
+        return self._rules_searcher

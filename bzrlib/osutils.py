@@ -53,6 +53,7 @@ from bzrlib import (
     )
 """)
 
+
 import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -529,19 +530,42 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(fromfile, tofile):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     """Copy contents of one file to another.
-    
+
+    The read_length can either be -1 to read to end-of-file (EOF) or
+    it can specify the maximum number of bytes to read.
+
+    The buff_size represents the maximum size for each read operation
+    performed on from_file.
+
     :return: The number of bytes copied.
     """
-    BUFSIZE = 32768
     length = 0
-    while True:
-        b = fromfile.read(BUFSIZE)
-        if not b:
-            break
-        tofile.write(b)
-        length += len(b)
+    if read_length >= 0:
+        # read specified number of bytes
+
+        while read_length > 0:
+            num_bytes_to_read = min(read_length, buff_size)
+
+            block = from_file.read(num_bytes_to_read)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+
+            actual_bytes_read = len(block)
+            read_length -= actual_bytes_read
+            length += actual_bytes_read
+    else:
+        # read to EOF
+        while True:
+            block = from_file.read(buff_size)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+            length += len(block)
     return length
 
 
@@ -618,6 +642,7 @@ def local_time_offset(t=None):
     offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
     return offset.days * 86400 + offset.seconds
 
+weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
@@ -649,6 +674,8 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
     else:
         offset_str = ''
+    # day of week depends on locale, so we do this ourself
+    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
     return (time.strftime(date_fmt, tt) +  offset_str)
 
 
@@ -823,6 +850,11 @@ def has_hardlinks():
         return True
     else:
         return False
+
+
+def host_os_dereferences_symlinks():
+    return (has_symlinks()
+            and sys.platform not in ('cygwin', 'win32'))
 
 
 def contains_whitespace(s):
@@ -1147,6 +1179,8 @@ def walkdirs(top, prefix=""):
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
+_real_walkdirs_utf8 = None
+
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
 
@@ -1161,12 +1195,27 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32' or
-        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
-        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
-    else:
-        return _walkdirs_fs_utf8(top, prefix=prefix)
+    global _real_walkdirs_utf8
+    if _real_walkdirs_utf8 is None:
+        fs_encoding = _fs_enc.upper()
+        if win32utils.winver == 'Windows NT':
+            # Win98 doesn't have unicode apis like FindFirstFileW
+            # TODO: We possibly could support Win98 by falling back to the
+            #       original FindFirstFile, and using TCHAR instead of WCHAR,
+            #       but that gets a bit tricky, and requires custom compiling
+            #       for win98 anyway.
+            try:
+                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+            except ImportError:
+                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            else:
+                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            # ANSI_X3.4-1968 is a form of ASCII
+            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+        else:
+            _real_walkdirs_utf8 = _walkdirs_fs_utf8
+    return _real_walkdirs_utf8(top, prefix=prefix)
 
 
 def _walkdirs_fs_utf8(top, prefix=""):
@@ -1344,7 +1393,9 @@ def get_user_encoding(use_cache=True):
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if user_encoding in (None, 'cp0'):
+    #
+    # For python scripts run under vim, we get '', so also treat that as ASCII
+    if user_encoding in (None, 'cp0', ''):
         user_encoding = 'ascii'
     else:
         # check encoding

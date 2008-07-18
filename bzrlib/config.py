@@ -440,13 +440,36 @@ class GlobalConfig(IniBasedConfig):
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
+        self._set_option(option, value, 'DEFAULT')
+
+    def get_aliases(self):
+        """Return the aliases section."""
+        if 'ALIASES' in self._get_parser():
+            return self._get_parser()['ALIASES']
+        else:
+            return {}
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the configuration."""
+        self._set_option(alias_name, alias_command, 'ALIASES')
+
+    def unset_alias(self, alias_name):
+        """Unset an existing alias."""
+        aliases = self._get_parser().get('ALIASES')
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
+        del aliases[alias_name]
+        self._write_config_file()
+
+    def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if 'DEFAULT' not in self._get_parser():
-            self._get_parser()['DEFAULT'] = {}
-        self._get_parser()['DEFAULT'][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
+        self._write_config_file()
+
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
@@ -641,11 +664,11 @@ class BranchConfig(Config):
     def _get_user_id(self):
         """Return the full user id for the branch.
     
-        e.g. "John Hacker <jhacker@foo.org>"
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files._transport.get_bytes("email")
+            return (self.branch._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -895,8 +918,10 @@ class TreeConfig(IniBasedConfig):
     # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
-        transport = branch.control_files._transport
-        self._config = TransportConfig(transport, 'branch.conf')
+        # XXX: Really this should be asking the branch for its configuration
+        # data, rather than relying on a Transport, so that it can work 
+        # more cleanly with a RemoteBranch that has no transport.
+        self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
@@ -1090,12 +1115,17 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
+            if password is not None and scheme is 'ssh':
+                trace.warning('password ignored in section [%s],'
+                              ' use an ssh agent instead'
+                              % credentials['name'])
+                password = None
         else:
             password = None
         # Prompt user only if we could't find a password
         if password is None:
             if prompt is None:
-                # Create a default prompt suitable for most of the cases
+                # Create a default prompt suitable for most cases
                 prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
@@ -1108,6 +1138,38 @@ class AuthenticationConfig(object):
 
     def decode_password(self, credentials, encoding):
         return credentials
+
+
+class BzrDirConfig(object):
+
+    def __init__(self, transport):
+        self._config = TransportConfig(transport, 'control.conf')
+
+    def set_default_stack_on(self, value):
+        """Set the default stacking location.
+
+        It may be set to a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if value is None:
+            self._config.set_option('', 'default_stack_on')
+        else:
+            self._config.set_option(value, 'default_stack_on')
+
+    def get_default_stack_on(self):
+        """Return the default stacking location.
+
+        This will either be a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        value = self._config.get_option('default_stack_on')
+        if value == '':
+            value = None
+        return value
 
 
 class TransportConfig(object):

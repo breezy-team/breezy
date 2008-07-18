@@ -219,7 +219,7 @@ class GraphIndexBuilder(object):
             raise errors.BzrError('Failed index creation. Internal error:'
                 ' mismatched output length and expected length: %d %d' %
                 (len(result.getvalue()), expected_bytes))
-        return StringIO(''.join(lines))
+        return result
 
 
 class GraphIndex(object):
@@ -283,6 +283,10 @@ class GraphIndex(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__,
+            self._transport.abspath(self._name))
 
     def _buffer_all(self):
         """Buffer all the index data.
@@ -877,8 +881,9 @@ class GraphIndex(object):
             elements = line.split('\0')
             if len(elements) != self._expected_elements:
                 raise errors.BadIndexData(self)
-            # keys are tuples
-            key = tuple(elements[:self._key_length])
+            # keys are tuples. Each element is a string that may occur many
+            # times, so we intern them to save space. AB, RC, 200807
+            key = tuple(intern(element) for element in elements[:self._key_length])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
