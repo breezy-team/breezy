@@ -56,6 +56,7 @@ class EmptyMapTreeTests(TestCaseWithTransport):
 
     def test_path2id(self):
         self.oldtree.lock_write()
+        self.addCleanup(self.oldtree.unlock)
         builder = TreeBuilder()
         builder.start_tree(self.oldtree)
         builder.build(['foo'])
@@ -68,6 +69,7 @@ class EmptyMapTreeTests(TestCaseWithTransport):
 
     def test_id2path(self):
         self.oldtree.lock_write()
+        self.addCleanup(self.oldtree.unlock)
         builder = TreeBuilder()
         builder.start_tree(self.oldtree)
         builder.build(['foo'])
@@ -81,6 +83,7 @@ class EmptyMapTreeTests(TestCaseWithTransport):
 
     def test_has_id(self):
         self.oldtree.lock_write()
+        self.addCleanup(self.oldtree.unlock)
         builder = TreeBuilder()
         builder.start_tree(self.oldtree)
         builder.build(['foo'])
@@ -94,5 +97,6 @@ class EmptyMapTreeTests(TestCaseWithTransport):
 
 
 class MapFileIdTests(TestCase):
+
     def test_empty(self):
         self.assertEquals({}, map_file_ids(None, [], []))

@@ -60,18 +60,20 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'], 'rebase --pending-merges')
 
     def test_pending_merges(self):
-        os.chdir('../main')
-        self.make_file('hello', '42')
-        self.run_bzr('add')
-        self.run_bzr('commit -m that')
-        os.chdir('../feature')
-        self.make_file('hoi', "my data")
-        self.run_bzr('add')
-        self.run_bzr('commit -m this')
-        self.check_output('', 'merge ../main')
-        self.check_output(' M  hello\nAll changes applied successfully.\n', 
-                          'rebase --pending-merges')
-        self.check_output('3\n', 'revno')
+        os.chdir('..')
+        self.build_tree_contents([('main/hello', '42')])
+        self.run_bzr('add', working_dir='main')
+        self.run_bzr('commit -m that main')
+        self.build_tree_contents([('feature/hoi', 'my data')])
+        self.run_bzr('add', working_dir='feature')
+        self.run_bzr('commit -m this feature')
+        self.assertEqual(('', ' M  hello\nAll changes applied successfully.\n'),
+            self.run_bzr('merge ../main', working_dir='feature'))
+        out, err = self.run_bzr('rebase --pending-merges', working_dir='feature')
+        self.assertEqual('', out)
+        self.assertContainsRe(err, 'modified hello')
+        self.assertEqual(('3\n', ''),
+            self.run_bzr('revno', working_dir='feature'))
 
     def test_simple_success(self):
         self.make_file('hello', '42')
