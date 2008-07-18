@@ -43,7 +43,7 @@ class _RulesSearcher(object):
         """Return the preferences for a path as name,value tuples.
 
         :param path: tree relative path
-        :return: [] if no rule matched, otherwise a sequence of name,value
+        :return: () if no rule matched, otherwise a sequence of name,value
           tuples.
         """
         raise NotImplementedError(self.get_items)
@@ -53,7 +53,7 @@ class _RulesSearcher(object):
 
         :param path: tree relative path
         :param names: the list of preferences to lookup
-        :return: [] if no rule matched, otherwise a sequence of name,value
+        :return: () if no rule matched, otherwise a sequence of name,value
           tuples. The sequence is the same length as names,
           tuple order matches the order in names, and
           undefined preferences are given the value None.
@@ -87,10 +87,10 @@ class _IniBasedRulesSearcher(_RulesSearcher):
     def get_items(self, path):
         """See _RulesSearcher.get_items."""
         if self._globster is None:
-            return []
+            return ()
         pat = self._globster.match(path)
         if pat is None:
-            return []
+            return ()
         else:
             all = self._cfg[FILE_PREFS_PREFIX + pat]
             return tuple(all.items())
@@ -98,10 +98,10 @@ class _IniBasedRulesSearcher(_RulesSearcher):
     def get_selected_items(self, path, names):
         """See _RulesSearcher.get_selected_items."""
         if self._globster is None:
-            return []
+            return ()
         pat = self._globster.match(path)
         if pat is None:
-            return []
+            return ()
         else:
             all = self._cfg[FILE_PREFS_PREFIX + pat]
             return tuple((k, all.get(k)) for k in names)
@@ -122,7 +122,7 @@ class _StackedRulesSearcher(_RulesSearcher):
             result = searcher.get_items(path)
             if result:
                 return result
-        return []
+        return ()
 
     def get_selected_items(self, path, names):
         """See _RulesSearcher.get_selected_items."""
@@ -130,7 +130,7 @@ class _StackedRulesSearcher(_RulesSearcher):
             result = searcher.get_selected_items(path, names)
             if result:
                 return result
-        return []
+        return ()
 
 
 def rules_filename():

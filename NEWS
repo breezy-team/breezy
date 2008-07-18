@@ -45,6 +45,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * RuleSearchers return () instead of [] now when there are no matches.
+      (Ian Clatworthy)
 
 
 bzr 1.6beta3 2008-07-17
