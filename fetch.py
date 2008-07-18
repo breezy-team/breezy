@@ -615,11 +615,7 @@ class InterFromSvnRepository(InterRepository):
                 if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
                 elif prev_revid != parent_revid:
-                    try:
-                        parent_inv = self.target.get_inventory(parent_revid)
-                    except NoSuchRevision:
-                        # Parent is ghost
-                        continue
+                    parent_inv = self.target.get_inventory(parent_revid)
                 else:
                     parent_inv = prev_inv
 
