@@ -584,7 +584,8 @@ class SFTPTransport(ConnectedTransport):
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
-            if (e.args == ('mkdir failed',)):
+            if (e.args == ('mkdir failed',) or
+                e.args[0].startswith('syserr: File exists')):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
