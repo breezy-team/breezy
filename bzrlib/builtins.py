@@ -1380,9 +1380,8 @@ class cmd_init(Command):
                     ' to append-revisions-only.  Try --experimental-branch6')
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(bzrdir.BzrDir.open_containing(location,
-                possible_transports=[to_transport])[0],
-                verbose=0, outfile=self.outf)
+            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
+                to_transport)[0], verbose=0, outfile=self.outf)
 
 
 class cmd_init_repository(Command):
@@ -1436,9 +1435,8 @@ class cmd_init_repository(Command):
         repo.set_make_working_trees(not no_trees)
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(bzrdir.BzrDir.open_containing(location,
-                possible_transports=[to_transport])[0],
-                verbose=0, outfile=self.outf)
+            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
+                to_transport)[0], verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):
