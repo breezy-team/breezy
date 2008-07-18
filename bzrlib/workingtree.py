@@ -439,6 +439,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             return f
 
+    def get_special_file(self, type):
+        """Get a file special to Bazaar.
+
+        :type: a type of XXX maps to a file path .bzrXXX
+        :return: a file-like object or None if the file does not exist
+        """
+        path = self.abspath(".bzr" + type)
+        try:
+            return open(path, 'rb')
+        except IOError:
+            return None
+
     @needs_read_lock
     def annotate_iter(self, file_id, default_revision=CURRENT_REVISION):
         """See Tree.annotate_iter

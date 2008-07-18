@@ -160,6 +160,18 @@ class TestFileContent(TestCaseWithTree):
         finally:
             tree.unlock()
 
+    def test_get_special_file(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_special_content(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # Test lookup of existing special file
+        lines = tree.get_special_file('xyz').readlines()
+        self.assertEqual(['contents of .bzrxyz\n'], lines)
+        # Test lookup of missing special file
+        special = tree.get_special_file('a')
+        self.assertEqual(None, special)
+
 
 class TestExtractFilesBytes(TestCaseWithTree):
 

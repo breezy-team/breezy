@@ -284,6 +284,19 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 
+    def get_special_file(self, type):
+        """Get a file special to Bazaar.
+
+        :type: a type of XXX maps to a file path .bzrXXX
+        :return: a file-like object or None if the file does not exist
+        """
+        path = ".bzr" + type
+        file_id = self.path2id(path)
+        if file_id is None:
+            return None
+        else:
+            return self.get_file(file_id, path)
+
     def iter_files_bytes(self, desired_files):
         """Iterate through file contents.
 
@@ -547,8 +560,7 @@ class Tree(object):
             return []
         if path is None:
             path = self.id2path(file_id)
-        prefs = rules.iter_search_rules(self.branch, [path],
-            filter_pref_names).next()
+        prefs = self.iter_search_rules([path], filter_pref_names).next()
         return filters._get_filter_stack_for(prefs)
 
     def iter_search_rules(self, path_names, pref_names=None,
@@ -575,9 +587,8 @@ class Tree(object):
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
-        file_id = self.path2id(rules.RULES_TREE_FILENAME)
-        if file_id is not None:
-            ini_file = self.get_file(file_id)
+        ini_file = self.get_special_file("rules")
+        if ini_file is not None:
             searcher = rules._StackedRulesSearcher(
                 [rules._IniBasedRulesSearcher(ini_file), default_searcher])
         return searcher

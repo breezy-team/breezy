@@ -1911,7 +1911,11 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 try:
                     tt.create_file(contents, trans_id)
                 finally:
-                    contents.close()
+                    try:
+                        contents.close()
+                    except AttributeError:
+                        # after filtering, contents may no longer be file-like
+                        pass
             count += 1
         offset += count
     for count, ((trans_id, tree_path), contents) in enumerate(
