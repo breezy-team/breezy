@@ -45,6 +45,7 @@ from bzrlib.knit import (
     )
 from bzrlib.symbol_versioning import one_four, one_five
 from bzrlib.tests import (
+    TestCase,
     TestCaseWithMemoryTransport,
     TestScenarioApplier,
     TestSkipped,
@@ -63,6 +64,7 @@ from bzrlib.versionedfile import (
     ConstantMapper,
     HashEscapedPrefixMapper,
     PrefixMapper,
+    VirtualVersionedFiles,
     make_versioned_files_factory,
     )
 from bzrlib.weave import WeaveFile
@@ -2157,3 +2159,62 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             key = ('foo', 'bar',)
         files.add_lines(key, (), [])
         self.assertEqual(set([key]), set(files.keys()))
+
+
+class VirtualVersionedFilesTests(TestCase):
+    """Basic tests for the VirtualVersionedFiles implementations."""
+
+    def _get_parent_map(self, keys):
+        ret = {}
+        for k in keys:
+            if k in self._parent_map:
+                ret[k] = self._parent_map[k]
+        return ret
+
+    def setUp(self):
+        TestCase.setUp(self)
+        self._lines = {}
+        self._parent_map = {}
+        self.texts = VirtualVersionedFiles(self._get_parent_map, 
+                                           self._lines.get)
+
+    def test_add_lines(self):
+        self.assertRaises(NotImplementedError, 
+                self.texts.add_lines, "foo", [], [])
+
+    def test_add_mpdiffs(self):
+        self.assertRaises(NotImplementedError, 
+                self.texts.add_mpdiffs, [])
+
+    def test_check(self):
+        self.assertTrue(self.texts.check())
+
+    def test_insert_record_stream(self):
+        self.assertRaises(NotImplementedError, self.texts.insert_record_stream,
+                          [])
+
+    def test_get_sha1s_nonexistent(self):
+        self.assertEquals({}, self.texts.get_sha1s([("NONEXISTENT",)]))
+
+    def test_get_sha1s(self):
+        self._lines["key"] = ["dataline1", "dataline2"]
+        self.assertEquals({("key",): osutils.sha_strings(self._lines["key"])},
+                           self.texts.get_sha1s([("key",)]))
+
+    def test_get_parent_map(self):
+        self._parent_map = {"G": ("A", "B")}
+        self.assertEquals({("G",): (("A",),("B",))}, 
+                          self.texts.get_parent_map([("G",), ("L",)]))
+
+    def test_get_record_stream(self):
+        self._lines["A"] = ["FOO", "BAR"]
+        it = self.texts.get_record_stream([("A",)], "unordered", True)
+        record = it.next()
+        self.assertEquals("fulltext", record.storage_kind)
+        self.assertEquals("FOOBAR", record.get_bytes_as("fulltext"))
+
+    def test_get_record_stream_absent(self):
+        it = self.texts.get_record_stream([("A",)], "unordered", True)
+        record = it.next()
+        self.assertEquals("absent", record.storage_kind)
+

@@ -1368,3 +1368,22 @@ Repository:
        ), out)
         self.assertEqual('', err)
         tree.unlock()
+
+    def test_info_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development1')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        out, err = self.run_bzr('info newbranch')
+        self.assertEqual(
+"""Standalone tree (format: development1)
+Location:
+  branch root: newbranch
+
+Related branches:
+  parent branch: mainline
+     stacked on: mainline
+""", out)
+        self.assertEqual("", err)
