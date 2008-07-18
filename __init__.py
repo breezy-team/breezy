@@ -29,6 +29,7 @@ import urlparse
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
+from bzrlib.directory_service import directories
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
                            NotBranchError,
@@ -673,6 +674,9 @@ class cmd_test_builddeb(Command):
 
 register_command(cmd_test_builddeb)
 
+directories.register_lazy("deb:", 'bzrlib.plugins.builddeb.directory', 
+        'VcsDirectory', 
+        "Directory that uses Debian Vcs-* control fields to look up branches")
 
 if __name__ == '__main__':
   print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
