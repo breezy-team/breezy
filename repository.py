@@ -19,7 +19,7 @@ import bzrlib
 from bzrlib import osutils, ui, urlutils, xml7
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
-                           UninitializableFormat, UnrelatedBranches)
+                           UninitializableFormat)
 from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
