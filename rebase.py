@@ -16,13 +16,15 @@
 """Rebase."""
 
 from bzrlib.config import Config
-from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError, 
+from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError,
                            NoCommonAncestor, UnrelatedBranches)
 from bzrlib.generate_ids import gen_revision_id
+from bzrlib.graph import FrozenHeadsCache
 from bzrlib.merge import Merger
 from bzrlib import osutils
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
+from bzrlib.tsort import topo_sort
 import bzrlib.ui as ui
 
 from maptree import MapTree, map_file_ids
@@ -125,17 +127,17 @@ def regenerate_default_revid(repository, revid):
     return gen_revision_id(rev.committer, rev.timestamp)
 
 
-def generate_simple_plan(history, start_revid, stop_revid, onto_revid, 
-                         onto_ancestry, graph, generate_revid,
-                         skip_full_merged=False):
+def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
+    generate_revid, skip_full_merged=False):
     """Create a simple rebase plan that replays history based 
     on one revision being replayed on top of another.
 
-    :param history: Revision history
+    :param todo_set: A set of revisions to rebase. Only the revisions from
+        stop_revid back through the left hand ancestry are rebased; other
+        revisions are ignored (and references to them are preserved).
     :param start_revid: Id of revision at which to start replaying
     :param stop_revid: Id of revision until which to stop replaying
     :param onto_revid: Id of revision on top of which to replay
-    :param onto_ancestry: Ancestry of onto_revid
     :param graph: Graph object
     :param generate_revid: Function for generating new revision ids
     :param skip_full_merged: Skip revisions that merge already merged 
@@ -143,28 +145,45 @@ def generate_simple_plan(history, start_revid, stop_revid, onto_revid,
 
     :return: replace map
     """
-    assert start_revid is None or start_revid in history, "invalid start revid"
-    assert stop_revid is None or stop_revid in history, "invalid stop_revid"
+    assert start_revid is None or start_revid in todo_set, \
+        "invalid start revid(%r), todo_set(%r)" % (start_revid, todo_set)
+    assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
     replace_map = {}
-    if start_revid is not None:
-        start_revno = history.index(start_revid)
-    else:
-        start_revno = None
-    if stop_revid is not None:
-        stop_revno = history.index(stop_revid)+1
-    else:
-        stop_revno = None
+    parent_map = graph.get_parent_map(todo_set)
+    order = topo_sort(parent_map)
+    left_most_path = []
+    if stop_revid is None:
+        stop_revid = order[-1]
+    rev = stop_revid
+    while rev in parent_map:
+        left_most_path.append(rev)
+        if rev == start_revid:
+            # manual specified early-stop
+            break
+        rev = parent_map[rev][0]
+    left_most_path.reverse()
+    if start_revid is None:
+        # We need a common base.
+        lca = graph.find_lca(stop_revid, onto_revid)
+        if lca == set([NULL_REVISION]):
+            raise UnrelatedBranches()
     new_parent = onto_revid
-    todo = history[start_revno:stop_revno]
-    parent_map = graph.get_parent_map(todo)
-    for oldrevid in todo: 
+    todo = left_most_path
+    heads_cache = FrozenHeadsCache(graph)
+    # XXX: The output replacemap'd parents should get looked up in some manner
+    # by the heads cache? RBC 20080719
+    for oldrevid in todo:
         oldparents = parent_map[oldrevid]
         assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
-        assert oldparents == () or \
-                oldparents[0] == history[history.index(oldrevid)-1], \
-                "invalid old parents for %r" % oldrevid
         if len(oldparents) > 1:
-            parents = (new_parent,) + tuple(filter(lambda p: p not in onto_ancestry or p == onto_revid, oldparents[1:]))
+            additional_parents = heads_cache.heads(oldparents[1:])
+            parents = [new_parent]
+            for parent in parents:
+                if parent in additional_parents and parent not in parents:
+                    # Use as a parent
+                    parent = replace_map.get(parent, (parent,))[0]
+                    parents.append(parent)
+            parents = tuple(parents)
             if len(parents) == 1 and skip_full_merged:
                 continue
         else:
@@ -301,10 +320,6 @@ def rebase(repository, replace_map, replay_fn):
     finally:
         pb.finished()
         
-    #assert all(map(repository.has_revision, 
-    #           [replace_map[r][0] for r in replace_map]))
-
-
 
 def replay_snapshot(repository, oldrevid, newrevid, new_parents, 
                     revid_renames, fix_revid=None):
