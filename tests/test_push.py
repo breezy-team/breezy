@@ -873,7 +873,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals([revid1, revid2], trunk.revision_history())
         self.assertEquals(
                 '1 initialrevid\n2 mergerevid\n',
-                self.client_get_prop(repos_url+"/trunk", SVN_PROP_BZR_REVISION_ID+"trunk0"))
+                self.client_get_prop(repos_url+"/trunk", SVN_PROP_BZR_REVISION_ID+"trunk0",
+                                     c.get_latest_revnum()))
 
 
 class TestPushTwice(TestCaseWithSubversionRepository):
