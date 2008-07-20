@@ -4453,12 +4453,13 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        branch = control_dir.open_branch()
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
-            to_branch = Branch.open(
-                control_dir.open_branch().base + '../' + to_location)
+            to_branch = Branch.open(branch.base + '../' + to_location)
         switch.switch(control_dir, to_branch, force)
+        branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
