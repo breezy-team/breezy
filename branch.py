@@ -56,14 +56,12 @@ class FakeControlFiles(object):
 
 
 class SubversionTags(BasicTags):
-    def __init__(self, branch, layout=None, project=""):
+    def __init__(self, branch):
         self.branch = branch
         self.repository = branch.repository
-        self.layout = layout or self.repository.get_layout()
-        self.project = project
 
     def set_tag(self, tag_name, tag_target):
-        path = self.layout.get_tag_path(tag_name, self.project)
+        path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
         parent = urlutils.dirname(path)
         try:
             (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
@@ -96,8 +94,8 @@ class SubversionTags(BasicTags):
             raise NoSuchTag(tag_name)
 
     def get_tag_dict(self):
-        return self.repository.find_tags(project=self.project, 
-                                         layout=self.layout)
+        return self.repository.find_tags(project=self.branch.project, 
+                                         layout=self.branch.layout)
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys
@@ -112,7 +110,7 @@ class SubversionTags(BasicTags):
         return rev
 
     def delete_tag(self, tag_name):
-        path = self.layout.get_tag_path(tag_name, self.project)
+        path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
         parent = urlutils.dirname(path)
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
         if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
@@ -159,6 +157,7 @@ class SvnBranch(Branch):
         self._lock_mode = None
         self._lock_count = 0
         self.mapping = self.repository.get_mapping()
+        self.layout = self.repository.get_layout()
         self._branch_path = branch_path.strip("/")
         self.base = urlutils.join(self.repository.base, self._branch_path).rstrip("/")
         self._revmeta_cache = None
@@ -172,7 +171,8 @@ class SvnBranch(Branch):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
-        if not self.mapping.is_branch(branch_path):
+        (type, self.project, _, ip) = self.layout.parse(branch_path)
+        if type != 'branch' or ip != '':
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
 
     def _make_tags(self):
