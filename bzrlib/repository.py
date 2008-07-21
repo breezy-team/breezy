@@ -2284,6 +2284,17 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack4',
     )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack5',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack5Subtree (bzr 1.6)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack5Subtree',
+    )
+
 # Development formats. 
 # 1.2->1.3
 # development 0 - stub to introduce development versioning scheme.
