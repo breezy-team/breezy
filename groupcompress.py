@@ -151,106 +151,43 @@ class GroupCompressor(object):
         line_locations = self.line_locations
         accumulator = []
         copying = False
-        new_len = 0
-        new_start = 0
+        range_len = 0
+        range_start = 0
+        flush_range = self.flush_range
+        copy_ends = None
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
         while pos < len(lines):
             line = lines[pos]
             if line not in line_locations:
                 if copying:
-                    # flush the copy
-                    copy_start = min(copy_ends) - copy_len
-                    stop_byte = self.line_offsets[copy_start + copy_len - 1]
-                    if copy_start == 0:
-                        start_byte = 0
-                    else:
-                        start_byte = self.line_offsets[copy_start - 1]
-                    bytes = stop_byte - start_byte
-                    copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
-                    insert_instruction = "i,%d\n" % copy_len
-                    if (bytes + len(insert_instruction) >
-                        len(copy_control_instruction)):
-                        new_lines.append(copy_control_instruction)
-                        index_lines.append(False)
-                    else:
-                        # inserting is shorter than copying, so insert.
-                        new_lines.append(insert_instruction)
-                        new_lines.extend(lines[new_start:new_start+copy_len])
-                        index_lines.extend([False]*(copy_len + 1))
+                    flush_range(copying, range_start, copy_ends, range_len,
+                        lines, new_lines, index_lines)
                     copying = False
-                    new_start = pos
-                    new_len = 1
+                    range_start = pos
+                    range_len = 1
                 else:
-                    new_len += 1
+                    range_len += 1
             else:
+                locations, next = line_locations[line]
                 if copying:
-                    locations, next = line_locations[line]
                     next_locations = locations.intersection(copy_ends)
                     if len(next_locations):
                         # range continues
-                        copy_len += 1
+                        range_len += 1
                         copy_ends = set(loc + 1 for loc in next_locations)
-                    else:
-                        # range stops, flush and start a new copy range
-                        copy_start = min(copy_ends) - copy_len
-                        stop_byte = self.line_offsets[copy_start + copy_len - 1]
-                        if copy_start == 0:
-                            start_byte = 0
-                        else:
-                            start_byte = self.line_offsets[copy_start - 1]
-                        bytes = stop_byte - start_byte
-                        copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
-                        insert_instruction = "i,%d\n" % copy_len
-                        if (bytes + len(insert_instruction) >
-                            len(copy_control_instruction)):
-                            new_lines.append(copy_control_instruction)
-                            index_lines.append(False)
-                        else:
-                            # inserting is shorter than copying, so insert.
-                            new_lines.append(insert_instruction)
-                            new_lines.extend(lines[new_start:new_start+copy_len])
-                            index_lines.extend([False]*(copy_len + 1))
-                        copy_len = 1
-                        copy_ends = next
-                        new_start = pos
-                else:
-                    # Flush
-                    if new_len:
-                        new_lines.append("i,%d\n" % new_len)
-                        new_lines.extend(lines[new_start:new_start+new_len])
-                        index_lines.append(False)
-                        index_lines.extend([True]*new_len)
-                    # setup a copy
-                    copy_len = 1
-                    copy_ends = line_locations[line][1]
-                    copying = True
-                    new_start = pos
+                        pos += 1
+                        continue
+                # New copy range starts here:
+                flush_range(copying, range_start, copy_ends, range_len, lines,
+                    new_lines, index_lines)
+                range_len = 1
+                copy_ends = next
+                range_start = pos
+                copying = True
             pos += 1
-        if copying:
-            copy_start = min(copy_ends) - copy_len
-            stop_byte = self.line_offsets[copy_start + copy_len - 1]
-            if copy_start == 0:
-                start_byte = 0
-            else:
-                start_byte = self.line_offsets[copy_start - 1]
-            bytes = stop_byte - start_byte
-            copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
-            insert_instruction = "i,%d\n" % copy_len
-            if (bytes + len(insert_instruction) >
-                len(copy_control_instruction)):
-                new_lines.append(copy_control_instruction)
-                index_lines.append(False)
-            else:
-                # inserting is shorter than copying, so insert.
-                new_lines.append(insert_instruction)
-                new_lines.extend(lines[new_start:new_start+copy_len])
-                index_lines.extend([False]*(copy_len + 1))
-        elif new_len:
-            new_lines.append("i,%d\n" % new_len)
-            new_lines.extend(lines[new_start:new_start+new_len])
-            index_lines.append(False)
-            index_lines.extend([True]*new_len)
+        flush_range(copying, range_start, copy_ends, range_len, lines,
+            new_lines, index_lines)
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
@@ -274,6 +211,31 @@ class GroupCompressor(object):
         lines = apply_delta(''.join(self.lines), delta)
         sha1 = sha_strings(lines)
         return lines, sha1
+
+    def flush_range(self, copying, range_start, copy_ends, range_len, lines, new_lines, index_lines):
+        if not range_len:
+            return
+        insert_instruction = "i,%d\n" % range_len
+        if copying:
+            # range stops, flush and start a new copy range
+            copy_start = min(copy_ends) - range_len
+            stop_byte = self.line_offsets[copy_start + range_len - 1]
+            if copy_start == 0:
+                start_byte = 0
+            else:
+                start_byte = self.line_offsets[copy_start - 1]
+            bytes = stop_byte - start_byte
+            copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
+            if (bytes + len(insert_instruction) >
+                len(copy_control_instruction)):
+                new_lines.append(copy_control_instruction)
+                index_lines.append(False)
+                return
+        # not copying, or inserting is shorter than copying, so insert.
+        new_lines.append(insert_instruction)
+        new_lines.extend(lines[range_start:range_start+range_len])
+        index_lines.append(False)
+        index_lines.extend([not copying]*range_len)
 
     def output_lines(self, new_lines, index_lines):
         """Output some lines.
