@@ -152,6 +152,9 @@ bzr 1.6beta3 2008-07-17
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
 
+    * Handle a file turning in to a directory in TreeTransform.
+      (James Westby, #248448)
+
   DOCUMENTATION:
 
     * Added *Using stacked branches* to the User Guide.
