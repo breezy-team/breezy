@@ -738,8 +738,12 @@ class SvnRepository(Repository):
 
     @needs_read_lock
     def find_tags(self, layout=None, revnum=None, project=None):
-        """Find branches underneath this repository.
+        """Find tags underneath this repository for the specified project.
 
+        :param layout: Repository layout to use
+        :param revnum: Revision number in which to check, None for latest.
+        :param project: Name of the project to find tags for. None for all.
+        :return: Dictionary mapping tag names to revision ids.
         """
         if layout is None:
             layout = self.get_layout()
@@ -751,8 +755,10 @@ class SvnRepository(Repository):
 
         tags = {}
         pb = ui.ui_factory.nested_progress_bar()
+        pb.update("finding tags")
         try:
             for project, bp, nick in layout.get_tags(revnum, project=project, pb=pb):
+                pb.tick()
                 npb = ui.ui_factory.nested_progress_bar()
                 try:
                     it = self.iter_changes(bp, revnum, mapping, pb=npb, limit=2)
