@@ -74,7 +74,66 @@ def _get_protocol_factory_for_bytes(bytes):
     return protocol_factory, bytes
 
 
-class SmartServerStreamMedium(object):
+class SmartMedium(object):
+    """Base class for smart protocol media, both client- and server-side."""
+
+    def __init__(self):
+        self._push_back_buffer = None
+        
+    def _push_back(self, bytes):
+        """Return unused bytes to the medium, because they belong to the next
+        request(s).
+
+        This sets the _push_back_buffer to the given bytes.
+        """
+        if self._push_back_buffer is not None:
+            raise AssertionError(
+                "_push_back called when self._push_back_buffer is %r"
+                % (self._push_back_buffer,))
+        if bytes == '':
+            return
+        self._push_back_buffer = bytes
+
+    def _get_push_back_buffer(self):
+        if self._push_back_buffer == '':
+            raise AssertionError(
+                '%s._push_back_buffer should never be the empty string, '
+                'which can be confused with EOF' % (self,))
+        bytes = self._push_back_buffer
+        self._push_back_buffer = None
+        return bytes
+
+    def read_bytes(self, desired_count):
+        max_read = 64 * 1024
+        bytes_to_read = min(count, max_read)
+        return self._read_bytes(bytes_to_read)
+
+    def _read_bytes(self, count):
+        raise NotImplementedError(self._read_bytes)
+
+    def _get_line(self):
+        """Read bytes from this request's response until a newline byte.
+        
+        This isn't particularly efficient, so should only be used when the
+        expected size of the line is quite short.
+
+        :returns: a string of bytes ending in a newline (byte 0x0A).
+        """
+        newline_pos = -1
+        bytes = ''
+        while newline_pos == -1:
+            new_bytes = self._read_bytes(1)
+            bytes += new_bytes
+            if new_bytes == '':
+                # Ran out of bytes before receiving a complete line.
+                return bytes
+            newline_pos = bytes.find('\n')
+        line = bytes[:newline_pos+1]
+        self._push_back(bytes[newline_pos+1:])
+        return line
+ 
+
+class SmartServerStreamMedium(SmartMedium):
     """Handles smart commands coming over a stream.
 
     The stream may be a pipe connected to sshd, or a tcp socket, or an
@@ -101,30 +160,7 @@ class SmartServerStreamMedium(object):
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
         self.finished = False
-        self._push_back_buffer = None
-
-    def _push_back(self, bytes):
-        """Return unused bytes to the medium, because they belong to the next
-        request(s).
-
-        This sets the _push_back_buffer to the given bytes.
-        """
-        if self._push_back_buffer is not None:
-            raise AssertionError(
-                "_push_back called when self._push_back_buffer is %r"
-                % (self._push_back_buffer,))
-        if bytes == '':
-            return
-        self._push_back_buffer = bytes
-
-    def _get_push_back_buffer(self):
-        if self._push_back_buffer == '':
-            raise AssertionError(
-                '%s._push_back_buffer should never be the empty string, '
-                'which can be confused with EOF' % (self,))
-        bytes = self._push_back_buffer
-        self._push_back_buffer = None
-        return bytes
+        SmartMedium.__init__(self)
 
     def serve(self):
         """Serve requests until the client disconnects."""
@@ -178,27 +214,6 @@ class SmartServerStreamMedium(object):
         """
         raise NotImplementedError(self._get_bytes)
 
-    def _get_line(self):
-        """Read bytes from this request's response until a newline byte.
-        
-        This isn't particularly efficient, so should only be used when the
-        expected size of the line is quite short.
-
-        :returns: a string of bytes ending in a newline (byte 0x0A).
-        """
-        newline_pos = -1
-        bytes = ''
-        while newline_pos == -1:
-            new_bytes = self._get_bytes(1)
-            bytes += new_bytes
-            if new_bytes == '':
-                # Ran out of bytes before receiving a complete line.
-                return bytes
-            newline_pos = bytes.find('\n')
-        line = bytes[:newline_pos+1]
-        self._push_back(bytes[newline_pos+1:])
-        return line
- 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
@@ -227,8 +242,14 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         if self._push_back_buffer is not None:
             return self._get_push_back_buffer()
         # We ignore the desired_count because on sockets it's more efficient to
-        # read 4k at a time.
-        return self.socket.recv(4096)
+        # read 64k at a time.  Also, we must not read any more than 64k at a
+        # time so that we don't risk error 10053 or 10055 on Windows (no buffer
+        # space available).
+        return self.socket.recv(64 * 1024)
+
+    # XXX: duplication
+    def _read_bytes(self, count):
+        return self._get_bytes(count)
     
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -280,6 +301,10 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             return self._get_push_back_buffer()
         return self._in.read(desired_count)
 
+    # XXX: duplication
+    def _read_bytes(self, count):
+        return self._get_bytes(count)
+    
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
@@ -290,7 +315,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         self._out.write(bytes)
 
 
-class SmartClientMediumRequest(object):
+class SmartClientMediumRequest(SmartMedium):
     """A request on a SmartClientMedium.
 
     Each request allows bytes to be provided to it via accept_bytes, and then
@@ -397,36 +422,24 @@ class SmartClientMediumRequest(object):
         return self._read_bytes(count)
 
     def _read_bytes(self, count):
-        """Helper for read_bytes.
-
-        read_bytes checks the state of the request to determing if bytes
-        should be read. After that it hands off to _read_bytes to do the
-        actual read.
+        """See SmartClientMediumRequest._read_bytes.
+        
+        This forwards to self._medium._read_bytes because we are operating
+        on the mediums stream.
         """
-        raise NotImplementedError(self._read_bytes)
+        return self._medium._read_bytes(count)
 
     def read_line(self):
-        """Read bytes from this request's response until a newline byte.
-        
-        This isn't particularly efficient, so should only be used when the
-        expected size of the line is quite short.
-
-        :returns: a string of bytes ending in a newline (byte 0x0A).
-        """
-        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
-        line = ''
-        while not line or line[-1] != '\n':
-            new_char = self.read_bytes(1)
-            line += new_char
-            if new_char == '':
-                # end of file encountered reading from server
-                raise errors.ConnectionReset(
-                    "please check connectivity and permissions",
-                    "(and try -Dhpss if further diagnosis is required)")
+        line = self._medium._get_line()
+        if not line.endswith('\n'):
+            # end of file encountered reading from server
+            raise errors.ConnectionReset(
+                "please check connectivity and permissions",
+                "(and try -Dhpss if further diagnosis is required)")
         return line
 
 
-class SmartClientMedium(object):
+class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
     def __init__(self, base):
@@ -592,6 +605,8 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
+        if self._push_back_buffer is not None:
+            return self._get_push_back_buffer()
         return self._readable_pipe.read(count)
 
 
@@ -660,7 +675,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return self._read_from.read(count)
+        # Read no more than 64k at a time so that we don't risk error 10053 or
+        # 10055 on Windows (no buffer space available).
+        max_read = 64 * 1024
+        bytes_to_read = min(count, max_read)
+        return self._read_from.read(bytes_to_read)
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
@@ -726,7 +745,13 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return self._socket.recv(count)
+        if self._push_back_buffer is not None:
+            return self._get_push_back_buffer()
+        # We ignore the desired count because on sockets it's more efficient to
+        # read 64k at a time.  Also, we must not read any more than 64k at a
+        # time so that we don't risk error 10053 or 10055 on Windows (no buffer
+        # space available).
+        return self._socket.recv(64 * 1024)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
