@@ -217,7 +217,7 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo, stack_on)
+                force_new_repo, stack_on, self.root_transport.base)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
