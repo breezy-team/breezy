@@ -63,6 +63,15 @@ class LocalTransport(Transport):
             base = urlutils.local_path_to_url(base)
         if base[-1] != '/':
             base = base + '/'
+
+        # Special case : windows has no "root", but does have
+        # multiple lettered drives inside it. #240910
+        if sys.platform == 'win32' and base == 'file:///':
+            base = ''
+            self._local_base = ''
+            super(LocalTransport, self).__init__(base)
+            return
+            
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
 

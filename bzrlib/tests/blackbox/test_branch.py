@@ -19,7 +19,7 @@
 
 import os
 
-from bzrlib import (branch, bzrdir, repository)
+from bzrlib import (branch, bzrdir, errors, repository)
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import HardlinkFeature
@@ -130,7 +130,13 @@ class TestBranch(ExternalBase):
         repo = bzrdir.BzrDir.open(repo_path).open_repository()
         self.assertFalse(repo.has_revision(revid))
 
-    def test_branch_stacked_branch_also_stacked_same_reference(self):
+    def assertRevisionsInBranchRepository(self, revid_list, branch_path):
+        repo = branch.Branch.open(branch_path).repository
+        self.assertEqual(set(revid_list),
+            repo.has_revisions(revid_list))
+
+    def test_branch_stacked_branch_not_stacked(self):
+        """Branching a stacked branch is not stacked by default"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
             format='development')
@@ -145,10 +151,36 @@ class TestBranch(ExternalBase):
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
+        self.assertEqual('Branched 1 revision(s).\n',
+            err)
+        self.assertRaises(errors.NotStacked,
+            bzrdir.BzrDir.open('newbranch').open_branch().get_stacked_on_url)
+
+    def test_branch_stacked_branch_stacked(self):
+        """Asking to stack on a stacked branch does work"""
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_revid = trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
+        # with some work on it
+        branch_revid = branch_tree.commit('moar work plz')
+        # you can chain branches on from there
+        out, err = self.run_bzr(['branch', 'branch', '--stacked', 'branch2'])
+        self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, err)
-        self.check_shallow_branch(branch_tree.last_revision(),
-            trunk_tree.branch.base)
+            branch_tree.branch.base, err)
+        self.assertEqual(branch_tree.branch.base,
+            branch.Branch.open('branch2').get_stacked_on_url())
+        branch2_tree = WorkingTree.open('branch2')
+        branch2_revid = branch2_tree.commit('work on second stacked branch')
+        self.assertRevisionInRepository('branch2', branch2_revid)
+        self.assertRevisionsInBranchRepository(
+            [trunk_revid, branch_revid, branch2_revid],
+            'branch2')
 
     def test_branch_stacked(self):
         # We have a mainline
