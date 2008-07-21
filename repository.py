@@ -741,7 +741,7 @@ class SvnRepository(Repository):
         return branches
 
     @needs_read_lock
-    def find_tags(self, layout=None, revnum=None, project=None):
+    def find_tags(self, project, layout=None, revnum=None):
         """Find tags underneath this repository for the specified project.
 
         :param layout: Repository layout to use
