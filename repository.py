@@ -411,7 +411,8 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb, 
+        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, to_revnum=0, 
+                                                        mapping=mapping, pb=pb, 
                                                         limit=limit):
             yield revmeta.get_revision_id(mapping)
 
@@ -472,8 +473,8 @@ class SvnRepository(Repository):
         assert isinstance(path, str)
         assert isinstance(revnum, int)
 
-        iterator = self.iter_reverse_branch_changes(path, revnum, 
-                                                      mapping=mapping, limit=2)
+        iterator = self.iter_reverse_branch_changes(path, revnum, to_revnum=0,
+                                                    mapping=mapping, limit=2)
         revmeta = iterator.next()
         assert revmeta.branch_path == path
         assert revmeta.revnum == revnum
@@ -615,7 +616,7 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def iter_changes(self, branch_path, revnum, mapping=None, pb=None, limit=0):
+    def iter_changes(self, branch_path, from_revnum, to_revnum, mapping=None, pb=None, limit=0):
         """Iterate over all revisions backwards.
         
         :return: iterator that returns tuples with branch path, 
@@ -624,6 +625,7 @@ class SvnRepository(Repository):
         assert isinstance(branch_path, str)
         assert mapping is None or mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
+        assert from_revnum >= to_revnum
 
         bp = branch_path
         i = 0
@@ -632,7 +634,8 @@ class SvnRepository(Repository):
         # because we're skipping some revs
         # TODO: Rather than fetching everything if limit == 2, maybe just 
         # set specify an extra X revs just to be sure?
-        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb):
+        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], from_revnum, to_revnum, 
+                                                                pb=pb):
             assert bp is not None
             next = find_prev_location(paths, bp, revnum)
             assert revnum > 0 or bp == ""
@@ -659,14 +662,15 @@ class SvnRepository(Repository):
             else:
                 bp = next[0]
 
-    def iter_reverse_branch_changes(self, branch_path, revnum, mapping=None, pb=None, limit=0):
+    def iter_reverse_branch_changes(self, branch_path, from_revnum, to_revnum, 
+                                    mapping=None, pb=None, limit=0):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 
 
         :return: iterator that returns RevisionMetadata objects.
         """
-        history_iter = self.iter_changes(branch_path, revnum, mapping, pb=pb, 
-                                         limit=limit)
+        history_iter = self.iter_changes(branch_path, from_revnum, to_revnum, 
+                                         mapping, pb=pb, limit=limit)
         for (bp, paths, revnum, revprops) in history_iter:
             if not bp in paths:
                 svn_fileprops = {}
@@ -761,7 +765,7 @@ class SvnRepository(Repository):
                 pb.tick()
                 npb = ui.ui_factory.nested_progress_bar()
                 try:
-                    it = self.iter_changes(bp, revnum, mapping, pb=npb, limit=2)
+                    it = self.iter_changes(bp, revnum, to_revnum=0, mapping=mapping, pb=npb, limit=2)
                     (bp, paths, rev, _) = it.next()
                     if paths.has_key(bp):
                         del paths[bp]

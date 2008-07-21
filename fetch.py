@@ -547,7 +547,8 @@ class InterFromSvnRepository(InterRepository):
                 (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
             except NoSuchRevision:
                 return # Ghost
-            for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
+            for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, 
+                                                                   to_revnum=0, mapping=mapping):
                 if pb:
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)

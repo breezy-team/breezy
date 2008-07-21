@@ -401,7 +401,7 @@ class SvnBranch(Branch):
         if self._revmeta_cache is None:
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), self.mapping, pb=pb))
+                self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), to_revnum=0, mapping=self.mapping, pb=pb))
             finally:
                 pb.finished()
         return self._revmeta_cache
