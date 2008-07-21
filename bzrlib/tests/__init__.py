@@ -2041,7 +2041,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected" % filename)
 
-    def testDirPrefix(self):
+    def _getTestDirPrefix(self):
         # create a directory within the top level test directory
         if sys.platform == 'win32':
             name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
@@ -2057,7 +2057,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        name_prefix = os.path.join(self.TEST_ROOT, self.testDirPrefix())
+        name_prefix = os.path.join(self.TEST_ROOT, self._getTestDirPrefix())
         name = name_prefix
         for i in range(100):
             if os.path.exists(name):
