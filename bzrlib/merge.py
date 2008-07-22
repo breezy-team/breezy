@@ -94,6 +94,7 @@ class Merger(object):
         self._revision_graph = revision_graph
         self._base_is_ancestor = None
         self._base_is_other_ancestor = None
+        self._is_criss_cross = False
 
     @property
     def revision_graph(self):
@@ -359,6 +360,7 @@ class Merger(object):
             if steps > 1:
                 warning('Warning: criss-cross merge encountered.  See bzr'
                         ' help criss-cross.')
+                self._is_criss_cross = True
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
