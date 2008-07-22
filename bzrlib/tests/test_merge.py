@@ -825,3 +825,58 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
+
+    def test__entries_lca_simple(self):
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add('.')
+        tree.add(['a'], ['a-id'], ['file'])
+        tree.put_file_bytes_non_atomic('a-id', 'a\nb\nc\n')
+        tree.commit('A', rev_id='A-id')
+        tree.put_file_bytes_non_atomic('a-id', 'a\nb\nC\nc\n')
+        tree.commit('C', rev_id='C-id')
+        tree.branch.set_last_revision_info(1, 'A-id')
+        tree.set_parent_ids(['A-id'])
+        tree.put_file_bytes_non_atomic('a-id', 'a\nB\nb\nc\n')
+        tree.commit('B', rev_id='B-id')
+        tree.set_parent_ids(['B-id', 'C-id'])
+        tree.put_file_bytes_non_atomic('a-id', 'a\nB\nb\nC\nc\n')
+        tree.commit('D', rev_id='D-id')
+        tree.branch.set_last_revision_info(2, 'C-id')
+        tree.set_parent_ids(['C-id', 'B-id'])
+        tree.put_file_bytes_non_atomic('a-id', 'a\nB\nb\nC\nc\nE\n')
+        tree.commit('E', rev_id='E-id')
+        tree.branch.set_last_revision_info(2, 'D-id')
+        tree.set_parent_ids(['D-id'])
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            tree, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+
+        entries = list(merge_obj._entries_lca())
+        root_id = tree.path2id('')
+        self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+
+        # (file_id, changed, parents, names, executable)
+        # BASE, lca1, lca2, OTHER, THIS
+        self.assertEqual([(root_id, True,
+                           ((None, [None, None]), None, None),
+                           ((u'', [u'', u'']), u'', u''),
+                           ((False, [False, False]), False, False)),
+                          ('a-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'a', [u'a', u'a']), u'a', u'a'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+                         
+
+    # TODO: cases to test
+    #       simple criss-cross LCAS identical, BASE different
+    #       x-x changed from BASE but identical for all LCAs and tips
+    #       x-x file not in BASE
+    #       x-x file not in THIS
+    #       x-x OTHER deletes the file
+    #       x-x OTHER introduces the file
+    #       x-x LCAs differ, one in ancestry of other for a given file

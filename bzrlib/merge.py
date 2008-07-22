@@ -27,6 +27,7 @@ from bzrlib import (
     patiencediff,
     registry,
     revision as _mod_revision,
+    tree as _mod_tree,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -637,6 +638,50 @@ class Merge3Merger(object):
             executable3 = executable + (this_executable,)
             result.append((file_id, changed, parents3, names3, executable3))
         return result
+
+    def _entries_lca(self):
+        """Gather data about files modified between multiple trees.
+
+        This compares OTHER versus all LCA trees, and for interesting entries,
+        it then compares with THIS and BASE.
+
+        For the multi-valued entries, the format will be (BASE, [lca1, lca2])
+        :return: [(file_id, changed, parents, names, executable)]
+            file_id     Simple file_id of the entry
+            changed     Boolean, True if the kind or contents changed
+                        else False
+            parents     ((base, [parent_id, in, lcas]), parent_id_other,
+                         parent_id_this)
+            names       ((base, [name, in, lcas]), name_in_other, name_in_this)
+            executable  ((base, [exec, in, lcas]), exec_in_other, exec_in_this)
+        """
+        result = []
+        walker = _mod_tree.MultiWalker(self.other_tree,
+                                       self._lca_trees.values())
+
+        for path, file_id, other_ie, lca_values in walker.iter_all():
+            # Is this modified at all from any of the other trees?
+            last_rev = other_ie.revision
+            for lca_path, ie in lca_values:
+                if ie.revision != last_rev:
+                    break
+            else: # Identical in all trees
+                continue
+            base_ie = self.base_tree.inventory[file_id]
+            this_ie = self.this_tree.inventory[file_id]
+            result.append((file_id, True,
+                           ((base_ie.parent_id,
+                            [ie.parent_id for path, ie in lca_values]),
+                            other_ie.parent_id, this_ie.parent_id),
+                           ((base_ie.name,
+                            [ie.name for path, ie in lca_values]),
+                            other_ie.name, this_ie.name),
+                           ((base_ie.executable,
+                            [ie.executable for path, ie in lca_values]),
+                            other_ie.executable, this_ie.executable)
+                          ))
+        return result
+
 
     def fix_root(self):
         try:
