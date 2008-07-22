@@ -165,6 +165,30 @@ class TestStacking(TestCaseWithBranch):
                 errors.UnstackableRepositoryFormat):
             pass
 
+    def test_clone_from_stacked_branch_preserve_stacking2(self):
+        # We can clone from the bzrdir of a stacked branch. If
+        # preserve_stacking is True, the cloned branch is stacked on the
+        # same branch as the original.
+        try:
+            self.get_transport().mkdir('d')
+            tree = self.make_branch_and_tree('d/stacked-on')
+            tree.commit('Added foo')
+            stacked_bzrdir = tree.branch.bzrdir.sprout(
+                'd/stacked', tree.branch.last_revision(), stacked=True)
+            stacked_bzrdir.open_branch().set_stacked_on_url('../stacked-on')
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            # not a testable combination.
+            return
+        cloned_bzrdir = stacked_bzrdir.clone('cloned', preserve_stacking=True)
+        try:
+            self.assertEqual(
+                stacked_bzrdir.open_branch().get_stacked_on_url(),
+                cloned_bzrdir.open_branch().get_stacked_on_url())
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            pass
+
     def test_clone_from_stacked_branch_no_preserve_stacking(self):
         try:
             stacked_bzrdir = self.prepare_for_clone()
