@@ -2290,9 +2290,9 @@ format_registry.register_lazy(
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5Subtree (bzr 1.6)\n',
+    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatKnitPack5Subtree',
+    'RepositoryFormatKnitPack5RichRoot',
     )
 
 # Development formats. 

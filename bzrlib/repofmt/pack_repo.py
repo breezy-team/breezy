@@ -2187,7 +2187,7 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
         pass
 
 
-class RepositoryFormatKnitPack5Subtree(RepositoryFormatPack):
+class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     """A repository with subtrees and external references.
 
     New in release 1.6.
@@ -2199,7 +2199,7 @@ class RepositoryFormatKnitPack5Subtree(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
-    supports_tree_reference = True
+    supports_tree_reference = False # no subtrees
     _serializer = xml7.serializer_v7
 
     supports_external_lookups = True
@@ -2217,13 +2217,10 @@ class RepositoryFormatKnitPack5Subtree(RepositoryFormatPack):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
             
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5Subtree (bzr 1.6)\n"
+        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

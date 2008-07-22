@@ -2979,10 +2979,10 @@ format_registry.register_metadir('stacked',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('stacked-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5Subtree',
+format_registry.register_metadir('stacked-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A branch and pack based repository that supports stacking '
-         'and subtrees. ',
+         'and rich root data (needed for bzr-svn). ',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
