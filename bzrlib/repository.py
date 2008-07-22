@@ -162,8 +162,7 @@ class CommitBuilder(object):
         """Tell the builder that the inventory is finished."""
         if self.new_inventory.root is None:
             raise AssertionError('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.',
-                 DeprecationWarning, stacklevel=2)
+                ' record_entry_contents, as of bzr 0.10.')
             self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
         self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
