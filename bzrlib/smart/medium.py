@@ -42,6 +42,12 @@ from bzrlib.transport import ssh
 """)
 
 
+# We must not read any more than 64k at a time so we don't risk "no buffer
+# space available" errors on some platforms.  Windows in particular is likely
+# to give error 10053 or 10055 if we read more than 64k from a socket.
+_MAX_READ_SIZE = 64 * 1024
+
+
 def _get_protocol_factory_for_bytes(bytes):
     """Determine the right protocol factory for 'bytes'.
 
@@ -111,8 +117,7 @@ class SmartMedium(object):
         """
         if self._push_back_buffer is not None:
             return self._get_push_back_buffer()
-        max_read = 64 * 1024
-        bytes_to_read = min(desired_count, max_read)
+        bytes_to_read = min(desired_count, _MAX_READ_SIZE)
         return self._read_bytes(bytes_to_read)
 
     def _read_bytes(self, count):
@@ -237,10 +242,10 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
-            # We can safely try to read 64k chunks.  If there isn't 64k of
-            # data, the socket will just return a short read immediately rather
-            # than block.
-            bytes = self.read_bytes(64 * 1024)
+            # We can safely try to read large chunks.  If there is less data
+            # than _MAX_READ_SIZE ready, the socket wil just return a short
+            # read immediately rather than block.
+            bytes = self.read_bytes(_MAX_READ_SIZE)
             if bytes == '':
                 self.finished = True
                 return
@@ -250,10 +255,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def _read_bytes(self, desired_count):
         # We ignore the desired_count because on sockets it's more efficient to
-        # read 64k at a time.  Also, we must not read any more than 64k at a
-        # time so that we don't risk error 10053 or 10055 on Windows (no buffer
-        # space available).
-        return self.socket.recv(64 * 1024)
+        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
+        return self.socket.recv(_MAX_READ_SIZE)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -675,10 +678,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        # Read no more than 64k at a time so that we don't risk error 10053 or
-        # 10055 on Windows (no buffer space available).
-        max_read = 64 * 1024
-        bytes_to_read = min(count, max_read)
+        bytes_to_read = min(count, _MAX_READ_SIZE)
         return self._read_from.read(bytes_to_read)
 
 
@@ -745,11 +745,9 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        # We ignore the desired count because on sockets it's more efficient to
-        # read 64k at a time.  Also, we must not read any more than 64k at a
-        # time so that we don't risk error 10053 or 10055 on Windows (no buffer
-        # space available).
-        return self._socket.recv(64 * 1024)
+        # We ignore the desired_count because on sockets it's more efficient to
+        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
+        return self._socket.recv(_MAX_READ_SIZE)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
