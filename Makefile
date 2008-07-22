@@ -21,6 +21,7 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs
 
@@ -28,7 +29,7 @@ all: extensions
 
 extensions:
 	@echo "building extension modules."
-	$(PYTHON) setup.py build_ext -i
+	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
 check: docs extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
@@ -170,7 +171,7 @@ clean-docs:
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
-	$(PYTHON) setup.py build_ext -i -f
+	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
@@ -178,7 +179,7 @@ exe:
 # win32 installer for bzr.exe
 installer: exe copy-docs
 	@echo *** Make windows installer
-	cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
+	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer

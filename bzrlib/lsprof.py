@@ -11,9 +11,6 @@ import threading
 from _lsprof import Profiler, profiler_entry
 
 
-import bzrlib.osutils
-
-
 __all__ = ['profile', 'Stats']
 
 _g_threadmap = {}
@@ -131,11 +128,11 @@ class Stats(object):
             otherwise the format is given by the filename extension.
         """
         if format is None:
-            basename = bzrlib.osutils.basename(filename)
+            basename = os.path.basename(filename)
             if basename.startswith('callgrind.out'):
                 format = "callgrind"
             else:
-                ext = bzrlib.osutils.splitext(filename)[1]
+                ext = os.path.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
         outfile = open(filename, 'wb')

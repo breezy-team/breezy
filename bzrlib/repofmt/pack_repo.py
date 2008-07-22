@@ -62,6 +62,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.repository import (
     CommitBuilder,
+    InterRepository,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
@@ -138,7 +139,7 @@ class Pack(object):
         :param text_index: A GraphIndex for determining what file texts
             are present in the pack and accessing the locations of their
             texts/deltas (via (fileid, revisionid) tuples).
-        :param revision_index: A GraphIndex for determining what signatures are
+        :param signature_index: A GraphIndex for determining what signatures are
             present in the Pack and accessing the locations of their texts.
         """
         self.revision_index = revision_index
@@ -208,7 +209,7 @@ class ExistingPack(Pack):
 
     def __repr__(self):
         return "<bzrlib.repofmt.pack_repo.Pack object at 0x%x, %s, %s" % (
-            id(self), self.transport, self.name)
+            id(self), self.pack_transport, self.name)
 
 
 class NewPack(Pack):
@@ -1107,7 +1108,10 @@ class ReconcilePacker(Packer):
 
 
 class RepositoryPackCollection(object):
-    """Management of packs within a repository."""
+    """Management of packs within a repository.
+    
+    :ivar _names: map of {pack_name: (index_size,)}
+    """
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport):
@@ -1774,43 +1778,6 @@ class KnitPackRepository(KnitRepository):
         parent_map = self.get_parent_map(revision_ids)
         return [parent_map.get(r, None) for r in revision_ids]
 
-    def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map
-
-        This implementation accesses the combined revision index to provide
-        answers.
-        """
-        self._pack_collection.ensure_loaded()
-        index = self._pack_collection.revision_index.combined_index
-        keys = set(keys)
-        if None in keys:
-            raise ValueError('get_parent_map(None) is not valid')
-        if _mod_revision.NULL_REVISION in keys:
-            keys.discard(_mod_revision.NULL_REVISION)
-            found_parents = {_mod_revision.NULL_REVISION:()}
-        else:
-            found_parents = {}
-        search_keys = set((revision_id,) for revision_id in keys)
-        for index, key, value, refs in index.iter_entries(search_keys):
-            parents = refs[0]
-            if not parents:
-                parents = (_mod_revision.NULL_REVISION,)
-            else:
-                parents = tuple(parent[0] for parent in parents)
-            found_parents[key[0]] = parents
-        return found_parents
-
-    def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        revision_ids = set(revision_ids)
-        result = revision_ids.intersection(
-            set([None, _mod_revision.NULL_REVISION]))
-        revision_ids.difference_update(result)
-        index = self._pack_collection.revision_index.combined_index
-        keys = [(revision_id,) for revision_id in revision_ids]
-        result.update(node[1][0] for node in index.iter_entries(keys))
-        return result
-
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
@@ -1849,6 +1816,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             from bzrlib import transactions
             self._transaction = transactions.WriteTransaction()
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         self._refresh_data()
 
     def lock_read(self):
@@ -1856,6 +1826,9 @@ class KnitPackRepository(KnitRepository):
             self._write_lock_count += 1
         else:
             self.control_files.lock_read()
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         self._refresh_data()
 
     def leave_lock_in_place(self):
@@ -1897,8 +1870,109 @@ class KnitPackRepository(KnitRepository):
                 transaction = self._transaction
                 self._transaction = None
                 transaction.finish()
+                for repo in self._fallback_repositories:
+                    repo.unlock()
         else:
             self.control_files.unlock()
+            for repo in self._fallback_repositories:
+                repo.unlock()
+
+
+class RepositoryFormatPack(MetaDirRepositoryFormat):
+    """Format logic for pack structured repositories.
+
+    This repository format has:
+     - a list of packs in pack-names
+     - packs in packs/NAME.pack
+     - indices in indices/NAME.{iix,six,tix,rix}
+     - knit deltas in the packs, knit indices mapped to the indices.
+     - thunk objects to support the knits programming API.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+    """
+
+    # Set this attribute in derived classes to control the repository class
+    # created by open and initialize.
+    repository_class = None
+    # Set this attribute in derived classes to control the
+    # _commit_builder_class that the repository objects will have passed to
+    # their constructor.
+    _commit_builder_class = None
+    # Set this attribute in derived clases to control the _serializer that the
+    # repository objects will have passed to their constructor.
+    _serializer = None
+    # External references are not supported in pack repositories yet.
+    supports_external_lookups = False
+
+    def initialize(self, a_bzrdir, shared=False):
+        """Create a pack based repository.
+
+        :param a_bzrdir: bzrdir to contain the new repository; must already
+            be initialized.
+        :param shared: If true the repository will be initialized as a shared
+                       repository.
+        """
+        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        dirs = ['indices', 'obsolete_packs', 'packs', 'upload']
+        builder = GraphIndexBuilder()
+        files = [('pack-names', builder.finish())]
+        utf8_files = [('format', self.get_format_string())]
+        
+        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
+        return self.open(a_bzrdir=a_bzrdir, _found=True)
+
+    def open(self, a_bzrdir, _found=False, _override_transport=None):
+        """See RepositoryFormat.open().
+        
+        :param _override_transport: INTERNAL USE ONLY. Allows opening the
+                                    repository at a slightly different url
+                                    than normal. I.e. during 'upgrade'.
+        """
+        if not _found:
+            format = RepositoryFormat.find_format(a_bzrdir)
+        if _override_transport is not None:
+            repo_transport = _override_transport
+        else:
+            repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = lockable_files.LockableFiles(repo_transport,
+                                'lock', lockdir.LockDir)
+        return self.repository_class(_format=self,
+                              a_bzrdir=a_bzrdir,
+                              control_files=control_files,
+                              _commit_builder_class=self._commit_builder_class,
+                              _serializer=self._serializer)
+
+
+class RepositoryFormatKnitPack1(RepositoryFormatPack):
+    """A no-subtrees parameterized Pack repository.
+
+    This format was introduced in 0.92.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs containing knits without subtree support"
+
+    def check_conversion_target(self, target_format):
+        pass
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
@@ -2079,6 +2153,80 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
         return "Packs containing knits with rich root support\n"
 
 
+class RepositoryFormatKnitPack5(RepositoryFormatPack):
+    """Repository that supports external references to allow stacking.
+
+    New in release 1.6.
+
+    Supports external lookups, which results in non-truncated ghosts after
+    reconcile compared to pack-0.92 formats.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development1')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return self.__doc__
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
+    """A repository with subtrees and external references.
+
+    New in release 1.6.
+
+    Supports external lookups, which results in non-truncated ghosts after
+    reconcile compared to pack-0.92 formats.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False # no subtrees
+    _serializer = xml7.serializer_v7
+
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development1-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return self.__doc__
+
+
 class RepositoryFormatPackDevelopment0(RepositoryFormatPack):
     """A no-subtrees development repository.
 
@@ -2154,3 +2302,72 @@ class RepositoryFormatPackDevelopment0Subtree(RepositoryFormatPack):
             "pack-0.92-subtree\n")
 
 
+class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.5.
+
+    Supports external lookups, which results in non-truncated ghosts after
+    reconcile compared to pack-0.92 formats.
+    """
+
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development1')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 1 (needs bzr.dev from before 1.6)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "pack-0.92 with external reference support.\n")
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPackDevelopment0Subtree):
+    """A subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.5.
+
+    Supports external lookups, which results in non-truncated ghosts after
+    reconcile compared to pack-0.92 formats.
+    """
+
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development1-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar development format 1 with subtree support "
+            "(needs bzr.dev from before 1.6)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "pack-0.92-subtree with external reference support.\n")

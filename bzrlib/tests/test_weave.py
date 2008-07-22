@@ -707,6 +707,21 @@ class JoinWeavesTests(TestBase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
 
+class TestWeave(TestCase):
+
+    def test_allow_reserved_false(self):
+        w = Weave('name', allow_reserved=False)
+        # Add lines is checked at the WeaveFile level, not at the Weave level
+        w.add_lines('name:', [], TEXT_1)
+        # But get_lines is checked at this level
+        self.assertRaises(errors.ReservedId, w.get_lines, 'name:')
+
+    def test_allow_reserved_true(self):
+        w = Weave('name', allow_reserved=True)
+        w.add_lines('name:', [], TEXT_1)
+        self.assertEqual(TEXT_1, w.get_lines('name:'))
+
+
 class InstrumentedWeave(Weave):
     """Keep track of how many times functions are called."""
     
