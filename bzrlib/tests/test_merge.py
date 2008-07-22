@@ -710,23 +710,23 @@ class TestLCAMerge(TestCaseWithTransport, TestMergeImplementation):
     merge_type = _mod_merge.LCAMerger
 
 
-class TestMerger(TestCaseWithTransport):
+class TestMergerInMemory(TestCaseWithMemoryTransport):
+    """Tests for Merger that can be done without hitting disk."""
 
     def test_find_base(self):
-        # TODO: It would be nice to use make_branch_and_memory_tree here,
-        # unfortunately, I get AssertionErrors during commit if I try
         # A
         # |\
         # B C
-        tree = self.make_branch_and_tree('tree')
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add('.')
         tree.commit('A', rev_id='A-id')
         tree.commit('C', rev_id='C-id')
         tree.set_parent_ids(['A-id'])
         tree.branch.set_last_revision_info(1, 'A-id')
         tree.commit('B', rev_id='B-id')
 
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             tree, 'C-id')
         self.assertEqual('A-id', merger.base_rev_id)
@@ -739,7 +739,11 @@ class TestMerger(TestCaseWithTransport):
         # B C
         # |X|
         # D E
-        tree = self.make_branch_and_tree('tree')
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
+        tree.add('.')
         tree.commit('A', rev_id='A-id')
         tree.commit('B', rev_id='B-id')
         tree.set_parent_ids(['A-id'])
@@ -751,8 +755,6 @@ class TestMerger(TestCaseWithTransport):
         tree.branch.set_last_revision_info(2, 'B-id')
         tree.commit('D', rev_id='D-id')
 
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             tree, 'E-id')
         self.assertEqual('A-id', merger.base_rev_id)
