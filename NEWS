@@ -21,6 +21,10 @@ IN DEVELOPMENT
       to ``fast-import`` as well.
       (Pieter de Bie)
 
+    * ``svn-fast-export.py`` now supports a regular-expression to specify
+      the branches to export.
+      (Mirko Friedenhagen)
+
   BUG FIXES:
 
     * Support the new Repository API added in bzr.dev r3510. The old API
