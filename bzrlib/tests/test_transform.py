@@ -2329,8 +2329,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
         self.assertEqual([
-            ('killed-b', 'b\n'),
             ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
             ('unchanged', 'c\n'),
             ('unchanged', 'd\n'),
             ('new-a', 'e\n'),
