@@ -634,6 +634,18 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
 
+    def test_make_branch_builder(self):
+        builder = self.make_branch_builder('dir')
+        rev_id = builder.build_commit()
+        self.failUnlessExists('dir')
+        a_dir = bzrdir.BzrDir.open('dir')
+        self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
+        a_branch = a_dir.open_branch()
+        builder_branch = builder.get_branch()
+        self.assertEqual(a_branch.base, builder_branch.base)
+        self.assertEqual((1, rev_id), builder_branch.last_revision_info())
+        self.assertEqual((1, rev_id), a_branch.last_revision_info())
+
 
 class TestTestCaseTransports(TestCaseWithTransport):
 
