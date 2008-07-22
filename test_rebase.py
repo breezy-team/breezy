@@ -86,6 +86,7 @@ class ConversionTests(TestCaseWithTransport):
 
 
 class PlanCreatorTests(TestCaseWithTransport):
+
     def test_simple_plan_creator(self):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
@@ -100,12 +101,11 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
 
         b.repository.lock_read()
-        self.assertEquals({'bla2': ('newbla2', ("bloe",))}, 
-                generate_simple_plan(b.revision_history(), "bla2", None, 
-                    "bloe", 
-                    ("bloe", "bla"),
-                    b.repository.get_graph(), 
-                    lambda y: "new"+y))
+        graph = b.repository.get_graph()
+        self.assertEquals({'bla2': ('newbla2', ("bloe",))},
+            generate_simple_plan(
+                graph.find_difference(b.last_revision(),"bla")[0],
+                "bla2", None, "bloe", graph, lambda y: "new"+y))
         b.repository.unlock()
      
     def test_simple_plan_creator_extra_history(self):
@@ -124,13 +124,14 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.commit(message='change hello again', rev_id="bla3")
 
         b.repository.lock_read()
-        self.assertEquals({'bla2': ('newbla2', ("bloe",)), 'bla3': ('newbla3', ('newbla2',))}, 
-                generate_simple_plan(b.revision_history(), "bla2", None, "bloe", 
-                    ("bloe", "bla"),
-                    b.repository.get_graph(),
-                    lambda y: "new"+y))
+        graph = b.repository.get_graph()
+        self.assertEquals(
+            {'bla2': ('newbla2', ("bloe",)), 'bla3': ('newbla3', ('newbla2',))},
+            generate_simple_plan(
+                graph.find_difference(b.last_revision(),"bloe")[0],
+                "bla2", None, "bloe",
+                graph, lambda y: "new"+y))
         b.repository.unlock()
- 
 
     def test_generate_transpose_plan(self):
         wt = self.make_branch_and_tree('.')
@@ -203,10 +204,9 @@ class PlanCreatorTests(TestCaseWithTransport):
                 "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals({"D": ("D'", ("C",)), "E": ("E'", ("D'",))}, 
-                generate_simple_plan(["A", "D", "E"], 
-                                     "D", None, "C", ["A", "B", "C"], 
-                    graph, lambda y: y+"'"))
+        self.assertEquals({"D": ("D'", ("C",)), "E": ("E'", ("D'",))},
+            generate_simple_plan(["D", "E"], "D", None, "C",
+                graph, lambda y: y+"'"))
 
     def test_plan_with_already_merged_skip_merges(self):
         """We need to use a merge base that makes sense. 
@@ -233,9 +233,8 @@ class PlanCreatorTests(TestCaseWithTransport):
                 "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals({"D": ("D'", ("C",))}, 
-                generate_simple_plan(["A", "D", "E"], 
-                                     "D", None, "C", ["A", "B", "C"], 
+        self.assertEquals({"D": ("D'", ("C",))},
+                generate_simple_plan(["D", "E"], "D", None, "C",
                     graph, lambda y: y+"'", True))
  
 

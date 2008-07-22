@@ -58,20 +58,6 @@ def check_bzrlib_version(desired):
 
 check_bzrlib_version(min_compatible_bzr_version)
 
-def find_last_common_revid(revhistory1, revhistory2):
-    """Find the last revision two revision histories have in common.
-
-    :param revhistory1: First revision history (list of revids)
-    :param revhistory2: First revision history (list of revids)
-    :return: The last common revision id
-    """
-    for revid in reversed(revhistory1):
-        if revid in revhistory2:
-            return revid
-
-    raise UnrelatedBranches()
-
-
 class cmd_rebase(Command):
     """Re-base a branch.
 
@@ -111,7 +97,7 @@ class cmd_rebase(Command):
             help="Show what would be done, but don't actually do anything."),
         Option('always-rebase-merges',
             help="Don't skip revisions that merge already present revisions."),
-        Option('pending-merges', 
+        Option('pending-merges',
             help="Rebase pending merges onto local branch"),
         Option('onto', help='Different revision to replay onto.',
             type=str)]
@@ -187,37 +173,31 @@ class cmd_rebase(Command):
 
             wt.branch.repository.fetch(upstream_repository, onto)
 
-            if stop_revid is not None:
-                revhistory = list(
-                    wt.branch.repository.iter_reverse_revision_history(
-                        stop_revid))
-                revhistory.reverse()
-            else:
-                revhistory = wt.branch.revision_history()
+            if stop_revid is None:
+                stop_revid = wt.branch.last_revision()
+            elif not pending_merges:
+                stop_revid = wt.branch.repository.get_parent_map(
+                    [stop_revid])[stop_revid][0]
+            repo_graph = wt.branch.repository.get_graph()
+            our_new, onto_unique = repo_graph.find_difference(stop_revid, onto)
 
             if start_revid is None:
-                common_revid = find_last_common_revid(revhistory,
-                                                 upstream.revision_history())
-                if common_revid == upstream.last_revision():
+                if not onto_unique:
                     self.outf.write("No revisions to rebase.\n")
                     return
-                if common_revid == revhistory[-1]:
+                if not our_new:
                     self.outf.write("Base branch is descendant of current "
                         "branch. Use 'bzr pull'.\n")
                     return
-                try:
-                    start_revid = revhistory[revhistory.index(common_revid)+1]
-                except NoSuchRevision:
-                    raise BzrCommandError(
-                        "No common revision, please specify --revision")
+            # else: include extra revisions needed to make start_revid mean
+            # something.
 
             # Create plan
             replace_map = generate_simple_plan(
-                    revhistory, start_revid, stop_revid, onto,
-                    wt.branch.repository.get_ancestry(onto),
-                    wt.branch.repository.get_graph(),
-                    lambda revid: regenerate_default_revid(wt.branch.repository,
-                        revid),
+                our_new, start_revid, stop_revid,
+                    onto, repo_graph,
+                    lambda revid: regenerate_default_revid(
+                        wt.branch.repository, revid),
                     not always_rebase_merges
                     )
 
@@ -251,9 +231,7 @@ class cmd_rebase(Command):
 
 
 class cmd_rebase_abort(Command):
-    """Abort an interrupted rebase
-
-    """
+    """Abort an interrupted rebase."""
     
     @display_command
     def run(self):
@@ -274,9 +252,7 @@ class cmd_rebase_abort(Command):
 
 
 class cmd_rebase_continue(Command):
-    """Continue an interrupted rebase after resolving conflicts
-
-    """
+    """Continue an interrupted rebase after resolving conflicts."""
     takes_options = ['merge-type']
     
     @display_command

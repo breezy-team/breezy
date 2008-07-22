@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Couple of blackbox tests for the rebase plugin."""
 
 from bzrlib.branch import Branch
@@ -21,6 +22,7 @@ from bzrlib.tests.blackbox import ExternalBase
 import os
 
 class TestRebaseSimple(ExternalBase):
+
     def make_file(self, name, contents):
         f = open(name, 'wb')
         try:
@@ -86,47 +88,70 @@ class TestRebaseSimple(ExternalBase):
         self.check_output('3\n', 'revno')
 
     def test_range(self):
+        # commit mainline rev 2
         self.make_file('hello', '42')
         self.run_bzr('commit -m that')
+        # commit feature rev 2
         os.chdir('../feature')
         self.make_file('hoi', "my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
+        # commit feature rev 3
         self.make_file('hooi', "your data")
         self.run_bzr('add')
         self.run_bzr('commit -m that')
+        # commit feature rev 4
         self.make_file('hoooi', "someone else's data")
         self.run_bzr('add')
         self.run_bzr('commit -m these')
+        # pick up just rev 2 and discard 3 & 4 from feature
         self.check_output('', 'rebase -r2..3 ../main')
-        self.check_output('4\n', 'revno')
+        # our rev 2 is now rev3:
+        self.check_output('3\n', 'revno')
+        # content added from our old revisions 3 and 4 should be gone.
+        self.failIfExists('hooi')
+        self.failIfExists('hoooi')
 
     def test_range_open_end(self):
+        # commit mainline rev 2
         self.make_file('hello', '42')
         self.run_bzr('commit -m that')
+        # commit feature rev 2
         os.chdir('../feature')
         self.make_file('hoi', "my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
+        # commit feature rev 3
         self.make_file('hooi', "your data")
         self.run_bzr('add')
         self.run_bzr('commit -m that')
+        # commit feature rev 4
         self.make_file('hoooi', "someone else's data")
         self.run_bzr('add')
         self.run_bzr('commit -m these')
+        # rebase only rev 4 onto main
         self.check_output('', 'rebase -r4.. ../main')
+        # should only get rev 3 (our old 2 and 3 are gone)
         self.check_output('3\n', 'revno')
+        self.failIfExists('hoi')
+        self.failIfExists('hooi')
         branch = Branch.open(".")
-        self.assertEquals("these", 
+        self.assertEquals("these",
             branch.repository.get_revision(branch.last_revision()).message)
+        self.failUnlessExists('hoooi')
 
     def test_conflicting(self):
+        # commit mainline rev 2
         self.make_file('hello', '42')
         self.run_bzr('commit -m that')
+        # commit feature rev 2 changing hello differently
         os.chdir('../feature')
         self.make_file('hello', "other data")
         self.run_bzr('commit -m this')
-        self.run_bzr_error('Text conflict in hello\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n', 'rebase ../main')
+        self.run_bzr_error([
+            'Text conflict in hello',
+            'bzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.',
+            ], 'rebase ../main')
 
     def test_conflicting_abort(self):
         self.make_file('hello', '42')
