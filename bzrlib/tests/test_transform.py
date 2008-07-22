@@ -2315,11 +2315,17 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree = preview.get_preview_tree()
         self.assertEqual(True, preview_tree.is_executable('file-id'))
 
+    def test_get_set_parent_ids(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        self.assertEqual([], preview_tree.get_parent_ids())
+        preview_tree.set_parent_ids(['rev-1'])
+        self.assertEqual(['rev-1'], preview_tree.get_parent_ids())
+
     def test_plan_file_merge(self):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
         work_a.add('file', 'file-id')
-        work_a.commit('base version')
+        base_id = work_a.commit('base version')
         tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
         preview = TransformPreview(work_a)
         self.addCleanup(preview.finalize)
@@ -2328,6 +2334,30 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.create_file('b\nc\nd\ne\n', trans_id)
         self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
+        tree_a.set_parent_ids([base_id])
+        self.assertEqual([
+            ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
+            ('unchanged', 'c\n'),
+            ('unchanged', 'd\n'),
+            ('new-a', 'e\n'),
+            ('new-b', 'f\n'),
+        ], list(tree_a.plan_file_merge('file-id', tree_b)))
+
+    def test_plan_file_merge_revision_tree(self):
+        work_a = self.make_branch_and_tree('wta')
+        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        work_a.add('file', 'file-id')
+        base_id = work_a.commit('base version')
+        tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        preview = TransformPreview(work_a.basis_tree())
+        self.addCleanup(preview.finalize)
+        trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(trans_id)
+        preview.create_file('b\nc\nd\ne\n', trans_id)
+        self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
+        tree_a = preview.get_preview_tree()
+        tree_a.set_parent_ids([base_id])
         self.assertEqual([
             ('killed-a', 'a\n'),
             ('killed-b', 'b\n'),
