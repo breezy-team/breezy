@@ -1234,11 +1234,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         # (file_id, changed, parents, names, executable)
         # BASE, lca1, lca2, OTHER, THIS
         root_id = 'a-root-id'
-        self.assertEqual([(root_id, True,
-                           ((None, [None, None]), None, None),
-                           ((u'', [u'', u'']), u'', u''),
-                           ((False, [False, False]), False, False)),
-                          ('a-id', True,
+        self.assertEqual([('a-id', True,
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((False, [False, False]), False, False)),
@@ -1275,10 +1271,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         self.assertEqual(['D-id', 'E-id'], sorted(merge_obj._lca_trees.keys()))
         self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
-        # Ignore the root entry, as it looks like it is always modified when it
-        # really isn't
-        root = entries.pop(0)
-        self.assertEqual('a-root-id', root[0])
         root_id = 'a-root-id'
         self.assertEqual([('bar-id', True,
                            ((None, [root_id, root_id]), root_id, root_id),
@@ -1305,10 +1297,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
 
         entries = list(merge_obj._entries_lca())
-        # Ignore the root entry, as it looks like it is always modified when it
-        # really isn't
-        root = entries.pop(0)
-        self.assertEqual('a-root-id', root[0])
         root_id = 'a-root-id'
         self.assertEqual([('a-id', True,
                            ((root_id, [root_id, root_id]), root_id, None),
@@ -1320,8 +1308,6 @@ class TestMergerEntriesLCA(TestMergerBase):
     #       simple criss-cross LCAS identical, BASE different
     #       x-x changed from BASE but identical for all LCAs and tips
     #               should be possible with the same trick of 'not-in-base'
-    #       x-x file not in BASE
-    #       x-x file not in THIS
     #       x-x OTHER deletes the file
     #       x-x OTHER introduces the file
     #       x-x LCAs differ, one in ancestry of other for a given file

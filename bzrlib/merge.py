@@ -671,6 +671,26 @@ class Merge3Merger(object):
                     break
             else: # Identical in all trees
                 continue
+            other_kind = other_ie.kind
+            other_parent_id = other_ie.parent_id
+            other_name = other_ie.name
+            kind_changed = False
+            parent_id_changed = False
+            name_changed = False
+            for lca_path, ie in lca_values:
+                if ie.kind != other_kind:
+                    kind_changed = True
+                if ie.parent_id != other_parent_id:
+                    parent_id_changed = True
+                if ie.name != other_name:
+                    name_changed = True
+
+            if (not kind_changed and not parent_id_changed
+                and not name_changed and other_kind == 'directory'):
+                # Even though last-modified has changed, the actual attributes
+                # of this entry hasn't changed, so skip it.
+                continue
+
             if file_id in base_inventory:
                 base_ie = self.base_tree.inventory[file_id]
                 base_parent_id = base_ie.parent_id
