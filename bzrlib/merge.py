@@ -661,6 +661,8 @@ class Merge3Merger(object):
         walker = _mod_tree.MultiWalker(self.other_tree,
                                        self._lca_trees.values())
 
+        base_inventory = self.base_tree.inventory
+        this_inventory = self.this_tree.inventory
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             last_rev = other_ie.revision
@@ -669,16 +671,22 @@ class Merge3Merger(object):
                     break
             else: # Identical in all trees
                 continue
-            base_ie = self.base_tree.inventory[file_id]
+            if file_id in base_inventory:
+                base_ie = self.base_tree.inventory[file_id]
+                base_parent_id = base_ie.parent_id
+                base_name = base_ie.name
+                base_executable = base_ie.executable
+            else:
+                base_parent_id = base_name = base_executable = None
             this_ie = self.this_tree.inventory[file_id]
             result.append((file_id, True,
-                           ((base_ie.parent_id,
+                           ((base_parent_id,
                             [ie.parent_id for path, ie in lca_values]),
                             other_ie.parent_id, this_ie.parent_id),
-                           ((base_ie.name,
+                           ((base_name,
                             [ie.name for path, ie in lca_values]),
                             other_ie.name, this_ie.name),
-                           ((base_ie.executable,
+                           ((base_executable,
                             [ie.executable for path, ie in lca_values]),
                             other_ie.executable, this_ie.executable)
                           ))
