@@ -95,6 +95,7 @@ class Merger(object):
         self._base_is_ancestor = None
         self._base_is_other_ancestor = None
         self._is_criss_cross = False
+        self._lca_trees = None
 
     @property
     def revision_graph(self):
@@ -353,15 +354,30 @@ class Merger(object):
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id, steps = self.revision_graph.find_unique_lca(
-                revisions[0], revisions[1], count_steps=True)
+            lcas = self.revision_graph.find_lca(revisions[0], revisions[1])
+            if len(lcas) == 0:
+                self.base_rev_id = NULL_REVISION
+            elif len(lcas) == 1:
+                self.base_rev_id = list(lcas)[0]
+            else: # len(lcas) > 1
+                self.base_rev_id = self.revision_graph.find_unique_lca(
+                                        *lcas)
+                self._is_criss_cross = True
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
-            if steps > 1:
+            if self._is_criss_cross:
                 warning('Warning: criss-cross merge encountered.  See bzr'
                         ' help criss-cross.')
-                self._is_criss_cross = True
-        self.base_tree = self.revision_tree(self.base_rev_id)
+                interesting_revision_ids = [self.base_rev_id]
+                interesting_revision_ids.extend(lcas)
+                interesting_trees = dict((t.get_revision_id(), t)
+                    for t in self.this_branch.repository.revision_trees(
+                        interesting_revision_ids))
+                self._cached_trees.update(interesting_trees)
+                self.base_tree = interesting_trees.pop(self.base_rev_id)
+                self._lca_trees = interesting_trees
+            else:
+                self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
 

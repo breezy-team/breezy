@@ -731,6 +731,7 @@ class TestMerger(TestCaseWithTransport):
             tree, 'C-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertFalse(merger._is_criss_cross)
+        self.assertIs(None, merger._lca_trees)
 
     def test_find_base_criss_cross(self):
         # A
@@ -756,3 +757,4 @@ class TestMerger(TestCaseWithTransport):
             tree, 'E-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
+        self.assertEqual(['B-id', 'C-id'], sorted(merger._lca_trees.keys()))
