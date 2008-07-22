@@ -157,6 +157,12 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'b/c', 'c-id', 'file'),
                               (u'b/d', 'd-id', 'directory'),
                               (u'b/d/e', 'e-id', 'file')], rev_tree)
+        # Removing a directory removes all child dirs
+        builder.build_snapshot(None, 'C-id', [('unversion', 'b-id')])
+        rev_tree = builder.get_branch().repository.revision_tree('C-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                             ], rev_tree)
 
     def test_unknown_action(self):
         builder = self.build_a_rev()
