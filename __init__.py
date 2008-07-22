@@ -52,9 +52,10 @@ def collapse_by_person(committers):
         fullnames = find_fullnames(rev.get_apparent_author() for rev in revs)
         match = None
         for count, fullname in fullnames:
-            if fullname and fullname in name_to_counter:
+            lc_fullname = fullname.lower() 
+            if fullname and lc_fullname in name_to_counter:
                 # We found a match
-                match = name_to_counter[fullname]
+                match = name_to_counter[lc_fullname]
                 break
 
         if match:
@@ -63,7 +64,7 @@ def collapse_by_person(committers):
             record[0].extend(revs)
             record[1][email] = len(revs)
             for count, fullname in fullnames:
-                name_to_counter[fullname] = match
+                name_to_counter[fullname.lower()] = match
                 record[2].setdefault(fullname, 0)
                 record[2][fullname] += count
         else:
@@ -71,7 +72,7 @@ def collapse_by_person(committers):
             counter += 1
             for count, fullname in fullnames:
                 if fullname:
-                    name_to_counter[fullname] = counter
+                    name_to_counter[fullname.lower()] = counter
             fname_map = dict((fullname, count) for count, fullname in fullnames)
             counter_to_info[counter] = [revs, {email:len(revs)}, fname_map]
     return sorted(((len(revs), revs, email, fname)

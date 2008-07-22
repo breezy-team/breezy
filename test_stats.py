@@ -61,3 +61,13 @@ class TestCollapseByPerson(TestCase):
         self.assertEquals(3, info[0][0])
         self.assertEquals({('foo@example.com', None): 3}, info[0][2])
         self.assertEquals({'Foo': 1, 'Bar': 2}, info[0][3])
+
+    def test_different_name_case(self):
+        data = {
+            ('foo@example.com', None): [Revision('1', {}, committer='foo <foo@example.com>')],
+            ('bar@example.com', None): [Revision('2', {}, committer='FOO <bar@example.com>')],
+        }
+        info = collapse_by_person(data)
+        self.assertEquals(2, info[0][0])
+        self.assertEquals({('foo@example.com', None): 1, ('bar@example.com', None): 1}, info[0][2])
+        self.assertEquals({'foo': 1, 'FOO': 1}, info[0][3])
