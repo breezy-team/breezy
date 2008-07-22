@@ -91,7 +91,9 @@ def preview_tree_post(testcase, tree):
     testcase.addCleanup(tree.unlock)
     transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
                                         basis, {})
-    return tt.get_preview_tree()
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
 
 
 class TestTreeImplementationSupport(TestCaseWithTransport):
