@@ -47,8 +47,10 @@ class BranchBuilder(object):
             transport.mkdir('.')
         if format is None:
             format = 'default'
+        if isinstance(format, str):
+            format = bzrdir.format_registry.make_bzrdir(format)
         self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
-            format=bzrdir.format_registry.make_bzrdir(format))
+            format=format)
 
     def build_commit(self):
         """Build a commit on the branch."""

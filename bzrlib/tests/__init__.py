@@ -49,6 +49,7 @@ import warnings
 
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     debug,
     errors,
@@ -1992,6 +1993,11 @@ class TestCaseWithMemoryTransport(TestCase):
         """Create a branch on the default transport and a MemoryTree for it."""
         b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
+
+    def make_branch_builder(self, relpath, format=None):
+        url = self.get_url(relpath)
+        tran = get_transport(url)
+        return branchbuilder.BranchBuilder(get_transport(url), format=format)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir

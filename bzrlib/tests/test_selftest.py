@@ -26,6 +26,7 @@ import warnings
 
 import bzrlib
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     errors,
     memorytree,
@@ -546,6 +547,34 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
+
+    def test_make_branch_builder(self):
+        builder = self.make_branch_builder('dir')
+        self.assertIsInstance(builder, branchbuilder.BranchBuilder)
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+
+    def test_make_branch_builder_with_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = weaverepo.RepositoryFormat7()
+        builder = self.make_branch_builder('dir', format=format)
+        the_branch = builder.get_branch()
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+        self.assertEqual(format.repository_format.__class__,
+                         the_branch.repository._format.__class__)
+
+    def test_make_branch_builder_with_format_name(self):
+        builder = self.make_branch_builder('dir', format='knit')
+        the_branch = builder.get_branch()
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+        dir_format = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(dir_format.repository_format.__class__,
+                         the_branch.repository._format.__class__)
 
     def test_safety_net(self):
         """No test should modify the safety .bzr directory.
