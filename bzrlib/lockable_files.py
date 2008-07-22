@@ -15,23 +15,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
-import codecs
-#import traceback
-from warnings import warn
 
-import bzrlib
-from bzrlib.decorators import (needs_read_lock,
-        needs_write_lock)
-import bzrlib.errors as errors
-from bzrlib.errors import BzrError
-from bzrlib.osutils import file_iterator, safe_unicode
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import codecs
+import warnings
+
+from bzrlib import (
+    errors,
+    osutils,
+    transactions,
+    urlutils,
+    )
+""")
+
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from bzrlib.trace import mutter, note
-import bzrlib.transactions as transactions
-import bzrlib.urlutils as urlutils
 
 
 # XXX: The tracking here of lock counts and whether the lock is held is
@@ -108,7 +113,7 @@ class LockableFiles(object):
         if self.is_locked():
             # do not automatically unlock; there should have been a
             # try/finally to unlock this.
-            warn("%r was gc'd while locked" % self)
+            warnings.warn("%r was gc'd while locked" % self)
 
     def break_lock(self):
         """Break the lock of this lockable files group if it is held.
@@ -122,7 +127,7 @@ class LockableFiles(object):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return urlutils.escape(safe_unicode(file_or_path))
+        return urlutils.escape(osutils.safe_unicode(file_or_path))
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories.
@@ -241,7 +246,6 @@ class LockableFiles(object):
         some other way, and need to synchronise this object's state with that
         fact.
         """
-        # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
@@ -252,7 +256,6 @@ class LockableFiles(object):
             return self._token_from_lock
         else:
             token_from_lock = self._lock.lock_write(token=token)
-            #note('write locking %s', self)
             #traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -261,14 +264,12 @@ class LockableFiles(object):
             return token_from_lock
 
     def lock_read(self):
-        # mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
                 raise ValueError("invalid lock mode %r" % (self._lock_mode,))
             self._lock_count += 1
         else:
             self._lock.lock_read()
-            #note('read locking %s', self)
             #traceback.print_stack()
             self._lock_mode = 'r'
             self._lock_count = 1
@@ -277,13 +278,11 @@ class LockableFiles(object):
             self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
-        # mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
             raise errors.LockNotHeld(self)
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
-            #note('unlocking %s', self)
             #traceback.print_stack()
             self._finish_transaction()
             try:

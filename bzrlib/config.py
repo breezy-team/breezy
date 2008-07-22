@@ -1140,6 +1140,38 @@ class AuthenticationConfig(object):
         return credentials
 
 
+class BzrDirConfig(object):
+
+    def __init__(self, transport):
+        self._config = TransportConfig(transport, 'control.conf')
+
+    def set_default_stack_on(self, value):
+        """Set the default stacking location.
+
+        It may be set to a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if value is None:
+            self._config.set_option('', 'default_stack_on')
+        else:
+            self._config.set_option(value, 'default_stack_on')
+
+    def get_default_stack_on(self):
+        """Return the default stacking location.
+
+        This will either be a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        value = self._config.get_option('default_stack_on')
+        if value == '':
+            value = None
+        return value
+
+
 class TransportConfig(object):
     """A Config that reads/writes a config file on a Transport.
 

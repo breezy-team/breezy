@@ -1011,6 +1011,13 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
 
+    def test_all_registrations_exist(self):
+        """All registered request_handlers can be found."""
+        # If there's a typo in a register_lazy call, this loop will fail with
+        # an AttributeError.
+        for key, item in smart.request.request_handlers.iteritems():
+            pass
+
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
         self.assertEqual(

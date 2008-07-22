@@ -64,33 +64,27 @@ from cStringIO import StringIO
 from itertools import izip, chain
 import operator
 import os
-import urllib
-import sys
-import warnings
-from zlib import Z_DEFAULT_COMPRESSION
 
-import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    debug,
+    diff,
     graph as _mod_graph,
     index as _mod_index,
     lru_cache,
     pack,
+    progress,
     trace,
+    tsort,
+    tuned_gzip,
     )
 """)
 from bzrlib import (
-    cache_utf8,
-    debug,
-    diff,
     errors,
     osutils,
     patiencediff,
-    progress,
-    merge,
-    ui,
     )
 from bzrlib.errors import (
     FileExists,
@@ -102,7 +96,6 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.graph import Graph
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
@@ -110,9 +103,6 @@ from bzrlib.osutils import (
     sha_strings,
     split_lines,
     )
-from bzrlib.tsort import topo_sort
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
-import bzrlib.ui
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
@@ -122,7 +112,6 @@ from bzrlib.versionedfile import (
     VersionedFile,
     VersionedFiles,
     )
-import bzrlib.weave
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -847,7 +836,7 @@ class KnitVersionedFiles(VersionedFiles):
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
         # no basis.
-        keys = self.keys()
+        keys = self._index.keys()
         parent_map = self.get_parent_map(keys)
         for key in keys:
             if self._index.get_method(key) != 'fulltext':
@@ -856,12 +845,14 @@ class KnitVersionedFiles(VersionedFiles):
                     raise errors.KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
+        for fallback_vfs in self._fallback_vfs:
+            fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
         if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id, self.filename)
+            raise InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
@@ -1058,7 +1049,7 @@ class KnitVersionedFiles(VersionedFiles):
         return text_map, final_content
 
     def get_parent_map(self, keys):
-        """Get a map of the parents of keys.
+        """Get a map of the graph parents of keys.
 
         :param keys: The keys to look up parents for.
         :return: A mapping from keys to parents. Absent keys are absent from
@@ -1181,7 +1172,7 @@ class KnitVersionedFiles(VersionedFiles):
         global_map, parent_maps = self._get_parent_map_with_sources(keys)
         if ordering == 'topological':
             # Global topological sort
-            present_keys = topo_sort(global_map)
+            present_keys = tsort.topo_sort(global_map)
             # Now group by source:
             source_keys = []
             current_source = None
@@ -1495,7 +1486,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: the header and the decompressor stream.
                  as (stream, header_record)
         """
-        df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
@@ -1510,7 +1501,7 @@ class KnitVersionedFiles(VersionedFiles):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = GzipFile(mode='rb', fileobj=StringIO(data))
+        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(data))
         try:
             record_contents = df.readlines()
         except Exception, e:
@@ -1611,7 +1602,7 @@ class KnitVersionedFiles(VersionedFiles):
                 'data must be plain bytes was %s' % type(bytes))
         if lines and lines[-1][-1] != '\n':
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = bytes_to_gzip(bytes)
+        compressed_bytes = tuned_gzip.bytes_to_gzip(bytes)
         return len(compressed_bytes), compressed_bytes
 
     def _split_header(self, line):
@@ -2040,6 +2031,9 @@ class _KnitGraphIndex(object):
                 "parent tracking.")
         self.has_graph = parents
         self._is_locked = is_locked
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._graph_index)
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
@@ -2680,11 +2674,51 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
+        if True or len(self._knit._fallback_vfs) > 0:
+            # stacked knits can't use the fast path at present.
+            return self._simple_annotate(key)
         records = self._get_build_graph(key)
         if key in self._ghosts:
             raise errors.RevisionNotPresent(key, self._knit)
         self._annotate_records(records)
         return self._annotated_lines[key]
+
+    def _simple_annotate(self, key):
+        """Return annotated fulltext, rediffing from the full texts.
+
+        This is slow but makes no assumptions about the repository
+        being able to produce line deltas.
+        """
+        # TODO: this code generates a parent maps of present ancestors; it
+        # could be split out into a separate method, and probably should use
+        # iter_ancestry instead. -- mbp and robertc 20080704
+        graph = _mod_graph.Graph(self._knit)
+        head_cache = _mod_graph.FrozenHeadsCache(graph)
+        search = graph._make_breadth_first_searcher([key])
+        keys = set()
+        while True:
+            try:
+                present, ghosts = search.next_with_ghosts()
+            except StopIteration:
+                break
+            keys.update(present)
+        parent_map = self._knit.get_parent_map(keys)
+        parent_cache = {}
+        reannotate = annotate.reannotate
+        for record in self._knit.get_record_stream(keys, 'topological', True):
+            key = record.key
+            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            parents = parent_map[key]
+            if parents is not None:
+                parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            else:
+                parent_lines = []
+            parent_cache[key] = list(
+                reannotate(parent_lines, fulltext, key, None, head_cache))
+        try:
+            return parent_cache[key]
+        except KeyError, e:
+            raise errors.RevisionNotPresent(key, self._knit)
 
 
 try:

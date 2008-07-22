@@ -26,6 +26,11 @@ from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.tests.test_log import (
     normalize_log,
     )
+from bzrlib.tests import test_log
+
+
+class TestCaseWithoutPropsHandler(ExternalBase, test_log.TestCaseWithoutPropsHandler):
+    pass
 
 
 class TestLog(ExternalBase):
@@ -185,7 +190,8 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
 
-class TestLogMerges(ExternalBase):
+
+class TestLogMerges(TestCaseWithoutPropsHandler):
 
     def _prepare(self):
         parent_tree = self.make_branch_and_tree('parent')

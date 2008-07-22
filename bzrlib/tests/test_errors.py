@@ -30,6 +30,13 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_bad_filename_encoding(self):
+        error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
+        self.assertEqualDiff(
+            "Filename 'bad/filen\\xe5me' is not valid in your current"
+            " filesystem encoding UTF-8",
+            str(error))
+
     def test_corrupt_dirstate(self):
         error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
         self.assertEqualDiff(
@@ -498,6 +505,10 @@ class TestErrors(TestCaseWithTransport):
     def test_unknown_format(self):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEquals("Unknown foo format: 'bar'", str(err))
+
+    def test_unknown_rules(self):
+        err = errors.UnknownRules(['foo', 'bar'])
+        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
 
 
 class PassThroughError(errors.BzrError):
