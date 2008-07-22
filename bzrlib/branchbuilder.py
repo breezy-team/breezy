@@ -88,6 +88,9 @@ class BranchBuilder(object):
             to_add_kinds = []
             new_contents = {}
             to_unversion_ids = []
+            # TODO: MemoryTree doesn't support rename() or
+            #       apply_inventory_delta, so we'll postpone allowing renames
+            #       for now
             # to_rename = []
             for action, info in actions:
                 if action == 'add':
