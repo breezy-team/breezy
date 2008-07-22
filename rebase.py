@@ -40,7 +40,7 @@ def rebase_plan_exists(wt):
     :return: boolean
     """
     try:
-        return wt._control_files.get(REBASE_PLAN_FILENAME).read() != ''
+        return wt._transport.get_bytes(REBASE_PLAN_FILENAME) != ''
     except NoSuchFile:
         return False
 
@@ -51,7 +51,7 @@ def read_rebase_plan(wt):
     :param wt: Working Tree for which to write the plan.
     :return: Tuple with last revision info and replace map.
     """
-    text = wt._control_files.get(REBASE_PLAN_FILENAME).read()
+    text = wt._transport.get_bytes(REBASE_PLAN_FILENAME)
     if text == '':
         raise NoSuchFile(REBASE_PLAN_FILENAME)
     return unmarshall_rebase_plan(text)
@@ -63,8 +63,9 @@ def write_rebase_plan(wt, replace_map):
     :param wt: Working Tree for which to write the plan.
     :param replace_map: Replace map (old revid -> (new revid, new parents))
     """
-    wt._control_files.put_utf8(REBASE_PLAN_FILENAME, 
-            marshall_rebase_plan(wt.branch.last_revision_info(), replace_map))
+    content = marshall_rebase_plan(wt.branch.last_revision_info(), replace_map)
+    assert type(content) == str
+    wt._transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
 
 def remove_rebase_plan(wt):
@@ -72,7 +73,7 @@ def remove_rebase_plan(wt):
 
     :param wt: Working Tree for which to remove the plan.
     """
-    wt._control_files.put_utf8(REBASE_PLAN_FILENAME, '')
+    wt._transport.put_bytes(REBASE_PLAN_FILENAME, '')
 
 
 def marshall_rebase_plan(last_rev_info, replace_map):
@@ -351,8 +352,8 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                 if fix_revid is not None:
                     ie.revision = fix_revid(ie.revision)
                 if ie.revision == oldrevid:
-                    if repository.weave_store.get_weave_or_empty(ie.file_id, 
-                            repository.get_transaction()).has_version(newrevid):
+                    key = (ie.file_id, newrevid)
+                    if repository.texts.get_parent_map([key]):
                         ie.revision = newrevid
                     else:
                         ie.revision = None
@@ -363,7 +364,9 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                         ie.revision = revid_renames[ie.revision]
                     # make sure at least one of the new parents contains 
                     # the ie.file_id, ie.revision combination
-                    if len(filter(lambda inv: ie.file_id in inv and inv[ie.file_id].revision == ie.revision, parent_invs)) == 0:
+                    if (len(filter(lambda inv: ie.file_id in inv and
+                        inv[ie.file_id].revision == ie.revision, parent_invs))
+                        == 0):
                         raise ReplayParentsInconsistent(ie.file_id, ie.revision)
                 i += 1
                 builder.record_entry_contents(ie, parent_invs, path, oldtree,
@@ -452,10 +455,10 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     write_active_rebase_revid(wt, oldrevid)
     merger = Merger(wt.branch, this_tree=wt)
     merger.set_other_revision(oldrevid, wt.branch)
-    base_revid = replay_determine_base(repository.get_graph(), 
+    base_revid = replay_determine_base(repository.get_graph(),
                                        oldrevid, oldrev.parent_ids,
                                        newrevid, newparents)
-    mutter('replaying %r as %r with base %r and new parents %r' % 
+    mutter('replaying %r as %r with base %r and new parents %r' %
            (oldrevid, newrevid, base_revid, newparents))
     merger.set_base_revision(base_revid, wt.branch)
     merger.merge_type = merge_type
@@ -486,7 +489,8 @@ def write_active_rebase_revid(wt, revid):
     """
     if revid is None:
         revid = NULL_REVISION
-    wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, revid)
+    assert type(revid) == str
+    wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
 
 
 def read_active_rebase_revid(wt):
@@ -496,7 +500,7 @@ def read_active_rebase_revid(wt):
     :return: Id of the revision that is being rebased.
     """
     try:
-        text = wt._control_files.get(REBASE_CURRENT_REVID_FILENAME).read().rstrip("\n")
+        text = wt._transport.get_bytes(REBASE_CURRENT_REVID_FILENAME).rstrip("\n")
         if text == NULL_REVISION:
             return None
         return text

@@ -246,17 +246,17 @@ class PlanFileTests(TestCaseWithTransport):
 
    def test_rebase_plan_exists_empty(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "")
+        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "")
         self.assertFalse(rebase_plan_exists(wt))
 
    def test_rebase_plan_exists(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "foo")
+        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "foo")
         self.assertTrue(rebase_plan_exists(wt))
 
    def test_remove_rebase_plan(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "foo")
+        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "foo")
         remove_rebase_plan(wt)
         self.assertFalse(rebase_plan_exists(wt))
 
@@ -275,7 +275,7 @@ class PlanFileTests(TestCaseWithTransport):
         self.assertEqualDiff("""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
-""", wt._control_files.get(REBASE_PLAN_FILENAME).read())
+""", wt._transport.get_bytes(REBASE_PLAN_FILENAME))
 
    def test_read_rebase_plan_nonexistant(self):
         wt = self.make_branch_and_tree('.')
@@ -283,12 +283,12 @@ oldrev newrev newparent1 newparent2
 
    def test_read_rebase_plan_empty(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, "")
+        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "")
         self.assertRaises(NoSuchFile, read_rebase_plan, wt)
         
    def test_read_rebase_plan(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_PLAN_FILENAME, """# Bazaar rebase plan 1
+        wt._transport.put_bytes(REBASE_PLAN_FILENAME, """# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
 """)
@@ -304,12 +304,12 @@ class CurrentRevidFileTests(TestCaseWithTransport):
 
     def test_read_null(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, NULL_REVISION)
+        wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, NULL_REVISION)
         self.assertIs(None, read_active_rebase_revid(wt))
 
     def test_read(self):
         wt = self.make_branch_and_tree('.')
-        wt._control_files.put_utf8(REBASE_CURRENT_REVID_FILENAME, "bla")
+        wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, "bla")
         self.assertEquals("bla", read_active_rebase_revid(wt))
 
     def test_write(self):
@@ -543,20 +543,36 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.assertEquals(oldrev.timezone, newrev.timezone)
 
     def test_multiple(self):
+        # rebase from 
+        # base: []
+        # oldparent: [base]
+        # newparent: [base]
+        # oldcommit: [oldparent, ghost]
+        # create newcommit by rebasing oldcommit from oldparent to newparent,
+        # keeping the merge of ghost.
+        # Common base:
         wt = self.make_branch_and_tree("old")
         wt.commit("base", rev_id="base")
-        self.build_tree(['old/afile'])
+        # oldparent:
+        self.build_tree_contents([('old/afile', 'base content')])
         wt.add(["afile"], ids=["originalid"])
         wt.commit("bla", rev_id="oldparent")
+        # oldcommit (the delta getting rebased)
+        #  - change the content of afile to be 'bloe'
         file("old/afile", "w").write("bloe")
         wt.add_pending_merge("ghost")
         wt.commit("bla", rev_id="oldcommit")
-        wt = wt.bzrdir.sprout("new").open_workingtree()
-        self.build_tree(['new/bfile'])
-        wt.add(["bfile"], ids=["newid"])
+        # newparent (the new base for the rebased commit)
+        new_tree = wt.bzrdir.sprout("new",
+            revision_id='base').open_workingtree()
+        new_tree.branch.repository.fetch(wt.branch.repository)
+        wt = new_tree
+        self.build_tree_contents([('new/afile', 'base content')])
+        wt.add(["afile"], ids=["originalid"])
         wt.commit("bla", rev_id="newparent")
+        # And do it!
         wt.lock_write()
-        replay_delta_workingtree(wt, "oldcommit", "newcommit", 
+        replay_delta_workingtree(wt, "oldcommit", "newcommit",
             ("newparent", "ghost"))
         wt.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
