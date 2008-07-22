@@ -27,6 +27,10 @@ IN DEVELOPMENT
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
 
+    * Fix "no buffer space available" error when branching with the new
+      smart server protocol to or from Windows.
+      (Andrew Bennetts, #246180)
+
 
   DOCUMENTATION:
 
