@@ -668,22 +668,29 @@ class Merge3Merger(object):
         this_inventory = self.this_tree.inventory
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
-            last_rev = other_ie.revision
+            if other_ie is None:
+                last_rev = other_kind = other_parent_id = other_name = None
+                other_executable = None
+            else:
+                last_rev = other_ie.revision
+                other_kind = other_ie.kind
+                other_parent_id = other_ie.parent_id
+                other_name = other_ie.name
+                other_executable = other_ie.executable
+
             # I believe we can actually change this to see if last_rev is
             # identical to *any* of the lca values.
             for lca_path, ie in lca_values:
-                if ie is None or ie.revision != last_rev:
+                if ((ie is None and other_ie is not None)
+                    or ie.revision != last_rev):
                     break
             else: # Identical in all trees
                 continue
-            other_kind = other_ie.kind
-            other_parent_id = other_ie.parent_id
-            other_name = other_ie.name
             kind_changed = False
             parent_id_changed = False
             name_changed = False
             for lca_path, ie in lca_values:
-                if ie is None:
+                if ie is None and other_ie is not None:
                     kind_changed = parent_id_changed = name_changed = True
                     break
                 if ie.kind != other_kind:
@@ -730,11 +737,11 @@ class Merge3Merger(object):
             # If we have gotten this far, that means something has changed
             result.append((file_id, True,
                            ((base_parent_id, lca_parent_ids),
-                            other_ie.parent_id, this_parent_id),
+                            other_parent_id, this_parent_id),
                            ((base_name, lca_names),
-                            other_ie.name, this_name),
+                            other_name, this_name),
                            ((base_executable, lca_executable),
-                            other_ie.executable, this_executable)
+                            other_executable, this_executable)
                           ))
         return result
 

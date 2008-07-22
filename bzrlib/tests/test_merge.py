@@ -1339,6 +1339,26 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [None, False]), False, False)),
                          ], entries)
 
+    def test_not_in_other(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('unversion', 'a-id')])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('a-id', True,
+                           ((root_id, [root_id, root_id]), None, root_id),
+                           ((u'a', [u'a', u'a']), None, u'a'),
+                           ((False, [False, False]), None, False)),
+                         ], entries)
+
     # TODO: cases to test
     #       simple criss-cross LCAS identical, BASE different
     #       x-x changed from BASE but identical for all LCAs and tips
