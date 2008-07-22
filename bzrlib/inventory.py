@@ -472,9 +472,9 @@ class InventoryFile(InventoryEntry):
 
     def _check(self, checker, tree_revision_id, tree):
         """See InventoryEntry._check"""
-        t = (self.file_id, self.revision)
-        if t in checker.checked_texts:
-            prev_sha = checker.checked_texts[t]
+        key = (self.file_id, self.revision)
+        if key in checker.checked_texts:
+            prev_sha = checker.checked_texts[key]
             if prev_sha != self.text_sha1:
                 raise BzrCheckError(
                     'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
@@ -489,11 +489,9 @@ class InventoryFile(InventoryEntry):
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.
-        if (self.text_sha1 !=
-            tree._repository.texts.get_sha1s([(self.file_id, self.revision)])[0]):
-            raise BzrCheckError('text {%s} version {%s} wrong sha1' 
-                                % (self.file_id, self.revision))
-        checker.checked_texts[t] = self.text_sha1
+        if (self.text_sha1 != tree._repository.texts.get_sha1s([key])[key]):
+            raise BzrCheckError('text {%s} version {%s} wrong sha1' % key)
+        checker.checked_texts[key] = self.text_sha1
 
     def copy(self):
         other = InventoryFile(self.file_id, self.name, self.parent_id)

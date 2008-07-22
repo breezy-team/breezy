@@ -480,7 +480,7 @@ repository (a shared repository). Branches can be copied and merged.
 
 Related commands::
 
-  init    Make a directory into a versioned branch.
+  init    Change a directory into a versioned branch.
   branch  Create a new copy of a branch.
   merge   Perform a three-way merge.
 """
@@ -671,8 +671,14 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('patterns', _load_from_file,
+                        'Information on the pattern syntax',
+                        SECT_CONCEPT)
 topic_registry.register('repositories', _repositories,
                         'Basic information on shared repositories.',
+                        SECT_CONCEPT)
+topic_registry.register('rules', _load_from_file,
+                        'Information on defining rule-based preferences',
                         SECT_CONCEPT)
 topic_registry.register('standalone-trees', _standalone_trees,
                         'Information on what a standalone tree is',

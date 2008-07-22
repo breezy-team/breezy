@@ -45,6 +45,7 @@ from bzrlib.knit import (
     )
 from bzrlib.symbol_versioning import one_four, one_five
 from bzrlib.tests import (
+    TestCase,
     TestCaseWithMemoryTransport,
     TestScenarioApplier,
     TestSkipped,
@@ -63,6 +64,7 @@ from bzrlib.versionedfile import (
     ConstantMapper,
     HashEscapedPrefixMapper,
     PrefixMapper,
+    VirtualVersionedFiles,
     make_versioned_files_factory,
     )
 from bzrlib.weave import WeaveFile
@@ -501,7 +503,7 @@ class VersionedFileTestMixIn(object):
         for version in multiparent.topo_iter(vf):
             mpdiff = vf.make_mpdiffs([version])[0]
             new_vf.add_mpdiffs([(version, vf.get_parent_map([version])[version],
-                                 vf.get_sha1s([version])[0], mpdiff)])
+                                 vf.get_sha1s([version])[version], mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
 
@@ -840,10 +842,12 @@ class VersionedFileTestMixIn(object):
         vf.add_lines('b', ['a'], ['a\n'])
         # a file differing only in last newline.
         vf.add_lines('c', [], ['a'])
-        self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
-                          '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
-                          '3f786850e387550fdab836ed7e6dc881de23001b'],
-                          vf.get_sha1s(['a', 'c', 'b']))
+        self.assertEqual({
+            'a': '3f786850e387550fdab836ed7e6dc881de23001b',
+            'c': '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+            'b': '3f786850e387550fdab836ed7e6dc881de23001b',
+            },
+            vf.get_sha1s(['a', 'c', 'b']))
         
 
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
@@ -1562,7 +1566,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             on_seen(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key])[0], factory.sha1)
+            self.assertEqual(f.get_sha1s([factory.key])[factory.key],
+                factory.sha1)
             self.assertEqual(parents[factory.key], factory.parents)
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                 str)
@@ -1627,7 +1632,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             seen.append(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertSubset([factory.sha1], [None, files.get_sha1s([factory.key])[0]])
+            self.assertSubset([factory.sha1],
+                [None, files.get_sha1s([factory.key])[factory.key]])
             self.assertEqual(parent_map[factory.key], factory.parents)
             # self.assertEqual(files.get_text(factory.key),
             self.assertIsInstance(factory.get_bytes_as('fulltext'), str)
@@ -1671,7 +1677,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             seen.add(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(files.get_sha1s([factory.key])[0], factory.sha1)
+            self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                factory.sha1)
             self.assertEqual(parent_map[factory.key], factory.parents)
             # currently no stream emits mpdiff
             self.assertRaises(errors.UnavailableRepresentation,
@@ -1710,7 +1717,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 self.assertEqual(None, factory.parents)
             else:
                 self.assertValidStorageKind(factory.storage_kind)
-                self.assertEqual(files.get_sha1s([factory.key])[0], factory.sha1)
+                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                    factory.sha1)
                 self.assertEqual(parents[factory.key], factory.parents)
                 self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                     str)
@@ -1798,13 +1806,13 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('FileA', 'base'), ('FileB', 'origin'), ('FileA', 'left'),
                 ('FileA', 'merged'), ('FileB', 'right'),
                 ]
-        self.assertEqual([
-            '51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',
-            '00e364d235126be43292ab09cb4686cf703ddc17',
-            'a8478686da38e370e32e42e8a0c220e33ee9132f',
-            'ed8bce375198ea62444dc71952b22cfc2b09226d',
-            '9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',
-            ],
+        self.assertEqual({
+            keys[0]: '51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',
+            keys[1]: '00e364d235126be43292ab09cb4686cf703ddc17',
+            keys[2]: 'a8478686da38e370e32e42e8a0c220e33ee9132f',
+            keys[3]: 'ed8bce375198ea62444dc71952b22cfc2b09226d',
+            keys[4]: '9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',
+            },
             files.get_sha1s(keys))
         
     def test_insert_record_stream_empty(self):
@@ -2132,7 +2140,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             mpdiff = files.make_mpdiffs([key])[0]
             parents = files.get_parent_map([key])[key] or []
             target.add_mpdiffs(
-                [(key, parents, files.get_sha1s([key])[0], mpdiff)])
+                [(key, parents, files.get_sha1s([key])[key], mpdiff)])
             self.assertEqualDiff(
                 files.get_record_stream([key], 'unordered',
                     True).next().get_bytes_as('fulltext'),
@@ -2151,3 +2159,62 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             key = ('foo', 'bar',)
         files.add_lines(key, (), [])
         self.assertEqual(set([key]), set(files.keys()))
+
+
+class VirtualVersionedFilesTests(TestCase):
+    """Basic tests for the VirtualVersionedFiles implementations."""
+
+    def _get_parent_map(self, keys):
+        ret = {}
+        for k in keys:
+            if k in self._parent_map:
+                ret[k] = self._parent_map[k]
+        return ret
+
+    def setUp(self):
+        TestCase.setUp(self)
+        self._lines = {}
+        self._parent_map = {}
+        self.texts = VirtualVersionedFiles(self._get_parent_map, 
+                                           self._lines.get)
+
+    def test_add_lines(self):
+        self.assertRaises(NotImplementedError, 
+                self.texts.add_lines, "foo", [], [])
+
+    def test_add_mpdiffs(self):
+        self.assertRaises(NotImplementedError, 
+                self.texts.add_mpdiffs, [])
+
+    def test_check(self):
+        self.assertTrue(self.texts.check())
+
+    def test_insert_record_stream(self):
+        self.assertRaises(NotImplementedError, self.texts.insert_record_stream,
+                          [])
+
+    def test_get_sha1s_nonexistent(self):
+        self.assertEquals({}, self.texts.get_sha1s([("NONEXISTENT",)]))
+
+    def test_get_sha1s(self):
+        self._lines["key"] = ["dataline1", "dataline2"]
+        self.assertEquals({("key",): osutils.sha_strings(self._lines["key"])},
+                           self.texts.get_sha1s([("key",)]))
+
+    def test_get_parent_map(self):
+        self._parent_map = {"G": ("A", "B")}
+        self.assertEquals({("G",): (("A",),("B",))}, 
+                          self.texts.get_parent_map([("G",), ("L",)]))
+
+    def test_get_record_stream(self):
+        self._lines["A"] = ["FOO", "BAR"]
+        it = self.texts.get_record_stream([("A",)], "unordered", True)
+        record = it.next()
+        self.assertEquals("fulltext", record.storage_kind)
+        self.assertEquals("FOOBAR", record.get_bytes_as("fulltext"))
+
+    def test_get_record_stream_absent(self):
+        it = self.texts.get_record_stream([("A",)], "unordered", True)
+        record = it.next()
+        self.assertEquals("absent", record.storage_kind)
+

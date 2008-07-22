@@ -32,12 +32,17 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
-from bzrlib import errors
+from bzrlib import errors, osutils
 from bzrlib import repository as _mod_repository
 from bzrlib import revision
+from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCheckError
-import bzrlib.ui
+from bzrlib.repository import Repository
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import log_error, note
+import bzrlib.ui
+from bzrlib.workingtree import WorkingTree
 
 class Check(object):
     """Check a repository"""
@@ -236,21 +241,61 @@ class Check(object):
             seen_names[path] = True
 
 
+@deprecated_function(deprecated_in((1,6,0)))
 def check(branch, verbose):
     """Run consistency checks on a branch.
     
     Results are reported through logging.
     
+    Deprecated in 1.6.  Please use check_branch instead.
+
+    :raise BzrCheckError: if there's a consistency error.
+    """
+    check_branch(branch, verbose)
+
+
+def check_branch(branch, verbose):
+    """Run consistency checks on a branch.
+
+    Results are reported through logging.
+
     :raise BzrCheckError: if there's a consistency error.
     """
     branch.lock_read()
     try:
         branch_result = branch.check()
-        repo_result = branch.repository.check([branch.last_revision()])
     finally:
         branch.unlock()
     branch_result.report_results(verbose)
-    repo_result.report_results(verbose)
 
 
+def check_dwim(path, verbose):
+    tree, branch, repo, relpath = BzrDir.open_containing_tree_branch_or_repository(path)
 
+    if tree is not None:
+        note("Checking working tree at '%s'." 
+             % (tree.bzrdir.root_transport.base,))
+        tree._check()
+
+    if branch is not None:
+        # We have a branch
+        if repo is None:
+            # The branch is in a shared repository
+            repo = branch.repository
+        branches = [branch]
+    elif repo is not None:
+        branches = repo.find_branches(using=True)
+
+    if repo is not None:
+        repo.lock_read()
+        try:
+            note("Checking repository at '%s'."
+                 % (repo.bzrdir.root_transport.base,))
+            result = repo.check()
+            result.report_results(verbose)
+            for branch in branches:
+                note("Checking branch at '%s'."
+                     % (branch.bzrdir.root_transport.base,))
+                check_branch(branch, verbose)
+        finally:
+            repo.unlock()

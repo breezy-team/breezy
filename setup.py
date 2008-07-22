@@ -216,16 +216,22 @@ def add_pyrex_extension(module_name, **kwargs):
     pyrex_name = path + '.pyx'
     c_name = path + '.c'
     if have_pyrex:
-        ext_modules.append(Extension(module_name, [pyrex_name]))
+        ext_modules.append(Extension(module_name, [pyrex_name], **kwargs))
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
         else:
-            ext_modules.append(Extension(module_name, [c_name]))
+            ext_modules.append(Extension(module_name, [c_name], **kwargs))
 
 
 add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+if sys.platform == 'win32':
+    # pyrex uses the macro WIN32 to detect the platform, even though it should
+    # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
+    # right value.
+    add_pyrex_extension('bzrlib._walkdirs_win32',
+                        define_macros=[('WIN32', None)])
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
 
@@ -346,9 +352,12 @@ elif 'py2exe' in sys.argv:
     packs, mods = mf.get_result()
     additional_packages.update(packs)
 
+    # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
+    # in on Vista.
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes + mods,
                                "excludes": ["Tkinter", "medusa", "tools"],
+                               "dll_excludes": ["MSWSOCK.dll"],
                                "dist_dir": "win32_bzr.exe",
                               },
                    }

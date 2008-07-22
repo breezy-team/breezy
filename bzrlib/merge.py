@@ -23,11 +23,13 @@ import warnings
 from bzrlib import (
     debug,
     errors,
+    graph as _mod_graph,
     osutils,
     patiencediff,
     registry,
     revision as _mod_revision,
     tree as _mod_tree,
+    tsort,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -1329,9 +1331,12 @@ class _PlanMergeBase(object):
         self._last_lines_revision_id = None
         self._cached_matching_blocks = {}
         self._key_prefix = key_prefix
-        lines = self.get_lines([a_rev, b_rev])
-        self.lines_a = lines[a_rev]
-        self.lines_b = lines[b_rev]
+        self._precache_tip_lines()
+
+    def _precache_tip_lines(self):
+        lines = self.get_lines([self.a_rev, self.b_rev])
+        self.lines_a = lines[self.a_rev]
+        self.lines_b = lines[self.b_rev]
 
     def get_lines(self, revisions):
         """Get lines for revisions from the backing VersionedFiles.
@@ -1463,59 +1468,239 @@ class _PlanMerge(_PlanMergeBase):
     """Plan an annotate merge using on-the-fly annotation"""
 
     def __init__(self, a_rev, b_rev, vf, key_prefix):
-        _PlanMergeBase.__init__(self, a_rev, b_rev, vf, key_prefix)
-        graph = Graph(vf)
-        # XXX: There is probably a better API to use to examine less history.
-        a_ancestry = set(chain(*graph._make_breadth_first_searcher(
-            [key_prefix + (a_rev,)])))
-        b_ancestry = set(chain(*graph._make_breadth_first_searcher(
-            [key_prefix + (b_rev,)])))
-        self.uncommon = set(key[-1] for key in
-            a_ancestry.symmetric_difference(b_ancestry))
-
-    def _determine_status(self, revision_id, unique_line_numbers):
-        """Determines the status unique lines versus all lcas.
-
-        Basically, determines why the line is unique to this revision.
-
-        A line may be determined new or killed, but not both.
-
-        :param revision_id: The id of the revision in which the lines are
-            unique
-        :param unique_line_numbers: The line numbers of unique lines.
-        :return a tuple of (new_this, killed_other):
-        """
-        new = self._find_new(revision_id)
-        killed = set(unique_line_numbers).difference(new)
-        return new, killed
-
-    def _find_new(self, version_id):
-        """Determine which lines are new in the ancestry of this version.
-
-        If a lines is present in this version, and not present in any
-        common ancestor, it is considered new.
-        """
-        if version_id not in self.uncommon:
-            return set()
-        key = self._key_prefix + (version_id,)
-        parent_map = self.vf.get_parent_map([key])
-        parents = tuple(parent[-1] for parent in parent_map[key])
-        if len(parents) == 0:
-            return set(range(len(self.get_lines([version_id])[version_id])))
-        new = None
-        for parent in parents:
-            blocks = self._get_matching_blocks(version_id, parent)
-            result, unused = self._unique_lines(blocks)
-            parent_new = self._find_new(parent)
-            for i, j, n in blocks:
-                for ii, jj in [(i+r, j+r) for r in range(n)]:
-                    if jj in parent_new:
-                        result.append(ii)
-            if new is None:
-                new = set(result)
+        super(_PlanMerge, self).__init__(a_rev, b_rev, vf, key_prefix)
+        self.a_key = self._key_prefix + (self.a_rev,)
+        self.b_key = self._key_prefix + (self.b_rev,)
+        self.graph = Graph(self.vf)
+        heads = self.graph.heads((self.a_key, self.b_key))
+        if len(heads) == 1:
+            # one side dominates, so we can just return its values, yay for
+            # per-file graphs
+            # Ideally we would know that before we get this far
+            self._head_key = heads.pop()
+            if self._head_key == self.a_key:
+                other = b_rev
             else:
-                new.intersection_update(result)
-        return new
+                other = a_rev
+            mutter('found dominating revision for %s\n%s > %s', self.vf,
+                   self._head_key[-1], other)
+            self._weave = None
+        else:
+            self._head_key = None
+            self._build_weave()
+
+    def _precache_tip_lines(self):
+        # Turn this into a no-op, because we will do this later
+        pass
+
+    def _find_recursive_lcas(self):
+        """Find all the ancestors back to a unique lca"""
+        cur_ancestors = (self.a_key, self.b_key)
+        # graph.find_lca(uncommon, keys) now returns plain NULL_REVISION,
+        # rather than a key tuple. We will just map that directly to no common
+        # ancestors.
+        parent_map = {}
+        while True:
+            next_lcas = self.graph.find_lca(*cur_ancestors)
+            # Map a plain NULL_REVISION to a simple no-ancestors
+            if next_lcas == set([NULL_REVISION]):
+                next_lcas = ()
+            # Order the lca's based on when they were merged into the tip
+            # While the actual merge portion of weave merge uses a set() of
+            # active revisions, the order of insertion *does* effect the
+            # implicit ordering of the texts.
+            for rev_key in cur_ancestors:
+                ordered_parents = tuple(self.graph.find_merge_order(rev_key,
+                                                                    next_lcas))
+                parent_map[rev_key] = ordered_parents
+            if len(next_lcas) == 0:
+                break
+            elif len(next_lcas) == 1:
+                parent_map[list(next_lcas)[0]] = ()
+                break
+            elif len(next_lcas) > 2:
+                # More than 2 lca's, fall back to grabbing all nodes between
+                # this and the unique lca.
+                mutter('More than 2 LCAs, falling back to all nodes for:'
+                       ' %s, %s\n=> %s', self.a_key, self.b_key, cur_ancestors)
+                cur_lcas = next_lcas
+                while len(cur_lcas) > 1:
+                    cur_lcas = self.graph.find_lca(*cur_lcas)
+                if len(cur_lcas) == 0:
+                    # No common base to find, use the full ancestry
+                    unique_lca = None
+                else:
+                    unique_lca = list(cur_lcas)[0]
+                    if unique_lca == NULL_REVISION:
+                        # find_lca will return a plain 'NULL_REVISION' rather
+                        # than a key tuple when there is no common ancestor, we
+                        # prefer to just use None, because it doesn't confuse
+                        # _get_interesting_texts()
+                        unique_lca = None
+                parent_map.update(self._find_unique_parents(next_lcas,
+                                                            unique_lca))
+                break
+            cur_ancestors = next_lcas
+        return parent_map
+
+    def _find_unique_parents(self, tip_keys, base_key):
+        """Find ancestors of tip that aren't ancestors of base.
+        
+        :param tip_keys: Nodes that are interesting
+        :param base_key: Cull all ancestors of this node
+        :return: The parent map for all revisions between tip_keys and
+            base_key. base_key will be included. References to nodes outside of
+            the ancestor set will also be removed.
+        """
+        # TODO: this would be simpler if find_unique_ancestors took a list
+        #       instead of a single tip, internally it supports it, but it
+        #       isn't a "backwards compatible" api change.
+        if base_key is None:
+            parent_map = dict(self.graph.iter_ancestry(tip_keys))
+            # We remove NULL_REVISION because it isn't a proper tuple key, and
+            # thus confuses things like _get_interesting_texts, and our logic
+            # to add the texts into the memory weave.
+            if NULL_REVISION in parent_map:
+                parent_map.pop(NULL_REVISION)
+        else:
+            interesting = set()
+            for tip in tip_keys:
+                interesting.update(
+                    self.graph.find_unique_ancestors(tip, [base_key]))
+            parent_map = self.graph.get_parent_map(interesting)
+            parent_map[base_key] = ()
+        culled_parent_map, child_map, tails = self._remove_external_references(
+            parent_map)
+        # Remove all the tails but base_key
+        if base_key is not None:
+            tails.remove(base_key)
+            self._prune_tails(culled_parent_map, child_map, tails)
+        # Now remove all the uninteresting 'linear' regions
+        simple_map = _mod_graph.collapse_linear_regions(culled_parent_map)
+        return simple_map
+
+    @staticmethod
+    def _remove_external_references(parent_map):
+        """Remove references that go outside of the parent map.
+
+        :param parent_map: Something returned from Graph.get_parent_map(keys)
+        :return: (filtered_parent_map, child_map, tails)
+            filtered_parent_map is parent_map without external references
+            child_map is the {parent_key: [child_keys]} mapping
+            tails is a list of nodes that do not have any parents in the map
+        """
+        # TODO: The basic effect of this function seems more generic than
+        #       _PlanMerge. But the specific details of building a child_map,
+        #       and computing tails seems very specific to _PlanMerge.
+        #       Still, should this be in Graph land?
+        filtered_parent_map = {}
+        child_map = {}
+        tails = []
+        for key, parent_keys in parent_map.iteritems():
+            culled_parent_keys = [p for p in parent_keys if p in parent_map]
+            if not culled_parent_keys:
+                tails.append(key)
+            for parent_key in culled_parent_keys:
+                child_map.setdefault(parent_key, []).append(key)
+            # TODO: Do we want to do this, it adds overhead for every node,
+            #       just to say that the node has no children
+            child_map.setdefault(key, [])
+            filtered_parent_map[key] = culled_parent_keys
+        return filtered_parent_map, child_map, tails
+
+    @staticmethod
+    def _prune_tails(parent_map, child_map, tails_to_remove):
+        """Remove tails from the parent map.
+        
+        This will remove the supplied revisions until no more children have 0
+        parents.
+
+        :param parent_map: A dict of {child: [parents]}, this dictionary will
+            be modified in place.
+        :param tails_to_remove: A list of tips that should be removed,
+            this list will be consumed
+        :param child_map: The reverse dict of parent_map ({parent: [children]})
+            this dict will be modified
+        :return: None, parent_map will be modified in place.
+        """
+        while tails_to_remove:
+            next = tails_to_remove.pop()
+            parent_map.pop(next)
+            children = child_map.pop(next)
+            for child in children:
+                child_parents = parent_map[child]
+                child_parents.remove(next)
+                if len(child_parents) == 0:
+                    tails_to_remove.append(child)
+
+    def _get_interesting_texts(self, parent_map):
+        """Return a dict of texts we are interested in.
+
+        Note that the input is in key tuples, but the output is in plain
+        revision ids.
+
+        :param parent_map: The output from _find_recursive_lcas
+        :return: A dict of {'revision_id':lines} as returned by
+            _PlanMergeBase.get_lines()
+        """
+        all_revision_keys = set(parent_map)
+        all_revision_keys.add(self.a_key)
+        all_revision_keys.add(self.b_key)
+
+        # Everything else is in 'keys' but get_lines is in 'revision_ids'
+        all_texts = self.get_lines([k[-1] for k in all_revision_keys])
+        return all_texts
+
+    def _build_weave(self):
+        from bzrlib import weave
+        self._weave = weave.Weave(weave_name='in_memory_weave',
+                                  allow_reserved=True)
+        parent_map = self._find_recursive_lcas()
+
+        all_texts = self._get_interesting_texts(parent_map)
+
+        # Note: Unfortunately, the order given by topo_sort will effect the
+        # ordering resolution in the output. Specifically, if you add A then B,
+        # then in the output text A lines will show up before B lines. And, of
+        # course, topo_sort doesn't guarantee any real ordering.
+        # So we use merge_sort, and add a fake node on the tip.
+        # This ensures that left-hand parents will always be inserted into the
+        # weave before right-hand parents.
+        tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
+        parent_map[tip_key] = (self.a_key, self.b_key)
+
+        for seq_num, key, depth, eom in reversed(tsort.merge_sort(parent_map,
+                                                                  tip_key)):
+            if key == tip_key:
+                continue
+        # for key in tsort.topo_sort(parent_map):
+            parent_keys = parent_map[key]
+            revision_id = key[-1]
+            parent_ids = [k[-1] for k in parent_keys]
+            self._weave.add_lines(revision_id, parent_ids,
+                                  all_texts[revision_id])
+
+    def plan_merge(self):
+        """Generate a 'plan' for merging the two revisions.
+
+        This involves comparing their texts and determining the cause of
+        differences.  If text A has a line and text B does not, then either the
+        line was added to text A, or it was deleted from B.  Once the causes
+        are combined, they are written out in the format described in
+        VersionedFile.plan_merge
+        """
+        if self._head_key is not None: # There was a single head
+            if self._head_key == self.a_key:
+                plan = 'new-a'
+            else:
+                if self._head_key != self.b_key:
+                    raise AssertionError('There was an invalid head: %s != %s'
+                                         % (self.b_key, self._head_key))
+                plan = 'new-b'
+            head_rev = self._head_key[-1]
+            lines = self.get_lines([head_rev])[head_rev]
+            return ((plan, line) for line in lines)
+        return self._weave.plan_merge(self.a_rev, self.b_rev)
 
 
 class _PlanLCAMerge(_PlanMergeBase):

@@ -19,6 +19,7 @@
 
 """Versioned text file storage api."""
 
+from copy import copy
 from cStringIO import StringIO
 import os
 import urllib
@@ -372,18 +373,10 @@ class VersionedFile(object):
                     parent_ids, lines, vf_parents,
                     left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
-        for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
-             zip(records, self.get_sha1s(versions)):
-            if expected_sha1 != sha1:
+        sha1s = self.get_sha1s(versions)
+        for version, parent_ids, expected_sha1, mpdiff in records:
+            if expected_sha1 != sha1s[version]:
                 raise errors.VersionedFileInvalidChecksum(version)
-
-    def get_sha1s(self, version_ids):
-        """Get the stored sha1 sums for the given revisions.
-
-        :param version_ids: The names of the versions to lookup
-        :return: a list of sha1s in order according to the version_ids
-        """
-        raise NotImplementedError(self.get_sha1s)
 
     def get_text(self, version_id):
         """Return version contents as a text string.
@@ -534,11 +527,38 @@ class RecordingVersionedFilesDecorator(object):
         self._backing_vf = backing_vf
         self.calls = []
 
+    def add_lines(self, key, parents, lines, parent_texts=None,
+        left_matching_blocks=None, nostore_sha=None, random_id=False,
+        check_content=True):
+        self.calls.append(("add_lines", key, parents, lines, parent_texts,
+            left_matching_blocks, nostore_sha, random_id, check_content))
+        return self._backing_vf.add_lines(key, parents, lines, parent_texts,
+            left_matching_blocks, nostore_sha, random_id, check_content)
+
+    def check(self):
+        self._backing_vf.check()
+
+    def get_parent_map(self, keys):
+        self.calls.append(("get_parent_map", copy(keys)))
+        return self._backing_vf.get_parent_map(keys)
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
-        self.calls.append(("get_record_stream", keys, sort_order,
+        self.calls.append(("get_record_stream", list(keys), sort_order,
             include_delta_closure))
         return self._backing_vf.get_record_stream(keys, sort_order,
             include_delta_closure)
+
+    def get_sha1s(self, keys):
+        self.calls.append(("get_sha1s", copy(keys)))
+        return self._backing_vf.get_sha1s(keys)
+
+    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        self.calls.append(("iter_lines_added_or_present_in_keys", copy(keys)))
+        return self._backing_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
+
+    def keys(self):
+        self.calls.append(("keys",))
+        return self._backing_vf.keys()
 
 
 class KeyMapper(object):
@@ -745,10 +765,11 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        present_parents = set(self.get_parent_map(needed_parents).keys())
         split_lines = osutils.split_lines
-        for record in self.get_record_stream(present_parents, 'unordered',
+        for record in self.get_record_stream(needed_parents, 'unordered',
             True):
+            if record.storage_kind == 'absent':
+                continue
             mpvf.add_version(split_lines(record.get_bytes_as('fulltext')),
                 record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in\
@@ -819,7 +840,9 @@ class VersionedFiles(object):
         """Get the sha1's of the texts for the given keys.
 
         :param keys: The names of the keys to lookup
-        :return: a list of sha1s matching keys.
+        :return: a dict from key to sha1 digest. Keys of texts which are not
+            present in the store are not present in the returned
+            dictionary.
         """
         raise NotImplementedError(self.get_sha1s)
 
@@ -870,7 +893,7 @@ class VersionedFiles(object):
                 knit_keys.update(parent_keys)
         missing_keys = keys - set(parent_map)
         if missing_keys:
-            raise errors.RevisionNotPresent(missing_keys.pop(), self)
+            raise errors.RevisionNotPresent(list(missing_keys)[0], self)
         # We need to filter out ghosts, because we can't diff against them.
         maybe_ghosts = knit_keys - keys
         ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
@@ -1051,9 +1074,9 @@ class ThunkedVersionedFiles(VersionedFiles):
         sha1s = {}
         for prefix,suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
-            for suffix, sha1 in zip(suffixes, vf.get_sha1s(suffixes)):
+            for suffix, sha1 in vf_sha1s.iteritems():
                 sha1s[prefix + (suffix,)] = sha1
-        return [sha1s[key] for key in keys]
+        return sha1s
 
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
@@ -1298,5 +1321,69 @@ class WeaveMerge(PlanWeaveMerge):
         a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
         plan = versionedfile.plan_merge(ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
+
+
+class VirtualVersionedFiles(VersionedFiles):
+    """Dummy implementation for VersionedFiles that uses other functions for 
+    obtaining fulltexts and parent maps.
+
+    This is always on the bottom of the stack and uses string keys 
+    (rather than tuples) internally.
+    """
+
+    def __init__(self, get_parent_map, get_lines):
+        """Create a VirtualVersionedFiles.
+
+        :param get_parent_map: Same signature as Repository.get_parent_map.
+        :param get_lines: Should return lines for specified key or None if 
+                          not available.
+        """
+        super(VirtualVersionedFiles, self).__init__()
+        self._get_parent_map = get_parent_map
+        self._get_lines = get_lines
+        
+    def check(self, progressbar=None):
+        """See VersionedFiles.check.
+
+        :note: Always returns True for VirtualVersionedFiles.
+        """
+        return True
+
+    def add_mpdiffs(self, records):
+        """See VersionedFiles.mpdiffs.
+
+        :note: Not implemented for VirtualVersionedFiles.
+        """
+        raise NotImplementedError(self.add_mpdiffs)
+
+    def get_parent_map(self, keys):
+        """See VersionedFiles.get_parent_map."""
+        return dict([((k,), tuple([(p,) for p in v]))
+            for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
+
+    def get_sha1s(self, keys):
+        """See VersionedFiles.get_sha1s."""
+        ret = {}
+        for (k,) in keys:
+            lines = self._get_lines(k)
+            if lines is not None:
+                if not isinstance(lines, list):
+                    raise AssertionError
+                ret[(k,)] = osutils.sha_strings(lines)
+        return ret
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        """See VersionedFiles.get_record_stream."""
+        for (k,) in list(keys):
+            lines = self._get_lines(k)
+            if lines is not None:
+                if not isinstance(lines, list):
+                    raise AssertionError
+                yield FulltextContentFactory((k,), None, 
+                        sha1=osutils.sha_strings(lines),
+                        text=''.join(lines))
+            else:
+                yield AbsentContentFactory((k,))
+
 
 

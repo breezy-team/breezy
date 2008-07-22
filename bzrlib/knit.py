@@ -64,33 +64,27 @@ from cStringIO import StringIO
 from itertools import izip, chain
 import operator
 import os
-import urllib
-import sys
-import warnings
-from zlib import Z_DEFAULT_COMPRESSION
 
-import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    debug,
+    diff,
     graph as _mod_graph,
     index as _mod_index,
     lru_cache,
     pack,
+    progress,
     trace,
+    tsort,
+    tuned_gzip,
     )
 """)
 from bzrlib import (
-    cache_utf8,
-    debug,
-    diff,
     errors,
     osutils,
     patiencediff,
-    progress,
-    merge,
-    ui,
     )
 from bzrlib.errors import (
     FileExists,
@@ -102,7 +96,6 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.graph import Graph
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
@@ -110,9 +103,6 @@ from bzrlib.osutils import (
     sha_strings,
     split_lines,
     )
-from bzrlib.tsort import topo_sort
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
-import bzrlib.ui
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
@@ -122,7 +112,6 @@ from bzrlib.versionedfile import (
     VersionedFile,
     VersionedFiles,
     )
-import bzrlib.weave
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -730,6 +719,14 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitAnnotateFactory()
         else:
             self._factory = KnitPlainFactory()
+        self._fallback_vfs = []
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        self._fallback_vfs.append(a_versioned_files)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -839,7 +836,7 @@ class KnitVersionedFiles(VersionedFiles):
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
         # no basis.
-        keys = self.keys()
+        keys = self._index.keys()
         parent_map = self.get_parent_map(keys)
         for key in keys:
             if self._index.get_method(key) != 'fulltext':
@@ -848,12 +845,14 @@ class KnitVersionedFiles(VersionedFiles):
                     raise errors.KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
+        for fallback_vfs in self._fallback_vfs:
+            fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
         if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id, self.filename)
+            raise InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
@@ -892,7 +891,11 @@ class KnitVersionedFiles(VersionedFiles):
         fulltext_size = None
         for count in xrange(self._max_delta_chain):
             # XXX: Collapse these two queries:
-            method = self._index.get_method(parent)
+            try:
+                method = self._index.get_method(parent)
+            except RevisionNotPresent:
+                # Some basis is not locally present: always delta
+                return False
             index, pos, size = self._index.get_position(parent)
             if method == 'fulltext':
                 fulltext_size = size
@@ -961,9 +964,13 @@ class KnitVersionedFiles(VersionedFiles):
         text_map, contents_map = self._get_content_maps([key])
         return contents_map[key]
 
-    def _get_content_maps(self, keys):
+    def _get_content_maps(self, keys, nonlocal_keys=None):
         """Produce maps of text and KnitContents
         
+        :param keys: The keys to produce content maps for.
+        :param nonlocal_keys: An iterable of keys(possibly intersecting keys)
+            which are known to not be in this knit, but rather in one of the
+            fallback knits.
         :return: (text_map, content_map) where text_map contains the texts for
             the requested versions and content_map contains the KnitContents.
         """
@@ -973,20 +980,46 @@ class KnitVersionedFiles(VersionedFiles):
         # final output.
         keys = list(keys)
         multiple_versions = len(keys) != 1
-        record_map = self._get_record_map(keys)
+        record_map = self._get_record_map(keys, allow_missing=True)
 
         text_map = {}
         content_map = {}
         final_content = {}
+        if nonlocal_keys is None:
+            nonlocal_keys = set()
+        else:
+            nonlocal_keys = frozenset(nonlocal_keys)
+        missing_keys = set(nonlocal_keys)
+        for source in self._fallback_vfs:
+            if not missing_keys:
+                break
+            for record in source.get_record_stream(missing_keys,
+                'unordered', True):
+                if record.storage_kind == 'absent':
+                    continue
+                missing_keys.remove(record.key)
+                lines = split_lines(record.get_bytes_as('fulltext'))
+                text_map[record.key] = lines
+                content_map[record.key] = PlainKnitContent(lines, record.key)
+                if record.key in keys:
+                    final_content[record.key] = content_map[record.key]
         for key in keys:
+            if key in nonlocal_keys:
+                # already handled
+                continue
             components = []
             cursor = key
             while cursor is not None:
-                record, record_details, digest, next = record_map[cursor]
+                try:
+                    record, record_details, digest, next = record_map[cursor]
+                except KeyError:
+                    raise RevisionNotPresent(cursor, self)
                 components.append((cursor, record, record_details, digest))
-                if cursor in content_map:
-                    break
                 cursor = next
+                if cursor in content_map:
+                    # no need to plan further back
+                    components.append((cursor, None, None, None))
+                    break
 
             content = None
             for (component_id, record, record_details,
@@ -1016,15 +1049,38 @@ class KnitVersionedFiles(VersionedFiles):
         return text_map, final_content
 
     def get_parent_map(self, keys):
-        """Get a map of the parents of keys.
+        """Get a map of the graph parents of keys.
 
         :param keys: The keys to look up parents for.
         :return: A mapping from keys to parents. Absent keys are absent from
             the mapping.
         """
-        return self._index.get_parent_map(keys)
+        return self._get_parent_map_with_sources(keys)[0]
 
-    def _get_record_map(self, keys):
+    def _get_parent_map_with_sources(self, keys):
+        """Get a map of the parents of keys.
+
+        :param keys: The keys to look up parents for.
+        :return: A tuple. The first element is a mapping from keys to parents.
+            Absent keys are absent from the mapping. The second element is a
+            list with the locations each key was found in. The first element
+            is the in-this-knit parents, the second the first fallback source,
+            and so on.
+        """
+        result = {}
+        sources = [self._index] + self._fallback_vfs
+        source_results = []
+        missing = set(keys)
+        for source in sources:
+            if not missing:
+                break
+            new_result = source.get_parent_map(missing)
+            source_results.append(new_result)
+            result.update(new_result)
+            missing.difference_update(set(new_result))
+        return result, source_results
+
+    def _get_record_map(self, keys, allow_missing=False):
         """Produce a dictionary of knit records.
         
         :return: {key:(record, record_details, digest, next)}
@@ -1037,8 +1093,12 @@ class KnitVersionedFiles(VersionedFiles):
             next
                 build-parent of the version, i.e. the leftmost ancestor.
                 Will be None if the record is not a delta.
+        :param keys: The keys to build a map for
+        :param allow_missing: If some records are missing, rather than 
+            error, just return the data that could be generated.
         """
-        position_map = self._get_components_positions(keys)
+        position_map = self._get_components_positions(keys,
+            allow_missing=allow_missing)
         # key = component_id, r = record_details, i_m = index_memo, n = next
         records = [(key, i_m) for key, (r, i_m, n)
                              in position_map.iteritems()]
@@ -1063,6 +1123,8 @@ class KnitVersionedFiles(VersionedFiles):
         """
         # keys might be a generator
         keys = set(keys)
+        if not keys:
+            return
         if not self._index.has_graph:
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
@@ -1078,6 +1140,7 @@ class KnitVersionedFiles(VersionedFiles):
         # There may be more absent keys : if we're missing the basis component
         # and are trying to include the delta closure.
         if include_delta_closure:
+            needed_from_fallback = set()
             # Build up reconstructable_keys dict.  key:True in this dict means
             # the key can be reconstructed.
             reconstructable_keys = {}
@@ -1086,7 +1149,7 @@ class KnitVersionedFiles(VersionedFiles):
                 try:
                     chain = [key, positions[key][2]]
                 except KeyError:
-                    absent_keys.add(key)
+                    needed_from_fallback.add(key)
                     continue
                 result = True
                 while chain[-1] is not None:
@@ -1098,44 +1161,87 @@ class KnitVersionedFiles(VersionedFiles):
                             chain.append(positions[chain[-1]][2])
                         except KeyError:
                             # missing basis component
-                            result = False
+                            needed_from_fallback.add(chain[-1])
+                            result = True
                             break
                 for chain_key in chain[:-1]:
                     reconstructable_keys[chain_key] = result
                 if not result:
-                    absent_keys.add(key)
+                    needed_from_fallback.add(key)
+        # Double index lookups here : need a unified api ?
+        global_map, parent_maps = self._get_parent_map_with_sources(keys)
+        if ordering == 'topological':
+            # Global topological sort
+            present_keys = tsort.topo_sort(global_map)
+            # Now group by source:
+            source_keys = []
+            current_source = None
+            for key in present_keys:
+                for parent_map in parent_maps:
+                    if key in parent_map:
+                        key_source = parent_map
+                        break
+                if current_source is not key_source:
+                    source_keys.append((key_source, []))
+                    current_source = key_source
+                source_keys[-1][1].append(key)
+        else:
+            # Just group by source; remote sources first.
+            present_keys = []
+            source_keys = []
+            for parent_map in reversed(parent_maps):
+                source_keys.append((parent_map, []))
+                for key in parent_map:
+                    present_keys.append(key)
+                    source_keys[-1][1].append(key)
+        absent_keys = keys - set(global_map)
         for key in absent_keys:
             yield AbsentContentFactory(key)
         # restrict our view to the keys we can answer.
-        keys = keys - absent_keys
-        # Double index lookups here : need a unified api ?
-        parent_map = self.get_parent_map(keys)
-        if ordering == 'topological':
-            present_keys = topo_sort(parent_map)
-        else:
-            present_keys = keys
         # XXX: Memory: TODO: batch data here to cap buffered data at (say) 1MB.
-        # XXX: At that point we need to consider double reads by utilising
-        # components multiple times.
+        # XXX: At that point we need to consider the impact of double reads by
+        # utilising components multiple times.
         if include_delta_closure:
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
-            text_map, _ = self._get_content_maps(present_keys)
+            text_map, _ = self._get_content_maps(present_keys,
+                needed_from_fallback - absent_keys)
             for key in present_keys:
-                yield FulltextContentFactory(key, parent_map[key], None,
+                yield FulltextContentFactory(key, global_map[key], None,
                     ''.join(text_map[key]))
         else:
-            records = [(key, positions[key][1]) for key in present_keys]
-            for key, raw_data, sha1 in self._read_records_iter_raw(records):
-                (record_details, index_memo, _) = positions[key]
-                yield KnitContentFactory(key, parent_map[key],
-                    record_details, sha1, raw_data, self._factory.annotated, None)
+            for source, keys in source_keys:
+                if source is parent_maps[0]:
+                    # this KnitVersionedFiles
+                    records = [(key, positions[key][1]) for key in keys]
+                    for key, raw_data, sha1 in self._read_records_iter_raw(records):
+                        (record_details, index_memo, _) = positions[key]
+                        yield KnitContentFactory(key, global_map[key],
+                            record_details, sha1, raw_data, self._factory.annotated, None)
+                else:
+                    vf = self._fallback_vfs[parent_maps.index(source) - 1]
+                    for record in vf.get_record_stream(keys, ordering,
+                        include_delta_closure):
+                        yield record
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
-        record_map = self._get_record_map(keys)
-        # record entry 2 is the 'digest'.
-        return [record_map[key][2] for key in keys]
+        missing = set(keys)
+        record_map = self._get_record_map(missing, allow_missing=True)
+        result = {}
+        for key, details in record_map.iteritems():
+            if key not in missing:
+                continue
+            # record entry 2 is the 'digest'.
+            result[key] = details[2]
+        missing.difference_update(set(result))
+        for source in self._fallback_vfs:
+            if not missing:
+                break
+            new_result = source.get_sha1s(missing)
+            result.update(new_result)
+            missing.difference_update(set(new_result))
+        return result
 
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
@@ -1274,20 +1380,16 @@ class KnitVersionedFiles(VersionedFiles):
         if pb is None:
             pb = progress.DummyProgress()
         keys = set(keys)
-        # filter for available keys
-        parent_map = self.get_parent_map(keys)
-        if len(parent_map) != len(keys):
-            missing = set(parent_map) - requested_keys
-            raise RevisionNotPresent(key, self.filename)
+        total = len(keys)
         # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need key, position, length
         key_records = []
         build_details = self._index.get_build_details(keys)
-        for key in keys:
-            # [0] is index_memo
-            key_records.append((key, build_details[key][0]))
-        total = len(key_records)
+        for key, details in build_details.iteritems():
+            if key in keys:
+                key_records.append((key, details[0]))
+                keys.remove(key)
         records_iter = enumerate(self._read_records_iter(key_records))
         for (key_idx, (key, data, sha_value)) in records_iter:
             pb.update('Walking content.', key_idx, total)
@@ -1303,6 +1405,16 @@ class KnitVersionedFiles(VersionedFiles):
             # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
                 yield line, key
+        for source in self._fallback_vfs:
+            if not keys:
+                break
+            source_keys = set()
+            for line, key in source.iter_lines_added_or_present_in_keys(keys):
+                source_keys.add(key)
+                yield line, key
+            keys.difference_update(source_keys)
+        if keys:
+            raise RevisionNotPresent(keys, self.filename)
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -1374,7 +1486,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: the header and the decompressor stream.
                  as (stream, header_record)
         """
-        df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
@@ -1389,7 +1501,7 @@ class KnitVersionedFiles(VersionedFiles):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = GzipFile(mode='rb', fileobj=StringIO(data))
+        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(data))
         try:
             record_contents = df.readlines()
         except Exception, e:
@@ -1490,7 +1602,7 @@ class KnitVersionedFiles(VersionedFiles):
                 'data must be plain bytes was %s' % type(bytes))
         if lines and lines[-1][-1] != '\n':
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = bytes_to_gzip(bytes)
+        compressed_bytes = tuned_gzip.bytes_to_gzip(bytes)
         return len(compressed_bytes), compressed_bytes
 
     def _split_header(self, line):
@@ -1504,7 +1616,12 @@ class KnitVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        return self._index.keys()
+        sources = [self._index] + self._fallback_vfs
+        result = set()
+        for source in sources:
+            result.update(source.keys())
+        return result
+
 
 
 class _KndxIndex(object):
@@ -1730,7 +1847,10 @@ class _KndxIndex(object):
         """
         prefix, suffix = self._split_key(key)
         self._load_prefixes([prefix])
-        return self._kndx_cache[prefix][0][suffix][1]
+        try:
+            return self._kndx_cache[prefix][0][suffix][1]
+        except KeyError:
+            raise RevisionNotPresent(key, self)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -1911,6 +2031,9 @@ class _KnitGraphIndex(object):
                 "parent tracking.")
         self.has_graph = parents
         self._is_locked = is_locked
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._graph_index)
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
@@ -2551,11 +2674,51 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
+        if True or len(self._knit._fallback_vfs) > 0:
+            # stacked knits can't use the fast path at present.
+            return self._simple_annotate(key)
         records = self._get_build_graph(key)
         if key in self._ghosts:
             raise errors.RevisionNotPresent(key, self._knit)
         self._annotate_records(records)
         return self._annotated_lines[key]
+
+    def _simple_annotate(self, key):
+        """Return annotated fulltext, rediffing from the full texts.
+
+        This is slow but makes no assumptions about the repository
+        being able to produce line deltas.
+        """
+        # TODO: this code generates a parent maps of present ancestors; it
+        # could be split out into a separate method, and probably should use
+        # iter_ancestry instead. -- mbp and robertc 20080704
+        graph = _mod_graph.Graph(self._knit)
+        head_cache = _mod_graph.FrozenHeadsCache(graph)
+        search = graph._make_breadth_first_searcher([key])
+        keys = set()
+        while True:
+            try:
+                present, ghosts = search.next_with_ghosts()
+            except StopIteration:
+                break
+            keys.update(present)
+        parent_map = self._knit.get_parent_map(keys)
+        parent_cache = {}
+        reannotate = annotate.reannotate
+        for record in self._knit.get_record_stream(keys, 'topological', True):
+            key = record.key
+            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            parents = parent_map[key]
+            if parents is not None:
+                parent_lines = [parent_cache[parent] for parent in parent_map[key]]
+            else:
+                parent_lines = []
+            parent_cache[key] = list(
+                reannotate(parent_lines, fulltext, key, None, head_cache))
+        try:
+            return parent_cache[key]
+        except KeyError, e:
+            raise errors.RevisionNotPresent(key, self._knit)
 
 
 try:

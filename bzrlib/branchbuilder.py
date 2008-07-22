@@ -47,8 +47,10 @@ class BranchBuilder(object):
             transport.mkdir('.')
         if format is None:
             format = 'default'
+        if isinstance(format, str):
+            format = bzrdir.format_registry.make_bzrdir(format)
         self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
-            format=bzrdir.format_registry.make_bzrdir(format))
+            format=format, force_new_tree=False)
 
     def build_commit(self):
         """Build a commit on the branch."""
@@ -57,6 +59,96 @@ class BranchBuilder(object):
         try:
             tree.add('')
             return tree.commit('commit %d' % (self._branch.revno() + 1))
+        finally:
+            tree.unlock()
+
+    def _move_branch_pointer(self, new_revision_id):
+        """Point self._branch to a different revision id."""
+        self._branch.lock_write()
+        try:
+            # We don't seem to have a simple set_last_revision(), so we
+            # implement it here.
+            cur_revno, cur_revision_id = self._branch.last_revision_info()
+            g = self._branch.repository.get_graph()
+            new_revno = g.find_distance_to_null(new_revision_id,
+                                                [(cur_revision_id, cur_revno)])
+            self._branch.set_last_revision_info(new_revno, new_revision_id)
+        finally:
+            self._branch.unlock()
+
+    def build_snapshot(self, revision_id, parent_ids, actions,
+                       message=None):
+        """Build a commit, shaped in a specific way.
+
+        :param revision_id: The handle for the new commit, can be None
+        :param parent_ids: A list of parent_ids to use for the commit.
+            It can be None, which indicates to use the last commit.
+        :param actions: A list of actions to perform. Supported actions are:
+            ('add', ('path', 'file-id', 'kind', 'content' or None))
+            ('modify', ('file-id', 'new-content'))
+            ('unversion', 'file-id')
+            # not supported yet: ('rename', ('orig-path', 'new-path'))
+        :param message: An optional commit message, if not supplied, a default
+            commit message will be written.
+        ;return: The revision_id of the new commit
+        """
+        if parent_ids is not None:
+            base_id = parent_ids[0]
+            if base_id != self._branch.last_revision():
+                self._move_branch_pointer(base_id)
+
+        tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        tree.lock_write()
+        try:
+            if parent_ids is not None:
+                tree.set_parent_ids(parent_ids)
+            # Unfortunately, MemoryTree.add(directory) just creates an
+            # inventory entry. And the only public function to create a
+            # directory is MemoryTree.mkdir() which creates the directory, but
+            # also always adds it. So we have to use a multi-pass setup.
+            to_add_directories = []
+            to_add_files = []
+            to_add_file_ids = []
+            to_add_kinds = []
+            new_contents = {}
+            to_unversion_ids = []
+            # TODO: MemoryTree doesn't support rename() or
+            #       apply_inventory_delta, so we'll postpone allowing renames
+            #       for now
+            # to_rename = []
+            for action, info in actions:
+                if action == 'add':
+                    path, file_id, kind, content = info
+                    if kind == 'directory':
+                        to_add_directories.append((path, file_id))
+                    else:
+                        to_add_files.append(path)
+                        to_add_file_ids.append(file_id)
+                        to_add_kinds.append(kind)
+                        if content is not None:
+                            new_contents[file_id] = content
+                elif action == 'modify':
+                    file_id, content = info
+                    new_contents[file_id] = content
+                elif action == 'unversion':
+                    to_unversion_ids.append(info)
+                else:
+                    raise errors.UnknownBuildAction(action)
+            if to_unversion_ids:
+                tree.unversion(to_unversion_ids)
+            for path, file_id in to_add_directories:
+                if path == '':
+                    # Special case, because the path already exists
+                    tree.add([path], [file_id], ['directory'])
+                else:
+                    tree.mkdir(path, file_id)
+            tree.add(to_add_files, to_add_file_ids, to_add_kinds)
+            for file_id, content in new_contents.iteritems():
+                tree.put_file_bytes_non_atomic(file_id, content)
+
+            if message is None:
+                message = u'commit %d' % (self._branch.revno() + 1,)
+            return tree.commit(message, rev_id=revision_id)
         finally:
             tree.unlock()
 

@@ -164,6 +164,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.branch_implementations.test_revision_history',
         'bzrlib.tests.branch_implementations.test_revision_id_to_revno',
         'bzrlib.tests.branch_implementations.test_sprout',
+        'bzrlib.tests.branch_implementations.test_stacking',
         'bzrlib.tests.branch_implementations.test_tags',
         'bzrlib.tests.branch_implementations.test_uncommit',
         'bzrlib.tests.branch_implementations.test_update',

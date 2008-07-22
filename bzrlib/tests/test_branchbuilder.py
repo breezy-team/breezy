@@ -18,6 +18,7 @@
 
 from bzrlib import (
     branch as _mod_branch,
+    errors,
     revision as _mod_revision,
     tests,
     )
@@ -71,3 +72,205 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             [rev_id1],
             branch.repository.get_revision(branch.last_revision()).parent_ids)
+
+
+class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
+
+    def assertTreeShape(self, expected_shape, tree):
+        """Check that the tree shape matches expectations."""
+        tree.lock_read()
+        try:
+            entries = [(path, ie.file_id, ie.kind)
+                       for path, ie in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+        self.assertEqual(expected_shape, entries)
+
+    def build_a_rev(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id1 = builder.build_snapshot('A-id', None,
+            [('add', ('', 'a-root-id', 'directory', None)),
+             ('add', ('a', 'a-id', 'file', 'contents'))])
+        self.assertEqual('A-id', rev_id1)
+        return builder
+
+    def test_add_one_file(self):
+        builder = self.build_a_rev()
+        branch = builder.get_branch()
+        self.assertEqual((1, 'A-id'), branch.last_revision_info())
+        rev_tree = branch.repository.revision_tree('A-id')
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file')], rev_tree)
+        self.assertEqual('contents', rev_tree.get_file_text('a-id'))
+
+    def test_add_second_file(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot('B-id', None,
+            [('add', ('b', 'b-id', 'file', 'content_b'))])
+        self.assertEqual('B-id', rev_id2)
+        branch = builder.get_branch()
+        self.assertEqual((2, rev_id2), branch.last_revision_info())
+        rev_tree = branch.repository.revision_tree(rev_id2)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'file')], rev_tree)
+        self.assertEqual('content_b', rev_tree.get_file_text('b-id'))
+
+    def test_add_empty_dir(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot('B-id', None,
+            [('add', ('b', 'b-id', 'directory', None))])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'directory'),
+                             ], rev_tree)
+
+    def test_commit_message_default(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))])
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'commit 1', rev.message)
+
+    def test_commit_message_supplied(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            message=u'Foo')
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'Foo', rev.message)
+
+    def test_modify_file(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot('B-id', None,
+            [('modify', ('a-id', 'new\ncontent\n'))])
+        self.assertEqual('B-id', rev_id2)
+        branch = builder.get_branch()
+        rev_tree = branch.repository.revision_tree(rev_id2)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertEqual('new\ncontent\n', rev_tree.get_file_text('a-id'))
+
+    def test_delete_file(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot('B-id', None,
+            [('unversion', 'a-id')])
+        self.assertEqual('B-id', rev_id2)
+        branch = builder.get_branch()
+        rev_tree = branch.repository.revision_tree(rev_id2)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertTreeShape([(u'', 'a-root-id', 'directory')], rev_tree)
+
+    def test_delete_directory(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot('B-id', None,
+            [('add', ('b', 'b-id', 'directory', None)),
+             ('add', ('b/c', 'c-id', 'file', 'foo\n')),
+             ('add', ('b/d', 'd-id', 'directory', None)),
+             ('add', ('b/d/e', 'e-id', 'file', 'eff\n')),
+            ])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'directory'),
+                              (u'b/c', 'c-id', 'file'),
+                              (u'b/d', 'd-id', 'directory'),
+                              (u'b/d/e', 'e-id', 'file')], rev_tree)
+        # Removing a directory removes all child dirs
+        builder.build_snapshot('C-id', None, [('unversion', 'b-id')])
+        rev_tree = builder.get_branch().repository.revision_tree('C-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                             ], rev_tree)
+
+    def test_unknown_action(self):
+        builder = self.build_a_rev()
+        self.assertRaises(errors.UnknownBuildAction,
+            builder.build_snapshot, 'B-id', None, [('weirdo', ('foo',))])
+
+    # TODO: rename a file/directory, but rename isn't supported by the
+    #       MemoryTree api yet, so for now we wait until it is used
+
+    def test_set_parent(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('a-id', 'new\ncontent\n'))])
+        builder.build_snapshot('C-id', ['A-id'], 
+            [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
+        # We should now have a graph:
+        #   A
+        #   |\
+        #   C B
+        # And not A => B => C
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({'B-id': ('A-id',), 'C-id': ('A-id',)},
+                         repo.get_parent_map(['B-id', 'C-id']))
+        b_tree = repo.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                             ], b_tree)
+        self.assertEqual('new\ncontent\n', b_tree.get_file_text('a-id'))
+
+        # We should still be using the content from A in C, not from B
+        c_tree = repo.revision_tree('C-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'c', 'c-id', 'file'),
+                             ], c_tree)
+        self.assertEqual('contents', c_tree.get_file_text('a-id'))
+        self.assertEqual('alt\ncontent\n', c_tree.get_file_text('c-id'))
+
+    def test_set_merge_parent(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', ['A-id'],
+            [('add', ('b', 'b-id', 'file', 'b\ncontent\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({'B-id': ('A-id',), 'C-id': ('A-id',),
+                          'D-id': ('B-id', 'C-id')},
+                         repo.get_parent_map(['B-id', 'C-id', 'D-id']))
+        d_tree = repo.revision_tree('D-id')
+        # Note: by default a merge node does *not* pull in the changes from the
+        #       merged tree, you have to supply it yourself.
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'file'),
+                             ], d_tree)
+
+    def test_set_merge_parent_and_contents(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', ['A-id'],
+            [('add', ('b', 'b-id', 'file', 'b\ncontent\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({'B-id': ('A-id',), 'C-id': ('A-id',),
+                          'D-id': ('B-id', 'C-id')},
+                         repo.get_parent_map(['B-id', 'C-id', 'D-id']))
+        d_tree = repo.revision_tree('D-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'file'),
+                              (u'c', 'c-id', 'file'),
+                             ], d_tree)
+        # Because we copied the exact text into *this* tree, the 'c' file
+        # should look like it was not modified in the merge
+        self.assertEqual('C-id', d_tree.inventory['c-id'].revision)
