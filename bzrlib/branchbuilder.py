@@ -68,7 +68,7 @@ class BranchBuilder(object):
             to_add_file_ids = []
             to_add_kinds = []
             new_contents = {}
-            # to_remove = []
+            to_unversion_ids = []
             # to_rename = []
             for action, info in actions:
                 if action == 'add':
@@ -81,6 +81,12 @@ class BranchBuilder(object):
                 elif action == 'modify':
                     file_id, content = info
                     new_contents[file_id] = content
+                elif action == 'unversion':
+                    to_unversion_ids.append(info)
+                else:
+                    raise errors.UnknownBuildAction(action)
+            if to_unversion_ids:
+                tree.unversion(to_unversion_ids)
             tree.add(to_add_paths, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)

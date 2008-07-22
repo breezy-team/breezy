@@ -18,6 +18,7 @@
 
 from bzrlib import (
     branch as _mod_branch,
+    errors,
     revision as _mod_revision,
     tests,
     )
@@ -129,3 +130,19 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         self.assertEqual('new\ncontent\n', rev_tree.get_file_text('a-id'))
+
+    def test_delete_file(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot(None, 'B-id',
+            [('unversion', 'a-id')])
+        self.assertEqual('B-id', rev_id2)
+        branch = builder.get_branch()
+        rev_tree = branch.repository.revision_tree(rev_id2)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertTreeShape([(u'', 'a-root-id', 'directory')], rev_tree)
+
+    def test_unknown_action(self):
+        builder = self.build_a_rev()
+        self.assertRaises(errors.UnknownBuildAction,
+            builder.build_snapshot, None, 'B-id', [('weirdo', ('foo',))])
