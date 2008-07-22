@@ -33,18 +33,10 @@ To test the plugin after installation:
 Documentation
 -------------
 
-The normal recipe is::
+To view the documentation after installation:
 
-  bzr init-repo .
-  frontend | bzr fast-import -
-
-For further details, see http://bazaar-vcs.org/BzrFastImport and the
-online help::
-
-  bzr help fast-import
-  bzr help fast-import-info
-  bzr help fast-import-filter
-
+    bzr help fastimport
+ 
 
 Licensing
 ---------

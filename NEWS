@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
     * Added NEWS containing Release Notes. (Ian Clatworthy)
 
+    * ``bzr help fastimport`` now provides help that is useful.
+      (Ian Clatworthy)
+
   BUG FIXES:
 
     * Support the new Repository API added in bzr.dev r3510. The old API
@@ -22,7 +25,8 @@ IN DEVELOPMENT
   COMPATIBILITY BREAKS:
 
     * The ``--inv-fulltext`` option is not yet supported when the new
-      Repository API is used to import revisions. (Ian Clatworthy)
+      Repository API is used to import revisions. The option can be
+      provided but it will be ignored. (Ian Clatworthy)
 
   API BREAKS:
 

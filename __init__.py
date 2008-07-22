@@ -14,7 +14,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Fast, stream-based importing of data into Bazaar."""
+r"""FastImport Plugin
+=================
+
+The fastimport plugin provides stream-based importing of data into Bazaar.
+A bzr-fast-export.py script is also included providing exporting of data
+out of Bazaar to the same format. As well as enabling interchange between
+multiple VCS tools, fastimport/export can be useful for complex branch
+operatons, e.g. partitioning off part of a code base in order to Open
+Source it.
+
+The normal import recipe is::
+
+  bzr init-repo .
+  front-end | bzr fast-import -
+
+Numerous front-ends are provided in the exporters directory where
+the plugin is installed. The list of known front-ends and their
+status is documented on http://bazaar-vcs.org/BzrFastImport/FrontEnds.
+For further details, see http://bazaar-vcs.org/BzrFastImport and the
+online help for the commands::
+
+  bzr help fast-import
+  bzr help fast-import-info
+  bzr help fast-import-filter
+
+To report bugs or publish enhancements, visit the bzr-fastimport project
+page on Launchpad, https://launchpad.net/bzr-fastimport.
+"""
 
 
 from bzrlib.commands import Command, register_command
