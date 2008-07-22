@@ -26,16 +26,6 @@ from bzrlib.branchbuilder import BranchBuilder
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
     
-    def assertTreeShape(self, expected_shape, tree):
-        """Check that the tree shape matches expectations."""
-        tree.lock_read()
-        try:
-            entries = [(path, ie.file_id, ie.kind)
-                       for path, ie in tree.iter_entries_by_dir()]
-        finally:
-            tree.unlock()
-        self.assertEqual(expected_shape, entries)
-
     def test_create(self):
         """Test the constructor api."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
@@ -82,27 +72,40 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
             [rev_id1],
             branch.repository.get_revision(branch.last_revision()).parent_ids)
 
-    def test_build_snapshot(self):
+
+class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
+
+    def assertTreeShape(self, expected_shape, tree):
+        """Check that the tree shape matches expectations."""
+        tree.lock_read()
+        try:
+            entries = [(path, ie.file_id, ie.kind)
+                       for path, ie in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+        self.assertEqual(expected_shape, entries)
+
+    def build_a_rev(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         rev_id1 = builder.build_snapshot(None, 'A-id',
             [('add', ('', 'a-root-id', 'directory', None)),
              ('add', ('a', 'a-id', 'file', 'contents'))])
         self.assertEqual('A-id', rev_id1)
+        return builder
+
+    def test_add_one_file(self):
+        builder = self.build_a_rev()
         branch = builder.get_branch()
-        self.assertEqual((1, rev_id1), branch.last_revision_info())
-        rev_tree = branch.repository.revision_tree(rev_id1)
+        self.assertEqual((1, 'A-id'), branch.last_revision_info())
+        rev_tree = branch.repository.revision_tree('A-id')
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         self.assertTreeShape([(u'', 'a-root-id', 'directory'),
                               (u'a', 'a-id', 'file')], rev_tree)
         self.assertEqual('contents', rev_tree.get_file_text('a-id'))
 
-    def test_build_snapshot_add_content(self):
-        builder = BranchBuilder(self.get_transport().clone('foo'))
-        rev_id1 = builder.build_snapshot(None, 'A-id',
-            [('add', ('', 'a-root-id', 'directory', None)),
-             ('add', ('a', 'a-id', 'file', 'contents'))])
-        self.assertEqual('A-id', rev_id1)
+    def test_add_second_file(self):
+        builder = self.build_a_rev()
         rev_id2 = builder.build_snapshot(None, 'B-id',
             [('add', ('b', 'b-id', 'file', 'content_b'))])
         self.assertEqual('B-id', rev_id2)
@@ -115,3 +118,14 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
                               (u'a', 'a-id', 'file'),
                               (u'b', 'b-id', 'file')], rev_tree)
         self.assertEqual('content_b', rev_tree.get_file_text('b-id'))
+
+    def test_modify_file(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot(None, 'B-id',
+            [('modify', ('a-id', 'new\ncontent\n'))])
+        self.assertEqual('B-id', rev_id2)
+        branch = builder.get_branch()
+        rev_tree = branch.repository.revision_tree(rev_id2)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertEqual('new\ncontent\n', rev_tree.get_file_text('a-id'))
