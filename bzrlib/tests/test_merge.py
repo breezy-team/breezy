@@ -710,13 +710,31 @@ class TestLCAMerge(TestCaseWithTransport, TestMergeImplementation):
     merge_type = _mod_merge.LCAMerger
 
 
+class LoggingMerger(object):
+    # These seem to be the required attributes
+    requires_base = False
+    supports_reprocess = False
+    supports_show_base = False
+    supports_cherrypick = False
+    # We intentionally do not define supports_lca_trees
+
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+
 class TestMergerInMemory(TestCaseWithMemoryTransport):
     """Tests for Merger that can be done without hitting disk."""
 
-    def test_find_base(self):
-        # A
-        # |\
-        # B C
+    def setup_simple_graph(self):
+        """Create a simple 3-node graph.
+                A
+                |\\
+                B C
+
+        :return: A MemoryTree which is already write-locked, and an unlock has
+            been queued up.
+        """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -726,37 +744,84 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         tree.set_parent_ids(['A-id'])
         tree.branch.set_last_revision_info(1, 'A-id')
         tree.commit('B', rev_id='B-id')
+        return tree
 
+    def setup_criss_cross_graph(self):
+        """Create a 5-node graph with a criss-cross.
+                A
+                |\\
+                B C
+                |X|
+                D E
+        :return: A write locked Memory Tree
+        """
+        tree = self.setup_simple_graph()
+        tree.branch.set_last_revision_info(2, 'C-id')
+        tree.set_parent_ids(['C-id', 'B-id'])
+        tree.commit('E', rev_id='E-id')
+        tree.set_parent_ids(['B-id', 'C-id'])
+        tree.branch.set_last_revision_info(2, 'B-id')
+        tree.commit('D', rev_id='D-id')
+        return tree
+
+    def test_find_base(self):
+        tree = self.setup_simple_graph()
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             tree, 'C-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertFalse(merger._is_criss_cross)
         self.assertIs(None, merger._lca_trees)
 
+
     def test_find_base_criss_cross(self):
-        # A
-        # |\
-        # B C
-        # |X|
-        # D E
-        tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-
-        tree.add('.')
-        tree.commit('A', rev_id='A-id')
-        tree.commit('B', rev_id='B-id')
-        tree.set_parent_ids(['A-id'])
-        tree.branch.set_last_revision_info(1, 'A-id')
-        tree.commit('C', rev_id='C-id')
-        tree.set_parent_ids(['C-id', 'B-id'])
-        tree.commit('E', rev_id='E-id')
-        tree.set_parent_ids(['B-id', 'C-id'])
-        tree.branch.set_last_revision_info(2, 'B-id')
-        tree.commit('D', rev_id='D-id')
-
+        tree = self.setup_criss_cross_graph()
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             tree, 'E-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
         self.assertEqual(['B-id', 'C-id'], sorted(merger._lca_trees.keys()))
+
+    def test_no_criss_cross_passed_to_merge_type(self):
+        class LCATreesMerger(LoggingMerger):
+            supports_lca_trees = True
+
+        tree = self.setup_simple_graph()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            tree, 'C-id')
+        merger.merge_type = LCATreesMerger
+        merge_obj = merger.make_merger()
+        self.assertIsInstance(merge_obj, LCATreesMerger)
+        self.assertFalse('lca_trees' in merge_obj.kwargs)
+
+    def test_criss_cross_passed_to_merge_type(self):
+        tree = self.setup_criss_cross_graph()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            tree, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+
+    def test_criss_cross_not_supported_merge_type(self):
+        class NoLCATreesMerger(LoggingMerger):
+            # We intentionally do not define supports_lca_trees
+            pass
+
+        tree = self.setup_criss_cross_graph()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            tree, 'E-id')
+        merger.merge_type = NoLCATreesMerger
+        merge_obj = merger.make_merger()
+        self.assertIsInstance(merge_obj, NoLCATreesMerger)
+        self.assertFalse('lca_trees' in merge_obj.kwargs)
+
+    def test_criss_cross_unsupported_merge_type(self):
+        class UnsupportedLCATreesMerger(LoggingMerger):
+            supports_lca_trees = False
+
+        tree = self.setup_criss_cross_graph()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            tree, 'E-id')
+        merger.merge_type = UnsupportedLCATreesMerger
+        merge_obj = merger.make_merger()
+        self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
+        self.assertFalse('lca_trees' in merge_obj.kwargs)

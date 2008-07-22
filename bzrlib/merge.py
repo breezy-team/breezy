@@ -425,6 +425,9 @@ class Merger(object):
         if self.merge_type.supports_cherrypick:
             kwargs['cherrypick'] = (not self.base_is_ancestor or
                                     not self.base_is_other_ancestor)
+        if self._is_criss_cross and getattr(self.merge_type,
+                                            'supports_lca_trees', False):
+            kwargs['lca_trees'] = self._lca_trees
         return self.merge_type(pb=self._pb,
                                change_reporter=self.change_reporter,
                                **kwargs)
@@ -479,12 +482,13 @@ class Merge3Merger(object):
     supports_cherrypick = True
     supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
+    supports_lca_trees = True
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
-                 cherrypick=False):
+                 cherrypick=False, lca_trees=None):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -506,6 +510,9 @@ class Merge3Merger(object):
             be combined with interesting_ids.  If neither interesting_files nor
             interesting_ids is specified, all files may participate in the
             merge.
+        :param lca_trees: Can be set to a dictionary of {revision_id:rev_tree}
+            if the ancestry was found to include a criss-cross merge.
+            Otherwise should be None.
         """
         object.__init__(self)
         if interesting_files is not None and interesting_ids is not None:
@@ -520,6 +527,7 @@ class Merge3Merger(object):
         self.cooked_conflicts = []
         self.reprocess = reprocess
         self.show_base = show_base
+        self._lca_trees = lca_trees
         self.pb = pb
         self.pp = pp
         self.change_reporter = change_reporter
