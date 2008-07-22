@@ -249,7 +249,7 @@ Repository:
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+pack-0.92 or rich-root or rich-root-pack or stacked or stacked-rich-root)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -416,7 +416,7 @@ Repository:
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+pack-0.92 or rich-root or rich-root-pack or stacked or stacked-rich-root)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -552,7 +552,7 @@ Repository:
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+pack-0.92 or rich-root or rich-root-pack or stacked or stacked-rich-root)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -675,7 +675,7 @@ Repository:
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+pack-0.92 or rich-root or rich-root-pack or stacked or stacked-rich-root)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -1090,7 +1090,8 @@ Repository:
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
         format = {True: 'dirstate or dirstate-tags or pack-0.92'
-                        ' or rich-root or rich-root-pack',
+                        ' or rich-root or rich-root-pack'
+                        ' or stacked or stacked-rich-root',
                   False: 'dirstate'}[light_checkout]
         if repo_locked:
             repo_locked = lco_tree.branch.repository.get_physical_lock_status()
@@ -1368,3 +1369,22 @@ Repository:
        ), out)
         self.assertEqual('', err)
         tree.unlock()
+
+    def test_info_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development1')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        out, err = self.run_bzr('info newbranch')
+        self.assertEqual(
+"""Standalone tree (format: development1)
+Location:
+  branch root: newbranch
+
+Related branches:
+  parent branch: mainline
+     stacked on: mainline
+""", out)
+        self.assertEqual("", err)

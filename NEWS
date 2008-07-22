@@ -10,6 +10,52 @@ IN DEVELOPMENT
 
   FEATURES:
 
+
+  IMPROVEMENTS:
+
+    * Implemented a custom ``walkdirs_utf8`` implementation for win32.
+      This uses a pyrex extension to get direct access to the
+      ``FindFirstFileW`` style apis, rather than using ``listdir`` +
+      ``lstat``. Shows a very strong improvement in commands like
+      ``status`` and ``diff`` which have to iterate the working tree.
+      Anywhere from 2x-6x faster depending on the size of the tree (bigger
+      trees, bigger benefit.) (John Arbash Meinel)
+
+
+  BUG FIXES:
+
+    * Fix a test case that was failing if encoding wasn't UTF-8.
+      (John Arbash Meinel, #247585)
+
+    * Fix "no buffer space available" error when branching with the new
+      smart server protocol to or from Windows.
+      (Andrew Bennetts, #246180)
+
+
+  DOCUMENTATION:
+
+
+  TESTING:
+
+
+  API CHANGES:
+
+
+  INTERNALS:
+
+    * RuleSearchers return () instead of [] now when there are no matches.
+      (Ian Clatworthy)
+
+
+bzr 1.6beta3 2008-07-17
+-----------------------
+
+  FEATURES:
+
+    * New ``pre_change_branch_tip`` hook that is called before the
+      branch tip is moved, while the branch is write-locked.  See the User
+      Reference for signature details.  (Andrew Bennetts)
+
     * Rule-based preferences can now be defined for selected files in
       selected branches, allowing commands and plugins to provide
       custom behaviour for files matching defined patterns.
@@ -17,11 +63,25 @@ IN DEVELOPMENT
       in the User Guide and ``bzr help rules`` for more information.
       (Ian Clatworthy)
 
+    * Sites may suggest a branch to stack new branches on.  (Aaron Bentley)
+
+    * Stacked branches are now supported. See ``bzr help branch`` and 
+      ``bzr help push``. (Robert Collins)
+
   IMPROVEMENTS:
 
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball 
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
+
+    * ``bzr (re)merge --weave`` will now use a standard Weave algorithm,
+      rather than the annotation-based merge it was using. It does so by
+      building up a Weave of the important texts, without needing to build
+      the full ancestry. (John Arbash Meinel, #238895)
+
+    * ``bzr send`` documents and better supports ``emacsclient`` (proper
+      escaping of mail headers and handling of the MUA Mew).
+      (Christophe Troestler)
 
     * Remembered locations can be specified by aliases, e.g. :parent, :public,
       :submit.  (Aaron Bentley)
@@ -30,8 +90,30 @@ IN DEVELOPMENT
       revision info directly.  This makes operations like push
       faster.  The new request method name is
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
+      
+    * New registry for log properties handles  and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
 
-  BUGFIXES:
+  BUG FIXES:
+
+    * Bazaar is now able to be a client to the web server of IIS 6 and 7.
+      The broken implementations of RFC822 in Python and RFC2046 in IIS
+      combined with boundary-line checking in Bazaar previously made this
+      impossible. (NB, IIS 5 does not suffer from this problem).
+      (Adrian Wilkins, #247585)
+
+    * ``bzr log --long`` with a ghost in your mainline now handles that
+      ghost properly. (John Arbash Meinel, #243536)
+
+    * ``check`` handles the split-up .bzr layout correctly, so no longer
+      requires a branch to be present.
+      (Daniel Watkins, #64783)
+
+    * ``bzr serve --directory=/`` now correctly allows the whole
+      filesystem to be accessed on Windows, not just the root of the drive
+      that Python is running from.
+      (Adrian Wilkins, #240910)
 
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be
       loaded. 
@@ -41,6 +123,12 @@ IN DEVELOPMENT
       and with a suggestion to install the library.  The full traceback is 
       still in ``.bzr.log`` and can be shown with ``-Derror``.
       (Martin Pool, #240161)
+
+    * Fixed problem in branching from smart server.
+      (#249256, Michael Hudson, Martin Pool) 
+
+    * Fetch from a stacked branch copies all required data.
+      (Aaron Bentley, #248506)
 
     * Handle urls such as ftp://user@host.com@www.host.com where the user
       name contains an @.
@@ -68,12 +156,21 @@ IN DEVELOPMENT
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
 
+    * Handle a file turning in to a directory in TreeTransform.
+      (James Westby, #248448)
+
   DOCUMENTATION:
+
+    * Added *Using stacked branches* to the User Guide.
+      (Ian Clatworthy)
 
     * Updated developer documentation.
       (Martin Pool)
 
   TESTING:
+
+   * ``-Dmemory`` will cause /proc/PID/status to be catted before bzr
+     exits, allowing low-key analysis of peak memory use. (Robert Collins)
 
    * ``TestCaseWithTransport.make_branch_and_tree`` tries harder to return
      a tree with a ``branch`` attribute of the right format.  This was
@@ -92,6 +189,10 @@ IN DEVELOPMENT
       parameter.  If you have a subclass of ``Branch`` that overrides
       ``pull`` then you should add this parameter.  (Andrew Bennetts)
 
+    * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.
+      (Daniel Watkins)
+
     * ``Tree.print_file`` and ``Repository.print_file`` are deprecated.
       These methods are bad APIs because they write directly to sys.stdout.
       bzrlib does not use them internally, and there are no direct tests
@@ -101,6 +202,11 @@ IN DEVELOPMENT
 
     * ``cat`` command no longer uses ``Tree.print_file()`` internally.
       (Alexander Belchenko)
+
+    * New class method ``BzrDir.open_containing_tree_branch_or_repository``
+      which eases the discovery of the tree, the branch and the repository
+      containing a given location.
+      (Daniel Watkins)
 
     * New ``versionedfile.KeyMapper`` interface to abstract out the access to
       underlying .knit/.kndx etc files in repositories with partitioned
@@ -181,7 +287,13 @@ now faster.
       record the newest. (If you merge a descendent, it will replace its
       ancestor). (John Arbash Meinel, #235407)
 
+    * ``RepositoryPolicy.__init__`` now requires stack_on and stack_on_pwd,
+      through the derived classes do not.  (Aaron Bentley)
+
   INTERNALS:
+
+    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``stacked`` to control
+      creating stacked branches. (Robert Collins)
 
     * Knit record serialisation is now stricter on what it will accept, to
       guard against potential internal bugs, or broken input. (Robert Collins)

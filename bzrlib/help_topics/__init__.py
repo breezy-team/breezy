@@ -480,7 +480,7 @@ repository (a shared repository). Branches can be copied and merged.
 
 Related commands::
 
-  init    Make a directory into a versioned branch.
+  init    Change a directory into a versioned branch.
   branch  Create a new copy of a branch.
   merge   Perform a three-way merge.
 """

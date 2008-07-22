@@ -1592,7 +1592,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if subf == '.bzr':
                     continue
                 if subf not in dir_entry.children:
-                    subf_norm, can_access = osutils.normalized_filename(subf)
+                    try:
+                        (subf_norm,
+                         can_access) = osutils.normalized_filename(subf)
+                    except UnicodeDecodeError:
+                        path_os_enc = path.encode(osutils._fs_enc)
+                        relpath = path_os_enc + '/' + subf
+                        raise errors.BadFilenameEncoding(relpath,
+                                                         osutils._fs_enc)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)
@@ -2452,6 +2459,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         resolved.remove_files(self)
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
+
+    @needs_read_lock
+    def _check(self):
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = self.branch.repository.revision_tree(
+                self.last_revision())
+            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
 
     def _validate(self):
         """Validate internal structures.

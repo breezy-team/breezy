@@ -218,12 +218,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
-            self._cleanupLogFile(test)
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
             if self.stop_early:
                 self.stop()
+            self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -235,12 +235,12 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
-            self._cleanupLogFile(test)
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
             if self.stop_early:
                 self.stop()
+            self._cleanupLogFile(test)
 
     def addSuccess(self, test):
         """Tell result that test completed successfully.
@@ -923,8 +923,8 @@ class TestCase(unittest.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass:
-            return
+        except excClass, e:
+            return e
         else:
             if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
@@ -2041,16 +2041,32 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected" % filename)
 
+    def _getTestDirPrefix(self):
+        # create a directory within the top level test directory
+        if sys.platform == 'win32':
+            name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
+            # windows is likely to have path-length limits so use a short name
+            name_prefix = name_prefix[-30:]
+        else:
+            name_prefix = re.sub('[/]', '_', self.id())
+        return name_prefix
+
     def makeAndChdirToTestDir(self):
         """See TestCaseWithMemoryTransport.makeAndChdirToTestDir().
         
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        # create a directory within the top level test directory
-        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
+        name_prefix = os.path.join(self.TEST_ROOT, self._getTestDirPrefix())
+        name = name_prefix
+        for i in range(100):
+            if os.path.exists(name):
+                name = name_prefix + '_' + str(i)
+            else:
+                os.mkdir(name)
+                break
         # now create test and home directories within this dir
-        self.test_base_dir = candidate_dir
+        self.test_base_dir = name
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
         self.test_dir = self.test_base_dir + '/work'
@@ -2796,6 +2812,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
                    'bzrlib.tests.test_version_info',
+                   'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_win32utils',
@@ -3073,7 +3090,11 @@ class _UnicodeFilenameFeature(Feature):
 
     def _probe(self):
         try:
-            os.stat(u'\u03b1')
+            # Check for character combinations unlikely to be covered by any
+            # single non-unicode encoding. We use the characters
+            # - greek small letter alpha (U+03B1) and
+            # - braille pattern dots-123456 (U+283F).
+            os.stat(u'\u03b1\u283f')
         except UnicodeEncodeError:
             return False
         except (IOError, OSError):
@@ -3168,6 +3189,37 @@ class _FTPServerFeature(Feature):
         return 'FTPServer'
 
 FTPServerFeature = _FTPServerFeature()
+
+
+class _UnicodeFilename(Feature):
+    """Does the filesystem support Unicode filenames?"""
+
+    def _probe(self):
+        try:
+            os.stat(u'\u03b1')
+        except UnicodeEncodeError:
+            return False
+        except (IOError, OSError):
+            # The filesystem allows the Unicode filename but the file doesn't
+            # exist.
+            return True
+        else:
+            # The filesystem allows the Unicode filename and the file exists,
+            # for some reason.
+            return True
+
+UnicodeFilename = _UnicodeFilename()
+
+
+class _UTF8Filesystem(Feature):
+    """Is the filesystem UTF-8?"""
+
+    def _probe(self):
+        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
+            return True
+        return False
+
+UTF8Filesystem = _UTF8Filesystem()
 
 
 class _CaseInsensitiveFilesystemFeature(Feature):

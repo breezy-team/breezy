@@ -36,7 +36,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check
+from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -552,6 +552,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         target_transport = a_dir.root_transport.clone('..').clone('target')
         target_bzrdir = a_dir.clone_on_transport(target_transport)
         target_repo = target_bzrdir.open_repository()
+        source_branch = bzrlib.branch.Branch.open(
+            self.get_vfs_only_url('source'))
         self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):
@@ -1484,7 +1486,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
+            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
+                         False)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')
@@ -1628,6 +1631,24 @@ class TestBreakLock(TestCaseWithBzrDir):
         lock_tree.lock_write()
         lock_tree.unlock()
         self.assertRaises(errors.LockBroken, tree.unlock)
+
+
+class TestTransportConfig(TestCaseWithBzrDir):
+
+    def test_get_config(self):
+        my_dir = self.make_bzrdir('.')
+        config = my_dir.get_config()
+        if config is None:
+            self.assertFalse(
+                isinstance(my_dir, (bzrdir.BzrDirMeta1, RemoteBzrDir)),
+                "%r should support configs" % my_dir)
+            raise TestNotApplicable(
+                'This BzrDir format does not support configs.')
+        config.set_default_stack_on('http://example.com')
+        self.assertEqual('http://example.com', config.get_default_stack_on())
+        my_dir2 = bzrdir.BzrDir.open(self.get_url('.'))
+        config2 = my_dir2.get_config()
+        self.assertEqual('http://example.com', config2.get_default_stack_on())
 
 
 class ChrootedBzrDirTests(ChrootedTestCase):

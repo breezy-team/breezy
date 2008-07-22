@@ -62,6 +62,7 @@ class TransportTraceDecorator(TransportDecorator):
 
     def delete(self, relpath):
         """See Transport.delete()."""
+        self._activity.append(('delete', relpath))
         return self._decorated.delete(relpath)
 
     def delete_tree(self, relpath):
@@ -131,6 +132,7 @@ class TransportTraceDecorator(TransportDecorator):
         return self._decorated.recommended_page_size()
 
     def rename(self, rel_from, rel_to):
+        self._activity.append(('rename', rel_from, rel_to))
         return self._decorated.rename(rel_from, rel_to)
     
     def rmdir(self, relpath):
