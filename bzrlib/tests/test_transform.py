@@ -2325,7 +2325,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
         work_a.add('file', 'file-id')
-        work_a.commit('base version')
+        base_id = work_a.commit('base version')
         tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
         preview = TransformPreview(work_a)
         self.addCleanup(preview.finalize)
@@ -2334,6 +2334,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.create_file('b\nc\nd\ne\n', trans_id)
         self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
+        tree_a.set_parent_ids([base_id])
         self.assertEqual([
             ('killed-a', 'a\n'),
             ('killed-b', 'b\n'),
