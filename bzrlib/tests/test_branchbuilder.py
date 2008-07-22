@@ -201,6 +201,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_set_parent(self):
         builder = self.build_a_rev()
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         builder.build_snapshot('B-id', ['A-id'],
             [('modify', ('a-id', 'new\ncontent\n'))])
         builder.build_snapshot('C-id', ['A-id'], 
@@ -211,8 +213,6 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         #   C B
         # And not A => B => C
         repo = builder.get_branch().repository
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
         self.assertEqual({'B-id': ('A-id',), 'C-id': ('A-id',)},
                          repo.get_parent_map(['B-id', 'C-id']))
         b_tree = repo.revision_tree('B-id')
@@ -232,14 +232,14 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_set_merge_parent(self):
         builder = self.build_a_rev()
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         builder.build_snapshot('B-id', ['A-id'],
             [('add', ('b', 'b-id', 'file', 'b\ncontent\n'))])
         builder.build_snapshot('C-id', ['A-id'],
             [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         repo = builder.get_branch().repository
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
         self.assertEqual({'B-id': ('A-id',), 'C-id': ('A-id',),
                           'D-id': ('B-id', 'C-id')},
                          repo.get_parent_map(['B-id', 'C-id', 'D-id']))
@@ -253,6 +253,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_set_merge_parent_and_contents(self):
         builder = self.build_a_rev()
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         builder.build_snapshot('B-id', ['A-id'],
             [('add', ('b', 'b-id', 'file', 'b\ncontent\n'))])
         builder.build_snapshot('C-id', ['A-id'],
@@ -260,8 +262,6 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder.build_snapshot('D-id', ['B-id', 'C-id'],
             [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
         repo = builder.get_branch().repository
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
         self.assertEqual({'B-id': ('A-id',), 'C-id': ('A-id',),
                           'D-id': ('B-id', 'C-id')},
                          repo.get_parent_map(['B-id', 'C-id', 'D-id']))
@@ -274,3 +274,15 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         # Because we copied the exact text into *this* tree, the 'c' file
         # should look like it was not modified in the merge
         self.assertEqual('C-id', d_tree.inventory['c-id'].revision)
+
+    def test_start_finish_series(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        try:
+            self.assertIsNot(None, builder._tree)
+            self.assertEqual('w', builder._tree._lock_mode)
+            self.assertTrue(builder._branch.is_locked())
+        finally:
+            builder.finish_series()
+        self.assertIs(None, builder._tree)
+        self.assertFalse(builder._branch.is_locked())

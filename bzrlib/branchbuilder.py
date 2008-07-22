@@ -51,6 +51,7 @@ class BranchBuilder(object):
             format = bzrdir.format_registry.make_bzrdir(format)
         self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
             format=format, force_new_tree=False)
+        self._tree = None
 
     def build_commit(self):
         """Build a commit on the branch."""
@@ -75,6 +76,32 @@ class BranchBuilder(object):
             self._branch.set_last_revision_info(new_revno, new_revision_id)
         finally:
             self._branch.unlock()
+        if self._tree is not None:
+            # We are currently processing a series, but when switching branch
+            # pointers, it is easiest to just create a new memory tree.
+            # That way we are sure to have the right files-on-disk
+            # We are cheating a little bit here, and locking the new tree
+            # before the old tree is unlocked. But that way the branch stays
+            # locked throughout.
+            new_tree = memorytree.MemoryTree.create_on_branch(self._branch)
+            new_tree.lock_write()
+            self._tree.unlock()
+            self._tree = new_tree
+
+    def start_series(self):
+        """We will be creating a series of commits.
+
+        This allows us to hold open the locks while we are processing.
+
+        Make sure to call 'finish_series' when you are done.
+        """
+        self._tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        self._tree.lock_write()
+
+    def finish_series(self):
+        """Call this after start_series to unlock the various objects."""
+        self._tree.unlock()
+        self._tree = None
 
     def build_snapshot(self, revision_id, parent_ids, actions,
                        message=None):
@@ -97,7 +124,10 @@ class BranchBuilder(object):
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(base_id)
 
-        tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        if self._tree is not None:
+            tree = self._tree
+        else:
+            tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
             if parent_ids is not None:
