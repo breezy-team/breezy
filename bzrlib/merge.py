@@ -378,7 +378,10 @@ class Merger(object):
                         interesting_revision_ids))
                 self._cached_trees.update(interesting_trees)
                 self.base_tree = interesting_trees.pop(self.base_rev_id)
-                self._lca_trees = interesting_trees
+                sorted_lca_keys = self.revision_graph.find_merge_order(
+                    revisions[0], lcas)
+                self._lca_trees = [interesting_trees[key]
+                                   for key in sorted_lca_keys]
             else:
                 self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
@@ -658,16 +661,18 @@ class Merge3Merger(object):
             executable  ((base, [exec, in, lcas]), exec_in_other, exec_in_this)
         """
         result = []
-        walker = _mod_tree.MultiWalker(self.other_tree,
-                                       self._lca_trees.values())
+        # XXX: Do we want a better sort order than this?
+        walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
 
         base_inventory = self.base_tree.inventory
         this_inventory = self.this_tree.inventory
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             last_rev = other_ie.revision
+            # I believe we can actually change this to see if last_rev is
+            # identical to *any* of the lca values.
             for lca_path, ie in lca_values:
-                if ie.revision != last_rev:
+                if ie is None or ie.revision != last_rev:
                     break
             else: # Identical in all trees
                 continue
@@ -678,6 +683,9 @@ class Merge3Merger(object):
             parent_id_changed = False
             name_changed = False
             for lca_path, ie in lca_values:
+                if ie is None:
+                    kind_changed = parent_id_changed = name_changed = True
+                    break
                 if ie.kind != other_kind:
                     kind_changed = True
                 if ie.parent_id != other_parent_id:
@@ -706,15 +714,26 @@ class Merge3Merger(object):
             else:
                 this_parent_id = this_name = this_executable = None
 
+            lca_parent_ids = []
+            lca_names = []
+            lca_executable = []
+            for path, ie in lca_values:
+                if ie is None:
+                    lca_parent_ids.append(None)
+                    lca_names.append(None)
+                    lca_executable.append(None)
+                else:
+                    lca_parent_ids.append(ie.parent_id)
+                    lca_names.append(ie.name)
+                    lca_executable.append(ie.executable)
+
+            # If we have gotten this far, that means something has changed
             result.append((file_id, True,
-                           ((base_parent_id,
-                            [ie.parent_id for path, ie in lca_values]),
+                           ((base_parent_id, lca_parent_ids),
                             other_ie.parent_id, this_parent_id),
-                           ((base_name,
-                            [ie.name for path, ie in lca_values]),
+                           ((base_name, lca_names),
                             other_ie.name, this_name),
-                           ((base_executable,
-                            [ie.executable for path, ie in lca_values]),
+                           ((base_executable, lca_executable),
                             other_ie.executable, this_executable)
                           ))
         return result

@@ -1166,7 +1166,8 @@ class TestMergerInMemory(TestMergerBase):
         merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
-        self.assertEqual(['B-id', 'C-id'], sorted(merger._lca_trees.keys()))
+        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+                                            for t in merger._lca_trees])
 
     def test_no_criss_cross_passed_to_merge_type(self):
         class LCATreesMerger(LoggingMerger):
@@ -1182,7 +1183,8 @@ class TestMergerInMemory(TestMergerBase):
         merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
-        self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+                                            for t in merger._lca_trees])
 
     def test_criss_cross_not_supported_merge_type(self):
         class NoLCATreesMerger(LoggingMerger):
@@ -1227,7 +1229,8 @@ class TestMergerEntriesLCA(TestMergerBase):
             [('modify', ('a-id', 'a\nB\nb\nC\nc\n'))])
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
-        self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+                                            for t in merge_obj._lca_trees])
         self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
 
@@ -1268,7 +1271,8 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot('F-id', ['D-id', 'E-id'], [])
         merge_obj = self.make_merge_obj(builder, 'G-id')
 
-        self.assertEqual(['D-id', 'E-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual(['D-id', 'E-id'], [t.get_revision_id()
+                                            for t in merge_obj._lca_trees])
         self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
@@ -1283,17 +1287,18 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('C-id', ['A-id'],
-            [('modify', ('a-id', 'a\nb\nC\nc\n'))])
         builder.build_snapshot('B-id', ['A-id'],
             [('modify', ('a-id', 'a\nB\nb\nc\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('a-id', 'a\nb\nC\nc\n'))])
         builder.build_snapshot('E-id', ['C-id', 'B-id'],
             [('modify', ('a-id', 'a\nB\nb\nC\nc\nE\n'))])
         builder.build_snapshot('D-id', ['B-id', 'C-id'],
             [('unversion', 'a-id')])
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
-        self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+                                            for t in merge_obj._lca_trees])
         self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
 
         entries = list(merge_obj._entries_lca())
@@ -1304,6 +1309,30 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), False, None)),
                          ], entries)
 
+    def test_not_in_one_lca(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+                                            for t in merge_obj._lca_trees])
+        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('a-id', True,
+                           ((None, [None, root_id]), root_id, root_id),
+                           ((None, [None, u'a']), u'a', u'a'),
+                           ((None, [None, False]), False, False)),
+                         ], entries)
+
     # TODO: cases to test
     #       simple criss-cross LCAS identical, BASE different
     #       x-x changed from BASE but identical for all LCAs and tips
@@ -1311,3 +1340,4 @@ class TestMergerEntriesLCA(TestMergerBase):
     #       x-x OTHER deletes the file
     #       x-x OTHER introduces the file
     #       x-x LCAs differ, one in ancestry of other for a given file
+    #       x-x file missing in LCA
