@@ -1639,7 +1639,9 @@ class TestTransportConfig(TestCaseWithBzrDir):
         my_dir = self.make_bzrdir('.')
         config = my_dir.get_config()
         if config is None:
-            self.assertFalse(isinstance(my_dir, bzrdir.BzrDirMeta1))
+            self.assertTrue(
+                isinstance(my_dir, (bzrdir.BzrDir6, bzrdir.BzrDir5)),
+                "%s should support configs" % my_dir)
             raise TestNotApplicable(
                 'This BzrDir format does not support configs.')
         config.set_default_stack_on('http://example.com')
