@@ -552,6 +552,7 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         self._response_body = data
 
     def _read_bytes(self, count):
+        """See SmartClientMediumRequest._read_bytes."""
         return self._response_body.read(count)
 
     def _finished_reading(self):
