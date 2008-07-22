@@ -130,6 +130,23 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'b', 'b-id', 'directory'),
                              ], rev_tree)
 
+    def test_commit_message_default(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))])
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'commit 1', rev.message)
+
+    def test_commit_message_supplied(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            message=u'Foo')
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'Foo', rev.message)
+
     def test_modify_file(self):
         builder = self.build_a_rev()
         rev_id2 = builder.build_snapshot('B-id', None,

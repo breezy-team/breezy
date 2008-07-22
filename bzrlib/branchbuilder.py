@@ -76,11 +76,11 @@ class BranchBuilder(object):
         finally:
             self._branch.unlock()
 
-    def build_snapshot(self, revision_id, parent_ids, actions):
+    def build_snapshot(self, revision_id, parent_ids, actions,
+                       message=None):
         """Build a commit, shaped in a specific way.
 
-        :param revision_id: The handle for the new commit, could be none, as it
-            will be returned, though it is put in the commit message.
+        :param revision_id: The handle for the new commit, can be None
         :param parent_ids: A list of parent_ids to use for the commit.
             It can be None, which indicates to use the last commit.
         :param actions: A list of actions to perform. Supported actions are:
@@ -88,6 +88,8 @@ class BranchBuilder(object):
             ('modify', ('file-id', 'new-content'))
             ('unversion', 'file-id')
             # not supported yet: ('rename', ('orig-path', 'new-path'))
+        :param message: An optional commit message, if not supplied, a default
+            commit message will be written.
         ;return: The revision_id of the new commit
         """
         if parent_ids is not None:
@@ -144,7 +146,9 @@ class BranchBuilder(object):
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
 
-            return tree.commit('commit %s' % (revision_id,), rev_id=revision_id)
+            if message is None:
+                message = u'commit %d' % (self._branch.revno() + 1,)
+            return tree.commit(message, rev_id=revision_id)
         finally:
             tree.unlock()
 
