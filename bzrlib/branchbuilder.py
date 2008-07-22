@@ -60,19 +60,39 @@ class BranchBuilder(object):
         finally:
             tree.unlock()
 
-    def build_snapshot(self, parent_ids, revision_id, actions):
+    def _move_branch_pointer(self, new_revision_id):
+        """Point self._branch to a different revision id."""
+        self._branch.lock_write()
+        try:
+            # We don't seem to have a simple set_last_revision(), so we
+            # implement it here.
+            cur_revno, cur_revision_id = self._branch.last_revision_info()
+            g = self._branch.repository.get_graph()
+            new_revno = g.find_distance_to_null(new_revision_id,
+                                                [(cur_revision_id, cur_revno)])
+            self._branch.set_last_revision_info(new_revno, new_revision_id)
+        finally:
+            self._branch.unlock()
+
+    def build_snapshot(self, revision_id, parent_ids, actions):
+        """Build a commit, shaped in a specific way.
+
+        :param revision_id: The handle for the new commit, could be none, as it
+            will be returned, though it is put in the commit message.
+        :param parent_ids: A list of parent_ids to use for the commit.
+            It can be None, which indicates to use the last commit.
+        :param actions: A list of actions to perform. Supported actions are:
+            ('add', ('path', 'file-id', 'kind', 'content' or None))
+            ('modify', ('file-id', 'new-content'))
+            ('unversion', 'file-id')
+            # not supported yet: ('rename', ('orig-path', 'new-path'))
+        ;return: The revision_id of the new commit
+        """
         if parent_ids is not None:
-            self._branch.lock_write()
-            try:
-                base_id = parent_ids[0]
-                # Unfortunately, this is the only real way to get the revno
-                cur_revno, cur_revision_id = self._branch.last_revision_info()
-                g = self._branch.repository.get_graph()
-                new_revno = g.find_distance_to_null(base_id,
-                                [(cur_revision_id, cur_revno)])
-                self._branch.set_last_revision_info(new_revno, base_id)
-            finally:
-                self._branch.unlock()
+            base_id = parent_ids[0]
+            if base_id != self._branch.last_revision():
+                self._move_branch_pointer(base_id)
+
         tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
