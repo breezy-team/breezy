@@ -228,6 +228,10 @@ class RemoteBzrDir(BzrDir):
         return self._real_bzrdir.clone(url, revision_id=revision_id,
             force_new_repo=force_new_repo, preserve_stacking=preserve_stacking)
 
+    def get_config(self):
+        self._ensure_real()
+        return self._real_bzrdir.get_config()
+
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
@@ -242,7 +246,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the class level.
     """
 
-    _matchingbzrdir = RemoteBzrDirFormat
+    _matchingbzrdir = RemoteBzrDirFormat()
 
     def initialize(self, a_bzrdir, shared=False):
         if not isinstance(a_bzrdir, RemoteBzrDir):

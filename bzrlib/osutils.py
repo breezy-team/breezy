@@ -53,6 +53,7 @@ from bzrlib import (
     )
 """)
 
+
 import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -1178,6 +1179,8 @@ def walkdirs(top, prefix=""):
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
+_real_walkdirs_utf8 = None
+
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
 
@@ -1192,12 +1195,27 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32' or
-        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
-        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
-    else:
-        return _walkdirs_fs_utf8(top, prefix=prefix)
+    global _real_walkdirs_utf8
+    if _real_walkdirs_utf8 is None:
+        fs_encoding = _fs_enc.upper()
+        if win32utils.winver == 'Windows NT':
+            # Win98 doesn't have unicode apis like FindFirstFileW
+            # TODO: We possibly could support Win98 by falling back to the
+            #       original FindFirstFile, and using TCHAR instead of WCHAR,
+            #       but that gets a bit tricky, and requires custom compiling
+            #       for win98 anyway.
+            try:
+                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+            except ImportError:
+                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            else:
+                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            # ANSI_X3.4-1968 is a form of ASCII
+            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+        else:
+            _real_walkdirs_utf8 = _walkdirs_fs_utf8
+    return _real_walkdirs_utf8(top, prefix=prefix)
 
 
 def _walkdirs_fs_utf8(top, prefix=""):

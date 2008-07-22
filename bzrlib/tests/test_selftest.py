@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,12 +30,17 @@ from bzrlib import (
     errors,
     memorytree,
     osutils,
+    remote,
     repository,
     symbol_versioning,
     tests,
+    workingtree,
     )
 from bzrlib.progress import _BaseProgressBar
-from bzrlib.repofmt import weaverepo
+from bzrlib.repofmt import (
+    pack_repo,
+    weaverepo,
+    )
 from bzrlib.symbol_versioning import (
     one_zero,
     zero_eleven,
@@ -244,60 +249,39 @@ class TestBzrDirProviderAdapter(TestCase):
 class TestRepositoryParameterisation(TestCase):
     """A group of tests that test the repository implementation test adapter."""
 
-    def test_setting_vfs_transport(self):
-        """The vfs_transport_factory can be set optionally."""
-        from bzrlib.tests.repository_implementations import formats_to_scenarios
-        scenarios = formats_to_scenarios(
-            [("(one)", "a", "b"), ("(two)", "c", "d")],
-            None,
-            None,
-            vfs_transport_factory="vfs")
-        self.assertEqual([
-            ('str(one)',
-             {'bzrdir_format': 'b',
-              'repository_format': 'a',
-              'transport_readonly_server': None,
-              'transport_server': None,
-              'vfs_transport_factory': 'vfs'}),
-            ('str(two)',
-             {'bzrdir_format': 'd',
-              'repository_format': 'c',
-              'transport_readonly_server': None,
-              'transport_server': None,
-              'vfs_transport_factory': 'vfs'})],
-            scenarios)
-
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
-        formats = [("(c)", "c", "C"), ("(d)", 1, "D")]
+        formats = [("(c)", remote.RemoteRepositoryFormat()),
+                   ("(d)", repository.format_registry.get(
+                        'Bazaar pack repository format 1 (needs bzr 0.92)\n'))]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             vfs_transport_factory="vfs")
-        # no_vfs generate scenarios without vfs_transport_factor
+        # no_vfs generate scenarios without vfs_transport_factory
         self.assertEqual([
-            ('str(c)',
-             {'bzrdir_format': 'C',
-              'repository_format': 'c',
+            ('RemoteRepositoryFormat(c)',
+             {'bzrdir_format': remote.RemoteBzrDirFormat(),
+              'repository_format': remote.RemoteRepositoryFormat(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'}),
-            ('int(d)',
-             {'bzrdir_format': 'D',
-              'repository_format': 1,
+            ('RepositoryFormatKnitPack1(d)',
+             {'bzrdir_format': bzrdir.BzrDirMetaFormat1(),
+              'repository_format': pack_repo.RepositoryFormatKnitPack1(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'})],
             no_vfs_scenarios)
         self.assertEqual([
-            ('str(c)',
-             {'bzrdir_format': 'C',
-              'repository_format': 'c',
+            ('RemoteRepositoryFormat(c)',
+             {'bzrdir_format': remote.RemoteBzrDirFormat(),
+              'repository_format': remote.RemoteRepositoryFormat(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'}),
-            ('int(d)',
-             {'bzrdir_format': 'D',
-              'repository_format': 1,
+            ('RepositoryFormatKnitPack1(d)',
+             {'bzrdir_format': bzrdir.BzrDirMetaFormat1(),
+              'repository_format': pack_repo.RepositoryFormatKnitPack1(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'})],
@@ -393,19 +377,20 @@ class TestWorkingTreeProviderAdapter(TestCase):
             import WorkingTreeTestProviderAdapter
         server1 = "a"
         server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
+        formats = [workingtree.WorkingTreeFormat2(),
+                   workingtree.WorkingTreeFormat3(),]
         adapter = WorkingTreeTestProviderAdapter(server1, server2, formats)
         self.assertEqual([
-            ('str',
-             {'bzrdir_format': 'C',
+            ('WorkingTreeFormat2',
+             {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': 'c'}),
-            ('str',
-             {'bzrdir_format': 'D',
+              'workingtree_format': formats[0]}),
+            ('WorkingTreeFormat3',
+             {'bzrdir_format': formats[1]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': 'd'})],
+              'workingtree_format': formats[1]})],
             adapter.scenarios)
 
 
@@ -425,12 +410,12 @@ class TestTreeProviderAdapter(TestCase):
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.workingtree import WorkingTreeFormat, WorkingTreeFormat3
         input_test = TestTreeProviderAdapter(
             "test_adapted_tests")
         server1 = "a"
         server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
+        formats = [workingtree.WorkingTreeFormat2(),
+                   workingtree.WorkingTreeFormat3(),]
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
@@ -439,14 +424,14 @@ class TestTreeProviderAdapter(TestCase):
         self.assertEqual(5, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
-        default_format = WorkingTreeFormat3
-        self.assertEqual(tests[0].workingtree_format, formats[0][0])
-        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
+        default_format = workingtree.WorkingTreeFormat3
+        self.assertEqual(tests[0].workingtree_format, formats[0])
+        self.assertEqual(tests[0].bzrdir_format, formats[0]._matchingbzrdir)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
-        self.assertEqual(tests[1].workingtree_format, formats[1][0])
-        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
+        self.assertEqual(tests[1].workingtree_format, formats[1])
+        self.assertEqual(tests[1].bzrdir_format, formats[1]._matchingbzrdir)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
         self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)

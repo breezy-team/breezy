@@ -10,6 +10,48 @@ IN DEVELOPMENT
 
   FEATURES:
 
+
+  IMPROVEMENTS:
+
+    * Implemented a custom ``walkdirs_utf8`` implementation for win32.
+      This uses a pyrex extension to get direct access to the
+      ``FindFirstFileW`` style apis, rather than using ``listdir`` +
+      ``lstat``. Shows a very strong improvement in commands like
+      ``status`` and ``diff`` which have to iterate the working tree.
+      Anywhere from 2x-6x faster depending on the size of the tree (bigger
+      trees, bigger benefit.) (John Arbash Meinel)
+
+
+  BUG FIXES:
+
+    * Fix a test case that was failing if encoding wasn't UTF-8.
+      (John Arbash Meinel, #247585)
+
+    * Fix "no buffer space available" error when branching with the new
+      smart server protocol to or from Windows.
+      (Andrew Bennetts, #246180)
+
+
+  DOCUMENTATION:
+
+
+  TESTING:
+
+
+  API CHANGES:
+
+
+  INTERNALS:
+
+    * RuleSearchers return () instead of [] now when there are no matches.
+      (Ian Clatworthy)
+
+
+bzr 1.6beta3 2008-07-17
+-----------------------
+
+  FEATURES:
+
     * New ``pre_change_branch_tip`` hook that is called before the
       branch tip is moved, while the branch is write-locked.  See the User
       Reference for signature details.  (Andrew Bennetts)
@@ -32,6 +74,11 @@ IN DEVELOPMENT
       to stdout; also ``tar`` and ``tbz2``.
       (Martin Pool)
 
+    * ``bzr (re)merge --weave`` will now use a standard Weave algorithm,
+      rather than the annotation-based merge it was using. It does so by
+      building up a Weave of the important texts, without needing to build
+      the full ancestry. (John Arbash Meinel, #238895)
+
     * ``bzr send`` documents and better supports ``emacsclient`` (proper
       escaping of mail headers and handling of the MUA Mew).
       (Christophe Troestler)
@@ -43,6 +90,10 @@ IN DEVELOPMENT
       revision info directly.  This makes operations like push
       faster.  The new request method name is
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
+      
+    * New registry for log properties handles  and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
 
   BUG FIXES:
 
@@ -59,6 +110,11 @@ IN DEVELOPMENT
       requires a branch to be present.
       (Daniel Watkins, #64783)
 
+    * ``bzr serve --directory=/`` now correctly allows the whole
+      filesystem to be accessed on Windows, not just the root of the drive
+      that Python is running from.
+      (Adrian Wilkins, #240910)
+
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be
       loaded. 
       (Martin Pool, #205230)
@@ -67,6 +123,9 @@ IN DEVELOPMENT
       and with a suggestion to install the library.  The full traceback is 
       still in ``.bzr.log`` and can be shown with ``-Derror``.
       (Martin Pool, #240161)
+
+    * Fixed problem in branching from smart server.
+      (#249256, Michael Hudson, Martin Pool) 
 
     * Fetch from a stacked branch copies all required data.
       (Aaron Bentley, #248506)
@@ -97,7 +156,13 @@ IN DEVELOPMENT
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
 
+    * Handle a file turning in to a directory in TreeTransform.
+      (James Westby, #248448)
+
   DOCUMENTATION:
+
+    * Added *Using stacked branches* to the User Guide.
+      (Ian Clatworthy)
 
     * Updated developer documentation.
       (Martin Pool)

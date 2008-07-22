@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1214,6 +1214,21 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
             "^File exists: .+/foo")
+
+    def test_file_to_directory(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add(['foo'])
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(foo_trans_id)
+        tt.create_directory(foo_trans_id)
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.create_file(["aa\n"], bar_trans_id)
+        tt.version_file("bar-1", bar_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo/bar")
 
 
 class TransformGroup(object):

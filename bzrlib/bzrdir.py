@@ -1059,11 +1059,9 @@ class BzrDir(object):
             if stacked:
                 stacked_branch_url = self.root_transport.base
             else:
-                try:
-                    stacked_branch_url = source_branch.get_stacked_on_url()
-                except (errors.NotStacked, errors.UnstackableBranchFormat,
-                    errors.UnstackableRepositoryFormat):
-                    stacked_branch_url = None
+                # if a stacked branch wasn't requested, we don't create one
+                # even if the origin was stacked
+                stacked_branch_url = None
         except errors.NotBranchError:
             source_branch = None
             try:
@@ -2973,6 +2971,19 @@ format_registry.register_metadir('rich-root-pack',
         'rich-root format repositories. Incompatible with'
         ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('stacked',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
+    help='A branch and pack based repository that supports stacking. ',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('stacked-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
+    help='A branch and pack based repository that supports stacking '
+         'and rich root data (needed for bzr-svn). ',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 # The following two formats should always just be aliases.

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -721,21 +721,22 @@ class cmd_push(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
-        Option('reference',
+        Option('stacked',
+            help='Create a stacked branch that references the public location '
+                'of the parent branch.'),
+        Option('stacked-on',
             help='Create a stacked branch that refers to another branch '
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
             type=unicode),
-        Option('stacked',
-            help='Create a stacked branch that references the public location '
-                'of the parent branch. See --reference for more information.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
-        use_existing_dir=False, directory=None, reference=None, stacked=False):
+        use_existing_dir=False, directory=None, stacked_on=None,
+        stacked=False):
         from bzrlib.push import _show_push_branch
 
         # Get the source branch and revision_id
@@ -751,22 +752,21 @@ class cmd_push(Command):
         else:
             revision_id = br_from.last_revision()
 
-        # Get the reference branch, if any
-        if reference is not None:
-            reference = urlutils.normalize_url(reference)
+        # Get the stacked_on branch, if any
+        if stacked_on is not None:
+            stacked_on = urlutils.normalize_url(stacked_on)
         elif stacked:
-            reference = None
             parent_url = br_from.get_parent()
             if parent_url:
                 parent = Branch.open(parent_url)
-                reference = parent.get_public_branch()
-                if not reference:
+                stacked_on = parent.get_public_branch()
+                if not stacked_on:
                     # I considered excluding non-http url's here, thus forcing
                     # 'public' branches only, but that only works for some
                     # users, so it's best to just depend on the user spotting an
                     # error by the feedback given to them. RBC 20080227.
-                    reference = parent_url
-            if not reference:
+                    stacked_on = parent_url
+            if not stacked_on:
                 raise errors.BzrCommandError(
                     "Could not determine branch to refer to.")
 
@@ -784,7 +784,7 @@ class cmd_push(Command):
 
         _show_push_branch(br_from, revision_id, location, self.outf,
             verbose=verbose, overwrite=overwrite, remember=remember,
-            reference=reference, create_prefix=create_prefix,
+            stacked_on=stacked_on, create_prefix=create_prefix,
             use_existing_dir=use_existing_dir)
 
 
@@ -3407,7 +3407,10 @@ class cmd_testament(Command):
             testament_class = StrictTestament
         else:
             testament_class = Testament
-        b = WorkingTree.open_containing(branch)[0].branch
+        if branch == '.':
+            b = Branch.open_containing(branch)[0]
+        else:
+            b = Branch.open(branch)
         b.lock_read()
         try:
             if revision is None:
@@ -4377,17 +4380,22 @@ class cmd_reconfigure(Command):
     If none of these is available, --bind-to must be specified.
     """
 
+    _see_also = ['branches', 'checkouts', 'standalone-trees', 'working-trees']
     takes_args = ['location?']
     takes_options = [RegistryOption.from_kwargs('target_type',
                      title='Target type',
                      help='The type to reconfigure the directory to.',
                      value_switches=True, enum_switch=False,
-                     branch='Reconfigure to a branch.',
-                     tree='Reconfigure to a tree.',
-                     checkout='Reconfigure to a checkout.',
-                     lightweight_checkout='Reconfigure to a lightweight'
-                     ' checkout.',
-                     standalone='Reconfigure to be standalone.',
+                     branch='Reconfigure to be an unbound branch '
+                        'with no working tree.',
+                     tree='Reconfigure to be an unbound branch '
+                        'with a working tree.',
+                     checkout='Reconfigure to be a bound branch '
+                        'with a working tree.',
+                     lightweight_checkout='Reconfigure to be a lightweight'
+                     ' checkout (with no local history).',
+                     standalone='Reconfigure to be a standalone branch '
+                        '(i.e. stop using shared repository).',
                      use_shared='Reconfigure to use a shared repository.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
