@@ -26,6 +26,9 @@ from bzrlib.branchbuilder import BranchBuilder
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
     
+    def assertTreeShape(self, entries, tree):
+        """Check that the tree shape matches expectations."""
+
     def test_create(self):
         """Test the constructor api."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
@@ -71,3 +74,20 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             [rev_id1],
             branch.repository.get_revision(branch.last_revision()).parent_ids)
+
+    def test_build_snapshot(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id1 = builder.build_snapshot(None, 'A-id',
+            [('add', ('', 'a-root-id', 'directory', None)),
+             ('add', ('a', 'a-id', 'file', 'contents'))])
+        self.assertEqual('A-id', rev_id1)
+        branch = builder.get_branch()
+        self.assertEqual((1, rev_id1), branch.last_revision_info())
+        rev_tree = branch.repository.revision_tree(rev_id1)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        entries = [(path, ie.file_id, ie.kind)
+                   for path, ie in rev_tree.iter_entries_by_dir()]
+        self.assertEqual([(u'', 'a-root-id', 'directory'),
+                          (u'a', 'a-id', 'file')], entries)
+        self.assertEqual('contents', rev_tree.get_file_text('a-id'))

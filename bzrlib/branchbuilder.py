@@ -60,6 +60,32 @@ class BranchBuilder(object):
         finally:
             tree.unlock()
 
+    def build_snapshot(self, parent_ids, revision_id, actions):
+        tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        tree.lock_write()
+        try:
+            to_add_paths = []
+            to_add_file_ids = []
+            to_add_kinds = []
+            to_add_contents = {}
+            # to_remove = []
+            # to_rename = []
+            for action, info in actions:
+                if action == 'add':
+                    path, file_id, kind, content = info
+                    to_add_paths.append(path)
+                    to_add_file_ids.append(file_id)
+                    to_add_kinds.append(kind)
+                    if content is not None:
+                        to_add_contents[file_id] = content
+            tree.add(to_add_paths, to_add_file_ids, to_add_kinds)
+            for file_id, content in to_add_contents.iteritems():
+                tree.put_file_bytes_non_atomic(file_id, content)
+
+            return tree.commit('commit %s' % (revision_id,), rev_id=revision_id)
+        finally:
+            tree.unlock()
+
     def get_branch(self):
         """Return the branch created by the builder."""
         return self._branch
