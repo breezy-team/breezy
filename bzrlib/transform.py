@@ -1410,6 +1410,7 @@ class _PreviewTree(tree.Tree):
         self._transform = transform
         self._final_paths = FinalPaths(transform)
         self.__by_parent = None
+        self._parent_ids = []
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
@@ -1682,7 +1683,10 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.walkdirs(prefix)
 
     def get_parent_ids(self):
-        return self._transform._tree.get_parent_ids()
+        return self._parent_ids
+
+    def set_parent_ids(self, parent_ids):
+        self._parent_ids = parent_ids
 
     def get_revision_tree(self, revision_id):
         return self._transform._tree.get_revision_tree(revision_id)

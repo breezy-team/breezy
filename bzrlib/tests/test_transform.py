@@ -2314,3 +2314,10 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.set_executability(True, preview.trans_id_file_id('file-id'))
         preview_tree = preview.get_preview_tree()
         self.assertEqual(True, preview_tree.is_executable('file-id'))
+
+    def test_get_set_parent_ids(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        self.assertEqual([], preview_tree.get_parent_ids())
+        preview_tree.set_parent_ids(['rev-1'])
+        self.assertEqual(['rev-1'], preview_tree.get_parent_ids())
+
