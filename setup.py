@@ -324,9 +324,28 @@ elif 'py2exe' in sys.argv:
         import warnings
         warnings.warn('Unknown Python version.\n'
                       'Please check setup.py script for compatibility.')
+
+    # Although we currently can't enforce it, we consider it an error for
+    # py2exe to report any files are "missing".  Such modules we know aren't
+    # used should be listed here.
+    excludes = """Tkinter psyco ElementPath r_hmac
+                  ImaginaryModule cElementTree elementtree.ElementTree
+                  Crypto.PublicKey._fastmath
+                  medusa medusa.filesys medusa.ftp_server
+                  tools tools.doc_generate
+                  resource validate""".split()
+
     # email package from std python library use lazy import,
     # so we need to explicitly add all package
     additional_packages.add('email')
+    # And it uses funky mappings to conver to 'Oldname' to 'newname'.  As
+    # a result, packages like 'email.Parser' show as missing.  Tell py2exe
+    # to exclude them.
+    import email
+    for oldname in getattr(email, '_LOWERNAMES', []):
+        excludes.append("email." + oldname)
+    for oldname in getattr(email, '_MIMENAMES', []):
+        excludes.append("email.MIME" + oldname)
 
     # text files for help topis
     text_topics = glob.glob('bzrlib/help_topics/en/*.txt')
@@ -351,20 +370,117 @@ elif 'py2exe' in sys.argv:
     mf.run_package('bzrlib/plugins')
     packs, mods = mf.get_result()
     additional_packages.update(packs)
+    includes.extend(mods)
+
+    console_targets = [target,
+                       'tools/win32/bzr_postinstall.py',
+                       ]
+    gui_targets = []
+    com_targets = []
+
+    if "TBZR" in os.environ:
+        # Eg: via SVN: http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
+        if not os.path.isfile(os.environ.get('TOVMSI_WIN32', '<nofile>')):
+            raise RuntimeError, "Please set TOVMSI_WIN32 to the location of " \
+                                "the TortoiseOverlays .msi installerfile"
+
+        packages.append('tbzrcommands')
+        # PyQt4 itself still escapes the plugin detection code for some reason...
+        packages.append('PyQt4')
+        includes.append('sip') # extension module required for Qt.
+
+        # ModuleFinder can't handle runtime changes to __path__, but
+        # win32com uses them.  Hook this in so win32com.shell is found.
+        import modulefinder
+        import win32com
+        for p in win32com.__path__[1:]:
+            modulefinder.AddPackagePath("win32com", p)
+        for extra in ["win32com.shell"]:
+            __import__(extra)
+            m = sys.modules[extra]
+            for p in m.__path__[1:]:
+                modulefinder.AddPackagePath(extra, p)
+
+        # TBZR points to the TBZR directory
+        tbzr_root = os.environ["TBZR"]
+
+        # Ensure tbzrlib itself is on sys.path
+        sys.path.append(tbzr_root)
+
+        # Ensure our COM "entry-point" is on sys.path
+        sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
+
+        packages.append("tbzrlib")
+        excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
+                           win32ui crawler.Crawler""".split())
+
+        tbzr = dict(
+            modules=["tbzr"],
+            create_exe = False, # we only want a .dll
+        )
+        com_targets.append(tbzr)
+
+        # tbzrcache executables - a "console" version for debugging and a
+        # GUI version that is generally used.
+        tbzrcache = dict(
+            script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
+            icon_resources = [(0,'bzr.ico')],
+        )
+        console_targets.append(tbzrcache)
+
+        # Make a windows version which is the same except for the base name.
+        tbzrcachew = tbzrcache.copy()
+        tbzrcachew["dest_base"]="tbzrcachew"
+        gui_targets.append(tbzrcachew)
+
+        # ditto for the tbzrcommand tool
+        tbzrcommand = dict(
+            script = os.path.join(tbzr_root, "Scripts", "tbzrcommand.py"),
+            icon_resources = [(0,'bzr.ico')],
+        )
+        console_targets.append(tbzrcommand)
+        tbzrcommandw = tbzrcommand.copy()
+        tbzrcommandw["dest_base"]="tbzrcommandw"
+        gui_targets.append(tbzrcommandw)
+        
+        # tbzr tests
+        tbzrtest = dict(
+            script = os.path.join(tbzr_root, "Scripts", "tbzrtest.py"),
+        )
+        console_targets.append(tbzrtest)
+
+        # A utility to see python output from the shell extension - this will
+        # die when we get a c++ extension
+        # any .py file from pywin32's win32 lib will do (other than
+        # win32traceutil itself that is)
+        import winerror
+        win32_lib_dir = os.path.dirname(winerror.__file__)
+        tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
+                      dest_base="tbzr_tracer")
+        console_targets.append(tracer)
+
+    else:
+        # print this warning to stderr as output is redirected, so it is seen
+        # at build time.  Also to stdout so it appears in the log
+        for f in (sys.stderr, sys.stdout):
+            print >> f, \
+                "Skipping TBZR binaries - please set TBZR to a directory to enable"
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
-                               "includes": includes + mods,
-                               "excludes": ["Tkinter", "medusa", "tools"],
+                               "includes": includes,
+                               "excludes": excludes,
                                "dll_excludes": ["MSWSOCK.dll"],
                                "dist_dir": "win32_bzr.exe",
+                               "optimize": 1,
                               },
                    }
+
     setup(options=options_list,
-          console=[target,
-                   'tools/win32/bzr_postinstall.py',
-                  ],
+          console=console_targets,
+          windows=gui_targets,
+          com_server=com_targets,
           zipfile='lib/library.zip',
           data_files=topics_files + plugins_files,
           )
