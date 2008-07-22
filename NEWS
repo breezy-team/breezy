@@ -16,6 +16,11 @@ IN DEVELOPMENT
     * ``bzr help fastimport`` now provides help that is useful.
       (Ian Clatworthy)
 
+    * Numerous fixes to ``bzr-fast-export.py`` to improve round-tripping
+      with Git. Added ``--import-marks`` and ``--export-marks`` options
+      to ``fast-import`` as well.
+      (Pieter de Bie)
+
   BUG FIXES:
 
     * Support the new Repository API added in bzr.dev r3510. The old API

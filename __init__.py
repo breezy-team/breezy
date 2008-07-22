@@ -172,11 +172,15 @@ class cmd_fast_import(Command):
                     Option('experimental',
                         help="Enable experimental features.",
                         ),
+                    Option('import-marks', type=str,
+                        help="Import marks from file."),
+                    Option('export-marks', type=str,
+                        help="Export marks to file."),
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
         checkpoint=10000, count=-1, inv_fulltext=200, inv_cache=10,
-        experimental=True):
+        experimental=True, import_marks=None, export_marks=None):
         from bzrlib import bzrdir
         from bzrlib.plugins.fastimport.processors import generic_processor
         control, relpath = bzrdir.BzrDir.open_containing('.')
@@ -188,6 +192,8 @@ class cmd_fast_import(Command):
             'inv-fulltext': inv_fulltext,
             'inv-cache': inv_cache,
             'experimental': experimental,
+            'import-marks': import_marks,
+            'export-marks': export_marks,
             }
         return _run(source, generic_processor.GenericProcessor, control,
             params, verbose)

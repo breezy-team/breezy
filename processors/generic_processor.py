@@ -110,6 +110,10 @@ class GenericProcessor(processor.ImportProcessor):
 
     * experimental - enable experimental mode, i.e. use features
       not yet fully tested.
+
+    * import-marks - name of file to read to load mark information from
+
+    * export-marks - name of file to write to save mark information to
     """
 
     known_params = [
@@ -120,6 +124,8 @@ class GenericProcessor(processor.ImportProcessor):
         'inv-cache',
         'inv-fulltext',
         'experimental',
+        'import-marks',
+        'export-marks',
         ]
 
     def note(self, msg, *args):
@@ -142,16 +148,68 @@ class GenericProcessor(processor.ImportProcessor):
         """Time of day as a string."""
         # Note: this is a separate method so tests can patch in a fixed value
         return time.strftime("%H:%M:%S")
+
+    def _import_marks(self, filename):
+        try:
+            f = file(filename)
+        except IOError:
+            self.warning(
+                "Could not open import-marks file, not importing marks")
+            return
+
+        firstline = f.readline()
+        match = re.match(r'^format=(\d+)$', firstline)
+        if not match:
+            print >>sys.stderr, "%r doesn't look like a mark file" % \
+                (filename,)
+            sys.exit(1)
+        elif match.group(1) != '1':
+            print >>sys.stderr, 'format version in mark file not supported'
+            sys.exit(1)
+
+        for string in f.readline().rstrip('\n').split('\0'):
+            if not string:
+                continue
+            name, integer = string.rsplit('.', 1)
+            # We really can't do anything with the branch information, so we
+            # just skip it
+            
+        self.cache_mgr.revision_ids = {}
+        for line in f:
+            line = line.rstrip('\n')
+            mark, revid = line.split(' ', 1)
+            self.cache_mgr.revision_ids[mark] = revid
+        f.close()
     
+    def export_marks(self, filename):
+        try:
+            f = file(filename, 'w')
+        except IOError:
+            self.warning(
+                "Could not open export-marks file, not exporting marks")
+            return
+        f.write('format=1\n')
+        f.write('\0tmp.0\n')
+        for mark, revid in self.cache_mgr.revision_ids.iteritems():
+            f.write('%s %s\n' % (mark, revid))
+        f.close()
+        
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
         self.cache_mgr = GenericCacheManager(self.info, self.verbose,
             self.inventory_cache_size)
-        self.skip_total = self._init_id_map()
-        if self.skip_total:
-            self.note("Found %d commits already loaded - "
-                "skipping over these ...", self.skip_total)
+        
+        if self.params.get("import-marks") is not None:
+            self._import_marks(self.params.get("import-marks"))
+            self.skip_total = False
+            self.first_incremental_commit = True
+        else:
+            self.first_incremental_commit = False
+            self.skip_total = self._init_id_map()
+            if self.skip_total:
+                self.note("Found %d commits already loaded - "
+                    "skipping over these ...", self.skip_total)
         self._revision_count = 0
 
         # mapping of tag name to revision_id
@@ -266,6 +324,9 @@ class GenericProcessor(processor.ImportProcessor):
         # Commit the current write group and checkpoint the id map
         self.repo.commit_write_group()
         self._save_id_map()
+
+        if self.params.get("export-marks") is not None:
+            self.export_marks(self.params.get("export-marks"))
 
         # Update the branches
         self.note("Updating branch information ...")
@@ -414,6 +475,10 @@ class GenericProcessor(processor.ImportProcessor):
                 self.note("Generated the file-ids cache - %d entries",
                     len(self.cache_mgr.file_ids.keys()))
             return
+        if self.first_incremental_commit:
+            self.first_incremental_commit = None
+            parents = _track_heads(cmd, self.cache_mgr)
+            self._gen_file_ids_cache(parents)
 
         # 'Commit' the revision and report progress
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
@@ -433,11 +498,14 @@ class GenericProcessor(processor.ImportProcessor):
                 self._revision_count)
             self.checkpoint_handler(None)
 
-    def _gen_file_ids_cache(self):
+    def _gen_file_ids_cache(self, revs=False):
         """Generate the file-id cache by searching repository inventories.
         """
         # Get the interesting revisions - the heads
-        head_ids = self.cache_mgr.heads.keys()
+        if revs:
+            head_ids = revs
+        else:
+            head_ids = self.cache_mgr.heads.keys()
         revision_ids = [self.cache_mgr.revision_ids[h] for h in head_ids]
 
         # Update the fileid cache
