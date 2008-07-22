@@ -1646,7 +1646,7 @@ class TestTransportConfig(TestCaseWithBzrDir):
                 'This BzrDir format does not support configs.')
         config.set_default_stack_on('http://example.com')
         self.assertEqual('http://example.com', config.get_default_stack_on())
-        my_dir2 = bzrdir.BzrDir.open('.')
+        my_dir2 = bzrdir.BzrDir.open(self.get_url('.'))
         config2 = my_dir2.get_config()
         self.assertEqual('http://example.com', config2.get_default_stack_on())
 
