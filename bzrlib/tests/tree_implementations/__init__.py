@@ -76,7 +76,9 @@ def _dirstate_tree_from_workingtree(testcase, tree):
 def preview_tree_pre(testcase, tree):
     tt = TransformPreview(tree)
     testcase.addCleanup(tt.finalize)
-    return tt.get_preview_tree()
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
 
 
 def preview_tree_post(testcase, tree):
