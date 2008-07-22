@@ -2973,6 +2973,19 @@ format_registry.register_metadir('rich-root-pack',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('stacked',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
+    help='A branch and pack based repository that supports stacking. ',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('stacked-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
+    help='A branch and pack based repository that supports stacking '
+         'and rich root data (needed for bzr-svn). ',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
