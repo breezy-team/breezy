@@ -678,17 +678,24 @@ class Merge3Merger(object):
                 base_executable = base_ie.executable
             else:
                 base_parent_id = base_name = base_executable = None
-            this_ie = self.this_tree.inventory[file_id]
+            if file_id in this_inventory:
+                this_ie = this_inventory[file_id]
+                this_parent_id = this_ie.parent_id
+                this_name = this_ie.name
+                this_executable = this_ie.executable
+            else:
+                this_parent_id = this_name = this_executable = None
+
             result.append((file_id, True,
                            ((base_parent_id,
                             [ie.parent_id for path, ie in lca_values]),
-                            other_ie.parent_id, this_ie.parent_id),
+                            other_ie.parent_id, this_parent_id),
                            ((base_name,
                             [ie.name for path, ie in lca_values]),
-                            other_ie.name, this_ie.name),
+                            other_ie.name, this_name),
                            ((base_executable,
                             [ie.executable for path, ie in lca_values]),
-                            other_ie.executable, this_ie.executable)
+                            other_ie.executable, this_executable)
                           ))
         return result
 

@@ -1105,7 +1105,7 @@ class LoggingMerger(object):
         self.kwargs = kwargs
 
 
-class TestMergerInMemory(TestCaseWithMemoryTransport):
+class TestMergerBase(TestCaseWithMemoryTransport):
     """Tests for Merger that can be done without hitting disk."""
 
     def get_builder(self):
@@ -1152,6 +1152,9 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
             mem_tree, other_revision_id)
         merger.merge_type = _mod_merge.Merge3Merger
         return merger
+
+
+class TestMergerInMemory(TestMergerBase):
 
     def test_find_base(self):
         merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
@@ -1202,7 +1205,14 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
-    def test__entries_lca_simple(self):
+
+class TestMergerEntriesLCA(TestMergerBase):
+
+    def make_merge_obj(self, builder, other_revision_id):
+        merger = self.make_Merger(builder, other_revision_id)
+        return merger.make_merger()
+        
+    def test_simple(self):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None)),
@@ -1215,10 +1225,10 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
             [('modify', ('a-id', 'a\nB\nb\nC\nc\nE\n'))])
         builder.build_snapshot('D-id', ['B-id', 'C-id'],
             [('modify', ('a-id', 'a\nB\nb\nC\nc\n'))])
-        merger = self.make_Merger(builder, 'E-id')
-        merge_obj = merger.make_merger()
+        merge_obj = self.make_merge_obj(builder, 'E-id')
 
         self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
 
         # (file_id, changed, parents, names, executable)
@@ -1234,7 +1244,7 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
                            ((False, [False, False]), False, False)),
                          ], entries)
 
-    def test__entries_lca_not_in_base(self):
+    def test_not_in_base(self):
         # LCA's all have the same last-modified revision for the file, as do
         # the tips, but the base has something different
         #       A    base, doesn't have the file
@@ -1260,9 +1270,10 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         builder.build_snapshot('G-id', ['E-id', 'D-id'],
             [('modify', (u'bar-id', 'd\ne\nf\nG\n'))])
         builder.build_snapshot('F-id', ['D-id', 'E-id'], [])
-        merger = self.make_Merger(builder, 'G-id')
-        merge_obj = merger.make_merger()
+        merge_obj = self.make_merge_obj(builder, 'G-id')
 
+        self.assertEqual(['D-id', 'E-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
         entries = list(merge_obj._entries_lca())
         # Ignore the root entry, as it looks like it is always modified when it
         # really isn't
@@ -1274,6 +1285,37 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
                            ((None, [False, False]), False, False)),
                          ], entries)
+
+    def test_not_in_this(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('a-id', 'a\nb\nC\nc\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('a-id', 'a\nB\nb\nc\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'a\nB\nb\nC\nc\nE\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('unversion', 'a-id')])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
+        self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
+
+        entries = list(merge_obj._entries_lca())
+        # Ignore the root entry, as it looks like it is always modified when it
+        # really isn't
+        root = entries.pop(0)
+        self.assertEqual('a-root-id', root[0])
+        root_id = 'a-root-id'
+        self.assertEqual([('a-id', True,
+                           ((root_id, [root_id, root_id]), root_id, None),
+                           ((u'a', [u'a', u'a']), u'a', None),
+                           ((False, [False, False]), False, None)),
+                         ], entries)
+
     # TODO: cases to test
     #       simple criss-cross LCAS identical, BASE different
     #       x-x changed from BASE but identical for all LCAs and tips
