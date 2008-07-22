@@ -61,9 +61,23 @@ class BranchBuilder(object):
             tree.unlock()
 
     def build_snapshot(self, parent_ids, revision_id, actions):
+        if parent_ids is not None:
+            self._branch.lock_write()
+            try:
+                base_id = parent_ids[0]
+                # Unfortunately, this is the only real way to get the revno
+                cur_revno, cur_revision_id = self._branch.last_revision_info()
+                g = self._branch.repository.get_graph()
+                new_revno = g.find_distance_to_null(base_id,
+                                [(cur_revision_id, cur_revno)])
+                self._branch.set_last_revision_info(new_revno, base_id)
+            finally:
+                self._branch.unlock()
         tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
+            if parent_ids is not None:
+                tree.set_parent_ids(parent_ids)
             # Unfortunately, MemoryTree.add(directory) just creates an
             # inventory entry. And the only public function to create a
             # directory is MemoryTree.mkdir() which creates the directory, but
