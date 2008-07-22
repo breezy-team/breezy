@@ -101,7 +101,7 @@ class TestMemoryTree(TestCaseWithTransport):
         self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
         self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
         self.assertFalse(tree.has_filename('afile'))
-        self.assertFalse(tree.has_filename('adir'))
+        self.assertTrue(tree.has_filename('adir'))
         tree.unlock()
 
     def test_put_new_file(self):
@@ -124,6 +124,17 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
         self.assertEqual('barshoom', tree.get_file('foo-id').read())
         tree.unlock()
+
+    def test_add_in_subdir(self):
+        branch = self.make_branch('branch')
+        tree = MemoryTree.create_on_branch(branch)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add(['', 'adir', 'adir/afile'], ['root-id', 'dir-id', 'file-id'],
+                 ['directory', 'directory', 'file'])
+        self.assertEqual('adir/afile', tree.id2path('file-id'))
+        self.assertEqual('adir', tree.id2path('dir-id'))
+        tree.put_file_bytes_non_atomic('file-id', 'barshoom')
 
     def test_commit_trivial(self):
         """Smoke test for commit on a MemoryTree.
