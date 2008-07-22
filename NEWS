@@ -46,7 +46,8 @@ IN DEVELOPMENT
       putting together a real history without having to create a full
       WorkingTree. It is recommended that tests that are not directly
       testing the WorkingTree use BranchBuilder instead.  See
-      ``BranchBuilder.build_snapshot``.  (John Arbash Meinel)
+      ``BranchBuilder.build_snapshot`` or
+      ``TestCaseWithMemoryTree.make_branch_builder``.  (John Arbash Meinel)
 
 
 bzr 1.6beta3 2008-07-17
