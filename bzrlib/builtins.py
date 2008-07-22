@@ -4268,8 +4268,8 @@ class cmd_tag(Command):
     It is an error to give a tag name that already exists unless you pass 
     --force, in which case the tag is moved to point to the new revision.
 
-    To rename a tag (change the name but keep it on the same revsion), run "bzr
-    tag new-name -r tag:old-name" and then "bzr tag --delete oldname".
+    To rename a tag (change the name but keep it on the same revsion), run ``bzr
+    tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
     """
 
     _see_also = ['commit', 'tags']
