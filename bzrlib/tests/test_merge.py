@@ -1117,6 +1117,8 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         :return: A BranchBuilder
         """
         builder = self.make_branch_builder('path')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         builder.build_snapshot('A-id', None,
             [('add', ('', None, 'directory', None))])
         builder.build_snapshot('C-id', ['A-id'], [])
@@ -1196,6 +1198,8 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
 
     def test__entries_lca_simple(self):
         builder = self.make_branch_builder('tree')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None)),
              ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
