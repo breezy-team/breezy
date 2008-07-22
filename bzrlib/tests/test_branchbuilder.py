@@ -120,6 +120,16 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'b', 'b-id', 'file')], rev_tree)
         self.assertEqual('content_b', rev_tree.get_file_text('b-id'))
 
+    def test_add_empty_dir(self):
+        builder = self.build_a_rev()
+        rev_id2 = builder.build_snapshot(None, 'B-id',
+            [('add', ('b', 'b-id', 'directory', None))])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'directory'),
+                             ], rev_tree)
+
     def test_modify_file(self):
         builder = self.build_a_rev()
         rev_id2 = builder.build_snapshot(None, 'B-id',

@@ -59,8 +59,6 @@ class MemoryTree(mutabletree.MutableTree):
                 self._inventory.add_path(f, kind=kind)
             else:
                 self._inventory.add_path(f, kind=kind, file_id=file_id)
-            if kind == 'directory' and f != '':
-                self._file_transport.mkdir(f)
 
     def basis_tree(self):
         """See Tree.basis_tree()."""

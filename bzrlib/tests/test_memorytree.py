@@ -101,7 +101,7 @@ class TestMemoryTree(TestCaseWithTransport):
         self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
         self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
         self.assertFalse(tree.has_filename('afile'))
-        self.assertTrue(tree.has_filename('adir'))
+        self.assertFalse(tree.has_filename('adir'))
         tree.unlock()
 
     def test_put_new_file(self):
@@ -130,8 +130,13 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add(['', 'adir', 'adir/afile'], ['root-id', 'dir-id', 'file-id'],
-                 ['directory', 'directory', 'file'])
+        tree.add([''], ['root-id'], ['directory'])
+        # Unfortunately, the only way to 'mkdir' is to call 'tree.mkdir', but
+        # that *always* adds the directory as well. So if you want to create a
+        # file in a subdirectory, you have to split out the 'mkdir()' calls
+        # from the add and put_file_bytes_non_atomic calls. :(
+        tree.mkdir('adir', 'dir-id')
+        tree.add(['adir/afile'], ['file-id'], ['file'])
         self.assertEqual('adir/afile', tree.id2path('file-id'))
         self.assertEqual('adir', tree.id2path('dir-id'))
         tree.put_file_bytes_non_atomic('file-id', 'barshoom')

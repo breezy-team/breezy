@@ -64,7 +64,12 @@ class BranchBuilder(object):
         tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
-            to_add_paths = []
+            # Unfortunately, MemoryTree.add(directory) just creates an
+            # inventory entry. And the only public function to create a
+            # directory is MemoryTree.mkdir() which creates the directory, but
+            # also always adds it. So we have to use a multi-pass setup.
+            to_add_directories = []
+            to_add_files = []
             to_add_file_ids = []
             to_add_kinds = []
             new_contents = {}
@@ -73,11 +78,14 @@ class BranchBuilder(object):
             for action, info in actions:
                 if action == 'add':
                     path, file_id, kind, content = info
-                    to_add_paths.append(path)
-                    to_add_file_ids.append(file_id)
-                    to_add_kinds.append(kind)
-                    if content is not None:
-                        new_contents[file_id] = content
+                    if kind == 'directory':
+                        to_add_directories.append((path, file_id))
+                    else:
+                        to_add_files.append(path)
+                        to_add_file_ids.append(file_id)
+                        to_add_kinds.append(kind)
+                        if content is not None:
+                            new_contents[file_id] = content
                 elif action == 'modify':
                     file_id, content = info
                     new_contents[file_id] = content
@@ -87,7 +95,13 @@ class BranchBuilder(object):
                     raise errors.UnknownBuildAction(action)
             if to_unversion_ids:
                 tree.unversion(to_unversion_ids)
-            tree.add(to_add_paths, to_add_file_ids, to_add_kinds)
+            for path, file_id in to_add_directories:
+                if path == '':
+                    # Special case, because the path already exists
+                    tree.add([path], [file_id], ['directory'])
+                else:
+                    tree.mkdir(path, file_id)
+            tree.add(to_add_files, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
 
