@@ -26,8 +26,15 @@ from bzrlib.branchbuilder import BranchBuilder
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
     
-    def assertTreeShape(self, entries, tree):
+    def assertTreeShape(self, expected_shape, tree):
         """Check that the tree shape matches expectations."""
+        tree.lock_read()
+        try:
+            entries = [(path, ie.file_id, ie.kind)
+                       for path, ie in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+        self.assertEqual(expected_shape, entries)
 
     def test_create(self):
         """Test the constructor api."""
@@ -86,8 +93,25 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         rev_tree = branch.repository.revision_tree(rev_id1)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        entries = [(path, ie.file_id, ie.kind)
-                   for path, ie in rev_tree.iter_entries_by_dir()]
-        self.assertEqual([(u'', 'a-root-id', 'directory'),
-                          (u'a', 'a-id', 'file')], entries)
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file')], rev_tree)
         self.assertEqual('contents', rev_tree.get_file_text('a-id'))
+
+    def test_build_snapshot_add_content(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id1 = builder.build_snapshot(None, 'A-id',
+            [('add', ('', 'a-root-id', 'directory', None)),
+             ('add', ('a', 'a-id', 'file', 'contents'))])
+        self.assertEqual('A-id', rev_id1)
+        rev_id2 = builder.build_snapshot(None, 'B-id',
+            [('add', ('b', 'b-id', 'file', 'content_b'))])
+        self.assertEqual('B-id', rev_id2)
+        branch = builder.get_branch()
+        self.assertEqual((2, rev_id2), branch.last_revision_info())
+        rev_tree = branch.repository.revision_tree(rev_id2)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file'),
+                              (u'b', 'b-id', 'file')], rev_tree)
+        self.assertEqual('content_b', rev_tree.get_file_text('b-id'))
