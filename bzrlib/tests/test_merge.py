@@ -1163,10 +1163,16 @@ class TestMergerInMemory(TestMergerBase):
         self.assertIs(None, merger._lca_trees)
 
     def test_find_base_criss_cross(self):
-        merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
+        builder = self.setup_criss_cross_graph()
+        merger = self.make_Merger(builder, 'E-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
         self.assertEqual(['B-id', 'C-id'], [t.get_revision_id()
+                                            for t in merger._lca_trees])
+        # If we swap the order, we should get a different lca order
+        builder.build_snapshot('F-id', ['E-id'], [])
+        merger = self.make_Merger(builder, 'D-id')
+        self.assertEqual(['C-id', 'B-id'], [t.get_revision_id()
                                             for t in merger._lca_trees])
 
     def test_no_criss_cross_passed_to_merge_type(self):
@@ -1341,3 +1347,4 @@ class TestMergerEntriesLCA(TestMergerBase):
     #       x-x OTHER introduces the file
     #       x-x LCAs differ, one in ancestry of other for a given file
     #       x-x file missing in LCA
+    #       x-x Reverted back to BASE text
