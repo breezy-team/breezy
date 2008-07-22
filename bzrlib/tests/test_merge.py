@@ -21,6 +21,7 @@ from bzrlib import (
     conflicts,
     errors,
     knit,
+    memorytree,
     merge as _mod_merge,
     option,
     progress,
@@ -1113,19 +1114,14 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
                 |\\
                 B C
 
-        :return: A MemoryTree which is already write-locked, and an unlock has
-            been queued up.
+        :return: A BranchBuilder
         """
-        tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        tree.add('.')
-        tree.commit('A', rev_id='A-id')
-        tree.commit('C', rev_id='C-id')
-        tree.set_parent_ids(['A-id'])
-        tree.branch.set_last_revision_info(1, 'A-id')
-        tree.commit('B', rev_id='B-id')
-        return tree
+        builder = self.make_branch_builder('path')
+        builder.build_snapshot('A-id', None,
+            [('add', ('', None, 'directory', None))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        return builder
 
     def setup_criss_cross_graph(self):
         """Create a 5-node graph with a criss-cross.
@@ -1134,30 +1130,29 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
                 B C
                 |X|
                 D E
-        :return: A write locked Memory Tree
+        :return: A BranchBuilder
         """
-        tree = self.setup_simple_graph()
-        tree.branch.set_last_revision_info(2, 'C-id')
-        tree.set_parent_ids(['C-id', 'B-id'])
-        tree.commit('E', rev_id='E-id')
-        tree.set_parent_ids(['B-id', 'C-id'])
-        tree.branch.set_last_revision_info(2, 'B-id')
-        tree.commit('D', rev_id='D-id')
-        return tree
+        builder = self.setup_simple_graph()
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        return builder
+
+    def make_merger(self, builder, other_revision_id):
+        """Make a Merger object from a branch builder"""
+        mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
+        mem_tree.lock_write()
+        self.addCleanup(mem_tree.unlock)
+        return _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            mem_tree, other_revision_id)
 
     def test_find_base(self):
-        tree = self.setup_simple_graph()
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'C-id')
+        merger = self.make_merger(self.setup_simple_graph(), 'C-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertFalse(merger._is_criss_cross)
         self.assertIs(None, merger._lca_trees)
 
-
     def test_find_base_criss_cross(self):
-        tree = self.setup_criss_cross_graph()
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'E-id')
+        merger = self.make_merger(self.setup_criss_cross_graph(), 'E-id')
         self.assertEqual('A-id', merger.base_rev_id)
         self.assertTrue(merger._is_criss_cross)
         self.assertEqual(['B-id', 'C-id'], sorted(merger._lca_trees.keys()))
@@ -1166,18 +1161,14 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         class LCATreesMerger(LoggingMerger):
             supports_lca_trees = True
 
-        tree = self.setup_simple_graph()
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'C-id')
+        merger = self.make_merger(self.setup_simple_graph(), 'C-id')
         merger.merge_type = LCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, LCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
     def test_criss_cross_passed_to_merge_type(self):
-        tree = self.setup_criss_cross_graph()
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'E-id')
+        merger = self.make_merger(self.setup_criss_cross_graph(), 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
@@ -1187,9 +1178,7 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
             # We intentionally do not define supports_lca_trees
             pass
 
-        tree = self.setup_criss_cross_graph()
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'E-id')
+        merger = self.make_merger(self.setup_criss_cross_graph(), 'E-id')
         merger.merge_type = NoLCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, NoLCATreesMerger)
@@ -1199,49 +1188,35 @@ class TestMergerInMemory(TestCaseWithMemoryTransport):
         class UnsupportedLCATreesMerger(LoggingMerger):
             supports_lca_trees = False
 
-        tree = self.setup_criss_cross_graph()
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'E-id')
+        merger = self.make_merger(self.setup_criss_cross_graph(), 'E-id')
         merger.merge_type = UnsupportedLCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
     def test__entries_lca_simple(self):
-        tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        tree.add('.')
-        tree.add(['a'], ['a-id'], ['file'])
-        tree.put_file_bytes_non_atomic('a-id', 'a\nb\nc\n')
-        tree.commit('A', rev_id='A-id')
-        tree.put_file_bytes_non_atomic('a-id', 'a\nb\nC\nc\n')
-        tree.commit('C', rev_id='C-id')
-        tree.branch.set_last_revision_info(1, 'A-id')
-        tree.set_parent_ids(['A-id'])
-        tree.put_file_bytes_non_atomic('a-id', 'a\nB\nb\nc\n')
-        tree.commit('B', rev_id='B-id')
-        tree.set_parent_ids(['B-id', 'C-id'])
-        tree.put_file_bytes_non_atomic('a-id', 'a\nB\nb\nC\nc\n')
-        tree.commit('D', rev_id='D-id')
-        tree.branch.set_last_revision_info(2, 'C-id')
-        tree.set_parent_ids(['C-id', 'B-id'])
-        tree.put_file_bytes_non_atomic('a-id', 'a\nB\nb\nC\nc\nE\n')
-        tree.commit('E', rev_id='E-id')
-        tree.branch.set_last_revision_info(2, 'D-id')
-        tree.set_parent_ids(['D-id'])
-
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            tree, 'E-id')
+        builder = self.make_branch_builder('tree')
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('a-id', 'a\nb\nC\nc\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('a-id', 'a\nB\nb\nc\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'a\nB\nb\nC\nc\nE\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('modify', ('a-id', 'a\nB\nb\nC\nc\n'))])
+        merger = self.make_merger(builder, 'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
 
         entries = list(merge_obj._entries_lca())
-        root_id = tree.path2id('')
         self.assertEqual(['B-id', 'C-id'], sorted(merge_obj._lca_trees.keys()))
 
         # (file_id, changed, parents, names, executable)
         # BASE, lca1, lca2, OTHER, THIS
+        root_id = 'a-root-id'
         self.assertEqual([(root_id, True,
                            ((None, [None, None]), None, None),
                            ((u'', [u'', u'']), u'', u''),
