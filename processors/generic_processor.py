@@ -158,6 +158,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.tags = {}
 
         # Create the revision loader needed for committing
+        new_repo_api = hasattr(self.repo, 'revisions')
         if self._experimental:
             def fulltext_when(count):
                 total = self.total_commits
@@ -170,12 +171,19 @@ class GenericProcessor(processor.ImportProcessor):
                         count)
                 return fulltext
 
-            self.loader = revisionloader.ExperimentalRevisionLoader(
-                self.repo, self.inventory_cache_size,
-                fulltext_when=fulltext_when)
+            if new_repo_api:
+                self.loader = revisionloader.ImportRevisionLoader2(
+                    self.repo, self.inventory_cache_size,
+                    fulltext_when=fulltext_when)
+            else:
+                self.loader = revisionloader.ImportRevisionLoader1(
+                    self.repo, self.inventory_cache_size,
+                    fulltext_when=fulltext_when)
         else:
-            self.loader = revisionloader.ImportRevisionLoader(
-                self.repo, self.inventory_cache_size)
+            if new_repo_api:
+                self.loader = revisionloader.RevisionLoader2(self.repo)
+            else:
+                self.loader = revisionloader.RevisionLoader1(self.repo)
 
         # Disable autopacking if the repo format supports it.
         # THIS IS A HACK - there is no sanctioned way of doing this yet.
