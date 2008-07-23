@@ -788,7 +788,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         registry.open_file("branches/foo/registry/generic.c").modify("France")
         dc.close()
 
-        merge_revno = ra.RemoteAccess(repos_url).get_latest_revnum()
+        r = ra.RemoteAccess(repos_url)
+        merge_revno = r.get_latest_revnum()
         merge_revid = newdir.find_repository().generate_revision_id(merge_revno, "branches/foo", mapping)
 
         self.build_tree({'c/registry/generic.c': "de"})
@@ -805,7 +806,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals([revid1, revid2, revid3], trunk.revision_history())
         self.assertEquals(
                 '1 initialrevid\n2 changerevid\n3 mergerevid\n',
-                self.client_get_prop(repos_url+"/branches/foo", SVN_PROP_BZR_REVISION_ID+"trunk0"))
+                self.client_get_prop(repos_url+"/branches/foo", SVN_PROP_BZR_REVISION_ID+"trunk0", r.get_latest_revnum()))
 
     def test_complex_replace_dir(self):
         repos_url = self.make_repository("a")
