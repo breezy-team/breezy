@@ -140,7 +140,7 @@ class TestStacking(TestCaseWithBranch):
             new_branch.get_stacked_on_url)
 
     def make_stacked_bzrdir(self, in_directory=None):
-        """Create a bzrdir that is stacked on some other bzrdir.
+        """Create a stacked branch and return its bzrdir.
 
         :param in_directory: If not None, create a directory of this
             name and create the stacking and stacked-on bzrdirs in
