@@ -836,10 +836,10 @@ class InterTree(InterObject):
         else:
             all_unversioned = deque()
         to_paths = {}
-        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
+        from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
+        to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
@@ -937,7 +937,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not file_id in self.target.inventory:
+            if not file_id in self.target.all_file_ids():
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None

@@ -432,8 +432,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([], self.do_iter_changes(tree1, tree2))
 
     def added(self, tree, file_id):
-        entry = tree.inventory[file_id]
-        path = tree.id2path(file_id)
+        iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
+        path, entry = iterator.next()
         return (file_id, (None, path), True, (False, True), (None, entry.parent_id),
                 (None, entry.name), (None, entry.kind),
                 (None, entry.executable))
