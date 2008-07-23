@@ -15,7 +15,7 @@ IN DEVELOPMENT
 
     * ``bzr switch`` will now update the branch nickname for regular checkouts
       too. It previously only did this for lightweight checkouts.
-      (Marius Kruger)
+      (Marius Kruger, #230903)
 
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
       This uses a pyrex extension to get direct access to the
