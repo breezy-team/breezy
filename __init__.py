@@ -39,7 +39,7 @@ these lines to your ``BZR_HOME/rules`` file::
   keywords = on
 
 You can also enable or disable them on a per branch basis by adding lines
-to ``..bzrrules``. For example, to disable keywords for ``txt`` files
+to ``.bzrrules``. For example, to disable keywords for ``txt`` files
 but enable them for ``html`` files::
 
   [name *.txt]
@@ -79,7 +79,15 @@ a legal strftime (http://docs.python.org/lib/module-time.html) format.
 
 
 import datetime, re
-from bzrlib import config, filters, osutils
+from bzrlib import (
+    builtins,
+    commands,
+    config,
+    filters,
+    option,
+    osutils,
+    registry,
+    )
 
 
 def test_suite():
@@ -97,17 +105,29 @@ def test_suite():
     return suite
 
 
-# Regular expressions for matching the embedded patterns
+# Expansion styles
+# Note: Round-tripping is only required between the raw and cooked styles
+_keyword_style_registry = registry.Registry()
+_keyword_style_registry.register('raw', '$%(name)s$')
+_keyword_style_registry.register('cooked', '$%(name)s: %(value)s $')
+_keyword_style_registry.register('publish', '%(name)s: %(value)s')
+_keyword_style_registry.register('publish-values', '%(value)s')
+_keyword_style_registry.register('publish-names', '%(name)s')
+_keyword_style_registry.default_key = 'cooked'
+
+
+# Regular expressions for matching the raw and cooked patterns
 _KW_RAW_RE = re.compile(r'\$(\w+)\$')
 _KW_COOKED_RE = re.compile(r'\$(\w+):([^$]+)\$')
 
 
 def compress_keywords(s):
-    """Replace '$Keyword: value $' with '$Keyword$' in a string.
+    """Replace cooked style keywords with raw style in a string.
     
     :param s: the string
     :return: the string with keywords compressed
     """
+    _raw_style = _keyword_style_registry.get('raw')
     result = ''
     rest = s
     while (True):
@@ -116,21 +136,23 @@ def compress_keywords(s):
             break
         result += rest[:match.start()]
         keyword = match.group(1)
-        result += '$%s$' % (keyword,)
+        result += _raw_style % {'name': keyword}
         rest = rest[match.end():]
     return result + rest
 
 
-def expand_keywords(s, keyword_dicts):
-    """Replace '$Keyword$' with '$Keyword: value $' in a string.
+def expand_keywords(s, keyword_dicts, style=None):
+    """Replace raw style keywords with another style in a string.
     
-    Note: If the keyword is already in expanded form, the value is
+    Note: If the keyword is already in the expanded style, the value is
     not replaced.
 
     :param s: the string
     :param keyword_dicts: an iterable of keyword dictionaries
+    :param style: the style of expansion to use of None for the default
     :return: the string with keywords expanded
     """
+    _expanded_style = _keyword_style_registry.get(style)
     result = ''
     rest = s
     while (True):
@@ -142,14 +164,14 @@ def expand_keywords(s, keyword_dicts):
         expansion = _get_from_dicts(keyword_dicts, keyword)
         if expansion is None:
             # Unknown expansion - leave as is
-            # TODO: output a warning or some trace here?
             result += match.group(0)
         elif '$' in expansion:
             # Expansion is not safe to be collapsed later
             # TODO: output a warning or some trace here?
             result += match.group(0)
         else:
-            result += '$%s: %s $' % (keyword, expansion)
+            params = {'name': keyword, 'value': expansion}
+            result += _expanded_style % params
         rest = rest[match.end():]
     return result + rest
 
@@ -237,7 +259,6 @@ def _escaped_kw_expander(chunks, context=None):
     return [expand_keywords(text, [local_keywords, _global_escaped_keywords])]
 
 
-
 # Define and register the filter stack map
 _filter_stack_map = {
     'off':    [],
@@ -245,3 +266,79 @@ _filter_stack_map = {
     'escape': [filters.ContentFilter(_kw_compressor, _escaped_kw_expander)],
     }
 filters.register_filter_stack_map('keywords', _filter_stack_map)
+
+
+class cmd_cat(builtins.cmd_cat):
+    """
+    The ``--keywords`` option specifies the keywords expansion
+    style. By default (``raw`` style), no expansion is done.
+    Other styles enable expansion in a ``cooked`` mode where both
+    the keyword and its value are displayed inside $ markers, or in
+    numerous publishing styles - ``publish``, ``publish-values`` and
+    ``publish-names`` - where the $ markers are completely removed.
+    The publishing styles do not support round-tripping back to the
+    raw content but are useful for improving the readability of
+    published web pages for example.
+
+    Note: Files must have the ``keywords`` preference defined for them
+    in order for the ``--keywords`` option to take effect. In particular,
+    the preference specifies how keyword values are encoded for different
+    filename patterns. See ``bzr help keywords`` for more information on
+    how to specify the required preference using rules.
+    """
+
+    # Add a new option to the builtin command and
+    # override the inherited run() and help() methods
+
+    takes_options = builtins.cmd_cat.takes_options + [
+             option.RegistryOption('keywords',
+                 registry=_keyword_style_registry,
+                 converter=lambda s: s,
+                 help='Keyword expansion style.')]
+  
+    def run(self, *args, **kwargs):
+        """Process special options and delegate to superclass."""
+        if 'keywords' in kwargs:
+            # Implicitly set the filters option
+            kwargs['filters'] = True
+            style = kwargs['keywords']
+            _keyword_style_registry.default_key = style
+            del kwargs['keywords']
+        return super(cmd_cat, self).run(*args, **kwargs)
+  
+    def help(self):
+      """Return help message including text from superclass."""
+      from inspect import getdoc
+      return getdoc(super(cmd_cat, self)) + '\n\n' + getdoc(self)
+
+
+class cmd_export(builtins.cmd_export):
+    # Add a new option to the builtin command and
+    # override the inherited run() and help() methods
+
+    takes_options = builtins.cmd_export.takes_options + [
+             option.RegistryOption('keywords',
+                 registry=_keyword_style_registry,
+                 converter=lambda s: s,
+                 help='Keyword expansion style.')]
+  
+    def run(self, *args, **kwargs):
+        """Process special options and delegate to superclass."""
+        if 'keywords' in kwargs:
+            # Implicitly set the filters option
+            kwargs['filters'] = True
+            style = kwargs['keywords']
+            _keyword_style_registry.default_key = style
+            del kwargs['keywords']
+        return super(cmd_export, self).run(*args, **kwargs)
+  
+    def help(self):
+      """Return help message including text from superclass."""
+      from inspect import getdoc
+      # NOTE: Reuse of cmd_cat help below is deliberate, not a bug
+      return getdoc(super(cmd_export, self)) + '\n\n' + getdoc(cmd_cat)
+
+
+# Register the command wrappers
+commands.register_command(cmd_cat, decorate=False)
+commands.register_command(cmd_export, decorate=False)
