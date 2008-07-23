@@ -183,7 +183,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_bzrdir = self.make_stacked_bzrdir(in_directory='dir')
         except (errors.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
+                errors.UnstackableRepositoryFormat), e:
             # not a testable combination.
             raise TestNotApplicable(e)
         stacked_bzrdir.open_branch().set_stacked_on_url('../stacked-on')
@@ -196,7 +196,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except (errors.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
+                errors.UnstackableRepositoryFormat), e:
             # not a testable combination.
             raise TestNotApplicable(e)
         cloned_unstacked_bzrdir = stacked_bzrdir.clone('cloned-unstacked',
