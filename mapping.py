@@ -255,7 +255,7 @@ class BzrSvnMapping(object):
     def __init__(self):
         if (version_info[3] == 'exp' or self.experimental) and not BzrSvnMapping._warned_experimental:
             from bzrlib.trace import warning
-            warning("using experimental bzr-svn mappings; output may change between revisions")
+            warning("using experimental bzr-svn mappings; may break existing branches in the most horrible ways")
             BzrSvnMapping._warned_experimental = True
 
     @classmethod
