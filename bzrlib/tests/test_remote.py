@@ -541,7 +541,8 @@ class TestBranchSetLastRevision(tests.TestCase):
         client.add_success_response('ok')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         branch._ensure_real = lambda: None
         branch.lock_write()
         client._calls = []
@@ -597,7 +598,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         client.add_success_response('ok')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         # This is a hack to work around the problem that RemoteBranch currently
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
@@ -672,7 +674,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         client.add_success_response('ok')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         # This is a hack to work around the problem that RemoteBranch currently
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
@@ -723,7 +726,8 @@ class TestBranchLockWrite(tests.TestCase):
         transport = transport.clone('quack')
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
         self.assertRaises(errors.UnlockableTransport, branch.lock_write)
         self.assertEqual(
             [('call', 'Branch.lock_write', ('quack/', '', ''))],
@@ -1182,3 +1186,143 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         self.assertFalse(isinstance(dest_repo, RemoteRepository))
         self.assertTrue(isinstance(src_repo, RemoteRepository))
         src_repo.copy_content_into(dest_repo)
+
+
+class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
+    """Base class for unit tests for bzrlib.remote._translate_error."""
+
+    def translateTuple(self, error_tuple, **context):
+        """Call _translate_error with an ErrorFromSmartServer built from the
+        given error_tuple.
+
+        :param error_tuple: A tuple of a smart server response, as would be
+            passed to an ErrorFromSmartServer.
+        :kwargs context: context items to call _translate_error with.
+
+        :returns: The error raised by _translate_error.
+        """
+        # Raise the ErrorFromSmartServer before passing it as an argument,
+        # because _translate_error may need to re-raise it with a bare 'raise'
+        # statement.
+        server_error = errors.ErrorFromSmartServer(error_tuple)
+        translated_error = self.translateErrorFromSmartServer(
+            server_error, **context)
+        return translated_error
+
+    def translateErrorFromSmartServer(self, error_object, **context):
+        """Like translateTuple, but takes an already constructed
+        ErrorFromSmartServer rather than a tuple.
+        """
+        try:
+            raise error_object
+        except errors.ErrorFromSmartServer, server_error:
+            translated_error = self.assertRaises(
+                errors.BzrError, remote._translate_error, server_error,
+                **context)
+        return translated_error
+
+    
+class TestErrorTranslationSuccess(TestErrorTranslationBase):
+    """Unit tests for bzrlib.remote._translate_error.
+    
+    Given an ErrorFromSmartServer (which has an error tuple from a smart
+    server) and some context, _translate_error raises more specific errors from
+    bzrlib.errors.
+
+    This test case covers the cases where _translate_error succeeds in
+    translating an ErrorFromSmartServer to something better.  See
+    TestErrorTranslationRobustness for other cases.
+    """
+
+    def test_NoSuchRevision(self):
+        branch = self.make_branch('')
+        revid = 'revid'
+        translated_error = self.translateTuple(
+            ('NoSuchRevision', revid), branch=branch)
+        expected_error = errors.NoSuchRevision(branch, revid)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_nosuchrevision(self):
+        repository = self.make_repository('')
+        revid = 'revid'
+        translated_error = self.translateTuple(
+            ('nosuchrevision', revid), repository=repository)
+        expected_error = errors.NoSuchRevision(repository, revid)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_nobranch(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateTuple(('nobranch',), bzrdir=bzrdir)
+        expected_error = errors.NotBranchError(path=bzrdir.root_transport.base)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_LockContention(self):
+        translated_error = self.translateTuple(('LockContention',))
+        expected_error = errors.LockContention('(remote lock)')
+        self.assertEqual(expected_error, translated_error)
+
+    def test_UnlockableTransport(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateTuple(
+            ('UnlockableTransport',), bzrdir=bzrdir)
+        expected_error = errors.UnlockableTransport(bzrdir.root_transport)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_LockFailed(self):
+        lock = 'str() of a server lock'
+        why = 'str() of why'
+        translated_error = self.translateTuple(('LockFailed', lock, why))
+        expected_error = errors.LockFailed(lock, why)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_TokenMismatch(self):
+        token = 'a lock token'
+        translated_error = self.translateTuple(('TokenMismatch',), token=token)
+        expected_error = errors.TokenMismatch(token, '(remote token)')
+        self.assertEqual(expected_error, translated_error)
+
+    def test_Diverged(self):
+        branch = self.make_branch('a')
+        other_branch = self.make_branch('b')
+        translated_error = self.translateTuple(
+            ('Diverged',), branch=branch, other_branch=other_branch)
+        expected_error = errors.DivergedBranches(branch, other_branch)
+        self.assertEqual(expected_error, translated_error)
+
+
+class TestErrorTranslationRobustness(TestErrorTranslationBase):
+    """Unit tests for bzrlib.remote._translate_error's robustness.
+    
+    TestErrorTranslationSuccess is for cases where _translate_error can
+    translate successfully.  This class about how _translate_err behaves when
+    it fails to translate: it re-raises the original error.
+    """
+
+    def test_unrecognised_server_error(self):
+        """If the error code from the server is not recognised, the original
+        ErrorFromSmartServer is propagated unmodified.
+        """
+        error_tuple = ('An unknown error tuple',)
+        server_error = errors.ErrorFromSmartServer(error_tuple)
+        translated_error = self.translateErrorFromSmartServer(server_error)
+        self.assertEqual(server_error, translated_error)
+
+    def test_context_missing_a_key(self):
+        """In case of a bug in the client, or perhaps an unexpected response
+        from a server, _translate_error returns the original error tuple from
+        the server and mutters a warning.
+        """
+        # To translate a NoSuchRevision error _translate_error needs a 'branch'
+        # in the context dict.  So let's give it an empty context dict instead
+        # to exercise its error recovery.
+        empty_context = {}
+        error_tuple = ('NoSuchRevision', 'revid')
+        server_error = errors.ErrorFromSmartServer(error_tuple)
+        translated_error = self.translateErrorFromSmartServer(server_error)
+        self.assertEqual(server_error, translated_error)
+        # In addition to re-raising ErrorFromSmartServer, some debug info has
+        # been muttered to the log file for developer to look at.
+        self.assertContainsRe(
+            self._get_log(keep_log_file=True),
+            "Missing key 'branch' in context")
+        
