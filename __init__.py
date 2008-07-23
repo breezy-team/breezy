@@ -46,9 +46,9 @@ but enable them for ``html`` files::
   keywords = off
 
   [name *.html]
-  keywords = escape
+  keywords = xml_escape
 
-``escape`` enables keyword expansion but it escapes special characters
+``xml_escape`` enables keyword expansion but it escapes special characters
 in keyword values so they can be safely included in HTML or XML files.
 
 The currently supported keywords are given below.
@@ -56,12 +56,16 @@ The currently supported keywords are given below.
  =============  =====================================================
  Keyword        Description
  =============  =====================================================
+ Date           the date and time the file was last modified
+ Author         the author of the last change
+ AuthorEmail    just the email address of the author
  Now            the current date and time
  User           the current user (name and email)
  UserEmail      just the email address of the current user
- File           the relative path of the file or dir in the tree
+ File           the relative path of the file in the tree
  FileName       just the name part of the relative path
  FileDir        just the directory part of the relative path
+ FileId         the unique file-id assigned to this file
  =============  =====================================================
 
 By default, dates/times are output using this format::
@@ -191,25 +195,6 @@ def _get_from_dicts(dicts, key, default=None):
 _global_keywords = None
 
 
-def _init_global_keywords(_now_fn=datetime.datetime.now):
-    global _global_keywords, _global_escaped_keywords
-    if _global_keywords is None:
-        cfg = config.GlobalConfig()
-        now = _format_datetime_keyword(_now_fn(), 'Now', cfg)
-        user = cfg.username()
-        email = cfg.user_email()
-        _global_keywords = {
-            'Now': now,
-            'User': user,
-            'UserEmail': email,
-            }
-        _global_escaped_keywords = {
-            'Now': _escape(now),
-            'User': _escape(user),
-            'UserEmail': _escape(email),
-            }
-
-
 def _format_datetime_keyword(dt, name, cfg):
     cfg_key = 'keywords.format.%s' % (name,)
     format = cfg.get_user_option(cfg_key)
@@ -219,9 +204,77 @@ def _format_datetime_keyword(dt, name, cfg):
         return dt.strftime(format)
 
 
-def _escape(s):
+def _extract_email(userid):
+    """Extract the email address out of a user-id string.
+
+    user-id strings have the format 'name <email>'.
+    """
+    if userid[-1] == '>':
+        return userid[:-1].rsplit('<', 1)[1]
+    else:
+        return userid
+
+
+def _get_global_keywords(encoder=None, _now_fn=datetime.datetime.now):
+    global _global_keywords
+    if _global_keywords is None:
+        cfg = config.GlobalConfig()
+        now = _format_datetime_keyword(_now_fn(), 'Now', cfg)
+        user = cfg.username()
+        _global_keywords = {
+            'Now': now,
+            'User': user,
+            'UserEmail': _extract_email(user),
+            }
+    if encoder is not None:
+        result = {}
+        for name, value in _global_keywords.iteritems():
+            result[name] = encoder(value)
+        return result
+    else:
+        return _global_keywords
+
+
+def _get_context_keywords(context, encoder=None):
+    # TODO: Make the lookup of these attributes lazy so that the
+    # revision is only calculated when requested
+    rev = context.revision()
+    if rev is None:
+        date = None
+        author = None
+    else:
+        # TODO: set timezone correctly
+        dateobj = datetime.datetime.fromtimestamp(rev.timestamp)
+        cfg = config.GlobalConfig()
+        date = _format_datetime_keyword(dateobj, 'Date', cfg)
+        author = rev.get_apparent_author()
+    path = context.relpath()
+    if path is None:
+        dir = None
+        base = None
+    else:
+        dir, base = osutils.split(path)
+    local_keywords = {
+        'Date': date,
+        'Author': author,
+        'AuthorEmail': _extract_email(author),
+        'File': path,
+        'FileName': base,
+        'FileDir': dir,
+        'FileId': context.fileid(),
+        }
+    if encoder is not None:
+        result = {}
+        for name, value in local_keywords.iteritems():
+            result[name] = encoder(value)
+        return result
+    else:
+        return local_keywords
+
+
+def _xml_escape(s):
     """Escape a string so it can be included safely in XML/HTML."""
-    # TODO
+    # TODO: get from commit.py
     return s
 
 
@@ -231,39 +284,31 @@ def _kw_compressor(chunks, context=None):
     return [compress_keywords(text)]
 
 
+def _kw_expander(chunks, context, encoder=None):
+    """Keyword expander."""
+    global_keywords = _get_global_keywords(encoder=encoder)
+    local_keywords = _get_context_keywords(context, encoder=encoder)
+    text = ''.join(chunks)
+    return [expand_keywords(text, [local_keywords, global_keywords])]
+
+
 def _normal_kw_expander(chunks, context=None):
     """Filter that replaces keywords with their expanded form."""
-    _init_global_keywords()
-    path = context.relpath()
-    dir, base = osutils.split(path)
-    local_keywords = {
-        'File': path,
-        'FileName': base,
-        'FileDir': dir,
-        }
-    text = ''.join(chunks)
-    return [expand_keywords(text, [local_keywords, _global_keywords])]
+    return _kw_expander(chunks, context)
 
 
-def _escaped_kw_expander(chunks, context=None):
-    """Filter that replaces keywords with their escaped, expanded form."""
-    _init_global_keywords()
-    path = context.relpath()
-    dir, base = osutils.split(path)
-    local_keywords = {
-        'File': _escape(path),
-        'FileName': _escape(base),
-        'FileDir': _escape(dir),
-        }
-    text = ''.join(chunks)
-    return [expand_keywords(text, [local_keywords, _global_escaped_keywords])]
+def _xml_escape_kw_expander(chunks, context=None):
+    """Filter that replaces keywords with a form suitable for use in XML."""
+    return _kw_expander(chunks, context, encoder=_xml_escape)
 
 
 # Define and register the filter stack map
 _filter_stack_map = {
-    'off':    [],
-    'on':     [filters.ContentFilter(_kw_compressor, _normal_kw_expander)],
-    'escape': [filters.ContentFilter(_kw_compressor, _escaped_kw_expander)],
+    'off': [],
+    'on':
+        [filters.ContentFilter(_kw_compressor, _normal_kw_expander)],
+    'xml_escape':
+        [filters.ContentFilter(_kw_compressor, _xml_escape_kw_expander)],
     }
 filters.register_filter_stack_map('keywords', _filter_stack_map)
 
