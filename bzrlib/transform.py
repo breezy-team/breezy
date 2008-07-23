@@ -1907,7 +1907,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 contents = accelerator_tree.get_file(file_id, accelerator_path)
                 filters = tree._content_filter_stack(tree_path)
                 contents = filtered_output_bytes(contents, filters,
-                    ContentFilterContext(tree_path))
+                    ContentFilterContext(tree_path, tree))
                 try:
                     tt.create_file(contents, trans_id)
                 finally:
@@ -1922,7 +1922,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
             tree.iter_files_bytes(new_desired_files)):
         filters = tree._content_filter_stack(tree_path)
         contents = filtered_output_bytes(contents, filters,
-            ContentFilterContext(tree_path))
+            ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id)
         pb.update('Adding file contents', count + offset, total)
 

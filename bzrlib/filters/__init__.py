@@ -67,23 +67,53 @@ class ContentFilter(object):
 
 
 class ContentFilterContext(object):
-    """Object providing information that filters can use.
-    
-    In the future, this is likely to be expanded to include
-    details like the Revision when this file was last updated.
-    """
+    """Object providing information that filters can use."""
 
-    def __init__(self, relpath=None):
+    def __init__(self, relpath=None, tree=None, entry=None):
         """Create a context.
 
         :param relpath: the relative path or None if this context doesn't
            support that information.
+        :param tree: the Tree providing this file or None if this context
+           doesn't support that information.
+        :param entry: the InventoryEntry object if it is already known or
+           None if it should be derived if possible
         """
         self._relpath = relpath
+        self._tree = tree
+        self._entry = entry
 
     def relpath(self):
         """Relative path of file to tree-root."""
         return self._relpath
+
+    def source_tree(self):
+        """Source Tree object."""
+        return self._tree
+
+    def fileid(self):
+        """File-id of file."""
+        if self._entry is not None:
+            return self._entry.file_id
+        elif self._tree is None:
+            return None
+        else:
+            tree = self._tree
+            file_id = tree.path2id(self._relpath)
+
+    def revision(self):
+        """Revision this variation of the file was introduced.
+        
+        :return: None if unknown
+        """
+        if self._tree is None:
+            return None
+        tree = self._tree
+        if self._entry is None:
+            file_id = tree.path2id(self._relpath)
+            self._entry =  tree.inventory[file_id]
+        rev_id = self._entry.revision
+        return tree._repository.get_revision(rev_id)
 
 
 def filtered_input_file(f, filters):

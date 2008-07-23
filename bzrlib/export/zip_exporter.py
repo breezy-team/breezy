@@ -80,7 +80,7 @@ def zip_exporter(tree, dest, root, filtered=False):
                 if filtered:
                     chunks = tree.get_file_lines(file_id)
                     filters = tree._content_filter_stack(dp)
-                    context = ContentFilterContext(dp)
+                    context = ContentFilterContext(dp, tree, ie)
                     contents = filtered_output_bytes(chunks, filters, context)
                     content = ''.join(contents)
                 else:

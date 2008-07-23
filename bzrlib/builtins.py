@@ -2095,9 +2095,9 @@ class cmd_cat(Command):
                 ContentFilterContext,
                 filtered_output_bytes,
                 )
-            filters = tree._content_filter_stack(relpath)
+            filters = rev_tree._content_filter_stack(relpath)
             content = filtered_output_bytes([content], filters,
-                ContentFilterContext(relpath))
+                ContentFilterContext(relpath, rev_tree))
             self.outf.writelines(content)
         else:
             self.outf.write(content)
