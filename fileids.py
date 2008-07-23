@@ -80,10 +80,8 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
 
         inv_p = p.decode("utf-8")
         if data[0] in ('D', 'R'):
-            map[inv_p] = None
-            for p in map:
-                if p.startswith("%s/" % inv_p):
-                    map[p] = None
+            if not inv_p in map:
+                map[inv_p] = None
         if data[0] in ('A', 'R'):
             map[inv_p] = new_file_id(inv_p)
 
@@ -158,44 +156,47 @@ class FileIdMap(object):
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
-            i = 1
-            for revmeta in reversed(todo):
-                revid = revmeta.get_revision_id(mapping)
-                expensive = False
-                def log_find_children(path, revnum):
-                    expensive = True
-                    return self.repos._log.find_children(path, revnum)
-
-                (idmap, changes) = self.apply_changes(revmeta, 
-                        mapping, log_find_children)
-                self.update_map(map, revid, idmap, changes)
-                       
+            for i, revmeta in enumerate(reversed(todo)):
                 pb.update('generating file id map', i, len(todo))
+                revid = revmeta.get_revision_id(mapping)
+                (idmap, changes) = self.apply_changes(revmeta, 
+                        mapping, self.repos._log.find_children)
+                self.update_map(map, revid, idmap, changes)
 
                 parent_revs = next_parent_revs
 
                 next_parent_revs = [revid]
-                i += 1
         finally:
             pb.finished()
         return map
 
-    def update_map(self, map, revid, idmap, changes):
-        for p in changes:
-            if changes[p][0] == 'M' and not idmap.has_key(p):
-                idmap[p] = map[p][0]
+    def update_map(self, map, revid, delta, changes):
+        """Update a file id map.
 
-        for x in sorted(idmap.keys()):
-            if idmap[x] is None:
+        :param map: Existing file id map.
+        :param revid: Revision id of the id map
+        :param delta: Id map for just the delta
+        :param changes: Changes in revid.
+        """
+        for p in changes:
+            if changes[p][0] == 'M' and not delta.has_key(p):
+                delta[p] = map[p][0]
+        
+        for x in sorted(delta.keys(), reverse=True):
+            if delta[x] is None:
                 del map[x]
                 for p in map.keys():
-                    if p.startswith("%s/" % x):
+                    if p.startswith(u"%s/" % x):
                         del map[p]
-            else:
-                map[x] = (str(idmap[x]), revid)
+
+        for x in sorted(delta.keys()):
+            if delta[x] is not None:
+                map[x] = (str(delta[x]), revid)
 
         # Mark all parent paths as changed
-        for p in idmap:
+        for p in delta:
+            if delta[p] is None:
+                continue
             parts = p.split("/")
             for j in range(1, len(parts)+1):
                 parent = "/".join(parts[0:len(parts)-j])
@@ -275,8 +276,8 @@ class CachingFileIdMap(object):
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
-            i = 1
-            for revmeta in reversed(todo):
+            for i, revmeta in enumerate(reversed(todo)):
+                pb.update('generating file id map', i, len(todo))
                 revid = revmeta.get_revision_id(mapping)
                 expensive = False
                 def log_find_children(path, revnum):
@@ -287,7 +288,6 @@ class CachingFileIdMap(object):
                         revmeta, mapping, log_find_children)
 
                 self.actual.update_map(map, revid, idmap, changes)
-                pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs
                        
@@ -296,7 +296,6 @@ class CachingFileIdMap(object):
                     self.save(revid, parent_revs, map)
                     saved = True
                 next_parent_revs = [revid]
-                i += 1
         finally:
             pb.finished()
         if not saved:
