@@ -52,10 +52,8 @@ class TestSwitch(ExternalBase):
     def test_switch_nick(self):
         """Check that the nick gets switched too."""
         tree1 = self.make_branch_and_tree('branch1')
-        #tree1.commit('foo')
         tree2 = self.make_branch_and_tree('branch2')
         tree2.pull(tree1.branch)
-        #branch2_id = tree2.commit('bar')
         checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', 'branch2'], working_dir='checkout')
         self.assertEqual(tree1.branch.nick, tree2.branch.nick)
