@@ -1471,6 +1471,10 @@ class _PreviewTree(tree.Tree):
             self.__by_parent = self._transform.by_parent()
         return self.__by_parent
 
+    def _comparison_data(self, entry, path):
+        kind, size, executable, link_or_sha1 = self.path_content_summary(path)
+        return kind, executable, None
+
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
         pass
@@ -1498,6 +1502,8 @@ class _PreviewTree(tree.Tree):
 
     def paths2ids(self, specific_files, trees=None, require_versioned=False):
         """See Tree.paths2ids"""
+        if specific_files is None:
+            return None
         to_find = set(specific_files)
         result = set()
         for (file_id, paths, changed, versioned, parent, name, kind,
@@ -1665,7 +1671,13 @@ class _PreviewTree(tree.Tree):
         ignored.
         """
         if from_tree is not self._transform._tree:
-            raise ValueError('from_tree must be transform source tree.')
+            return tree.InterTree(from_tree, self).iter_changes(
+                include_unchanged=include_unchanged,
+                specific_files=specific_files,
+                pb=pb,
+                extra_trees=extra_trees,
+                require_versioned=require_versioned,
+                want_unversioned=want_unversioned)
         if include_unchanged:
             raise ValueError('include_unchanged is not supported')
         if specific_files is not None:
