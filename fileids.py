@@ -109,18 +109,16 @@ class FileIdMap(object):
         self.apply_changes_fn = apply_changes_fn
         self.repos = repos
 
-    def apply_changes(self, uuid, revnum, branch, global_changes, 
-                      renames, mapping, find_children=None):
+    def apply_changes(self, uuid, revmeta, mapping, find_children=None):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
-        :param revnum: Revno for revision in which changes happened
-        :param branch: Branch path where changes happened
-        :param global_changes: Dict with global changes that happened
+        :param revmeta: RevisionMetadata object for revision with changes
         :param renames: List of renames (known file ids for particular paths)
         :param mapping: Mapping
         """
-        changes = get_local_changes(global_changes, branch, mapping,
+        renames = mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops)
+        changes = get_local_changes(revmeta.paths, revmeta.branch_path, mapping,
                     self.repos.get_layout(),
                     self.repos.generate_revision_id, find_children)
         if find_children is not None:
@@ -132,7 +130,7 @@ class FileIdMap(object):
             get_children = None
 
         def new_file_id(x):
-            return mapping.generate_file_id(uuid, revnum, branch, x)
+            return mapping.generate_file_id(uuid, revmeta.revnum, revmeta.branch_path, x)
          
         idmap = self.apply_changes_fn(new_file_id, changes, get_children)
         idmap.update(renames)
@@ -170,8 +168,7 @@ class FileIdMap(object):
                     return self.repos._log.find_children(path, revnum)
 
                 (idmap, changes) = self.apply_changes(self.repos.uuid, 
-                        revmeta.revnum, revmeta.branch_path, revmeta.paths,
-                        mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
+                        revmeta, 
                         mapping, log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
@@ -289,9 +286,7 @@ class CachingFileIdMap(object):
                     return self.repos._log.find_children(path, revnum)
 
                 (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
-                        revmeta.revnum, revmeta.branch_path, revmeta.paths, 
-                        mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
-                        mapping, log_find_children)
+                        revmeta, mapping, log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs

@@ -351,10 +351,8 @@ class SvnRepository(Repository):
     def get_fileid_map(self, revnum, path, mapping):
         return self.fileid_map.get_map(self.uuid, revnum, path, mapping)
 
-    def transform_fileid_map(self, uuid, revnum, branch, changes, renames, 
-                             mapping):
-        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
-                                             renames, mapping)[0]
+    def transform_fileid_map(self, uuid, revmeta, mapping):
+        return self.fileid_map.apply_changes(uuid, revmeta, mapping)[0]
 
     def iter_all_changes(self, layout=None, pb=None):
         if layout is None:
