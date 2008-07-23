@@ -60,3 +60,9 @@ class EquivalenceTable(object):
         """Use new right lines, and update the equivalences."""
         self._right_lines = right_lines
         self._update_right_matches()
+
+    def get_left_matches(self, right_idx):
+        """Return the lines which match the line in right."""
+        right_line = self._right_lines[right_idx]
+        left_matches, right_matches = self._matching_lines[right_line]
+        return left_matches
