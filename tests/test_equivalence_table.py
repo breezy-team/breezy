@@ -1,0 +1,52 @@
+# Copyright (C) 2008 Canonical Limited.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+#
+
+from bzrlib import tests
+
+from bzrlib.plugins.groupcompress import equivalence_table
+
+
+class TestEquivalenceTable(tests.TestCase):
+
+    def test_create(self):
+        eq = equivalence_table.EquivalenceTable(['a', 'b'])
+        eq.set_right_lines(['b', 'd'])
+
+    def test_matching_lines(self):
+        lines = ['a', 'b', 'c', 'b']
+        eq = equivalence_table.EquivalenceTable(lines)
+        self.assertEqual(lines, eq._left_lines)
+        self.assertEqual({'a': ([0], []), 'b': ([1, 3], []), 'c': ([2], [])},
+                         eq._matching_lines)
+
+    def test_add_right_lines(self):
+        left_lines = ['a', 'b', 'c', 'b']
+        eq = equivalence_table.EquivalenceTable(left_lines)
+        self.assertEqual({'a': ([0], []), 'b': ([1, 3], []), 'c': ([2], [])},
+                         eq._matching_lines)
+        right_lines = ['b', 'c', 'd', 'c']
+        eq.set_right_lines(right_lines)
+        self.assertEqual({'a': ([0], []), 'b': ([1, 3], [0]),
+                          'c': ([2], [1, 3]), 'd': ([], [2])},
+                         eq._matching_lines)
+
+    def test_add_new_right_lines(self):
+        eq = equivalence_table.EquivalenceTable(['a', 'b', 'c', 'b'])
+        eq.set_right_lines(['b', 'c', 'd', 'c'])
+        eq.set_right_lines(['a', 'f', 'c', 'f'])
+        self.assertEqual({'a': ([0], [0]), 'b': ([1, 3], []),
+                          'c': ([2], [2]), 'f': ([], [1, 3])},
+                         eq._matching_lines)

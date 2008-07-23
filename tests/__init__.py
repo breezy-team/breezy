@@ -22,6 +22,7 @@
 def load_tests(standard_tests, module, loader):
     test_modules = [
         'errors',
+        'equivalence_table',
         'groupcompress',
         ]
     standard_tests.addTests(loader.loadTestsFromModuleNames(
