@@ -102,6 +102,8 @@ bzr-svn 0.4.11    UNRELEASED
    * Deliver encoded paths in URLs to Subversion in switch() and reparent()
      functions. (#248892)
 
+   * Lazily connect to repository when opening working copies. (#250706)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
