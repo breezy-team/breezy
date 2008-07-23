@@ -75,12 +75,12 @@ class SchemeDerivedLayout(RepositoryLayout):
         self.scheme = scheme
 
     def parse(self, path):
-        (bp, rp) = self.scheme.unprefix(path)
+        (proj, bp, rp) = self.scheme.unprefix(path)
         if self.scheme.is_tag(bp):
             type = "tag"
         else:
             type = "branch"
-        return (type, "", bp, rp)
+        return (type, proj, bp, rp)
 
     def _get_root_paths(self, revnum, verify_fn, project="", pb=None):
         def check_path(path):
@@ -299,7 +299,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         return self._generate_revision_id(uuid, revnum, path, self.scheme)
 
     def unprefix(self, branch_path, repos_path):
-        (bp, np) = self.scheme.unprefix(repos_path)
+        (proj, bp, np) = self.scheme.unprefix(repos_path)
         assert branch_path == bp
         return np
 

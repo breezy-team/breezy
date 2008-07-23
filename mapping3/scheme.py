@@ -43,7 +43,7 @@ class BranchingScheme(object):
         """Split up a Subversion path into a branch-path and inside-branch path.
 
         :param path: Path to split up.
-        :return: Tuple with branch-path and inside-branch path.
+        :return: Tuple with project name,branch-path and inside-branch path.
         """
         raise NotImplementedError
 
@@ -193,7 +193,7 @@ class ListBranchingScheme(BranchingScheme):
         parts = path.strip("/").split("/")
         for pattern in self.split_branch_list:
             if self._pattern_cmp(parts[:len(pattern)], pattern):
-                return ("/".join(parts[:len(pattern)]), 
+                return ("", "/".join(parts[:len(pattern)]), 
                         "/".join(parts[len(pattern):]))
         raise InvalidSvnBranchPath(path, self)
 
@@ -233,7 +233,7 @@ class NoBranchingScheme(ListBranchingScheme):
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
         assert isinstance(path, str)
-        return ("", path.strip("/"))
+        return ("", "", path.strip("/"))
 
     def __str__(self):
         return "none"
@@ -303,11 +303,13 @@ class TrunkBranchingScheme(ListBranchingScheme):
             raise InvalidSvnBranchPath(path, self)
 
         if parts[self.level] == "trunk" or parts[self.level] == "hooks":
-            return ("/".join(parts[0:self.level+1]).strip("/"), 
+            return ("/".join(parts[0:self.level]).strip("/"),
+                    "/".join(parts[0:self.level+1]).strip("/"), 
                     "/".join(parts[self.level+1:]).strip("/"))
         elif ((parts[self.level] == "tags" or parts[self.level] == "branches") and 
               len(parts) >= self.level+2):
-            return ("/".join(parts[0:self.level+2]).strip("/"), 
+            return ("/".join(parts[0:self.level]).strip("/"),
+                    "/".join(parts[0:self.level+2]).strip("/"), 
                     "/".join(parts[self.level+2:]).strip("/"))
         else:
             raise InvalidSvnBranchPath(path, self)
@@ -363,7 +365,8 @@ class SingleBranchingScheme(ListBranchingScheme):
         if not path.startswith(self.path):
             raise InvalidSvnBranchPath(path, self)
 
-        return (path[0:len(self.path)].strip("/"), 
+        return (self.path, 
+                path[0:len(self.path)].strip("/"), 
                 path[len(self.path):].strip("/"))
 
     def __str__(self):
