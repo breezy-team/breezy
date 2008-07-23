@@ -1359,12 +1359,30 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), None, False)),
                          ], entries)
 
+    def test_only_in_other(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('a-id', True,
+                           ((None, [None, None]), root_id, None),
+                           ((None, [None, None]), u'a', None),
+                           ((None, [None, None]), False, None)),
+                         ], entries)
     # TODO: cases to test
     #       simple criss-cross LCAS identical, BASE different
     #       x-x changed from BASE but identical for all LCAs and tips
     #               should be possible with the same trick of 'not-in-base'
-    #       x-x OTHER deletes the file
-    #       x-x OTHER introduces the file
+    #               using a double criss-cross
+    #       x-x Only renamed, no content or kind change
     #       x-x LCAs differ, one in ancestry of other for a given file
     #       x-x file missing in LCA
     #       x-x Reverted back to BASE text
