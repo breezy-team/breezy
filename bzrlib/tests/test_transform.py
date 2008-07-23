@@ -2366,3 +2366,13 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             ('new-a', 'e\n'),
             ('new-b', 'f\n'),
         ], list(tree_a.plan_file_merge('file-id', tree_b)))
+
+    def test_walkdirs(self):
+        preview = self.get_empty_preview()
+        preview.version_file('tree-root', preview.root)
+        preview_tree = preview.get_preview_tree()
+        file_trans_id = preview.new_file('a', preview.root, 'contents',
+                                         'a-id')
+        expected = [(('', 'tree-root'),
+                    [('a', 'a', 'file', None, 'a-id', 'file')])]
+        self.assertEqual(expected, list(preview_tree.walkdirs()))
