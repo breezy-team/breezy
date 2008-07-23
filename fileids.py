@@ -27,14 +27,15 @@ import urllib
 from bzrlib.plugins.svn import changes
 from bzrlib.plugins.svn.mapping import escape_svn_path
 
-def get_local_changes(paths, branch, mapping, generate_revid, 
+def get_local_changes(paths, branch, mapping, layout, generate_revid, 
                       get_children=None):
     """Obtain all of the changes relative to a particular path
     (usually a branch path).
 
     :param paths: Changes
     :param branch: Path under which to select changes
-    :parma mapping: Mapping to use to determine what are valid branch paths
+    :param mapping: Mapping to use to determine what are valid branch paths
+    :param layout: Layout to use 
     :param generate_revid: Function for generating revision id from svn revnum
     :param get_children: Function for obtaining the children of a path
     """
@@ -43,10 +44,10 @@ def get_local_changes(paths, branch, mapping, generate_revid,
         if not changes.path_is_child(branch, p):
             continue
         data = paths[p]
-        new_p = mapping.scheme.unprefix(p)[1]
+        new_p = layout.parse(p)[3]
         if data[1] is not None:
             try:
-                (cbp, crp) = mapping.scheme.unprefix(data[1])
+                (pt, proj, cbp, crp) = layout.parse(data[1])
 
                 # Branch copy
                 if (crp == "" and new_p == ""):
@@ -120,6 +121,7 @@ class FileIdMap(object):
         :param mapping: Mapping
         """
         changes = get_local_changes(global_changes, branch, mapping,
+                    self.repos.get_layout(),
                     self.repos.generate_revision_id, find_children)
         if find_children is not None:
             def get_children(path, revid):
