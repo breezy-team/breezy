@@ -118,6 +118,19 @@ class TestCat(TestCaseWithTransport):
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
 
+    def test_cat_filters(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        url = self.get_readonly_url() + '/README'
+        # Test unfiltered output
+        out, err = self.run_bzr_subprocess(['cat', url])
+        self.assertEqual('contents of README\n', out)
+        # TODO: Test filtering applied to output, not just a legal option
+        out, err = self.run_bzr_subprocess(['cat', '--filters', url])
+        self.assertEqual('contents of README\n', out)
+
     def test_cat_no_working_tree(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['README'])
