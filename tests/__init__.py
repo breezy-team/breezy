@@ -94,6 +94,8 @@ class TestDirEditor(object):
             copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
         if copyfrom_path is not None and copyfrom_rev == -1:
             copyfrom_rev = self.revnum
+        assert (copyfrom_path is None and copyfrom_rev == -1) or \
+               (copyfrom_path is not None and copyfrom_rev > -1)
         child = TestDirEditor(self.dir.add_directory(path, copyfrom_path, copyfrom_rev), self.baseurl, self.revnum)
         self.children.append(child)
         return child
