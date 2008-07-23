@@ -530,6 +530,7 @@ class BzrSvnMappingFileProps(object):
         else:
             fileprops[SVN_PROP_BZR_FILEIDS] = ""
 
+
 class BzrSvnMappingRevProps(object):
     @classmethod
     def supports_custom_revprops(cls):

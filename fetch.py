@@ -113,7 +113,7 @@ class RevisionBuildEditor(object):
         if self._id_map is not None:
             return self._id_map
 
-        self._id_map = self.source.transform_fileid_map(self.source.uuid, self.revmeta, self.mapping)
+        self._id_map = self.source.transform_fileid_map(self.revmeta, self.mapping)
 
         return self._id_map
 

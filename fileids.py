@@ -109,10 +109,9 @@ class FileIdMap(object):
         self.apply_changes_fn = apply_changes_fn
         self.repos = repos
 
-    def apply_changes(self, uuid, revmeta, mapping, find_children=None):
+    def apply_changes(self, revmeta, mapping, find_children=None):
         """Change file id map to incorporate specified changes.
 
-        :param uuid: UUID of repository changes happen in
         :param revmeta: RevisionMetadata object for revision with changes
         :param renames: List of renames (known file ids for particular paths)
         :param mapping: Mapping
@@ -130,7 +129,7 @@ class FileIdMap(object):
             get_children = None
 
         def new_file_id(x):
-            return mapping.generate_file_id(uuid, revmeta.revnum, revmeta.branch_path, x)
+            return mapping.generate_file_id(revmeta.uuid, revmeta.revnum, revmeta.branch_path, x)
          
         idmap = self.apply_changes_fn(new_file_id, changes, get_children)
         idmap.update(renames)
@@ -167,15 +166,14 @@ class FileIdMap(object):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
-                (idmap, changes) = self.apply_changes(self.repos.uuid, 
-                        revmeta, 
+                (idmap, changes) = self.apply_changes(revmeta, 
                         mapping, log_find_children)
+                self.update_map(map, revid, idmap, changes)
+                       
                 pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs
 
-                self.update_map(map, revid, idmap, changes)
-                       
                 next_parent_revs = [revid]
                 i += 1
         finally:
@@ -285,13 +283,13 @@ class CachingFileIdMap(object):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
-                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
+                (idmap, changes) = self.actual.apply_changes(
                         revmeta, mapping, log_find_children)
+
+                self.actual.update_map(map, revid, idmap, changes)
                 pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs
-
-                self.actual.update_map(map, revid, idmap, changes)
                        
                 saved = False
                 if i % 500 == 0 or expensive:

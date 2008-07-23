@@ -67,6 +67,7 @@ class RevisionMetadata(object):
         self.revnum = revnum
         self.revprops = revprops
         self.fileprops = fileprops
+        self.uuid = repository.uuid
 
     def __repr__(self):
         return "<RevisionMetadata for revision %d in repository %s>" % (self.revnum, self.repository.uuid)
@@ -351,8 +352,8 @@ class SvnRepository(Repository):
     def get_fileid_map(self, revnum, path, mapping):
         return self.fileid_map.get_map(self.uuid, revnum, path, mapping)
 
-    def transform_fileid_map(self, uuid, revmeta, mapping):
-        return self.fileid_map.apply_changes(uuid, revmeta, mapping)[0]
+    def transform_fileid_map(self, revmeta, mapping):
+        return self.fileid_map.apply_changes(revmeta, mapping)[0]
 
     def iter_all_changes(self, layout=None, pb=None):
         if layout is None:
