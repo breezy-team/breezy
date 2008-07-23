@@ -4434,7 +4434,8 @@ class cmd_switch(Command):
     of the new location and binds to it.
     
     In both cases, the working tree is updated and uncommitted changes
-    are merged. The user can commit or revert these as they desire.
+    are merged. The user can commit or revert these as they desire. The branch
+    nickname is also updated to be that of the branch being switched to.
 
     Pending merges need to be committed or reverted before using switch.
 
