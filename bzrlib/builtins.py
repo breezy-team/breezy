@@ -2002,11 +2002,13 @@ class cmd_export(Command):
                help="Type of file to export to.",
                type=unicode),
         'revision',
+        Option('filters', help='Apply content filters.'),
         Option('root',
                type=str,
                help="Name of the root directory inside the exported file."),
         ]
-    def run(self, dest, branch=None, revision=None, format=None, root=None):
+    def run(self, dest, branch=None, revision=None, format=None, root=None,
+        filters=False):
         from bzrlib.export import export
 
         if branch is None:
@@ -2024,7 +2026,7 @@ class cmd_export(Command):
             rev_id = revision[0].as_revision_id(b)
         t = b.repository.revision_tree(rev_id)
         try:
-            export(t, dest, format, root)
+            export(t, dest, format, root, filtered=filters)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
