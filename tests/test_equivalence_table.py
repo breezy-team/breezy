@@ -67,10 +67,20 @@ class TestEquivalenceTable(tests.TestCase):
     def test_extend_left_lines(self):
         eq = equivalence_table.EquivalenceTable(['a', 'b', 'c', 'b'])
         eq.set_right_lines(['b', 'c', 'd', 'c'])
-        eq.extend_left_lines(['d', 'e', 'c'])
+        eq.extend_left_lines(['d', 'e', 'c'], [True, True, True])
         self.assertEqual(['a', 'b', 'c', 'b', 'd', 'e', 'c'],
                          eq._left_lines)
         self.assertEqual({'a': ([0], []), 'b': ([1, 3], [0]),
                           'c': ([2, 6], [1, 3]), 'd': ([4], [2]),
                           'e': ([5], [])},
+                         eq._matching_lines)
+
+    def test_extend_left_lines_ignored(self):
+        eq = equivalence_table.EquivalenceTable(['a', 'b', 'c', 'b'])
+        eq.set_right_lines(['b', 'c', 'd', 'c'])
+        eq.extend_left_lines(['d', 'e', 'c'], [False, False, True])
+        self.assertEqual(['a', 'b', 'c', 'b', 'd', 'e', 'c'],
+                         eq._left_lines)
+        self.assertEqual({'a': ([0], []), 'b': ([1, 3], [0]),
+                          'c': ([2, 6], [1, 3]), 'd': ([], [2])},
                          eq._matching_lines)

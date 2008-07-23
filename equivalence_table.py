@@ -41,10 +41,12 @@ class EquivalenceTable(object):
             left_matches.append(idx)
         self._matching_lines = matches
 
-    def _update_matching_left_lines(self, new_lines):
+    def _update_matching_left_lines(self, new_lines, index):
         matches = self._matching_lines
         start_idx = len(self._left_lines)
-        for idx, line in enumerate(new_lines):
+        for idx, (line, do_index) in enumerate(zip(new_lines, index)):
+            if not do_index:
+                continue
             left_matches, right_matches = matches.setdefault(line, ([], []))
             left_matches.append(start_idx + idx)
 
@@ -74,7 +76,12 @@ class EquivalenceTable(object):
         left_matches, right_matches = self._matching_lines[right_line]
         return left_matches
 
-    def extend_left_lines(self, lines):
-        """Add more lines to the left-lines list"""
-        self._update_matching_left_lines(lines)
+    def extend_left_lines(self, lines, index):
+        """Add more lines to the left-lines list.
+
+        :param lines: A list of lines to add
+        :param index: A True/False for each node to define if it should be
+            indexed.
+        """
+        self._update_matching_left_lines(lines, index)
         self._left_lines.extend(lines)
