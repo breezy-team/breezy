@@ -21,10 +21,12 @@ See MemoryTree for more details.
 
 
 from copy import deepcopy
+import os
 
 from bzrlib import (
     errors,
     mutabletree,
+    osutils,
     revision as _mod_revision,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -101,6 +103,14 @@ class MemoryTree(mutabletree.MutableTree):
             return None, False, None
         return entry.kind, entry.executable, None
 
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel):
+        file_id = self.path2id(from_rel)
+        to_dir, to_tail = os.path.split(to_rel)
+        to_parent_id = self.path2id(to_dir)
+        self._file_transport.move(from_rel, to_rel)
+        self._inventory.rename(file_id, to_parent_id, to_tail)
+        
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         id = self.path2id(path)
