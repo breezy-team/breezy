@@ -1186,3 +1186,75 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         self.assertFalse(isinstance(dest_repo, RemoteRepository))
         self.assertTrue(isinstance(src_repo, RemoteRepository))
         src_repo.copy_content_into(dest_repo)
+
+
+class TestErrorTranslation(tests.TestCaseWithMemoryTransport):
+    """Unit tests for bzrlib.remote._translate_error.
+    
+    Given an ErrorFromSmartServer (which has an error tuple from a smart
+    server) and some context, _translate_error raises more specific errors from
+    bzrlib.errors.
+    """
+
+    def translateError(self, error_tuple, **context):
+        server_error = errors.ErrorFromSmartServer(error_tuple)
+        exc = self.assertRaises(
+            errors.BzrError, remote._translate_error, server_error, **context)
+        return exc
+
+    def test_NoSuchRevision(self):
+        branch = self.make_branch('')
+        revid = 'revid'
+        translated_error = self.translateError(
+            ('NoSuchRevision', revid), branch=branch)
+        expected_error = errors.NoSuchRevision(branch, revid)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_nosuchrevision(self):
+        repository = self.make_repository('')
+        revid = 'revid'
+        translated_error = self.translateError(
+            ('nosuchrevision', revid), repository=repository)
+        expected_error = errors.NoSuchRevision(repository, revid)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_nobranch(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateError(('nobranch',), bzrdir=bzrdir)
+        expected_error = errors.NotBranchError(path=bzrdir.root_transport.base)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_LockContention(self):
+        translated_error = self.translateError(('LockContention',))
+        expected_error = errors.LockContention('(remote lock)')
+        self.assertEqual(expected_error, translated_error)
+
+    def test_UnlockableTransport(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateError(
+            ('UnlockableTransport',), bzrdir=bzrdir)
+        expected_error = errors.UnlockableTransport(bzrdir.root_transport)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_LockFailed(self):
+        lock = 'str() of a server lock'
+        why = 'str() of why'
+        translated_error = self.translateError(('LockFailed', lock, why))
+        expected_error = errors.LockFailed(lock, why)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_TokenMismatch(self):
+        token = 'a lock token'
+        translated_error = self.translateError(('TokenMismatch',), token=token)
+        expected_error = errors.TokenMismatch(token, '(remote token)')
+        self.assertEqual(expected_error, translated_error)
+
+    def test_Diverged(self):
+        branch = self.make_branch('a')
+        other_branch = self.make_branch('b')
+        translated_error = self.translateError(
+            ('Diverged',), branch=branch, other_branch=other_branch)
+        expected_error = errors.DivergedBranches(branch, other_branch)
+        self.assertEqual(expected_error, translated_error)
+
+
