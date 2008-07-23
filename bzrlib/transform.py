@@ -1711,12 +1711,17 @@ class _PreviewTree(tree.Tree):
             for child_id in self._all_children(parent_id):
                 path_from_root = self._final_paths.get_path(child_id)
                 basename = self._transform.final_name(child_id)
-                kind = self._transform.final_kind(child_id)
-                if kind == 'directory':
-                    subdirs.append(child_id)
                 file_id = self._transform.final_file_id(child_id)
+                try:
+                    kind = self._transform.final_kind(child_id)
+                    versioned_kind = kind
+                except NoSuchFile:
+                    kind = 'unknown'
+                    versioned_kind = self._transform._tree.stored_kind(file_id)
+                if versioned_kind == 'directory':
+                    subdirs.append(child_id)
                 children.append((path_from_root, basename, kind, None,
-                                 file_id, kind))
+                                 file_id, versioned_kind))
             children.sort()
             if parent_path.startswith(prefix):
                 yield (parent_path, parent_file_id), children
