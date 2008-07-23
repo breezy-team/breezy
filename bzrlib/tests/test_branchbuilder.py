@@ -196,8 +196,23 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.assertRaises(errors.UnknownBuildAction,
             builder.build_snapshot, 'B-id', None, [('weirdo', ('foo',))])
 
-    # TODO: rename a file/directory, but rename isn't supported by the
-    #       MemoryTree api yet, so for now we wait until it is used
+    def test_rename(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', None,
+            [('rename', ('a', 'b'))])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'b', 'a-id', 'file')], rev_tree)
+
+    def test_rename_into_subdir(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', None,
+            [('add', ('dir', 'dir-id', 'directory', None)),
+             ('rename', ('a', 'dir/a'))])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'dir', 'dir-id', 'directory'),
+                              (u'dir/a', 'a-id', 'file')], rev_tree)
 
     def test_set_parent(self):
         builder = self.build_a_rev()
