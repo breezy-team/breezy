@@ -27,6 +27,10 @@ IN DEVELOPMENT
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
 
+    * Fix "no buffer space available" error when branching with the new
+      smart server protocol to or from Windows.
+      (Andrew Bennetts, #246180)
+
 
   DOCUMENTATION:
 
@@ -39,6 +43,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * RuleSearchers return () instead of [] now when there are no matches.
+      (Ian Clatworthy)
 
 
 bzr 1.6beta3 2008-07-17
@@ -149,6 +155,9 @@ bzr 1.6beta3 2008-07-17
 
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
+
+    * Handle a file turning in to a directory in TreeTransform.
+      (James Westby, #248448)
 
   DOCUMENTATION:
 

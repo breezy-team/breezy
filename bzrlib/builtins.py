@@ -4380,17 +4380,22 @@ class cmd_reconfigure(Command):
     If none of these is available, --bind-to must be specified.
     """
 
+    _see_also = ['branches', 'checkouts', 'standalone-trees', 'working-trees']
     takes_args = ['location?']
     takes_options = [RegistryOption.from_kwargs('target_type',
                      title='Target type',
                      help='The type to reconfigure the directory to.',
                      value_switches=True, enum_switch=False,
-                     branch='Reconfigure to a branch.',
-                     tree='Reconfigure to a tree.',
-                     checkout='Reconfigure to a checkout.',
-                     lightweight_checkout='Reconfigure to a lightweight'
-                     ' checkout.',
-                     standalone='Reconfigure to be standalone.',
+                     branch='Reconfigure to be an unbound branch '
+                        'with no working tree.',
+                     tree='Reconfigure to be an unbound branch '
+                        'with a working tree.',
+                     checkout='Reconfigure to be a bound branch '
+                        'with a working tree.',
+                     lightweight_checkout='Reconfigure to be a lightweight'
+                     ' checkout (with no local history).',
+                     standalone='Reconfigure to be a standalone branch '
+                        '(i.e. stop using shared repository).',
                      use_shared='Reconfigure to use a shared repository.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
