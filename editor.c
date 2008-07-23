@@ -398,7 +398,7 @@ static PyObject *py_dir_editor_absent_directory(PyObject *self, PyObject *args)
 static PyObject *py_dir_editor_add_file(PyObject *self, PyObject *args)
 {
 	char *path, *copy_path=NULL;
-	long copy_rev=-1;
+	svn_revnum_t copy_rev=-1;
 	void *file_baton = NULL;
 	EditorObject *editor = (EditorObject *)self;
 

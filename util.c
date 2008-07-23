@@ -199,7 +199,7 @@ svn_error_t *py_svn_log_entry_receiver(void *baton, svn_log_entry_t *log_entry, 
 }
 #endif
 
-svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, long revision, const char *author, const char *date, const char *message, apr_pool_t *pool)
+svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, svn_revnum_t revision, const char *author, const char *date, const char *message, apr_pool_t *pool)
 {
 	PyObject *revprops, *py_changed_paths, *ret;
 
