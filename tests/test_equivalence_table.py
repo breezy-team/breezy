@@ -84,3 +84,10 @@ class TestEquivalenceTable(tests.TestCase):
         self.assertEqual({'a': ([0], []), 'b': ([1, 3], [0]),
                           'c': ([2, 6], [1, 3]), 'd': ([], [2])},
                          eq._matching_lines)
+
+    def test_abusive(self):
+        eq = equivalence_table.EquivalenceTable(['a']*1000)
+        self.assertEqual({'a': (range(1000), [])}, eq._matching_lines)
+        eq.set_right_lines(['a']*1000)
+        self.assertEqual({'a': (range(1000), range(1000))}, eq._matching_lines)
+        self.assertGetLeftMatches(range(1000), eq, 10)
