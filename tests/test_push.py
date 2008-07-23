@@ -292,6 +292,34 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual(Branch.open("dc").revision_history(), 
                          Branch.open("b").revision_history())
 
+    def test_fetch_preserves_file_revid(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        self.build_tree({'dc/foo/bla': 'data43243242'})
+        revid = wt.commit(message="Commit from Bzr")
+
+        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+
+        os.mkdir("b")
+        repos = self.svndir.sprout("b")
+
+        b = Branch.open("b")
+
+        def check_tree_revids(rtree):
+            self.assertEqual(rtree.inventory.root.revision, revid)
+            self.assertEqual(rtree.inventory[rtree.path2id("file")].revision,
+                             revid)
+            self.assertEqual(rtree.inventory[rtree.path2id("foo")].revision,
+                             revid)
+            self.assertEqual(rtree.inventory[rtree.path2id("foo/bla")].revision,
+                             revid)
+
+        check_tree_revids(b.repository.revision_tree(b.last_revision()))
+
+        bc = self.svndir.open_branch()
+        check_tree_revids(bc.repository.revision_tree(bc.last_revision()))
+
     def test_message(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.bzrdir.open_workingtree()
