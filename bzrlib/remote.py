@@ -1669,19 +1669,23 @@ def _translate_error(err, **context):
       - other_branch
     """
     def find(name):
-        return context.get(name, '(unknown %s)' % (name,))
+        try:
+            return context[name]
+        except KeyError, keyErr:
+            mutter('Missing key %r in context %r', keyErr.args[0], context)
+            raise err
     if err.error_verb == 'NoSuchRevision':
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])
     elif err.error_tuple == ('nobranch',):
-        raise errors.NotBranchError(path=context['bzrdir'].root_transport.base)
+        raise errors.NotBranchError(path=find('bzrdir').root_transport.base)
     elif err.error_verb == 'norepository':
         raise errors.NoRepositoryPresent(find('bzrdir'))
     elif err.error_verb == 'LockContention':
         raise errors.LockContention('(remote lock)')
     elif err.error_verb == 'UnlockableTransport':
-        raise errors.UnlockableTransport(context['bzrdir'].root_transport)
+        raise errors.UnlockableTransport(find('bzrdir').root_transport)
     elif err.error_verb == 'LockFailed':
         raise errors.LockFailed(err.error_args[0], err.error_args[1])
     elif err.error_verb == 'TokenMismatch':
