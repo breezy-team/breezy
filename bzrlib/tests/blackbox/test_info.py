@@ -17,16 +17,15 @@
 
 """Tests for the info command of bzr."""
 
-import os
 import sys
 
-import bzrlib
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     info,
     osutils,
-    repository,
+    upgrade,
     urlutils,
     )
 from bzrlib.osutils import format_date
@@ -155,8 +154,8 @@ Repository:
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
         knit1_format = bzrdir.format_registry.make_bzrdir('knit')
-        bzrlib.upgrade.upgrade('bound', knit1_format)
-        branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
+        upgrade.upgrade('bound', knit1_format)
+        branch3 = bzrdir.BzrDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
@@ -202,7 +201,7 @@ Repository:
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        branch4 = bzrlib.bzrdir.BzrDir.create_branch_convenience('checkout',
+        branch4 = bzrdir.BzrDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
@@ -1182,21 +1181,21 @@ Repository:
         transport = self.get_transport()
         # Create shared repository with a branch
         repo = self.make_repository('repo', shared=True,
-                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+                                    format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
         repo.bzrdir.root_transport.mkdir('branch')
         repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
-                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+                                    format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-            format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        co_branch = bzrdir.BzrDir.create_branch_convenience('tree/checkout',
+            format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
-        lco_dir = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        bzrlib.branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
+        lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
+        branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
@@ -1295,7 +1294,7 @@ Repository:
             raise TestSkipped("don't use oslocks on win32 in unix manner")
 
         tree = self.make_branch_and_tree('branch',
-                                         format=bzrlib.bzrdir.BzrDirFormat6())
+                                         format=bzrdir.BzrDirFormat6())
 
         # Test all permutations of locking the working tree, branch and repository
         # XXX: Well not yet, as we can't query oslocks yet. Currently, it's
