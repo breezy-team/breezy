@@ -172,18 +172,20 @@ class GroupCompressor(object):
                     range_len += 1
             else:
                 if copying:
-                    next_locations = copy_ends.intersection(matching_locs)
+                    # TODO: We could do a merge sort here if we keep copy_ends
+                    #       and matching_locs always sorted.
+                    next_locations = set(copy_ends).intersection(matching_locs)
                     if len(next_locations):
                         # range continues
                         range_len += 1
-                        copy_ends = set([loc + 1 for loc in next_locations])
+                        copy_ends = [loc + 1 for loc in next_locations]
                         pos += 1
                         continue
                 # New copy range starts here:
                 flush_range(copying, range_start, copy_ends, range_len, lines,
                     new_lines, index_lines)
                 range_len = 1
-                copy_ends = set([loc + 1 for loc in matching_locs])
+                copy_ends = [loc + 1 for loc in matching_locs]
                 range_start = pos
                 copying = True
             pos += 1
