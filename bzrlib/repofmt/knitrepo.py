@@ -131,10 +131,6 @@ class KnitRepository(MetaDirRepository):
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
 
-    def _warn_if_deprecated(self):
-        # This class isn't deprecated
-        pass
-
     @needs_read_lock
     def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
