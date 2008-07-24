@@ -134,3 +134,17 @@ class TestCompiledEquivalenceTable(tests.TestCase):
             (5, 2, 1),
             (6, 1, 1),
             ]), eq._inspect_hash_table())
+
+    def test_build_hash_table_with_strings(self):
+        eq = self._gc_module.EquivalenceTable(['a', 'b', 'c', 'b'])
+        self.assertEqual([
+            ('a', hash('a'), hash('a') & 8191, -1),
+            ('b', hash('b'), hash('b') & 8191, 3),
+            ('c', hash('c'), hash('c') & 8191, -1),
+            ('b', hash('b'), hash('b') & 8191, -1),
+            ], eq._inspect_left_lines())
+        self.assertEqual((8192, sorted([
+            (hash('a') & 8191, 0, 1),
+            (hash('b') & 8191, 1, 2),
+            (hash('c') & 8191, 2, 1),
+            ])), eq._inspect_hash_table())
