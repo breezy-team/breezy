@@ -125,6 +125,39 @@ class GroupCompressor(object):
         self.lines = self.line_locations.lines
         self.labels_deltas = {}
 
+    def _get_longest_match(self, pos, lines, locations):
+        range_start = pos
+        range_len = 0
+        copy_ends = None
+        while pos < len(lines):
+            if locations is None:
+                locations = self.line_locations.get_matches(lines[pos])
+            if locations is None:
+                # No more matches, just return whatever we have
+                break
+            else:
+                if copy_ends is None:
+                    # We are starting a new range
+                    copy_ends = [loc + 1 for loc in locations]
+                    range_len = 1
+                    locations = None # Consumed
+                else:
+                    # We are currently in the middle of a match
+                    next_locations = set(copy_ends).intersection(locations)
+                    if len(next_locations):
+                        # range continues
+                        copy_ends = [loc + 1 for loc in next_locations]
+                        range_len += 1
+                        locations = None # Consumed
+                    else:
+                        # But we are done with this match, we should be
+                        # starting a new one, though
+                        break
+            pos += 1
+        if copy_ends is None:
+            return None, locations
+        return ((min(copy_ends) - range_len, range_start, range_len)), locations
+
     def get_matching_blocks(self, lines):
         """Return an the ranges in lines which match self.lines.
 
@@ -138,40 +171,16 @@ class GroupCompressor(object):
         pos = 0
         line_locations = self.line_locations
         line_locations.set_right_lines(lines)
-        # get = line_locations._matching_lines.get
-        range_len = 0
-        range_start = 0
-        copy_ends = None
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
+        locations = None
         while pos < len(lines):
-            locations = line_locations.get_idx_matches(pos)
-            # locations = get(lines[pos])
-            if locations is None:
-                if copy_ends:
-                    result.append((min(copy_ends) - range_len, range_start, range_len))
-                    range_start = pos
-                    range_len = 1
-                    copy_ends = None
-                else:
-                    range_len += 1
+            block, locations = self._get_longest_match(pos, lines, locations)
+            if block is None:
+                pos += 1
             else:
-                if copy_ends:
-                    next_locations = set(copy_ends).intersection(locations)
-                    if len(next_locations):
-                        # range continues
-                        range_len += 1
-                        copy_ends = [loc + 1 for loc in next_locations]
-                        pos += 1
-                        continue
-                if copy_ends:
-                    result.append((min(copy_ends) - range_len, range_start, range_len))
-                range_len = 1
-                copy_ends = [loc + 1 for loc in locations]
-                range_start = pos
-            pos += 1
-        if copy_ends:
-            result.append((min(copy_ends) - range_len, range_start, range_len))
+                result.append(block)
+                pos += block[-1]
         result.append((len(self.lines), len(lines), 0))
         return result
 
