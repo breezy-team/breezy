@@ -74,7 +74,7 @@ def add_pyrex_extension(module_name, **kwargs):
         else:
             ext_modules.append(Extension(module_name, [c_name]))
 
-# add_pyrex_extension('_groupcompress_c')
+add_pyrex_extension('_groupcompress_c')
 
 
 if __name__ == '__main__':
@@ -91,4 +91,4 @@ if __name__ == '__main__':
           package_dir={'bzrlib.plugins.groupcompress': '.'},
           cmdclass={'build_ext': build_ext_if_possible},
           ext_modules=ext_modules,
-          }
+          )

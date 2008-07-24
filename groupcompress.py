@@ -136,6 +136,7 @@ class GroupCompressor(object):
         pos = 0
         line_locations = self.line_locations
         line_locations.set_right_lines(lines)
+        get = line_locations._matching_lines.get
         range_len = 0
         range_start = 0
         copy_ends = None
@@ -143,6 +144,7 @@ class GroupCompressor(object):
         # insert new lines. To find reusable lines we traverse 
         while pos < len(lines):
             locations = line_locations.get_idx_matches(pos)
+            # locations = get(lines[pos])
             if locations is None:
                 if copy_ends:
                     result.append((min(copy_ends) - range_len, range_start, range_len))
