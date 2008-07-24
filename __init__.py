@@ -53,20 +53,21 @@ in keyword values so they can be safely included in HTML or XML files.
 
 The currently supported keywords are given below.
 
- =============  =====================================================
+ =============  =========================================================
  Keyword        Description
- =============  =====================================================
+ =============  =========================================================
  Date           the date and time the file was last modified
- Author         the author of the last change
- AuthorEmail    just the email address of the author
+ Author         the author (name and email) of the last change
+ Author-Email   just the email address of the author
+ Revision-Id    the unique id of the revision that last changed the file
+ Path           the relative path of the file in the tree
+ Filename       just the name part of the relative path
+ Directory      just the directory part of the relative path
+ File-Id        the unique id assigned to this file
  Now            the current date and time
  User           the current user (name and email)
- UserEmail      just the email address of the current user
- File           the relative path of the file in the tree
- FileName       just the name part of the relative path
- FileDir        just the directory part of the relative path
- FileId         the unique file-id assigned to this file
- =============  =====================================================
+ User-Email     just the email address of the current user
+ =============  =========================================================
 
 By default, dates/times are output using this format::
 
@@ -91,6 +92,7 @@ from bzrlib import (
     option,
     osutils,
     registry,
+    xml8,
     )
 
 
@@ -121,8 +123,8 @@ _keyword_style_registry.default_key = 'cooked'
 
 
 # Regular expressions for matching the raw and cooked patterns
-_KW_RAW_RE = re.compile(r'\$(\w+)\$')
-_KW_COOKED_RE = re.compile(r'\$(\w+):([^$]+)\$')
+_KW_RAW_RE = re.compile(r'\$([\w\-]+)\$')
+_KW_COOKED_RE = re.compile(r'\$([\w\-]+):([^$]+)\$')
 
 
 def compress_keywords(s):
@@ -199,7 +201,9 @@ def _format_datetime_keyword(dt, name, cfg):
     cfg_key = 'keywords.format.%s' % (name,)
     format = cfg.get_user_option(cfg_key)
     if format is None:
-        return str(dt)
+        # Displaying the microseconds is overkill so clear that field
+        # If someone really want them, they can specify an explicit format
+        return str(dt.replace(microsecond=0))
     else:
         return dt.strftime(format)
 
@@ -224,7 +228,7 @@ def _get_global_keywords(encoder=None, _now_fn=datetime.datetime.now):
         _global_keywords = {
             'Now': now,
             'User': user,
-            'UserEmail': _extract_email(user),
+            'User-Email': _extract_email(user),
             }
     if encoder is not None:
         result = {}
@@ -257,11 +261,12 @@ def _get_context_keywords(context, encoder=None):
     local_keywords = {
         'Date': date,
         'Author': author,
-        'AuthorEmail': _extract_email(author),
-        'File': path,
-        'FileName': base,
-        'FileDir': dir,
-        'FileId': context.fileid(),
+        'Author-Email': _extract_email(author),
+        'Revision-Id': context.revision_id(),
+        'Path': path,
+        'Filename': base,
+        'Directory': dir,
+        'File-Id': context.file_id(),
         }
     if encoder is not None:
         result = {}
@@ -274,8 +279,10 @@ def _get_context_keywords(context, encoder=None):
 
 def _xml_escape(s):
     """Escape a string so it can be included safely in XML/HTML."""
-    # TODO: get from commit.py
-    return s
+    # Complie the regular expressions if not already done
+    xml8._ensure_utf8_re()
+    # Convert and strip the trailing quote
+    return xml8._encode_and_escape(s)[:-1]
 
 
 def _kw_compressor(chunks, context=None):
