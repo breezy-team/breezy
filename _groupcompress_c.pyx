@@ -394,23 +394,53 @@ cdef class EquivalenceTable:
 
     def get_matches(self, line):
         """Return the lines which match the line in right."""
+        cdef Py_ssize_t count
+        cdef Py_ssize_t i
+        cdef Py_ssize_t *matches
+
+        try:
+            count = self.get_raw_matches(line, &matches)
+            if count == 0:
+                return None
+            result = []
+            for i from 0 <= i < count:
+                PyList_Append(result, matches[i])
+        finally:
+            safe_free(<void**>&matches)
+        return result
+
+    cdef Py_ssize_t get_raw_matches(self, object line,
+                                    Py_ssize_t **matches) except -1:
+        """Get all the possible entries that match the given location.
+
+        :param line: A Python line which we want to match
+        :param pos: The index position in _right_lines
+        :param matches: A variable to hold an array containing all the matches.
+            This will be allocated using malloc, and the caller is responsible
+            to free it with free(). If there are no matches, no memory will be
+            allocated.
+        :retrun: The number of matched positions
+        """
         cdef Py_ssize_t hash_offset
         cdef _raw_line raw_line
         cdef _hash_bucket cur_bucket
         cdef Py_ssize_t cur_line_idx
+        cdef Py_ssize_t count
+        cdef Py_ssize_t *local_matches
 
         self._line_to_raw_line(<PyObject *>line, &raw_line)
         hash_offset = self._find_hash_position(&raw_line)
         cur_bucket = self._hashtable[hash_offset]
         cur_line_idx = cur_bucket.line_index
         if cur_line_idx == SENTINEL:
-            return None
-        result = []
-        while cur_line_idx != SENTINEL:
-            PyList_Append(result, cur_line_idx)
+            return 0
+        local_matches = <Py_ssize_t*>safe_malloc(sizeof(Py_ssize_t)*cur_bucket.count)
+        matches[0] = local_matches
+        for count from 0 <= count < cur_bucket.count:
+            assert cur_line_idx != SENTINEL
+            local_matches[count] = cur_line_idx
             cur_line_idx = self._raw_lines[cur_line_idx].next_line_index
-        assert len(result) == cur_bucket.count
-        return result
+        return cur_bucket.count
 
     def _get_matching_lines(self):
         """Return a dictionary showing matching lines."""
@@ -454,10 +484,34 @@ cdef class EquivalenceTable:
         self._right_lines = lines
 
 
+# This is not complete, and we may not need it anyway
+# 
+# cdef int intersect_sorted(Py_ssize_t *base, Py_ssize_t *base_count,
+#                           Py_ssize_t *new_values, Py_ssize_t new_count):
+#     """Intersect the base values with the new values.
+# 
+#     base will be updated to only include values that are in both base and new,
+#     and the base_count will be updated to reflect this.
+#     It is assumed that both base and new_values are sorted in ascending order,
+#     with no duplicates.
+# 
+#     :param base: An array of base values
+#     :param base_count: The length of the base array
+#     :param new_values: An array of values to compare to base
+#     :param new_count: The number of new entries
+#     """
+#     next_locations = set(copy_ends).intersection(locations)
+#     if len(next_locations):
+#         # range continues
+#         copy_ends = []
+#         for loc in next_locations:
+#             copy_ends.append(loc + 1)
+# 
+
 def _get_longest_match(equivalence_table, pos, max_pos, locations):
     """Get the longest possible match for the current position."""
     cdef EquivalenceTable eq
-    cdef int cpos
+    cdef Py_ssize_t cpos
 
     eq = equivalence_table
     cpos = pos
@@ -500,5 +554,3 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
     if copy_ends is None:
         return None, pos, locations
     return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
-
-

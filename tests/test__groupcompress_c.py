@@ -256,9 +256,17 @@ class TestGetLongestMatch(tests.TestCase):
 
     def test_lots_of_matches(self):
         eq = self._eq_class(['a']*1000)
+        eq.set_right_lines(['a']*1000)
+        self.assertLongestMatch((0, 0, 1000), 1000, None,
+                                eq, 0, 1000, None)
+        eq = self._eq_class(['a']*1000)
         eq.set_right_lines(['a']*2000)
         self.assertLongestMatch((0, 0, 1000), 1000, range(1000),
                                 eq, 0, 2000, None)
+        eq = self._eq_class(['a']*2000)
+        eq.set_right_lines(['a']*1000)
+        self.assertLongestMatch((0, 0, 1000), 1000, None,
+                                eq, 0, 1000, None)
 
 
 class TestCompiledGetLongestMatch(TestGetLongestMatch):
