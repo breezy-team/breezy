@@ -123,6 +123,55 @@ class GroupCompressor(object):
         self.line_locations = {}
         self.labels_deltas = {}
 
+    def get_matching_blocks(self, lines):
+        """Return an the ranges in lines which match self.lines.
+
+        :param lines: lines to compress
+        :return: A list of (old_start, new_start, length) tuples which reflect
+            a region in self.lines that is present in lines.  The last element
+            of the list is always (old_len, new_len, 0) to provide a end point
+            for generating instructions from the matching blocks list.
+        """
+        result = []
+        pos = 0
+        line_locations = self.line_locations
+        range_len = 0
+        range_start = 0
+        flush_range = self.flush_range
+        copy_ends = None
+        # We either copy a range (while there are reusable lines) or we 
+        # insert new lines. To find reusable lines we traverse 
+        while pos < len(lines):
+            line = lines[pos]
+            if line not in line_locations:
+                if copy_ends:
+                    result.append((min(copy_ends) - range_len, range_start, range_len))
+                    range_start = pos
+                    range_len = 1
+                    copy_ends = None
+                else:
+                    range_len += 1
+            else:
+                locations, next = line_locations[line]
+                if copy_ends:
+                    next_locations = locations.intersection(copy_ends)
+                    if len(next_locations):
+                        # range continues
+                        range_len += 1
+                        copy_ends = set(loc + 1 for loc in next_locations)
+                        pos += 1
+                        continue
+                if copy_ends:
+                    result.append((min(copy_ends) - range_len, range_start, range_len))
+                range_len = 1
+                copy_ends = next
+                range_start = pos
+            pos += 1
+        if copy_ends:
+            result.append((min(copy_ends) - range_len, range_start, range_len))
+        result.append((len(self.lines), len(lines), 0))
+        return result
+
     def compress(self, key, lines, expected_sha):
         """Compress lines with label key.
 
@@ -149,45 +198,24 @@ class GroupCompressor(object):
         index_lines = [False, False]
         pos = 0
         line_locations = self.line_locations
-        accumulator = []
-        copying = False
         range_len = 0
         range_start = 0
         flush_range = self.flush_range
         copy_ends = None
+        blocks = self.get_matching_blocks(lines)
+        current_pos = 0
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
-        while pos < len(lines):
-            line = lines[pos]
-            if line not in line_locations:
-                if copying:
-                    flush_range(copying, range_start, copy_ends, range_len,
-                        lines, new_lines, index_lines)
-                    copying = False
-                    range_start = pos
-                    range_len = 1
-                else:
-                    range_len += 1
-            else:
-                locations, next = line_locations[line]
-                if copying:
-                    next_locations = locations.intersection(copy_ends)
-                    if len(next_locations):
-                        # range continues
-                        range_len += 1
-                        copy_ends = set(loc + 1 for loc in next_locations)
-                        pos += 1
-                        continue
-                # New copy range starts here:
-                flush_range(copying, range_start, copy_ends, range_len, lines,
-                    new_lines, index_lines)
-                range_len = 1
-                copy_ends = next
-                range_start = pos
-                copying = True
-            pos += 1
-        flush_range(copying, range_start, copy_ends, range_len, lines,
-            new_lines, index_lines)
+        for old_start, new_start, range_len in blocks:
+            if new_start != current_pos:
+                # non-matching region
+                flush_range(False, current_pos, None, new_start - current_pos,
+                    lines, new_lines, index_lines)
+            current_pos = new_start + range_len
+            if not range_len:
+                continue
+            flush_range(True, new_start, [old_start + range_len], range_len,
+                lines, new_lines, index_lines)
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
