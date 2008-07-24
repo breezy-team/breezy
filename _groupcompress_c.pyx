@@ -241,7 +241,7 @@ cdef class EquivalenceTable:
         # pointing to the same location).
         for i from self._len_lines > i >= 0:
             cur_line = self._raw_lines + i
-            if not (cur_line.flags & INDEXED):
+            if not (cur_line.flags & INDEXED == INDEXED):
                 continue
             hash_offset = self._find_hash_position(cur_line)
 
@@ -253,7 +253,8 @@ cdef class EquivalenceTable:
             cur_bucket.line_index = i
             cur_bucket.count += 1
 
-    cdef int _extend_hash_table_raw(self, PyObject *seq_index) except -1:
+    cdef int _extend_raw_lines(self, object index) except -1:
+        """Add the last N lines from self.lines into the raw_lines array."""
         cdef Py_ssize_t new_count
         cdef Py_ssize_t new_total_len
         cdef Py_ssize_t old_len
@@ -261,28 +262,48 @@ cdef class EquivalenceTable:
         cdef PyObject *should_index
         cdef Py_ssize_t i
         cdef Py_ssize_t line_index
-        cdef _hash_bucket *cur_bucket
+        cdef _raw_line *cur_line
+        cdef PyObject *seq_index
+
+        seq_index = PySequence_Fast(index, "expected a sequence for index")
+        try:
+            old_len = self._len_lines
+            new_count = PySequence_Fast_GET_SIZE(seq_index) 
+            new_total_len = new_count + self._len_lines
+            self._raw_lines = <_raw_line*>safe_realloc(<void*>self._raw_lines,
+                                    new_total_len * sizeof(_raw_line))
+            self._len_lines = new_total_len
+            # Now that we have enough space, start adding the new lines
+            # into the array. These are done in forward order.
+            for i from 0 <= i < new_count:
+                line_index = i + old_len
+                cur_line = self._raw_lines + line_index
+                item = PyList_GET_ITEM(self.lines, line_index)
+                self._line_to_raw_line(item, cur_line)
+                should_index = PySequence_Fast_GET_ITEM(seq_index, i)
+                if PyObject_Not(should_index):
+                    cur_line.flags &= ~(<int>INDEXED)
+        finally:
+            Py_DECREF(seq_index)
+
+    cdef int _extend_hash_table(self, Py_ssize_t count) except -1:
+        """Add the last N entries in self.lines to the hash table.
+
+        :param index: A sequence that declares whether each node should be
+            INDEXED or not.
+        """
+        cdef Py_ssize_t line_index
+        cdef Py_ssize_t start
         cdef _raw_line *cur_line
         cdef _raw_line *next_line
         cdef Py_ssize_t hash_offset
-        cdef PyObject *local_lines
+        cdef _hash_bucket *cur_bucket
 
-        old_len = self._len_lines
-        new_count = PySequence_Fast_GET_SIZE(seq_index) 
-        new_total_len = new_count + self._len_lines
-        self._raw_lines = <_raw_line*>safe_realloc(<void*>self._raw_lines,
-                                new_total_len * sizeof(_raw_line))
-        self._len_lines = new_total_len
-        # Now that we have enough space, start adding the new lines
-        # into the array. These are done in forward order.
-        for i from 0 <= i < new_count:
-            line_index = i + old_len
+        start = self._len_lines - count
+
+        for line_index from start <= line_index < self._len_lines:
             cur_line = self._raw_lines + line_index
-            item = PyList_GET_ITEM(self.lines, line_index)
-            self._line_to_raw_line(item, cur_line)
-            should_index = PySequence_Fast_GET_ITEM(seq_index, i)
-            if PyObject_Not(should_index):
-                cur_line.flags &= ~(<int>INDEXED)
+            if cur_line.flags & INDEXED != INDEXED:
                 continue
             hash_offset = self._find_hash_position(cur_line)
 
@@ -301,20 +322,6 @@ cdef class EquivalenceTable:
             while next_line.next_line_index != SENTINEL:
                 next_line = self._raw_lines + next_line.next_line_index
             next_line.next_line_index = line_index
-
-    cdef int _extend_hash_table(self, object index) except -1:
-        """Add the last N entries in self.lines to the hash table.
-
-        :param index: A sequence that declares whether each node should be
-            INDEXED or not.
-        """
-        cdef PyObject *seq_index
-
-        seq_index = PySequence_Fast(index, "expected a sequence for index")
-        try:
-            self._extend_hash_table_raw(seq_index)
-        finally:
-            Py_DECREF(seq_index)
 
     cdef Py_ssize_t _find_hash_position(self, _raw_line *line) except -1:
         """Find the node in the hash which defines this line.
@@ -469,17 +476,13 @@ cdef class EquivalenceTable:
         assert len(lines) == len(index)
         min_new_hash_size = self._compute_minimum_hash_size(len(self.lines) +
                                                             len(lines))
-        if self._hashtable_size >= min_new_hash_size:
-            # Just add the new lines, don't bother resizing the hash table
-            self.lines.extend(lines)
-            self._extend_hash_table(index)
-            return
         orig_len = len(self.lines)
         self.lines.extend(lines)
-        self._lines_to_raw_lines(self.lines)
-        for idx, val in enumerate(index):
-            if not val:
-                self._raw_lines[orig_len + idx].flags &= ~(<int>INDEXED)
+        self._extend_raw_lines(index)
+        if self._hashtable_size >= min_new_hash_size:
+            # Just add the new lines, don't bother resizing the hash table
+            self._extend_hash_table(len(index))
+            return
         self._build_hash_table()
 
     def set_right_lines(self, lines):
@@ -571,7 +574,9 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
 
     # TODO: Handle when locations is not None
     while cpos < cmax_pos:
-        # We don't support passing it back in yet
+        # TODO: Instead of grabbing the full list of matches and then doing an
+        #       intersection, use a helper that does the intersection
+        #       as-it-goes.
         line = PyList_GET_ITEM(eq._right_lines, cpos)
         safe_free(<void**>&matches)
         match_count = eq.get_raw_matches(line, &matches)

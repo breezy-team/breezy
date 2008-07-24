@@ -46,6 +46,10 @@ class TestCompiledEquivalenceTable(tests.TestCase):
     # If that ever changes, we can simply change this code to use a custom
     # class that has precomputed values returned from __hash__.
 
+
+    # TODO: We need a test that forces a rebuild of the hash array, and makes
+    #       sure that the lines that should not be indexed *stay* not indexed
+
     def setUp(self):
         super(TestCompiledEquivalenceTable, self).setUp()
         from bzrlib.plugins.groupcompress import _groupcompress_c
