@@ -398,8 +398,10 @@ cdef class EquivalenceTable:
         cdef Py_ssize_t i
         cdef Py_ssize_t *matches
 
+        matches = NULL
+
         try:
-            count = self.get_raw_matches(line, &matches)
+            count = self.get_raw_matches(<PyObject *>line, &matches)
             if count == 0:
                 return None
             result = []
@@ -409,7 +411,7 @@ cdef class EquivalenceTable:
             safe_free(<void**>&matches)
         return result
 
-    cdef Py_ssize_t get_raw_matches(self, object line,
+    cdef Py_ssize_t get_raw_matches(self, PyObject *line,
                                     Py_ssize_t **matches) except -1:
         """Get all the possible entries that match the given location.
 
@@ -428,13 +430,14 @@ cdef class EquivalenceTable:
         cdef Py_ssize_t count
         cdef Py_ssize_t *local_matches
 
-        self._line_to_raw_line(<PyObject *>line, &raw_line)
+        self._line_to_raw_line(line, &raw_line)
         hash_offset = self._find_hash_position(&raw_line)
         cur_bucket = self._hashtable[hash_offset]
         cur_line_idx = cur_bucket.line_index
         if cur_line_idx == SENTINEL:
             return 0
-        local_matches = <Py_ssize_t*>safe_malloc(sizeof(Py_ssize_t)*cur_bucket.count)
+        local_matches = <Py_ssize_t*>safe_malloc(sizeof(Py_ssize_t) *
+                                                 (cur_bucket.count + 1))
         matches[0] = local_matches
         for count from 0 <= count < cur_bucket.count:
             assert cur_line_idx != SENTINEL
@@ -484,73 +487,138 @@ cdef class EquivalenceTable:
         self._right_lines = lines
 
 
-# This is not complete, and we may not need it anyway
-# 
-# cdef int intersect_sorted(Py_ssize_t *base, Py_ssize_t *base_count,
-#                           Py_ssize_t *new_values, Py_ssize_t new_count):
-#     """Intersect the base values with the new values.
-# 
-#     base will be updated to only include values that are in both base and new,
-#     and the base_count will be updated to reflect this.
-#     It is assumed that both base and new_values are sorted in ascending order,
-#     with no duplicates.
-# 
-#     :param base: An array of base values
-#     :param base_count: The length of the base array
-#     :param new_values: An array of values to compare to base
-#     :param new_count: The number of new entries
-#     """
-#     next_locations = set(copy_ends).intersection(locations)
-#     if len(next_locations):
-#         # range continues
-#         copy_ends = []
-#         for loc in next_locations:
-#             copy_ends.append(loc + 1)
-# 
+cdef Py_ssize_t intersect_sorted(Py_ssize_t *base, Py_ssize_t base_count,
+                                 Py_ssize_t *new_values, Py_ssize_t new_count) except -1:
+    """Intersect the base values with the new values.
+
+    It is assumed that both base and new_values are sorted in ascending order,
+    with no duplicates.
+
+    The values in 'base' will be modified to only contain the entries that are
+    in both base and new. If nothing matches, 'base' will not be modified
+
+    :param base: An array of base values
+    :param base_count: The length of the base array
+    :param new_values: An array of values to compare to base, will be modified
+        to only contain matching entries
+    :param new_count: The number of new entries
+    :return: The count of matching values
+    """
+    cdef Py_ssize_t *cur_base
+    cdef Py_ssize_t *cur_new
+    cdef Py_ssize_t *cur_out
+    cdef Py_ssize_t count
+    cdef Py_ssize_t *base_end
+    cdef Py_ssize_t *new_end
+
+    cur_base = base
+    cur_out = base
+    cur_new = new_values
+    base_end = base + base_count
+    new_end = new_values + new_count
+    count = 0
+
+    while cur_base < base_end and cur_new < new_end:
+        if cur_base[0] == cur_new[0]:
+            # This may be assigning to self.
+            cur_out[0] = cur_base[0]
+            count += 1
+            cur_out = cur_out + 1
+            # We matched, so move both pointers
+            cur_base = cur_base + 1
+            cur_new = cur_new + 1
+        elif cur_base[0] < cur_new[0]:
+            # cur_base is "behind" so increment it
+            cur_base = cur_base + 1
+        else:
+            # cur_new must be "behind" move its pointer
+            cur_new = cur_new + 1
+    return count
+
+
+cdef object array_as_list(Py_ssize_t *array, Py_ssize_t count):
+    cdef int i
+    lst = []
+    for i from 0 <= i < count:
+        lst.append(array[i])
+    return lst
+
 
 def _get_longest_match(equivalence_table, pos, max_pos, locations):
     """Get the longest possible match for the current position."""
     cdef EquivalenceTable eq
     cdef Py_ssize_t cpos
+    cdef Py_ssize_t cmax_pos
+    cdef Py_ssize_t *matches
+    cdef Py_ssize_t match_count
+    cdef PyObject *line
+    cdef Py_ssize_t *copy_ends
+    cdef Py_ssize_t copy_count
+    cdef Py_ssize_t range_len
+    cdef Py_ssize_t in_start
+    cdef Py_ssize_t i
+    cdef Py_ssize_t intersect_count
 
     eq = equivalence_table
     cpos = pos
+    cmax_pos = max_pos
     range_start = pos
     range_len = 0
-    copy_ends = None
+    matches = NULL
+    match_count = 0
+    copy_ends = NULL
+    copy_count = 0
 
-    while pos < max_pos:
-        if locations is None:
-            locations = equivalence_table.get_idx_matches(pos)
-        if locations is None:
+    # TODO: Handle when locations is not None
+    while cpos < cmax_pos:
+        # We don't support passing it back in yet
+        line = PyList_GET_ITEM(eq._right_lines, cpos)
+        safe_free(<void**>&matches)
+        match_count = eq.get_raw_matches(line, &matches)
+        if match_count == 0:
             # No more matches, just return whatever we have, but we know that
             # this last position is not going to match anything
-            pos = pos + 1
+            cpos = cpos + 1
             break
         else:
-            if copy_ends is None:
-                # We are starting a new range
-                copy_ends = []
-                for loc in locations:
-                    copy_ends.append(loc + 1)
+            if copy_ends == NULL:
+                # We are starting a new range, just steal the matches
+                copy_ends = matches
+                copy_count = match_count
+                matches = NULL
+                match_count = 0
+                for i from 0 <= i < copy_count:
+                    copy_ends[i] = copy_ends[i] + 1
                 range_len = 1
-                locations = None # Consumed
             else:
                 # We are currently in the middle of a match
-                next_locations = set(copy_ends).intersection(locations)
-                if len(next_locations):
-                    # range continues
-                    copy_ends = []
-                    for loc in next_locations:
-                        copy_ends.append(loc + 1)
-                    range_len = range_len + 1
-                    locations = None # Consumed
-                else:
+                intersect_count = intersect_sorted(copy_ends, copy_count,
+                                                   matches, match_count)
+                if intersect_count == 0:
                     # But we are done with this match, we should be
                     # starting a new one, though. We will pass back 'locations'
                     # so that we don't have to do another lookup.
                     break
-        pos = pos + 1
-    if copy_ends is None:
-        return None, pos, locations
-    return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
+                else:
+                    copy_count = intersect_count
+                    # range continues, step the copy ends
+                    for i from 0 <= i < copy_count:
+                        copy_ends[i] = copy_ends[i] + 1
+                    range_len = range_len + 1
+                    safe_free(<void **>&matches)
+                    match_count = 0
+        cpos = cpos + 1
+    if matches == NULL:
+        # We consumed all of our matches
+        locations = None
+    else:
+        locations = array_as_list(matches, match_count)
+        safe_free(<void **>&matches)
+    if copy_ends == NULL or copy_count == 0:
+        # We never had a match
+        return None, cpos, locations
+    # Because copy_ends is always sorted, we know the 'min' is just the first
+    # node
+    in_start = copy_ends[0]
+    safe_free(<void**>&copy_ends)
+    return ((in_start - range_len), range_start, range_len), cpos, locations

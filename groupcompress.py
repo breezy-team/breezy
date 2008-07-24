@@ -859,3 +859,4 @@ except ImportError:
     pass
 else:
     GroupCompressor._equivalence_table_class = _groupcompress_c.EquivalenceTable
+    _get_longest_match = _groupcompress_c._get_longest_match
