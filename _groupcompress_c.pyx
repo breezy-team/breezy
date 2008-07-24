@@ -35,12 +35,14 @@ cdef extern from "Python.h":
     void Py_DECREF(PyObject *)
     void Py_INCREF(PyObject *)
 
+cdef enum _raw_line_flags:
+    INDEXED  = 0x01
 
 cdef struct _raw_line:
     long hash              # Cached form of the hash for this entry
     Py_ssize_t hash_offset # The location in the hash table for this object
     Py_ssize_t next_line_index # Next line which is equivalent to this one
-    int indexed            # Is this line included in the hash table?
+    int flags              # status flags
     PyObject *data         # Raw pointer to the original line
 
 
@@ -100,7 +102,7 @@ cdef class EquivalenceTable:
         raw_line.hash = PyObject_Hash(line)
         raw_line.next_line_index = SENTINEL
         raw_line.hash_offset = SENTINEL
-        raw_line.indexed = 1
+        raw_line.flags = INDEXED
         raw_line.data = line
         
     cdef int _lines_to_raw_lines(self, object lines) except -1:
@@ -225,7 +227,7 @@ cdef class EquivalenceTable:
         # pointing to the same location).
         for i from self._len_left_lines > i >= 0:
             cur_line = self._raw_lines + i
-            if not cur_line.indexed:
+            if not (cur_line.flags & INDEXED):
                 continue
             hash_offset = self._find_hash_position(cur_line)
 
@@ -358,7 +360,7 @@ cdef class EquivalenceTable:
         self._lines_to_raw_lines(self.lines)
         for idx, val in enumerate(index):
             if not val:
-                self._raw_lines[orig_len + idx].indexed = 0
+                self._raw_lines[orig_len + idx].flags &= ~(<int>INDEXED)
         self._build_hash_table()
 
     def set_right_lines(self, lines):
