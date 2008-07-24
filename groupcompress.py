@@ -125,39 +125,6 @@ class GroupCompressor(object):
         self.lines = self.line_locations.lines
         self.labels_deltas = {}
 
-    def _get_longest_match(self, pos, lines, locations):
-        range_start = pos
-        range_len = 0
-        copy_ends = None
-        while pos < len(lines):
-            if locations is None:
-                locations = self.line_locations.get_matches(lines[pos])
-            if locations is None:
-                # No more matches, just return whatever we have
-                break
-            else:
-                if copy_ends is None:
-                    # We are starting a new range
-                    copy_ends = [loc + 1 for loc in locations]
-                    range_len = 1
-                    locations = None # Consumed
-                else:
-                    # We are currently in the middle of a match
-                    next_locations = set(copy_ends).intersection(locations)
-                    if len(next_locations):
-                        # range continues
-                        copy_ends = [loc + 1 for loc in next_locations]
-                        range_len += 1
-                        locations = None # Consumed
-                    else:
-                        # But we are done with this match, we should be
-                        # starting a new one, though
-                        break
-            pos += 1
-        if copy_ends is None:
-            return None, locations
-        return ((min(copy_ends) - range_len, range_start, range_len)), locations
-
     def get_matching_blocks(self, lines):
         """Return an the ranges in lines which match self.lines.
 
@@ -175,12 +142,9 @@ class GroupCompressor(object):
         # insert new lines. To find reusable lines we traverse 
         locations = None
         while pos < len(lines):
-            block, locations = self._get_longest_match(pos, lines, locations)
-            if block is None:
-                pos += 1
-            else:
+            block, pos, locations = _get_longest_match(line_locations, pos, lines, locations)
+            if block is not None:
                 result.append(block)
-                pos += block[-1]
         result.append((len(self.lines), len(lines), 0))
         return result
 
@@ -847,6 +811,44 @@ class _GCGraphIndex(object):
         basis_end = int(bits[2])
         delta_end = int(bits[3])
         return node[0], start, stop, basis_end, delta_end
+
+
+def _get_longest_match(equivalence_table, pos, lines, locations):
+    """Get the longest possible match for the current position."""
+    range_start = pos
+    range_len = 0
+    copy_ends = None
+    while pos < len(lines):
+        if locations is None:
+            locations = equivalence_table.get_idx_matches(pos)
+        if locations is None:
+            # No more matches, just return whatever we have, but we know that
+            # this last position is not going to match anything
+            pos += 1
+            break
+        else:
+            if copy_ends is None:
+                # We are starting a new range
+                copy_ends = [loc + 1 for loc in locations]
+                range_len = 1
+                locations = None # Consumed
+            else:
+                # We are currently in the middle of a match
+                next_locations = set(copy_ends).intersection(locations)
+                if len(next_locations):
+                    # range continues
+                    copy_ends = [loc + 1 for loc in next_locations]
+                    range_len += 1
+                    locations = None # Consumed
+                else:
+                    # But we are done with this match, we should be
+                    # starting a new one, though. We will pass back 'locations'
+                    # so that we don't have to do another lookup.
+                    break
+        pos += 1
+    if copy_ends is None:
+        return None, pos, locations
+    return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
 
 
 try:
