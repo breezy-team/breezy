@@ -1617,6 +1617,9 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.get_file_mtime(file_id, path)
         return self._stat_limbo_file(file_id).st_mtime
 
+    def _file_size(self, entry, stat_value):
+        return self.get_file_size(entry.file_id)
+
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         if self.kind(file_id) == 'file':
