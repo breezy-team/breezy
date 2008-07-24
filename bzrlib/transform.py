@@ -1496,18 +1496,13 @@ class _PreviewTree(tree.Tree):
     def __iter__(self):
         return iter(self.all_file_ids())
 
-    def paths2ids(self, specific_files, trees=None, require_versioned=False):
-        """See Tree.paths2ids"""
-        to_find = set(specific_files)
-        result = set()
-        for (file_id, paths, changed, versioned, parent, name, kind,
-             executable) in self._transform.iter_changes():
-            if paths[1] in to_find:
-                result.add(file_id)
-                to_find.remove(paths[1])
-        result.update(self._transform._tree.paths2ids(to_find,
-                      trees=[], require_versioned=require_versioned))
-        return result
+    def has_id(self, file_id):
+        if file_id in self._transform._r_new_id:
+            return True
+        elif file_id in self._transform._removed_id:
+            return False
+        else:
+            return self._transform._tree.has_id(file_id)
 
     def _path2trans_id(self, path):
         segments = splitpath(path)

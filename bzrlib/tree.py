@@ -672,7 +672,7 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
     at least one tree.
     :return: a set of file ids for the specified filenames and their children.
     """
-    if not filenames:
+    if filenames is None:
         return None
     specified_path_ids = _find_ids_across_trees(filenames, trees,
         require_versioned)
@@ -724,7 +724,7 @@ def _find_children_across_trees(specified_ids, trees):
             for tree in trees:
                 if not tree.has_id(file_id):
                     continue
-                entry = tree.inventory[file_id]
+                entry = tree.iter_entries_by_dir([file_id]).next()[1]
                 for child in getattr(entry, 'children', {}).itervalues():
                     if child.file_id not in interesting_ids:
                         new_pending.add(child.file_id)
