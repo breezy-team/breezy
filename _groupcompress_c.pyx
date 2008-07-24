@@ -41,7 +41,7 @@ cdef struct _raw_line:
 
 cdef struct _hash_bucket:
     int line_index # First line in the left side for this bucket
-    int count      # Number of equivalent lines
+    int count      # Number of equivalent lines, DO we even need this?
 
 
 cdef int SENTINEL
@@ -134,22 +134,33 @@ cdef class EquivalenceTable:
             Py_DECREF(seq)
         return count
 
-
-    cdef Py_ssize_t _compute_hash_size(self, Py_ssize_t needed_lines):
-        """Figure out what the optimal size of the hash table is.
+    cdef Py_ssize_t _compute_minimum_hash_size(self, Py_ssize_t needed_lines):
+        """Determine the smallest hash size that can fit the data.
         
-        The hash size will always be a power of two, and is generally the next
-        power of two larger than the input lines.
-        The only trick is that we are likely to grow the hash table from time
-        to time, so we probably want to allocate a bit extra memory, so that we
-        don't rebuild the hash table often
+        :param needed_lines: The number of entries we might be inserting into
+            the hash (assuming there are no duplicate lines.)
+        :return: The number of hash table entries to use. This will always be a
+            power of two.
         """
+        # TODO: We probably actually want to have 2 values, one indicating an
+        #       acceptable "minimum" size (which is at least as many as input
+        #       lines as they could all be unique, and we would like some space
+        #       to avoid collisions),
+        #       And a "recommended" size, which gives us some extra space
+        #       because we expect to have to grow from time to time, and don't
+        #       want to have to rebuild the entire hash table each time.
+        #       (so initialize with "recommended" but grow if we reach
+        #       "minimum")
         cdef Py_ssize_t hash_size
 
         hash_size = 1
         while hash_size < needed_lines:
             hash_size = hash_size << 1
         return hash_size
+
+    def _py_compute_minimum_hash_size(self, needed_lines):
+        """Expose _compute_minimum_hash_size to python for testing."""
+        return self._compute_minimum_hash_size(needed_lines)
 
     cdef int _build_hash_table(self) except -1:
         cdef Py_ssize_t hash_size
@@ -184,6 +195,21 @@ cdef class EquivalenceTable:
         objects would collide, we just increment to the next bucket.
         """
         
+    def _inspect_hash_table(self):
+        """Used only for testing.
+
+        This iterates the hash table, and returns 'interesting' entries.
+        :return: (total_size, [(offset, line_index, count)] for entries that
+            are not empty.
+        """
+        cdef int i
+
+        interesting = []
+        for i from 0 <= i < self._hashtable_size:
+            if self._hashtable[i].line_index != SENTINEL:
+                interesting.append((i, self._hashtable[i].line_index,
+                                    self._hashtable[i].count))
+        return (self._hashtable_size, interesting)
 
     def _generate_matching_lines(self):
         matches = {}

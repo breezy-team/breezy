@@ -17,21 +17,9 @@
 from bzrlib import tests
 
 from bzrlib.plugins.groupcompress import equivalence_table
-
-class _CompiledGroupCompress(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib.plugins.groupcompress._groupcompress_c
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'bzrlib.plugins.groupcompress._groupcompress_c'
-
-CompiledGroupCompress = _CompiledGroupCompress()
+from bzrlib.plugins.groupcompress.tests.test__groupcompress_c import (
+    CompiledGroupCompress
+    )
 
 
 class TestEquivalenceTable(tests.TestCase):
