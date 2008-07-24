@@ -239,8 +239,6 @@ class GroupCompressor(object):
         return lines, sha1
 
     def flush_range(self, range_start, copy_start, range_len, lines, new_lines, index_lines):
-        if not range_len:
-            return
         insert_instruction = "i,%d\n" % range_len
         if copy_start is not None:
             # range stops, flush and start a new copy range
