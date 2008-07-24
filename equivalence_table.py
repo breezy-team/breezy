@@ -29,6 +29,7 @@ class EquivalenceTable(object):
 
     def __init__(self, lines):
         self.lines = lines
+        self._right_lines = None
         # For each line in 'left' give the offset to the other lines which
         # match it.
         self._generate_matching_lines()
@@ -54,6 +55,14 @@ class EquivalenceTable(object):
         except KeyError:
             return None
 
+    def get_idx_matches(self, right_idx):
+        """Return the left lines matching the right line at the given offset."""
+        line = self._right_lines[right_idx]
+        try:
+            return self._matching_lines[line]
+        except KeyError:
+            return None
+
     def extend_lines(self, lines, index):
         """Add more lines to the left-lines list.
 
@@ -63,3 +72,7 @@ class EquivalenceTable(object):
         """
         self._update_matching_lines(lines, index)
         self.lines.extend(lines)
+
+    def set_right_lines(self, lines):
+        """Set the lines we will be matching against."""
+        self._right_lines = lines

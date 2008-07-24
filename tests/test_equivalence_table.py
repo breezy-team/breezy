@@ -31,6 +31,13 @@ class TestEquivalenceTable(tests.TestCase):
         self.assertEqual({'a': [0], 'b': [1, 3], 'c': [2]},
                          eq._matching_lines)
 
+    def test_set_right_lines(self):
+        eq = equivalence_table.EquivalenceTable(['a', 'b', 'c', 'b'])
+        eq.set_right_lines(['f', 'b', 'b'])
+        self.assertEqual(None, eq.get_idx_matches(0))
+        self.assertEqual([1, 3], eq.get_idx_matches(1))
+        self.assertEqual([1, 3], eq.get_idx_matches(2))
+
     def assertGetLeftMatches(self, expected_left, eq, right):
         """Assert that we find the right matching lines."""
         self.assertEqual(expected_left, eq.get_matches(right))
