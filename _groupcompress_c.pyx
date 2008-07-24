@@ -19,6 +19,7 @@
 cdef extern from *:
     ctypedef unsigned long size_t
     void * malloc(size_t)
+    void * realloc(void *, size_t)
     void free(void *)
 
 cdef extern from "Python.h":
@@ -28,10 +29,13 @@ cdef extern from "Python.h":
     PyObject *PySequence_Fast(object, char *) except NULL
     Py_ssize_t PySequence_Fast_GET_SIZE(PyObject *)
     PyObject *PySequence_Fast_GET_ITEM(PyObject *, Py_ssize_t)
+    PyObject *PyList_GET_ITEM(object, Py_ssize_t)
+    int PyList_Append(object, object) except -1
     long PyObject_Hash(PyObject *) except -1
     # We use PyObject_Cmp rather than PyObject_Compare because pyrex will check
     # if there is an exception *for* us.
     int PyObject_Cmp(PyObject *, PyObject *, int *result) except -1
+    int PyObject_Not(PyObject *) except -1
     void Py_DECREF(PyObject *)
     void Py_INCREF(PyObject *)
 
@@ -62,6 +66,16 @@ cdef void *safe_malloc(size_t count) except NULL:
         raise MemoryError('Failed to allocate %d bytes of memory' % (count,))
     return result
 
+
+cdef void *safe_realloc(void * old, size_t count) except NULL:
+    cdef void *result
+    result = realloc(old, count)
+    if result == NULL:
+        raise MemoryError('Failed to reallocate to %d bytes of memory'
+                          % (count,))
+    return result
+
+
 cdef int safe_free(void **val) except -1:
     assert val != NULL
     if val[0] != NULL:
@@ -81,15 +95,15 @@ cdef class EquivalenceTable:
     cdef Py_ssize_t _hashtable_bitmask
     cdef _hash_bucket *_hashtable
     cdef _raw_line *_raw_lines
-    cdef Py_ssize_t _len_left_lines
+    cdef Py_ssize_t _len_lines
 
     def __init__(self, lines):
-        self.lines = lines
+        self.lines = list(lines)
         self._right_lines = None
         self._hashtable_size = 0
         self._hashtable = NULL
         self._raw_lines = NULL
-        self._len_left_lines = 0
+        self._len_lines = 0
         self._lines_to_raw_lines(lines)
         self._build_hash_table()
 
@@ -123,7 +137,7 @@ cdef class EquivalenceTable:
             raw = <_raw_line*>safe_malloc(count * sizeof(_raw_line))
             safe_free(<void**>&self._raw_lines)
             self._raw_lines = raw
-            self._len_left_lines = count
+            self._len_lines = count
 
             for i from 0 <= i < count:
                 item = PySequence_Fast_GET_ITEM(seq, i)
@@ -207,7 +221,7 @@ cdef class EquivalenceTable:
         cdef _hash_bucket *new_hashtable
 
         # Hash size is a power of 2
-        hash_size = self._compute_recommended_hash_size(self._len_left_lines)
+        hash_size = self._compute_recommended_hash_size(self._len_lines)
 
         new_hashtable = <_hash_bucket*>safe_malloc(sizeof(_hash_bucket) *
                                                    hash_size)
@@ -225,7 +239,7 @@ cdef class EquivalenceTable:
         # Iterate backwards, because it makes it easier to insert items into
         # the hash (you just change the head pointer, and everything else keeps
         # pointing to the same location).
-        for i from self._len_left_lines > i >= 0:
+        for i from self._len_lines > i >= 0:
             cur_line = self._raw_lines + i
             if not (cur_line.flags & INDEXED):
                 continue
@@ -238,6 +252,69 @@ cdef class EquivalenceTable:
             cur_line.next_line_index = cur_bucket.line_index
             cur_bucket.line_index = i
             cur_bucket.count += 1
+
+    cdef int _extend_hash_table_raw(self, PyObject *seq_index) except -1:
+        cdef Py_ssize_t new_count
+        cdef Py_ssize_t new_total_len
+        cdef Py_ssize_t old_len
+        cdef PyObject *item
+        cdef PyObject *should_index
+        cdef Py_ssize_t i
+        cdef Py_ssize_t line_index
+        cdef _hash_bucket *cur_bucket
+        cdef _raw_line *cur_line
+        cdef _raw_line *next_line
+        cdef Py_ssize_t hash_offset
+        cdef PyObject *local_lines
+
+        old_len = self._len_lines
+        new_count = PySequence_Fast_GET_SIZE(seq_index) 
+        new_total_len = new_count + self._len_lines
+        self._raw_lines = <_raw_line*>safe_realloc(<void*>self._raw_lines,
+                                new_total_len * sizeof(_raw_line))
+        self._len_lines = new_total_len
+        # Now that we have enough space, start adding the new lines
+        # into the array. These are done in forward order.
+        for i from 0 <= i < new_count:
+            line_index = i + old_len
+            cur_line = self._raw_lines + line_index
+            item = PyList_GET_ITEM(self.lines, line_index)
+            self._line_to_raw_line(item, cur_line)
+            should_index = PySequence_Fast_GET_ITEM(seq_index, i)
+            if PyObject_Not(should_index):
+                cur_line.flags &= ~(<int>INDEXED)
+                continue
+            hash_offset = self._find_hash_position(cur_line)
+
+            # Point this line to the location in the hash table
+            cur_line.hash_offset = hash_offset
+
+            # Make this line the tail of the hash table
+            cur_bucket = self._hashtable + hash_offset
+            cur_bucket.count += 1
+            if cur_bucket.line_index == SENTINEL:
+                cur_bucket.line_index = line_index
+                continue
+            # We need to track through the pointers and insert this at
+            # the end
+            next_line = self._raw_lines + cur_bucket.line_index
+            while next_line.next_line_index != SENTINEL:
+                next_line = self._raw_lines + next_line.next_line_index
+            next_line.next_line_index = line_index
+
+    cdef int _extend_hash_table(self, object index) except -1:
+        """Add the last N entries in self.lines to the hash table.
+
+        :param index: A sequence that declares whether each node should be
+            INDEXED or not.
+        """
+        cdef PyObject *seq_index
+
+        seq_index = PySequence_Fast(index, "expected a sequence for index")
+        try:
+            self._extend_hash_table_raw(seq_index)
+        finally:
+            Py_DECREF(seq_index)
 
     cdef Py_ssize_t _find_hash_position(self, _raw_line *line) except -1:
         """Find the node in the hash which defines this line.
@@ -289,8 +366,9 @@ cdef class EquivalenceTable:
             return None
 
         result = []
-        for i from 0 <= i < self._len_left_lines:
-            result.append((<object>self._raw_lines[i].data,
+        for i from 0 <= i < self._len_lines:
+            PyList_Append(result,
+                          (<object>self._raw_lines[i].data,
                            self._raw_lines[i].hash,
                            self._raw_lines[i].hash_offset,
                            self._raw_lines[i].next_line_index,
@@ -309,8 +387,9 @@ cdef class EquivalenceTable:
         interesting = []
         for i from 0 <= i < self._hashtable_size:
             if self._hashtable[i].line_index != SENTINEL:
-                interesting.append((i, self._hashtable[i].line_index,
-                                    self._hashtable[i].count))
+                PyList_Append(interesting,
+                              (i, self._hashtable[i].line_index,
+                               self._hashtable[i].count))
         return (self._hashtable_size, interesting)
 
     def get_matches(self, line):
@@ -328,7 +407,7 @@ cdef class EquivalenceTable:
             return None
         result = []
         while cur_line_idx != SENTINEL:
-            result.append(cur_line_idx)
+            PyList_Append(result, cur_line_idx)
             cur_line_idx = self._raw_lines[cur_line_idx].next_line_index
         assert len(result) == cur_bucket.count
         return result
@@ -353,8 +432,15 @@ cdef class EquivalenceTable:
             indexed.
         """
         cdef Py_ssize_t orig_len
-        # TODO: We don't need to rebuild the hash table completely each time,
-        #       but for now, just do it for simplicity
+        cdef Py_ssize_t min_new_hash_size
+        assert len(lines) == len(index)
+        min_new_hash_size = self._compute_minimum_hash_size(len(self.lines) +
+                                                            len(lines))
+        if self._hashtable_size >= min_new_hash_size:
+            # Just add the new lines, don't bother resizing the hash table
+            self.lines.extend(lines)
+            self._extend_hash_table(index)
+            return
         orig_len = len(self.lines)
         self.lines.extend(lines)
         self._lines_to_raw_lines(self.lines)
