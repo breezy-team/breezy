@@ -91,29 +91,33 @@ class ContentFilterContext(object):
         """Source Tree object."""
         return self._tree
 
-    def fileid(self):
+    def file_id(self):
         """File-id of file."""
         if self._entry is not None:
             return self._entry.file_id
         elif self._tree is None:
             return None
         else:
-            tree = self._tree
-            file_id = tree.path2id(self._relpath)
+            return self._tree.path2id(self._relpath)
+
+    def revision_id(self):
+        """Id of revision that last changed this file."""
+        if self._entry is not None:
+            return self._entry.revision
+        elif self._tree is not None:
+            file_id = self._tree.path2id(self._relpath)
+            self._entry = self._tree.inventory[file_id]
+            return self._entry.revision
+        else:
+            return None
 
     def revision(self):
-        """Revision this variation of the file was introduced.
-        
-        :return: None if unknown
-        """
-        if self._tree is None:
+        """Revision this variation of the file was introduced in."""
+        rev_id = self.revision_id()
+        if rev_id is None:
             return None
-        tree = self._tree
-        if self._entry is None:
-            file_id = tree.path2id(self._relpath)
-            self._entry =  tree.inventory[file_id]
-        rev_id = self._entry.revision
-        return tree._repository.get_revision(rev_id)
+        else:
+            return self._tree._repository.get_revision(rev_id)
 
 
 def filtered_input_file(f, filters):
