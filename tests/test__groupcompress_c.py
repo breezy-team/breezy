@@ -100,3 +100,37 @@ class TestCompiledEquivalenceTable(tests.TestCase):
             (2, 1, 2),
             (4, 2, 3),
             ]), eq._inspect_hash_table())
+
+    def test_build_hash_table_with_wraparound(self):
+        eq = self._gc_module.EquivalenceTable([1, 2+8192])
+        self.assertEqual([
+            (1, 1, 1, -1),
+            (8194, 8194, 2, -1),
+            ], eq._inspect_left_lines())
+        self.assertEqual((8192, [
+            (1, 0, 1),
+            (2, 1, 1),
+            ]), eq._inspect_hash_table())
+
+    def test_build_hash_table_with_collisions(self):
+        # We build up backwards, so # 2+8192 will wrap around to 2, and take
+        # its spot because the 2 offset is taken, then the real '2' will get
+        # bumped to 3, which will bump 3 into 4.  then when we have 5, it will
+        # be fine, but the 8192+5 will get bumped to 6
+        eq = self._gc_module.EquivalenceTable([1, 5+8192, 5, 3, 2, 2+8192])
+        self.assertEqual([
+            (1, 1, 1, -1),
+            (8197, 8197, 6, -1),
+            (5, 5, 5, -1),
+            (3, 3, 4, -1),
+            (2, 2, 3, -1),
+            (8194, 8194, 2, -1),
+            ], eq._inspect_left_lines())
+        self.assertEqual((8192, [
+            (1, 0, 1),
+            (2, 5, 1),
+            (3, 4, 1),
+            (4, 3, 1),
+            (5, 2, 1),
+            (6, 1, 1),
+            ]), eq._inspect_hash_table())
