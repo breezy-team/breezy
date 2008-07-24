@@ -19,8 +19,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * ``bzr cat`` now supports a ``--filters`` option to display the
-      content after content filters are applied.
+    * ``bzr cat`` and ``bzr export`` now supports a ``--filters`` option
+      that displays/saves the content after content filters are applied.
       (Ian Clatworthy)
 
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
