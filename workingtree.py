@@ -74,9 +74,12 @@ def generate_ignore_list(ignore_map):
     """
     ignores = []
     keys = ignore_map.keys()
-    keys.sort()
-    for k in keys:
-        ignores.append("./" + os.path.join(k.strip("/"), ignore_map[k].strip("/")))
+    for k in sorted(keys):
+        elements = ["."]
+        if k.strip("/") != "":
+            elements.append(k.strip("/"))
+        elements.append(ignore_map[k].strip("/"))
+        ignores.append("/".join(elements))
     return ignores
 
 
@@ -176,7 +179,8 @@ class SvnWorkingTree(WorkingTree):
         self.read_working_inventory()
         return self.base_revnum - orig_revnum
 
-    def remove(self, files, verbose=False, to_file=None):
+    def remove(self, files, verbose=False, to_file=None, keep_files=True, 
+               force=False):
         # FIXME: Use to_file argument
         # FIXME: Use verbose argument
         assert isinstance(files, list)
@@ -788,10 +792,19 @@ class SvnCheckout(BzrDir):
         finally:
             wc.close()
 
-        self.remote_transport = SvnRaTransport(self.svn_url)
-        self.remote_bzrdir = SvnRemoteAccess(self.remote_transport)
-        self.svn_root_transport = self.remote_transport.clone_root()
+        self._remote_transport = None
+        self._remote_bzrdir = None
         self.root_transport = self.transport = transport
+
+    def get_remote_bzrdir(self):
+        if self._remote_bzrdir is None:
+            self._remote_bzrdir = SvnRemoteAccess(self.get_remote_transport())
+        return self._remote_bzrdir
+
+    def get_remote_transport(self):
+        if self._remote_transport is None:
+            self._remote_transport = SvnRaTransport(self.svn_url)
+        return self._remote_transport
         
     def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
@@ -819,8 +832,8 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def _find_repository(self):
-        return SvnRepository(self, self.svn_root_transport, 
-                             self.remote_bzrdir.branch_path)
+        return SvnRepository(self, self.get_remote_transport().clone_root(), 
+                             self.get_remote_bzrdir().branch_path)
 
     def needs_format_conversion(self, format=None):
         if format is None:
@@ -844,12 +857,12 @@ class SvnCheckout(BzrDir):
         repos = self._find_repository()
 
         try:
-            branch = SvnBranch(repos, self.remote_bzrdir.branch_path)
+            branch = SvnBranch(repos, self.get_remote_bzrdir().branch_path)
         except SubversionException, (_, num):
             if num == ERR_WC_NOT_DIRECTORY:
                 raise NotBranchError(path=self.base)
             raise
 
-        branch.bzrdir = self.remote_bzrdir
+        branch.bzrdir = self.get_remote_bzrdir()
  
         return branch

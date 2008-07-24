@@ -703,6 +703,14 @@ def push_new(target_repository, target_branch_path, source, stop_revision,
 
 
 def dpush(target, source, stop_revision=None):
+    """Push derivatives of the revisions missing from target from source into 
+    target.
+
+    :param target: Branch to push into
+    :param source: Branch to retrieve revisions from
+    :param stop_revision: If not None, stop at this revision.
+    :return: Map of old revids to new revids.
+    """
     source.lock_write()
     try:
         if stop_revision is None:
@@ -714,7 +722,7 @@ def dpush(target, source, stop_revision=None):
                                                         stop_revision):
             if graph.is_ancestor(stop_revision, target.last_revision()):
                 return
-            raise DivergedBranches(self, other)
+            raise DivergedBranches(source, target)
         todo = target.mainline_missing_revisions(source, stop_revision)
         revid_map = {}
         pb = ui.ui_factory.nested_progress_bar()
@@ -722,8 +730,10 @@ def dpush(target, source, stop_revision=None):
             for revid in todo:
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
-                revid_map[revid] = push(target, source, revid, push_metadata=False)
-                source.repository.fetch(target.repository, revision_id=revid_map[revid])
+                revid_map[revid] = push(target, source, revid, 
+                                        push_metadata=False)
+                source.repository.fetch(target.repository, 
+                                        revision_id=revid_map[revid])
                 target._clear_cached_state()
         finally:
             pb.finished()

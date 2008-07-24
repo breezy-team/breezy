@@ -27,14 +27,15 @@ import urllib
 from bzrlib.plugins.svn import changes
 from bzrlib.plugins.svn.mapping import escape_svn_path
 
-def get_local_changes(paths, branch, mapping, generate_revid, 
+def get_local_changes(paths, branch, mapping, layout, generate_revid, 
                       get_children=None):
     """Obtain all of the changes relative to a particular path
     (usually a branch path).
 
     :param paths: Changes
     :param branch: Path under which to select changes
-    :parma mapping: Mapping to use to determine what are valid branch paths
+    :param mapping: Mapping to use to determine what are valid branch paths
+    :param layout: Layout to use 
     :param generate_revid: Function for generating revision id from svn revnum
     :param get_children: Function for obtaining the children of a path
     """
@@ -43,10 +44,10 @@ def get_local_changes(paths, branch, mapping, generate_revid,
         if not changes.path_is_child(branch, p):
             continue
         data = paths[p]
-        new_p = mapping.scheme.unprefix(p)[1]
+        new_p = layout.parse(p)[3]
         if data[1] is not None:
             try:
-                (cbp, crp) = mapping.scheme.unprefix(data[1])
+                (pt, proj, cbp, crp) = layout.parse(data[1])
 
                 # Branch copy
                 if (crp == "" and new_p == ""):
@@ -79,10 +80,8 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
 
         inv_p = p.decode("utf-8")
         if data[0] in ('D', 'R'):
-            map[inv_p] = None
-            for p in map:
-                if p.startswith("%s/" % inv_p):
-                    map[p] = None
+            if not inv_p in map:
+                map[inv_p] = None
         if data[0] in ('A', 'R'):
             map[inv_p] = new_file_id(inv_p)
 
@@ -108,18 +107,16 @@ class FileIdMap(object):
         self.apply_changes_fn = apply_changes_fn
         self.repos = repos
 
-    def apply_changes(self, uuid, revnum, branch, global_changes, 
-                      renames, mapping, find_children=None):
+    def apply_changes(self, revmeta, mapping, find_children=None):
         """Change file id map to incorporate specified changes.
 
-        :param uuid: UUID of repository changes happen in
-        :param revnum: Revno for revision in which changes happened
-        :param branch: Branch path where changes happened
-        :param global_changes: Dict with global changes that happened
+        :param revmeta: RevisionMetadata object for revision with changes
         :param renames: List of renames (known file ids for particular paths)
         :param mapping: Mapping
         """
-        changes = get_local_changes(global_changes, branch, mapping,
+        renames = mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops)
+        changes = get_local_changes(revmeta.paths, revmeta.branch_path, mapping,
+                    self.repos.get_layout(),
                     self.repos.generate_revision_id, find_children)
         if find_children is not None:
             def get_children(path, revid):
@@ -130,7 +127,7 @@ class FileIdMap(object):
             get_children = None
 
         def new_file_id(x):
-            return mapping.generate_file_id(uuid, revnum, branch, x)
+            return mapping.generate_file_id(revmeta.uuid, revmeta.revnum, revmeta.branch_path, x)
          
         idmap = self.apply_changes_fn(new_file_id, changes, get_children)
         idmap.update(renames)
@@ -152,53 +149,54 @@ class FileIdMap(object):
             map = {}
 
         # No history -> empty map
-        for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+        for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, to_revnum=0, mapping=mapping):
             revid = revmeta.get_revision_id(mapping)
             todo.append(revmeta)
    
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
-            i = 1
-            for revmeta in reversed(todo):
-                revid = revmeta.get_revision_id(mapping)
-                expensive = False
-                def log_find_children(path, revnum):
-                    expensive = True
-                    return self.repos._log.find_children(path, revnum)
-
-                (idmap, changes) = self.apply_changes(self.repos.uuid, 
-                        revmeta.revnum, revmeta.branch_path, revmeta.paths,
-                        mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
-                        mapping, log_find_children)
+            for i, revmeta in enumerate(reversed(todo)):
                 pb.update('generating file id map', i, len(todo))
+                revid = revmeta.get_revision_id(mapping)
+                (idmap, changes) = self.apply_changes(revmeta, 
+                        mapping, self.repos._log.find_children)
+                self.update_map(map, revid, idmap, changes)
 
                 parent_revs = next_parent_revs
 
-                self.update_map(map, revid, idmap, changes)
-                       
                 next_parent_revs = [revid]
-                i += 1
         finally:
             pb.finished()
         return map
 
-    def update_map(self, map, revid, idmap, changes):
-        for p in changes:
-            if changes[p][0] == 'M' and not idmap.has_key(p):
-                idmap[p] = map[p][0]
+    def update_map(self, map, revid, delta, changes):
+        """Update a file id map.
 
-        for x in sorted(idmap.keys()):
-            if idmap[x] is None:
+        :param map: Existing file id map.
+        :param revid: Revision id of the id map
+        :param delta: Id map for just the delta
+        :param changes: Changes in revid.
+        """
+        for p in changes:
+            if changes[p][0] == 'M' and not delta.has_key(p):
+                delta[p] = map[p][0]
+        
+        for x in sorted(delta.keys(), reverse=True):
+            if delta[x] is None:
                 del map[x]
                 for p in map.keys():
-                    if p.startswith("%s/" % x):
+                    if p.startswith(u"%s/" % x):
                         del map[p]
-            else:
-                map[x] = (str(idmap[x]), revid)
+
+        for x in sorted(delta.keys()):
+            if delta[x] is not None:
+                map[x] = (str(delta[x]), revid)
 
         # Mark all parent paths as changed
-        for p in idmap:
+        for p in delta:
+            if delta[p] is None:
+                continue
             parts = p.split("/")
             for j in range(1, len(parts)+1):
                 parent = "/".join(parts[0:len(parts)-j])
@@ -252,7 +250,7 @@ class CachingFileIdMap(object):
         # No history -> empty map
         try:
             pb = ui.ui_factory.nested_progress_bar()
-            for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+            for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, to_revnum=0, mapping=mapping):
                 pb.update("fetching changes for file ids", revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)
                 try:
@@ -278,30 +276,26 @@ class CachingFileIdMap(object):
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
-            i = 1
-            for revmeta in reversed(todo):
+            for i, revmeta in enumerate(reversed(todo)):
+                pb.update('generating file id map', i, len(todo))
                 revid = revmeta.get_revision_id(mapping)
                 expensive = False
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
-                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
-                        revmeta.revnum, revmeta.branch_path, revmeta.paths, 
-                        mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
-                        mapping, log_find_children)
-                pb.update('generating file id map', i, len(todo))
-
-                parent_revs = next_parent_revs
+                (idmap, changes) = self.actual.apply_changes(
+                        revmeta, mapping, log_find_children)
 
                 self.actual.update_map(map, revid, idmap, changes)
+
+                parent_revs = next_parent_revs
                        
                 saved = False
                 if i % 500 == 0 or expensive:
                     self.save(revid, parent_revs, map)
                     saved = True
                 next_parent_revs = [revid]
-                i += 1
         finally:
             pb.finished()
         if not saved:

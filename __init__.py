@@ -14,10 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""
-Support for Subversion branches
+"""Support for Subversion branches
+
+Bazaar can be used with Subversion branches through the bzr-svn plugin.
+
+Most Bazaar commands should work fine with Subversion branches. The following 
+commands at the moment do not:
+
+ - bzr uncommit
+ - bzr push --overwrite
+
+bzr-svn also adds two new commands to Bazaar:
+
+ - bzr svn-import
+ - bzr dpush
+
+For more information about bzr-svn, see the bzr-svn FAQ.
+
 """
 import bzrlib
+from bzrlib import log
 from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.errors import BzrError
 from bzrlib.commands import Command, register_command, display_command, Option
@@ -141,6 +157,11 @@ format_registry.register("subversion-wc", format.SvnWorkingTreeDirFormat,
                          native=False, hidden=True)
 SPEC_TYPES.append(revspec.RevisionSpec_svn)
 
+if getattr(log, "properties_handler_registry", None) is not None:
+    log.properties_handler_registry.register_lazy("subversion",
+                                                  "bzrlib.plugins.svn.log",
+                                                  "show_subversion_properties")
+
 versions_checked = False
 def lazy_check_versions():
     """Check whether all dependencies have the right versions.
@@ -187,6 +208,9 @@ def get_scheme(schemename):
 class cmd_svn_import(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
+    To save disk space, only branches will be created by default 
+    (no working trees). To create a tree for a branch, run "bzr co" in 
+    it.
     """
     takes_args = ['from_location', 'to_location?']
     takes_options = [Option('trees', help='Create working trees.'),
@@ -240,18 +264,19 @@ class cmd_svn_import(Command):
             from_repos = from_dir.find_repository()
             prefix = urlutils.relative_url(from_repos.base, from_location)
             prefix = prefix.encode("utf-8")
-            self.outf.write("Importing branches with prefix %s\n" % 
-                    urlutils.unescape_for_display(prefix, self.outf.encoding))
 
         from_repos.lock_read()
         try:
-            scheme = repository_guess_scheme(from_repos, from_repos.get_latest_revnum())
+            (guessed_scheme, scheme) = repository_guess_scheme(from_repos, from_repos.get_latest_revnum())
 
             if prefix is not None:
                 prefix = prefix.strip("/") + "/"
-                if scheme.is_branch(prefix):
+                if guessed_scheme.is_branch(prefix):
                     raise BzrCommandError("%s appears to contain a branch. " 
                             "For individual branches, use 'bzr branch'." % from_location)
+
+                self.outf.write("Importing branches with prefix /%s\n" % 
+                    urlutils.unescape_for_display(prefix, self.outf.encoding))
 
             if not isinstance(from_repos, SvnRepository):
                 raise BzrCommandError(
@@ -446,9 +471,11 @@ class cmd_dpush(Command):
             revno, old_last_revid = source_branch.last_revision_info()
             new_last_revid = revid_map[old_last_revid]
             if source_wt is not None:
-                source_wt.pull(target_branch, overwrite=True, stop_revision=new_last_revid)
+                source_wt.pull(target_branch, overwrite=True, 
+                               stop_revision=new_last_revid)
             else:
-                source_branch.pull(target_branch, overwrite=True, stop_revision=new_last_revid)
+                source_branch.pull(target_branch, overwrite=True, 
+                                   stop_revision=new_last_revid)
 
 
 register_command(cmd_dpush)
@@ -495,7 +522,7 @@ class cmd_svn_branching_scheme(Command):
             if repository_wide:
                 set_property_scheme(repos, scheme)
             else:
-                config_set_scheme(repos, scheme, mandatory=True)
+                config_set_scheme(repos, scheme, None, mandatory=True)
         elif scheme is not None:
             info(scheme_str(scheme))
 

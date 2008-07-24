@@ -15,7 +15,7 @@
 
 from bzrlib import debug, osutils, urlutils
 from bzrlib.trace import mutter
-from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory
+from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory, VirtualVersionedFiles
 
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NOT_FILE
@@ -71,48 +71,6 @@ class SvnTexts(VersionedFiles):
         return ret
 
     # TODO: annotate, get_sha1s, iter_lines_added_or_present_in_keys, keys
-
-
-class VirtualVersionedFiles(VersionedFiles):
-    def mutter(self, text, *args):
-        if "virtualvf" in debug.debug_flags:
-            mutter(text, *args)
-
-    def __init__(self, get_parent_map, get_lines):
-        self._get_parent_map = get_parent_map
-        self._get_lines = get_lines
-        
-    def check(self, progressbar=None):
-        return True
-
-    def add_mpdiffs(self, records):
-        raise NotImplementedError(self.add_mpdiffs)
-
-    def get_parent_map(self, keys):
-        self.mutter("get_parent_map(%r)" % keys)
-        return dict([((k,), tuple([(p,) for p in v])) for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
-
-    def get_sha1s(self, keys):
-        self.mutter("get_sha1s(%r)" % keys)
-        ret = {}
-        for (k,) in keys:
-            lines = self._get_lines(k)
-            if lines is not None:
-                assert isinstance(lines, list)
-                ret[(k,)] = osutils.sha_strings(lines)
-        return ret
-
-    def get_record_stream(self, keys, ordering, include_delta_closure):
-        self.mutter("get_record_stream(%r)" % keys)
-        for (k,) in list(keys):
-            lines = self._get_lines(k)
-            if lines is not None:
-                assert isinstance(lines, list)
-                yield FulltextContentFactory((k,), None, 
-                        sha1=osutils.sha_strings(lines),
-                        text=''.join(lines))
-            else:
-                yield AbsentContentFactory((k,))
 
 
 class VirtualRevisionTexts(VirtualVersionedFiles):

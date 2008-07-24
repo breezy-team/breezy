@@ -19,7 +19,7 @@ import bzrlib
 from bzrlib import debug, urlutils
 from bzrlib.errors import (NoSuchFile, TransportNotPossible, 
                            FileExists, NotLocalUrl, InvalidURL)
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 from bzrlib.transport import Transport
 
 import bzrlib.plugins.svn
@@ -64,8 +64,27 @@ def get_svn_ra_transport(bzr_transport):
 
 def _url_unescape_uri(url):
     (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
-    path = urllib.unquote(path)
+    if scheme in ("http", "https"):
+        # Without this, URLs with + in them break
+        path = urllib.unquote(path)
     return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+
+def _url_escape_uri(url):
+    (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
+    if scheme in ("http", "https"):
+        # Without this, URLs with + in them break
+        path = urllib.quote(path)
+    return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+
+svnplus_warning_showed = False
+
+def warn_svnplus(url):
+    global svnplus_warning_showed
+    if not svnplus_warning_showed:
+        warning("The svn+ syntax is deprecated, use %s instead.", url)
+        svnplus_warning_showed = True
 
 
 def bzr_to_svn_url(url):
@@ -77,10 +96,9 @@ def bzr_to_svn_url(url):
         url.startswith("svn+file://") or
         url.startswith("svn+https://")):
         url = url[len("svn+"):] # Skip svn+
+        warn_svnplus(url)
 
-    if url.startswith("http"):
-        # Without this, URLs with + in them break
-        url = _url_unescape_uri(url)
+    url = _url_unescape_uri(url)
 
     # The SVN libraries don't like trailing slashes...
     url = url.rstrip('/')
@@ -126,7 +144,7 @@ class ConnectionPool(object):
             return Connection(url)
         c = self.connections.pop()
         try:
-            c.reparent(url)
+            c.reparent(_url_escape_uri(url))
             return c
         except NotImplementedError:
             self.connections.add(c)
@@ -377,6 +395,7 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
+    @convert_svn_error
     def mkdir(self, relpath, message="Creating directory"):
         conn = self.get_connection()
         self.mutter('svn mkdir %s' % (relpath,))
@@ -433,6 +452,7 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
+    @convert_svn_error
     def get_commit_editor(self, revprops, done_cb=None, 
                           lock_token=None, keep_locks=False):
         conn = self._open_real_transport()

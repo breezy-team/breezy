@@ -94,6 +94,8 @@ class TestDirEditor(object):
             copyfrom_path = urlutils.join(self.baseurl, copyfrom_path)
         if copyfrom_path is not None and copyfrom_rev == -1:
             copyfrom_rev = self.revnum
+        assert (copyfrom_path is None and copyfrom_rev == -1) or \
+               (copyfrom_path is not None and copyfrom_rev > -1)
         child = TestDirEditor(self.dir.add_directory(path, copyfrom_path, copyfrom_rev), self.baseurl, self.revnum)
         self.children.append(child)
         return child
@@ -230,7 +232,8 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         ret = {}
         def rcvr(orig_paths, rev, revprops, has_children):
             ret[rev] = (orig_paths, revprops.get(properties.PROP_REVISION_AUTHOR), revprops.get(properties.PROP_REVISION_DATE), revprops.get(properties.PROP_REVISION_LOG))
-        r.get_log(rcvr, [""], start_revnum, stop_revnum, 0, True, True)
+        r.get_log(rcvr, [""], start_revnum, stop_revnum, 0, True, True, 
+                  revprops=[properties.PROP_REVISION_AUTHOR, properties.PROP_REVISION_DATE, properties.PROP_REVISION_LOG])
         return ret
 
     def client_delete(self, relpath):
@@ -324,9 +327,11 @@ def test_suite():
             'test_config',
             'test_convert',
             'test_core',
+            'test_delta',
             'test_errors',
             'test_fetch',
             'test_fileids', 
+            'test_log',
             'test_logwalker',
             'test_mapping',
             'test_properties',

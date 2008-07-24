@@ -56,14 +56,12 @@ class FakeControlFiles(object):
 
 
 class SubversionTags(BasicTags):
-    def __init__(self, branch, layout=None, project=""):
+    def __init__(self, branch):
         self.branch = branch
         self.repository = branch.repository
-        self.layout = layout or self.repository.get_layout()
-        self.project = project
 
     def set_tag(self, tag_name, tag_target):
-        path = self.layout.get_tag_path(tag_name, self.project)
+        path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
         parent = urlutils.dirname(path)
         try:
             (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
@@ -96,8 +94,8 @@ class SubversionTags(BasicTags):
             raise NoSuchTag(tag_name)
 
     def get_tag_dict(self):
-        return self.repository.find_tags(project=self.project, 
-                                         layout=self.layout)
+        return self.repository.find_tags(project=self.branch.project, 
+                                         layout=self.branch.layout)
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys
@@ -112,7 +110,7 @@ class SubversionTags(BasicTags):
         return rev
 
     def delete_tag(self, tag_name):
-        path = self.layout.get_tag_path(tag_name, self.project)
+        path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
         parent = urlutils.dirname(path)
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
         if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
@@ -159,6 +157,7 @@ class SvnBranch(Branch):
         self._lock_mode = None
         self._lock_count = 0
         self.mapping = self.repository.get_mapping()
+        self.layout = self.repository.get_layout()
         self._branch_path = branch_path.strip("/")
         self.base = urlutils.join(self.repository.base, self._branch_path).rstrip("/")
         self._revmeta_cache = None
@@ -172,7 +171,9 @@ class SvnBranch(Branch):
             if num == ERR_FS_NO_SUCH_REVISION:
                 raise NotBranchError(self.base)
             raise
-        if not self.mapping.is_branch(branch_path):
+        (type, self.project, _, ip) = self.layout.parse(branch_path)
+        # FIXME: Don't allow tag here
+        if type not in ('branch', 'tag') or ip != '':
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
 
     def _make_tags(self):
@@ -338,6 +339,11 @@ class SvnBranch(Branch):
         """See Branch.set_last_revision_info()."""
 
     def mainline_missing_revisions(self, other, stop_revision):
+        """Find the revisions missing on the mainline.
+        
+        :param other: Other branch to retrieve revisions from.
+        :param stop_revision: Revision to stop fetching at.
+        """
         missing = []
         lastrevid = self.last_revision()
         for revid in other.repository.iter_reverse_revision_history(stop_revision):
@@ -345,7 +351,21 @@ class SvnBranch(Branch):
                 missing.reverse()
                 return missing
             missing.append(revid)
-        raise UnrelatedBranches()
+        return None
+
+    def otherline_missing_revisions(self, other, stop_revision):
+        """Find the revisions missing on the mainline.
+        
+        :param other: Other branch to retrieve revisions from.
+        :param stop_revision: Revision to stop fetching at.
+        """
+        missing = []
+        for revid in other.repository.iter_reverse_revision_history(stop_revision):
+            if self.repository.has_revision(revid):
+                missing.reverse()
+                return missing
+            missing.append(revid)
+        return None
  
     def last_revision_info(self):
         """See Branch.last_revision_info()."""
@@ -382,7 +402,7 @@ class SvnBranch(Branch):
         if self._revmeta_cache is None:
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), self.mapping, pb=pb))
+                self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), to_revnum=0, mapping=self.mapping, pb=pb))
             finally:
                 pb.finished()
         return self._revmeta_cache
@@ -479,6 +499,12 @@ class SvnBranch(Branch):
                 return
             raise DivergedBranches(self, other)
         todo = self.mainline_missing_revisions(other, stop_revision)
+        if todo is None:
+            # Not possible to add cleanly onto mainline, perhaps need a replace operation
+            todo = self.otherline_missing_revisions(other, stop_revision)
+        if todo is None:
+            raise DivergedBranches(self, other)
+            
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
@@ -548,7 +574,7 @@ class SvnBranch(Branch):
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
-    def get_stacked_on(self):
+    def get_stacked_on_url(self):
         raise UnstackableBranchFormat(self._format, self.base)
 
     def __str__(self):

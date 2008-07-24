@@ -1,0 +1,13 @@
+Development
+===========
+
+Unit testing
+~~~~~~~~~~~~
+To run the bzr-svn testsuite, simply run 
+'bzr selftest --starting-with=bazaar.plugins.svn' or 
+run 'make check' in the top-level bzr-svn directory.
+
+Coding Style, etc
+~~~~~~~~~~~~~~~~~
+Please refer to HACKING in the Bazaar source distribution.
+

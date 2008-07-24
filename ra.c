@@ -299,7 +299,7 @@ static svn_error_t *py_cb_editor_open_root(void *edit_baton, svn_revnum_t base_r
 	return NULL;
 }
 
-static svn_error_t *py_cb_editor_delete_entry(const char *path, long revision, void *parent_baton, apr_pool_t *pool)
+static svn_error_t *py_cb_editor_delete_entry(const char *path, svn_revnum_t revision, void *parent_baton, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)parent_baton, *ret;
 	ret = PyObject_CallMethod(self, "delete_entry", "sl", path, revision);
@@ -309,7 +309,7 @@ static svn_error_t *py_cb_editor_delete_entry(const char *path, long revision, v
 	return NULL;
 }
 
-static svn_error_t *py_cb_editor_add_directory(const char *path, void *parent_baton, const char *copyfrom_path, long copyfrom_revision, apr_pool_t *pool, void **child_baton)
+static svn_error_t *py_cb_editor_add_directory(const char *path, void *parent_baton, const char *copyfrom_path, svn_revnum_t copyfrom_revision, apr_pool_t *pool, void **child_baton)
 {
 	PyObject *self = (PyObject *)parent_baton, *ret;
 	*child_baton = NULL;
@@ -324,7 +324,7 @@ static svn_error_t *py_cb_editor_add_directory(const char *path, void *parent_ba
 	return NULL;
 }
 
-static svn_error_t *py_cb_editor_open_directory(const char *path, void *parent_baton, long base_revision, apr_pool_t *pool, void **child_baton)
+static svn_error_t *py_cb_editor_open_directory(const char *path, void *parent_baton, svn_revnum_t base_revision, apr_pool_t *pool, void **child_baton)
 {
 	PyObject *self = (PyObject *)parent_baton, *ret;
 	*child_baton = NULL;
@@ -371,7 +371,7 @@ static svn_error_t *py_cb_editor_absent_directory(const char *path, void *parent
 	return NULL;
 }
 
-static svn_error_t *py_cb_editor_add_file(const char *path, void *parent_baton, const char *copy_path, long copy_revision, apr_pool_t *file_pool, void **file_baton)
+static svn_error_t *py_cb_editor_add_file(const char *path, void *parent_baton, const char *copy_path, svn_revnum_t copy_revision, apr_pool_t *file_pool, void **file_baton)
 {
 	PyObject *self = (PyObject *)parent_baton, *ret;
 	if (copy_path == NULL) {
@@ -386,7 +386,7 @@ static svn_error_t *py_cb_editor_add_file(const char *path, void *parent_baton, 
 	return NULL;
 }
 
-static svn_error_t *py_cb_editor_open_file(const char *path, void *parent_baton, long base_revision, apr_pool_t *file_pool, void **file_baton)
+static svn_error_t *py_cb_editor_open_file(const char *path, void *parent_baton, svn_revnum_t base_revision, apr_pool_t *file_pool, void **file_baton)
 {
 	PyObject *self = (PyObject *)parent_baton, *ret;
 	ret = PyObject_CallMethod(self, "open_file", "sl", path, base_revision);

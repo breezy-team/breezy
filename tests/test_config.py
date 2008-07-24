@@ -48,7 +48,7 @@ class ReposConfigTests(TestCaseInTempDir):
 
     def test_get_scheme_set(self):
         c = SvnRepositoryConfig("blabla2")
-        c.set_branching_scheme(TrunkBranchingScheme())
+        c.set_branching_scheme(TrunkBranchingScheme(), None)
         self.assertEquals("trunk0", str(c.get_branching_scheme()))
 
     def test_get_scheme_mandatory_none(self):
@@ -57,9 +57,9 @@ class ReposConfigTests(TestCaseInTempDir):
 
     def test_get_scheme_mandatory_set(self):
         c = SvnRepositoryConfig("blabla3")
-        c.set_branching_scheme(TrunkBranchingScheme(), mandatory=True)
+        c.set_branching_scheme(TrunkBranchingScheme(), None, mandatory=True)
         self.assertEquals(True, c.branching_scheme_is_mandatory())
-        c.set_branching_scheme(TrunkBranchingScheme(), mandatory=False)
+        c.set_branching_scheme(TrunkBranchingScheme(), None, mandatory=False)
         self.assertEquals(False, c.branching_scheme_is_mandatory())
 
     def test_override_revprops(self):

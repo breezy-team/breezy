@@ -3,22 +3,6 @@ bzr-svn frequently asked questions
 
 .. contents::
 
-Bazaar is using a lot of memory accessing a Subversion repository
------------------------------------------------------------------
-bzr-svn can use a lot of memory cloning big branches when older 
-versions of the python-subversion bindings are used. This memory leak 
-has been fixed in the trunk of Subversion (r28544) and has been 
-proposed for inclusion in Subversion 1.4.7.
-
-One way to work around this problem is to Ctrl+C the branch operation 
-and restart it.
-
-I am unable to access a repository that uses self-signed SSL certificates
--------------------------------------------------------------------------
-If you are using a Subversion repository over http or https it may be 
-necessary to prefix the repository URL with "svn+", e.g. 
-svn+http://svn.python.org/projects/python/trunk/
-
 Trying to branch into repository gives an error about incompatibility.
 ----------------------------------------------------------------------
 Creating a repository and then trying to clone a Subversion branch into 
@@ -46,11 +30,13 @@ https://bugs.launchpad.net/bzr-svn/+bug/127945.
 Cloning a large Subversion branch is very slow
 ----------------------------------------------
 There is no way around this at the moment, because Bazaar has to import all 
-the history from the Subversion branch as it doesn't support so-called 
-history horizons yet. 
+the history from the Subversion branch.
 
-More information about history horizons can be found at:
-http://bazaar-vcs.org/HistoryHorizon
+Alternatively, you may want to just check out the tip of the Subversion branch
+and access the earlier revisions only when necessary by using stacked branches,
+e.g.::
+
+ $ bzr branch --stacked svn://svn.gnome.org/svn/gnome-specimen/trunk
 
 The Bazaar revno's differ from the Subversion revno's
 -----------------------------------------------------
@@ -93,7 +79,7 @@ Yes, this is because bzr-svn has to preserve the mainline history of your Bazaar
 branch in Subversion. 
 
 If you would like to avoid this, use a checkout and merge into that ("bzr co") 
-or rebase on trunk rather than merge it. 
+or rebase on trunk rather than merging it. 
 
 For example::
 
@@ -144,9 +130,8 @@ Is it possible to not use the on-disk cache?
 --------------------------------------------
 
 Yes, simply set ``use-cache = False`` for the repository in question in 
-~/.bazaar/subversion.conf. 
-This will of course have some consequences for the performance of bzr-svn 
-since it will have to re-fetch data.
+~/.bazaar/subversion.conf.  This will of course have some consequences for the 
+performance of bzr-svn since it will have to re-fetch data.
 
 ..
 	vim: ft=rest

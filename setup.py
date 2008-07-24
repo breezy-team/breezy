@@ -77,11 +77,11 @@ def svn_build_data():
 (apr_includedir, apr_ldflags) = apr_build_data()
 (svn_includedir, svn_libdir) = svn_build_data()
 
-def SvnExtension(*args, **kwargs):
+def SvnExtension(name, *args, **kwargs):
     kwargs["include_dirs"] = [apr_includedir, svn_includedir]
     kwargs["library_dirs"] = [svn_libdir]
     kwargs["extra_link_args"] = apr_ldflags
-    return Extension(*args, **kwargs)
+    return Extension("bzrlib.plugins.svn.%s" % name, *args, **kwargs)
 
 
 setup(name='bzr-svn',

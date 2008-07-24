@@ -17,6 +17,7 @@
 
 import bzrlib
 from bzrlib import osutils, ui, urlutils
+from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.repository import InterRepository
@@ -38,6 +39,7 @@ from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE,
 from bzrlib.plugins.svn.properties import parse_externals_description
 from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
+from bzrlib.plugins.svn.transport import _url_escape_uri
 from bzrlib.plugins.svn.tree import inventory_add_external
 
 def _escape_commit_message(message):
@@ -111,10 +113,7 @@ class RevisionBuildEditor(object):
         if self._id_map is not None:
             return self._id_map
 
-        renames = self.mapping.import_fileid_map(self.revmeta.revprops, self.revmeta.fileprops)
-        self._id_map = self.source.transform_fileid_map(self.source.uuid, 
-                              self.revnum, self.branch_path, self.revmeta.paths, renames, 
-                              self.mapping)
+        self._id_map = self.source.transform_fileid_map(self.revmeta, self.mapping)
 
         return self._id_map
 
@@ -125,7 +124,12 @@ class RevisionBuildEditor(object):
         """
 
         # Commit SVN revision properties to a Revision object
-        rev = Revision(revision_id=revid, parent_ids=self.revmeta.get_parent_ids(self.mapping))
+        parent_ids = self.revmeta.get_parent_ids(self.mapping)
+        if parent_ids == (NULL_REVISION,):
+            parent_ids = ()
+        assert not NULL_REVISION in parent_ids, "parents: %r" % parent_ids
+        rev = Revision(revision_id=revid, 
+                       parent_ids=parent_ids)
 
         self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
                                      self.revmeta.repository.uuid, self.revmeta.branch_path,
@@ -346,6 +350,7 @@ class FileBuildEditor(object):
         self.file_id = file_id
         self.file_data = data
         self.is_symlink = is_symlink
+        self.is_special = None
         self.file_parents = file_parents
         self.is_executable = None
         self.file_stream = None
@@ -364,9 +369,9 @@ class FileBuildEditor(object):
             # properties.PROP_EXECUTABLE_VALUE, but that's not 
             # how SVN behaves. It appears to consider the presence 
             # of the property sufficient to mark it executable.
-            self.is_executable = (value != None)
+            self.is_executable = (value is not None)
         elif (name == properties.PROP_SPECIAL):
-            self.is_symlink = (value != None)
+            self.is_special = (value != None)
         elif name == properties.PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name == properties.PROP_EXTERNALS:
@@ -398,9 +403,14 @@ class FileBuildEditor(object):
         self.editor.texts.add_lines((self.file_id, self.editor.revid), 
                 [(self.file_id, revid) for revid in self.file_parents], lines)
 
+        if self.is_special is not None:
+            self.is_symlink = (self.is_special and len(lines) > 0 and lines[0].startswith("link "))
+
         assert self.is_symlink in (True, False)
 
         if self.file_id in self.editor.inventory:
+            if self.is_executable is None:
+                self.is_executable = self.editor.inventory[self.file_id].executable
             del self.editor.inventory[self.file_id]
 
         if self.is_symlink:
@@ -418,8 +428,7 @@ class FileBuildEditor(object):
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             assert ie.text_size is not None
-            if self.is_executable is not None:
-                ie.executable = self.is_executable
+            ie.executable = self.is_executable
 
         self.file_stream = None
 
@@ -494,7 +503,7 @@ class InterFromSvnRepository(InterRepository):
         parents = graph.get_parent_map(needed)
         return [(revid, parents[revid][0], meta_map[revid]) for revid in needed]
 
-    def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
+    def _find_branches(self, branches, find_ghosts=False, pb=None):
         set_needed = set()
         ret_needed = list()
         checked = set()
@@ -504,7 +513,7 @@ class InterFromSvnRepository(InterRepository):
             try:
                 nestedpb = ui.ui_factory.nested_progress_bar()
                 for rev in self._find_until(branch.last_revision(), find_ghosts=find_ghosts, 
-                                            fetch_rhs_ancestry=False, pb=nestedpb, checked=checked):
+                                            pb=nestedpb, checked=checked):
                     if rev[0] not in set_needed:
                         ret_needed.append(rev)
                         set_needed.add(rev[0])
@@ -512,13 +521,12 @@ class InterFromSvnRepository(InterRepository):
                 nestedpb.finished()
         return ret_needed
 
-    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False, pb=None,
+    def _find_until(self, revision_id, find_ghosts=False, pb=None,
                     checked=None):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
         :param find_ghosts: Find ghosts
-        :param fetch_rhs_ancestry: Fetch right hand side ancestors
         :return: Tuple with revisions missing and a dictionary with 
             parents for those revision.
         """
@@ -532,28 +540,27 @@ class InterFromSvnRepository(InterRepository):
         meta_map = {}
         lhs_parent = {}
         def check_revid(revision_id):
-            prev = None
-            (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
-            for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
+            try:
+                (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
+            except NoSuchRevision:
+                return # Ghost
+            for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, 
+                                                                   to_revnum=0, mapping=mapping):
                 if pb:
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)
-                lhs_parent[prev] = revid
+                parent_ids = revmeta.get_parent_ids(mapping)
+                lhs_parent[revid] = parent_ids[0]
                 meta_map[revid] = revmeta
                 if revid in checked:
                     # This revision (and its ancestry) has already been checked
-                    prev = None
                     break
-                if fetch_rhs_ancestry:
-                    extra.update(revmeta.get_rhs_parents(mapping))
+                extra.update(parent_ids[1:])
                 if not self.target.has_revision(revid):
                     revs.append(revid)
                 elif not find_ghosts:
-                    prev = None
                     break
                 checked.add(revid)
-                prev = revid
-            lhs_parent[prev] = NULL_REVISION
 
         check_revid(revision_id)
 
@@ -598,9 +605,10 @@ class InterFromSvnRepository(InterRepository):
 
         try:
             for (revid, parent_revid, revmeta) in revids:
+                assert revid != NULL_REVISION
                 pb.update('copying revision', num, len(revids))
 
-                assert parent_revid is not None
+                assert parent_revid is not None and parent_revid != revid
 
                 if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
@@ -625,9 +633,11 @@ class InterFromSvnRepository(InterRepository):
                     try:
                         conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
 
+                        assert editor.revnum > parent_revnum or start_empty
+
                         if parent_branch != editor.branch_path:
                             reporter = conn.do_switch(editor.revnum, "", True, 
-                                urlutils.join(repos_root, editor.branch_path), 
+                                _url_escape_uri(urlutils.join(repos_root, editor.branch_path)), 
                                 editor)
                         else:
                             reporter = conn.do_update(editor.revnum, "", True, editor)
@@ -656,7 +666,7 @@ class InterFromSvnRepository(InterRepository):
                 nested_pb.finished()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              branches=None, fetch_rhs_ancestry=False):
+              branches=None):
         """Fetch revisions. """
         if revision_id == NULL_REVISION:
             return
@@ -674,11 +684,11 @@ class InterFromSvnRepository(InterRepository):
             try:
                 if branches is not None:
                     needed = self._find_branches(branches, find_ghosts, 
-                                fetch_rhs_ancestry, pb=nested_pb)
+                                pb=nested_pb)
                 elif revision_id is None:
                     needed = self._find_all(self.source.get_mapping(), pb=nested_pb)
                 else:
-                    needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry, pb=nested_pb)
+                    needed = self._find_until(revision_id, find_ghosts, pb=nested_pb)
             finally:
                 nested_pb.finished()
 

@@ -75,12 +75,12 @@ class SchemeDerivedLayout(RepositoryLayout):
         self.scheme = scheme
 
     def parse(self, path):
-        (bp, rp) = self.scheme.unprefix(path)
+        (proj, bp, rp) = self.scheme.unprefix(path)
         if self.scheme.is_tag(bp):
             type = "tag"
         else:
             type = "branch"
-        return (type, "", bp, rp)
+        return (type, proj, bp, rp)
 
     def _get_root_paths(self, revnum, verify_fn, project="", pb=None):
         def check_path(path):
@@ -126,15 +126,17 @@ def get_stored_scheme(repository):
     or in the configuration file.
     """
     scheme = repository.get_config().get_branching_scheme()
+    guessed_scheme = repository.get_config().get_guessed_branching_scheme()
+    is_mandatory = repository.get_config().branching_scheme_is_mandatory()
     if scheme is not None:
-        return (scheme, repository.get_config().branching_scheme_is_mandatory())
+        return (scheme, guessed_scheme, is_mandatory)
 
     last_revnum = repository.get_latest_revnum()
     scheme = get_property_scheme(repository, last_revnum)
     if scheme is not None:
-        return (scheme, True)
+        return (scheme, None, True)
 
-    return (None, False)
+    return (None, guessed_scheme, False)
 
 
 def get_property_scheme(repository, revnum=None):
@@ -164,21 +166,26 @@ def set_property_scheme(repository, scheme):
 def repository_guess_scheme(repository, last_revnum, branch_path=None):
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        scheme = guess_scheme_from_history(
+        (guessed_scheme, scheme) = guess_scheme_from_history(
             repository._log.iter_changes(None, last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, branch_path)
     finally:
         pb.finished()
-    mutter("Guessed branching scheme: %r" % scheme)
-    return scheme
+    mutter("Guessed branching scheme: %r, guess scheme to use: %r" % 
+            (guessed_scheme, scheme))
+    return (guessed_scheme, scheme)
 
 
-def config_set_scheme(repository, scheme, mandatory=False):
+def config_set_scheme(repository, scheme, guessed_scheme, mandatory=False):
+    if guessed_scheme is None:
+        guessed_scheme_str = None
+    else:
+        guessed_scheme_str = str(guessed_scheme)
     repository.get_config().set_branching_scheme(str(scheme), 
-                                                 mandatory=mandatory)
+                            guessed_scheme_str, mandatory=mandatory)
 
 def set_branching_scheme(repository, scheme, mandatory=False):
     repository.get_mapping().scheme = scheme
-    config_set_scheme(repository, scheme, mandatory)
+    config_set_scheme(repository, scheme, scheme, mandatory)
 
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
@@ -189,31 +196,35 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
     upgrade_suffix = "-svn3"
     revid_prefix = "svn-v3-"
 
-    def __init__(self, scheme):
+    def __init__(self, scheme, guessed_scheme=None):
         mapping.BzrSvnMapping.__init__(self)
         self.scheme = scheme
         assert not isinstance(scheme, str)
+        self.guessed_scheme = guessed_scheme
 
     def get_mandated_layout(self, repository):
         return SchemeDerivedLayout(repository, self.scheme)
 
+    def get_guessed_layout(self, repository):
+        return SchemeDerivedLayout(repository, self.guessed_scheme or self.scheme)
+
     @classmethod
     def from_repository(cls, repository, _hinted_branch_path=None):
-        (scheme, mandatory) = get_stored_scheme(repository)
+        (actual_scheme, guessed_scheme, mandatory) = get_stored_scheme(repository)
         if mandatory:
-            return cls(scheme) 
+            return cls(actual_scheme, guessed_scheme) 
 
-        if scheme is not None:
+        if actual_scheme is not None:
             if (_hinted_branch_path is None or 
-                scheme.is_branch(_hinted_branch_path)):
-                return cls(scheme)
+                actual_scheme.is_branch(_hinted_branch_path)):
+                return cls(actual_scheme, guessed_scheme)
 
         last_revnum = repository.get_latest_revnum()
-        scheme = repository_guess_scheme(repository, last_revnum, _hinted_branch_path)
+        (guessed_scheme, actual_scheme) = repository_guess_scheme(repository, last_revnum, _hinted_branch_path)
         if last_revnum > 20:
-            config_set_scheme(repository, scheme, mandatory=False)
+            config_set_scheme(repository, actual_scheme, guessed_scheme, mandatory=False)
 
-        return cls(scheme)
+        return cls(actual_scheme, guessed_scheme)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.scheme)
@@ -288,7 +299,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         return self._generate_revision_id(uuid, revnum, path, self.scheme)
 
     def unprefix(self, branch_path, repos_path):
-        (bp, np) = self.scheme.unprefix(repos_path)
+        (proj, bp, np) = self.scheme.unprefix(repos_path)
         assert branch_path == bp
         return np
 

@@ -61,7 +61,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         dc.open_file("bar").modify("data2")
         dc.close()
 
-        repository = Repository.open("svn+"+repos_url)
+        repository = Repository.open(repos_url)
         mapping = repository.get_mapping()
 
         inv1 = repository.get_inventory(
@@ -136,7 +136,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         dc.add_file("foo").modify("data")
         dc.close()
 
-        bzrdir = BzrDir.open("svn+"+repos_url)
+        bzrdir = BzrDir.open(repos_url)
         repository = bzrdir.find_repository()
 
         mapping = repository.get_mapping()
@@ -163,7 +163,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         branches.add_dir("branches/mybranch", "trunk", 1)
         dc.close()
 
-        bzrdir = BzrDir.open("svn+"+repos_url + "/branches/mybranch")
+        bzrdir = BzrDir.open(repos_url + "/branches/mybranch")
         repository = bzrdir.find_repository()
 
         mapping = repository.get_mapping()

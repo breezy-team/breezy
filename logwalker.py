@@ -49,6 +49,10 @@ class lazy_dict(object):
         self._ensure_init()
         return self.dict.__getitem__(key)
 
+    def __delitem__(self, key):
+        self._ensure_init()
+        return self.dict.__delitem__(key)
+
     def __setitem__(self, key, value):
         self._ensure_init()
         return self.dict.__setitem__(key, value)
@@ -82,6 +86,10 @@ class lazy_dict(object):
     def items(self):
         self._ensure_init()
         return self.dict.items()
+
+    def __iter__(self):
+        self._ensure_init()
+        return self.dict.__iter__()
 
     def __repr__(self):
         self._ensure_init()
@@ -306,7 +314,7 @@ class CachingLogWalker(CacheTable):
             if pb is not None:
                 pb.update("determining changes", from_revnum-revnum, from_revnum)
             assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
-            revpaths = self.get_revision_paths(revnum)
+            revpaths = self._get_revision_paths(revnum)
 
             if ascending:
                 next = (path, revnum+1)
@@ -357,7 +365,7 @@ class CachingLogWalker(CacheTable):
             return (None, -1) # newly added
         return (copyfrom_path + path[len(branch_path):], copyfrom_rev)
 
-    def get_revision_paths(self, revnum):
+    def _get_revision_paths(self, revnum):
         if revnum == 0:
             return {'': ('A', None, -1)}
         self.fetch_revisions(revnum)
@@ -372,7 +380,7 @@ class CachingLogWalker(CacheTable):
         :param revnum:  Revision to check
         """
         assert revnum >= 0
-        self.fetch_revisions(path, revnum)
+        self.fetch_revisions(revnum)
         
         self.mutter("get previous %r:%r", path, revnum)
         if revnum == 0:
@@ -550,7 +558,7 @@ class LogWalker(object):
                     revision="Revision number %d" % from_revnum)
             raise
 
-    def get_revision_paths(self, revnum):
+    def _get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
@@ -571,7 +579,7 @@ class LogWalker(object):
             raise
 
     def changes_path(self, path, revnum):
-        return self.get_revision_paths(revnum).has_key(path)
+        return self._get_revision_paths(revnum).has_key(path)
         
     def find_children(self, path, revnum):
         """Find all children of path in revnum.

@@ -19,6 +19,7 @@
 #include <Python.h>
 #include <apr_general.h>
 #include <svn_wc.h>
+#include <svn_path.h>
 #include <structmember.h>
 #include <stdbool.h>
 
@@ -30,7 +31,7 @@ PyAPI_DATA(PyTypeObject) Adm_Type;
 
 static PyObject *py_entry(const svn_wc_entry_t *entry);
 
-static svn_error_t *py_ra_report_set_path(void *baton, const char *path, long revision, int start_empty, const char *lock_token, apr_pool_t *pool)
+static svn_error_t *py_ra_report_set_path(void *baton, const char *path, svn_revnum_t revision, int start_empty, const char *lock_token, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *py_lock_token, *ret;
 	if (lock_token == NULL) {
@@ -53,7 +54,7 @@ static svn_error_t *py_ra_report_delete_path(void *baton, const char *path, apr_
 	return NULL;
 }
 
-static svn_error_t *py_ra_report_link_path(void *report_baton, const char *path, const char *url, long revision, int start_empty, const char *lock_token, apr_pool_t *pool)
+static svn_error_t *py_ra_report_link_path(void *report_baton, const char *path, const char *url, svn_revnum_t revision, int start_empty, const char *lock_token, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)report_baton, *ret, *py_lock_token;
 	if (lock_token == NULL) {
@@ -425,7 +426,7 @@ static PyObject *adm_get_prop_diffs(PyObject *self, PyObject *args)
 	if (temp_pool == NULL)
 		return NULL;
 	RUN_SVN_WITH_POOL(temp_pool, svn_wc_get_prop_diffs(&propchanges, &original_props, 
-				path, admobj->adm, temp_pool));
+				svn_path_canonicalize(path, temp_pool), admobj->adm, temp_pool));
 	py_propchanges = PyList_New(propchanges->nelts);
 	for (i = 0; i < propchanges->nelts; i++) {
 		el = APR_ARRAY_IDX(propchanges, i, svn_prop_t);

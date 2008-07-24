@@ -255,7 +255,7 @@ class BzrSvnMapping(object):
     def __init__(self):
         if (version_info[3] == 'exp' or self.experimental) and not BzrSvnMapping._warned_experimental:
             from bzrlib.trace import warning
-            warning("using experimental bzr-svn mappings; output may change between revisions")
+            warning("using experimental bzr-svn mappings; may break existing branches in the most horrible ways")
             BzrSvnMapping._warned_experimental = True
 
     @classmethod
@@ -530,6 +530,7 @@ class BzrSvnMappingFileProps(object):
         else:
             fileprops[SVN_PROP_BZR_FILEIDS] = ""
 
+
 class BzrSvnMappingRevProps(object):
     @classmethod
     def supports_custom_revprops(cls):
@@ -687,7 +688,7 @@ def parse_revision_id(revid):
     """Try to parse a Subversion revision id.
     
     :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, mapping)
+    :return: tuple with (uuid, branch_path, revno, mapping)
     """
     if not revid.startswith("svn-"):
         raise InvalidRevisionId(revid, None)

@@ -19,6 +19,7 @@
 from bzrlib.errors import NotBranchError, NoSuchFile, FileExists, InvalidURL
 from bzrlib import urlutils
 
+from bzrlib.plugins.svn import core, ra
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.transport import SvnRaTransport, bzr_to_svn_url, _url_unescape_uri
 
@@ -31,31 +32,31 @@ class SvnRaTest(TestCaseWithSubversionRepository):
                           "svn+nonexisting://foo/bar")
 
     def test_create(self):
-        repos_url = self.make_client('a', 'ac')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport("svn+%s" % repos_url)
         self.assertIsInstance(t, SvnRaTransport)
         self.assertEqual(t.base, "svn+%s" % repos_url)
 
     def test_create_direct(self):
-        repos_url = self.make_client('a', 'ac')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         self.assertIsInstance(t, SvnRaTransport)
         self.assertEqual(t.base, repos_url)
 
     def test_lock_read(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         lock = t.lock_read(".")
         lock.unlock()
 
     def test_lock_write(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         lock = t.lock_write(".")
         lock.unlock()
 
     def test_listable(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         self.assertTrue(t.listable())
 
@@ -76,7 +77,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertTrue("bar" in lists[0])
 
     def test_list_dir(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         self.assertEqual([], t.list_dir("."))
         t.mkdir("foo")
@@ -120,32 +121,35 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertEqual(tt.base, t.base)
 
     def test_mkdir(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         t.mkdir("bla")
-        self.client_update("dc")
-        self.assertTrue(os.path.isdir("dc/bla"))
+
+        c = ra.RemoteAccess(repos_url)
+        self.assertEquals(c.check_path("bla", c.get_latest_revnum()), 
+                          core.NODE_DIR)
         t.mkdir("bla/subdir")
-        self.client_update("dc")
-        self.assertTrue(os.path.isdir("dc/bla/subdir"))
+        self.assertEquals(c.check_path("bla/subdir", c.get_latest_revnum()), 
+                          core.NODE_DIR)
 
     def test_has_dot(self):
-        t = SvnRaTransport(self.make_client('d', 'dc'))
+        t = SvnRaTransport(self.make_repository('a'))
         self.assertEqual(False, t.has("."))
 
     def test_has_nonexistent(self):
-        t = SvnRaTransport(self.make_client('d', 'dc'))
+        t = SvnRaTransport(self.make_repository('a'))
         self.assertEqual(False, t.has("bar"))
 
     def test_mkdir_missing_parent(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         self.assertRaises(NoSuchFile, t.mkdir, "bla/subdir")
-        self.client_update("dc")
-        self.assertFalse(os.path.isdir("dc/bla/subdir"))
+        c = ra.RemoteAccess(repos_url)
+        self.assertEquals(c.check_path("bla/subdir", c.get_latest_revnum()), 
+                          core.NODE_NONE)
 
     def test_mkdir_twice(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport(repos_url)
         t.mkdir("bla")
         self.assertRaises(FileExists, t.mkdir, "bla")
@@ -174,9 +178,9 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertEqual(repos_url, root)
 
     def test_local_abspath(self):
-        repos_url = self.make_client('d', 'dc')
+        repos_url = self.make_repository('a')
         t = SvnRaTransport("%s" % repos_url)
-        self.assertEquals(urlutils.join(self.test_dir, "d"), t.local_abspath('.'))
+        self.assertEquals(urlutils.join(self.test_dir, "a"), t.local_abspath('.'))
  
 
 class UrlConversionTest(TestCase):

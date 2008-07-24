@@ -90,25 +90,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                            "trunk": ('A', None, -1)}, 1)
             ], [l[:2] for l in walker.iter_changes(["branches/abranch/foo"], 3)])
 
-    def test_get_revision_paths(self):
-        repos_url = self.make_repository("a")
-        cb = self.get_commit_editor(repos_url)
-        cb.add_file("foo").modify()
-        cb.close()
-        walker = self.get_log_walker(SvnRaTransport(repos_url))
-        self.assertEqual({"foo": ('A', None, -1)}, walker.get_revision_paths(1))
-        self.assertEqual({"": ('A', None, -1)}, walker.get_revision_paths(0))
-
-    def test_get_revision_paths_zero(self):
-        repos_url = self.make_repository("a")
-        walker = self.get_log_walker(SvnRaTransport(repos_url))
-        self.assertEqual({'': ('A', None, -1)}, walker.get_revision_paths(0))
-
-    def test_get_revision_paths_invalid(self):
-        repos_url = self.make_repository("a")
-        walker = self.get_log_walker(SvnRaTransport(repos_url))
-        self.assertRaises(NoSuchRevision, lambda: walker.get_revision_paths(42))
-
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_repository("a")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
@@ -665,32 +646,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                           'trunk/data/fg', 'trunk/data/fg/f1', 'trunk/db',
                           'trunk/db/f1', 'trunk/db/f2']), 
                 set(walker.find_children("trunk", 3)))
-
-    def test_fetch_property_change_only_trunk(self):
-        repos_url = self.make_repository('d')
-
-        cb = self.get_commit_editor(repos_url)
-        t = cb.add_dir("trunk")
-        t.add_file("trunk/bla").modify()
-        cb.close()
-
-        cb = self.get_commit_editor(repos_url)
-        t = cb.open_dir("trunk")
-        t.change_prop("some:property", "some data\n")
-        cb.close()
-
-        cb = self.get_commit_editor(repos_url)
-        t = cb.open_dir("trunk")
-        t.change_prop("some2:property", "some data\n")
-        cb.close()
-
-        cb = self.get_commit_editor(repos_url)
-        t = cb.open_dir("trunk")
-        t.change_prop("some:property", "some data4\n")
-        cb.close()
-
-        walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
-        self.assertEquals({'trunk': ('M', None, -1)}, walker.get_revision_paths(3))
 
     def test_iter_changes_property_change(self):
         repos_url = self.make_repository('d')
