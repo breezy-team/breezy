@@ -149,7 +149,6 @@ class GroupCompressor(object):
         index_lines = [False, False]
         pos = 0
         line_locations = self.line_locations
-        line_locations.set_right_lines(lines)
         accumulator = []
         copying = False
         range_len = 0
@@ -159,8 +158,8 @@ class GroupCompressor(object):
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
         while pos < len(lines):
-            # line = lines[pos]
-            matching_locs = line_locations.get_left_matches(pos)
+            line = lines[pos]
+            matching_locs = line_locations.get_left_matches(line)
             if not matching_locs:
                 if copying:
                     flush_range(copying, range_start, copy_ends, range_len,
