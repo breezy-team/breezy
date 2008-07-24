@@ -137,7 +137,6 @@ class GroupCompressor(object):
         line_locations = self.line_locations
         range_len = 0
         range_start = 0
-        flush_range = self.flush_range
         copy_ends = None
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
@@ -209,13 +208,13 @@ class GroupCompressor(object):
         for old_start, new_start, range_len in blocks:
             if new_start != current_pos:
                 # non-matching region
-                flush_range(False, current_pos, None, new_start - current_pos,
+                flush_range(current_pos, None, new_start - current_pos,
                     lines, new_lines, index_lines)
             current_pos = new_start + range_len
             if not range_len:
                 continue
-            flush_range(True, new_start, [old_start + range_len], range_len,
-                lines, new_lines, index_lines)
+            flush_range(new_start, old_start, range_len, lines,
+                new_lines, index_lines)
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
@@ -240,13 +239,12 @@ class GroupCompressor(object):
         sha1 = sha_strings(lines)
         return lines, sha1
 
-    def flush_range(self, copying, range_start, copy_ends, range_len, lines, new_lines, index_lines):
+    def flush_range(self, range_start, copy_start, range_len, lines, new_lines, index_lines):
         if not range_len:
             return
         insert_instruction = "i,%d\n" % range_len
-        if copying:
+        if copy_start is not None:
             # range stops, flush and start a new copy range
-            copy_start = min(copy_ends) - range_len
             stop_byte = self.line_offsets[copy_start + range_len - 1]
             if copy_start == 0:
                 start_byte = 0
@@ -263,7 +261,7 @@ class GroupCompressor(object):
         new_lines.append(insert_instruction)
         new_lines.extend(lines[range_start:range_start+range_len])
         index_lines.append(False)
-        index_lines.extend([not copying]*range_len)
+        index_lines.extend([copy_start is None]*range_len)
 
     def output_lines(self, new_lines, index_lines):
         """Output some lines.
