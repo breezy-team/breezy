@@ -134,33 +134,61 @@ cdef class EquivalenceTable:
             Py_DECREF(seq)
         return count
 
-    cdef Py_ssize_t _compute_minimum_hash_size(self, Py_ssize_t needed_lines):
-        """Determine the smallest hash size that can fit the data.
+    cdef Py_ssize_t _compute_minimum_hash_size(self, Py_ssize_t needed):
+        """Determine the smallest hash size that can reasonably fit the data.
         
-        :param needed_lines: The number of entries we might be inserting into
+        :param needed: The number of entries we might be inserting into
             the hash (assuming there are no duplicate lines.)
         :return: The number of hash table entries to use. This will always be a
             power of two.
         """
-        # TODO: We probably actually want to have 2 values, one indicating an
-        #       acceptable "minimum" size (which is at least as many as input
-        #       lines as they could all be unique, and we would like some space
-        #       to avoid collisions),
-        #       And a "recommended" size, which gives us some extra space
-        #       because we expect to have to grow from time to time, and don't
-        #       want to have to rebuild the entire hash table each time.
-        #       (so initialize with "recommended" but grow if we reach
-        #       "minimum")
         cdef Py_ssize_t hash_size
+        cdef Py_ssize_t min_size
 
+        # TODO: Another alternative would be to actually count how full the
+        #       hash-table is, and decide if we need to grow it based on
+        #       density. That can take into account duplicated lines. Though if
+        #       we compress well, there should be a minimal amount of
+        #       duplicated lines in the output.
+
+        # At the bare minimum, we could fit all entries into a 'needed'
+        # size hash table. However, any collision would then have a long way to
+        # traverse before it could find a 'free' slot.
+        # So we set the minimum size to give us 33% empty slots.
+        min_size = <int>(needed * 1.5)
         hash_size = 1
-        while hash_size < needed_lines:
+        while hash_size < min_size:
             hash_size = hash_size << 1
         return hash_size
 
-    def _py_compute_minimum_hash_size(self, needed_lines):
+    def _py_compute_minimum_hash_size(self, needed):
         """Expose _compute_minimum_hash_size to python for testing."""
-        return self._compute_minimum_hash_size(needed_lines)
+        return self._compute_minimum_hash_size(needed)
+
+    cdef Py_ssize_t _compute_recommended_hash_size(self, Py_ssize_t needed):
+        """Determine a reasonable hash size, assuming some room for growth.
+        
+        :param needed: The number of entries we might be inserting into
+            the hash (assuming there are no duplicate lines.)
+        :return: The number of hash table entries to use. This will always be a
+            power of two.
+        """
+        cdef Py_ssize_t hash_size
+        cdef Py_ssize_t min_size
+
+        # We start off with a 8k hash (after doubling), because there isn't a
+        # lot of reason to go smaller than that (this class isn't one you'll be
+        # instantiating thousands of, and you are always likely to grow here.)
+        hash_size = 4096
+        while hash_size < needed:
+            hash_size = hash_size << 1
+        # And we always give at least 2x blank space
+        hash_size = hash_size << 1
+        return hash_size
+
+    def _py_compute_recommended_hash_size(self, needed):
+        """Expose _compute_recommended_hash_size to python for testing."""
+        return self._compute_recommended_hash_size(needed)
 
     cdef int _build_hash_table(self) except -1:
         cdef Py_ssize_t hash_size
