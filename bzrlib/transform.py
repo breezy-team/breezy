@@ -1473,6 +1473,12 @@ class _PreviewTree(tree.Tree):
 
     def _comparison_data(self, entry, path):
         kind, size, executable, link_or_sha1 = self.path_content_summary(path)
+        if kind == 'missing':
+            kind = None
+            executable = False
+        else:
+            file_id = self._transform.final_file_id(self._path2trans_id(path))
+            executable = self.is_executable(file_id, path)
         return kind, executable, None
 
     def lock_read(self):
