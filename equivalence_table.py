@@ -55,6 +55,13 @@ class EquivalenceTable(object):
         except KeyError:
             return None
 
+    def _get_matching_lines(self):
+        """Return a dictionary showing matching lines."""
+        matching = {}
+        for line in self.lines:
+            matching[line] = self.get_matches(line)
+        return matching
+
     def get_idx_matches(self, right_idx):
         """Return the left lines matching the right line at the given offset."""
         line = self._right_lines[right_idx]
