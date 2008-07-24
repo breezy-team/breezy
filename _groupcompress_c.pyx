@@ -39,7 +39,8 @@ cdef extern from "Python.h":
 cdef struct _raw_line:
     long hash              # Cached form of the hash for this entry
     Py_ssize_t hash_offset # The location in the hash table for this object
-    Py_ssize_t next        # Next line which is equivalent to this one
+    Py_ssize_t next_line_index # Next line which is equivalent to this one
+    int indexed            # Is this line included in the hash table?
     PyObject *data         # Raw pointer to the original line
 
 
@@ -59,7 +60,8 @@ cdef void *safe_malloc(size_t count) except NULL:
         raise MemoryError('Failed to allocate %d bytes of memory' % (count,))
     return result
 
-cdef void safe_free(void **val):
+cdef int safe_free(void **val) except -1:
+    assert val != NULL
     if val[0] != NULL:
         free(val[0])
         val[0] = NULL
@@ -73,35 +75,35 @@ cdef class EquivalenceTable:
 
     cdef readonly object lines
     cdef readonly object _right_lines
-    cdef object _matching_lines
     cdef Py_ssize_t _hashtable_size
     cdef Py_ssize_t _hashtable_bitmask
     cdef _hash_bucket *_hashtable
-    cdef _raw_line *_raw_left_lines
+    cdef _raw_line *_raw_lines
     cdef Py_ssize_t _len_left_lines
-    cdef _raw_line *_raw_right_lines
-    cdef Py_ssize_t _len_right_lines
 
     def __init__(self, lines):
         self.lines = lines
-        self._len_left_lines = len(lines)
         self._right_lines = None
-        self._len_right_lines = 0
         self._hashtable_size = 0
         self._hashtable = NULL
-        self._raw_left_lines = NULL
-        self._raw_right_lines = NULL
-        self._lines_to_raw_lines(lines, &self._raw_left_lines)
+        self._raw_lines = NULL
+        self._len_left_lines = 0
+        self._lines_to_raw_lines(lines)
         self._build_hash_table()
-        self._generate_matching_lines()
 
     def __dealloc__(self):
         safe_free(<void**>&self._hashtable)
-        safe_free(<void**>&self._raw_left_lines)
-        safe_free(<void**>&self._raw_right_lines)
+        safe_free(<void**>&self._raw_lines)
 
-    cdef int _lines_to_raw_lines(self, object lines,
-                                 _raw_line **raw_lines) except -1:
+    cdef int _line_to_raw_line(self, PyObject *line, _raw_line *raw_line) except -1:
+        """Convert a single PyObject into a raw line."""
+        raw_line.hash = PyObject_Hash(line)
+        raw_line.next_line_index = SENTINEL
+        raw_line.hash_offset = SENTINEL
+        raw_line.indexed = 1
+        raw_line.data = line
+        
+    cdef int _lines_to_raw_lines(self, object lines) except -1:
         """Load a sequence of objects into the _raw_line format"""
         cdef Py_ssize_t count, i
         cdef PyObject *seq
@@ -117,9 +119,9 @@ cdef class EquivalenceTable:
             if count == 0:
                 return 0
             raw = <_raw_line*>safe_malloc(count * sizeof(_raw_line))
-            # This should set _raw_left/right_lines, which means that we should
-            # automatically clean it up during __dealloc__
-            raw_lines[0] = raw
+            safe_free(<void**>&self._raw_lines)
+            self._raw_lines = raw
+            self._len_left_lines = count
 
             for i from 0 <= i < count:
                 item = PySequence_Fast_GET_ITEM(seq, i)
@@ -129,10 +131,7 @@ cdef class EquivalenceTable:
                 # TODO: Do we even need to track a data pointer here? It would
                 #       be less memory, and we *could* just look it up in the
                 #       appropriate line list.
-                raw[i].data = item
-                raw[i].hash = PyObject_Hash(item)
-                raw[i].hash_offset = SENTINEL
-                raw[i].next = SENTINEL
+                self._line_to_raw_line(item, &raw[i])
         finally:
             # TODO: Unfortunately, try/finally always generates a compiler
             #       warning about a possibly unused variable :(
@@ -203,15 +202,16 @@ cdef class EquivalenceTable:
         cdef _raw_line *cur_line 
         cdef Py_ssize_t hash_offset
         cdef _hash_bucket *cur_bucket
+        cdef _hash_bucket *new_hashtable
 
         # Hash size is a power of 2
         hash_size = self._compute_recommended_hash_size(self._len_left_lines)
 
-        if self._hashtable != NULL:
-            free(self._hashtable)
-            self._hashtable = NULL
-        self._hashtable = <_hash_bucket*>safe_malloc(sizeof(_hash_bucket) *
-                                                     hash_size)
+        new_hashtable = <_hash_bucket*>safe_malloc(sizeof(_hash_bucket) *
+                                                   hash_size)
+        safe_free(<void**>&self._hashtable)
+        self._hashtable = new_hashtable
+
         self._hashtable_size = hash_size
         for i from 0 <= i < hash_size:
             self._hashtable[i].line_index = SENTINEL
@@ -224,14 +224,16 @@ cdef class EquivalenceTable:
         # the hash (you just change the head pointer, and everything else keeps
         # pointing to the same location).
         for i from self._len_left_lines > i >= 0:
-            cur_line = self._raw_left_lines + i
+            cur_line = self._raw_lines + i
+            if not cur_line.indexed:
+                continue
             hash_offset = self._find_hash_position(cur_line)
 
             # Point this line to the location in the hash table
             cur_line.hash_offset = hash_offset
             # And make this line the head of the hash table
             cur_bucket = self._hashtable + hash_offset
-            cur_line.next = cur_bucket.line_index
+            cur_line.next_line_index = cur_bucket.line_index
             cur_bucket.line_index = i
             cur_bucket.count += 1
 
@@ -253,7 +255,7 @@ cdef class EquivalenceTable:
         location = line.hash & self._hashtable_bitmask
         ref_index = self._hashtable[location].line_index
         while ref_index != SENTINEL:
-            ref_line = self._raw_left_lines + ref_index
+            ref_line = self._raw_lines + ref_index
             if (ref_line.hash == line.hash):
                 PyObject_Cmp(ref_line.data, line.data, &compare_result)
                 if compare_result == 0:
@@ -269,30 +271,27 @@ cdef class EquivalenceTable:
         """
         cdef _raw_line raw_line
 
-        raw_line.hash = PyObject_Hash(<PyObject *>line)
-        raw_line.next = SENTINEL
-        raw_line.hash_offset = SENTINEL
-        raw_line.data = <PyObject *>line
+        self._line_to_raw_line(<PyObject *>line, &raw_line)
         return self._find_hash_position(&raw_line)
         
     def _inspect_left_lines(self):
         """Used only for testing.
 
-        :return: None if _raw_left_lines is NULL,
+        :return: None if _raw_lines is NULL,
             else [(object, hash_val, hash_loc, next_val)] for each node in raw
                   lines.
         """
         cdef Py_ssize_t i
 
-        if self._raw_left_lines == NULL:
+        if self._raw_lines == NULL:
             return None
 
         result = []
         for i from 0 <= i < self._len_left_lines:
-            result.append((<object>self._raw_left_lines[i].data,
-                           self._raw_left_lines[i].hash,
-                           self._raw_left_lines[i].hash_offset,
-                           self._raw_left_lines[i].next,
+            result.append((<object>self._raw_lines[i].data,
+                           self._raw_lines[i].hash,
+                           self._raw_lines[i].hash_offset,
+                           self._raw_lines[i].next_line_index,
                            ))
         return result
 
@@ -312,26 +311,25 @@ cdef class EquivalenceTable:
                                     self._hashtable[i].count))
         return (self._hashtable_size, interesting)
 
-    def _generate_matching_lines(self):
-        matches = {}
-        for idx, line in enumerate(self.lines):
-            matches.setdefault(line, []).append(idx)
-        self._matching_lines = matches
-
-    def _update_matching_lines(self, new_lines, index):
-        matches = self._matching_lines
-        start_idx = len(self.lines)
-        for idx, do_index in enumerate(index):
-            if not do_index:
-                continue
-            matches.setdefault(new_lines[idx], []).append(start_idx + idx)
-
     def get_matches(self, line):
         """Return the lines which match the line in right."""
-        try:
-            return self._matching_lines[line]
-        except KeyError:
+        cdef Py_ssize_t hash_offset
+        cdef _raw_line raw_line
+        cdef _hash_bucket cur_bucket
+        cdef Py_ssize_t cur_line_idx
+
+        self._line_to_raw_line(<PyObject *>line, &raw_line)
+        hash_offset = self._find_hash_position(&raw_line)
+        cur_bucket = self._hashtable[hash_offset]
+        cur_line_idx = cur_bucket.line_index
+        if cur_line_idx == SENTINEL:
             return None
+        result = []
+        while cur_line_idx != SENTINEL:
+            result.append(cur_line_idx)
+            cur_line_idx = self._raw_lines[cur_line_idx].next_line_index
+        assert len(result) == cur_bucket.count
+        return result
 
     def _get_matching_lines(self):
         """Return a dictionary showing matching lines."""
@@ -343,10 +341,7 @@ cdef class EquivalenceTable:
     def get_idx_matches(self, right_idx):
         """Return the left lines matching the right line at the given offset."""
         line = self._right_lines[right_idx]
-        try:
-            return self._matching_lines[line]
-        except KeyError:
-            return None
+        return self.get_matches(line)
 
     def extend_lines(self, lines, index):
         """Add more lines to the left-lines list.
@@ -355,8 +350,16 @@ cdef class EquivalenceTable:
         :param index: A True/False for each node to define if it should be
             indexed.
         """
-        self._update_matching_lines(lines, index)
+        cdef Py_ssize_t orig_len
+        # TODO: We don't need to rebuild the hash table completely each time,
+        #       but for now, just do it for simplicity
+        orig_len = len(self.lines)
         self.lines.extend(lines)
+        self._lines_to_raw_lines(self.lines)
+        for idx, val in enumerate(index):
+            if not val:
+                self._raw_lines[orig_len + idx].indexed = 0
+        self._build_hash_table()
 
     def set_right_lines(self, lines):
         """Set the lines we will be matching against."""

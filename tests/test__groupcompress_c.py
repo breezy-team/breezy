@@ -135,6 +135,19 @@ class TestCompiledEquivalenceTable(tests.TestCase):
             (6, 1, 1),
             ]), eq._inspect_hash_table())
 
+    def test_build_hash_table_with_wrapped_collisions(self):
+        eq = self._gc_module.EquivalenceTable([0, 8191+8192, 8191])
+        self.assertEqual([
+            (0, 0, 1, -1),
+            (16383, 16383, 0, -1),
+            (8191, 8191, 8191, -1),
+            ], eq._inspect_left_lines())
+        self.assertEqual((8192, [
+            (0, 1, 1),
+            (1, 0, 1),
+            (8191, 2, 1),
+            ]), eq._inspect_hash_table())
+
     def test_build_hash_table_with_strings(self):
         eq = self._gc_module.EquivalenceTable(['a', 'b', 'c', 'b'])
         self.assertEqual([
@@ -148,3 +161,48 @@ class TestCompiledEquivalenceTable(tests.TestCase):
             (hash('b') & 8191, 1, 2),
             (hash('c') & 8191, 2, 1),
             ])), eq._inspect_hash_table())
+
+    def test_with_unhashable(self):
+        self.assertRaises(TypeError, self._gc_module.EquivalenceTable,
+                [['unhashable', 'list'], 'foo'])
+        self.assertRaises(TypeError, self._gc_module.EquivalenceTable,
+                ('foo', ['unhashable', 'list']))
+
+    def test_extend_lines(self):
+        eq = self._gc_module.EquivalenceTable([10, 20, 30, 20])
+        eq.extend_lines([30, 20, 40], [True, True, True])
+        self.assertEqual([
+            (10, 10, 10, -1),
+            (20, 20, 20, 3),
+            (30, 30, 30, 4),
+            (20, 20, 20, 5),
+            (30, 30, 30, -1),
+            (20, 20, 20, -1),
+            (40, 40, 40, -1),
+            ], eq._inspect_left_lines())
+        # (hash_offset, head_offset_in_lines, count)
+        self.assertEqual((8192, [
+            (10, 0, 1),
+            (20, 1, 3),
+            (30, 2, 2),
+            (40, 6, 1),
+            ]), eq._inspect_hash_table())
+
+    def test_extend_lines_ignored(self):
+        eq = self._gc_module.EquivalenceTable([10, 20, 30, 20])
+        eq.extend_lines([30, 20, 40], [True, False, False])
+        self.assertEqual([
+            (10, 10, 10, -1),
+            (20, 20, 20, 3),
+            (30, 30, 30, 4),
+            (20, 20, 20, -1),
+            (30, 30, 30, -1),
+            (20, 20, -1, -1),
+            (40, 40, -1, -1),
+            ], eq._inspect_left_lines())
+        # (hash_offset, head_offset_in_lines, count)
+        self.assertEqual((8192, [
+            (10, 0, 1),
+            (20, 1, 2),
+            (30, 2, 2),
+            ]), eq._inspect_hash_table())
