@@ -40,6 +40,7 @@ from bzrlib.osutils import (
     split_lines,
     )
 from bzrlib.plugins.index2.btree_index import BTreeBuilder
+from bzrlib.plugins.groupcompress import equivalence_table
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
@@ -115,12 +116,11 @@ class GroupCompressor(object):
         :paeam delta: If False, do not compress records.
         """
         self._delta = delta
-        self.lines = []
         self.line_offsets = []
         self.endpoint = 0
         self.input_bytes = 0
-        # line: set(locations it appears at), set(N+1 for N in locations)
-        self.line_locations = {}
+        self.line_locations = equivalence_table.EquivalenceTable([])
+        self.lines = self.line_locations._left_lines
         self.labels_deltas = {}
 
     def compress(self, key, lines, expected_sha):
@@ -149,6 +149,7 @@ class GroupCompressor(object):
         index_lines = [False, False]
         pos = 0
         line_locations = self.line_locations
+        line_locations.set_right_lines(lines)
         accumulator = []
         copying = False
         range_len = 0
@@ -158,8 +159,9 @@ class GroupCompressor(object):
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
         while pos < len(lines):
-            line = lines[pos]
-            if line not in line_locations:
+            # line = lines[pos]
+            matching_locs = line_locations.get_left_matches(pos)
+            if not matching_locs:
                 if copying:
                     flush_range(copying, range_start, copy_ends, range_len,
                         lines, new_lines, index_lines)
@@ -169,30 +171,29 @@ class GroupCompressor(object):
                 else:
                     range_len += 1
             else:
-                locations, next = line_locations[line]
                 if copying:
-                    next_locations = locations.intersection(copy_ends)
+                    next_locations = copy_ends.intersection(matching_locs)
                     if len(next_locations):
                         # range continues
                         range_len += 1
-                        copy_ends = set(loc + 1 for loc in next_locations)
+                        copy_ends = set([loc + 1 for loc in next_locations])
                         pos += 1
                         continue
                 # New copy range starts here:
                 flush_range(copying, range_start, copy_ends, range_len, lines,
                     new_lines, index_lines)
                 range_len = 1
-                copy_ends = next
+                copy_ends = set([loc + 1 for loc in matching_locs])
                 range_start = pos
                 copying = True
             pos += 1
         flush_range(copying, range_start, copy_ends, range_len, lines,
             new_lines, index_lines)
-        delta_start = (self.endpoint, len(self.lines))
+        delta_start = (self.endpoint, len(self.line_locations._left_lines))
         self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
         self.input_bytes += sum(map(len, lines))
-        delta_end = (self.endpoint, len(self.lines))
+        delta_end = (self.endpoint, len(line_locations._left_lines))
         self.labels_deltas[key] = (delta_start, delta_end)
         return sha1, self.endpoint
 
@@ -245,16 +246,10 @@ class GroupCompressor(object):
             that line.
         """
         endpoint = self.endpoint
-        offset = len(self.lines)
-        for (pos, line), index in izip(enumerate(new_lines), index_lines):
-            self.lines.append(line)
+        self.line_locations.extend_left_lines(new_lines, index_lines)
+        for line in new_lines:
             endpoint += len(line)
             self.line_offsets.append(endpoint)
-            if index:
-                indices, next_lines = self.line_locations.setdefault(line,
-                    (set(), set()))
-                indices.add(pos + offset)
-                next_lines.add(pos + offset + 1)
         self.endpoint = endpoint
 
     def ratio(self):
