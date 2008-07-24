@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 from distutils.core import setup
 
 bzr_plugin_name = 'groupcompress'
@@ -73,6 +74,9 @@ def add_pyrex_extension(module_name, **kwargs):
         else:
             ext_modules.append(Extension(module_name, [c_name]))
 
+# add_pyrex_extension('_groupcompress_c')
+
+
 if __name__ == '__main__':
     setup(name="bzr groupcompress",
           version="1.6.0dev0",
@@ -85,4 +89,6 @@ if __name__ == '__main__':
                     'bzrlib.plugins.groupcompress.tests',
                     ],
           package_dir={'bzrlib.plugins.groupcompress': '.'},
+          cmdclass={'build_ext': build_ext_if_possible},
+          ext_modules=ext_modules,
           }
