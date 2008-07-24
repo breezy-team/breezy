@@ -273,7 +273,6 @@ class GroupCompressor(object):
         endpoint = self.endpoint
         offset = len(self.lines)
         for (pos, line), index in izip(enumerate(new_lines), index_lines):
-            self.lines.append(line)
             endpoint += len(line)
             self.line_offsets.append(endpoint)
             if index:
@@ -281,6 +280,7 @@ class GroupCompressor(object):
                     (set(), set()))
                 indices.add(pos + offset)
                 next_lines.add(pos + offset + 1)
+        self.lines.extend(new_lines)
         self.endpoint = endpoint
 
     def ratio(self):
