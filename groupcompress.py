@@ -110,6 +110,8 @@ class GroupCompressor(object):
        left side.
     """
 
+    _equivalence_table_class = equivalence_table.EquivalenceTable
+
     def __init__(self, delta=True):
         """Create a GroupCompressor.
 
@@ -119,7 +121,7 @@ class GroupCompressor(object):
         self.line_offsets = []
         self.endpoint = 0
         self.input_bytes = 0
-        self.line_locations = equivalence_table.EquivalenceTable([])
+        self.line_locations = self._equivalence_table_class([])
         self.lines = self.line_locations.lines
         self.labels_deltas = {}
 
@@ -136,7 +138,7 @@ class GroupCompressor(object):
         pos = 0
         line_locations = self.line_locations
         line_locations.set_right_lines(lines)
-        get = line_locations._matching_lines.get
+        # get = line_locations._matching_lines.get
         range_len = 0
         range_start = 0
         copy_ends = None
@@ -836,3 +838,11 @@ class _GCGraphIndex(object):
         basis_end = int(bits[2])
         delta_end = int(bits[3])
         return node[0], start, stop, basis_end, delta_end
+
+
+try:
+    from bzrlib.plugins.groupcompress import _groupcompress_c
+except ImportError:
+    pass
+else:
+    GroupCompressor._equivalence_table_class = _groupcompress_c.EquivalenceTable
