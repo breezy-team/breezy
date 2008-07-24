@@ -1533,6 +1533,11 @@ class _PreviewTree(tree.Tree):
         children.update(self._by_parent.get(trans_id, []))
         return children
 
+    def iter_children(self, file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        for child_trans_id in self._all_children(trans_id):
+            yield self._transform.final_file_id(child_trans_id)
+
     def _make_inv_entries(self, ordered_entries, specific_file_ids):
         for trans_id, parent_file_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
