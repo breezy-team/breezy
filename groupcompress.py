@@ -120,7 +120,7 @@ class GroupCompressor(object):
         self.endpoint = 0
         self.input_bytes = 0
         self.line_locations = equivalence_table.EquivalenceTable([])
-        self.lines = self.line_locations._left_lines
+        self.lines = self.line_locations.lines
         self.labels_deltas = {}
 
     def compress(self, key, lines, expected_sha):
@@ -159,7 +159,7 @@ class GroupCompressor(object):
         # insert new lines. To find reusable lines we traverse 
         while pos < len(lines):
             line = lines[pos]
-            matching_locs = line_locations.get_left_matches(line)
+            matching_locs = line_locations.get_matches(line)
             if not matching_locs:
                 if copying:
                     flush_range(copying, range_start, copy_ends, range_len,
@@ -190,11 +190,11 @@ class GroupCompressor(object):
             pos += 1
         flush_range(copying, range_start, copy_ends, range_len, lines,
             new_lines, index_lines)
-        delta_start = (self.endpoint, len(self.line_locations._left_lines))
+        delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
         self.input_bytes += sum(map(len, lines))
-        delta_end = (self.endpoint, len(line_locations._left_lines))
+        delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
         return sha1, self.endpoint
 
@@ -247,7 +247,7 @@ class GroupCompressor(object):
             that line.
         """
         endpoint = self.endpoint
-        self.line_locations.extend_left_lines(new_lines, index_lines)
+        self.line_locations.extend_lines(new_lines, index_lines)
         for line in new_lines:
             endpoint += len(line)
             self.line_offsets.append(endpoint)

@@ -23,43 +23,43 @@ SENTINEL = -1
 class EquivalenceTable(object):
     """This class tracks equivalencies between lists of hashable objects.
 
-    :ivar _left_lines: The 'static' lines that will be preserved between runs.
+    :ivar lines: The 'static' lines that will be preserved between runs.
     :ival _matching_lines: A dict of {line:[matching offsets]}
     """
 
-    def __init__(self, left_lines):
-        self._left_lines = left_lines
+    def __init__(self, lines):
+        self.lines = lines
         # For each line in 'left' give the offset to the other lines which
         # match it.
-        self._generate_matching_left_lines()
+        self._generate_matching_lines()
 
-    def _generate_matching_left_lines(self):
+    def _generate_matching_lines(self):
         matches = {}
-        for idx, line in enumerate(self._left_lines):
+        for idx, line in enumerate(self.lines):
             matches.setdefault(line, []).append(idx)
         self._matching_lines = matches
 
-    def _update_matching_left_lines(self, new_lines, index):
+    def _update_matching_lines(self, new_lines, index):
         matches = self._matching_lines
-        start_idx = len(self._left_lines)
+        start_idx = len(self.lines)
         for idx, do_index in enumerate(index):
             if not do_index:
                 continue
             matches.setdefault(new_lines[idx], []).append(start_idx + idx)
 
-    def get_left_matches(self, line):
+    def get_matches(self, line):
         """Return the lines which match the line in right."""
         try:
             return self._matching_lines[line]
         except KeyError:
             return None
 
-    def extend_left_lines(self, lines, index):
+    def extend_lines(self, lines, index):
         """Add more lines to the left-lines list.
 
         :param lines: A list of lines to add
         :param index: A True/False for each node to define if it should be
             indexed.
         """
-        self._update_matching_left_lines(lines, index)
-        self._left_lines.extend(lines)
+        self._update_matching_lines(lines, index)
+        self.lines.extend(lines)
