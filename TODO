@@ -1,11 +1,20 @@
+* Improvements:
+  * include timezone info in Date
+  * lazy evaluation of keyword values so they are only calculated if requested
+
+Things to consider:
+  * python_escape (maybe called string_escape) ala xml_escape?
+  * some sort of block construct so easier to include in ReST and properties
+    files, e.g.
+    .. $begin-keywords$
+    :name1: value1
+    :name2: value2
+    .. $end-keywords$
+  * if already cooked, replace current value?
+  * warn if bzr version too early?
+
 * Add tests for:
   * global keyword values (including date formatting)
   * filters
-
-* Support keywords that provide info from the last revision that changed a file:
-  * Updated
-  * Author
-  * Committer
-
-* UI polish:
-  * warning if bzr version too early
+  * escaping
+  * style formatting
