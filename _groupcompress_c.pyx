@@ -452,3 +452,53 @@ cdef class EquivalenceTable:
     def set_right_lines(self, lines):
         """Set the lines we will be matching against."""
         self._right_lines = lines
+
+
+def _get_longest_match(equivalence_table, pos, max_pos, locations):
+    """Get the longest possible match for the current position."""
+    cdef EquivalenceTable eq
+    cdef int cpos
+
+    eq = equivalence_table
+    cpos = pos
+    range_start = pos
+    range_len = 0
+    copy_ends = None
+
+    while pos < max_pos:
+        if locations is None:
+            locations = equivalence_table.get_idx_matches(pos)
+        if locations is None:
+            # No more matches, just return whatever we have, but we know that
+            # this last position is not going to match anything
+            pos = pos + 1
+            break
+        else:
+            if copy_ends is None:
+                # We are starting a new range
+                copy_ends = []
+                for loc in locations:
+                    copy_ends.append(loc + 1)
+                range_len = 1
+                locations = None # Consumed
+            else:
+                # We are currently in the middle of a match
+                next_locations = set(copy_ends).intersection(locations)
+                if len(next_locations):
+                    # range continues
+                    copy_ends = []
+                    for loc in next_locations:
+                        copy_ends.append(loc + 1)
+                    range_len = range_len + 1
+                    locations = None # Consumed
+                else:
+                    # But we are done with this match, we should be
+                    # starting a new one, though. We will pass back 'locations'
+                    # so that we don't have to do another lookup.
+                    break
+        pos = pos + 1
+    if copy_ends is None:
+        return None, pos, locations
+    return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
+
+

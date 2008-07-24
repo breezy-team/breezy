@@ -141,8 +141,10 @@ class GroupCompressor(object):
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
         locations = None
-        while pos < len(lines):
-            block, pos, locations = _get_longest_match(line_locations, pos, lines, locations)
+        max_pos = len(lines)
+        while pos < max_pos:
+            block, pos, locations = _get_longest_match(line_locations, pos,
+                                                       max_pos, locations)
             if block is not None:
                 result.append(block)
         result.append((len(self.lines), len(lines), 0))
@@ -813,12 +815,12 @@ class _GCGraphIndex(object):
         return node[0], start, stop, basis_end, delta_end
 
 
-def _get_longest_match(equivalence_table, pos, lines, locations):
+def _get_longest_match(equivalence_table, pos, max_pos, locations):
     """Get the longest possible match for the current position."""
     range_start = pos
     range_len = 0
     copy_ends = None
-    while pos < len(lines):
+    while pos < max_pos:
         if locations is None:
             locations = equivalence_table.get_idx_matches(pos)
         if locations is None:

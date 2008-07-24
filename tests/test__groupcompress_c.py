@@ -18,6 +18,8 @@
 
 from bzrlib import tests
 
+from bzrlib.plugins.groupcompress import groupcompress
+
 
 class _CompiledGroupCompress(tests.Feature):
 
@@ -206,3 +208,60 @@ class TestCompiledEquivalenceTable(tests.TestCase):
             (20, 1, 2),
             (30, 2, 2),
             ]), eq._inspect_hash_table())
+
+
+class TestGetLongestMatch(tests.TestCase):
+
+    def setUp(self):
+        super(TestGetLongestMatch, self).setUp()
+        self._longest_match = groupcompress._get_longest_match
+        self._eq_class = groupcompress.GroupCompressor._equivalence_table_class
+
+    def assertLongestMatch(self, block, end_pos, matching_locs,
+                           eq, start_pos, max_len, known_locs):
+        """Check that _get_longest_match gives correct results."""
+        self.assertEqual((block, end_pos, matching_locs),
+                         self._longest_match(eq, start_pos, max_len,
+                                             known_locs))
+
+    def test_all_match(self):
+        eq = self._eq_class(['a', 'b', 'c'])
+        eq.set_right_lines(['a', 'b', 'c'])
+        self.assertLongestMatch((0, 0, 3), 3, None,
+                                eq, 0, 3, None)
+        self.assertLongestMatch((0, 0, 3), 3, None,
+                                 eq, 0, 3, [0])
+        self.assertLongestMatch((1, 1, 2), 3, None,
+                                eq, 1, 3, None)
+        self.assertLongestMatch((1, 1, 2), 3, None,
+                                eq, 1, 3, [1])
+
+    def test_no_match(self):
+        eq = self._eq_class(['a', 'b', 'c'])
+        eq.set_right_lines(['d', 'e', 'f'])
+        self.assertLongestMatch(None, 1, None,
+                                eq, 0, 3, None)
+        self.assertLongestMatch(None, 2, None,
+                                eq, 1, 3, None)
+        self.assertLongestMatch(None, 3, None,
+                                eq, 2, 3, None)
+
+    def test_next_match(self):
+        eq = self._eq_class(['a', 'b', 'c'])
+        eq.set_right_lines(['a', 'c'])
+        self.assertLongestMatch((0, 0, 1), 1, [2],
+                                eq, 0, 2, None)
+        self.assertLongestMatch((2, 1, 1), 2, None,
+                                eq, 1, 2, None)
+
+
+class TestCompiledGetLongestMatch(TestGetLongestMatch):
+
+    _tests_need_features = [CompiledGroupCompress]
+
+    def setUp(self):
+        super(TestGetLongestMatch, self).setUp()
+        from bzrlib.plugins.groupcompress import _groupcompress_c
+        self._longest_match = _groupcompress_c._get_longest_match
+        self._eq_class = _groupcompress_c.EquivalenceTable
+
