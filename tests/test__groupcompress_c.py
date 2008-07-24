@@ -40,6 +40,10 @@ class TestCompiledEquivalenceTable(tests.TestCase):
 
     _tests_need_features = [CompiledGroupCompress]
 
+    # These tests assume that hash(int) == int
+    # If that ever changes, we can simply change this code to use a custom
+    # class that has precomputed values returned from __hash__.
+
     def setUp(self):
         super(TestCompiledEquivalenceTable, self).setUp()
         from bzrlib.plugins.groupcompress import _groupcompress_c
@@ -68,14 +72,31 @@ class TestCompiledEquivalenceTable(tests.TestCase):
 
     def test__raw_lines(self):
         eq = self._gc_module.EquivalenceTable([1, 2, 3])
-        self.assertEqual([(1, 1, -1, 1), (2, 2, -1, 2), (3, 3, -1, 3)],
+        self.assertEqual([(1, 1, 1, -1), (2, 2, 2, -1), (3, 3, 3, -1)],
                          eq._inspect_left_lines())
 
     def test_build_hash(self):
-        # This test assumes that hash(int) == int
-        # If that ever changes, we can simply change this code to use a custom
-        # class that has precomputed values returned from __hash__.
         eq = self._gc_module.EquivalenceTable([1, 2, 3])
         # (size, [(offset, head_offset_in_lines, count)])
         self.assertEqual((8192, [(1, 0, 1), (2, 1, 1), (3, 2, 1)]),
                          eq._inspect_hash_table())
+
+    def test_build_hash_with_duplicates(self):
+        eq = self._gc_module.EquivalenceTable([1, 2, 4, 0, 1, 4, 2, 4])
+        self.assertEqual([
+            (1, 1, 1, 4),
+            (2, 2, 2, 6),
+            (4, 4, 4, 5),
+            (0, 0, 0, -1),
+            (1, 1, 1, -1),
+            (4, 4, 4, 7),
+            (2, 2, 2, -1),
+            (4, 4, 4, -1),
+            ], eq._inspect_left_lines())
+        # (hash_offset, head_offset_in_lines, count)
+        self.assertEqual((8192, [
+            (0, 3, 1),
+            (1, 0, 2),
+            (2, 1, 2),
+            (4, 2, 3),
+            ]), eq._inspect_hash_table())

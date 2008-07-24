@@ -279,7 +279,7 @@ cdef class EquivalenceTable:
         """Used only for testing.
 
         :return: None if _raw_left_lines is NULL,
-            else [(hash_val, hash_loc, next_val, object)] for each node in raw
+            else [(object, hash_val, hash_loc, next_val)] for each node in raw
                   lines.
         """
         cdef Py_ssize_t i
@@ -289,10 +289,11 @@ cdef class EquivalenceTable:
 
         result = []
         for i from 0 <= i < self._len_left_lines:
-            result.append((self._raw_left_lines[i].hash,
+            result.append((<object>self._raw_left_lines[i].data,
+                           self._raw_left_lines[i].hash,
                            self._raw_left_lines[i].hash_offset,
                            self._raw_left_lines[i].next,
-                           <object>self._raw_left_lines[i].data,))
+                           ))
         return result
 
     def _inspect_hash_table(self):
