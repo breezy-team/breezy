@@ -1591,10 +1591,20 @@ class DistributionBranch(object):
         if len(parents) > 0:
             branch = parents[0][0]
             pull_version = parents[0][1]
-            pull_revid = branch.revid_of_upstream_version(pull_version)
-            mutter("Initialising upstream from %s, version %s" \
-                    % (str(branch), str(pull_version)))
-            up_pull_branch = branch.upstream_tree.branch
+            # FIXME: This means that we won't initialise the upstream
+            # if the last version is native but others weren't. I don't
+            # think that is correct.
+            if not branch.is_version_native(pull_version):
+                pull_revid = branch.revid_of_upstream_version(pull_version)
+                mutter("Initialising upstream from %s, version %s" \
+                        % (str(branch), str(pull_version)))
+                up_pull_branch = branch.upstream_tree.branch
+            else:
+                pull_revid = branch.revid_of_version(pull_version)
+                mutter("Non-native package following a native one, "
+                        "pulling upstream from packaging branch %s, "
+                        "version %s" % (str(branch), str(pull_version)))
+                up_pull_branch = branch.tree.branch
             self.upstream_tree.pull(up_pull_branch,
                     stop_revision=pull_revid)
 

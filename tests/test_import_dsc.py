@@ -2208,6 +2208,83 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertTrue(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
 
+    def test_import_non_native_to_native(self):
+        version1 = Version("1.0-1")
+        version2 = Version("1.0-2")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_upstream_file("COPYING", "don't do it\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_debian_file("README", "\n")
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = True
+        builder.new_version(version2)
+        builder.remove_upstream_file("BUGS")
+        builder.add_upstream_file("COPYING", "do it\n")
+        builder.add_upstream_file("NEWS")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 3)
+        self.assertEqual(len(up_rh1), 1)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
+        self.assertEqual(rev_tree1.get_parent_ids(), [rh1[0]])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                added=["NEWS"], removed=["BUGS"],
+                modified=["debian/changelog", "COPYING"])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
+        self.assertFalse(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
+
+    def test_import_native_to_non_native(self):
+        version1 = Version("1.0")
+        version2 = Version("1.1-1")
+        builder = SourcePackageBuilder("package", version1, native=True)
+        builder.add_upstream_file("COPYING", "don't do it\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_debian_file("README", "\n")
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = False
+        builder.new_version(version2)
+        builder.remove_upstream_file("BUGS")
+        builder.add_upstream_file("COPYING", "do it\n")
+        builder.add_upstream_file("NEWS")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 2)
+        self.assertEqual(len(up_rh1), 2)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[0])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[1])
+        up_rev_tree1 = \
+                self.up_tree1.branch.repository.revision_tree(up_rh1[1])
+        self.assertEqual(rev_tree1.get_parent_ids(), [])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[0], up_rh1[1]])
+        self.assertEqual(up_rev_tree1.get_parent_ids(), [rh1[0]])
+        self.check_changes(rev_tree2.changes_from(rev_tree1),
+                added=["NEWS"], removed=["BUGS"],
+                modified=["debian/changelog", "COPYING"])
+        self.check_changes(up_rev_tree1.changes_from(rev_tree1),
+                added=["NEWS"],
+                removed=["debian/", "debian/changelog", "debian/control",
+                        "BUGS", "README"],
+                modified=["COPYING"])
+        self.check_changes(rev_tree2.changes_from(up_rev_tree1),
+                added=["debian/", "debian/changelog", "debian/control",
+                "README"])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+        self.assertTrue(self.db1.is_version_native(version1))
+        self.assertFalse(self.db1.is_version_native(version2))
+
 
 class SourcePackageBuilder(object):
 
@@ -2216,13 +2293,8 @@ class SourcePackageBuilder(object):
         self.debian_files = {}
         self.name = name
         self.native = native
-        cl = Changelog()
-        cl.new_block(package=name, version=version,
-                distributions="unstable", urgency="low",
-                author="Maint <maint@maint.org>",
-                date="Wed, 19 Mar 2008 21:27:37 +0000")
-        cl.add_change("  * foo")
-        self._cl = cl
+        self._cl = Changelog()
+        self.new_version(version)
 
     def add_upstream_file(self, name, content=None):
         self.add_upstream_files([(name, content)])
