@@ -29,22 +29,26 @@ cdef extern from "Python.h":
     Py_ssize_t PySequence_Fast_GET_SIZE(PyObject *)
     PyObject *PySequence_Fast_GET_ITEM(PyObject *, Py_ssize_t)
     long PyObject_Hash(PyObject *) except -1
+    # We use PyObject_Cmp rather than PyObject_Compare because pyrex will check
+    # if there is an exception *for* us.
+    int PyObject_Cmp(PyObject *, PyObject *, int *result) except -1
     void Py_DECREF(PyObject *)
     void Py_INCREF(PyObject *)
 
 
 cdef struct _raw_line:
-    long hash   # Cached form of the hash for this entry
-    int next    # Next line which is equivalent to this one
-    PyObject *data   # Raw pointer to the original line
+    long hash              # Cached form of the hash for this entry
+    Py_ssize_t hash_offset # The location in the hash table for this object
+    Py_ssize_t next        # Next line which is equivalent to this one
+    PyObject *data         # Raw pointer to the original line
 
 
 cdef struct _hash_bucket:
-    int line_index # First line in the left side for this bucket
-    int count      # Number of equivalent lines, DO we even need this?
+    Py_ssize_t line_index # First line in the left side for this bucket
+    Py_ssize_t count      # Number of equivalent lines, DO we even need this?
 
 
-cdef int SENTINEL
+cdef Py_ssize_t SENTINEL
 SENTINEL = -1
 
 
@@ -54,6 +58,11 @@ cdef void *safe_malloc(size_t count) except NULL:
     if result == NULL:
         raise MemoryError('Failed to allocate %d bytes of memory' % (count,))
     return result
+
+cdef void safe_free(void **val):
+    if val[0] != NULL:
+        free(val[0])
+        val[0] = NULL
 
 
 cdef class EquivalenceTable:
@@ -65,8 +74,8 @@ cdef class EquivalenceTable:
     cdef readonly object lines
     cdef readonly object _right_lines
     cdef object _matching_lines
-    cdef int _hashtable_size
-    cdef int _hashtable_bitmask
+    cdef Py_ssize_t _hashtable_size
+    cdef Py_ssize_t _hashtable_bitmask
     cdef _hash_bucket *_hashtable
     cdef _raw_line *_raw_left_lines
     cdef Py_ssize_t _len_left_lines
@@ -83,18 +92,13 @@ cdef class EquivalenceTable:
         self._raw_left_lines = NULL
         self._raw_right_lines = NULL
         self._lines_to_raw_lines(lines, &self._raw_left_lines)
+        self._build_hash_table()
         self._generate_matching_lines()
 
     def __dealloc__(self):
-        if self._hashtable != NULL:
-            free(self._hashtable)
-            self._hashtable = NULL
-        if self._raw_left_lines != NULL:
-            free(self._raw_left_lines)
-            self._raw_left_lines = NULL
-        if self._raw_right_lines != NULL:
-            free(self._raw_right_lines)
-            self._raw_right_lines = NULL
+        safe_free(<void**>&self._hashtable)
+        safe_free(<void**>&self._raw_left_lines)
+        safe_free(<void**>&self._raw_right_lines)
 
     cdef int _lines_to_raw_lines(self, object lines,
                                  _raw_line **raw_lines) except -1:
@@ -127,6 +131,7 @@ cdef class EquivalenceTable:
                 #       appropriate line list.
                 raw[i].data = item
                 raw[i].hash = PyObject_Hash(item)
+                raw[i].hash_offset = SENTINEL
                 raw[i].next = SENTINEL
         finally:
             # TODO: Unfortunately, try/finally always generates a compiler
@@ -155,7 +160,7 @@ cdef class EquivalenceTable:
         # size hash table. However, any collision would then have a long way to
         # traverse before it could find a 'free' slot.
         # So we set the minimum size to give us 33% empty slots.
-        min_size = <int>(needed * 1.5)
+        min_size = <Py_ssize_t>(needed * 1.5)
         hash_size = 1
         while hash_size < min_size:
             hash_size = hash_size << 1
@@ -191,18 +196,23 @@ cdef class EquivalenceTable:
         return self._compute_recommended_hash_size(needed)
 
     cdef int _build_hash_table(self) except -1:
+        """Build the hash table 'from scratch'."""
         cdef Py_ssize_t hash_size
         cdef Py_ssize_t hash_bitmask
         cdef Py_ssize_t i
+        cdef _raw_line *cur_line 
+        cdef Py_ssize_t hash_offset
+        cdef _hash_bucket *cur_bucket
 
         # Hash size is a power of 2
-        hash_size = self._compute_hash_size(self._len_left_lines)
+        hash_size = self._compute_recommended_hash_size(self._len_left_lines)
 
         if self._hashtable != NULL:
             free(self._hashtable)
             self._hashtable = NULL
         self._hashtable = <_hash_bucket*>safe_malloc(sizeof(_hash_bucket) *
                                                      hash_size)
+        self._hashtable_size = hash_size
         for i from 0 <= i < hash_size:
             self._hashtable[i].line_index = SENTINEL
             self._hashtable[i].count = 0
@@ -214,15 +224,77 @@ cdef class EquivalenceTable:
         # the hash (you just change the head pointer, and everything else keeps
         # pointing to the same location).
         for i from self._len_left_lines > i >= 0:
-            self._find_equivalence_offset(&self._raw_left_lines[i])
+            cur_line = self._raw_left_lines + i
+            hash_offset = self._find_hash_position(cur_line)
 
-    cdef int _find_equivalence_offset(self, _raw_line *line):
+            # Point this line to the location in the hash table
+            cur_line.hash_offset = hash_offset
+            # And make this line the head of the hash table
+            cur_bucket = self._hashtable + hash_offset
+            cur_line.next = cur_bucket.line_index
+            cur_bucket.line_index = i
+            cur_bucket.count += 1
+
+    cdef Py_ssize_t _find_hash_position(self, _raw_line *line) except -1:
         """Find the node in the hash which defines this line.
 
         Each bucket in the hash table points at exactly 1 equivalent line. If 2
-        objects would collide, we just increment to the next bucket.
+        objects would collide, we just increment to the next bucket until we
+        get to an empty bucket that is either empty or exactly matches this
+        object.
+
+        :return: The offset in the hash table for this entry
         """
+        cdef Py_ssize_t location
+        cdef _raw_line *ref_line
+        cdef Py_ssize_t ref_index
+        cdef int compare_result
+
+        location = line.hash & self._hashtable_bitmask
+        ref_index = self._hashtable[location].line_index
+        while ref_index != SENTINEL:
+            ref_line = self._raw_left_lines + ref_index
+            if (ref_line.hash == line.hash):
+                PyObject_Cmp(ref_line.data, line.data, &compare_result)
+                if compare_result == 0:
+                    break
+            location = (location + 1) & self._hashtable_bitmask
+            ref_index = self._hashtable[location].line_index
+        return location
+
+    def _py_find_hash_position(self, line):
+        """Used only for testing.
+
+        Return the location where this fits in the hash table
+        """
+        cdef _raw_line raw_line
+
+        raw_line.hash = PyObject_Hash(<PyObject *>line)
+        raw_line.next = SENTINEL
+        raw_line.hash_offset = SENTINEL
+        raw_line.data = <PyObject *>line
+        return self._find_hash_position(&raw_line)
         
+    def _inspect_left_lines(self):
+        """Used only for testing.
+
+        :return: None if _raw_left_lines is NULL,
+            else [(hash_val, hash_loc, next_val, object)] for each node in raw
+                  lines.
+        """
+        cdef Py_ssize_t i
+
+        if self._raw_left_lines == NULL:
+            return None
+
+        result = []
+        for i from 0 <= i < self._len_left_lines:
+            result.append((self._raw_left_lines[i].hash,
+                           self._raw_left_lines[i].hash_offset,
+                           self._raw_left_lines[i].next,
+                           <object>self._raw_left_lines[i].data,))
+        return result
+
     def _inspect_hash_table(self):
         """Used only for testing.
 

@@ -65,3 +65,17 @@ class TestCompiledEquivalenceTable(tests.TestCase):
         # And we recommend at least 50% free slots
         self.assertEqual(8192, eq._py_compute_recommended_hash_size(4096))
         self.assertEqual(16384, eq._py_compute_recommended_hash_size(4097))
+
+    def test__raw_lines(self):
+        eq = self._gc_module.EquivalenceTable([1, 2, 3])
+        self.assertEqual([(1, 1, -1, 1), (2, 2, -1, 2), (3, 3, -1, 3)],
+                         eq._inspect_left_lines())
+
+    def test_build_hash(self):
+        # This test assumes that hash(int) == int
+        # If that ever changes, we can simply change this code to use a custom
+        # class that has precomputed values returned from __hash__.
+        eq = self._gc_module.EquivalenceTable([1, 2, 3])
+        # (size, [(offset, head_offset_in_lines, count)])
+        self.assertEqual((8192, [(1, 0, 1), (2, 1, 1), (3, 2, 1)]),
+                         eq._inspect_hash_table())
