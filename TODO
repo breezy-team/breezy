@@ -10,7 +10,6 @@ Things to consider:
     :name1: value1
     :name2: value2
     .. $end-keywords$
-  * if already cooked, replace current value?
   * warn if bzr version too early?
 
 * Add tests for:

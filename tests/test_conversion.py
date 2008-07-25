@@ -59,7 +59,11 @@ class TestKeywordsConversion(tests.TestCase):
         kw_dict = {'Xxx': 'y$z'}
         self.assertEqual('$Xxx$', expand_keywords('$Xxx$', [kw_dict]))
 
-    def test_expansion_ignored_if_already_expanded(self):
+    def test_expansion_replaced_if_already_expanded(self):
         s = '$Xxx: old value $'
         kw_dict = {'Xxx': 'new value'}
-        self.assertEqual(s, expand_keywords(s, [kw_dict]))
+        self.assertEqual('$Xxx: new value $', expand_keywords(s, [kw_dict]))
+
+    def test_expansion_ignored_if_already_expanded_but_unknown(self):
+        s = '$Xxx: old value $'
+        self.assertEqual('$Xxx: old value $', expand_keywords(s, [{}]))

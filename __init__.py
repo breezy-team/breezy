@@ -27,8 +27,9 @@ Keyword templates are specified using the following patterns:
  * in convenience/expanded format: $Keyword: value $
 
 When expanding, the existing text is retained if an unknown keyword is
-found or if the keyword has already been expanded. When compressing,
-values are always removed, whether the keyword is known or not.
+found. If the keyword is already expanded but known, the value is replaced.
+When compressing, values are always removed, whether the keyword is known
+or not.
 
 Keyword filtering needs to be enabled for selected branches and files via
 rules. See ``bzr help rules`` for general information on defining rules.
@@ -123,7 +124,7 @@ _keyword_style_registry.default_key = 'cooked'
 
 
 # Regular expressions for matching the raw and cooked patterns
-_KW_RAW_RE = re.compile(r'\$([\w\-]+)\$')
+_KW_RAW_RE = re.compile(r'\$([\w\-]+)(:[^$]*)?\$')
 _KW_COOKED_RE = re.compile(r'\$([\w\-]+):([^$]+)\$')
 
 
