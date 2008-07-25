@@ -8,6 +8,13 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  CHANGES:
+
+    * Knit format repositories are deprecated and bzr will now emit
+      warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
+      knit repositories to pack format.  (Andrew Bennetts)
+      
+
   FEATURES:
 
 
