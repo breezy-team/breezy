@@ -134,7 +134,6 @@ class GroupCompressor(object):
             of the list is always (old_len, new_len, 0) to provide a end point
             for generating instructions from the matching blocks list.
         """
-        import time
         result = []
         pos = 0
         line_locations = self.line_locations
@@ -143,25 +142,14 @@ class GroupCompressor(object):
         # insert new lines. To find reusable lines we traverse 
         locations = None
         max_pos = len(lines)
-        timer = time.clock
         max_time = 0.0
         max_info = None
         while pos < max_pos:
-            tstart = timer()
-            block, next_pos, locations = _get_longest_match(line_locations, pos,
-                                                            max_pos, locations)
-            tdelta = timer() - tstart
-            if tdelta > max_time:
-                max_time = tdelta
-                max_info = tdelta, pos, block, next_pos, locations
-            pos = next_pos
-            
+            block, pos, locations = _get_longest_match(line_locations, pos,
+                                                       max_pos, locations)
             if block is not None:
                 result.append(block)
         result.append((len(self.lines), len(lines), 0))
-        # if max_time > 0.01:
-        #     print max_info[:-1]
-        #     import pdb; pdb.set_trace()
         return result
 
     def compress(self, key, lines, expected_sha):
