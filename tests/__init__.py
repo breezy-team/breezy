@@ -231,7 +231,6 @@ def test_suite():
         'test_git_branch',
         'test_git_dir',
         'test_git_repository',
-        'test_model',
         'test_ids',
         'test_blackbox',
         ]

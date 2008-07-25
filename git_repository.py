@@ -16,6 +16,7 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
+import git
 import os
 
 import bzrlib
@@ -34,7 +35,6 @@ from bzrlib.transport import get_transport
 from bzrlib.plugins.git import (
     cache,
     ids,
-    model,
     )
 
 
@@ -49,7 +49,7 @@ class GitRepository(repository.Repository):
     def __init__(self, gitdir, lockfiles):
         self.bzrdir = gitdir
         self.control_files = lockfiles
-        self._git = self._make_model(gitdir.transport)
+        self._git = git.repo.Repo(gitdir.root_transport.local_abspath("."))
         self._revision_cache = {}
         self._blob_cache = {}
         self._blob_info_cache = {}
@@ -60,6 +60,9 @@ class GitRepository(repository.Repository):
             cachedbs[cache_file] = cache.sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
         self._init_cachedb()
+        self.texts = None
+        self.signatures = None
+        self.revisions = None
         self._format = GitFormat()
 
     def _init_cachedb(self):
@@ -78,13 +81,6 @@ class GitRepository(repository.Repository):
             on entry_revision (inventory, path);
         """)
         self.cachedb.commit()
-
-
-    @classmethod
-    def _make_model(klass, transport):
-        gitdirectory = transport.local_abspath('.')
-        return model.GitModel(gitdirectory)
-
 
     def _ancestor_revisions(self, revision_ids):
         if revision_ids is not None:

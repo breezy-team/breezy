@@ -16,7 +16,7 @@
 
 """Tests for interfacing with a Git Repository"""
 
-import subprocess
+import git
 
 from bzrlib import (
     inventory,
@@ -29,7 +29,6 @@ from bzrlib.plugins.git import (
     git_dir,
     git_repository,
     ids,
-    model,
     )
 
 
@@ -44,11 +43,11 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = repository.Repository.open('.')
         self.assertIsInstance(repo, git_repository.GitRepository)
 
-    def test_has_git_model(self):
+    def test_has_git_repo(self):
         tests.run_git('init')
 
         repo = repository.Repository.open('.')
-        self.assertIsInstance(repo._git, model.GitModel)
+        self.assertIsInstance(repo._git, git.repo.Repo)
 
     def test_revision_graph(self):
         tests.run_git('init')
