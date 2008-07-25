@@ -264,14 +264,18 @@ cdef class EquivalenceTable:
         cdef Py_ssize_t line_index
         cdef _raw_line *cur_line
         cdef PyObject *seq_index
+        cdef Py_ssize_t actual_new_len
 
         seq_index = PySequence_Fast(index, "expected a sequence for index")
         try:
             old_len = self._len_lines
             new_count = PySequence_Fast_GET_SIZE(seq_index) 
             new_total_len = new_count + self._len_lines
+            actual_new_len = 1
+            while actual_new_len < new_total_len:
+                actual_new_len = actual_new_len << 1
             self._raw_lines = <_raw_line*>safe_realloc(<void*>self._raw_lines,
-                                    new_total_len * sizeof(_raw_line))
+                                    actual_new_len * sizeof(_raw_line))
             self._len_lines = new_total_len
             # Now that we have enough space, start adding the new lines
             # into the array. These are done in forward order.
@@ -452,6 +456,68 @@ cdef class EquivalenceTable:
             cur_line_idx = self._raw_lines[cur_line_idx].next_line_index
         return cur_bucket.count
 
+    cdef Py_ssize_t get_next_matches(self, PyObject *line,
+                                     Py_ssize_t *tips,
+                                     Py_ssize_t tip_count,
+                                     int *did_match) except -1:
+        """Find matches that are interesting for the next step.
+
+        This finds offsets which match the current search tips. It is slightly
+        different from get_raw_matches, in that it intersects matching lines
+        against the existing tips, and then returns the *next* line.
+
+        TODO: It might be nice to know if there were 0 matches because the line
+              didn't match anything, or if it was just because it didn't follow
+              anything.
+
+        :param line: A line to match against
+        :param tips: A list of matches that we already have. This list
+            will be updated "in place". If there are no new matches, the list
+            will go unmodified, and the returned count will be 0.
+        :param tip_count: The current length of tips
+        :param did_match: Will be set to True if the line had matches, else 0
+        :return: The new number of matched lines.
+        """
+        cdef Py_ssize_t hash_offset
+        cdef _raw_line raw_line
+        cdef _hash_bucket cur_bucket
+        cdef Py_ssize_t cur_line_idx
+        cdef Py_ssize_t count
+        cdef Py_ssize_t *cur_tip
+        cdef Py_ssize_t *end_tip
+        cdef Py_ssize_t *cur_out
+
+        self._line_to_raw_line(line, &raw_line)
+        hash_offset = self._find_hash_position(&raw_line)
+        cur_bucket = self._hashtable[hash_offset]
+        cur_line_idx = cur_bucket.line_index
+        if cur_line_idx == SENTINEL:
+            did_match[0] = 0
+            return 0
+
+        did_match[0] = 1
+
+        cur_tip = tips
+        end_tip = tips + tip_count
+        cur_out = tips
+        count = 0
+        while cur_tip < end_tip and cur_line_idx != SENTINEL:
+            if cur_line_idx == cur_tip[0]:
+                # These match, so put a new entry in the output
+                # We put the *next* line, so that this is ready to pass back in
+                # for the next search.
+                cur_out[0] = (cur_line_idx + 1)
+                count = count + 1
+                cur_out = cur_out + 1
+                cur_tip = cur_tip + 1
+                cur_line_idx = self._raw_lines[cur_line_idx].next_line_index
+            elif cur_line_idx < cur_tip[0]:
+                # cur_line_idx is "behind"
+                cur_line_idx = self._raw_lines[cur_line_idx].next_line_index
+            else:
+                cur_tip = cur_tip + 1
+        return count
+
     def _get_matching_lines(self):
         """Return a dictionary showing matching lines."""
         matching = {}
@@ -581,6 +647,7 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
     cdef Py_ssize_t in_start
     cdef Py_ssize_t i
     cdef Py_ssize_t intersect_count
+    cdef int did_match
 
     eq = equivalence_table
     cpos = pos
@@ -593,60 +660,45 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
     copy_count = 0
 
     # TODO: Handle when locations is not None
-    if locations is not None:
-        match_count = list_as_array(locations, &matches)
+    # if locations is not None:
+    #     copy_count = list_as_array(locations, &copy_ends)
+    #     # We know the match for this position
+    #     cpos = cpos + 1
+    #     range_len = 1
     while cpos < cmax_pos:
         # TODO: Instead of grabbing the full list of matches and then doing an
         #       intersection, use a helper that does the intersection
         #       as-it-goes.
-        if matches == NULL:
-            line = PyList_GET_ITEM(eq._right_lines, cpos)
-            safe_free(<void**>&matches)
-            match_count = eq.get_raw_matches(line, &matches)
-        if match_count == 0:
-            # No more matches, just return whatever we have, but we know that
-            # this last position is not going to match anything
-            cpos = cpos + 1
-            break
+        line = PyList_GET_ITEM(eq._right_lines, cpos)
+        if copy_ends == NULL:
+            copy_count = eq.get_raw_matches(line, &copy_ends)
+            if copy_count == 0:
+                # No matches for this line
+                cpos = cpos + 1
+                break
+            # point at the next location, for the next round trip
+            range_len = 1
+            for i from 0 <= i < copy_count:
+                copy_ends[i] = copy_ends[i] + 1
         else:
-            if copy_ends == NULL:
-                # We are starting a new range, just steal the matches
-                copy_ends = matches
-                copy_count = match_count
-                matches = NULL
-                match_count = 0
-                for i from 0 <= i < copy_count:
-                    copy_ends[i] = copy_ends[i] + 1
-                range_len = 1
+            # We are in the middle of a match
+            intersect_count = eq.get_next_matches(line, copy_ends, copy_count,
+                                                  &did_match)
+            if intersect_count == 0:
+                # No more matches
+                if not did_match:
+                    # because the next line is not interesting
+                    cpos = cpos + 1
+                break
             else:
-                # We are currently in the middle of a match
-                intersect_count = intersect_sorted(copy_ends, copy_count,
-                                                   matches, match_count)
-                if intersect_count == 0:
-                    # But we are done with this match, we should be
-                    # starting a new one, though. We will pass back 'locations'
-                    # so that we don't have to do another lookup.
-                    break
-                else:
-                    copy_count = intersect_count
-                    # range continues, step the copy ends
-                    for i from 0 <= i < copy_count:
-                        copy_ends[i] = copy_ends[i] + 1
-                    range_len = range_len + 1
-                    safe_free(<void **>&matches)
-                    match_count = 0
+                copy_count = intersect_count
+                range_len = range_len + 1
         cpos = cpos + 1
-    if matches == NULL:
-        # We consumed all of our matches
-        locations = None
-    else:
-        locations = array_as_list(matches, match_count)
-        safe_free(<void **>&matches)
     if copy_ends == NULL or copy_count == 0:
         # We never had a match
-        return None, cpos, locations
+        return None, cpos, None
     # Because copy_ends is always sorted, we know the 'min' is just the first
     # node
     in_start = copy_ends[0]
     safe_free(<void**>&copy_ends)
-    return ((in_start - range_len), range_start, range_len), cpos, locations
+    return ((in_start - range_len), range_start, range_len), cpos, None

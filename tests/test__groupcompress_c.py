@@ -224,8 +224,12 @@ class TestGetLongestMatch(tests.TestCase):
     def assertLongestMatch(self, block, end_pos, matching_locs,
                            eq, start_pos, max_len, known_locs):
         """Check that _get_longest_match gives correct results."""
-        val = self._longest_match(eq, start_pos, max_len, known_locs)
-        self.assertEqual((block, end_pos, matching_locs), val)
+        the_block, the_end_pos, next_locs = self._longest_match(eq,
+                                                start_pos, max_len, known_locs)
+        self.assertEqual(block, the_block)
+        self.assertEqual(end_pos, the_end_pos)
+        if next_locs is not None:
+            self.assertEqual(matching_locs, next_locs)
 
     def test_all_match(self):
         eq = self._eq_class(['a', 'b', 'c'])
