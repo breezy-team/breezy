@@ -1061,6 +1061,10 @@ class BranchFormat(object):
     def set_default_format(klass, format):
         klass._default_format = format
 
+    def supports_stacking(self):
+        """True if this format records a stacked-on branch."""
+        return False
+
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
@@ -1367,6 +1371,9 @@ class BzrBranchFormat7(BranchFormatMetadir):
         super(BzrBranchFormat7, self).__init__()
         self._matchingbzrdir.repository_format = \
             RepositoryFormatPackDevelopment1Subtree()
+
+    def supports_stacking(self):
+        return True
 
 
 class BranchReferenceFormat(BranchFormat):
