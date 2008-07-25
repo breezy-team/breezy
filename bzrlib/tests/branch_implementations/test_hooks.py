@@ -16,6 +16,7 @@
 
 """Tests that branch classes implement hook callouts correctly."""
 
+from bzrlib.errors import HookFailed, TipChangeRejected
 from bzrlib.branch import Branch, ChangeBranchTipParams
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
@@ -90,7 +91,7 @@ class ChangeBranchTipTestCase(TestCaseWithMemoryTransport):
         """
         hook_calls = []
         Branch.hooks.install_named_hook(
-            'pre_change_branch_tip', hook_calls.append, None)
+            prefix + '_change_branch_tip', hook_calls.append, None)
         return hook_calls
 
     def make_branch_with_revision_ids(self, *revision_ids):
@@ -124,10 +125,10 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             'pre_change_branch_tip', assertBranchAtRevision1, None)
         branch.set_last_revision_info(0, NULL_REVISION)
 
-    def test_reject_by_hook(self):
+    def test_hook_failure_prevents_change(self):
         """If a hook raises an exception, the change does not take effect.
         
-        Also, the exception will be propogated.
+        Also, a HookFailed exception will be raised.
         """
         branch = self.make_branch_with_revision_ids(
             'one-\xc2\xb5', 'two-\xc2\xb5')
@@ -137,8 +138,9 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             raise PearShapedError()
         Branch.hooks.install_named_hook(
             'pre_change_branch_tip', hook_that_raises, None)
-        self.assertRaises(
-            PearShapedError, branch.set_last_revision_info, 0, NULL_REVISION)
+        hook_failed_exc = self.assertRaises(
+            HookFailed, branch.set_last_revision_info, 0, NULL_REVISION)
+        self.assertIsInstance(hook_failed_exc.exc_value, PearShapedError)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
         
@@ -183,6 +185,22 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertEqual(len(hook_calls_1), 1)
         self.assertEqual(len(hook_calls_2), 1)
 
+    def test_explicit_reject_by_hook(self):
+        """If a hook raises TipChangeRejected, the change does not take effect.
+        
+        TipChangeRejected exceptions are propagated, not wrapped in HookFailed.
+        """
+        branch = self.make_branch_with_revision_ids(
+            'one-\xc2\xb5', 'two-\xc2\xb5')
+        def hook_that_rejects(params):
+            raise TipChangeRejected('rejection message')
+        Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', hook_that_rejects, None)
+        self.assertRaises(
+            TipChangeRejected, branch.set_last_revision_info, 0, NULL_REVISION)
+        # The revision info is unchanged.
+        self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
+        
 
 class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for post_change_branch_tip hook.
@@ -243,3 +261,57 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         # Both hooks are called.
         self.assertEqual(len(hook_calls_1), 1)
         self.assertEqual(len(hook_calls_2), 1)
+
+
+class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
+    """Every method of Branch that changes a branch tip will invoke the
+    pre/post_change_branch_tip hooks.
+    """
+
+    def setUp(self):
+        ChangeBranchTipTestCase.setUp(self)
+        self.installPreAndPostHooks()
+        
+    def installPreAndPostHooks(self):
+        self.pre_hook_calls = self.install_logging_hook('pre')
+        self.post_hook_calls = self.install_logging_hook('post')
+
+    def resetHookCalls(self):
+        del self.pre_hook_calls[:], self.post_hook_calls[:]
+
+    def assertPreAndPostHooksWereInvoked(self):
+        # Check for len == 1, because the hooks should only be be invoked once
+        # by an operation.
+        self.assertEqual(1, len(self.pre_hook_calls))
+        self.assertEqual(1, len(self.post_hook_calls))
+
+    def test_set_revision_history(self):
+        branch = self.make_branch('')
+        branch.set_revision_history([])
+        self.assertPreAndPostHooksWereInvoked()
+
+    def test_set_last_revision_info(self):
+        branch = self.make_branch('')
+        branch.set_last_revision_info(0, NULL_REVISION)
+        self.assertPreAndPostHooksWereInvoked()
+
+    def test_generate_revision_history(self):
+        branch = self.make_branch('')
+        branch.generate_revision_history(NULL_REVISION)
+        self.assertPreAndPostHooksWereInvoked()
+
+    def test_pull(self):
+        source_branch = self.make_branch_with_revision_ids('rev-1', 'rev-2')
+        self.resetHookCalls()
+        destination_branch = self.make_branch('destination')
+        destination_branch.pull(source_branch)
+        self.assertPreAndPostHooksWereInvoked()
+
+    def test_push(self):
+        source_branch = self.make_branch_with_revision_ids('rev-1', 'rev-2')
+        self.resetHookCalls()
+        destination_branch = self.make_branch('destination')
+        source_branch.push(destination_branch)
+        self.assertPreAndPostHooksWereInvoked()
+
+        
