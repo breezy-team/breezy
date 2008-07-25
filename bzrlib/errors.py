@@ -96,8 +96,8 @@ class BzrError(StandardError):
     def _format(self):
         s = getattr(self, '_preformatted_string', None)
         if s is not None:
-            # contains a preformatted message; must be cast to plain str
-            return str(s)
+            # contains a preformatted message
+            return s
         try:
             fmt = self._get_format_string()
             if fmt:
@@ -121,12 +121,19 @@ class BzrError(StandardError):
         if isinstance(u, str):
             # Try decoding the str using the default encoding.
             u = unicode(u)
+        elif not isinstance(u, unicode):
+            # Try to make a unicode object from it, because __unicode__ must
+            # return a unicode object.
+            u = unicode(u)
         return u
     
     def __str__(self):
         s = self._format()
         if isinstance(s, unicode):
-            return s.encode('utf8')
+            s = s.encode('utf8')
+        else:
+            # __str__ must return a str.
+            s = str(s)
         return s
 
     def _get_format_string(self):
