@@ -117,7 +117,10 @@ class ContentFilterContext(object):
         if rev_id is None:
             return None
         else:
-            return self._tree._repository.get_revision(rev_id)
+            repo = getattr(self._tree, '_repository', None)
+            if repo is None:
+                repo = self._tree.branch.repository
+            return repo.get_revision(rev_id)
 
 
 def filtered_input_file(f, filters):
