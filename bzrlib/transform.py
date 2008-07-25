@@ -355,7 +355,11 @@ class TreeTransformBase(object):
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
         except OSError, e:
-            if e.errno == errno.ENOENT:
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                # Either old_path doesn't exist, or the parent of the
+                # target is not a directory (but will be one eventually)
+                # Either way, we know it doesn't exist *right now*
+                # See also bug #248448
                 return
             else:
                 raise

@@ -135,6 +135,11 @@ class BzrError(StandardError):
                getattr(self, '_fmt', None),
                )
 
+    def __eq__(self, other):
+        if self.__class__ != other.__class__:
+            return NotImplemented
+        return self.__dict__ == other.__dict__
+
 
 class InternalBzrError(BzrError):
     """Base class for errors that are internal in nature.

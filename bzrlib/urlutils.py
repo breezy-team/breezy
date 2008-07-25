@@ -667,7 +667,7 @@ def rebase_url(url, old_base, new_base):
     if (old_parsed[:2]) != (new_parsed[:2]):
         raise errors.InvalidRebaseURLs(old_base, new_base)
     return determine_relative_path(new_parsed[2],
-                                   osutils.pathjoin(old_parsed[2], url))
+                                   join(old_parsed[2], url))
 
 
 def determine_relative_path(from_path, to_path):
