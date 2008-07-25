@@ -18,11 +18,11 @@
 """
 
 import os
+import sys
 import tarfile
 import time
-import sys
 
-from bzrlib import errors, export
+from bzrlib import errors, export, osutils
 from bzrlib.trace import mutter
 
 
@@ -51,7 +51,33 @@ def tar_exporter(tree, dest, root, compression=None):
         # so do not export it
         if dp == ".bzrignore":
             continue
-        item, fileobj = ie.get_tar_item(root, dp, now, tree)
+
+        filename = osutils.pathjoin(root, dp).encode('utf8')
+        item = tarfile.TarInfo(filename)
+        item.mtime = now
+        if ie.kind == "file":
+            item.type = tarfile.REGTYPE
+            if tree.is_executable(ie.file_id):
+                item.mode = 0755
+            else:
+                item.mode = 0644
+            item.size = ie.text_size
+            fileobj = tree.get_file(ie.file_id)
+        elif ie.kind == "directory":
+            item.type = tarfile.DIRTYPE
+            item.name += '/'
+            item.size = 0
+            item.mode = 0755
+            fileobj = None
+        elif ie.kind == "symlink":
+            item.type = tarfile.SYMTYPE
+            item.size = 0
+            item.mode = 0755
+            item.linkname = ie.symlink_target
+            fileobj = None
+        else:
+            raise BzrError("don't know how to export {%s} of kind %r" %
+                           (ie.file_id, ie.kind))
         ball.addfile(item, fileobj)
     ball.close()
 
@@ -62,4 +88,3 @@ def tgz_exporter(tree, dest, root):
 
 def tbz_exporter(tree, dest, root):
     tar_exporter(tree, dest, root, compression='bz2')
-

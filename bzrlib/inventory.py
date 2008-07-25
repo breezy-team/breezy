@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method
+from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -176,6 +176,7 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
         item = tarfile.TarInfo(osutils.pathjoin(root, dp).encode('utf8'))
@@ -238,6 +239,7 @@ class InventoryEntry(object):
         raise BzrError("don't know how to export {%s} of kind %r" %
                        (self.file_id, self.kind))
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_on_disk(self, dest, dp, tree):
         """Create a representation of self on disk in the prefix dest.
         
