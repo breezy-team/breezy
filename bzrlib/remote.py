@@ -1696,5 +1696,7 @@ def _translate_error(err, **context):
         raise errors.TokenMismatch(find('token'), '(remote token)')
     elif err.error_verb == 'Diverged':
         raise errors.DivergedBranches(find('branch'), find('other_branch'))
+    elif err.error_verb == 'TipChangeRejected':
+        raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
     raise
 

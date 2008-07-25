@@ -551,6 +551,40 @@ class TestBranchSetLastRevision(tests.TestCase):
             errors.NoSuchRevision, branch.set_revision_history, ['rev-id'])
         branch.unlock()
 
+    def test_tip_change_rejected(self):
+        """TipChangeRejected responses cause a TipChangeRejected exception to
+        be raised.
+        """
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient(transport.base)
+        # lock_write
+        client.add_success_response('ok', 'branch token', 'repo token')
+        # set_last_revision
+        rejection_msg_unicode = u'rejection message\N{INTERROBANG}'
+        rejection_msg_utf8 = rejection_msg_unicode.encode('utf8')
+        client.add_error_response('TipChangeRejected', rejection_msg_utf8)
+        # unlock
+        client.add_success_response('ok')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
+        branch._ensure_real = lambda: None
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        client._calls = []
+
+        # The 'TipChangeRejected' error response triggered by calling
+        # set_revision_history causes a TipChangeRejected exception.
+        err = self.assertRaises(
+            errors.TipChangeRejected, branch.set_revision_history, ['rev-id'])
+        # The UTF-8 message from the response has been decoded into a unicode
+        # object.
+        self.assertIsInstance(err.msg, unicode)
+        self.assertEqual(rejection_msg_unicode, err.msg)
+
 
 class TestBranchSetLastRevisionInfo(tests.TestCase):
 
@@ -688,6 +722,39 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
             branch.set_last_revision_info, 123, 'revid')
         self.assertEqual(('UnexpectedError',), err.error_tuple)
         branch.unlock()
+
+    def test_tip_change_rejected(self):
+        """TipChangeRejected responses cause a TipChangeRejected exception to
+        be raised.
+        """
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient(transport.base)
+        # lock_write
+        client.add_success_response('ok', 'branch token', 'repo token')
+        # set_last_revision
+        client.add_error_response('TipChangeRejected', 'rejection message')
+        # unlock
+        client.add_success_response('ok')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        branch = RemoteBranch(bzrdir, repo, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        client._calls = []
+
+        # The 'TipChangeRejected' error response triggered by calling
+        # set_last_revision_info causes a TipChangeRejected exception.
+        err = self.assertRaises(
+            errors.TipChangeRejected,
+            branch.set_last_revision_info, 123, 'revid')
+        self.assertEqual('rejection message', err.msg)
 
 
 class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
