@@ -57,10 +57,10 @@ class TestCompiledEquivalenceTable(tests.TestCase):
 
     def test_minimum_hash_size(self):
         eq = self._gc_module.EquivalenceTable([])
-        # We request at least 33% free space in the hash (to make collisions
+        # We request at least 50% free space in the hash (to make collisions
         # more bearable)
-        self.assertEqual(1024, eq._py_compute_minimum_hash_size(683))
-        self.assertEqual(2048, eq._py_compute_minimum_hash_size(684))
+        self.assertEqual(1024, eq._py_compute_minimum_hash_size(512))
+        self.assertEqual(2048, eq._py_compute_minimum_hash_size(513))
         self.assertEqual(2048, eq._py_compute_minimum_hash_size(1000))
         self.assertEqual(2048, eq._py_compute_minimum_hash_size(1024))
 
@@ -70,11 +70,11 @@ class TestCompiledEquivalenceTable(tests.TestCase):
         self.assertEqual(8192, eq._py_compute_recommended_hash_size(10))
         self.assertEqual(8192, eq._py_compute_recommended_hash_size(1000))
         self.assertEqual(8192, eq._py_compute_recommended_hash_size(2000))
-        self.assertEqual(8192, eq._py_compute_recommended_hash_size(4000))
+        self.assertEqual(16384, eq._py_compute_recommended_hash_size(4000))
 
-        # And we recommend at least 50% free slots
-        self.assertEqual(8192, eq._py_compute_recommended_hash_size(4096))
-        self.assertEqual(16384, eq._py_compute_recommended_hash_size(4097))
+        # And we recommend at least 75% free slots
+        self.assertEqual(16384, eq._py_compute_recommended_hash_size(4096))
+        self.assertEqual(32768, eq._py_compute_recommended_hash_size(4097))
 
     def test__raw_lines(self):
         eq = self._gc_module.EquivalenceTable([1, 2, 3])

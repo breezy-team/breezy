@@ -175,7 +175,7 @@ cdef class EquivalenceTable:
         # size hash table. However, any collision would then have a long way to
         # traverse before it could find a 'free' slot.
         # So we set the minimum size to give us 33% empty slots.
-        min_size = <Py_ssize_t>(needed * 1.5)
+        min_size = <Py_ssize_t>(needed * 2)
         hash_size = 1
         while hash_size < min_size:
             hash_size = hash_size << 1
@@ -199,11 +199,11 @@ cdef class EquivalenceTable:
         # We start off with a 8k hash (after doubling), because there isn't a
         # lot of reason to go smaller than that (this class isn't one you'll be
         # instantiating thousands of, and you are always likely to grow here.)
-        hash_size = 4096
+        hash_size = 2048
         while hash_size < needed:
             hash_size = hash_size << 1
-        # And we always give at least 2x blank space
-        hash_size = hash_size << 1
+        # And we always give at least 4x blank space
+        hash_size = hash_size << 2
         return hash_size
 
     def _py_compute_recommended_hash_size(self, needed):
@@ -251,7 +251,7 @@ cdef class EquivalenceTable:
             cur_bucket = self._hashtable + hash_offset
             cur_line.next_line_index = cur_bucket.line_index
             cur_bucket.line_index = i
-            cur_bucket.count += 1
+            cur_bucket.count = cur_bucket.count + 1
 
     cdef int _extend_raw_lines(self, object index) except -1:
         """Add the last N lines from self.lines into the raw_lines array."""
@@ -282,7 +282,7 @@ cdef class EquivalenceTable:
                 self._line_to_raw_line(item, cur_line)
                 should_index = PySequence_Fast_GET_ITEM(seq_index, i)
                 if PyObject_Not(should_index):
-                    cur_line.flags &= ~(<int>INDEXED)
+                    cur_line.flags = cur_line.flags & ~(<int>INDEXED)
         finally:
             Py_DECREF(seq_index)
 
@@ -312,7 +312,7 @@ cdef class EquivalenceTable:
 
             # Make this line the tail of the hash table
             cur_bucket = self._hashtable + hash_offset
-            cur_bucket.count += 1
+            cur_bucket.count = cur_bucket.count + 1
             if cur_bucket.line_index == SENTINEL:
                 cur_bucket.line_index = line_index
                 continue
@@ -525,7 +525,7 @@ cdef Py_ssize_t intersect_sorted(Py_ssize_t *base, Py_ssize_t base_count,
         if cur_base[0] == cur_new[0]:
             # This may be assigning to self.
             cur_out[0] = cur_base[0]
-            count += 1
+            count = count + 1
             cur_out = cur_out + 1
             # We matched, so move both pointers
             cur_base = cur_base + 1
