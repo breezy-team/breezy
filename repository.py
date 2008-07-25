@@ -178,10 +178,6 @@ class SvnRepository(Repository):
         control_files = LockableFiles(transport, '', TransportLock)
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, control_files)
 
-        self.texts = SvnTexts(self)
-        self.revisions = VirtualRevisionTexts(self)
-        self.inventories = VirtualInventoryTexts(self)
-        self.signatures = VirtualSignatureTexts(self)
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0
@@ -213,6 +209,11 @@ class SvnRepository(Repository):
             self.fileid_map = CachingFileIdMap(cachedir_transport, self.fileid_map)
             self.revmap = CachingRevidMap(self.revmap, self.cachedb)
             self._real_parents_provider = DiskCachingParentsProvider(self._real_parents_provider, cachedir_transport)
+
+        self.texts = SvnTexts(self)
+        self.revisions = VirtualRevisionTexts(self)
+        self.inventories = VirtualInventoryTexts(self)
+        self.signatures = VirtualSignatureTexts(self)
 
         self.branchprop_list = PathPropertyProvider(self._log)
 
@@ -446,6 +447,7 @@ class SvnRepository(Repository):
 
     def revision_trees(self, revids):
         """See Repository.revision_trees()."""
+        # TODO: Use diffs
         for revid in revids:
             yield self.revision_tree(revid)
 
