@@ -24,6 +24,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr export`` no longer exports ``.bzrrules``.
+      (Ian Clatworthy)
+
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
 

@@ -38,12 +38,15 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('tar')
         self.build_tree(['tar/a'])
         tree.add('a')
+        self.build_tree_contents([('tar/.bzrrules', '')])
+        tree.add('.bzrrules')
 
         os.chdir('tar')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
         self.run_bzr('export test.tar.gz')
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
@@ -75,12 +78,15 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('zip')
         self.build_tree(['zip/a'])
         tree.add('a')
+        self.build_tree_contents([('zip/.bzrrules', '')])
+        tree.add('.bzrrules')
 
         os.chdir('zip')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
         self.run_bzr('export test.zip')
 
         zfile = zipfile.ZipFile('test.zip')
@@ -139,12 +145,15 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('dir')
         self.build_tree(['dir/a'])
         tree.add('a')
+        self.build_tree_contents([('dir/.bzrrules', '')])
+        tree.add('.bzrrules')
 
         os.chdir('dir')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
         self.run_bzr('export direxport')
 
         files = sorted(os.listdir('direxport'))
