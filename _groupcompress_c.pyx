@@ -454,12 +454,13 @@ cdef class EquivalenceTable:
 
     cdef Py_ssize_t get_next_matches(self, PyObject *line,
                                      Py_ssize_t *tips,
-                                     Py_ssize_t tip_count) except -1:
+                                     Py_ssize_t tip_count,
+                                     int *did_match) except -1:
         """Find matches that are interesting for the next step.
 
-        This is similar to get_raw_matches in that it returns the offsets which
-        might match the supplied line. The main difference is that it only
-        returns entries which are also present in cur_tips.
+        This finds offsets which match the current search tips. It is slightly
+        different from get_raw_matches, in that it intersects matching lines
+        against the existing tips, and then returns the *next* line.
 
         TODO: It might be nice to know if there were 0 matches because the line
               didn't match anything, or if it was just because it didn't follow
@@ -470,6 +471,7 @@ cdef class EquivalenceTable:
             will be updated "in place". If there are no new matches, the list
             will go unmodified, and the returned count will be 0.
         :param tip_count: The current length of tips
+        :param did_match: Will be set to True if the line had matches, else 0
         :return: The new number of matched lines.
         """
         cdef Py_ssize_t hash_offset
@@ -486,7 +488,10 @@ cdef class EquivalenceTable:
         cur_bucket = self._hashtable[hash_offset]
         cur_line_idx = cur_bucket.line_index
         if cur_line_idx == SENTINEL:
+            did_match[0] = 0
             return 0
+
+        did_match[0] = 1
 
         cur_tip = tips
         end_tip = tips + tip_count
@@ -495,7 +500,9 @@ cdef class EquivalenceTable:
         while cur_tip < end_tip and cur_line_idx != SENTINEL:
             if cur_line_idx == cur_tip[0]:
                 # These match, so put a new entry in the output
-                cur_out[0] = cur_line_idx
+                # We put the *next* line, so that this is ready to pass back in
+                # for the next search.
+                cur_out[0] = (cur_line_idx + 1)
                 count = count + 1
                 cur_out = cur_out + 1
                 cur_tip = cur_tip + 1
@@ -636,6 +643,7 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
     cdef Py_ssize_t in_start
     cdef Py_ssize_t i
     cdef Py_ssize_t intersect_count
+    cdef int did_match
 
     eq = equivalence_table
     cpos = pos
@@ -670,16 +678,16 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
                 copy_ends[i] = copy_ends[i] + 1
         else:
             # We are in the middle of a match
-            intersect_count = eq.get_next_matches(line, copy_ends, copy_count)
+            intersect_count = eq.get_next_matches(line, copy_ends, copy_count,
+                                                  &did_match)
             if intersect_count == 0:
-                # No more matches, we didn't peek ahead to know if there
-                # *might* be a match
+                # No more matches
+                if not did_match:
+                    # because the next line is not interesting
+                    cpos = cpos + 1
                 break
             else:
                 copy_count = intersect_count
-                # range continues, step the copy ends
-                for i from 0 <= i < copy_count:
-                    copy_ends[i] = copy_ends[i] + 1
                 range_len = range_len + 1
         cpos = cpos + 1
     if copy_ends == NULL or copy_count == 0:

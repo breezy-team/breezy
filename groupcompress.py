@@ -144,12 +144,13 @@ class GroupCompressor(object):
         max_pos = len(lines)
         max_time = 0.0
         max_info = None
+        result_append = result.append
         while pos < max_pos:
             block, pos, locations = _get_longest_match(line_locations, pos,
                                                        max_pos, locations)
             if block is not None:
-                result.append(block)
-        result.append((len(self.lines), len(lines), 0))
+                result_append(block)
+        result_append((len(self.lines), len(lines), 0))
         return result
 
     def compress(self, key, lines, expected_sha):
