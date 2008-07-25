@@ -1579,7 +1579,10 @@ class BzrBranch(Branch):
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         for rev_id in rev_history:
             check_not_reserved_id(rev_id)
-        old_revno, old_revid = self.last_revision_info()
+        if Branch.hooks['post_change_branch_tip']:
+            # Don't calculate the last_revision_info() if there are no hooks
+            # that will use it.
+            old_revno, old_revid = self.last_revision_info()
         if len(rev_history) == 0:
             revid = _mod_revision.NULL_REVISION
         else:
@@ -1590,7 +1593,8 @@ class BzrBranch(Branch):
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
-        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+        if Branch.hooks['post_change_branch_tip']:
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
         """Run the pre_change_branch_tip hooks."""
