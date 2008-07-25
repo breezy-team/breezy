@@ -264,14 +264,18 @@ cdef class EquivalenceTable:
         cdef Py_ssize_t line_index
         cdef _raw_line *cur_line
         cdef PyObject *seq_index
+        cdef Py_ssize_t actual_new_len
 
         seq_index = PySequence_Fast(index, "expected a sequence for index")
         try:
             old_len = self._len_lines
             new_count = PySequence_Fast_GET_SIZE(seq_index) 
             new_total_len = new_count + self._len_lines
+            actual_new_len = 1
+            while actual_new_len < new_total_len:
+                actual_new_len = actual_new_len << 1
             self._raw_lines = <_raw_line*>safe_realloc(<void*>self._raw_lines,
-                                    new_total_len * sizeof(_raw_line))
+                                    actual_new_len * sizeof(_raw_line))
             self._len_lines = new_total_len
             # Now that we have enough space, start adding the new lines
             # into the array. These are done in forward order.
