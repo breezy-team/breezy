@@ -76,7 +76,6 @@ def zip_exporter(tree, dest, root, filtered=False):
                             date_time=now)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
-                content = tree.get_file_text(file_id)
                 if filtered:
                     chunks = tree.get_file_lines(file_id)
                     filters = tree._content_filter_stack(dp)
