@@ -124,7 +124,8 @@ class TestGroupCompressor(TestCaseWithTransport):
             'i,1\n',
             '\n'
             ])
-        self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
+        self.assertEqualDiff(''.join(expected_lines),
+                             ''.join(compressor.lines))
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_stats(self):

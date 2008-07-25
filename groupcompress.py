@@ -40,6 +40,7 @@ from bzrlib.osutils import (
     split_lines,
     )
 from bzrlib.plugins.index2.btree_index import BTreeBuilder
+from bzrlib.plugins.groupcompress import equivalence_table
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
@@ -109,18 +110,19 @@ class GroupCompressor(object):
        left side.
     """
 
+    _equivalence_table_class = equivalence_table.EquivalenceTable
+
     def __init__(self, delta=True):
         """Create a GroupCompressor.
 
         :paeam delta: If False, do not compress records.
         """
         self._delta = delta
-        self.lines = []
         self.line_offsets = []
         self.endpoint = 0
         self.input_bytes = 0
-        # line: set(locations it appears at), set(N+1 for N in locations)
-        self.line_locations = {}
+        self.line_locations = self._equivalence_table_class([])
+        self.lines = self.line_locations.lines
         self.labels_deltas = {}
 
     def get_matching_blocks(self, lines):
@@ -132,43 +134,34 @@ class GroupCompressor(object):
             of the list is always (old_len, new_len, 0) to provide a end point
             for generating instructions from the matching blocks list.
         """
+        import time
         result = []
         pos = 0
         line_locations = self.line_locations
-        range_len = 0
-        range_start = 0
-        copy_ends = None
+        line_locations.set_right_lines(lines)
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
-        while pos < len(lines):
-            line = lines[pos]
-            if line not in line_locations:
-                if copy_ends:
-                    result.append((min(copy_ends) - range_len, range_start, range_len))
-                    range_start = pos
-                    range_len = 1
-                    copy_ends = None
-                else:
-                    range_len += 1
-            else:
-                locations = line_locations[line]
-                if copy_ends:
-                    next_locations = locations.intersection(copy_ends)
-                    if len(next_locations):
-                        # range continues
-                        range_len += 1
-                        copy_ends = set(loc + 1 for loc in next_locations)
-                        pos += 1
-                        continue
-                if copy_ends:
-                    result.append((min(copy_ends) - range_len, range_start, range_len))
-                range_len = 1
-                copy_ends = set(loc + 1 for loc in locations)
-                range_start = pos
-            pos += 1
-        if copy_ends:
-            result.append((min(copy_ends) - range_len, range_start, range_len))
+        locations = None
+        max_pos = len(lines)
+        timer = time.clock
+        max_time = 0.0
+        max_info = None
+        while pos < max_pos:
+            tstart = timer()
+            block, next_pos, locations = _get_longest_match(line_locations, pos,
+                                                            max_pos, locations)
+            tdelta = timer() - tstart
+            if tdelta > max_time:
+                max_time = tdelta
+                max_info = tdelta, pos, block, next_pos, locations
+            pos = next_pos
+            
+            if block is not None:
+                result.append(block)
         result.append((len(self.lines), len(lines), 0))
+        # if max_time > 0.01:
+        #     print max_info[:-1]
+        #     import pdb; pdb.set_trace()
         return result
 
     def compress(self, key, lines, expected_sha):
@@ -267,17 +260,15 @@ class GroupCompressor(object):
         :param index_lines: A boolean flag for each line - when True, index
             that line.
         """
+        # indexed_newlines = [idx for idx, val in enumerate(index_lines)
+        #                          if val and new_lines[idx] == '\n']
+        # if indexed_newlines:
+        #     import pdb; pdb.set_trace()
         endpoint = self.endpoint
-        offset = len(self.lines)
-        line_append = self.line_offsets.append
-        setdefault = self.line_locations.setdefault
-        for (pos, line), index in izip(enumerate(new_lines), index_lines):
+        self.line_locations.extend_lines(new_lines, index_lines)
+        for line in new_lines:
             endpoint += len(line)
-            line_append(endpoint)
-            if index:
-                indices = setdefault(line, set())
-                indices.add(pos + offset)
-        self.lines.extend(new_lines)
+            self.line_offsets.append(endpoint)
         self.endpoint = endpoint
 
     def ratio(self):
@@ -837,3 +828,50 @@ class _GCGraphIndex(object):
         basis_end = int(bits[2])
         delta_end = int(bits[3])
         return node[0], start, stop, basis_end, delta_end
+
+
+def _get_longest_match(equivalence_table, pos, max_pos, locations):
+    """Get the longest possible match for the current position."""
+    range_start = pos
+    range_len = 0
+    copy_ends = None
+    while pos < max_pos:
+        if locations is None:
+            locations = equivalence_table.get_idx_matches(pos)
+        if locations is None:
+            # No more matches, just return whatever we have, but we know that
+            # this last position is not going to match anything
+            pos += 1
+            break
+        else:
+            if copy_ends is None:
+                # We are starting a new range
+                copy_ends = [loc + 1 for loc in locations]
+                range_len = 1
+                locations = None # Consumed
+            else:
+                # We are currently in the middle of a match
+                next_locations = set(copy_ends).intersection(locations)
+                if len(next_locations):
+                    # range continues
+                    copy_ends = [loc + 1 for loc in next_locations]
+                    range_len += 1
+                    locations = None # Consumed
+                else:
+                    # But we are done with this match, we should be
+                    # starting a new one, though. We will pass back 'locations'
+                    # so that we don't have to do another lookup.
+                    break
+        pos += 1
+    if copy_ends is None:
+        return None, pos, locations
+    return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
+
+
+try:
+    from bzrlib.plugins.groupcompress import _groupcompress_c
+except ImportError:
+    pass
+else:
+    GroupCompressor._equivalence_table_class = _groupcompress_c.EquivalenceTable
+    _get_longest_match = _groupcompress_c._get_longest_match

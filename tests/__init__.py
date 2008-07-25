@@ -22,7 +22,9 @@
 def load_tests(standard_tests, module, loader):
     test_modules = [
         'errors',
+        'equivalence_table',
         'groupcompress',
+        '_groupcompress_c',
         ]
     standard_tests.addTests(loader.loadTestsFromModuleNames(
         ['bzrlib.plugins.groupcompress.tests.test_' + name for 
