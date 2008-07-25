@@ -543,8 +543,28 @@ cdef object array_as_list(Py_ssize_t *array, Py_ssize_t count):
     cdef int i
     lst = []
     for i from 0 <= i < count:
-        lst.append(array[i])
+        PyList_Append(lst, array[i])
     return lst
+
+
+cdef Py_ssize_t list_as_array(object lst, Py_ssize_t **array) except -1:
+    """Convert a Python sequence to an integer array.
+
+    :return: The size of the output, -1 on error
+    """
+    cdef int i
+    cdef PyObject *seq
+    cdef Py_ssize_t size
+
+    seq = PySequence_Fast(lst, "expected a sequence for lst")
+    try:
+        size = PySequence_Fast_GET_SIZE(seq)
+        array[0] = <Py_ssize_t*>safe_malloc(sizeof(Py_ssize_t) * size)
+        for i from 0 <= i < size:
+            array[0][i] = <object>PySequence_Fast_GET_ITEM(seq, i)
+    finally:
+        Py_DECREF(seq)
+    return size
 
 
 def _get_longest_match(equivalence_table, pos, max_pos, locations):
@@ -573,13 +593,16 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
     copy_count = 0
 
     # TODO: Handle when locations is not None
+    if locations is not None:
+        match_count = list_as_array(locations, &matches)
     while cpos < cmax_pos:
         # TODO: Instead of grabbing the full list of matches and then doing an
         #       intersection, use a helper that does the intersection
         #       as-it-goes.
-        line = PyList_GET_ITEM(eq._right_lines, cpos)
-        safe_free(<void**>&matches)
-        match_count = eq.get_raw_matches(line, &matches)
+        if matches == NULL:
+            line = PyList_GET_ITEM(eq._right_lines, cpos)
+            safe_free(<void**>&matches)
+            match_count = eq.get_raw_matches(line, &matches)
         if match_count == 0:
             # No more matches, just return whatever we have, but we know that
             # this last position is not going to match anything
