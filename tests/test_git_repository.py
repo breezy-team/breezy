@@ -86,6 +86,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = repository.Repository.open('.')
         tree = repo.revision_tree(revid)
         self.assertEquals(tree.get_revision_id(), revid)
+        self.assertEquals("text\n", tree.get_file_text(tree.path2id("data")))
 
     def test_get_inventory(self):
         # GitRepository.get_inventory gives a GitInventory object with

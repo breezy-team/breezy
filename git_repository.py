@@ -169,6 +169,10 @@ def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')
 
 
+def unescape_file_id(file_id):
+    return file_id.replace("_s", " ").replace("__", "_")
+
+
 class GitRevisionTree(revisiontree.RevisionTree):
 
     def __init__(self, repository, revision_id):
@@ -186,10 +190,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def get_file_text(self, file_id):
         entry = self._inventory[file_id]
         if entry.kind == 'directory': return ""
-        git_id = self._inventory.git_ids[file_id]
-        if git_id in self._inventory.git_file_data:
-            return self._inventory.git_file_data[git_id]
-        return self._repository._get_blob(git_id)
+        return self._repository._git.blob(entry.text_id).data
 
     def _build_inventory(self, tree, ie, path):
         assert isinstance(path, str)
@@ -212,14 +213,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 else:
                     raise AssertionError(
                         "Unknown file kind, perms=%r." % (b.mode,))
+                child_ie.text_id = b.id
                 child_ie.text_size = b.size
             else:
                 raise AssertionError(
                     "Unknown blob kind, perms=%r." % (b.mode,))
             child_ie.executable = bool(int(b.mode[3:], 8) & 0111)
             child_ie.revision = self.revision_id
-            assert not basename in ie.children
-            ie.children[basename] = child_ie
+            self._inventory.add(child_ie)
             if b.mode[0] == '0':
                 self._build_inventory(b, child_ie, child_path)
 
