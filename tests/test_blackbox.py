@@ -16,6 +16,7 @@
 
 """Black-box tests for bzr-git."""
 
+from bzrlib.tests import KnownFailure
 from bzrlib.tests.blackbox import ExternalBase
 
 from bzrlib.plugins.git import (
@@ -82,4 +83,13 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['tags'])
         self.assertEquals(error, '')
         self.assertEquals(output, "foo                  1\n")
+
+    def test_tag(self):
+        raise KnownFailure("setting tags not supported by git-python yet")
+        self.simple_commit()
+
+        output, error = self.run_bzr(["tag", "bar"])
+
+        self.assertEquals(error, '')
+        self.assertEquals(output, '')
 
