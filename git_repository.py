@@ -305,6 +305,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._inventory.root.revision = revision_id
         self._build_inventory(self.tree, self._inventory.root, "")
 
+    def get_revision_id(self):
+        return self.revision_id
+
     def get_file_lines(self, file_id):
         entry = self._inventory[file_id]
         if entry.kind == 'directory': return []

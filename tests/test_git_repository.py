@@ -67,10 +67,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         rev = repo.get_revision(revid)
         self.assertIsInstance(rev, revision.Revision)
 
-    def test_get_inventory(self):
-        # GitRepository.get_inventory gives a GitInventory object with
-        # plausible entries for typical cases.
-
+    def simple_commit(self):
         # Create a git repository with some interesting files in a revision.
         tests.run_git('init')
         builder = tests.GitBranchBuilder()
@@ -81,7 +78,20 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message',
             timestamp=1205433193)
         mapping = builder.finish()
-        commit_id = mapping[commit_handle]
+        return mapping[commit_handle]
+
+    def test_revision_tree(self):
+        commit_id = self.simple_commit()
+        revid = ids.convert_revision_id_git_to_bzr(commit_id)
+        repo = repository.Repository.open('.')
+        tree = repo.revision_tree(revid)
+        self.assertEquals(tree.get_revision_id(), revid)
+
+    def test_get_inventory(self):
+        # GitRepository.get_inventory gives a GitInventory object with
+        # plausible entries for typical cases.
+
+        commit_id = self.simple_commit()
 
         # Get the corresponding Inventory object.
         revid = ids.convert_revision_id_git_to_bzr(commit_id)
