@@ -58,7 +58,6 @@ class TestGitBlackBox(ExternalBase):
 
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
-
         self.simple_commit()
 
         # Check that bzr log does not fail and includes the revision.
@@ -67,3 +66,11 @@ class TestGitBlackBox(ExternalBase):
         self.assertTrue(
             '<The commit message>' in output,
             "Commit message was not found in output:\n%s" % (output,))
+
+    def test_log_verbose(self):
+        # Smoke test for "bzr log -v" in a git repository.
+        self.simple_commit()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-v'])
+ 
