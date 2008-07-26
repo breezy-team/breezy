@@ -34,12 +34,17 @@ class TestGitBlackBox(ExternalBase):
         builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
         builder.finish()
 
-
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
         self.assertTrue("Repository branch (format: git)" in output)
+
+    def test_ls(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['ls'])
+        self.assertEqual(error, '')
+        self.assertEqual(output, "a\n")
 
     def test_info_verbose(self):
         self.simple_commit()
