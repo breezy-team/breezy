@@ -81,3 +81,6 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
 
     def test_get_parent(self):
         self.assertIs(None, self.git_branch.get_parent())
+
+    def test_get_stacked_on_url(self):
+        self.assertIs(None, self.git_branch.get_stacked_on_url())

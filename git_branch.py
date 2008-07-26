@@ -71,6 +71,9 @@ class GitBranch(branch.Branch):
         """See Branch.get_parent()."""
         return None
 
+    def get_stacked_on_url(self):
+        return None
+
     def _gen_revision_history(self):
         if self.head is None:
             return []
