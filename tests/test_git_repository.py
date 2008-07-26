@@ -149,3 +149,12 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
         self.assertIsNullInventory(tree.inventory)
 
+
+class GitRepositoryFormat(tests.TestCase):
+
+    def setUp(self):
+        super(GitRepositoryFormat, self).setUp()
+        self.format = git_repository.GitFormat()
+
+    def test_get_format_description(self):
+        self.assertEquals("Git Repository", self.format.get_format_description())

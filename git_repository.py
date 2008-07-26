@@ -333,3 +333,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
 class GitFormat(object):
 
     supports_tree_reference = False
+
+    def get_format_description(self):
+        return "Git Repository"
