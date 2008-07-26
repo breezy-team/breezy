@@ -104,6 +104,9 @@ class GitBranch(branch.Branch):
     def unlock(self):
         self.control_files.unlock()
 
+    def get_physical_lock_status(self):
+        return False
+
     def get_push_location(self):
         """See Branch.get_push_location."""
         push_loc = self.get_config().get_user_option('push_location')

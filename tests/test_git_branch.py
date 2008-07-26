@@ -85,6 +85,9 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
     def test_get_stacked_on_url(self):
         self.assertIs(None, self.git_branch.get_stacked_on_url())
 
+    def test_get_physical_lock_status(self):
+        self.assertFalse(self.git_branch.get_physical_lock_status())
+
 
 class TestGitBranchFormat(tests.TestCase):
 
