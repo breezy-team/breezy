@@ -128,6 +128,9 @@ class TestGitRepository(tests.TestCaseWithTransport):
     def test_has_signature_for_revision_id(self):
         self.assertEquals(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))
 
+    def test_get_ancestry_null(self):
+        self.assertEquals([None], self.git_repo.get_ancestry(revision.NULL_REVISION))
+
     def assertIsNullInventory(self, inv):
         self.assertEqual(inv.root, None)
         self.assertEqual(inv.revision_id, revision.NULL_REVISION)

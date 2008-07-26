@@ -92,12 +92,17 @@ class GitRepository(repository.Repository):
         return False
 
     def get_ancestry(self, revision_id):
-        param = [ids.convert_revision_id_bzr_to_git(revision_id)]
-        git_ancestry = self._git.get_ancestry(param)
-        # print "fetched ancestry:", param
-        return [None] + [
-            ids.convert_revision_id_git_to_bzr(git_id)
-            for git_id in git_ancestry]
+        revision_id = revision.ensure_null(revision_id)
+        ret = []
+        if revision_id != revision.NULL_REVISION:
+            skip = 0
+            max_count = 1000
+            cms = None
+            while cms != []:
+                cms = self._git.commits(ids.convert_revision_id_bzr_to_git(revision_id), max_count=max_count, skip=skip)
+                skip += max_count
+                ret += [ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
+        return [None] + ret
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
