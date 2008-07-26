@@ -139,7 +139,7 @@ class GitRepository(repository.Repository):
         rev = revision.Revision(ids.convert_revision_id_git_to_bzr(commit.id))
         rev.parent_ids = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
-        rev.message = commit.message
+        rev.message = commit.message.decode("utf-8", "replace")
         rev.committer = str(commit.committer)
         rev.properties['author'] = str(commit.author)
         rev.timestamp = time.mktime(commit.committed_date)
