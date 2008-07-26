@@ -80,8 +80,14 @@ class GitDir(bzrdir.BzrDir):
         return True
 
     def open_branch(self, ignored=None):
-        """'crate' a branch for this dir."""
-        return git_branch.GitBranch(self, self._lockfiles)
+        """'create' a branch for this dir."""
+        repo = self.open_repository()
+        if repo._git.heads == []:
+            head = None
+        else:
+            head = repo._git.heads[0]
+        return git_branch.GitBranch(repo, head, 
+                                    self.root_transport.base, self._lockfiles)
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""

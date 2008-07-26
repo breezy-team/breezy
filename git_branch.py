@@ -48,15 +48,12 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(branch.Branch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, gitdir, lockfiles):
+    def __init__(self, repository, head, base, lockfiles):
         super(GitBranch, self).__init__()
-        from bzrlib.plugins.git import git_repository
-        self.bzrdir = gitdir
         self.control_files = lockfiles
-        self.repository = git_repository.GitRepository(gitdir, lockfiles)
-        self.base = gitdir.root_transport.base
-        if '.git' not in gitdir.root_transport.list_dir('.'):
-            raise errors.NotBranchError(self.base)
+        self.repository = repository
+        self.head = head
+        self.base = base
         self._format = GitBranchFormat()
 
     def lock_write(self):
@@ -65,25 +62,19 @@ class GitBranch(branch.Branch):
     @needs_read_lock
     def last_revision(self):
         # perhaps should escape this ?
-        head_git_id = self.repository._git.get_head()
-        if head_git_id is None:
+        if self.head is None:
             return revision.NULL_REVISION
-        return ids.convert_revision_id_git_to_bzr(head_git_id)
+        return ids.convert_revision_id_git_to_bzr(self.head.commit.id)
 
-    @needs_read_lock
-    def revision_history(self):
-        node = self.last_revision()
-        if node == revision.NULL_REVISION:
-            return []
-        ancestors = self.repository.get_revision_graph(node)
-        history = []
-        while node is not None:
-            history.append(node)
-            if len(ancestors[node]) > 0:
-                node = ancestors[node][0]
-            else:
-                node = None
-        return list(reversed(history))
+    def _gen_revision_history(self):
+        skip = 0
+        max_count = 1000
+        cms = []
+        ret = []
+        while cms != []:
+            cms = self.repository._git.commits(self.head.commit.id, max_count=1000, skip=skip)
+            ret += [ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
+        return ret
 
     def get_config(self):
         return GitBranchConfig(self)

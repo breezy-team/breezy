@@ -18,6 +18,7 @@
 
 import git
 import os
+import time
 
 import bzrlib
 from bzrlib import (
@@ -82,50 +83,11 @@ class GitRepository(repository.Repository):
         """)
         self.cachedb.commit()
 
-    def _ancestor_revisions(self, revision_ids):
-        if revision_ids is not None:
-            git_revisions = [gitrevid_from_bzr(r) for r in revision_ids]
-        else:
-            git_revisions = None
-        for lines in self._git.ancestor_lines(git_revisions):
-            yield self._parse_rev(lines)
-        # print "fetched ancestors:", git_revisions
-
     def is_shared(self):
         return True
 
     def supports_rich_root(self):
         return False
-
-    def get_revision_graph(self, revision_id=None):
-        result = {}
-        if revision_id is not None:
-            param = [ids.convert_revision_id_bzr_to_git(revision_id)]
-        else:
-            param = None
-        git_graph = self._git.get_revision_graph(param)
-        # print "fetched revision graph:", param
-        for node, parents in git_graph.iteritems():
-            bzr_node = ids.convert_revision_id_git_to_bzr(node)
-            bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
-                           for n in parents]
-            result[bzr_node] = bzr_parents
-        return result
-
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        graph = deprecated_graph.Graph()
-        if revision_ids is not None:
-            revision_ids = [ids.convert_revision_id_bzr_to_git(r)
-                            for r in revision_ids]
-        git_graph = self._git.get_revision_graph(revision_ids)
-        # print "fetched revision graph (ghosts):", revision_ids
-        for node, parents in git_graph.iteritems():
-            bzr_node = ids.convert_revision_id_git_to_bzr(node)
-            bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
-                           for n in parents]
-
-            graph.add_node(bzr_node, bzr_parents)
-        return graph
 
     def get_ancestry(self, revision_id):
         param = [ids.convert_revision_id_bzr_to_git(revision_id)]
@@ -138,14 +100,20 @@ class GitRepository(repository.Repository):
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
+    def get_parent_map(self, revision_ids):
+        ret = {}
+        for revid in revision_ids:
+            commit = self._git.commit(ids.convert_revision_id_bzr_to_git(revid))
+            ret[revid] = tuple([ids.convert_revision_id_git_to_bzr(p.commit.id) for p in commit.parents])
+        return ret
 
     def get_revision(self, revision_id):
         if revision_id in self._revision_cache:
             return self._revision_cache[revision_id]
         git_commit_id = ids.convert_revision_id_bzr_to_git(revision_id)
-        raw = self._git.rev_list([git_commit_id], max_count=1, header=True)
+        commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
-        revision = self._parse_rev(raw)
+        revision = self._parse_rev(commit)
         self._revision_cache[revision_id] = revision
         return revision
 
@@ -161,92 +129,33 @@ class GitRepository(repository.Repository):
         return [self.get_revision(r) for r in revisions]
 
     @classmethod
-    def _parse_rev(klass, raw):
-        """Parse a single git revision.
+    def _parse_rev(klass, commit):
+        """Convert a git commit to a bzr revision.
 
-        * The first line is the git commit id.
-        * Following lines conform to the 'name value' structure, until the
-          first blank line.
-        * All lines after the first blank line and until the NULL line have 4
-          leading spaces and constitute the commit message.
-
-        :param raw: sequence of newline-terminated strings, its last item is a
-            single NULL character.
         :return: a `bzrlib.revision.Revision` object.
         """
-        parents = []
-        message_lines = []
-        in_message = False
-        committer_was_set = False
-        revision_id = ids.convert_revision_id_git_to_bzr(raw[0][:-1])
-        rev = revision.Revision(revision_id)
+        rev = revision.Revision(ids.convert_revision_id_git_to_bzr(commit.id))
+        rev.parent_ids = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
-        assert raw[-1] == '\x00', (
-            "Last item of raw was not a single NULL character.")
-        for line in raw[1:-1]:
-            if in_message:
-                assert line[:4] == '    ', (
-                    "Unexpected line format in commit message: %r" % line)
-                message_lines.append(line[4:])
-                continue
-            if line == '\n':
-                in_message = True
-                continue
-            name, value = line[:-1].split(' ', 1)
-            if name == 'parent':
-                rev.parent_ids.append(
-                    ids.convert_revision_id_git_to_bzr(value))
-                continue
-            if name == 'author':
-                author, timestamp, timezone = value.rsplit(' ', 2)
-                rev.properties['author'] = author
-                rev.properties['git-author-timestamp'] = timestamp
-                rev.properties['git-author-timezone'] = timezone
-                if not committer_was_set:
-                    rev.committer = author
-                    rev.timestamp = float(timestamp)
-                    rev.timezone = klass._parse_tz(timezone)
-                continue
-            if name == 'committer':
-                committer_was_set = True
-                committer, timestamp, timezone = value.rsplit(' ', 2)
-                rev.committer = committer
-                rev.timestamp = float(timestamp)
-                rev.timezone = klass._parse_tz(timezone)
-                continue
-            if name == 'tree':
-                rev.properties['git-tree-id'] = value
-                continue
-
-        rev.message = ''.join(message_lines)
-
-        # XXX: That should not be needed, but current revision serializers do
-        # not know how how to handle text that is illegal in xml. Note: when
-        # this is fixed, we will need to rev up the revision namespace when
-        # removing the escaping code. -- David Allouche 2007-12-30
-        rev.message = escape_for_xml(rev.message)
-        rev.committer = escape_for_xml(rev.committer)
-        rev.properties['author'] = escape_for_xml(rev.properties['author'])
-
+        rev.message = commit.message
+        rev.committer = commit.committer
+        rev.properties['author'] = commit.author
+        rev.timestamp = time.mktime(commit.committed_date)
+        rev.timezone = 0
         return rev
-
-    @classmethod
-    def _parse_tz(klass, tz):
-        """Parse a timezone specification in the [+|-]HHMM format.
-
-        :return: the timezone offset in seconds.
-        """
-        assert len(tz) == 5
-        sign = {'+': +1, '-': -1}[tz[0]]
-        hours = int(tz[1:3])
-        minutes = int(tz[3:])
-        return sign * 60 * (60 * hours + minutes)
 
     def revision_trees(self, revids):
         for revid in revids:
             yield self.revision_tree(revid)
 
     def revision_tree(self, revision_id):
+        revision_id = revision.ensure_null(revision_id)
+
+        if revision_id == revision.NULL_REVISION:
+            inv = inventory.Inventory(root_id=None)
+            inv.revision_id = revision_id
+            return revisiontree.RevisionTree(self, inv, revision_id)
+
         return GitRevisionTree(self, revision_id)
 
     def _fetch_blob(self, git_id):
@@ -281,76 +190,8 @@ class GitRepository(repository.Repository):
             return size, sha1
 
     def get_inventory(self, revision_id):
-        if revision_id is None:
-            revision_id = revision.NULL_REVISION
-        if revision_id == revision.NULL_REVISION:
-            return inventory.Inventory(
-                revision_id=revision_id, root_id=None)
-
-        # First pass at building the inventory. We need this one to get the
-        # git ids, so we do not have to cache the entire tree text. Ideally,
-        # this should be all we need to do.
-        git_commit = ids.convert_revision_id_bzr_to_git(revision_id)
-        git_inventory = self._git.get_inventory(git_commit)
-        # print "fetched inventory:", git_commit
-        inv = self._parse_inventory(revision_id, git_inventory)
-
-        # Second pass at building the inventory. There we retrieve additional
-        # data that bzrlib requires: text sizes, sha1s, symlink targets and
-        # revisions that introduced inventory entries
-        self._building_inventory = inv
-        self._building_inventory.git_file_data = {}
-        for file_id in sorted(inv.git_ids.iterkeys()):
-            git_id = inv.git_ids[file_id]
-            entry = inv[file_id]
-            self._set_entry_text_info(inv, entry, git_id)
-        for file_id in sorted(inv.git_ids.iterkeys()):
-            git_id = inv.git_ids[file_id]
-            entry = inv[file_id]
-            path = inv.id2path(file_id)
-            self._set_entry_revision(entry, revision_id, path, git_id)
-
-        # At this point the entry_revision table is fully populated for this
-        # revision. So record that we have inventory data for this revision.
-        self.cachedb.execute(
-            "insert or ignore into inventory (revid) values (?)",
-            (revision_id,))
-        self.cachedb.commit()
-        self._building_inventory = None
-        return inv
-
-    @classmethod
-    def _parse_inventory(klass, revid, git_inv):
-        # For now, git inventory do not have root ids. It is not clear that we
-        # can reliably support root ids. -- David Allouche 2007-12-28
-        inv = inventory.Inventory(revision_id=revid)
-        inv.git_ids = {}
-        for perms, git_kind, git_id, path in git_inv:
-            text_sha1 = None
-            executable = False
-            if git_kind == 'blob':
-                if perms[1] == '0':
-                    kind = 'file'
-                    executable = bool(int(perms[-3:], 8) & 0111)
-                elif perms[1] == '2':
-                    kind = 'symlink'
-                else:
-                    raise AssertionError(
-                        "Unknown blob kind, perms=%r." % (perms,))
-            elif git_kind == 'tree':
-                kind = 'directory'
-            else:
-                raise AssertionError(
-                    "Unknown git entry kind: %r" % (git_kind,))
-            # XXX: Maybe the file id should be prefixed by file kind, so when
-            # the kind of path changes, the id changes too.
-            # -- David Allouche 2007-12-28.
-            file_id = escape_file_id(path.encode('utf-8'))
-            entry = inv.add_path(path, kind, file_id=file_id)
-            entry.executable = executable
-            inv.git_ids[file_id] = git_id
-        inv.root.revision = revid
-        return inv
+        assert revision_id != None
+        return self.revision_tree(revision_id).inventory
 
     def _set_entry_text_info(self, inv, entry, git_id):
         if entry.kind == 'directory':
@@ -430,37 +271,12 @@ def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')
 
 
-def escape_for_xml(message):
-    """Replace xml-incompatible control characters."""
-    # Copied from _escape_commit_message from bzr-svn.
-    # -- David Allouche 2007-12-29.
-    if message is None:
-        return None
-    import re
-    # FIXME: RBC 20060419 this should be done by the revision
-    # serialiser not by commit. Then we can also add an unescaper
-    # in the deserializer and start roundtripping revision messages
-    # precisely. See repository_implementations/test_repository.py
-    
-    # Python strings can include characters that can't be
-    # represented in well-formed XML; escape characters that
-    # aren't listed in the XML specification
-    # (http://www.w3.org/TR/REC-xml/#NT-Char).
-    message, _ = re.subn(
-        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-        lambda match: match.group(0).encode('unicode_escape'),
-        message)
-    return message
-
-
 class GitRevisionTree(revisiontree.RevisionTree):
 
     def __init__(self, repository, revision_id):
-        if revision_id is None:
-            revision_id = revision.NULL_REVISION
-        self._inventory = repository.get_inventory(revision_id)
         self._repository = repository
-        self._revision_id = revision_id
+        git_id = ids.convert_revision_id_bzr_to_git(revision_id)
+        self.tree = repository._git.commit(git_id).tree
 
     def get_file_lines(self, file_id):
         entry = self._inventory[file_id]
