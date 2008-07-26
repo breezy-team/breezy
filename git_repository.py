@@ -64,7 +64,7 @@ class GitRepository(repository.Repository):
         self._init_cachedb()
         self.texts = None
         self.signatures = versionedfile.VirtualSignatureTexts(self)
-        self.revisions = None
+        self.revisions = versionedfile.VirtualRevisionTexts(self)
         self._format = GitFormat()
         self._fallback_repositories = []
 
@@ -84,6 +84,19 @@ class GitRepository(repository.Repository):
             on entry_revision (inventory, path);
         """)
         self.cachedb.commit()
+
+    def _all_revision_ids(self):
+        if self._git.heads == []:
+            return set()
+        ret = set()
+        skip = 0
+        max_count = 1000
+        cms = None
+        while cms != []:
+            cms = self._git.commits("--all", max_count=max_count, skip=skip)
+            skip += max_count
+            ret.update([ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms])
+        return ret
 
     def is_shared(self):
         return True
