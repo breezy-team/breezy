@@ -26,6 +26,18 @@ from bzrlib.plugins.git import (
 
 class TestGitBlackBox(ExternalBase):
 
+    def test_info(self):
+        # Create a git repository with a revision.
+        tests.run_git('init')
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', 'text for a\n', False)
+        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.finish()
+
+        output, error = self.run_bzr(['info'])
+        self.assertEqual(error, '')
+        self.assertTrue("Repository branch (format: git)" in output)
+
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
 
