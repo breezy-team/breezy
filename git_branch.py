@@ -48,9 +48,10 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(branch.Branch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, repository, head, base, lockfiles):
+    def __init__(self, bzrdir, repository, head, base, lockfiles):
         super(GitBranch, self).__init__()
         self.control_files = lockfiles
+        self.bzrdir = bzrdir
         self.repository = repository
         self.head = head
         self.base = base
@@ -77,6 +78,7 @@ class GitBranch(branch.Branch):
             cms = self.repository._git.commits(self.head, max_count=max_count, skip=skip)
             skip += max_count
             ret += [ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
+        ret.reverse()
         return ret
 
     def get_config(self):

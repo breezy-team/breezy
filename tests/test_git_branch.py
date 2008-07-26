@@ -61,9 +61,13 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.build_tree(['a'])
         tests.run_git('add', 'a')
         tests.run_git('commit', '-m', 'a')
-        head = tests.run_git('rev-parse', 'HEAD').strip()
+        reva = tests.run_git('rev-parse', 'HEAD').strip()
+        self.build_tree(['b'])
+        tests.run_git('add', 'b')
+        tests.run_git('commit', '-m', 'b')
+        revb = tests.run_git('rev-parse', 'HEAD').strip()
 
         thebranch = branch.Branch.open('.')
-        self.assertEqual([ids.convert_revision_id_git_to_bzr(head)],
+        self.assertEqual([ids.convert_revision_id_git_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
         

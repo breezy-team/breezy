@@ -86,7 +86,7 @@ class GitDir(bzrdir.BzrDir):
             head = None
         else:
             head = repo._git.heads[0].commit.id
-        return git_branch.GitBranch(repo, head, 
+        return git_branch.GitBranch(self, repo, head, 
                                     self.root_transport.base, self._lockfiles)
 
     def open_repository(self, shared=False):

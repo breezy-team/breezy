@@ -65,6 +65,7 @@ class GitRepository(repository.Repository):
         self.signatures = None
         self.revisions = None
         self._format = GitFormat()
+        self._fallback_repositories = []
 
     def _init_cachedb(self):
         self.cachedb.executescript("""
@@ -104,7 +105,7 @@ class GitRepository(repository.Repository):
         ret = {}
         for revid in revision_ids:
             commit = self._git.commit(ids.convert_revision_id_bzr_to_git(revid))
-            ret[revid] = tuple([ids.convert_revision_id_git_to_bzr(p.commit.id) for p in commit.parents])
+            ret[revid] = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         return ret
 
     def get_revision(self, revision_id):
@@ -138,8 +139,8 @@ class GitRepository(repository.Repository):
         rev.parent_ids = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
         rev.message = commit.message
-        rev.committer = commit.committer
-        rev.properties['author'] = commit.author
+        rev.committer = str(commit.committer)
+        rev.properties['author'] = str(commit.author)
         rev.timestamp = time.mktime(commit.committed_date)
         rev.timezone = 0
         return rev
