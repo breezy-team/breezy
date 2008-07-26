@@ -28,8 +28,9 @@ from bzrlib.plugins.git import ids
 
 class GitTagDict(tag.BasicTags):
 
-    def __init__(self, repository):
-        self.repository = repository
+    def __init__(self, branch):
+        self.branch = branch
+        self.repository = branch.repository
 
     def get_tag_dict(self):
         ret = {}
@@ -86,7 +87,7 @@ class GitBranch(branch.Branch):
         return ids.convert_revision_id_git_to_bzr(self.head)
 
     def _make_tags(self):
-        return GitTagDict(self.repository)
+        return GitTagDict(self)
 
     def get_parent(self):
         """See Branch.get_parent()."""

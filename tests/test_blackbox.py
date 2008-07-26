@@ -16,6 +16,8 @@
 
 """Black-box tests for bzr-git."""
 
+import os
+
 from bzrlib.tests import KnownFailure
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -40,6 +42,20 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
         self.assertTrue("Repository branch (format: git)" in output)
+
+    def test_branch(self):
+        os.mkdir("gitbranch")
+        os.chdir("gitbranch")
+        tests.run_git('init')
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', 'text for a\n', False)
+        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.finish()
+
+        os.chdir("..")
+        output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
+        self.assertEqual(error, 'Branched 1 revision(s).\n')
+        self.assertEqual(output, '')
 
     def test_ls(self):
         self.simple_commit()
