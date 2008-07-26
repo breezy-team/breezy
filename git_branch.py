@@ -37,6 +37,9 @@ class GitTagDict(tag.BasicTags):
             ret[tag.name] = ids.convert_revision_id_git_to_bzr(tag.commit.id)
         return ret
 
+    def set_tag(self, name, revid):
+        raise NotImplementedError(self.set_tag)
+
 
 class GitBranchConfig(config.BranchConfig):
     """BranchConfig that uses locations.conf in place of branch.conf"""
