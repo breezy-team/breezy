@@ -16,6 +16,8 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir"""
 
+import git
+
 from bzrlib.lazy_import import lazy_import
 from bzrlib import (
     bzrdir,
@@ -28,6 +30,7 @@ from bzrlib.plugins.git import (
     errors,
     git_branch,
     git_repository,
+    git_workingtree,
     )
 """)
 
@@ -63,10 +66,14 @@ class GitDir(bzrdir.BzrDir):
 
     _gitrepository_class = git_repository.GitRepository
 
-    def __init__(self, transport, lockfiles, format):
+    def __init__(self, transport, lockfiles, gitrepo, format):
         self._format = format
         self.root_transport = transport
-        self.transport = transport.clone('.git')
+        self._git = gitrepo
+        if gitrepo.bare:
+            self.transport = transport
+        else:
+            self.transport = transport.clone('.git')
         self._lockfiles = lockfiles
 
     def get_branch_transport(self, branch_format):
@@ -97,8 +104,12 @@ class GitDir(bzrdir.BzrDir):
         return self._gitrepository_class(self, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=True):
-        loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
-        raise errors.bzr_errors.NoWorkingTree(loc)
+        if self._git.bare:
+            loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
+            raise errors.bzr_errors.NoWorkingTree(loc)
+        else:
+            return git_workingtree.GitWorkingTree(self, self.open_repository(), 
+                                                  self.open_branch())
 
     def cloning_metadir(self):
         return bzrdir.BzrDirFormat.get_default_format()
@@ -113,19 +124,21 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
     def _known_formats(self):
         return set([GitBzrDirFormat()])
 
-    def open(self, transport, _create=False, _found=None):
+    def open(self, transport, _found=None):
         """Open this directory.
 
-        :param _create: create the git dir on the fly. private to GitDirFormat.
         """
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-        if not transport.has('.git'):
+
+        try:
+            gitrepo = git.repo.Repo(transport.local_abspath("."))
+        except errors.bzr_errors.NotLocalUrl:
             raise errors.bzr_errors.NotBranchError(path=transport.base)
         lockfiles = GitLockableFiles(GitLock())
-        return self._gitdir_class(transport, lockfiles, self)
+        return self._gitdir_class(transport, lockfiles, gitrepo, self)
 
     @classmethod
     def probe_transport(klass, transport):

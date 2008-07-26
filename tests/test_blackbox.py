@@ -41,7 +41,7 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Repository branch (format: git)" in output)
+        self.assertTrue("Repository tree (format: git)" in output)
 
     def test_branch(self):
         os.mkdir("gitbranch")
@@ -57,9 +57,9 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(error, 'Branched 1 revision(s).\n')
         self.assertEqual(output, '')
 
-    def test_ls(self):
+    def test_branch_ls(self):
         self.simple_commit()
-        output, error = self.run_bzr(['ls'])
+        output, error = self.run_bzr(['ls', '-r-1'])
         self.assertEqual(error, '')
         self.assertEqual(output, "a\n")
 
@@ -68,7 +68,7 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
-        self.assertTrue("Repository branch (format: git)" in output)
+        self.assertTrue("Repository tree (format: git)" in output)
         self.assertTrue("control: Local Git Repository" in output)
         self.assertTrue("branch: Git Branch" in output)
         self.assertTrue("repository: Git Repository" in output)

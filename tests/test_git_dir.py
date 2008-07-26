@@ -16,12 +16,10 @@
 
 """Test the GitDir class"""
 
-import subprocess
-
-from bzrlib import bzrdir
+from bzrlib import bzrdir, errors
 
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git import git_dir
+from bzrlib.plugins.git import git_dir, git_workingtree
 
 
 class TestGitDir(tests.TestCaseInTempDir):
@@ -33,6 +31,19 @@ class TestGitDir(tests.TestCaseInTempDir):
 
         gd = bzrdir.BzrDir.open('.')
         self.assertIsInstance(gd, git_dir.GitDir)
+
+    def test_open_workingtree(self):
+        tests.run_git('init')
+
+        gd = bzrdir.BzrDir.open('.')
+        wt = gd.open_workingtree()
+        self.assertIsInstance(wt, git_workingtree.GitWorkingTree)
+
+    def test_open_workingtree_bare(self):
+        tests.run_git('--bare', 'init')
+
+        gd = bzrdir.BzrDir.open('.')
+        self.assertRaises(errors.NoWorkingTree, gd.open_workingtree)
 
 
 class TestGitDirFormat(tests.TestCaseInTempDir):

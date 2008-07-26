@@ -49,7 +49,7 @@ class GitRepository(repository.Repository):
         self.base = gitdir.root_transport.base
         self.bzrdir = gitdir
         self.control_files = lockfiles
-        self._git = git.repo.Repo(gitdir.root_transport.local_abspath("."))
+        self._git = gitdir._git
         cache_dir = cache.create_cache_dir()
         cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-%s' % ids.NAMESPACE)
