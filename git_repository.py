@@ -126,8 +126,11 @@ class GitRepository(repository.Repository):
     def get_parent_map(self, revision_ids):
         ret = {}
         for revid in revision_ids:
-            commit = self._git.commit(ids.convert_revision_id_bzr_to_git(revid))
-            ret[revid] = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
+            if revid == revision.NULL_REVISION:
+                ret[revid] = ()
+            else:
+                commit = self._git.commit(ids.convert_revision_id_bzr_to_git(revid))
+                ret[revid] = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         return ret
 
     def get_revision(self, revision_id):

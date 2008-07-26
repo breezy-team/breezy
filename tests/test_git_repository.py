@@ -152,6 +152,10 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
         self.assertIsNullInventory(tree.inventory)
 
+    def test_get_parent_map_null(self):
+        self.assertEquals({revision.NULL_REVISION: ()}, 
+                           self.git_repo.get_parent_map([revision.NULL_REVISION]))
+
 
 class GitRepositoryFormat(tests.TestCase):
 
