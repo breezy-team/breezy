@@ -53,7 +53,6 @@ class GitRepository(repository.Repository):
         self.bzrdir = gitdir
         self.control_files = lockfiles
         self._git = git.repo.Repo(gitdir.root_transport.local_abspath("."))
-        self._revision_cache = {}
         self._blob_cache = {}
         self._blob_info_cache = {}
         cache_dir = cache.create_cache_dir()
@@ -114,13 +113,10 @@ class GitRepository(repository.Repository):
         return ret
 
     def get_revision(self, revision_id):
-        if revision_id in self._revision_cache:
-            return self._revision_cache[revision_id]
         git_commit_id = ids.convert_revision_id_bzr_to_git(revision_id)
         commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
         revision = self._parse_rev(commit)
-        self._revision_cache[revision_id] = revision
         return revision
 
     def has_revision(self, revision_id):
