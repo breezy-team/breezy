@@ -140,5 +140,8 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
             raise errors.bzr_errors.NotBranchError(path=transport.base)
         raise errors.bzr_errors.NotBranchError(path=transport.base)
 
+    def get_format_description(self):
+        return "Local Git Repository"
+
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)

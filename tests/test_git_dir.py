@@ -33,3 +33,17 @@ class TestGitDir(tests.TestCaseInTempDir):
 
         gd = bzrdir.BzrDir.open('.')
         self.assertIsInstance(gd, git_dir.GitDir)
+
+
+class TestGitDirFormat(tests.TestCaseInTempDir):
+
+    _test_needs_features = [tests.GitCommandFeature]
+
+    def setUp(self):
+        super(TestGitDirFormat, self).setUp()
+        self.format = git_dir.GitBzrDirFormat()
+
+    def test_get_format_description(self):
+        self.assertEquals("Local Git Repository",
+                          self.format.get_format_description())
+
