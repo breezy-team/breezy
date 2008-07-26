@@ -20,10 +20,22 @@ from bzrlib import (
     branch,
     config,
     revision,
+    tag,
     )
 from bzrlib.decorators import needs_read_lock
 
 from bzrlib.plugins.git import ids
+
+class GitTagDict(tag.BasicTags):
+
+    def __init__(self, repository):
+        self.repository = repository
+
+    def get_tag_dict(self):
+        ret = {}
+        for tag in self.repository._git.tags:
+            ret[tag.name] = ids.convert_revision_id_git_to_bzr(tag.commit.id)
+        return ret
 
 
 class GitBranchConfig(config.BranchConfig):
@@ -44,15 +56,18 @@ class GitBranchFormat(branch.BranchFormat):
     def get_format_description(self):
         return 'Git Branch'
 
+    def supports_tags(self):
+        return True
+
 
 class GitBranch(branch.Branch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, bzrdir, repository, head, base, lockfiles):
+        self.repository = repository
         super(GitBranch, self).__init__()
         self.control_files = lockfiles
         self.bzrdir = bzrdir
-        self.repository = repository
         self.head = head
         self.base = base
         self._format = GitBranchFormat()
@@ -66,6 +81,9 @@ class GitBranch(branch.Branch):
         if self.head is None:
             return revision.NULL_REVISION
         return ids.convert_revision_id_git_to_bzr(self.head)
+
+    def _make_tags(self):
+        return GitTagDict(self.repository)
 
     def get_parent(self):
         """See Branch.get_parent()."""
@@ -118,4 +136,4 @@ class GitBranch(branch.Branch):
                                           local=True)
 
     def supports_tags(self):
-        return False
+        return True

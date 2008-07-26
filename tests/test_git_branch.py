@@ -45,11 +45,14 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEqual((0, revision.NULL_REVISION),
                          thebranch.last_revision_info())
 
-    def test_last_revision_is_valid(self):
+    def simple_commit_a(self):
         tests.run_git('init')
         self.build_tree(['a'])
         tests.run_git('add', 'a')
         tests.run_git('commit', '-m', 'a')
+
+    def test_last_revision_is_valid(self):
+        self.simple_commit_a()
         head = tests.run_git('rev-parse', 'HEAD').strip()
 
         thebranch = branch.Branch.open('.')
@@ -57,10 +60,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
                          thebranch.last_revision())
 
     def test_revision_history(self):
-        tests.run_git('init')
-        self.build_tree(['a'])
-        tests.run_git('add', 'a')
-        tests.run_git('commit', '-m', 'a')
+        self.simple_commit_a()
         reva = tests.run_git('rev-parse', 'HEAD').strip()
         self.build_tree(['b'])
         tests.run_git('add', 'b')
@@ -70,6 +70,18 @@ class TestGitBranch(tests.TestCaseInTempDir):
         thebranch = branch.Branch.open('.')
         self.assertEqual([ids.convert_revision_id_git_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
+
+    def test_tags(self):
+        self.simple_commit_a()
+        reva = tests.run_git('rev-parse', 'HEAD').strip()
+        
+        tests.run_git('tag', '-a', '-m', 'add tag', 'foo')
+        
+        newid = open('.git/refs/tags/foo').read().rstrip()
+
+        thebranch = branch.Branch.open('.')
+        self.assertEquals({"foo": ids.convert_revision_id_git_to_bzr(newid)},
+                          thebranch.tags.get_tag_dict())
         
 
 class TestWithGitBranch(tests.TestCaseWithTransport):

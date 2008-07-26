@@ -104,6 +104,11 @@ class GitRepository(repository.Repository):
     def supports_rich_root(self):
         return False
 
+    #def get_revision_delta(self, revision_id):
+    #    parent_revid = self.get_revision(revision_id).parent_ids[0]
+    #    diff = self._git.diff(ids.convert_revision_id_bzr_to_git(parent_revid),
+    #                   ids.convert_revision_id_bzr_to_git(revision_id))
+
     def get_ancestry(self, revision_id):
         revision_id = revision.ensure_null(revision_id)
         ret = []
