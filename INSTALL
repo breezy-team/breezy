@@ -1,0 +1,16 @@
+
+Dependencies
+============
+
+bzr-git relies on the git python module available on:
+
+http://gitorious.org/projects/git-python
+
+To run and build it, run:
+
+$ git clone git://gitorious.org/git-python/mainline.git git-python
+$ cd git-python
+$ python setup.py install
+
+Installing bzr-git can be done by putting it into the ~/.bazaar/plugins directory, 
+and renaming its directory to "git".
