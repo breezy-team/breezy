@@ -84,3 +84,13 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
 
     def test_get_stacked_on_url(self):
         self.assertIs(None, self.git_branch.get_stacked_on_url())
+
+
+class TestGitBranchFormat(tests.TestCase):
+
+    def setUp(self):
+        super(TestGitBranchFormat, self).setUp()
+        self.format = git_branch.GitBranchFormat()
+
+    def test_get_format_description(self):
+        self.assertEquals("Git Branch", self.format.get_format_description())

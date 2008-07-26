@@ -41,7 +41,7 @@ class GitBranchConfig(config.BranchConfig):
 
 class GitBranchFormat(branch.BranchFormat):
 
-    def get_branch_description(self):
+    def get_format_description(self):
         return 'Git Branch'
 
 
