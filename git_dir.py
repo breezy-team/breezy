@@ -85,7 +85,7 @@ class GitDir(bzrdir.BzrDir):
         if repo._git.heads == []:
             head = None
         else:
-            head = repo._git.heads[0]
+            head = repo._git.heads[0].commit.id
         return git_branch.GitBranch(repo, head, 
                                     self.root_transport.base, self._lockfiles)
 

@@ -275,8 +275,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def __init__(self, repository, revision_id):
         self._repository = repository
+        self.revision_id = revision_id
         git_id = ids.convert_revision_id_bzr_to_git(revision_id)
         self.tree = repository._git.commit(git_id).tree
+        self._inventory = inventory.Inventory(revision_id=revision_id)
+        self._inventory.root.revision = revision_id
+        self._build_inventory(self.tree, self._inventory.root, "")
 
     def get_file_lines(self, file_id):
         entry = self._inventory[file_id]
@@ -285,6 +289,38 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if git_id in self._inventory.git_file_data:
             return self._inventory.git_file_data[git_id]
         return self._repository._get_blob(git_id)
+
+    def _build_inventory(self, tree, ie, path):
+        assert isinstance(path, str)
+        for b in tree.contents:
+            basename = b.name.decode("utf-8")
+            if path == "":
+                child_path = b.name
+            else:
+                child_path = urlutils.join(path, b.name)
+            file_id = escape_file_id(child_path.encode('utf-8'))
+            if b.mode[0] == '0':
+                child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
+            elif b.mode[0] == '1':
+                if b.mode[1] == '0':
+                    child_ie = inventory.InventoryFile(file_id, basename, ie.file_id)
+                    child_ie.text_sha1 = osutils.sha_string(b.data)
+                elif b.mode[1] == '2':
+                    child_ie = inventory.InventoryLink(file_id, basename, ie.file_id)
+                    child_ie.text_sha1 = osutils.sha_string("")
+                else:
+                    raise AssertionError(
+                        "Unknown file kind, perms=%r." % (b.mode,))
+                child_ie.text_size = b.size
+            else:
+                raise AssertionError(
+                    "Unknown blob kind, perms=%r." % (b.mode,))
+            child_ie.executable = bool(int(b.mode[3:], 8) & 0111)
+            child_ie.revision = self.revision_id
+            assert not basename in ie.children
+            ie.children[basename] = child_ie
+            if b.mode[0] == '0':
+                self._build_inventory(b, child_ie, child_path)
 
 
 class GitFormat(object):

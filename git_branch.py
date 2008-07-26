@@ -64,15 +64,18 @@ class GitBranch(branch.Branch):
         # perhaps should escape this ?
         if self.head is None:
             return revision.NULL_REVISION
-        return ids.convert_revision_id_git_to_bzr(self.head.commit.id)
+        return ids.convert_revision_id_git_to_bzr(self.head)
 
     def _gen_revision_history(self):
+        if self.head is None:
+            return []
         skip = 0
-        max_count = 1000
-        cms = []
+        cms = None
         ret = []
+        max_count = 1000
         while cms != []:
-            cms = self.repository._git.commits(self.head.commit.id, max_count=1000, skip=skip)
+            cms = self.repository._git.commits(self.head, max_count=max_count, skip=skip)
+            skip += max_count
             ret += [ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
         return ret
 
