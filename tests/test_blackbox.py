@@ -26,7 +26,7 @@ from bzrlib.plugins.git import (
 
 class TestGitBlackBox(ExternalBase):
 
-    def test_info(self):
+    def simple_commit(self):
         # Create a git repository with a revision.
         tests.run_git('init')
         builder = tests.GitBranchBuilder()
@@ -34,19 +34,27 @@ class TestGitBlackBox(ExternalBase):
         builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
         builder.finish()
 
+
+    def test_info(self):
+        self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
         self.assertTrue("Repository branch (format: git)" in output)
 
+    def test_info_verbose(self):
+        self.simple_commit()
+
+        output, error = self.run_bzr(['info', '-v'])
+        self.assertEqual(error, '')
+        self.assertTrue("Repository branch (format: git)" in output)
+        self.assertTrue("control: Local Git Repository" in output)
+        self.assertTrue("branch: Git Branch" in output)
+        self.assertTrue("repository: Git Repository" in output)
+
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
 
-        # Create a git repository with a revision.
-        tests.run_git('init')
-        builder = tests.GitBranchBuilder()
-        builder.set_file('a', 'text for a\n', False)
-        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
-        builder.finish()
+        self.simple_commit()
 
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log'])
