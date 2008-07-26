@@ -74,3 +74,12 @@ class TestGitBlackBox(ExternalBase):
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log', '-v'])
  
+    def test_tags(self):
+        self.simple_commit()
+
+        tests.run_git("tag", "foo")
+
+        output, error = self.run_bzr(['tags'])
+        self.assertEquals(error, '')
+        self.assertEquals(output, "foo                  1\n")
+
