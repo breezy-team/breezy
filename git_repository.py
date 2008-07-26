@@ -30,6 +30,7 @@ from bzrlib import (
     revision,
     revisiontree,
     urlutils,
+    versionedfile,
     )
 from bzrlib.transport import get_transport
 
@@ -62,7 +63,7 @@ class GitRepository(repository.Repository):
         self.cachedb = cachedbs[cache_file]
         self._init_cachedb()
         self.texts = None
-        self.signatures = None
+        self.signatures = versionedfile.VirtualSignatureTexts(self)
         self.revisions = None
         self._format = GitFormat()
         self._fallback_repositories = []
@@ -100,6 +101,9 @@ class GitRepository(repository.Repository):
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
+
+    def has_signature_for_revision_id(self, revision_id):
+        return False
 
     def get_parent_map(self, revision_ids):
         ret = {}

@@ -121,6 +121,12 @@ class TestGitRepository(tests.TestCaseWithTransport):
         repo = self.git_repo
         self.assertEqual(repo.supports_rich_root(), False)
 
+    def test_get_signature_text(self):
+        self.assertRaises(errors.NoSuchRevision, self.git_repo.get_signature_text(revision.NULL_REVISION))
+
+    def test_has_signature_for_revision_id(self):
+        self.assertEquals(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))
+
     def assertIsNullInventory(self, inv):
         self.assertEqual(inv.root, None)
         self.assertEqual(inv.revision_id, revision.NULL_REVISION)
