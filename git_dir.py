@@ -35,7 +35,7 @@ from bzrlib.plugins.git import (
 class GitLock(object):
     """A lock that thunks through to Git."""
 
-    def lock_write(self):
+    def lock_write(self, token=None):
         pass
 
     def lock_read(self):
