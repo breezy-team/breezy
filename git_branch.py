@@ -74,10 +74,17 @@ class GitBranch(branch.Branch):
         cms = None
         ret = []
         max_count = 1000
+        nextid = self.head
         while cms != []:
             cms = self.repository._git.commits(self.head, max_count=max_count, skip=skip)
             skip += max_count
-            ret += [ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
+            for cm in cms:
+                if cm.id == nextid:
+                    ret.append(ids.convert_revision_id_git_to_bzr(cm.id))
+                    if cm.parents == []:
+                        nextid = None
+                    else:
+                        nextid = cm.parents[0].id
         ret.reverse()
         return ret
 
