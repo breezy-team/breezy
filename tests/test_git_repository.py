@@ -19,6 +19,7 @@
 import git
 
 from bzrlib import (
+    errors,
     inventory,
     repository,
     revision,
@@ -122,7 +123,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(repo.supports_rich_root(), False)
 
     def test_get_signature_text(self):
-        self.assertRaises(errors.NoSuchRevision, self.git_repo.get_signature_text(revision.NULL_REVISION))
+        self.assertRaises(errors.NoSuchRevision, self.git_repo.get_signature_text, revision.NULL_REVISION)
 
     def test_has_signature_for_revision_id(self):
         self.assertEquals(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))

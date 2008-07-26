@@ -49,6 +49,7 @@ class GitRepository(repository.Repository):
     _serializer = None
 
     def __init__(self, gitdir, lockfiles):
+        self.base = gitdir.root_transport.base
         self.bzrdir = gitdir
         self.control_files = lockfiles
         self._git = git.repo.Repo(gitdir.root_transport.local_abspath("."))
