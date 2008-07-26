@@ -67,6 +67,10 @@ class GitBranch(branch.Branch):
             return revision.NULL_REVISION
         return ids.convert_revision_id_git_to_bzr(self.head)
 
+    def get_parent(self):
+        """See Branch.get_parent()."""
+        return None
+
     def _gen_revision_history(self):
         if self.head is None:
             return []

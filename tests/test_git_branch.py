@@ -16,7 +16,7 @@
 
 """Tests for interfacing with a Git Branch"""
 
-import subprocess
+import git
 
 from bzrlib import branch, revision
 
@@ -71,3 +71,13 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEqual([ids.convert_revision_id_git_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
         
+
+class TestWithGitBranch(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        git.repo.Repo.create(self.test_dir)
+        self.git_branch = branch.Branch.open(self.test_dir)
+
+    def test_get_parent(self):
+        self.assertIs(None, self.git_branch.get_parent())
