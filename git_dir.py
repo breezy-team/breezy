@@ -44,6 +44,9 @@ class GitLock(object):
     def unlock(self):
         pass
 
+    def peek(self):
+        pass
+
 
 class GitLockableFiles(lockable_files.LockableFiles):
     """Git specific lockable files abstraction."""
