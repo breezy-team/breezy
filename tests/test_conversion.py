@@ -22,8 +22,8 @@ from bzrlib.plugins.keywords import compress_keywords, expand_keywords
 
 
 # Sample unexpanded and expanded pairs for a keyword dictionary
-_keywords = {'Foo': 'FOO!', 'Bar': 'bar'}
-_keywords_dicts = [{'Foo': 'FOO!'}, {'Bar': 'bar'}]
+_keywords = {'Foo': 'FOO!', 'Bar': 'bar', 'CallMe': lambda c: "now!"}
+_keywords_dicts = [{'Foo': 'FOO!'}, {'Bar': 'bar', 'CallMe': lambda c: "now!"}]
 _samples = [
     ('$Foo$',           '$Foo: FOO! $'),
     ('$Foo',            '$Foo'),
@@ -35,6 +35,7 @@ _samples = [
     ('abc $Foo$ xyz $Bar$ qwe', 'abc $Foo: FOO! $ xyz $Bar: bar $ qwe'),
     ('$Unknown$$Bar$',  '$Unknown$$Bar: bar $'),
     ('$Foo$$Unknown$',  '$Foo: FOO! $$Unknown$'),
+    ('$CallMe$',        '$CallMe: now! $'),
     ]
 
 
@@ -55,9 +56,15 @@ class TestKeywordsConversion(tests.TestCase):
         for raw, cooked in _samples:
             self.assertEqual(cooked, expand_keywords(raw, _keywords_dicts))
 
-    def test_expansion_ignored_when_unsafe(self):
+    def test_expansion_feedback_when_unsafe(self):
         kw_dict = {'Xxx': 'y$z'}
-        self.assertEqual('$Xxx$', expand_keywords('$Xxx$', [kw_dict]))
+        self.assertEqual('$Xxx: (value unsafe to expand) $',
+            expand_keywords('$Xxx$', [kw_dict]))
+
+    def test_expansion_feedback_when_error(self):
+        kw_dict = {'Xxx': lambda ctx: ctx.unknownMethod}
+        self.assertEqual('$Xxx: (evaluation error) $',
+            expand_keywords('$Xxx$', [kw_dict]))
 
     def test_expansion_replaced_if_already_expanded(self):
         s = '$Xxx: old value $'

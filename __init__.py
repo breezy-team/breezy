@@ -93,6 +93,7 @@ from bzrlib import (
     option,
     osutils,
     registry,
+    trace,
     xml8,
     )
 
@@ -148,14 +149,16 @@ def compress_keywords(s):
     return result + rest
 
 
-def expand_keywords(s, keyword_dicts, style=None):
+def expand_keywords(s, keyword_dicts, context=None, style=None):
     """Replace raw style keywords with another style in a string.
     
     Note: If the keyword is already in the expanded style, the value is
     not replaced.
 
     :param s: the string
-    :param keyword_dicts: an iterable of keyword dictionaries
+    :param keyword_dicts: an iterable of keyword dictionaries. If values
+      are callables, they are executed to find the real value.
+    :param context: the parameter to pass to callable values
     :param style: the style of expansion to use of None for the default
     :return: the string with keywords expanded
     """
@@ -172,13 +175,20 @@ def expand_keywords(s, keyword_dicts, style=None):
         if expansion is None:
             # Unknown expansion - leave as is
             result += match.group(0)
-        elif '$' in expansion:
+            rest = rest[match.end():]
+            continue
+        if callable(expansion):
+            try:
+                expansion = expansion(context)
+            except AttributeError, err:
+                trace.mutter("error evaluating %s for keyword %s: %s",
+                    expansion, keyword, err)
+                expansion = "(evaluation error)"
+        if '$' in expansion:
             # Expansion is not safe to be collapsed later
-            # TODO: output a warning or some trace here?
-            result += match.group(0)
-        else:
-            params = {'name': keyword, 'value': expansion}
-            result += _expanded_style % params
+            expansion = "(value unsafe to expand)"
+        params = {'name': keyword, 'value': expansion}
+        result += _expanded_style % params
         rest = rest[match.end():]
     return result + rest
 
@@ -297,7 +307,7 @@ def _kw_expander(chunks, context, encoder=None):
     global_keywords = _get_global_keywords(encoder=encoder)
     local_keywords = _get_context_keywords(context, encoder=encoder)
     text = ''.join(chunks)
-    return [expand_keywords(text, [local_keywords, global_keywords])]
+    return [expand_keywords(text, [local_keywords, global_keywords], context)]
 
 
 def _normal_kw_expander(chunks, context=None):
