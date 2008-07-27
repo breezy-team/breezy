@@ -1,4 +1,3 @@
-debian/overrides/bzr		usr/share/lintian/overrides/
 contrib/bash/bzr.simple			etc/bash_completion.d/
 contrib/bash/bzr	etc/bash_completion.d/
 doc/default.css			usr/share/doc/bzr/html
