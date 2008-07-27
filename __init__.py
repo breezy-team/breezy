@@ -84,11 +84,12 @@ a legal strftime (http://docs.python.org/lib/module-time.html) format.
 '''
 
 
-import datetime, re
+import re, time
 from bzrlib import (
     builtins,
     commands,
     config,
+    debug,
     filters,
     option,
     osutils,
@@ -129,6 +130,62 @@ _KW_RAW_RE = re.compile(r'\$([\w\-]+)(:[^$]*)?\$')
 _KW_COOKED_RE = re.compile(r'\$([\w\-]+):([^$]+)\$')
 
 
+# The registry of keywords. Other plugins may wish to add entries to this.
+keyword_registry = registry.Registry()
+
+# Revision-related keywords
+keyword_registry.register('Date',
+    lambda c: format_date(c.revision().timestamp, c.revision().timezone,
+    c.config(), 'Date'))
+keyword_registry.register('Author',
+    lambda c: c.revision().get_apparent_author())
+keyword_registry.register('Author-Email',
+    lambda c: extract_email(c.revision().get_apparent_author()))
+keyword_registry.register('Revision-Id',
+    lambda c: c.revision_id())
+keyword_registry.register('Path',
+    lambda c: c.relpath())
+keyword_registry.register('Directory',
+    lambda c: osutils.split(c.relpath())[0])
+keyword_registry.register('Filename',
+    lambda c: osutils.split(c.relpath())[1])
+keyword_registry.register('File-Id',
+    lambda c: c.file_id())
+
+# Environment-related keywords
+keyword_registry.register('Now',
+    lambda c: format_date(time.time(), time.timezone, c.config(), 'Now'))
+keyword_registry.register('User',
+    lambda c: c.config()._get_user_id())
+keyword_registry.register('User-Email',
+    lambda c: extract_email(c.config()._get_user_id()))
+
+
+def format_date(timestamp, offset=0, cfg=None, name=None):
+    """Return a formatted date string.
+
+    :param timestamp: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    """
+    if cfg is not None and name is not None:
+        cfg_key = 'keywords.format.%s' % (name,)
+        format = cfg.get_user_option(cfg_key)
+    else:
+        format = None
+    return osutils.format_date(timestamp, offset, date_fmt=format)
+
+
+def extract_email(userid):
+    """Extract the email address out of a user-id string.
+
+    user-id strings have the format 'name <email>'.
+    """
+    if userid[-1] == '>':
+        return userid[:-1].rsplit('<', 1)[1]
+    else:
+        return userid
+
+
 def compress_keywords(s):
     """Replace cooked style keywords with raw style in a string.
     
@@ -149,7 +206,7 @@ def compress_keywords(s):
     return result + rest
 
 
-def expand_keywords(s, keyword_dicts, context=None, style=None):
+def expand_keywords(s, keyword_dicts, context=None, encoder=None, style=None):
     """Replace raw style keywords with another style in a string.
     
     Note: If the keyword is already in the expanded style, the value is
@@ -181,12 +238,15 @@ def expand_keywords(s, keyword_dicts, context=None, style=None):
             try:
                 expansion = expansion(context)
             except AttributeError, err:
-                trace.mutter("error evaluating %s for keyword %s: %s",
-                    expansion, keyword, err)
+                if 'error' in debug.debug_flags:
+                    trace.note("error evaluating %s for keyword %s: %s",
+                        expansion, keyword, err)
                 expansion = "(evaluation error)"
         if '$' in expansion:
             # Expansion is not safe to be collapsed later
             expansion = "(value unsafe to expand)"
+        if encoder is not None:
+            expansion = encoder(expansion)
         params = {'name': keyword, 'value': expansion}
         result += _expanded_style % params
         rest = rest[match.end():]
@@ -194,98 +254,14 @@ def expand_keywords(s, keyword_dicts, context=None, style=None):
 
 
 def _get_from_dicts(dicts, key, default=None):
-    """Search a sequence of dictionaries for a key.
+    """Search a sequence of dictionaries or registries for a key.
 
     :return: the value, or default if not found
     """
     for dict in dicts:
-        if dict.has_key(key):
-            return dict[key]
+        if key in dict:
+            return dict.get(key)
     return default
-
-
-# Keywords that are file independent - None until first initialised
-_global_keywords = None
-
-
-def _format_datetime_keyword(dt, name, cfg):
-    cfg_key = 'keywords.format.%s' % (name,)
-    format = cfg.get_user_option(cfg_key)
-    if format is None:
-        # Displaying the microseconds is overkill so clear that field
-        # If someone really want them, they can specify an explicit format
-        return str(dt.replace(microsecond=0))
-    else:
-        return dt.strftime(format)
-
-
-def _extract_email(userid):
-    """Extract the email address out of a user-id string.
-
-    user-id strings have the format 'name <email>'.
-    """
-    if userid[-1] == '>':
-        return userid[:-1].rsplit('<', 1)[1]
-    else:
-        return userid
-
-
-def _get_global_keywords(encoder=None, _now_fn=datetime.datetime.now):
-    global _global_keywords
-    if _global_keywords is None:
-        cfg = config.GlobalConfig()
-        now = _format_datetime_keyword(_now_fn(), 'Now', cfg)
-        user = cfg.username()
-        _global_keywords = {
-            'Now': now,
-            'User': user,
-            'User-Email': _extract_email(user),
-            }
-    if encoder is not None:
-        result = {}
-        for name, value in _global_keywords.iteritems():
-            result[name] = encoder(value)
-        return result
-    else:
-        return _global_keywords
-
-
-def _get_context_keywords(context, encoder=None):
-    # TODO: Make the lookup of these attributes lazy so that the
-    # revision is only calculated when requested
-    rev = context.revision()
-    if rev is None:
-        date = None
-        author = None
-    else:
-        # TODO: set timezone correctly
-        dateobj = datetime.datetime.fromtimestamp(rev.timestamp)
-        cfg = config.GlobalConfig()
-        date = _format_datetime_keyword(dateobj, 'Date', cfg)
-        author = rev.get_apparent_author()
-    path = context.relpath()
-    if path is None:
-        dir = None
-        base = None
-    else:
-        dir, base = osutils.split(path)
-    local_keywords = {
-        'Date': date,
-        'Author': author,
-        'Author-Email': _extract_email(author),
-        'Revision-Id': context.revision_id(),
-        'Path': path,
-        'Filename': base,
-        'Directory': dir,
-        'File-Id': context.file_id(),
-        }
-    if encoder is not None:
-        result = {}
-        for name, value in local_keywords.iteritems():
-            result[name] = encoder(value)
-        return result
-    else:
-        return local_keywords
 
 
 def _xml_escape(s):
@@ -304,10 +280,9 @@ def _kw_compressor(chunks, context=None):
 
 def _kw_expander(chunks, context, encoder=None):
     """Keyword expander."""
-    global_keywords = _get_global_keywords(encoder=encoder)
-    local_keywords = _get_context_keywords(context, encoder=encoder)
     text = ''.join(chunks)
-    return [expand_keywords(text, [local_keywords, global_keywords], context)]
+    return [expand_keywords(text, [keyword_registry], context=context,
+        encoder=encoder)]
 
 
 def _normal_kw_expander(chunks, context=None):

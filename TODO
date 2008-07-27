@@ -1,7 +1,3 @@
-* Improvements:
-  * include timezone info in Date
-  * lazy evaluation of keyword values so they are only calculated if requested
-
 Things to consider:
   * python_escape (maybe called string_escape) ala xml_escape?
   * some sort of block construct so easier to include in ReST and properties

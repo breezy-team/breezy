@@ -1,0 +1,31 @@
+--------------------------
+bzr-keywords Release Notes
+--------------------------
+
+.. contents::
+
+IN DEVELOPMENT
+--------------
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  COMPATIBILITY BREAKS:
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+
+0.1 28-Jul-2008
+---------------
+
+  FEATURES:
+
+    * Version suitable for testing with development branch,
+      ~ian-clatworthy/bzr/bzr.content-filters. (Ian Clatworthy)
