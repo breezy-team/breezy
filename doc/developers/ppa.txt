@@ -1,0 +1,190 @@
+Managing the Bazaar PPA
+=======================
+
+See also: `Bazaar Developer Document Catalog <index.html>`_.
+
+
+Background
+----------
+
+We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
+process.  These packages are hosted in a few `Personal Package Archives (PPA)`__ on
+Launchpad.
+
+  __ https://help.launchpad.net/PPAQuickStart
+
+As of June 2008, there are two PPAs:
+
+<https://launchpad.net/~bzr/+archive>
+    Final released versions.
+
+<https://launchpad.net/~bzr-beta-ppa/+archive>
+    Releases and release candidates.    
+
+We build packages for every supported Ubuntu release
+<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
+when the release passes end-of-life because all users should
+have upgraded by then.  (As of May 2008, Edgy Eft is no longer supported.)
+
+We build a distinct package for each distrorelease that has
+different packaging requirements.  As of bzr 1.5, Dapper uses
+``python-support`` and later distributions use ``python-central``, so we
+build one version for dapper and one version for everything else.  If you
+upload a release-specific version, you should add a suffix to the
+package version, e.g. ``bzr.1.3-1~bazaar1~dapper1``.
+
+Every package is first uploaded into one distroversion of the beta ppa.
+It can then be copied to other compatible distroversions.  For final
+release versions it is also copied to the main PPA.
+
+The ``debian/`` directory containing the packaging information is kept in
+branches on Launchpad, named like 
+<https://code.launchpad.net/~bzr/bzr/packaging-hardy>.
+
+Preconditions
+-------------
+  
+* You must have a Launchpad account and be a member of the teams 
+  that own these PPAs (``~bzr``, ``~bzr-beta-ppa``).
+
+* You must have a GPG key registered to your Launchpad account.
+
+* Configure ``dput`` to upload to our PPA with this section in your
+  ``~/.dput.cf``::
+
+    [bzr-beta-ppa]
+    fqdn = ppa.launchpad.net
+    method = ftp
+    incoming = ~bzr-beta-ppa/ubuntu
+    login = anonymous
+    allow_unsigned_uploads = 0
+
+    [bzr-ppa]
+    fqdn = ppa.launchpad.net
+    method = ftp
+    incoming = ~bzr/ubuntu
+    login = anonymous
+    allow_unsigned_uploads = 0
+
+  You may also want to add these lines to prevent inadvertently attempting
+  to upload into Ubuntu or Debian, which will give a somewhat unclear
+  error::
+
+    [DEFAULT]
+    default_host_main = notspecified
+  
+    [notspecified]
+    fqdn = SPECIFY.A.PPA.NAME 
+
+* You need a Ubuntu (or probably Debian) machine, and ::
+
+    sudo apt-get install build-essential devscripts dput quilt patch
+
+Packaging Bazaar
+----------------
+
+#. You will need a working directory for each supported release, such as
+   ``~/bzr/Packaging/hardy``
+
+#. Download the official tarball of the release to e.g. ``~/bzr/Releases``
+   if you don't already have it.
+
+#. Decide on the final version number.  It should be of this form::
+
+     bzr-1.6~beta3-1~bazaar1
+
+   There are three hyphen-separated parts: the *package name*, the *upstream
+   version*, and the *packaging version*.
+
+   **Caution:** Upstream betas or release candidates must insert a tilde
+   to make them sort before the final release, like this:
+   ``bzr-1.4~rc2-1~bazaar1``.
+
+#. Copy or hardlink the original tarball into your per-disto directory, under an 
+   appropriate name ending in ``.orig.tar.gz``.  Untar it.  The extracted
+   source directory and ``.orig`` file must match the version number you
+   calculated above.  For example::
+
+     cp -l ~/bzr/Releases/bzr-1.6b3.tar.gz bzr_1.6~beta3.orig.tar.gz
+     tar xfvz bzr_1.6~beta3.orig.tar.gz
+     mv bzr-1.6b3 bzr-1.6~beta3
+
+#. Change into that directory and check out the packaging branch::
+
+     cd bzr-1.6~beta3
+     bzr checkout \
+       bzr+ssh://bazaar.launchpad.net/~bzr/bzr/packaging-hardy \
+       debian
+
+#. For Bazaar plugins, change the ``debian/control`` file to express a
+   dependency on the correct version of ``bzr``.
+
+   For bzrtools this is typically::
+
+      Build-Depends-Indep: bzr (>= 1.3~), rsync
+      Depends: ${python:Depends}, bzr (>= 1.3~), bzr (<< 1.4~), patch
+
+#. Make a new ``debian/changelog`` entry for the new release,
+   either by using ``dch`` or just editing the file::
+
+     dch -v '1.3-1~bazaar1' -D hardy
+
+   dch will default to the distro you're working in and this isn't checked
+   against the version number (which is just our conversion), so make sure 
+   to specify it.
+
+   Make sure you have the correct email address for yourself, version
+   number, and distribution.  It should look something like this::
+
+       bzr (1.3-1~bazaar1) hardy; urgency=low
+     
+        * New upstream release.
+     
+       -- John Sample <sample@example.com>  Mon, 31 Mar 2008 12:36:27 +1100
+
+   If you need to upload the package again to fix a problem, normally you
+   should increment the last number in the version number, following the
+   distro name.  Make sure not to omit the initial ``-1``, and make sure
+   that the distro name in the version is consistent with the target name
+   outside the parenthesis.
+
+#. Commit these changes into the packaging branch::
+
+     bzr ci -m '1.3-1~bazaar1: New upstream release.' debian
+
+#. Build a source package::
+
+     debuild -S -sa -i -D
+
+   This will create a ``.changes`` file in the per-distro directory,
+   and should invoke gpg to sign it with your key.
+   Check that file is reasonable: it should be uploading to the intended
+   distribution, have a .orig file included, and the right version number.
+
+#. Upload into the beta PPA::
+
+     dput bzr-beta-ppa ../bzr__1.3-1\~bazaar1\_source.changes
+
+#. Copy the uploaded package over to other Ubuntu releases, taking advantage 
+   of Launchpad's Copy Package feature 
+   <https://launchpad.net/~bzr-beta-ppa/+archive/+copy-packages>
+
+#. For final release versions, also copy it into the ``~bzr`` PPA.
+
+#. You should soon get an "upload accepted" mail from Launchpad, which
+   means that your package is waiting to be built.  You can then track its
+   progress in <https://launchpad.net/~bzr-beta-ppa/+archive> and
+   <https://launchpad.net/~bzr-beta-ppa/+archive/+builds>.
+
+
+Monitoring the contents of PPAs
+-------------------------------
+
+If you add all the bzr PPAs to your ``sources.list`` then you can see a
+summary of current package versions with::
+
+  apt-cache madison bzr
+
+
+..
+   vim: filetype=rst textwidth=74 ai shiftwidth=4

@@ -133,10 +133,6 @@ class KnitRepository(MetaDirRepository):
         self._fetch_uses_deltas = True
         self._fetch_order = 'topological'
 
-    def _warn_if_deprecated(self):
-        # This class isn't deprecated
-        pass
-
     @needs_read_lock
     def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""

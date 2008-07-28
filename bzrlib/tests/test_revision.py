@@ -142,12 +142,6 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.merge_from_branch(self.br1)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
-        from bzrlib.revision import MultipleRevisionSources
-        self.sources = self.applyDeprecated(one_three,
-                        MultipleRevisionSources, self.br1.repository,
-                                                 self.br2.repository)
-
-
 
 class MockRevisionSource(object):
     """A RevisionSource that takes a pregenerated graph.
