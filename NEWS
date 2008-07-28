@@ -28,6 +28,9 @@ IN DEVELOPMENT
       Anywhere from 2x-6x faster depending on the size of the tree (bigger
       trees, bigger benefit.) (John Arbash Meinel)
 
+    * Fetching data between repositories that have the same model but no 
+      optimised fetcher will not reserialise all the revisions, increasing
+      performance. (Robert Collins, John Arbash Meinel)
 
   BUG FIXES:
 

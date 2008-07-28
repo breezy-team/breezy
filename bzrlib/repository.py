@@ -2658,10 +2658,10 @@ class InterKnitRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import KnitRepoFetcher
+        from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        f = KnitRepoFetcher(to_repository=self.target,
+        f = RepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
                             pb=pb, find_ghosts=find_ghosts)
@@ -2729,8 +2729,8 @@ class InterPackRepo(InterSameDataRepository):
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         if len(self.source._fallback_repositories) > 0:
-            from bzrlib.fetch import KnitRepoFetcher
-            fetcher = KnitRepoFetcher(self.target, self.source, revision_id,
+            from bzrlib.fetch import RepoFetcher
+            fetcher = RepoFetcher(self.target, self.source, revision_id,
                                       pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
         from bzrlib.repofmt.pack_repo import Packer
