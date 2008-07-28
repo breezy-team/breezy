@@ -895,6 +895,27 @@ loading in registered code only when it's needed, and keeping
 associated information such as a help string or description.
 
 
+InterObject and multiple dispatch
+=================================
+
+The ``InterObject`` provides for two-way `multiple dispatch`__: matching
+up for example a source and destination repository to find the right way
+to transfer data between them. 
+
+There is a subclass ``InterObject`` classes for each type of object that is
+dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
+class will return an ``InterObject`` instance providing the best match for 
+those parameters, and this instance then has methods for operations
+between the objects.
+
+  inter = InterRepository.get(source_repo, target_repo)
+  inter.fetch(revision_id)
+
+``InterRepository`` also acts as a registry-like object for its
+subclasses, and they can be added through ``.register_optimizer``.  The
+right one to run is selected by asking each class, in reverse order of
+registration, whether it ``.is_compatible`` with the relevant objects.
+
 Lazy Imports
 ============
 
