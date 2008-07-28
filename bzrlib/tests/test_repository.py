@@ -174,6 +174,12 @@ class TestFormat6(TestCaseWithTransport):
         repo = weaverepo.RepositoryFormat6().initialize(control)
         self.assertEqual(False, repo._fetch_uses_deltas)
 
+    def test_attribute__fetch_reconcile(self):
+        """Weave repositories need a reconcile after fetch."""
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        self.assertEqual(True, repo._fetch_reconcile)
+
     def test_no_ancestry_weave(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
@@ -202,6 +208,12 @@ class TestFormat7(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
         self.assertEqual(False, repo._fetch_uses_deltas)
+
+    def test_attribute__fetch_reconcile(self):
+        """Weave repositories need a reconcile after fetch."""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        self.assertEqual(True, repo._fetch_reconcile)
 
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())

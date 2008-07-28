@@ -699,6 +699,9 @@ class Repository(object):
         # We default to False, which will ensure that enough data to get
         # a full text out of any fetch stream will be grabbed.
         self._fetch_uses_deltas = False
+        # Should fetch trigger a reconcile after the fetch? Only needed for
+        # some repository formats that can suffer internal inconsistencies.
+        self._fetch_reconcile = False
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -2496,11 +2499,11 @@ class InterSameDataRepository(InterRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import GenericRepoFetcher
+        from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target,
                self.target._format)
-        f = GenericRepoFetcher(to_repository=self.target,
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
@@ -2577,10 +2580,10 @@ class InterWeaveRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import GenericRepoFetcher
+        from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        f = GenericRepoFetcher(to_repository=self.target,
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)

@@ -86,6 +86,7 @@ class AllInOneRepository(Repository):
             self._text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files)
         self._fetch_order = 'topological'
+        self._fetch_reconcile = True
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -182,6 +183,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     def __init__(self, _format, a_bzrdir, control_files):
         super(WeaveMetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._fetch_order = 'topological'
+        self._fetch_reconcile = True
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -323,6 +325,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     def __init__(self):
         super(RepositoryFormat4, self).__init__()
         self._fetch_order = 'topological'
+        self._fetch_reconcile = True
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -375,6 +378,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
         self._fetch_order = 'topological'
+        self._fetch_reconcile = True
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -418,6 +422,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
         self._fetch_order = 'topological'
+        self._fetch_reconcile = True
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

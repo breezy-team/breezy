@@ -54,10 +54,12 @@ IN DEVELOPMENT
 
   API CHANGES:
 
-    * The generic fetch code now uses two attributes on Repository objects
-      to control the requested streams: ``_fetch_order`` and
-      ``_fetch_uses_deltas``. Setting these appropriately allows different
-      repository implementations to recieve data in their optimial form.
+    * The generic fetch code now uses three attributes on Repository objects
+      to control fetch. The streams requested are controlled via :
+      ``_fetch_order`` and ``_fetch_uses_deltas``. Setting these
+      appropriately allows different repository implementations to recieve
+      data in their optimial form. If the ``_fetch_reconcile`` is set then
+      a reconcile operation is triggered at the end of the fetch.
       (Robert Collins)
 
   INTERNALS:

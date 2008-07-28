@@ -836,6 +836,16 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._fetch_uses_deltas
 
+    @property
+    def _fetch_reconcile(self):
+        """Decorate the real repository for now.
+
+        In the long term getting this back from the remote repository as part
+        of open would be more efficient.
+        """
+        self._ensure_real()
+        return self._real_repository._fetch_reconcile
+
     def get_parent_map(self, keys):
         """See bzrlib.Graph.get_parent_map()."""
         # Hack to build up the caching logic.

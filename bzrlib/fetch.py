@@ -199,6 +199,8 @@ class RepoFetcher(object):
                     self._fetch_revision_texts(revs, pb)
                 else:
                     raise AssertionError("Unknown knit kind %r" % knit_kind)
+            if self.to_repository._fetch_reconcile:
+                self.to_repository.reconcile()
         finally:
             if pb is not None:
                 pb.finished()
@@ -272,17 +274,6 @@ class RepoFetcher(object):
         after fetching weave texts.
         """
         pass
-
-
-class GenericRepoFetcher(RepoFetcher):
-    """This is a generic repo to repo fetcher.
-
-    This triggers a reconciliation after fetching to ensure integrity.
-    """
-
-    def _fetch_revision_texts(self, revs, pb):
-        RepoFetcher._fetch_revision_texts(self, revs, pb)
-        self.to_repository.reconcile()
 
 
 class Inter1and2Helper(object):
@@ -422,12 +413,6 @@ class Model1toKnit2Fetcher(RepoFetcher):
                 pass
             self._copy_revision(rev)
             count += 1
-        # fixup inventory if needed: 
-        # this is expensive because we have no inverse index to current ghosts.
-        # but on local disk its a few seconds and sftp push is already insane.
-        # so we just-do-it.
-        # FIXME: repository should inform if this is needed.
-        self.to_repository.reconcile()
 
     def _copy_revision(self, rev):
         self.helper.fetch_revisions([rev])
