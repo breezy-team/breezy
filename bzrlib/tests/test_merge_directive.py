@@ -583,7 +583,7 @@ class TestMergeDirectiveBranch(object):
         tree_a.commit('rev3a', rev_id='rev3a')
         md = self.from_objects(tree_a.branch.repository, 'rev3a', 500, 36,
             branch_c.base, base_revision_id='rev2a')
-        md.target_branch = '/dev/null'
+        md.target_branch = self.get_url('not-a-branch')
         self.assertRaises(errors.TargetNotBranch, md.install_revisions,
                 tree_b.branch.repository)
 
