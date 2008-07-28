@@ -2719,7 +2719,8 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        if len(self.source._fallback_repositories) > 0:
+        if (len(self.source._fallback_repositories) > 0 or
+            len(self.target._fallback_repositories) > 0):
             from bzrlib.fetch import KnitRepoFetcher
             fetcher = KnitRepoFetcher(self.target, self.source, revision_id,
                                       pb, find_ghosts)
