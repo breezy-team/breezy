@@ -2350,10 +2350,16 @@ class InterRepository(InterObject):
         :param pb: optional progress bar to use for progress reports. If not
                    provided a default one will be created.
 
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
+        :returns: (copied_revision_count, failures).
         """
-        raise NotImplementedError(self.fetch)
+        # Normally we should find a specific InterRepository subclass to do
+        # the fetch; if nothing else then at least InterSameDataRepository.
+        # If none of them is suitable it looks like fetching is not possible;
+        # we try to give a good message why.  _assert_same_model will probably
+        # give a helpful message; otherwise a generic one.
+        self._assert_same_model(self.source, self.target)
+        raise errors.IncompatibleRepositories(self.source, self.target,
+            "no suitableInterRepository found")
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
@@ -2433,12 +2439,27 @@ class InterRepository(InterObject):
 
     @staticmethod
     def _same_model(source, target):
-        """True if source and target have the same data representation."""
+        """True if source and target have the same data representation.
+        
+        Note: this is always called on the base class; overriding it in a
+        subclass will have no effect.
+        """
+        try:
+            InterRepository._assert_same_model(source, target)
+            return True
+        except errors.IncompatibleRepositories, e:
+            return False
+
+    @staticmethod
+    def _assert_same_model(source, target):
+        """Raise an exception if two repositories do not use the same model.
+        """
         if source.supports_rich_root() != target.supports_rich_root():
-            return False
+            raise errors.IncompatibleRepositories(source, target,
+                "different rich-root support")
         if source._serializer != target._serializer:
-            return False
-        return True
+            raise errors.IncompatibleRepositories(source, target,
+                "different serializers")
 
 
 class InterSameDataRepository(InterRepository):
