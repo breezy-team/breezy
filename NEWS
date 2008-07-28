@@ -20,6 +20,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr check`` can now be told which elements at a location it should
+      check.  (Daniel Watkins)
+
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
       This uses a pyrex extension to get direct access to the
       ``FindFirstFileW`` style apis, rather than using ``listdir`` +
