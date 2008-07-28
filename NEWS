@@ -104,6 +104,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Lazily connect to repository when opening working copies. (#250706)
 
+   * Stricter checking of special files for links. (#219832)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
