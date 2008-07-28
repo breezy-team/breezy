@@ -691,6 +691,15 @@ class Repository(object):
         self._write_group = None
         # Additional places to query for data.
         self._fallback_repositories = []
+        # What order should fetch operations request streams in?
+        # The default is unsorted as that is the cheapest for an origin to
+        # provide.
+        self._fetch_order = 'unsorted'
+        # Does this repository use deltas that can be fetched as-deltas ?
+        # (E.g. knits, where the knit deltas can be transplanted intact.
+        # We default to False, which will ensure that enough data to get
+        # a full text out of any fetch stream will be grabbed.
+        self._fetch_uses_deltas = False
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,

@@ -179,7 +179,8 @@ class RepoFetcher(object):
                     to_texts = self.to_repository.texts
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
-                        text_keys, 'topological', False))
+                        text_keys, self.to_repository._fetch_order,
+                        self.to_repository._fetch_uses_deltas))
                     # Cause an error if a text occurs after we have done the
                     # copy.
                     text_keys = None
@@ -239,7 +240,8 @@ class RepoFetcher(object):
             # corrupt.
             to_weave.insert_record_stream(from_weave.get_record_stream(
                 [(rev_id,) for rev_id in revs],
-                'topological', False))
+                self.to_repository._fetch_order,
+                self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
 
@@ -301,7 +303,8 @@ class KnitRepoFetcher(RepoFetcher):
         # A missing signature is just skipped.
         to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
             [(rev_id,) for rev_id in revs],
-            'unordered', False)))
+            self.to_repository._fetch_order,
+            self.to_repository._fetch_uses_deltas)))
         self._fetch_just_revision_texts(revs)
 
     def _fetch_just_revision_texts(self, version_ids):
@@ -309,7 +312,8 @@ class KnitRepoFetcher(RepoFetcher):
         from_rf = self.from_repository.revisions
         to_rf.insert_record_stream(from_rf.get_record_stream(
             [(rev_id,) for rev_id in version_ids],
-            'topological', False))
+            self.to_repository._fetch_order,
+            self.to_repository._fetch_uses_deltas))
 
 
 class Inter1and2Helper(object):
