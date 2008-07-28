@@ -415,7 +415,7 @@ class FileBuildEditor(object):
 
         if self.is_symlink:
             ie = self.editor.inventory.add_path(self.path, 'symlink', self.file_id)
-            ie.symlink_target = lines[0][len("link "):]
+            ie.symlink_target = "".join(lines)[len("link "):]
             ie.text_sha1 = None
             ie.text_size = None
             ie.executable = False

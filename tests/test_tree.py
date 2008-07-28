@@ -72,6 +72,22 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertEqual("target",
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
+    def test_symlink_with_newlines_in_target(self):
+        repos_url = self.make_client("d", "dc")
+
+        dc = self.get_commit_editor(repos_url)
+        file = dc.add_file("file")
+        file.modify("link target\nbar\nbla")
+        file.change_prop("svn:special", "*")
+        dc.close()
+
+        self.client_update("dc")
+        tree = SvnBasisTree(self.open_checkout("dc"))
+        self.assertEqual('symlink', 
+                         tree.inventory[tree.inventory.path2id("file")].kind)
+        self.assertEqual("target\nbar\nbla",
+                         tree.inventory[tree.inventory.path2id("file")].symlink_target)
+
     def test_symlink_not_special(self):
         repos_url = self.make_client("d", "dc")
 

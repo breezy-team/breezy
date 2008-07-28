@@ -1637,6 +1637,31 @@ Node-copyfrom-path: x
         self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
         self.assertEqual('bla', inv1[inv1.path2id("mylink")].symlink_target)
 
+    def test_fetch_symlink_with_newlines(self):
+        if not has_symlinks():
+            return
+        raise KnownFailure("Bazaar doesn't support newlines in symlink targets")
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("bla").modify("data")
+        l = dc.add_file("mylink")
+        l.modify("link bla\nbar\nbla")
+        l.change_prop("svn:special", "*")
+        dc.close()
+
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(1, "", mapping)))
+        inv1 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(1, "", mapping))
+        self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
+        self.assertEqual('bla\nbar\nbla', inv1[inv1.path2id("mylink")].symlink_target)
+
     def test_fetch_special_non_symlink(self):
         repos_url = self.make_repository('d')
 
