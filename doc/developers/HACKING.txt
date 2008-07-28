@@ -475,6 +475,10 @@ KnownFailure
         expected to fail.  This could be conditionally raised if something
         is broken on some platforms but not on others.
 
+        If the test would fail because of something we don't expect or
+        intend to fix, KnownFailure is not appropriate, and
+        TestNotApplicable might be better. 
+
 We plan to support three modes for running the test suite to control the
 interpretation of these results.  Strict mode is for use in situations
 like merges to the mainline and releases where we want to make sure that

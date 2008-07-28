@@ -698,12 +698,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             return self._body_buffer.read(count)
         _body_decoder = LengthPrefixedBodyDecoder()
 
-        # Read no more than 64k at a time so that we don't risk error 10055 (no
-        # buffer space available) on Windows.
-        max_read = 64 * 1024
         while not _body_decoder.finished_reading:
-            bytes_wanted = min(_body_decoder.next_read_size(), max_read)
-            bytes = self._request.read_bytes(bytes_wanted)
+            bytes = self._request.read_bytes(_body_decoder.next_read_size())
             if bytes == '':
                 # end of file encountered reading from server
                 raise errors.ConnectionReset(
@@ -719,21 +715,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
     def _recv_tuple(self):
         """Receive a tuple from the medium request."""
-        return _decode_tuple(self._recv_line())
-
-    def _recv_line(self):
-        """Read an entire line from the medium request."""
-        line = ''
-        while not line or line[-1] != '\n':
-            # TODO: this is inefficient - but tuples are short.
-            new_char = self._request.read_bytes(1)
-            if new_char == '':
-                # end of file encountered reading from server
-                raise errors.ConnectionReset(
-                    "please check connectivity and permissions",
-                    "(and try -Dhpss if further diagnosis is required)")
-            line += new_char
-        return line
+        return _decode_tuple(self._request.read_line())
 
     def query_version(self):
         """Return protocol version number of the server."""
@@ -776,7 +758,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         if version != self.response_marker:
             self._request.finished_reading()
             raise errors.UnexpectedProtocolVersionMarker(version)
-        response_status = self._recv_line()
+        response_status = self._request.read_line()
         result = SmartClientRequestProtocolOne._read_response_tuple(self)
         self._response_is_unknown_method(result)
         if response_status == 'success\n':
@@ -804,11 +786,9 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         """
         # Read no more than 64k at a time so that we don't risk error 10055 (no
         # buffer space available) on Windows.
-        max_read = 64 * 1024
         _body_decoder = ChunkedBodyDecoder()
         while not _body_decoder.finished_reading:
-            bytes_wanted = min(_body_decoder.next_read_size(), max_read)
-            bytes = self._request.read_bytes(bytes_wanted)
+            bytes = self._request.read_bytes(_body_decoder.next_read_size())
             if bytes == '':
                 # end of file encountered reading from server
                 raise errors.ConnectionReset(

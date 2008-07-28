@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,12 +30,17 @@ from bzrlib import (
     errors,
     memorytree,
     osutils,
+    remote,
     repository,
     symbol_versioning,
     tests,
+    workingtree,
     )
 from bzrlib.progress import _BaseProgressBar
-from bzrlib.repofmt import weaverepo
+from bzrlib.repofmt import (
+    pack_repo,
+    weaverepo,
+    )
 from bzrlib.symbol_versioning import (
     one_zero,
     zero_eleven,
@@ -103,15 +108,22 @@ class MetaTestLog(TestCase):
                               'a test message\n')
 
 
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        tests.UnicodeFilename._probe()
+
+
 class TestTreeShape(TestCaseInTempDir):
 
     def test_unicode_paths(self):
+        self.requireFeature(tests.UnicodeFilename)
+
         filename = u'hell\u00d8'
-        try:
-            self.build_tree_contents([(filename, 'contents of hello')])
-        except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding())
+        self.build_tree_contents([(filename, 'contents of hello')])
         self.failUnlessExists(filename)
 
 
@@ -237,60 +249,39 @@ class TestBzrDirProviderAdapter(TestCase):
 class TestRepositoryParameterisation(TestCase):
     """A group of tests that test the repository implementation test adapter."""
 
-    def test_setting_vfs_transport(self):
-        """The vfs_transport_factory can be set optionally."""
-        from bzrlib.tests.repository_implementations import formats_to_scenarios
-        scenarios = formats_to_scenarios(
-            [("(one)", "a", "b"), ("(two)", "c", "d")],
-            None,
-            None,
-            vfs_transport_factory="vfs")
-        self.assertEqual([
-            ('str(one)',
-             {'bzrdir_format': 'b',
-              'repository_format': 'a',
-              'transport_readonly_server': None,
-              'transport_server': None,
-              'vfs_transport_factory': 'vfs'}),
-            ('str(two)',
-             {'bzrdir_format': 'd',
-              'repository_format': 'c',
-              'transport_readonly_server': None,
-              'transport_server': None,
-              'vfs_transport_factory': 'vfs'})],
-            scenarios)
-
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.repository_implementations import formats_to_scenarios
-        formats = [("(c)", "c", "C"), ("(d)", 1, "D")]
+        formats = [("(c)", remote.RemoteRepositoryFormat()),
+                   ("(d)", repository.format_registry.get(
+                        'Bazaar pack repository format 1 (needs bzr 0.92)\n'))]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             vfs_transport_factory="vfs")
-        # no_vfs generate scenarios without vfs_transport_factor
+        # no_vfs generate scenarios without vfs_transport_factory
         self.assertEqual([
-            ('str(c)',
-             {'bzrdir_format': 'C',
-              'repository_format': 'c',
+            ('RemoteRepositoryFormat(c)',
+             {'bzrdir_format': remote.RemoteBzrDirFormat(),
+              'repository_format': remote.RemoteRepositoryFormat(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'}),
-            ('int(d)',
-             {'bzrdir_format': 'D',
-              'repository_format': 1,
+            ('RepositoryFormatKnitPack1(d)',
+             {'bzrdir_format': bzrdir.BzrDirMetaFormat1(),
+              'repository_format': pack_repo.RepositoryFormatKnitPack1(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'})],
             no_vfs_scenarios)
         self.assertEqual([
-            ('str(c)',
-             {'bzrdir_format': 'C',
-              'repository_format': 'c',
+            ('RemoteRepositoryFormat(c)',
+             {'bzrdir_format': remote.RemoteBzrDirFormat(),
+              'repository_format': remote.RemoteRepositoryFormat(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'}),
-            ('int(d)',
-             {'bzrdir_format': 'D',
-              'repository_format': 1,
+            ('RepositoryFormatKnitPack1(d)',
+             {'bzrdir_format': bzrdir.BzrDirMetaFormat1(),
+              'repository_format': pack_repo.RepositoryFormatKnitPack1(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'})],
@@ -386,19 +377,20 @@ class TestWorkingTreeProviderAdapter(TestCase):
             import WorkingTreeTestProviderAdapter
         server1 = "a"
         server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
+        formats = [workingtree.WorkingTreeFormat2(),
+                   workingtree.WorkingTreeFormat3(),]
         adapter = WorkingTreeTestProviderAdapter(server1, server2, formats)
         self.assertEqual([
-            ('str',
-             {'bzrdir_format': 'C',
+            ('WorkingTreeFormat2',
+             {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': 'c'}),
-            ('str',
-             {'bzrdir_format': 'D',
+              'workingtree_format': formats[0]}),
+            ('WorkingTreeFormat3',
+             {'bzrdir_format': formats[1]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': 'd'})],
+              'workingtree_format': formats[1]})],
             adapter.scenarios)
 
 
@@ -418,12 +410,12 @@ class TestTreeProviderAdapter(TestCase):
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.workingtree import WorkingTreeFormat, WorkingTreeFormat3
         input_test = TestTreeProviderAdapter(
             "test_adapted_tests")
         server1 = "a"
         server2 = "b"
-        formats = [("c", "C"), ("d", "D")]
+        formats = [workingtree.WorkingTreeFormat2(),
+                   workingtree.WorkingTreeFormat3(),]
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
@@ -432,14 +424,14 @@ class TestTreeProviderAdapter(TestCase):
         self.assertEqual(5, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
-        default_format = WorkingTreeFormat3
-        self.assertEqual(tests[0].workingtree_format, formats[0][0])
-        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
+        default_format = workingtree.WorkingTreeFormat3
+        self.assertEqual(tests[0].workingtree_format, formats[0])
+        self.assertEqual(tests[0].bzrdir_format, formats[0]._matchingbzrdir)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
-        self.assertEqual(tests[1].workingtree_format, formats[1][0])
-        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
+        self.assertEqual(tests[1].workingtree_format, formats[1])
+        self.assertEqual(tests[1].bzrdir_format, formats[1]._matchingbzrdir)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
         self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
@@ -1283,6 +1275,8 @@ class SampleTestCase(TestCase):
     def _test_pass(self):
         pass
 
+class _TestException(Exception):
+    pass
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
@@ -1445,6 +1439,61 @@ class TestTestCase(TestCase):
             ('stopTest', test),
             ],
             result.calls)
+
+    def test_assert_list_raises_on_generator(self):
+        def generator_which_will_raise():
+            # This will not raise until after the first yield
+            yield 1
+            raise _TestException()
+
+        e = self.assertListRaises(_TestException, generator_which_will_raise)
+        self.assertIsInstance(e, _TestException)
+
+        e = self.assertListRaises(Exception, generator_which_will_raise)
+        self.assertIsInstance(e, _TestException)
+
+    def test_assert_list_raises_on_plain(self):
+        def plain_exception():
+            raise _TestException()
+            return []
+
+        e = self.assertListRaises(_TestException, plain_exception)
+        self.assertIsInstance(e, _TestException)
+
+        e = self.assertListRaises(Exception, plain_exception)
+        self.assertIsInstance(e, _TestException)
+
+    def test_assert_list_raises_assert_wrong_exception(self):
+        class _NotTestException(Exception):
+            pass
+
+        def wrong_exception():
+            raise _NotTestException()
+
+        def wrong_exception_generator():
+            yield 1
+            yield 2
+            raise _NotTestException()
+
+        # Wrong exceptions are not intercepted
+        self.assertRaises(_NotTestException,
+            self.assertListRaises, _TestException, wrong_exception)
+        self.assertRaises(_NotTestException,
+            self.assertListRaises, _TestException, wrong_exception_generator)
+
+    def test_assert_list_raises_no_exception(self):
+        def success():
+            return []
+
+        def success_generator():
+            yield 1
+            yield 2
+
+        self.assertRaises(AssertionError,
+            self.assertListRaises, _TestException, success)
+
+        self.assertRaises(AssertionError,
+            self.assertListRaises, _TestException, success_generator)
 
 
 @symbol_versioning.deprecated_function(zero_eleven)

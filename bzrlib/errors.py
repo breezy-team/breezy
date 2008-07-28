@@ -93,11 +93,11 @@ class BzrError(StandardError):
             for key, value in kwds.items():
                 setattr(self, key, value)
 
-    def __str__(self):
+    def _format(self):
         s = getattr(self, '_preformatted_string', None)
         if s is not None:
-            # contains a preformatted message; must be cast to plain str
-            return str(s)
+            # contains a preformatted message
+            return s
         try:
             fmt = self._get_format_string()
             if fmt:
@@ -108,8 +108,6 @@ class BzrError(StandardError):
                 s = fmt % d
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
-                if isinstance(s, unicode):
-                    return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
@@ -117,6 +115,26 @@ class BzrError(StandardError):
                    self.__dict__,
                    getattr(self, '_fmt', None),
                    e)
+
+    def __unicode__(self):
+        u = self._format()
+        if isinstance(u, str):
+            # Try decoding the str using the default encoding.
+            u = unicode(u)
+        elif not isinstance(u, unicode):
+            # Try to make a unicode object from it, because __unicode__ must
+            # return a unicode object.
+            u = unicode(u)
+        return u
+    
+    def __str__(self):
+        s = self._format()
+        if isinstance(s, unicode):
+            s = s.encode('utf8')
+        else:
+            # __str__ must return a str.
+            s = str(s)
+        return s
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -134,6 +152,11 @@ class BzrError(StandardError):
                self.__dict__,
                getattr(self, '_fmt', None),
                )
+
+    def __eq__(self, other):
+        if self.__class__ != other.__class__:
+            return NotImplemented
+        return self.__dict__ == other.__dict__
 
 
 class InternalBzrError(BzrError):
@@ -366,16 +389,6 @@ class BzrCommandError(BzrError):
     # are not intended to be caught anyway.  UI code need not subclass
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
-    def __init__(self, msg):
-        # Object.__str__() must return a real string
-        # returning a Unicode string is a python error.
-        if isinstance(msg, unicode):
-            self.msg = msg.encode('utf8')
-        else:
-            self.msg = msg
-
-    def __str__(self):
-        return self.msg
 
 
 class NotWriteLocked(BzrError):
@@ -560,6 +573,16 @@ class InvalidURLJoin(PathError):
         self.base = base
         self.join_args = join_args
         PathError.__init__(self, base, reason)
+
+
+class InvalidRebaseURLs(PathError):
+
+    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
+
+    def __init__(self, from_, to):
+        self.from_ = from_
+        self.to = to
+        PathError.__init__(self, from_, 'URLs differ by more than path.')
 
 
 class UnavailableRepresentation(InternalBzrError):
@@ -846,6 +869,17 @@ class BadFileKindError(BzrError):
 
     def __init__(self, filename, kind):
         BzrError.__init__(self, filename=filename, kind=kind)
+
+
+class BadFilenameEncoding(BzrError):
+
+    _fmt = ('Filename %(filename)r is not valid in your current filesystem'
+            ' encoding %(fs_encoding)s')
+
+    def __init__(self, filename, fs_encoding):
+        BzrError.__init__(self)
+        self.filename = filename
+        self.fs_encoding = fs_encoding
 
 
 class ForbiddenControlFileError(BzrError):
@@ -2760,3 +2794,42 @@ class CannotBindAddress(BzrError):
     def __init__(self, host, port, orig_error):
         BzrError.__init__(self, host=host, port=port,
             orig_error=orig_error[1])
+
+
+class UnknownRules(BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        BzrError.__init__(self, unknowns_str=", ".join(unknowns))
+
+
+class HookFailed(BzrError):
+    """Raised when a pre_change_branch_tip hook function fails anything other
+    than TipChangeRejected.
+    """
+
+    _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
+            "%(traceback_text)s%(exc_value)s")
+
+    def __init__(self, hook_stage, hook_name, exc_info):
+        import traceback
+        self.hook_stage = hook_stage
+        self.hook_name = hook_name
+        self.exc_info = exc_info
+        self.exc_type = exc_info[0]
+        self.exc_value = exc_info[1]
+        self.exc_tb = exc_info[2]
+        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
+
+
+class TipChangeRejected(BzrError):
+    """A pre_change_branch_tip hook function may raise this to cleanly and
+    explicitly abort a change to a branch tip.
+    """
+    
+    _fmt = u"Tip change rejected: %(msg)s"
+
+    def __init__(self, msg):
+        self.msg = msg
+

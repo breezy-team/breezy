@@ -74,7 +74,9 @@ def _dirstate_tree_from_workingtree(testcase, tree):
 def preview_tree_pre(testcase, tree):
     tt = TransformPreview(tree)
     testcase.addCleanup(tt.finalize)
-    return tt.get_preview_tree()
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
 
 
 class TestTreeImplementationSupport(TestCaseWithTransport):
@@ -304,6 +306,10 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """
 
     def __init__(self, transport_server, transport_readonly_server, formats):
+        """Create a TreeTestProviderAdapter.
+
+        :param formats: [workingtree_format]
+        """
         super(TreeTestProviderAdapter, self).__init__(transport_server,
             transport_readonly_server, formats)
         # now adjust the scenarios and add the non-working-tree tree scenarios.
@@ -336,7 +342,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         if workingtree_format is None:
             workingtree_format = WorkingTreeFormat._default_format
         scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
-            workingtree_format, workingtree_format._matchingbzrdir)[1]
+            workingtree_format)[1]
         scenario_options["_workingtree_to_test_tree"] = converter
         return name, scenario_options
 
@@ -352,6 +358,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
+        'bzrlib.tests.tree_implementations.test_iter_search_rules',
         'bzrlib.tests.tree_implementations.test_list_files',
         'bzrlib.tests.tree_implementations.test_path_content_summary',
         'bzrlib.tests.tree_implementations.test_revision_tree',
@@ -365,8 +372,7 @@ def load_tests(basic_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in
-         WorkingTreeFormat._formats.values() + _legacy_formats])
+        WorkingTreeFormat._formats.values() + _legacy_formats)
 
     # add the tests for the sub modules
     adapt_modules(test_tree_implementations, adapter, loader, result)

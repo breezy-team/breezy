@@ -18,6 +18,7 @@
 
 """Tests for the formatting and construction of errors."""
 
+import sys
 from bzrlib import (
     bzrdir,
     errors,
@@ -29,6 +30,13 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestErrors(TestCaseWithTransport):
+
+    def test_bad_filename_encoding(self):
+        error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
+        self.assertEqualDiff(
+            "Filename 'bad/filen\\xe5me' is not valid in your current"
+            " filesystem encoding UTF-8",
+            str(error))
 
     def test_corrupt_dirstate(self):
         error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
@@ -498,6 +506,31 @@ class TestErrors(TestCaseWithTransport):
     def test_unknown_format(self):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEquals("Unknown foo format: 'bar'", str(err))
+
+    def test_unknown_rules(self):
+        err = errors.UnknownRules(['foo', 'bar'])
+        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+
+    def test_hook_failed(self):
+        # Create an exc_info tuple by raising and catching an exception.
+        try:
+            1/0
+        except ZeroDivisionError:
+            exc_info = sys.exc_info()
+        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        self.assertStartsWith(
+            str(err), 'Hook \'hook name\' during hook stage failed:\n')
+        self.assertEndsWith(
+            str(err), 'integer division or modulo by zero')
+
+    def test_tip_change_rejected(self):
+        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        self.assertEquals(
+            u'Tip change rejected: Unicode message\N{INTERROBANG}',
+            unicode(err))
+        self.assertEquals(
+            'Tip change rejected: Unicode message\xe2\x80\xbd',
+            str(err))
 
 
 class PassThroughError(errors.BzrError):

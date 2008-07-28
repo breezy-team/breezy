@@ -39,7 +39,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
-from bzrlib.symbol_versioning import deprecated_function, one_six
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import log_error, note
 import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
@@ -241,7 +241,7 @@ class Check(object):
             seen_names[path] = True
 
 
-@deprecated_function(one_six)
+@deprecated_function(deprecated_in((1,6,0)))
 def check(branch, verbose):
     """Run consistency checks on a branch.
     
@@ -290,9 +290,8 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
             # The branch is in a shared repository
             repo = branch.repository
         branches = [branch]
-    else:
-        if repo is not None:
-            branches = repo.find_branches(using=True)
+    elif repo is not None:
+        branches = repo.find_branches(using=True)
 
     if repo is not None:
         repo.lock_read()

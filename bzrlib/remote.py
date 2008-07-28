@@ -88,6 +88,13 @@ class RemoteBzrDir(BzrDir):
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
 
+    def cloning_metadir(self):
+        self._ensure_real()
+        return self._real_bzrdir.cloning_metadir()
+
+    def _translate_error(self, err, **context):
+        _translate_error(err, bzrdir=self, **context)
+        
     def create_repository(self, shared=False):
         self._ensure_real()
         self._real_bzrdir.create_repository(shared=shared)
@@ -125,9 +132,7 @@ class RemoteBzrDir(BzrDir):
         try:
             response = self._client.call('BzrDir.open_branch', path)
         except errors.ErrorFromSmartServer, err:
-            if err.error_tuple == ('nobranch',):
-                raise errors.NotBranchError(path=self.root_transport.base)
-            raise
+            self._translate_error(err)
         if response[0] == 'ok':
             if response[1] == '':
                 # branch at this location.
@@ -164,9 +169,7 @@ class RemoteBzrDir(BzrDir):
                 verb = 'BzrDir.find_repository'
                 response = self._client.call(verb, path)
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'norepository':
-                raise errors.NoRepositoryPresent(self)
-            raise
+            self._translate_error(err)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         if verb == 'BzrDir.find_repository':
@@ -181,6 +184,8 @@ class RemoteBzrDir(BzrDir):
             format.supports_tree_reference = (response[3] == 'yes')
             # No wire format to check this yet.
             format.supports_external_lookups = (response[4] == 'yes')
+            # Used to support creating a real format instance when needed.
+            format._creating_bzrdir = self
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
@@ -216,10 +221,15 @@ class RemoteBzrDir(BzrDir):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def clone(self, url, revision_id=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
         self._ensure_real()
         return self._real_bzrdir.clone(url, revision_id=revision_id,
-            force_new_repo=force_new_repo)
+            force_new_repo=force_new_repo, preserve_stacking=preserve_stacking)
+
+    def get_config(self):
+        self._ensure_real()
+        return self._real_bzrdir.get_config()
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
@@ -235,11 +245,14 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the class level.
     """
 
-    _matchingbzrdir = RemoteBzrDirFormat
+    _matchingbzrdir = RemoteBzrDirFormat()
 
     def initialize(self, a_bzrdir, shared=False):
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            raise AssertionError('%r is not a RemoteBzrDir' % (a_bzrdir,))
+            prior_repo = self._creating_bzrdir.open_repository()
+            prior_repo._ensure_real()
+            return prior_repo._real_repository._format.initialize(
+                a_bzrdir, shared=shared)
         return a_bzrdir.create_repository(shared=shared)
     
     def open(self, a_bzrdir):
@@ -308,6 +321,8 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
+        # Additional places to query for data.
+        self._fallback_repositories = []
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -345,6 +360,9 @@ class RemoteRepository(object):
             self.bzrdir._ensure_real()
             #self._real_repository = self.bzrdir._real_bzrdir.open_repository()
             self._set_real_repository(self.bzrdir._real_bzrdir.open_repository())
+
+    def _translate_error(self, err, **context):
+        self.bzrdir._translate_error(err, repository=self, **context)
 
     def find_text_key_references(self):
         """Find the text key references within the repository.
@@ -388,9 +406,7 @@ class RemoteRepository(object):
             response = self._client.call_expecting_body(
                 'Repository.get_revision_graph', path, revision_id)
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'nosuchrevision':
-                raise NoSuchRevision(self, revision_id)
-            raise
+            self._translate_error(err)
         response_tuple, response_handler = response
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
@@ -525,13 +541,7 @@ class RemoteRepository(object):
         try:
             response = self._client.call('Repository.lock_write', path, token)
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'LockContention':
-                raise errors.LockContention('(remote lock)')
-            elif err.error_verb == 'UnlockableTransport':
-                raise errors.UnlockableTransport(self.bzrdir.root_transport)
-            elif err.error_verb == 'LockFailed':
-                raise errors.LockFailed(err.error_args[0], err.error_args[1])
-            raise
+            self._translate_error(err, token=token)
 
         if response[0] == 'ok':
             ok, token = response
@@ -608,9 +618,7 @@ class RemoteRepository(object):
         try:
             response = self._client.call('Repository.unlock', path, token)
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'TokenMismatch':
-                raise errors.TokenMismatch(token, '(remote token)')
-            raise
+            self._translate_error(err, token=token)
         if response == ('ok',):
             return
         else:
@@ -699,6 +707,17 @@ class RemoteRepository(object):
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
         return builder
+
+    def add_fallback_repository(self, repository):
+        """Add a repository to use for looking up data not held locally.
+        
+        :param repository: A repository.
+        """
+        if not self._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # We need to accumulate additional repositories here, to pass them in
+        # on various RPC's.
+        self._fallback_repositories.append(repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1265,6 +1284,9 @@ class RemoteBranch(branch.Branch):
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
 
+    def _translate_error(self, err, **context):
+        self.repository._translate_error(err, branch=self, **context)
+
     def _clear_cached_state(self):
         super(RemoteBranch, self)._clear_cached_state()
         if self._real_branch is not None:
@@ -1301,6 +1323,18 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
+    def get_stacked_on_url(self):
+        """Get the URL this branch is stacked against.
+
+        :raises NotStacked: If the branch is not stacked.
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.get_stacked_on_url()
+
     def lock_read(self):
         if not self._lock_mode:
             self._lock_mode = 'r'
@@ -1322,17 +1356,7 @@ class RemoteBranch(branch.Branch):
             response = self._client.call(
                 'Branch.lock_write', path, branch_token, repo_token or '')
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'LockContention':
-                raise errors.LockContention('(remote lock)')
-            elif err.error_verb == 'TokenMismatch':
-                raise errors.TokenMismatch(token, '(remote token)')
-            elif err.error_verb == 'UnlockableTransport':
-                raise errors.UnlockableTransport(self.bzrdir.root_transport)
-            elif err.error_verb == 'ReadOnlyError':
-                raise errors.ReadOnlyError(self)
-            elif err.error_verb == 'LockFailed':
-                raise errors.LockFailed(err.error_args[0], err.error_args[1])
-            raise
+            self._translate_error(err, token=token)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         ok, branch_token, repo_token = response
@@ -1383,10 +1407,7 @@ class RemoteBranch(branch.Branch):
             response = self._client.call('Branch.unlock', path, branch_token,
                                          repo_token or '')
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'TokenMismatch':
-                raise errors.TokenMismatch(
-                    str((branch_token, repo_token)), '(remote tokens)')
-            raise
+            self._translate_error(err, token=str((branch_token, repo_token)))
         if response == ('ok',):
             return
         raise errors.UnexpectedSmartServerResponse(response)
@@ -1462,11 +1483,7 @@ class RemoteBranch(branch.Branch):
                 path, self._lock_token, self._repo_lock_token, revision_id,
                 int(allow_diverged), int(allow_overwrite_descendant))
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'NoSuchRevision':
-                raise NoSuchRevision(self, revision_id)
-            elif err.error_verb == 'Diverged':
-                raise errors.DivergedBranches(self, other_branch)
-            raise
+            self._translate_error(err, other_branch=other_branch)
         self._clear_cached_state()
         if len(response) != 3 and response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
@@ -1481,9 +1498,7 @@ class RemoteBranch(branch.Branch):
             response = self._client.call('Branch.set_last_revision',
                 path, self._lock_token, self._repo_lock_token, revision_id)
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'NoSuchRevision':
-                raise NoSuchRevision(self, revision_id)
-            raise
+            self._translate_error(err)
         if response != ('ok',):
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -1507,6 +1522,17 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_parent(url)
         
+    def set_stacked_on_url(self, stacked_location):
+        """Set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.set_stacked_on_url(stacked_location)
+
     def sprout(self, to_bzrdir, revision_id=None):
         # Like Branch.sprout, except that it sprouts a branch in the default
         # format, because RemoteBranches can't be created at arbitrary URLs.
@@ -1551,9 +1577,7 @@ class RemoteBranch(branch.Branch):
             self._last_revision_info_cache = revno, revision_id
             return
         except errors.ErrorFromSmartServer, err:
-            if err.error_verb == 'NoSuchRevision':
-                raise NoSuchRevision(self, err.error_args[0])
-            raise
+            self._translate_error(err)
         if response == ('ok',):
             self._clear_cached_state()
             self._last_revision_info_cache = revno, revision_id
@@ -1636,3 +1660,43 @@ def _extract_tar(tar, to_dir):
     """
     for tarinfo in tar:
         tar.extract(tarinfo, to_dir)
+
+
+def _translate_error(err, **context):
+    """Translate an ErrorFromSmartServer into a more useful error.
+
+    Possible context keys:
+      - branch
+      - repository
+      - bzrdir
+      - token
+      - other_branch
+    """
+    def find(name):
+        try:
+            return context[name]
+        except KeyError, keyErr:
+            mutter('Missing key %r in context %r', keyErr.args[0], context)
+            raise err
+    if err.error_verb == 'NoSuchRevision':
+        raise NoSuchRevision(find('branch'), err.error_args[0])
+    elif err.error_verb == 'nosuchrevision':
+        raise NoSuchRevision(find('repository'), err.error_args[0])
+    elif err.error_tuple == ('nobranch',):
+        raise errors.NotBranchError(path=find('bzrdir').root_transport.base)
+    elif err.error_verb == 'norepository':
+        raise errors.NoRepositoryPresent(find('bzrdir'))
+    elif err.error_verb == 'LockContention':
+        raise errors.LockContention('(remote lock)')
+    elif err.error_verb == 'UnlockableTransport':
+        raise errors.UnlockableTransport(find('bzrdir').root_transport)
+    elif err.error_verb == 'LockFailed':
+        raise errors.LockFailed(err.error_args[0], err.error_args[1])
+    elif err.error_verb == 'TokenMismatch':
+        raise errors.TokenMismatch(find('token'), '(remote token)')
+    elif err.error_verb == 'Diverged':
+        raise errors.DivergedBranches(find('branch'), find('other_branch'))
+    elif err.error_verb == 'TipChangeRejected':
+        raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
+    raise
+

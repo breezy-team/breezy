@@ -105,6 +105,34 @@ new_revid) where local is the local branch or None, master is the target
 branch, and an empty branch receives new_revno of 0, new_revid of None.
 
 
+pre_change_branch_tip (Branch)
+-------------------------------
+
+Run before a branch tip has been changed, while the branch is write-locked.
+Note that push, pull, commit and uncommit all invoke this hook.
+
+The hook signature is (params), where params is an object containing
+the members
+
+  branch
+    The branch whose tip has been changed.
+
+  old_revno
+    The revision number (eg 10) of the branch before the change.
+
+  old_revid
+    The revision id (eg joe@foo.com-1234234-aoeua34) before the change.
+
+  new_revno
+    The revision number (eg 12) of the branch after the change.
+
+  new_revid
+    The revision id (eg joe@foo.com-5676566-boa234a) after the change.
+
+The old_revno and new_revno members are integers, as the head
+revision never has a dotted revision number.
+
+
 post_change_branch_tip (Branch)
 -------------------------------
 
@@ -130,7 +158,7 @@ the members
     The revision id (eg joe@foo.com-5676566-boa234a) after the change.
 
 The old_revno and new_revno members are integers, as the head
-revision is never has a dotted revision number.
+revision never has a dotted revision number.
 
 
 set_rh (Branch)
