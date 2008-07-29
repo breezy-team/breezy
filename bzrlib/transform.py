@@ -1538,6 +1538,15 @@ class _PreviewTree(tree.Tree):
         for child_trans_id in self._all_children(trans_id):
             yield self._transform.final_file_id(child_trans_id)
 
+    def extras(self):
+        possible_extras = set(self._transform.trans_id_tree_path(p) for p
+                              in self._transform._tree.extras())
+        #possible_extras.update(self._transform._new_contents)
+        possible_extras.update(self._transform._removed_id)
+        for trans_id in possible_extras:
+            if self._transform.final_file_id(trans_id) is None:
+                yield self._final_paths._determine_path(trans_id)
+
     def _make_inv_entries(self, ordered_entries, specific_file_ids):
         for trans_id, parent_file_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)

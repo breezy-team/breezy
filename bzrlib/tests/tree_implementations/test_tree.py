@@ -16,8 +16,10 @@
 
 from bzrlib import (
     errors,
-    tests,
     conflicts,
+    revisiontree,
+    tests,
+    workingtree_4,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -203,3 +205,23 @@ class TestIterEntriesByDir(TestCaseWithTree):
         output_order = [p for p, e in tree.iter_entries_by_dir()]
         self.assertEqual(['', 'a', 'f', 'a/b', 'a/d', 'a/b/c', 'a/d/e', 'f/g'],
                          output_order)
+
+
+class TestExtras(TestCaseWithTree):
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file')
+        work_tree.commit('add file')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        if isinstance(tree,
+                      (revisiontree.RevisionTree,
+                       workingtree_4.DirStateRevisionTree)):
+            expected = []
+        else:
+            expected = ['file']
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(expected, list(tree.extras()))
