@@ -955,11 +955,12 @@ class Repository(object):
                 not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
+        # if there is no specific appropriate InterRepository, this will get
+        # the InterRepository base class, which raises an
+        # IncompatibleRepositories when asked to fetch.
         inter = InterRepository.get(source, self)
-        try:
-            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
-        except NotImplementedError:
-            raise errors.IncompatibleRepositories(source, self)
+        return inter.fetch(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts)
 
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
