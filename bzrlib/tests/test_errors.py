@@ -532,6 +532,17 @@ class TestErrors(TestCaseWithTransport):
             'Tip change rejected: Unicode message\xe2\x80\xbd',
             str(err))
 
+    def test_no_such_view(self):
+        err = errors.NoSuchView('foo')
+        self.assertEquals("No such view: foo.", str(err))
+
+    def test_views_not_supported(self):
+        err = errors.ViewsNotSupported('atree')
+        err_str = str(err)
+        self.assertStartsWith(err_str, "Views are not supported by ")
+        self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
+            "tree to a later format.")
+
 
 class PassThroughError(errors.BzrError):
     

@@ -2833,3 +2833,23 @@ class TipChangeRejected(BzrError):
     def __init__(self, msg):
         self.msg = msg
 
+
+class NoSuchView(BzrError):
+    """A view does not exist.
+    """
+    
+    _fmt = u"No such view: %(view_name)s."
+
+    def __init__(self, view_name):
+        self.view_name = view_name
+
+
+class ViewsNotSupported(BzrError):
+    """Views are not supported by a tree format.
+    """
+    
+    _fmt = ("Views are not supported by %(tree)s;"
+            " use 'bzr upgrade' to change your tree to a later format.")
+
+    def __init__(self, tree):
+        self.tree = tree
