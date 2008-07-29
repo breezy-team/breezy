@@ -1423,15 +1423,15 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), False, None)),
                          ], entries)
 
-    def test_not_in_one_lca(self):
+    def test_file_not_in_one_lca(self):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None))])
         builder.build_snapshot('B-id', ['A-id'], [])
         builder.build_snapshot('C-id', ['A-id'],
             [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
-        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
-        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], []) # Inherited from C
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], # Merged from C
             [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
@@ -1441,11 +1441,7 @@ class TestMergerEntriesLCA(TestMergerBase):
 
         entries = list(merge_obj._entries_lca())
         root_id = 'a-root-id'
-        self.assertEqual([('a-id', True,
-                           ((None, [None, root_id]), root_id, root_id),
-                           ((None, [None, u'a']), u'a', u'a'),
-                           ((None, [None, False]), False, False)),
-                         ], entries)
+        self.assertEqual([], entries)
 
     def test_not_in_other(self):
         builder = self.get_builder()
@@ -1467,6 +1463,26 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), None, False)),
                          ], entries)
 
+    def test_only_in_one_lca(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('add', (u'a', 'a-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('unversion', 'a-id')])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('a-id', True,
+                           ((None, [None, root_id]), None, None),
+                           ((None, [None, u'a']), None, None),
+                           ((None, [None, False]), None, None)),
+                         ], entries)
+
     def test_only_in_other(self):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
@@ -1486,7 +1502,7 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [None, None]), False, None)),
                          ], entries)
 
-    def DONT_test_only_path_changed(self):
+    def test_only_path_changed(self):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None)),
@@ -1517,3 +1533,4 @@ class TestMergerEntriesLCA(TestMergerBase):
     #       x-x LCAs differ, one in ancestry of other for a given file
     #       x-x file missing in LCA
     #       x-x Reverted back to BASE text
+    #       x-x Symlink targets, similar to file contents

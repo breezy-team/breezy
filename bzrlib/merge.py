@@ -479,6 +479,23 @@ class Merger(object):
         return len(merge.cooked_conflicts)
 
 
+class _InventoryNoneEntry(object):
+    """This represents an inventory entry which *isn't there*.
+
+    It simplifies the merging logic if we always have an InventoryEntry, even
+    if it isn't actually present
+    """
+    executable = None
+    kind = None
+    name = None
+    parent_id = None
+    revision = None
+    symlink_target = None
+    text_sha1 = None
+
+_none_entry = _InventoryNoneEntry()
+
+
 class Merge3Merger(object):
     """Three-way merger that uses the merge3 text merger"""
     requires_base = True
@@ -669,84 +686,89 @@ class Merge3Merger(object):
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             if other_ie is None:
-                last_rev = other_kind = other_parent_id = other_name = None
-                other_executable = None
-            else:
-                last_rev = other_ie.revision
-                other_kind = other_ie.kind
-                other_parent_id = other_ie.parent_id
-                other_name = other_ie.name
-                other_executable = other_ie.executable
+                other_ie = _none_entry
 
             # I believe we can actually change this to see if last_rev is
-            # identical to *any* of the lca values.
+            # identical to *any* of the lca values. Though we should actually
+            # use the _lca_multi_way logic. However, it may be worthwhile to
+            # shortcut entries that are identical in all of LCA + OTHER, just
+            # to avoid the overhead of looking up information in BASE and THIS.
+            other_revision = other_ie.revision
             for lca_path, ie in lca_values:
-                if ((ie is None and other_ie is not None)
-                    or ie.revision != last_rev):
+                if ie is None or ie.revision != other_revision:
                     break
             else: # Identical in all trees
                 continue
-            kind_changed = False
-            parent_id_changed = False
-            name_changed = False
-            for lca_path, ie in lca_values:
-                if ie is None and other_ie is not None:
-                    kind_changed = parent_id_changed = name_changed = True
-                    break
-                if ie.kind != other_kind:
-                    kind_changed = True
-                if ie.parent_id != other_parent_id:
-                    parent_id_changed = True
-                if ie.name != other_name:
-                    name_changed = True
 
-            if (not kind_changed and not parent_id_changed
-                and not name_changed and other_kind == 'directory'):
-                # Even though last-modified has changed, the actual attributes
-                # of this entry hasn't changed, so skip it.
-                continue
-
-            is_content_changed = False
-            if kind_changed:
-                is_content_changed = True
+            lca_entries = []
+            for lca_path, lca_ie in lca_values:
+                if lca_ie is None:
+                    lca_entries.append(_none_entry)
+                else:
+                    lca_entries.append(lca_ie)
 
             if file_id in base_inventory:
-                base_ie = self.base_tree.inventory[file_id]
-                base_parent_id = base_ie.parent_id
-                base_name = base_ie.name
-                base_executable = base_ie.executable
+                base_ie = base_inventory[file_id]
             else:
-                base_parent_id = base_name = base_executable = None
+                base_ie = _none_entry
+
             if file_id in this_inventory:
                 this_ie = this_inventory[file_id]
-                this_parent_id = this_ie.parent_id
-                this_name = this_ie.name
-                this_executable = this_ie.executable
             else:
-                this_parent_id = this_name = this_executable = None
+                this_ie = _none_entry
 
+            kind_winner = Merge3Merger._lca_multi_way(
+                (base_ie.kind, [ie.kind for ie in lca_entries]),
+                other_ie.kind, this_ie.kind)
+            parent_id_winner = Merge3Merger._lca_multi_way(
+                (base_ie.parent_id, [ie.parent_id for ie in lca_entries]),
+                other_ie.parent_id, this_ie.parent_id)
+            name_winner = Merge3Merger._lca_multi_way(
+                (base_ie.name, [ie.name for ie in lca_entries]),
+                other_ie.name, this_ie.name)
+            content_changed = True
+            if kind_winner == 'this':
+                # No kind change in OTHER, see if there are *any* changes
+                if other_ie.kind == None:
+                    # No content and 'this' wins the kind, so skip this?
+                    # continue
+                    pass
+                if other_ie.kind == 'directory':
+                    if parent_id_winner == 'this' and name_winner == 'this':
+                        # No change for this directory in OTHER, skip
+                        continue
+                    content_changed = False
+                elif other_ie.kind == 'file':
+                    sha1_winner = Merge3Merger._lca_multi_way(
+                        (base_ie.text_sha1, [ie.text_sha1 for ie
+                                                           in lca_entries]),
+                        other_ie.text_sha1, this_ie.text_sha1)
+                    if (parent_id_winner == 'this' and name_winner == 'this'
+                        and sha1_winner == 'this'):
+                        # No kind, parent, name, content change for OTHER, so
+                        # this node is not considered interesting
+                        continue
+                    if sha1_winner == 'this':
+                        content_changed = False
 
             lca_parent_ids = []
             lca_names = []
             lca_executable = []
-            for path, ie in lca_values:
-                if ie is None:
-                    lca_parent_ids.append(None)
-                    lca_names.append(None)
-                    lca_executable.append(None)
-                else:
-                    lca_parent_ids.append(ie.parent_id)
-                    lca_names.append(ie.name)
-                    lca_executable.append(ie.executable)
+            lca_sha1 = []
+            for ie in lca_entries:
+                lca_parent_ids.append(ie.parent_id)
+                lca_names.append(ie.name)
+                lca_executable.append(ie.executable)
+                lca_sha1.append(ie.text_sha1)
 
             # If we have gotten this far, that means something has changed
-            result.append((file_id, True,
-                           ((base_parent_id, lca_parent_ids),
-                            other_parent_id, this_parent_id),
-                           ((base_name, lca_names),
-                            other_name, this_name),
-                           ((base_executable, lca_executable),
-                            other_executable, this_executable)
+            result.append((file_id, content_changed,
+                           ((base_ie.parent_id, lca_parent_ids),
+                            other_ie.parent_id, this_ie.parent_id),
+                           ((base_ie.name, lca_names),
+                            other_ie.name, this_ie.name),
+                           ((base_ie.executable, lca_executable),
+                            other_ie.executable, this_ie.executable)
                           ))
         return result
 
