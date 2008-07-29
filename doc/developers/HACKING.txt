@@ -902,6 +902,8 @@ The ``InterObject`` provides for two-way `multiple dispatch`__: matching
 up for example a source and destination repository to find the right way
 to transfer data between them. 
 
+.. __: http://en.wikipedia.org/wiki/Multiple_dispatch
+
 There is a subclass ``InterObject`` classes for each type of object that is
 dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
 class will return an ``InterObject`` instance providing the best match for 
