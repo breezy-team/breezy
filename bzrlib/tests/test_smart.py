@@ -36,7 +36,7 @@ from bzrlib import (
     tests,
     urlutils,
     )
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
 import bzrlib.smart.bzrdir
 import bzrlib.smart.repository
@@ -479,6 +479,20 @@ class TestSetLastRevisionVerbMixin(object):
         self.assertRequestSucceeds(rev_id_utf8, 1)
         self.assertEqual(
             (1, rev_id_utf8), self.tree.branch.last_revision_info())
+
+    def test_TipChangeRejected(self):
+        """If a pre_change_branch_tip hook raises TipChangeRejected, the verb
+        returns TipChangeRejected.
+        """
+        rejection_message = u'rejection message\N{INTERROBANG}'
+        def hook_that_rejects(params):
+            raise errors.TipChangeRejected(rejection_message)
+        Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', hook_that_rejects, None)
+        self.assertEqual(
+            FailedSmartServerResponse(
+                ('TipChangeRejected', rejection_message.encode('utf-8'))),
+            self.set_last_revision('null:', 0))
 
 
 class TestSmartServerBranchRequestSetLastRevision(

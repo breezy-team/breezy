@@ -97,6 +97,9 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+class TestBranchStacked(ExternalBase):
+    """Tests for branch --stacked"""
+
     def check_shallow_branch(self, branch_revid, stacked_on):
         """Assert that the branch 'newbranch' has been published correctly.
         
@@ -153,6 +156,9 @@ class TestBranch(ExternalBase):
         self.assertEqual('', out)
         self.assertEqual('Branched 1 revision(s).\n',
             err)
+        # it should have preserved the branch format, and so it should be
+        # capable of supporting stacking, but not actually have a stacked_on
+        # branch configured
         self.assertRaises(errors.NotStacked,
             bzrdir.BzrDir.open('newbranch').open_branch().get_stacked_on_url)
 
@@ -206,6 +212,12 @@ class TestBranch(ExternalBase):
         trunk = self.make_branch('mainline', format='development')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
+
+    def test_branch_stacked_from_non_stacked_format(self):
+        """The origin format doesn't support stacking"""
+        trunk = self.make_branch('trunk', format='pack-0.92')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', 'trunk', 'shallow'])
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

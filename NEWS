@@ -8,10 +8,20 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  CHANGES:
+
+    * Knit format repositories are deprecated and bzr will now emit
+      warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
+      knit repositories to pack format.  (Andrew Bennetts)
+      
+
   FEATURES:
 
 
   IMPROVEMENTS:
+
+    * ``bzr check`` can now be told which elements at a location it should
+      check.  (Daniel Watkins)
 
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
       This uses a pyrex extension to get direct access to the
@@ -21,8 +31,15 @@ IN DEVELOPMENT
       Anywhere from 2x-6x faster depending on the size of the tree (bigger
       trees, bigger benefit.) (John Arbash Meinel)
 
+    * Fetching data between repositories that have the same model but no 
+      optimised fetcher will not reserialise all the revisions, increasing
+      performance. (Robert Collins, John Arbash Meinel)
 
   BUG FIXES:
+
+    * ``bzr branch --stacked`` ensures the destination branch format can
+      support stacking, even if the origin does not.
+      (Martin Pool)
 
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
@@ -40,6 +57,13 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * The generic fetch code now uses three attributes on Repository objects
+      to control fetch. The streams requested are controlled via :
+      ``_fetch_order`` and ``_fetch_uses_deltas``. Setting these
+      appropriately allows different repository implementations to recieve
+      data in their optimial form. If the ``_fetch_reconcile`` is set then
+      a reconcile operation is triggered at the end of the fetch.
+      (Robert Collins)
 
   INTERNALS:
 
