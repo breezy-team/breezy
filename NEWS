@@ -31,6 +31,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Better message about incompatible repositories.
+      (Martin Pool, #206258)
+
     * ``bzr branch --stacked`` ensures the destination branch format can
       support stacking, even if the origin does not.
       (Martin Pool)
