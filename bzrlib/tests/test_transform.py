@@ -2376,3 +2376,18 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         expected = [(('', 'tree-root'),
                     [('a', 'a', 'file', None, 'a-id', 'file')])]
         self.assertEqual(expected, list(preview_tree.walkdirs()))
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/removed-file', 'tree/existing-file',
+                         'tree/not-removed-file'])
+        work_tree.add(['removed-file', 'not-removed-file'])
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('new-file', preview.root, 'contents')
+        preview.new_file('new-versioned-file', preview.root, 'contents',
+                         'new-versioned-id')
+        tree = preview.get_preview_tree()
+        preview.unversion_file(preview.trans_id_tree_path('removed-file'))
+        self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
+                         set(tree.extras()))
