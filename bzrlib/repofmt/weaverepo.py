@@ -148,7 +148,6 @@ class AllInOneRepository(Repository):
         return self.inventories.add_lines((revision_id,), final_parents, lines,
             check_content=check_content)[0]
 
-    @needs_read_lock
     def is_shared(self):
         """AllInOne repositories cannot be shared."""
         return False

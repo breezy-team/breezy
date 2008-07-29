@@ -1626,7 +1626,6 @@ class Repository(object):
         else:
             return self.get_inventory(revision_id)
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2006,7 +2005,6 @@ class MetaDirRepository(Repository):
         super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         return self._transport.has('shared-storage')
