@@ -1541,7 +1541,7 @@ class _PreviewTree(tree.Tree):
     def extras(self):
         possible_extras = set(self._transform.trans_id_tree_path(p) for p
                               in self._transform._tree.extras())
-        #possible_extras.update(self._transform._new_contents)
+        possible_extras.update(self._transform._new_contents)
         possible_extras.update(self._transform._removed_id)
         for trans_id in possible_extras:
             if self._transform.final_file_id(trans_id) is None:
