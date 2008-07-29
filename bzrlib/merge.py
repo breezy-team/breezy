@@ -597,19 +597,24 @@ class Merge3Merger(object):
         return self.tt
 
     def _compute_transform(self):
-        entries = self._entries3()
+        if self._lca_trees is None:
+            entries = self._entries3()
+            resolver = self._three_way
+        else:
+            entries = self._entries_lca()
+            resolver = self._lca_multi_way
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
                 child_pb.update('Preparing file merge', num, len(entries))
-                self._merge_names(file_id, parents3, names3)
+                self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self.merge_contents(file_id)
                 else:
                     file_status = 'unmodified'
                 self._merge_executable(file_id,
-                    executable3, file_status)
+                    executable3, file_status, resolver=resolver)
         finally:
             child_pb.finished()
         self.fix_root()
@@ -717,15 +722,28 @@ class Merge3Merger(object):
             else:
                 this_ie = _none_entry
 
+            lca_kinds = []
+            lca_parent_ids = []
+            lca_names = []
+            lca_executable = []
+            lca_sha1s = []
+            for lca_ie in lca_entries:
+                lca_kinds.append(lca_ie.kind)
+                lca_parent_ids.append(lca_ie.parent_id)
+                lca_names.append(lca_ie.name)
+                lca_executable.append(lca_ie.executable)
+                lca_sha1s.append(lca_ie.text_sha1)
+
             kind_winner = Merge3Merger._lca_multi_way(
-                (base_ie.kind, [ie.kind for ie in lca_entries]),
+                (base_ie.kind, lca_kinds),
                 other_ie.kind, this_ie.kind)
             parent_id_winner = Merge3Merger._lca_multi_way(
-                (base_ie.parent_id, [ie.parent_id for ie in lca_entries]),
+                (base_ie.parent_id, lca_parent_ids),
                 other_ie.parent_id, this_ie.parent_id)
             name_winner = Merge3Merger._lca_multi_way(
-                (base_ie.name, [ie.name for ie in lca_entries]),
+                (base_ie.name, lca_names),
                 other_ie.name, this_ie.name)
+
             content_changed = True
             if kind_winner == 'this':
                 # No kind change in OTHER, see if there are *any* changes
@@ -733,16 +751,20 @@ class Merge3Merger(object):
                     # No content and 'this' wins the kind, so skip this?
                     # continue
                     pass
-                if other_ie.kind == 'directory':
+                elif other_ie.kind == 'directory':
                     if parent_id_winner == 'this' and name_winner == 'this':
                         # No change for this directory in OTHER, skip
                         continue
                     content_changed = False
                 elif other_ie.kind == 'file':
                     sha1_winner = Merge3Merger._lca_multi_way(
-                        (base_ie.text_sha1, [ie.text_sha1 for ie
-                                                           in lca_entries]),
+                        (base_ie.text_sha1, lca_sha1s),
                         other_ie.text_sha1, this_ie.text_sha1)
+                    # XXX: This should be tested before we include it, not
+                    #      sure how to actually get a test written for this.
+                    # exec_winner = Merge3Merger._lca_multi_way(
+                    #     (base_ie.executable, lca_executable),
+                    #     other_ie.executable, this_ie.executable)
                     if (parent_id_winner == 'this' and name_winner == 'this'
                         and sha1_winner == 'this'):
                         # No kind, parent, name, content change for OTHER, so
@@ -750,16 +772,9 @@ class Merge3Merger(object):
                         continue
                     if sha1_winner == 'this':
                         content_changed = False
-
-            lca_parent_ids = []
-            lca_names = []
-            lca_executable = []
-            lca_sha1 = []
-            for ie in lca_entries:
-                lca_parent_ids.append(ie.parent_id)
-                lca_names.append(ie.name)
-                lca_executable.append(ie.executable)
-                lca_sha1.append(ie.text_sha1)
+                else:
+                    raise AssertionError('unhandled kind: %s' % other_ie.kind)
+                # XXX: We need to handle kind == 'symlink'
 
             # If we have gotten this far, that means something has changed
             result.append((file_id, content_changed,
@@ -948,14 +963,16 @@ class Merge3Merger(object):
                 parents.append(entry.parent_id)
         return self._merge_names(file_id, parents, names)
 
-    def _merge_names(self, file_id, parents, names):
+    def _merge_names(self, file_id, parents, names, resolver=None):
         """Perform a merge on file_id names and parents"""
+        if resolver is None:
+            resolver = self._three_way
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
 
-        name_winner = self._three_way(*names)
+        name_winner = resolver(*names)
 
-        parent_id_winner = self._three_way(*parents)
+        parent_id_winner = resolver(*parents)
         if this_name is None:
             if name_winner == "this":
                 name_winner = "other"
@@ -1151,12 +1168,15 @@ class Merge3Merger(object):
                       self.other_tree, self.this_tree)]
         self._merge_executable(file_id, executable, file_status)
 
-    def _merge_executable(self, file_id, executable, file_status):
+    def _merge_executable(self, file_id, executable, file_status,
+                          resolver=None):
         """Perform a merge on the execute bit."""
+        if resolver is None:
+            resolver = self._three_way
         base_executable, other_executable, this_executable = executable
         if file_status == "deleted":
             return
-        winner = self._three_way(*executable)
+        winner = resolver(*executable)
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
