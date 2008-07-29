@@ -257,7 +257,7 @@ class TestRunBzrCaptured(ExternalBase):
 class TestRunBzrSubprocess(TestCaseWithTransport):
 
     def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
+        """The run_bzr_helper_external command behaves nicely."""
         result = self.run_bzr_subprocess('--version')
         result = self.run_bzr_subprocess(['--version'])
         result = self.run_bzr_subprocess('--version', retcode=None)
