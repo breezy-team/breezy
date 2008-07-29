@@ -193,8 +193,9 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_unknown_action(self):
         builder = self.build_a_rev()
-        self.assertRaises(errors.UnknownBuildAction,
+        e = self.assertRaises(ValueError,
             builder.build_snapshot, 'B-id', None, [('weirdo', ('foo',))])
+        self.assertEqual('Unknown build action: "weirdo"', str(e))
 
     def test_rename(self):
         builder = self.build_a_rev()

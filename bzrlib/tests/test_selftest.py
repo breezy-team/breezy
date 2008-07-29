@@ -556,8 +556,11 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.failIf(osutils.lexists('dir'))
 
     def test_make_branch_builder_with_format(self):
+        # Use a repo layout that doesn't conform to a 'named' layout, to ensure
+        # that the format objects are used.
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = weaverepo.RepositoryFormat7()
+        repo_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repo_format
         builder = self.make_branch_builder('dir', format=format)
         the_branch = builder.get_branch()
         # Guard against regression into MemoryTransport leaking
@@ -565,6 +568,9 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.failIf(osutils.lexists('dir'))
         self.assertEqual(format.repository_format.__class__,
                          the_branch.repository._format.__class__)
+        self.assertEqual(repo_format.get_format_string(),
+                         self.get_transport().get_bytes(
+                            'dir/.bzr/repository/format'))
 
     def test_make_branch_builder_with_format_name(self):
         builder = self.make_branch_builder('dir', format='knit')
@@ -575,6 +581,9 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         dir_format = bzrdir.format_registry.make_bzrdir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
+        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+                         self.get_transport().get_bytes(
+                            'dir/.bzr/repository/format'))
 
     def test_safety_net(self):
         """No test should modify the safety .bzr directory.

@@ -502,10 +502,6 @@ class TestErrors(TestCaseWithTransport):
             "user encoding " + osutils.get_user_encoding(),
             str(err))
 
-    def test_unknown_build_action(self):
-        err = errors.UnknownBuildAction('myaction')
-        self.assertEqual("Unknown build action: myaction", str(err))
-
     def test_unknown_format(self):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEquals("Unknown foo format: 'bar'", str(err))

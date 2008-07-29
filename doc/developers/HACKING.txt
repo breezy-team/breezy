@@ -406,6 +406,17 @@ When writing blackbox tests please honour the following conventions:
     subprocess you can use ``run_bzr_subprocess``. By default the spawned
     process will not load plugins unless ``--allow-plugins`` is supplied.
 
+When writing library functionality, it is often necessary to set up a
+branch with a certain history. Most current tests do this by inheriting
+from ``TestCaseWithTransport`` and using the ``make_branch_and_tree``
+helper to give them a ``WorkingTree`` that they can commit to. However,
+there is a newer api available from ``TestCaseWithMemoryTransport`` using
+the ``make_branch_builder`` helper. This helper is preferred, because it
+can build the changes in memory, rather than on disk. Tests that are
+explictly testing how we work with disk objects should, of course, use a
+real ``WorkingTree``. See ``bzrlib/branch_builder.py`` for how to use the
+class.
+
 
 Doctests
 --------
