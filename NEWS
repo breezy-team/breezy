@@ -71,6 +71,13 @@ IN DEVELOPMENT
     * The ``put_on_disk`` and ``get_tar_item`` methods in
       ``InventoryEntry`` were deprecated. (Ian Clatworthy)
 
+    * ``Repository.is_shared`` doesn't take a read lock. It didn't
+      need one in the first place (nobody cached the value, and
+      ``RemoteRepository`` wasn't taking one either). This saves a round
+      trip when probing Pack repositories, as they read the ``pack-names``
+      file when locked. And during probe, locking the repo isn't very
+      useful. (John Arbash Meinel)
+
 
   INTERNALS:
 
