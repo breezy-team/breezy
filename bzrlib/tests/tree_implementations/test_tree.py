@@ -211,9 +211,9 @@ class TestExtras(TestCaseWithTree):
 
     def test_extras(self):
         work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        work_tree.add('file')
-        work_tree.commit('add file')
+        self.build_tree(['tree/file', 'tree/versioned-file'])
+        work_tree.add(['file', 'versioned-file'])
+        work_tree.commit('add files')
         work_tree.remove('file')
         tree = self._convert_tree(work_tree)
         if isinstance(tree,
