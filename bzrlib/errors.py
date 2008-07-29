@@ -584,16 +584,6 @@ class UnavailableRepresentation(InternalBzrError):
         self.key = key
 
 
-class UnknownBuildAction(BzrError):
-    """Raised when a BranchBuilder gets an action it doesn't know"""
-
-    _fmt = "Unknown build action: %(action)s"
-
-    def __init__(self, action):
-        BzrError.__init__(self)
-        self.action = action
-
-
 class UnknownHook(BzrError):
 
     _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of bzrlib."

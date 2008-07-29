@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,12 +26,24 @@ class BranchBuilder(object):
     BranchBuilder on the transport you want your branch on, and then call
     appropriate build_ methods on it to get the shape of history you want.
 
+    This is meant as a helper for the test suite, not as a general class for
+    real data.
+
     For instance:
       builder = BranchBuilder(self.get_transport().clone('relpath'))
-      builder.build_commit()
-      builder.build_commit()
-      builder.build_commit()
+      builder.start_series()
+      builder.build_snapshot('rev-id', [],
+        [('add', ('filename', 'f-id', 'file', 'content\n'))])
+      builder.build_snapshot('rev2-id', ['rev-id'],
+        [('modify', ('f-id', 'new-content\n'))])
+      builder.finish_series()
       branch = builder.get_branch()
+
+    :ivar _tree: This is a private member which is not meant to be modified by
+        users of this class. While a 'series' is in progress, it should hold a
+        MemoryTree with the contents of the last commit (ready to be modified
+        by the next build_snapshot command) with a held write lock. Outside of
+        a series in progress, it should be None.
     """
 
     def __init__(self, transport, format=None):
@@ -40,8 +52,8 @@ class BranchBuilder(object):
         :param transport: The transport the branch should be created on.
             If the path of the transport does not exist but its parent does
             it will be created.
-        :param format: The name of a format in the bzrdir format registry
-            for the branch to be built.
+        :param format: Either a BzrDirFormat, or the name of a format in the
+            bzrdir format registry for the branch to be built.
         """
         if not transport.has('.'):
             transport.mkdir('.')
@@ -95,6 +107,9 @@ class BranchBuilder(object):
 
         Make sure to call 'finish_series' when you are done.
         """
+        if self._tree is not None:
+            raise AssertionError('You cannot start a new series while a'
+                                 ' series is already going.')
         self._tree = memorytree.MemoryTree.create_on_branch(self._branch)
         self._tree.lock_write()
 
@@ -117,7 +132,7 @@ class BranchBuilder(object):
             # not supported yet: ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
-        ;return: The revision_id of the new commit
+        :return: The revision_id of the new commit
         """
         if parent_ids is not None:
             base_id = parent_ids[0]
@@ -163,7 +178,7 @@ class BranchBuilder(object):
                 elif action == 'unversion':
                     to_unversion_ids.append(info)
                 else:
-                    raise errors.UnknownBuildAction(action)
+                    raise ValueError('Unknown build action: "%s"' % (action,))
             if to_unversion_ids:
                 tree.unversion(to_unversion_ids)
             for path, file_id in to_add_directories:
