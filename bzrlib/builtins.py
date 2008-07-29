@@ -2236,8 +2236,8 @@ class cmd_commit(Command):
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
              ListOption('fixes', type=str,
-                    help="Mark a bug as being fixed by this revision. "
-                         "(e.g. --fixes=lp:23456)"),
+                    help="Mark a bug as being fixed by this revision "
+                         "(e.g. --fixes=lp:23456)."),
              Option('author', type=unicode,
                     help="Set the author's name, if it's different "
                          "from the committer."),
