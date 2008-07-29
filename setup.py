@@ -4,7 +4,25 @@
 
 from distutils.core import setup
 from distutils.extension import Extension
+from distutils.command.install_lib import install_lib
+from distutils import log
 import os
+
+# Build instructions for Windows:
+# * Install the SVN dev kit ZIP for Windows from
+#   http://subversion.tigris.org/servlets/ProjectDocumentList?folderID=91
+#   At time of writing, this was svn-win32-1.4.6_dev.zip
+# * Find the SVN binary ZIP file with the binaries for your dev kit.
+#   At time of writing, this was svn-win32-1.4.6.zip
+#   Unzip this in the *same directory* as the dev kit - README.txt will be
+#   overwritten, but that is all. This is the default location the .ZIP file
+#   will suggest (ie, the directory embedded in both .zip files are the same)
+# * Set SVN_DEV to point at this directory.
+# * Install the APR BDB and INTL packages - see README.txt from the devkit
+# * Set SVN_BDB and SVN_LIBINTL to point at these dirs.
+#
+#  To install into a particular bzr location, use:
+#  % python setup.py install --install-lib=c:\root\of\bazaar
 
 
 class BuildData:
@@ -102,24 +120,41 @@ class WindowsBuildData(BuildData):
                 'ws2_32', 'zlibstat'
                 ]
 
+        # environment vars for the directories we need.
+        self.svn_dev_dir = os.environ.get("SVN_DEV")
+        if not self.svn_dev_dir or not os.path.isdir(self.svn_dev_dir):
+            raise RuntimeError(
+                "Please set SVN_DEV to the location of the svn development "
+                "packages.\nThese can be downloaded from:\n"
+                "http://subversion.tigris.org/servlets/ProjectDocumentList?folderID=91")
+        self.svn_bdb_dir = os.environ.get("SVN_BDB")
+        if not self.svn_bdb_dir or not os.path.isdir(self.svn_bdb_dir):
+            raise RuntimeError(
+                "Please set SVN_BDB to the location of the svn BDB packages "
+                "- see README.txt in the SV_DEV dir")
+        self.svn_libintl_dir = os.environ.get("SVN_LIBINTL")
+        if not self.svn_libintl_dir or not os.path.isdir(self.svn_libintl_dir):
+            raise RuntimeError(
+                "Please set SVN_LIBINTL to the location of the svn libintl "
+                "packages - see README.txt in the SV_DEV dir")
+
     def _apr_include_dirs(self):
-        return [r"C:\src\svn-win32-1.4.6\include\apr",
-                r"C:\src\svn-win32-1.4.6\include\apr-utils",
-                r"c:\src\svn-win32-1.4.6\include\apr-iconv"]
+        return [os.path.join(self.svn_dev_dir, r"include\apr"),
+                os.path.join(self.svn_dev_dir, r"include\apr-utils"),
+                os.path.join(self.svn_dev_dir, r"include\apr-iconv")]
     def _apr_lib_dirs(self):
-        stub = r"C:\src\svn-win32-1.4.6\lib"
+        stub = os.path.join(self.svn_dev_dir, "lib")
         return [stub + r'\apr',
                 stub + r'\apr-iconv',
                 stub + r'\apr-util',
                 stub + r'\neon']
     def _svn_include_dirs(self):
-        return [r"C:\src\svn-win32-1.4.6\include", 
+        return [os.path.join(self.svn_dev_dir, "include"), 
                 r"c:\src\svn-win32-libintl"]
     def _svn_lib_dirs(self):
-        return [r"c:\src\svn-win32-1.4.6\lib",
-                r"c:\src\svn-win32-libintl\lib",
-                r"C:\src\db4-win32-4.4.20\lib",
-                r"C:\Program Files\Microsoft Visual C++ Toolkit 2003\lib"]
+        return [os.path.join(self.svn_dev_dir, "lib"),
+                os.path.join(self.svn_bdb_dir, "lib"),
+                os.path.join(self.svn_libintl_dir, "lib")]
 
     def lib_list(self):
         return self._libs;
@@ -165,8 +200,45 @@ def SvnExtension(name, *args, **kwargs):
     kwargs["include_dirs"] = apr_includedir + svn_includedir
     kwargs["library_dirs"] = svn_libdir + apr_libdir
     kwargs["extra_link_args"] = apr_ldflags
+    if os.name == 'nt':
+        kwargs["define_macros"] = [("WIN32", None)]
     return Extension("bzrlib.plugins.svn.%s" % name, *args, **kwargs)
 
+# On Windows, we install the apr binaries too.
+class install_lib_with_dlls(install_lib):
+    def _get_dlls(self):
+        # return a list of of (FQ-in-name, relative-out-name) tuples.
+        ret = []
+        apr_bins = "libaprutil.dll libapriconv.dll libapr.dll".split()
+        look_dirs = os.environ.get("PATH","").split(os.pathsep)
+        look_dirs.insert(0, os.path.join(os.environ["SVN_DEV"], "bin"))
+    
+        for bin in apr_bins:
+            for look in look_dirs:
+                f = os.path.join(look, bin)
+                if os.path.isfile(f):
+                    target = os.path.join(self.install_dir, "bzrlib",
+                                          "plugins", "svn", bin)
+                    ret.append((f, target))
+                    break
+            else:
+                log.warn("Could not find required DLL %r to include", bin)
+                log.debug("(looked in %s)", look_dirs)
+        return ret
+
+    def run(self):
+        install_lib.run(self)
+        # the apr binaries.
+        if os.name == 'nt':
+            # On Windows we package up the apr dlls with the plugin.
+            for s, d in self._get_dlls():
+                self.copy_file(s, d)
+
+    def get_outputs(self):
+        ret = install_lib.get_outputs()
+        if os.name == 'nt':
+            ret.extend([info[1] for info in self._get_dlls()])
+        return ret
 
 setup(name='bzr-svn',
       description='Support for Subversion branches in Bazaar',
@@ -197,5 +269,6 @@ setup(name='bzr-svn',
               APR, LIB_INTL, SVN_FS, SVN_DELTA, APR_UTIL, SHELL, ADVAPI, SVN_FS_FS, SVN_FS_BASE, ZLIB, BDB, XML]]),
           SvnExtension("wc", ["wc.c", "util.c", "editor.c"], libraries=[deps.lib_list()[x] for x in [SVN_WC, SVN_SUBR,
               APR, LIB_INTL, SVN_DELTA, SVN_DIFF, APR_UTIL, XML, SHELL, ADVAPI]]),
-          ]
+          ],
+      cmdclass = { 'install_lib': install_lib_with_dlls },
       )
