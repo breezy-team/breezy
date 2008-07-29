@@ -149,6 +149,7 @@ class WorkingTree4(WorkingTree3):
         self._setup_directory_is_tree_reference()
         self._detect_case_handling()
         self._rules_searcher = None
+        self.views = self._make_views()
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):

@@ -124,6 +124,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_smart_add',
         'bzrlib.tests.workingtree_implementations.test_uncommit',
         'bzrlib.tests.workingtree_implementations.test_unversion',
+        'bzrlib.tests.workingtree_implementations.test_views',
         'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]

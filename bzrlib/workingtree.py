@@ -2699,6 +2699,10 @@ class WorkingTreeFormat(object):
         """
         return True
 
+    def supports_views(self):
+        """True if this format supports stored views."""
+        return False
+
     @classmethod
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
