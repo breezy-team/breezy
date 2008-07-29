@@ -774,11 +774,15 @@ class IncompatibleFormat(BzrError):
 
 class IncompatibleRepositories(BzrError):
 
-    _fmt = "Repository %(target)s is not compatible with repository"\
-        " %(source)s"
+    _fmt = "%(target)s\n" \
+            "is not compatible with\n" \
+            "%(source)s\n" \
+            "%(details)s"
 
-    def __init__(self, source, target):
-        BzrError.__init__(self, target=target, source=source)
+    def __init__(self, source, target, details=None):
+        if details is None:
+            details = "(no details)"
+        BzrError.__init__(self, target=target, source=source, details=details)
 
 
 class IncompatibleRevision(BzrError):
