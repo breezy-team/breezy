@@ -388,7 +388,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.TargetNotBranch('foo')
         self.assertEqual(
             "Your branch does not have all of the revisions required in "
-            "order to merge this merge directive, however the target "
+            "order to merge this merge directive and the target "
             "location specified in the merge directive is not a branch: "
             "foo.", str(error))
 
