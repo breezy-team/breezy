@@ -65,7 +65,14 @@ IN DEVELOPMENT
       a reconcile operation is triggered at the end of the fetch.
       (Robert Collins)
 
+    * The ``put_on_disk`` and ``get_tar_item`` methods in
+      ``InventoryEntry`` were deprecated. (Ian Clatworthy)
+
+
   INTERNALS:
+
+    * The code for exporting trees was refactored not to use the
+      deprecated ``InventoryEntry`` methods. (Ian Clatworthy)
 
     * RuleSearchers return () instead of [] now when there are no matches.
       (Ian Clatworthy)
