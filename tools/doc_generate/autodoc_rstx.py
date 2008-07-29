@@ -127,7 +127,7 @@ def _dump_text(filename, text):
 
 def _get_commands_section(registry, title="Commands", hdg_level1="#",
                           hdg_level2="="):
-    """Build the comands reference section of the manual."""
+    """Build the commands reference section of the manual."""
     lines = [title, hdg_level1 * len(title), ""]
     cmds = sorted(bzrlib.commands.builtin_command_names())
     for cmd_name in cmds:

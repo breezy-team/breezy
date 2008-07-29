@@ -64,6 +64,24 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
 class TestRepository(TestCaseWithRepository):
 
+    def test_attribute__fetch_order(self):
+        """Test the the _fetch_order attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._fetch_order in ('topological', 'unsorted'))
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Test the the _fetch_uses_deltas attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._fetch_uses_deltas in (True, False))
+
+    def test_attribute__fetch_reconcile(self):
+        """Test the the _fetch_reconcile attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._fetch_reconcile in (True, False))
+
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""
         tree = self.make_branch_and_tree('tree')
