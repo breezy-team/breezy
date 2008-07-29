@@ -1728,6 +1728,11 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
+        self._fetch_order = 'unsorted'
+
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()

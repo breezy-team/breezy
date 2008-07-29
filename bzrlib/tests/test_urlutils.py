@@ -655,6 +655,8 @@ class TestRebaseURL(TestCase):
                          'http://baz/qux', 'http://baz/'))
         self.assertEqual('.', urlutils.rebase_url('foo',
                          'http://bar/', 'http://bar/foo/'))
+        self.assertEqual('qux/bar', urlutils.rebase_url('../bar',
+                         'http://baz/qux/foo', 'http://baz/'))
 
     def test_determine_relative_path(self):
         self.assertEqual('../../baz/bar',
