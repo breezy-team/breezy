@@ -2383,6 +2383,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                          'tree/not-removed-file'])
         work_tree.add(['removed-file', 'not-removed-file'])
         preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
         preview.new_file('new-file', preview.root, 'contents')
         preview.new_file('new-versioned-file', preview.root, 'contents',
                          'new-versioned-id')
