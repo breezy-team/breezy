@@ -53,7 +53,7 @@ rather than a full URL. This looks like
 where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
 identifier for that bug within the bugtracker, usually the bug number.
 
-Bazaar knows about a few bug trackers that have a well-know location. If
+Bazaar knows about a few bug trackers that have many users. If
 you use one of these bug trackers then there is no setup required to
 use this feature, you just need to know the tracker identifier to use.
 These are the bugtrackers that are built in:
@@ -64,10 +64,10 @@ These are the bugtrackers that are built in:
      http://bugs.debian.org/      | debian     | debian:12345
      http://bugzilla.gnome.org/   | gnome      | gnome:12345
 
-For the bug trackers that don't have a well known location some
-configuration is required. Support for generating the URLs for any
-project using Bugzilla or Trac is built in, along with a template
-mechanism for other bugtrackers with simple URL schemes.
+For the bug trackers not listed above configuration is required.
+Support for generating the URLs for any project using Bugzilla or Trac
+is built in, along with a template mechanism for other bugtrackers with
+simple URL schemes.
 
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
