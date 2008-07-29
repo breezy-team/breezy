@@ -74,6 +74,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Make it easier to introduce new WorkingTree formats.
+      (Ian Clatworthy)
+
     * The code for exporting trees was refactored not to use the
       deprecated ``InventoryEntry`` methods. (Ian Clatworthy)
 
