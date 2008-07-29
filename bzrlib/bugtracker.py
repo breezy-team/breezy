@@ -67,7 +67,9 @@ These are the bugtrackers that are built in:
 For the bug trackers not listed above configuration is required.
 Support for generating the URLs for any project using Bugzilla or Trac
 is built in, along with a template mechanism for other bugtrackers with
-simple URL schemes.
+simple URL schemes. If your bug tracker can't be described by one
+of the schemes described below then you can write a plugin to support
+it.
 
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
