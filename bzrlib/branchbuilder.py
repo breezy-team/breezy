@@ -114,7 +114,7 @@ class BranchBuilder(object):
             ('add', ('path', 'file-id', 'kind', 'content' or None))
             ('modify', ('file-id', 'new-content'))
             ('unversion', 'file-id')
-            # not supported yet: ('rename', ('orig-path', 'new-path'))
+            ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
         ;return: The revision_id of the new commit
