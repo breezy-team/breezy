@@ -73,6 +73,7 @@ from bzrlib import (
     ui,
     urlutils,
     views,
+    workingtree_5,
     xml5,
     xml6,
     xml7,
@@ -2934,6 +2935,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(workingtree_5.WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable

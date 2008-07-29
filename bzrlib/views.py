@@ -63,7 +63,7 @@ class PathBasedViews(_Views):
     """
 
     def __init__(self, tree):
-        _Views.__init__(self, tree)
+        self.tree = tree
         self._loaded = False
         self._current = None
         self._views = {}
@@ -144,7 +144,7 @@ class PathBasedViews(_Views):
                 del self._views[view_name]
             except KeyError:
                 raise errors.NoSuchView(view_name)
-            if view_name == current:
+            if view_name == self._current:
                 self._current = None
             self._save_view_info()
         finally:
@@ -181,7 +181,7 @@ class PathBasedViews(_Views):
 
     def _serialize_view_content(self, current, view_dict):
         """Convert a current view and view dictionary into a stream."""
-        lines = [_VIEW_FORMAT1_MARKER]
+        lines = [_VIEWS_FORMAT1_MARKER]
         if current is None:
             lines.append('')
         else:
@@ -198,11 +198,11 @@ class PathBasedViews(_Views):
         if view_content == '':
             return None, {}
         lines = view_content.splitlines()
-        match = _VIEW_FORMAT_MARKER_RE.match(lines[0])
+        match = _VIEWS_FORMAT_MARKER_RE.match(lines[0])
         if not match:
             raise ValueError(
                 "format marker missing from top of views file")
-        elif match.group(1) != 1:
+        elif match.group(1) != '1':
             raise ValueError(
                 "cannot decode views format %s" % match.group(1))
         try:

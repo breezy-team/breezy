@@ -70,7 +70,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertEquals(view_current, current)
         self.assertEquals(view_dict, views)
         # test clearing the current view
-        wt.set_view_info(None, view_dict)
+        wt.views.set_view_info(None, view_dict)
         current, views = wt.views.get_view_info()
         self.assertEquals(None, current)
         self.assertEquals(view_dict, views)
@@ -118,7 +118,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
             wt.views.lookup_view('opaque')
         except errors.NoSuchView, e:
             self.assertEquals(e.view_name, 'opaque')
-            self.assertEquals(str(e), 'No such view: opaque')
+            self.assertEquals(str(e), 'No such view: opaque.')
         else:
             self.fail("didn't get expected exception")
 
