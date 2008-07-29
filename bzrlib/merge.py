@@ -706,6 +706,10 @@ class Merge3Merger(object):
                 # of this entry hasn't changed, so skip it.
                 continue
 
+            is_content_changed = False
+            if kind_changed:
+                is_content_changed = True
+
             if file_id in base_inventory:
                 base_ie = self.base_tree.inventory[file_id]
                 base_parent_id = base_ie.parent_id
@@ -720,6 +724,7 @@ class Merge3Merger(object):
                 this_executable = this_ie.executable
             else:
                 this_parent_id = this_name = this_executable = None
+
 
             lca_parent_ids = []
             lca_names = []
@@ -835,6 +840,51 @@ class Merge3Merger(object):
         # this == base: only other has changed.
         else:
             return "other"
+
+    @staticmethod
+    def _lca_multi_way(bases, other, this):
+        """Consider LCAs when determining whether a change has occurred.
+
+        If LCAS are all identical, this is the same as a _three_way comparison.
+
+        :param bases: value in (BASE, [LCAS])
+        :param other: value in OTHER
+        :param this: value in THIS
+        :return: 'this', 'other', or 'conflict' depending on whether an entry
+            changed or not.
+        """
+        if other == this:
+            # Either Ambiguously clean, or nothing was actually changed. We
+            # don't really care
+            return 'this'
+        base_val, lca_vals = bases
+        # Remove 'base_val' from the lca_vals, because it is not interesting
+        filtered_lca_vals = [lca_val for lca_val in lca_vals
+                                      if lca_val != base_val]
+        if len(filtered_lca_vals) == 0:
+            return Merge3Merger._three_way(base_val, other, this)
+        else:
+            first_lca_val = filtered_lca_vals[0]
+            for lca_val in filtered_lca_vals[1:]:
+                if lca_val != first_lca_val:
+                    break
+            else: # all lcas are equal, use 3-way logic
+                return Merge3Merger._three_way(first_lca_val, other, this)
+        if other in filtered_lca_vals:
+            if this in filtered_lca_vals:
+                # Each side picked a different lca, conflict
+                return 'conflict'
+            else:
+                # This has a value which supersedes both lca values, and other
+                # only has an lca value
+                return 'this'
+        elif this in filtered_lca_vals:
+            # OTHER has a value which supersedes both lca values, and this only
+            # has an lca value
+            return 'other'
+
+        # At this point, the lcas disagree, and the tips disagree
+        return 'conflict'
 
     @staticmethod
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):

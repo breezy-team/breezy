@@ -25,6 +25,7 @@ from bzrlib import (
     merge as _mod_merge,
     option,
     progress,
+    tests,
     transform,
     versionedfile,
     )
@@ -1214,6 +1215,113 @@ class TestMergerInMemory(TestMergerBase):
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
 
+class TestLCAMultiWay(tests.TestCase):
+
+    def assertLCAMultiWay(self, expected, base, lcas, other, this):
+        self.assertEqual(expected, _mod_merge.Merge3Merger._lca_multi_way(
+                                        (base, lcas), other, this))
+
+    def test_other_equal_equal_lcas(self):
+        """Test when OTHER=LCA and all LCAs are identical."""
+        self.assertLCAMultiWay('this',
+            'bval', ['bval', 'bval'], 'bval', 'bval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lcaval', 'lcaval'], 'lcaval', 'bval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lcaval', 'lcaval', 'lcaval'], 'lcaval', 'bval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lcaval', 'lcaval', 'lcaval'], 'lcaval', 'tval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lcaval', 'lcaval', 'lcaval'], 'lcaval', None)
+
+    def test_other_equal_this(self):
+        """Test when other and this are identical."""
+        self.assertLCAMultiWay('this',
+            'bval', ['bval', 'bval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lcaval', 'lcaval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            'bval', ['cval', 'dval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            'bval', [None, 'lcaval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            None, [None, 'lcaval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            None, ['lcaval', 'lcaval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            None, ['cval', 'dval'], 'oval', 'oval')
+        self.assertLCAMultiWay('this',
+            None, ['cval', 'dval'], None, None)
+        self.assertLCAMultiWay('this',
+            None, ['cval', 'dval', 'eval', 'fval'], 'oval', 'oval')
+
+    def test_no_lcas(self):
+        self.assertLCAMultiWay('this',
+            'bval', [], 'bval', 'tval')
+        self.assertLCAMultiWay('other',
+            'bval', [], 'oval', 'bval')
+        self.assertLCAMultiWay('conflict',
+            'bval', [], 'oval', 'tval')
+        self.assertLCAMultiWay('this',
+            'bval', [], 'oval', 'oval')
+
+    def test_lca_supersedes_other_lca(self):
+        """If one lca == base, the other lca takes precedence"""
+        self.assertLCAMultiWay('this',
+            'bval', ['bval', 'lcaval'], 'lcaval', 'tval')
+        self.assertLCAMultiWay('this',
+            'bval', ['bval', 'lcaval'], 'lcaval', 'bval')
+        # This is actually considered a 'revert' because the 'lcaval' in LCAS
+        # supersedes the BASE val (in the other LCA) but then OTHER reverts it
+        # back to bval.
+        self.assertLCAMultiWay('other',
+            'bval', ['bval', 'lcaval'], 'bval', 'lcaval')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['bval', 'lcaval'], 'bval', 'tval')
+
+    def test_other_and_this_pick_different_lca(self):
+        # OTHER and THIS resolve the lca conflict in different ways
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val'], 'lca1val', 'lca2val')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'lca2val')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'bval'], 'lca1val', 'lca2val')
+
+    def test_other_in_lca(self):
+        # OTHER takes a value of one of the LCAs, THIS takes a new value, which
+        # theoretically supersedes both LCA values and 'wins'
+        self.assertLCAMultiWay('this',
+            'bval', ['lca1val', 'lca2val'], 'lca1val', 'newval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'newval')
+        # THIS reverted back to BASE, but that is an explicit supersede of all
+        # LCAs
+        self.assertLCAMultiWay('this',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'bval')
+        self.assertLCAMultiWay('this',
+            'bval', ['lca1val', 'lca2val', 'bval'], 'lca1val', 'bval')
+
+    def test_this_in_lca(self):
+        # THIS takes a value of one of the LCAs, OTHER takes a new value, which
+        # theoretically supersedes both LCA values and 'wins'
+        self.assertLCAMultiWay('other',
+            'bval', ['lca1val', 'lca2val'], 'oval', 'lca1val')
+        self.assertLCAMultiWay('other',
+            'bval', ['lca1val', 'lca2val'], 'oval', 'lca2val')
+        # OTHER reverted back to BASE, but that is an explicit supersede of all
+        # LCAs
+        self.assertLCAMultiWay('other',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'bval', 'lca3val')
+
+    def test_all_differ(self):
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val'], 'oval', 'tval')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'lca2val'], 'oval', 'tval')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'oval', 'tval')
+
 class TestMergerEntriesLCA(TestMergerBase):
 
     def make_merge_obj(self, builder, other_revision_id):
@@ -1377,12 +1485,35 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [None, None]), u'a', None),
                            ((None, [None, None]), False, None)),
                          ], entries)
+
+    def DONT_test_only_path_changed(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('rename', (u'a', u'b'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        # The content was not changed, only the path
+        self.assertEqual([('a-id', False,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'a', [u'a', u'a']), u'b', u'a'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
     # TODO: cases to test
     #       simple criss-cross LCAS identical, BASE different
     #       x-x changed from BASE but identical for all LCAs and tips
     #               should be possible with the same trick of 'not-in-base'
     #               using a double criss-cross
     #       x-x Only renamed, no content or kind change
+    #       x-x kind-change
     #       x-x LCAs differ, one in ancestry of other for a given file
     #       x-x file missing in LCA
     #       x-x Reverted back to BASE text
