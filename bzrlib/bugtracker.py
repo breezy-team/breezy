@@ -44,13 +44,30 @@ _bugs_help = \
 recorded by using the --fixes option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
 (The only ``status`` value currently supported is ``fixed.``)
-Support for Launchpad's central bug tracker is built in. For other bug
-trackers, configuration is required in advance so that the correct URL
-can be recorded.
 
-In addition to Launchpad, Bazaar directly supports the generation of
-URLs appropriate for Bugzilla and Trac. If your project uses a different
-bug tracker, it is easy to add support for it.
+The --fixes option allows you to specify a bug tracker and a bug identifier
+rather than a full URL. This looks like
+
+    bzr commit --fixes <tag>:<id>
+
+where "<tag>" is an identifier for the bug tracker, and "<id>" is the
+identifier for that bug within the bugtracker, usually the bug number.
+
+Bazaar knows about a few bug trackers that have a well-know location. If
+you use one of these bug trackers then there is no setup required to
+use this feature, you just need to know the tag to use. These are the
+bugtrackers that are built in:
+                URL               |    Tag     |   Example
+   ------------------------------------------------------------
+     https://bugs.launchpad.net/  |     lp     |     lp:12345
+       http://bugs.debian.org/    |   debian   | debian:12345
+     http://bugzilla.gnome.org/   |   gnome    |  gnome:12345
+
+For the bug trackers that don't have a well known location some
+configuration is required. Support for generating the URLs for any
+project using Bugzilla or Trac is built in, along with a template
+mechanism for other bugtrackers with simple URL schemes.
+
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
 can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
