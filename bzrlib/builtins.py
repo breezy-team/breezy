@@ -2259,7 +2259,7 @@ class cmd_commit(Command):
             tokens = fixed_bug.split(':')
             if len(tokens) != 2:
                 raise errors.BzrCommandError(
-                    "Invalid bug %s. Must be in the form of 'tag:id'. "
+                    "Invalid bug %s. Must be in the form of 'tracker:id'. "
                     "Commit refused." % fixed_bug)
             tag, bug_id = tokens
             try:

@@ -48,20 +48,21 @@ entry is included in the 'bugs' revision property stating '<url> <status>'.
 The --fixes option allows you to specify a bug tracker and a bug identifier
 rather than a full URL. This looks like
 
-    bzr commit --fixes <tag>:<id>
+    bzr commit --fixes <tracker>:<id>
 
-where "<tag>" is an identifier for the bug tracker, and "<id>" is the
+where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
 identifier for that bug within the bugtracker, usually the bug number.
 
 Bazaar knows about a few bug trackers that have a well-know location. If
 you use one of these bug trackers then there is no setup required to
-use this feature, you just need to know the tag to use. These are the
-bugtrackers that are built in:
-                URL               |    Tag     |   Example
+use this feature, you just need to know the tracker identifier to use.
+These are the bugtrackers that are built in:
+
+     URL                          | Tracker id | Example
    ------------------------------------------------------------
-     https://bugs.launchpad.net/  |     lp     |     lp:12345
-       http://bugs.debian.org/    |   debian   | debian:12345
-     http://bugzilla.gnome.org/   |   gnome    |  gnome:12345
+     https://bugs.launchpad.net/  | lp         | lp:12345
+     http://bugs.debian.org/      | debian     | debian:12345
+     http://bugzilla.gnome.org/   | gnome      | gnome:12345
 
 For the bug trackers that don't have a well known location some
 configuration is required. Support for generating the URLs for any
