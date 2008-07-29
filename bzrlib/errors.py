@@ -780,7 +780,7 @@ class IncompatibleRepositories(BzrError):
             "%(details)s"
 
     def __init__(self, source, target, details=None):
-        if details == None:
+        if details is None:
             details = "(no details)"
         BzrError.__init__(self, target=target, source=source, details=details)
 
