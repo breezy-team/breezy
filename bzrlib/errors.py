@@ -2363,7 +2363,7 @@ class TargetNotBranch(BzrError):
 
     _fmt = ("Your branch does not have all of the revisions required in "
             "order to merge this merge directive, however the target "
-            "branch specified in the merge directive is not a branch: "
+            "location specified in the merge directive is not a branch: "
             "%(location)s.")
 
     def __init__(self, location):

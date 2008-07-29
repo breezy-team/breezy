@@ -389,7 +389,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Your branch does not have all of the revisions required in "
             "order to merge this merge directive, however the target "
-            "branch specified in the merge directive is not a branch: "
+            "location specified in the merge directive is not a branch: "
             "foo.", str(error))
 
     def test_malformed_bug_identifier(self):
