@@ -760,15 +760,13 @@ class Merge3Merger(object):
                     sha1_winner = Merge3Merger._lca_multi_way(
                         (base_ie.text_sha1, lca_sha1s),
                         other_ie.text_sha1, this_ie.text_sha1)
-                    # XXX: This should be tested before we include it, not
-                    #      sure how to actually get a test written for this.
-                    # exec_winner = Merge3Merger._lca_multi_way(
-                    #     (base_ie.executable, lca_executable),
-                    #     other_ie.executable, this_ie.executable)
+                    exec_winner = Merge3Merger._lca_multi_way(
+                        (base_ie.executable, lca_executable),
+                        other_ie.executable, this_ie.executable)
                     if (parent_id_winner == 'this' and name_winner == 'this'
-                        and sha1_winner == 'this'):
-                        # No kind, parent, name, content change for OTHER, so
-                        # this node is not considered interesting
+                        and sha1_winner == 'this' and exec_winner == 'this'):
+                        # No kind, parent, name, exec, or content change for
+                        # OTHER, so this node is not considered interesting
                         continue
                     if sha1_winner == 'this':
                         content_changed = False

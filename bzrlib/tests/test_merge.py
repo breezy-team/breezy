@@ -1446,7 +1446,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.addCleanup(builder.finish_series)
         return builder
 
-    def do_merge(self, builder, other_revision_id):
+    def get_wt_from_builder(self, builder):
+        """Get a real WorkingTree from the builder."""
         the_branch = builder.get_branch()
         wt = the_branch.bzrdir.create_workingtree()
         # XXX: This is a little bit ugly, but we are holding the branch
@@ -1456,6 +1457,10 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt._branch = the_branch
         wt.lock_write()
         self.addCleanup(wt.unlock)
+        return wt
+
+    def do_merge(self, builder, other_revision_id):
+        wt = self.get_wt_from_builder(builder)
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             wt, other_revision_id)
         merger.merge_type = _mod_merge.Merge3Merger
@@ -1502,8 +1507,75 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
-        # The merge should have simply update the contents of 'a'
+        # The merge should simply recognize that the final rename takes
+        # precedence
         self.assertEqual('baz', wt.id2path('foo-id'))
+
+    def test_other_deletes_lca_renames(self):
+        # This test would cause a merge conflict, unless we use the lca trees
+        # to determine the real ancestry
+        #   A       Path at 'foo'
+        #  / \
+        # B   C     Path renamed to 'bar' in B
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E     Path at 'bar' in D and E
+        #     |
+        #     F     F deletes 'bar'
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('rename', ('foo', 'bar'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], # merge the rename
+            [('rename', ('foo', 'bar'))])
+        builder.build_snapshot('F-id', ['E-id'],
+            [('unversion', 'foo-id')])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        wt, conflicts = self.do_merge(builder, 'F-id')
+        self.assertEqual(0, conflicts)
+        self.assertRaises(errors.NoSuchId, wt.id2path, 'foo-id')
+
+    def test_executable_changes(self):
+        #   A       Path at 'foo'
+        #  / \
+        # B   C 
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E
+        #     |
+        #     F     Executable bit changed
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        # Have to use a real WT, because BranchBuilder doesn't support exec bit
+        wt = self.get_wt_from_builder(builder)
+        tt = transform.TreeTransform(wt)
+        try:
+            tt.set_executability(True, tt.trans_id_tree_file_id('foo-id'))
+            tt.apply()
+        except:
+            tt.finalize()
+            raise
+        self.assertTrue(wt.is_executable('foo-id'))
+        wt.commit('F-id', rev_id='F-id')
+        # Reset to D, so that we can merge F
+        wt.set_parent_ids(['D-id'])
+        wt.branch.set_last_revision_info(3, 'D-id')
+        wt.revert()
+        self.assertFalse(wt.is_executable('foo-id'))
+        conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
+        self.assertEqual(0, conflicts)
+        self.assertTrue(wt.is_executable('foo-id'))
 
 
     # TODO: cases to test
@@ -1511,7 +1583,6 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     #       x-x changed from BASE but identical for all LCAs and tips
     #               should be possible with the same trick of 'not-in-base'
     #               using a double criss-cross
-    #       x-x kind-change
     #       x-x LCAs differ, one in ancestry of other for a given file
     #       x-x file missing in LCA
     #       x-x Reverted back to BASE text
