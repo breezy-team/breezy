@@ -21,7 +21,7 @@
 #include <svn_wc.h>
 #include <svn_path.h>
 #include <structmember.h>
-#include "stdbool.h"
+#include <stdbool.h>
 
 #include "util.h"
 #include "editor.h"
