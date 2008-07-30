@@ -44,6 +44,9 @@ IN DEVELOPMENT
       support stacking, even if the origin does not.
       (Martin Pool)
 
+    * ``bzr export`` no longer exports ``.bzrrules``.
+      (Ian Clatworthy)
+
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
 
