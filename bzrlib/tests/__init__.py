@@ -2138,7 +2138,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, basestring):
             for p in path:
-                self.assertInWorkingTree(p,tree=tree)
+                self.assertInWorkingTree(p, tree=tree)
         else:
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')

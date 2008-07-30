@@ -438,11 +438,9 @@ class TestStatus(TestCaseWithTransport):
         b_tree.add('b')
         b_tree.commit('b')
 
-        chdir('a')
-        self.run_bzr('merge ../b')
-        out, err = self.run_bzr('status --no-pending')
+        self.run_bzr('merge ../b', working_dir='a')
+        out, err = self.run_bzr('status --no-pending', working_dir='a')
         self.assertEquals(out, "added:\n  b\n")
-
 
 
 class TestStatusEncodings(TestCaseWithTransport):
