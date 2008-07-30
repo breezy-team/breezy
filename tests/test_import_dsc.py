@@ -1996,7 +1996,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         os.mkdir(basedir)
         write_to_file(os.path.join(basedir, "README"), "Hi\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
-        self.db1.import_upstream(basedir, version, self.fake_md5_1)
+        self.db1.import_upstream(basedir, version, self.fake_md5_1, [])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -2016,13 +2016,14 @@ class DistributionBranchTests(TestCaseWithTransport):
         write_to_file(os.path.join(basedir, "README"), "Hi\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
         write_to_file(os.path.join(basedir, "COPYING"), "")
-        self.db1.import_upstream(basedir, version1, self.fake_md5_1)
+        self.db1.import_upstream(basedir, version1, self.fake_md5_1, [])
         basedir = name + "-" + str(version2.upstream_version)
         os.mkdir(basedir)
         write_to_file(os.path.join(basedir, "README"), "Now even better\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
         write_to_file(os.path.join(basedir, "NEWS"), "")
-        self.db1.import_upstream(basedir, version2, self.fake_md5_2)
+        self.db1.import_upstream(basedir, version2, self.fake_md5_2,
+                [self.up_tree1.branch.last_revision()])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -2040,8 +2041,7 @@ class DistributionBranchTests(TestCaseWithTransport):
 
     def test_import_package_init_from_other(self):
         version1 = Version("0.1-1")
-        version2 = Version("0.2-1")
-        up_revid1 = self.up_tree1.commit("upstream one")
+        version2 = Version("0.2-1") up_revid1 = self.up_tree1.commit("upstream one")
         self.db1.tag_upstream_version(version1)
         self.tree1.pull(self.up_tree1.branch)
         revid1 = self.tree1.commit("one")
@@ -2285,6 +2285,150 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertTrue(self.db1.is_version_native(version1))
         self.assertFalse(self.db1.is_version_native(version2))
 
+    def test_import_to_native_and_back_same_upstream(self):
+        """Non-native to native and back all in the same upstream version.
+
+        As the native version was on the same upstream as a non-native
+        version we assume that it was accidental, and so don't include
+        the native revision in the upstream branch's history.
+        """
+        version1 = Version("1.0-1")
+        version2 = Version("1.0-2")
+        version3 = Version("1.0-3")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = True
+        builder.new_version(version2)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = False
+        builder.new_version(version3)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 4)
+        self.assertEqual(len(up_rh1), 1)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
+        rev_tree3 = self.tree1.branch.repository.revision_tree(rh1[3])
+        self.assertEqual(rev_tree1.get_parent_ids(), [up_rh1[0]])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
+        self.assertEqual(rev_tree3.get_parent_ids(), [rh1[2]])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
+        self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
+        self.assertEqual(self.db1.revid_of_upstream_version(version1),
+                up_rh1[0])
+        self.assertFalse(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
+        self.assertFalse(self.db1.is_version_native(version3))
+
+    def test_import_to_native_and_back_new_upstream(self):
+        """Non-native to native and back with a new upstream version.
+           
+        As the native version was on the same upstream as a non-native
+        version we assume that it was accidental, and so don't include
+        the native revision in the upstream branch's history.
+
+        As we get a new upstream we want to link that to the previous
+        upstream.
+        """
+        version1 = Version("1.0-1")
+        version2 = Version("1.0-2")
+        version3 = Version("1.1-1")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = True
+        builder.new_version(version2)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = False
+        builder.new_version(version3)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 4)
+        self.assertEqual(len(up_rh1), 2)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
+        rev_tree3 = self.tree1.branch.repository.revision_tree(rh1[3])
+        up_rev_tree1 = \
+                self.up_tree1.branch.repository.revision_tree(up_rh1[0])
+        up_rev_tree2 = \
+                self.up_tree1.branch.repository.revision_tree(up_rh1[1])
+        self.assertEqual(rev_tree1.get_parent_ids(), [up_rh1[0]])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
+        self.assertEqual(rev_tree3.get_parent_ids(), [rh1[2], up_rh1[1]])
+        self.assertEqual(up_rev_tree2.get_parent_ids(), [up_rh1[0]])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
+        self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
+        self.assertEqual(self.db1.revid_of_upstream_version(version1),
+                up_rh1[0])
+        self.assertEqual(self.db1.revid_of_upstream_version(version3),
+                up_rh1[1])
+        self.assertFalse(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
+        self.assertFalse(self.db1.is_version_native(version3))
+
+    def test_import_to_native_and_back_all_different_upstreams(self):
+        """Non-native to native and back with all different upstreams.
+           
+        In this case we want to assume the package was "intended" to
+        be native, and so we include the native version in the upstream
+        history (i.e. the upstream part of the last version has
+        the second version's packaging branch revision as the second
+        parent).
+        """
+        version1 = Version("1.0-1")
+        version2 = Version("1.1")
+        version3 = Version("1.2-1")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = True
+        builder.new_version(version2)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        builder.native = False
+        builder.new_version(version3)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        self.assertEqual(len(rh1), 4)
+        self.assertEqual(len(up_rh1), 2)
+        rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
+        rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
+        rev_tree3 = self.tree1.branch.repository.revision_tree(rh1[3])
+        up_rev_tree1 = \
+                self.up_tree1.branch.repository.revision_tree(up_rh1[0])
+        up_rev_tree2 = \
+                self.up_tree1.branch.repository.revision_tree(up_rh1[1])
+        self.assertEqual(rev_tree1.get_parent_ids(), [up_rh1[0]])
+        self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
+        self.assertEqual(rev_tree3.get_parent_ids(), [rh1[2], up_rh1[1]])
+        self.assertEqual(up_rev_tree2.get_parent_ids(), [up_rh1[0], rh1[2]])
+        self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
+        self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
+        self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
+        self.assertEqual(self.db1.revid_of_upstream_version(version1),
+                up_rh1[0])
+        self.assertEqual(self.db1.revid_of_upstream_version(version3),
+                up_rh1[1])
+        self.assertFalse(self.db1.is_version_native(version1))
+        self.assertTrue(self.db1.is_version_native(version2))
+        self.assertFalse(self.db1.is_version_native(version3))
+        # TODO: test that file-ids added in the native version
+        # are used in the second non-native upstream
+
 
 class SourcePackageBuilder(object):
 
@@ -2359,6 +2503,9 @@ class SourcePackageBuilder(object):
             orig_basedir = basedir + ".orig"
             shutil.copytree(basedir, orig_basedir)
             cmd = "dpkg-source -sa -b %s" % (basedir)
+            if os.path.exists("%s_%s.orig.tar.gz"
+                    % (self.name, self._cl.version.upstream_version)):
+                cmd = "dpkg-source -ss -b %s" % (basedir)
         else:
             cmd = "dpkg-source -sn -b %s" % (basedir)
         self._make_files(self.debian_files, basedir)
