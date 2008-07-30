@@ -1452,7 +1452,7 @@ class DistributionBranch(object):
                 real_parents = [parent_revid]
         return real_parents
 
-    def import_upstream(self, upstream_part, version, md5):
+    def import_upstream(self, upstream_part, version, md5, upstream_parents):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -1461,16 +1461,24 @@ class DistributionBranch(object):
         :param upstream_part: the path of a directory containing the
             unpacked upstream part of the source package.
         :param version: the Version of the package that is being imported.
+        :param md5: the md5 of the upstream part.
+        :param upstream_parents: the parents to give the upstream revision
         """
         # Should we just dump the upstream part on whatever is currently
         # there, or try and pull all of the other upstream versions
         # from lesser branches first? For now we'll just dump it on.
         # TODO: this method needs a lot of work for when we will make
         # the branches writeable by others.
-        mutter("Importing upstream version %s from %s" \
-                % (version, upstream_part))
+        mutter("Importing upstream version %s from %s with parents %s" \
+                % (version, upstream_part, str(upstream_parents)))
         assert self.upstream_tree is not None, \
             "Can't import upstream with no tree"
+        if len(upstream_parents) > 0:
+            parent_revid = upstream_parents[0]
+        else:
+            parent_revid = NULL_REVISION
+        self.upstream_tree.pull(self.upstream_tree.branch, overwrite=True,
+                stop_revision=parent_revid)
         other_branches = self.get_other_branches()
         def get_last_revision_tree(br):
             return br.repository.revision_tree(br.last_revision())
@@ -1478,6 +1486,7 @@ class DistributionBranch(object):
             for o in other_branches]
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
+        self.upstream_tree.set_parent_ids(upstream_parents)
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
                 revprops={"deb-md5":md5})
@@ -1615,27 +1624,45 @@ class DistributionBranch(object):
         assert not path.endswith(".orig.tar.gz")
         return (path, md5)
 
-    def _init_upstream_from_other(self, versions):
-        parents = self.get_parents(versions)
-        if len(parents) > 0:
-            branch = parents[0][0]
-            pull_version = parents[0][1]
-            # FIXME: This means that we won't initialise the upstream
-            # if the last version is native but others weren't. I don't
-            # think that is correct.
-            if not branch.is_version_native(pull_version):
-                pull_revid = branch.revid_of_upstream_version(pull_version)
-                mutter("Initialising upstream from %s, version %s" \
-                        % (str(branch), str(pull_version)))
-                up_pull_branch = branch.upstream_tree.branch
-            else:
-                pull_revid = branch.revid_of_version(pull_version)
-                mutter("Non-native package following a native one, "
-                        "pulling upstream from packaging branch %s, "
-                        "version %s" % (str(branch), str(pull_version)))
-                up_pull_branch = branch.tree.branch
-            self.upstream_tree.pull(up_pull_branch,
-                    stop_revision=pull_revid)
+    def upstream_parents(self, versions):
+        """Get the parents for importing a new upstream.
+
+        The upstream parents will be the last upstream version,
+        except for some cases when the last version was native.
+
+        :return: the list of revision ids to use as parents when
+            importing the specified upstream version.
+        """
+        parents = []
+        first_parent = self.upstream_branch.last_revision()
+        if first_parent != NULL_REVISION:
+            parents = [first_parent]
+        last_contained_version = self.last_contained_version(versions)
+        if last_contained_version is not None:
+            # If the last version was native, and was not from the same
+            # upstream as a non-native version (i.e. it wasn't a mistaken
+            # native -2 version), then we want to add an extra parent.
+            if (self.is_version_native(last_contained_version)
+                and not self.has_upstream_version(last_contained_version)):
+                revid = self.revid_of_version(last_contained_version)
+                parents.append(revid)
+                self.upstream_branch.fetch(self.branch,
+                        last_revision=revid)
+        if first_parent == NULL_REVISION:
+            pull_parents = self.get_parents(versions)
+            if len(pull_parents) > 0:
+                pull_branch = pull_parents[0][0]
+                pull_version = pull_parents[0][1]
+                if not pull_branch.is_version_native(pull_version):
+                    pull_revid = \
+                        pull_branch.revid_of_upstream_version(pull_version)
+                    mutter("Initialising upstream from %s, version %s" \
+                        % (str(pull_branch), str(pull_version)))
+                    parents.append(pull_revid)
+                    self.upstream_branch.fetch(
+                            pull_branch.upstream_branch,
+                            last_revision=pull_revid)
+        return parents
 
     def get_changelog_from_source(self, dir):
         cl_filename = os.path.join(dir, "debian", "changelog")
@@ -1672,11 +1699,9 @@ class DistributionBranch(object):
                     imported_upstream = True
                     # Check whether we should pull first if this initialises
                     # from another branch:
-                    if (self.upstream_tree.branch.last_revision()
-                            == NULL_REVISION):
-                        self._init_upstream_from_other(versions)
+                    upstream_parents = self.upstream_parents(versions)
                     self.import_upstream(upstream_part, version,
-                            upstream_md5)
+                            upstream_md5, upstream_parents)
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(version, versions,
