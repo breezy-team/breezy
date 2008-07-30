@@ -67,9 +67,9 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_unchanged_files(self):
         """Check that unchanged files are removed and deleted."""
         tree = self.get_committed_tree(TestRemove.files)
-
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)
+        tree._validate()
 
     def test_remove_added_files(self):
         """Removal of newly added files must fail."""
@@ -82,6 +82,7 @@ class TestRemove(TestCaseWithWorkingTree):
             '(?s)added:.*a.*b/.*b/c.*d/')
         self.assertInWorkingTree(TestRemove.files)
         self.failUnlessExists(TestRemove.files)
+        tree._validate()
 
     def test_remove_changed_file(self):
         """Removal of a changed files must fail."""
@@ -93,6 +94,7 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertContainsRe(err.changes_as_text, '(?s)modified:.*a')
         self.assertInWorkingTree('a')
         self.failUnlessExists('a')
+        tree._validate()
 
     def test_remove_deleted_files(self):
         """Check that files are removed if they don't exist any more."""
@@ -101,9 +103,9 @@ class TestRemove(TestCaseWithWorkingTree):
             osutils.delete_any(f)
         self.assertInWorkingTree(TestRemove.files)
         self.failIfExists(TestRemove.files)
-
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)
+        tree._validate()
 
     def test_remove_renamed_files(self):
         """Check that files are removed even if they are renamed."""
@@ -117,6 +119,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
         tree.remove(rfilesx, keep_files=False)
         self.assertRemovedAndDeleted(rfilesx)
+        tree._validate()
 
     def test_remove_renamed_changed_files(self):
         """Check that files are not removed if they are renamed and changed."""
@@ -136,6 +139,7 @@ class TestRemove(TestCaseWithWorkingTree):
             '(?s)modified:.*ax.*bx/cx')
         self.assertInWorkingTree(rfilesx)
         self.failUnlessExists(rfilesx)
+        tree._validate()
 
     def test_force_remove_changed_files(self):
         """Check that changed files are removed and deleted when forced."""
@@ -145,6 +149,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
         tree.remove(TestRemove.files, keep_files=False, force=True)
         self.assertRemovedAndDeleted(TestRemove.files)
+        tree._validate()
 
     def test_remove_unknown_files(self):
         """Try to delete unknown files."""
@@ -153,12 +158,14 @@ class TestRemove(TestCaseWithWorkingTree):
             TestRemove.files, keep_files=False)
         self.assertContainsRe(err.changes_as_text,
             '(?s)unknown:.*d/.*b/c.*b/.*a.*')
+        tree._validate()
 
     def test_remove_nonexisting_files(self):
         """Try to delete non-existing files."""
         tree = self.get_tree(TestRemove.files)
         tree.remove([''], keep_files=False)
         tree.remove(['xyz', 'abc/def'], keep_files=False)
+        tree._validate()
 
     def test_remove_unchanged_directory(self):
         """Unchanged directories should be deleted."""
@@ -166,6 +173,16 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(files)
         tree.remove('b', keep_files=False)
         self.assertRemovedAndDeleted('b')
+        tree._validate()
+
+    def test_remove_absent_directory(self):
+        """Removing a absent directory succeeds without corruption (#150438)."""
+        paths = ['a/', 'a/b']
+        tree = self.get_committed_tree(paths)
+        self.get_transport('.').delete_tree('a')
+        tree.remove(['a'])
+        self.assertRemovedAndDeleted('b')
+        tree._validate()
 
     def test_remove_unknown_ignored_files(self):
         """Unknown ignored files should be deleted."""
@@ -182,6 +199,7 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertNotEquals(None, tree.is_ignored('b/unknown_ignored_dir'))
         tree.remove('b', keep_files=False)
         self.assertRemovedAndDeleted('b')
+        tree._validate()
 
     def test_remove_changed_ignored_files(self):
         """Changed ignored files should not be deleted."""
@@ -196,6 +214,7 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertContainsRe(err.changes_as_text,
             '(?s)added:.*' + files[0])
         self.assertInWorkingTree(files)
+        tree._validate()
 
     def test_dont_remove_directory_with_unknowns(self):
         """Directories with unknowns should not be deleted."""
@@ -222,6 +241,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
         self.assertInWorkingTree(directories)
         self.failUnlessExists(directories)
+        tree._validate()
 
     def test_force_remove_directory_with_unknowns(self):
         """Unchanged non-empty directories should be deleted when forced."""
@@ -239,6 +259,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
         self.assertRemovedAndDeleted(files)
         self.assertRemovedAndDeleted(other_files)
+        tree._validate()
 
     def test_remove_directory_with_changed_file(self):
         """Refuse to delete directories with changed files."""
@@ -255,6 +276,7 @@ class TestRemove(TestCaseWithWorkingTree):
         # see if we can force it now..
         tree.remove('b', keep_files=False, force=True)
         self.assertRemovedAndDeleted(files)
+        tree._validate()
 
     def test_remove_directory_with_renames(self):
         """Delete directory with renames in or out."""
@@ -278,6 +300,7 @@ class TestRemove(TestCaseWithWorkingTree):
         # check if it works with renames in
         tree.remove('b', keep_files=False)
         self.assertRemovedAndDeleted(['b/'])
+        tree._validate()
 
     def test_non_cwd(self):
         tree = self.make_branch_and_tree('tree')
@@ -287,6 +310,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('dir/', keep_files=False)
         self.failIfExists('tree/dir/file')
         self.assertNotInWorkingTree('tree/dir/file', 'tree')
+        tree._validate()
 
     def test_remove_uncommitted_removed_file(self):
         # As per bug #152811
@@ -294,6 +318,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('a', keep_files=False)
         tree.remove('a', keep_files=False)
         self.failIfExists('a')
+        tree._validate()
 
     def test_remove_file_and_containing_dir(self):
         tree = self.get_committed_tree(['config/', 'config/file'])
@@ -301,3 +326,4 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('config', keep_files=False)
         self.failIfExists('config/file')
         self.failIfExists('config')
+        tree._validate()
