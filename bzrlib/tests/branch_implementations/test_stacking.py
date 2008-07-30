@@ -258,3 +258,21 @@ class TestStacking(TestCaseWithBranch):
         unstacked.fetch(stacked.branch.repository, 'rev2')
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
+
+    def test_autopack_when_stacked(self):
+        # in bzr.dev as of 20080730, autopack was reported to fail in stacked
+        # repositories because of problems with text deltas spanning physical
+        # repository boundaries.
+        if not self.branch_format.supports_stacking():
+            raise TestNotApplicable("%r does not support stacking"
+                % self.branch_format)
+        stack_on = self.make_branch_and_tree('stack-on')
+        self.build_tree_contents([('stack-on/a', 'content\n')])
+        stack_on.add('a')
+        stack_on.commit('base commit')
+        stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
+        stacked_tree = stacked_dir.open_workingtree()
+        for i in range(20):
+            self.build_tree_contents([('stacked/a', 'content %d\n' % i)])
+            stacked_tree.commit('commit %d' % i)
+        stacked_tree.branch.repository.pack()
