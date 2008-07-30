@@ -55,6 +55,7 @@ from bzrlib import (
     win32utils,
     workingtree,
     workingtree_4,
+    workingtree_5,
     xml4,
     xml5,
     )
@@ -2552,6 +2553,11 @@ class ConvertMetaToMeta(Converter):
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat4)):
                 workingtree_4.Converter3to4().convert(tree)
+            if (isinstance(tree, workingtree_4.WorkingTree4) and
+                not isinstance(tree, workingtree_5.WorkingTree5) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_5.WorkingTreeFormat5)):
+                workingtree_5.Converter4to5().convert(tree)
         return to_convert
 
 
