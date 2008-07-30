@@ -690,6 +690,14 @@ class Merge3Merger(object):
             names       ((base, [name, in, lcas]), name_in_other, name_in_this)
             executable  ((base, [exec, in, lcas]), exec_in_other, exec_in_this)
         """
+        if self.interesting_files is not None:
+            lookup_trees = [self.this_tree, self.base_tree]
+            lookup_trees.extend(self._lca_trees)
+            # I think we should include the lca trees as well
+            interesting_ids = self.other_tree.paths2ids(self.interesting_files,
+                                                        lookup_trees)
+        else:
+            interesting_ids = self.interesting_ids
         result = []
         # XXX: Do we want a better sort order than this?
         walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
@@ -700,6 +708,8 @@ class Merge3Merger(object):
             # Is this modified at all from any of the other trees?
             if other_ie is None:
                 other_ie = _none_entry
+            if interesting_ids is not None and file_id not in interesting_ids:
+                continue
 
             # I believe we can actually change this to see if last_rev is
             # identical to *any* of the lca values. Though we should actually

@@ -1144,13 +1144,19 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         return builder
 
-    def make_Merger(self, builder, other_revision_id):
+    def make_Merger(self, builder, other_revision_id,
+                    interesting_files=None, interesting_ids=None):
         """Make a Merger object from a branch builder"""
         mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
         mem_tree.lock_write()
         self.addCleanup(mem_tree.unlock)
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             mem_tree, other_revision_id)
+        if interesting_files is not None:
+            merger.set_interesting_files(interesting_files)
+        if interesting_ids is not None:
+            # It seems there is no matching function for set_interesting_ids
+            merger.interesting_ids = interesting_ids
         merger.merge_type = _mod_merge.Merge3Merger
         return merger
 
@@ -1235,8 +1241,11 @@ class TestMergerInMemory(TestMergerBase):
 
 class TestMergerEntriesLCA(TestMergerBase):
 
-    def make_merge_obj(self, builder, other_revision_id):
-        merger = self.make_Merger(builder, other_revision_id)
+    def make_merge_obj(self, builder, other_revision_id,
+                       interesting_files=None, interesting_ids=None):
+        merger = self.make_Merger(builder, other_revision_id,
+            interesting_files=interesting_files,
+            interesting_ids=interesting_ids)
         return merger.make_merger()
         
     def test_simple(self):
@@ -1455,6 +1464,127 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), False, False)),
                          ], entries)
 
+    def test_interesting_files(self):
+        # Two files modified, but we should filter one of them
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n')),
+             ('add', (u'b', 'b-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'new-content\n')),
+             ('modify', ('b-id', 'new-content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id',
+                                        interesting_files=['b'])
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('b-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'b', [u'b', u'b']), u'b', u'b'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_interesting_file_in_this(self):
+        # This renamed the file, but it should still match the entry in other
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n')),
+             ('add', (u'b', 'b-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'new-content\n')),
+             ('modify', ('b-id', 'new-content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('rename', ('b', 'c'))])
+        merge_obj = self.make_merge_obj(builder, 'E-id',
+                                        interesting_files=['c'])
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('b-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'b', [u'b', u'b']), u'b', u'c'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_interesting_file_in_base(self):
+        # This renamed the file, but it should still match the entry in BASE
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n')),
+             ('add', (u'c', 'c-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('rename', ('c', 'b'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('rename', ('c', 'b'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'new-content\n')),
+             ('modify', ('c-id', 'new-content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id',
+                                        interesting_files=['c'])
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('c-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'c', [u'b', u'b']), u'b', u'b'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_interesting_file_in_lca(self):
+        # This renamed the file, but it should still match the entry in LCA
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n')),
+             ('add', (u'b', 'b-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('rename', ('b', 'c'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'new-content\n')),
+             ('modify', ('b-id', 'new-content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('rename', ('c', 'b'))])
+        merge_obj = self.make_merge_obj(builder, 'E-id',
+                                        interesting_files=['c'])
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('b-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'b', [u'c', u'b']), u'b', u'b'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_interesting_ids(self):
+        # Two files modified, but we should filter one of them
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n')),
+             ('add', (u'b', 'b-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('a-id', 'new-content\n')),
+             ('modify', ('b-id', 'new-content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id',
+                                        interesting_ids=['b-id'])
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('b-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'b', [u'b', u'b']), u'b', u'b'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+
 
 class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
@@ -1608,6 +1738,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     #       x-x Only executable bit changed, not really possible to test via
     #           builder api, only TreeTransform supports executable on all
     #           platforms.
+    #       x-x Handle 'interesting_files' or 'interesting_ids'
 
 class TestLCAMultiWay(tests.TestCase):
 
