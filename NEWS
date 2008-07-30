@@ -23,6 +23,9 @@ IN DEVELOPMENT
     * ``bzr check`` can now be told which elements at a location it should
       check.  (Daniel Watkins)
 
+    * Give a more specific error when target branch is not reachable.
+      (James Westby)
+
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
       This uses a pyrex extension to get direct access to the
       ``FindFirstFileW`` style apis, rather than using ``listdir`` +
