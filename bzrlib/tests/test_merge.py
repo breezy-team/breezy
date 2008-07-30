@@ -1725,6 +1725,88 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual(0, conflicts)
         self.assertTrue(wt.is_executable('foo-id'))
 
+    def test_create_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        #   A       
+        #  / \
+        # B   C 
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E
+        #     |
+        #     F     Add a symlink 'foo' => 'bar'
+        # Have to use a real WT, because BranchBuilder and MemoryTree don't
+        # have symlink support
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        # Have to use a real WT, because BranchBuilder doesn't support exec bit
+        wt = self.get_wt_from_builder(builder)
+        os.symlink('bar', 'path/foo')
+        wt.add(['foo'], ['foo-id'])
+        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        wt.commit('add symlink', rev_id='F-id')
+        # Reset to D, so that we can merge F
+        wt.set_parent_ids(['D-id'])
+        wt.branch.set_last_revision_info(3, 'D-id')
+        wt.revert()
+        self.assertIs(None, wt.path2id('foo'))
+        conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
+        self.assertEqual(0, conflicts)
+        self.assertEqual('foo-id', wt.path2id('foo'))
+        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+
+    def test_unmodified_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        #   A       Create symlink foo => bar
+        #  / \
+        # B   C     B relinks foo => baz
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E     D & E have foo => baz
+        #     |
+        #     F     F changes it to bing
+        #
+        # Merging D & F should result in F cleanly overriding D, because D's
+        # value actually comes from F
+
+        # Have to use a real WT, because BranchBuilder and MemoryTree don't
+        # have symlink support
+        wt = self.make_branch_and_tree('path')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        os.symlink('bar', 'path/foo')
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('add symlink', rev_id='A-id')
+        os.remove('path/foo')
+        os.symlink('baz', 'path/foo')
+        wt.commit('foo => baz', rev_id='B-id')
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.revert()
+        wt.commit('C', rev_id='C-id')
+        wt.merge_from_branch(wt.branch, 'B-id')
+        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        wt.commit('E merges C & B', rev_id='E-id')
+        os.remove('path/foo')
+        os.symlink('bing', 'path/foo')
+        wt.commit('F foo => bing', rev_id='F-id')
+        wt.set_last_revision('B-id')
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.revert()
+        wt.merge_from_branch(wt.branch, 'C-id')
+        wt.commit('D merges B & C', rev_id='D-id')
+        conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
+        self.expectFailure("Merge3Merger doesn't use lcas for symlink content",
+            self.assertEqual, 0, conflicts)
+        self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+
     def test_other_reverted_path_to_base(self):
         #   A       Path at 'foo'
         #  / \
