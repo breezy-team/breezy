@@ -1176,6 +1176,24 @@ class TestMergerInMemory(TestMergerBase):
         self.assertEqual(['C-id', 'B-id'], [t.get_revision_id()
                                             for t in merger._lca_trees])
 
+    def test_find_base_triple_criss_cross(self):
+        #       A-.
+        #      / \ \
+        #     B   C F # F is merged into both branches
+        #     |\ /| |
+        #     | X | |\
+        #     |/ \| | :
+        #   : D   E |  
+        #    \|   |/ 
+        #     G   H
+        builder = self.setup_criss_cross_graph()
+        builder.build_snapshot('F-id', ['A-id'], [])
+        builder.build_snapshot('H-id', ['E-id', 'F-id'], [])
+        builder.build_snapshot('G-id', ['D-id', 'F-id'], [])
+        merger = self.make_Merger(builder, 'H-id')
+        self.assertEqual(['B-id', 'C-id', 'F-id'],
+                         [t.get_revision_id() for t in merger._lca_trees])
+
     def test_no_criss_cross_passed_to_merge_type(self):
         class LCATreesMerger(LoggingMerger):
             supports_lca_trees = True

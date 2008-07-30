@@ -363,8 +363,16 @@ class Merger(object):
             elif len(lcas) == 1:
                 self.base_rev_id = list(lcas)[0]
             else: # len(lcas) > 1
-                self.base_rev_id = self.revision_graph.find_unique_lca(
-                                        *lcas)
+                if len(lcas) > 2:
+                    # find_unique_lca can only handle 2 nodes, so we have to
+                    # start back at the beginning. It is a shame to traverse
+                    # the graph again, but better than re-implementing
+                    # find_unique_lca.
+                    self.base_rev_id = self.revision_graph.find_unique_lca(
+                                            revisions[0], revisions[1])
+                else:
+                    self.base_rev_id = self.revision_graph.find_unique_lca(
+                                            *lcas)
                 self._is_criss_cross = True
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
