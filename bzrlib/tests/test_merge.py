@@ -1725,6 +1725,52 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual(0, conflicts)
         self.assertTrue(wt.is_executable('foo-id'))
 
+    def test_other_reverted_path_to_base(self):
+        #   A       Path at 'foo'
+        #  / \
+        # B   C     Path at 'bar' in B
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E     Path at 'bar'
+        #     |
+        #     F     Path at 'foo'
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('rename', ('foo', 'bar'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('rename', ('foo', 'bar'))]) # merge the rename
+        builder.build_snapshot('F-id', ['E-id'],
+            [('rename', ('bar', 'foo'))]) # Rename back to BASE
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        wt, conflicts = self.do_merge(builder, 'F-id')
+        self.assertEqual(0, conflicts)
+        self.assertEqual('foo', wt.id2path('foo-id'))
+
+    def test_other_reverted_content_to_base(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('foo-id', 'B content\n'))]) # merge the content
+        builder.build_snapshot('F-id', ['E-id'],
+            [('modify', ('foo-id', 'base content\n'))]) # Revert back to BASE
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        wt, conflicts = self.do_merge(builder, 'F-id')
+        self.assertEqual(0, conflicts)
+        # TODO: We need to use the per-file graph to properly select a BASE
+        #       before this will work.
+        self.expectFailure("Merge3Merger doesn't recognize reverted content",
+            self.assertEqual, 'base content\n', wt.get_file_text('foo-id'))
+
 
     # TODO: cases to test
     #       simple criss-cross LCAS identical, BASE different
@@ -1735,10 +1781,6 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     #       x-x file missing in LCA
     #       x-x Reverted back to BASE text
     #       x-x Symlink targets, similar to file contents
-    #       x-x Only executable bit changed, not really possible to test via
-    #           builder api, only TreeTransform supports executable on all
-    #           platforms.
-    #       x-x Handle 'interesting_files' or 'interesting_ids'
 
 class TestLCAMultiWay(tests.TestCase):
 
