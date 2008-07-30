@@ -1205,10 +1205,14 @@ class TestExternalDevelopment1(object):
 
     # mixin class for testing stack-supporting development formats
 
-    def test_compatible_cross_formats(self):
+    def test_stack_checks_compatibility(self):
         # early versions of the packing code relied on pack internals to
         # stack, but the current version should be able to stack on any
         # format.
+        #
+        # TODO: Possibly this should be run per-repository-format and raise
+        # TestNotApplicable on formats that don't support stacking. -- mbp
+        # 20080729
         repo = self.make_repository('repo', format=self.get_format())
         if repo.supports_rich_root():
             # can only stack on repositories that have compatible internal
@@ -1223,8 +1227,12 @@ class TestExternalDevelopment1(object):
         # you can't stack on something with incompatible data
         bad_repo = self.make_repository('mismatch',
             format=mismatching_format_name)
-        self.assertRaises(errors.IncompatibleRepositories,
+        e = self.assertRaises(errors.IncompatibleRepositories,
             repo.add_fallback_repository, bad_repo)
+        self.assertContainsRe(str(e),
+            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+            r'KnitPackRepository.*/repo/.*\n'
+            r'different rich-root support')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
