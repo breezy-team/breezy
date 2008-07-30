@@ -6,6 +6,7 @@ from distutils.core import setup
 from distutils.extension import Extension
 from distutils.command.install_lib import install_lib
 from distutils import log
+import sys
 import os
 
 # Build instructions for Windows:
@@ -201,6 +202,10 @@ def SvnExtension(name, *args, **kwargs):
     kwargs["library_dirs"] = svn_libdir + apr_libdir
     kwargs["extra_link_args"] = apr_ldflags
     if os.name == 'nt':
+        # windows needs this dir on INCLUDE for stdbool.h...
+        this_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+        kwargs["include_dirs"].append(this_dir)
+        # APR needs WIN32 defined.
         kwargs["define_macros"] = [("WIN32", None)]
     return Extension("bzrlib.plugins.svn.%s" % name, *args, **kwargs)
 
