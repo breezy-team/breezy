@@ -59,9 +59,9 @@ from bzrlib.option import ListOption, Option, RegistryOption, custom_help
 from bzrlib.trace import mutter, note, warning, is_quiet, info
 
 
-def tree_files(file_list, default_branch=u'.'):
+def tree_files(file_list, default_branch=u'.', apply_view=True):
     try:
-        return internal_tree_files(file_list, default_branch)
+        return internal_tree_files(file_list, default_branch, apply_view)
     except errors.FileInWrongBranch, e:
         raise errors.BzrCommandError("%s is not in the same branch as %s" %
                                      (e.path, file_list[0]))
@@ -69,7 +69,7 @@ def tree_files(file_list, default_branch=u'.'):
 
 # XXX: Bad function name; should possibly also be a class method of
 # WorkingTree rather than a function.
-def internal_tree_files(file_list, default_branch=u'.'):
+def internal_tree_files(file_list, default_branch=u'.', apply_view=True):
     """Convert command-line paths to a WorkingTree and relative paths.
 
     This is typically used for command-line processors that take one or
@@ -82,15 +82,32 @@ def internal_tree_files(file_list, default_branch=u'.'):
     :param default_branch: Fallback tree path to use if file_list is empty or
         None.
 
+    :param apply_view: if True and a view is set, apply it or check that
+        specified files are within it
+
     :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
-        return WorkingTree.open_containing(default_branch)[0], file_list
+        tree = WorkingTree.open_containing(default_branch)[0]
+        if tree.supports_views() and apply_view:
+            view_files = tree.views.lookup_view()
+            if view_files:
+                file_list = view_files
+                view_str = ", ".join(view_files)
+                note("ignoring files outside view: %s" % view_str)
+        return tree, file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
+    if tree.supports_views() and apply_view:
+        view_files = tree.views.lookup_view()
+    else:
+        view_files = []
     new_list = []
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(osutils.dereference_path(filename)))
+            relpath = tree.relpath(osutils.dereference_path(filename))
+            if  view_files and not is_inside_any(view_files, relpath):
+                raise errors.FileOutsideView(filename, view_files)
+            new_list.append(relpath)
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return tree, new_list
@@ -4486,6 +4503,126 @@ class cmd_switch(Command):
         switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+
+
+class cmd_view(Command):
+    """Manage filtered views.
+    
+    Views provide a mask over the tree so that users can focus on
+    a subset of a tree when doing their work. After creating a view,
+    commands that support a list of files - status, diff, commit, etc -
+    effectively have that list of files implicitly given each time.
+    An explicit list of files can still be given but those files
+    must be within the current view.
+
+    In most cases, a view has a short life-span: it is created to make
+    a selected change and is deleted once that change is committed.
+    At other times, you may wish to create one or more named views
+    and switch between them. To see the list of named views defined
+    for a tree, use the ``info`` command.
+    
+    To disable the current view without deleting it, you can switch to
+    the pseudo view called ``off``. This can be useful when you need
+    to see the whole tree for an operation or two (e.g. merge) but
+    want to switch back to your view after that.
+
+    :Examples:
+      To change the current view::
+
+        bzr view file1 dir1 ...
+
+      To list the current view::
+
+        bzr view
+
+      To delete the current view::
+
+        bzr view --delete
+
+      To disable the current view without deleting it::
+
+        bzr view --switch off
+
+      To change a named view and switch to it::
+
+        bzr view --name view-name file1 dir1 ...
+
+      To list a named view::
+
+        bzr view --name view-name
+
+      To delete a named view::
+
+        bzr view --name view-name --delete
+
+      To switch to a named view::
+
+        bzr view --switch view-name
+    """
+
+    _see_also = ['info']
+    takes_args = ['file*']
+    takes_options = [
+        Option('delete',
+            help='Delete the view.',
+            ),
+        Option('name',
+            help='Name of the view to list, save or delete.',
+            type=unicode,
+            ),
+        Option('switch',
+            help='Name of the view to switch to.',
+            type=unicode,
+            ),
+        ]
+
+    def run(self, file_list,
+            delete=False,
+            name=None,
+            switch=None,
+            ):
+        tree, file_list = tree_files(file_list, apply_view=False)
+        current_view, view_dict = tree.views.get_view_info()
+        if name is None:
+            name = current_view
+        if delete:
+            if file_list:
+                raise BzrCommandError("Both --delete and a file list specified")
+            elif switch:
+                raise BzrCommandError("Both --delete and --switch specified")
+            elif name is None:
+                raise BzrCommandError("No current view to delete")
+            else:
+                tree.views.delete_view(name)
+                self.outf.write("Deleted '%s' view.\n" % name)
+        elif switch:
+            if file_list:
+                raise BzrCommandError("Both --switch and a file list specified")
+            elif switch == 'off':
+                if current_view is None:
+                    raise BzrCommandError("No current view to disable")
+                tree.views.set_view_info(None, view_dict)
+                self.outf.write("Disabled '%s' view.\n" % (switch))
+            else:
+                tree.views.set_view_info(switch, view_dict)
+                view_str = ", ".join(tree.views.lookup_view())
+                self.outf.write("Switched to '%s' view: %s\n" % (switch,view_str))
+        elif file_list:
+            if name is None:
+                # No name given and no current view set
+                name = 'my'
+            elif name == 'off':
+                raise BzrCommandError("Cannot change the 'off' pseudo view")
+            tree.views.set_view(name, sorted(file_list))
+            view_str = ", ".join(tree.views.lookup_view())
+            self.outf.write("Switched to '%s' view: %s\n" % (name, view_str))
+        else:
+            # list the files
+            if current_view is None:
+                self.outf.write('No current view.\n')
+            else:
+                view_str = ", ".join(tree.views.lookup_view(name))
+                self.outf.write("Using '%s' view: %s\n" % (name, view_str))
 
 
 class cmd_hooks(Command):

@@ -543,6 +543,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
             "tree to a later format.")
 
+    def test_file_outside_view(self):
+        err = errors.FileOutsideView('baz', ['foo', 'bar'])
+        self.assertEquals('Specified file "baz" is outside the current view: '
+            'foo, bar', str(err))
+
 
 class PassThroughError(errors.BzrError):
     
