@@ -1761,7 +1761,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('foo-id', wt.path2id('foo'))
         self.assertEqual('bar', wt.get_symlink_target('foo-id'))
 
-    def test_unmodified_symlink(self):
+    def test_modified_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
@@ -1805,6 +1805,113 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
         self.expectFailure("Merge3Merger doesn't use lcas for symlink content",
             self.assertEqual, 0, conflicts)
+        self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+
+    def test_renamed_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        #   A       Create symlink foo => bar
+        #  / \
+        # B   C     B renames foo => barry
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E     D & E have barry
+        #     |
+        #     F     F renames barry to blah
+        #
+        # Merging D & F should result in F cleanly overriding D, because D's
+        # value actually comes from F
+
+        wt = self.make_branch_and_tree('path')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        os.symlink('bar', 'path/foo')
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('A add symlink', rev_id='A-id')
+        wt.rename_one('foo', 'barry')
+        wt.commit('B foo => barry', rev_id='B-id')
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.revert()
+        wt.commit('C', rev_id='C-id')
+        wt.merge_from_branch(wt.branch, 'B-id')
+        self.assertEqual('barry', wt.id2path('foo-id'))
+        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        wt.commit('E merges C & B', rev_id='E-id')
+        wt.rename_one('barry', 'blah')
+        wt.commit('F barry => blah', rev_id='F-id')
+        wt.set_last_revision('B-id')
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.revert()
+        wt.merge_from_branch(wt.branch, 'C-id')
+        wt.commit('D merges B & C', rev_id='D-id')
+        self.assertEqual('barry', wt.id2path('foo-id'))
+        # Check the output of the Merger object directly
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'F-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        root_id = wt.path2id('')
+        entries = list(merge_obj._entries_lca())
+        # No content change, just a path change
+        self.assertEqual([('foo-id', False,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'foo', [u'barry', u'foo']), u'blah', u'barry'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+        conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
+        self.assertEqual(0, conflicts)
+        self.assertEqual('blah', wt.id2path('foo-id'))
+
+    def test_symlink_no_content_change(self):
+        self.requireFeature(tests.SymlinkFeature)
+        #   A       Create symlink foo => bar
+        #  / \
+        # B   C     B relinks foo => baz
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E     D & E have foo => baz
+        # |
+        # F         F has foo => bing
+        #
+        # Merging E into F should not cause a conflict, because E doesn't have
+        # a content change relative to the LCAs (it does relative to A)
+        wt = self.make_branch_and_tree('path')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        os.symlink('bar', 'path/foo')
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('add symlink', rev_id='A-id')
+        os.remove('path/foo')
+        os.symlink('baz', 'path/foo')
+        wt.commit('foo => baz', rev_id='B-id')
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.revert()
+        wt.commit('C', rev_id='C-id')
+        wt.merge_from_branch(wt.branch, 'B-id')
+        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        wt.commit('E merges C & B', rev_id='E-id')
+        wt.set_last_revision('B-id')
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.revert()
+        wt.merge_from_branch(wt.branch, 'C-id')
+        wt.commit('D merges B & C', rev_id='D-id')
+        os.remove('path/foo')
+        os.symlink('bing', 'path/foo')
+        wt.commit('F foo => bing', rev_id='F-id')
+
+        # Check the output of the Merger object directly
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        # Nothing interesting happened in OTHER relative to BASE
+        self.assertEqual([], list(merge_obj._entries_lca()))
+        # Now do a real merge, just to test the rest of the stack
+        conflicts = wt.merge_from_branch(wt.branch, to_revision='E-id')
+        self.assertEqual(0, conflicts)
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_other_reverted_path_to_base(self):
@@ -1853,6 +1960,25 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #       the appropriate content base. (which is B, not A).
         self.expectFailure("Merge3Merger doesn't recognize reverted content",
             self.assertEqual, 'base content\n', wt.get_file_text('foo-id'))
+
+    def test_other_modified_content(self):
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('foo-id', 'B content\n'))]) # merge the content
+        builder.build_snapshot('F-id', ['E-id'],
+            [('modify', ('foo-id', 'F content\n'))]) # Override B content
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        wt, conflicts = self.do_merge(builder, 'F-id')
+        self.expectFailure("Merge3Merger only uses BASE for content",
+            self.assertEqual, 'F content\n', wt.get_file_text('foo-id'))
+        self.assertEqual(0, conflicts)
+        self.assertEqual('F content\n', wt.get_file_text('foo-id'))
 
 
     # TODO: cases to test

@@ -791,13 +791,15 @@ class Merge3Merger(object):
                 elif other_ie.kind == 'symlink':
                     lca_targets = [ie.symlink_target for ie in lca_entries]
                     target_winner = Merge3Merger._lca_multi_way(
-                        (base_ie.symlink_target, lca_entries),
+                        (base_ie.symlink_target, lca_targets),
                         other_ie.symlink_target, this_ie.symlink_target)
-                    # if (parent_id_winner == 'this' and name_winner == 'this'
-                    #     and symlink_winner == 'this' and exec_winner == 'this'):
-                    #     continue
-                    # if symlink_winner == 'this':
-                    #     content_changed = False
+                    if (parent_id_winner == 'this' and name_winner == 'this'
+                        and target_winner == 'this'):
+                        # No kind, parent, name, or symlink target change
+                        # not interesting
+                        continue
+                    if target_winner == 'this':
+                        content_changed = False
                 else:
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
                 # XXX: We need to handle kind == 'symlink'
