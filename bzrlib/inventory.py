@@ -813,7 +813,9 @@ class Inventory(object):
                 # adds come later
                 continue
             # Preserve unaltered children of file_id for later reinsertion.
-            children[file_id] = getattr(self[file_id], 'children', {})
+            file_id_children = getattr(self[file_id], 'children', {})
+            if len(file_id_children):
+                children[file_id] = file_id_children
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
             self.remove_recursive_id(file_id)
@@ -825,8 +827,16 @@ class Inventory(object):
         for new_path, new_entry in sorted((np, e) for op, np, f, e in
                                           delta if np is not None):
             if new_entry.kind == 'directory':
-                new_entry.children = children.get(new_entry.file_id, {})
+                # Pop the child which to allow detection of children whose
+                # parents were deleted and which were not reattached to a new
+                # parent.
+                new_entry.children = children.pop(new_entry.file_id, {})
             self.add(new_entry)
+        if len(children):
+            # Get the parent id that was deleted
+            parent_id, children = children.popitem()
+            raise errors.InconsistentDelta("<deleted>", parent_id,
+                "The file id was deleted but its children were not deleted.")
 
     def _set_root(self, ie):
         self.root = ie
