@@ -1981,9 +1981,6 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('F content\n', wt.get_file_text('foo-id'))
 
 
-    # TODO: cases to test
-    #       x-x Symlink targets, similar to file contents
-
 class TestLCAMultiWay(tests.TestCase):
 
     def assertLCAMultiWay(self, expected, base, lcas, other, this):
