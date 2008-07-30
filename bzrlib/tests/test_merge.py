@@ -1767,19 +1767,13 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt, conflicts = self.do_merge(builder, 'F-id')
         self.assertEqual(0, conflicts)
         # TODO: We need to use the per-file graph to properly select a BASE
-        #       before this will work.
+        #       before this will work. Or at least use the LCA trees to find
+        #       the appropriate content base. (which is B, not A).
         self.expectFailure("Merge3Merger doesn't recognize reverted content",
             self.assertEqual, 'base content\n', wt.get_file_text('foo-id'))
 
 
     # TODO: cases to test
-    #       simple criss-cross LCAS identical, BASE different
-    #       x-x changed from BASE but identical for all LCAs and tips
-    #               should be possible with the same trick of 'not-in-base'
-    #               using a double criss-cross
-    #       x-x LCAs differ, one in ancestry of other for a given file
-    #       x-x file missing in LCA
-    #       x-x Reverted back to BASE text
     #       x-x Symlink targets, similar to file contents
 
 class TestLCAMultiWay(tests.TestCase):
