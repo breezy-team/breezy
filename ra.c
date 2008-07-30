@@ -1403,7 +1403,7 @@ static PyObject *ra_unlock(PyObject *self, PyObject *args)
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
 	PyObject *path_tokens, *lock_func, *k, *v;
 	bool break_lock;
-	apr_ssize_t idx;
+	Py_ssize_t idx;
 	apr_pool_t *temp_pool;
 	apr_hash_t *hash_path_tokens;
 
