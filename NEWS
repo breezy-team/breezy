@@ -48,6 +48,9 @@ IN DEVELOPMENT
       smart server protocol to or from Windows.
       (Andrew Bennetts, #246180)
 
+    * Deleting directories by hand before running ``bzr rm`` will not
+      cause subsequent errors in ``bzr st`` and ``bzr commit``.
+      (Robert Collins, #150438)
 
   DOCUMENTATION:
 
