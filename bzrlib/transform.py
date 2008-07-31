@@ -1640,6 +1640,8 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.get_file_sha1(file_id)
 
     def is_executable(self, file_id, path=None):
+        if file_id is None:
+            return False
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._transform._new_executability[trans_id]

@@ -474,10 +474,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (entry.executable, None))
 
     def renamed(self, from_tree, to_tree, file_id, content_changed):
-        from_entry = from_tree.inventory[file_id]
-        to_entry = to_tree.inventory[file_id]
-        from_path = from_tree.id2path(file_id)
-        to_path = to_tree.id2path(file_id)
+        from_path, from_entry = self.get_path_entry(from_tree, file_id)
+        to_path, to_entry = self.get_path_entry(to_tree, file_id)
         return (file_id, (from_path, to_path), content_changed, (True, True),
             (from_entry.parent_id, to_entry.parent_id),
             (from_entry.name, to_entry.name),
@@ -485,12 +483,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
             (from_entry.executable, to_entry.executable))
 
     def unchanged(self, tree, file_id):
-        entry = tree.inventory[file_id]
+        path, entry = self.get_path_entry(tree, file_id)
         parent = entry.parent_id
         name = entry.name
         kind = entry.kind
         executable = entry.executable
-        path = tree.id2path(file_id)
         return (file_id, (path, path), False, (True, True),
                (parent, parent), (name, name), (kind, kind),
                (executable, executable))
