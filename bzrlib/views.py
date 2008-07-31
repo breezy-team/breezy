@@ -207,6 +207,8 @@ class PathBasedViews(_Views):
                 "cannot decode views format %s" % match.group(1))
         try:
             current = lines[1].decode('utf-8')
+            if current == '':
+                current = None
             views = {}
             for line in lines[2:]:
                 parts = line.decode('utf-8').split('\0')
