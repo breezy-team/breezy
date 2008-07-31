@@ -4587,42 +4587,46 @@ class cmd_view(Command):
             name = current_view
         if delete:
             if file_list:
-                raise BzrCommandError("Both --delete and a file list specified")
+                raise errors.BzrCommandError(
+                    "Both --delete and a file list specified")
             elif switch:
-                raise BzrCommandError("Both --delete and --switch specified")
+                raise errors.BzrCommandError(
+                    "Both --delete and --switch specified")
             elif name is None:
-                raise BzrCommandError("No current view to delete")
+                raise errors.BzrCommandError("No current view to delete")
             else:
                 tree.views.delete_view(name)
                 self.outf.write("Deleted '%s' view.\n" % name)
         elif switch:
             if file_list:
-                raise BzrCommandError("Both --switch and a file list specified")
+                raise errors.BzrCommandError(
+                    "Both --switch and a file list specified")
             elif switch == 'off':
                 if current_view is None:
-                    raise BzrCommandError("No current view to disable")
+                    raise errors.BzrCommandError("No current view to disable")
                 tree.views.set_view_info(None, view_dict)
-                self.outf.write("Disabled '%s' view.\n" % (switch))
+                self.outf.write("Disabled '%s' view.\n" % (current_view))
             else:
                 tree.views.set_view_info(switch, view_dict)
                 view_str = ", ".join(tree.views.lookup_view())
-                self.outf.write("Switched to '%s' view: %s\n" % (switch,view_str))
+                self.outf.write("Using '%s' view: %s\n" % (switch,view_str))
         elif file_list:
             if name is None:
                 # No name given and no current view set
                 name = 'my'
             elif name == 'off':
-                raise BzrCommandError("Cannot change the 'off' pseudo view")
+                raise errors.BzrCommandError(
+                    "Cannot change the 'off' pseudo view")
             tree.views.set_view(name, sorted(file_list))
             view_str = ", ".join(tree.views.lookup_view())
-            self.outf.write("Switched to '%s' view: %s\n" % (name, view_str))
+            self.outf.write("Using '%s' view: %s\n" % (name, view_str))
         else:
             # list the files
             if current_view is None:
                 self.outf.write('No current view.\n')
             else:
                 view_str = ", ".join(tree.views.lookup_view(name))
-                self.outf.write("Using '%s' view: %s\n" % (name, view_str))
+                self.outf.write("'%s' view is: %s\n" % (name, view_str))
 
 
 class cmd_hooks(Command):
