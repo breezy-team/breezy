@@ -198,16 +198,6 @@ Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "InstallPath"; ValueType: stri
 
 [Run]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--start-bzr"; Flags: skipifdoesntexist runhidden;
-; [[[cog
-; # NOTE: A patch has been submitted to Paramika that will avoid use
-; # of the MFC DLL.  See http://www.lag.net/pipermail/paramiko/2008-June/000732.html
-; import os
-; if os.path.isfile('win32_bzr.exe/lib/win32ui.pyd'):	# pywin32 mfc wrapper
-;     cog.outl(r'Filename: "{app}\bzr_postinstall.exe"; '
-;              'Parameters: "--check-mfc71"; '
-;              'Flags: skipifdoesntexist skipifsilent runhidden;')
-; ]]]
-; [[[end]]]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Flags: skipifdoesntexist skipifsilent runhidden;
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Shell; Flags: skipifdoesntexist skipifsilent runhidden;
 ; [[[cog
