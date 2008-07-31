@@ -306,6 +306,36 @@ class TestStacking(TestCaseWithBranch):
         except errors.RevisionNotPresent:
             # like bug 252821
             raise KnownFailure("can't fetch deltas into stacked repository")
-        self.fail("unexpected success")
         stacked_tree.branch.repository.pack()
         stacked_tree.branch.check()
+
+    def test_fetch_revisions_with_file_changes(self):
+        # Fetching revisions including file changes into a stacked branch
+        # works without error.
+        # Make the source tree.
+        src_tree = self.make_branch_and_tree('src')
+        self.build_tree_contents([('src/a', 'content')])
+        src_tree.add('a')
+        src_tree.commit('first commit')
+
+        # Make the stacked-on branch.
+        src_tree.bzrdir.sprout('stacked-on')
+
+        # Make a branch stacked on it.
+        target = self.make_branch('target')
+        try:
+            target.set_stacked_on_url('../stacked-on')
+        except (errors.UnstackableRepositoryFormat,
+                errors.UnstackableBranchFormat):
+            raise TestNotApplicable('Format does not support stacking.')
+
+        # Change the source branch.
+        self.build_tree_contents([('src/a', 'new content')])
+        src_tree.commit('second commit', rev_id='rev2')
+
+        # Fetch changes to the target.
+        target.fetch(src_tree.branch)
+        rtree = target.repository.revision_tree('rev2')
+        rtree.lock_read()
+        self.addCleanup(rtree.unlock)
+        self.assertEqual('new content', rtree.get_file_by_path('a').read())

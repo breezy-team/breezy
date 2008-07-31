@@ -17,8 +17,12 @@
 """Export a Tree to a non-versioned directory.
 """
 
+
 import os
+
+from bzrlib import errors, osutils
 from bzrlib.trace import mutter
+
 
 def dir_exporter(tree, dest, root):
     """Export this tree to a new directory.
@@ -32,17 +36,32 @@ def dir_exporter(tree, dest, root):
     :note: If the export fails, the destination directory will be
            left in a half-assed state.
     """
-    import os
     os.mkdir(dest)
     mutter('export version %r', tree)
     inv = tree.inventory
     entries = inv.iter_entries()
     entries.next() # skip root
     for dp, ie in entries:
-        # .bzrignore has no meaning outside of a working tree
-        # so do not export it
-        if dp == ".bzrignore":
+        # The .bzr* namespace is reserved for "magic" files like
+        # .bzrignore and .bzrrules - do not export these
+        if dp.startswith(".bzr"):
             continue
         
-        ie.put_on_disk(dest, dp, tree)
-
+        fullpath = osutils.pathjoin(dest, dp)
+        if ie.kind == "file":
+            fileobj = tree.get_file(ie.file_id)
+            osutils.pumpfile(fileobj, file(fullpath, 'wb'))
+            if tree.is_executable(ie.file_id):
+                os.chmod(fullpath, 0755)
+        elif ie.kind == "directory":
+            os.mkdir(fullpath)
+        elif ie.kind == "symlink":
+            try:
+                os.symlink(ie.symlink_target, fullpath)
+            except OSError,e:
+                raise errors.BzrError(
+                    "Failed to create symlink %r -> %r, error: %s"
+                    % (fullpath, self.symlink_target, e))
+        else:
+            raise errors.BzrError("don't know how to export {%s} of kind %r" %
+               (ie.file_id, ie.kind))

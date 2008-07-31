@@ -2277,8 +2277,7 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate working tree structure, branch consistency and repository
-    history.
+    """Validate working tree structure, branch consistency and repository history.
 
     This command checks various invariants about branch and repository storage
     to detect data corruption or bzr bugs.
@@ -2299,17 +2298,43 @@ class cmd_check(Command):
             in the checked revisions.  Texts can be repeated when their file
             entries are modified, but the file contents are not.  It does not
             indicate a problem.
+
+    If no restrictions are specified, all Bazaar data that is found at the given
+    location will be checked.
+
+    :Examples:
+
+        Check the tree and branch at 'foo'::
+
+            bzr check --tree --branch foo
+
+        Check only the repository at 'bar'::
+
+            bzr check --repo bar
+
+        Check everything at 'baz'::
+
+            bzr check baz
     """
 
     _see_also = ['reconcile']
     takes_args = ['path?']
-    takes_options = ['verbose']
+    takes_options = ['verbose',
+                     Option('branch', help="Check the branch related to the"
+                                           " current directory."),
+                     Option('repo', help="Check the repository related to the"
+                                         " current directory."),
+                     Option('tree', help="Check the working tree related to"
+                                         " the current directory.")]
 
-    def run(self, path=None, verbose=False):
+    def run(self, path=None, verbose=False, branch=False, repo=False,
+            tree=False):
         from bzrlib.check import check_dwim
         if path is None:
             path = '.'
-        check_dwim(path, verbose)
+        if not branch and not repo and not tree:
+            branch = repo = tree = True
+        check_dwim(path, verbose, do_branch=branch, do_repo=repo, do_tree=tree)
 
 
 class cmd_upgrade(Command):
@@ -4116,7 +4141,7 @@ class cmd_send(Command):
                 raise errors.BzrCommandError('No submit branch known or'
                                              ' specified')
             if remembered_submit_branch:
-                note('Using saved location: %s', submit_branch)
+                note('Using saved location "%s" to determine what changes to submit.', submit_branch)
 
             if mail_to is None:
                 submit_config = Branch.open(submit_branch).get_config()

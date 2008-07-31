@@ -1296,6 +1296,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     upgrade_recommended = False
 
+    _tree_class = WorkingTree4
+
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
@@ -1339,7 +1341,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         state = dirstate.DirState.initialize(local_path)
         state.unlock()
         del state
-        wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
                          _bzrdir=a_bzrdir,
@@ -1347,6 +1349,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt._new_tree()
         wt.lock_tree_write()
         try:
+            self._init_custom_control_files(wt)
             if revision_id in (None, NULL_REVISION):
                 if branch.repository.supports_rich_root():
                     wt._set_root_id(generate_ids.gen_root_id())
@@ -1390,13 +1393,22 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             wt.unlock()
         return wt
 
+    def _init_custom_control_files(self, wt):
+        """Subclasses with custom control files should override this method.
+        
+        The working tree and control files are locked for writing when this
+        method is called.
+        
+        :param wt: the WorkingTree object
+        """
+
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.
 
         :param a_bzrdir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
-        return WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+        return self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                            branch=a_bzrdir.open_branch(),
                            _format=self,
                            _bzrdir=a_bzrdir,

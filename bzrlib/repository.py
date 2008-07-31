@@ -690,6 +690,18 @@ class Repository(object):
         self._write_group = None
         # Additional places to query for data.
         self._fallback_repositories = []
+        # What order should fetch operations request streams in?
+        # The default is unsorted as that is the cheapest for an origin to
+        # provide.
+        self._fetch_order = 'unsorted'
+        # Does this repository use deltas that can be fetched as-deltas ?
+        # (E.g. knits, where the knit deltas can be transplanted intact.
+        # We default to False, which will ensure that enough data to get
+        # a full text out of any fetch stream will be grabbed.
+        self._fetch_uses_deltas = False
+        # Should fetch trigger a reconcile after the fetch? Only needed for
+        # some repository formats that can suffer internal inconsistencies.
+        self._fetch_reconcile = False
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -1614,7 +1626,6 @@ class Repository(object):
         else:
             return self.get_inventory(revision_id)
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -1994,7 +2005,6 @@ class MetaDirRepository(Repository):
         super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         return self._transport.has('shared-storage')
@@ -2509,11 +2519,11 @@ class InterSameDataRepository(InterRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import GenericRepoFetcher
+        from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target,
                self.target._format)
-        f = GenericRepoFetcher(to_repository=self.target,
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
@@ -2590,10 +2600,10 @@ class InterWeaveRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import GenericRepoFetcher
+        from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        f = GenericRepoFetcher(to_repository=self.target,
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
@@ -2671,10 +2681,10 @@ class InterKnitRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        from bzrlib.fetch import KnitRepoFetcher
+        from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        f = KnitRepoFetcher(to_repository=self.target,
+        f = RepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
                             pb=pb, find_ghosts=find_ghosts)
@@ -2741,10 +2751,15 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        if len(self.source._fallback_repositories) > 0:
-            from bzrlib.fetch import KnitRepoFetcher
-            fetcher = KnitRepoFetcher(self.target, self.source, revision_id,
-                                      pb, find_ghosts)
+        if (len(self.source._fallback_repositories) > 0 or
+            len(self.target._fallback_repositories) > 0):
+            # the pack fetcher assumes it can just copy pack binary data, but
+            # that may not be safe if there are fallback repositories on
+            # either side; instead we look at the revisions and deltas one by
+            # one.
+            from bzrlib.fetch import RepoFetcher
+            fetcher = RepoFetcher(self.target, self.source, revision_id,
+                                  pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
         from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",

@@ -1168,11 +1168,20 @@ def walkdirs(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
+        try:
+            names = sorted(_listdir(top))
+        except OSError, e:
+            if getattr(e, 'errno', None) == errno.ENOTDIR:
+                # We have been asked to examine a file, this is fine.
+                pass
+            else:
+                raise
+        else:
+            for name in names:
+                abspath = top_slash + name
+                statvalue = _lstat(abspath)
+                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
