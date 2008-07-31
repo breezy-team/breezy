@@ -4622,7 +4622,8 @@ class cmd_view(Command):
             self.outf.write("Using '%s' view: %s\n" % (name, view_str))
         else:
             # list the files
-            if current_view is None:
+            if name is None:
+                # No name given and no current view set
                 self.outf.write('No current view.\n')
             else:
                 view_str = ", ".join(tree.views.lookup_view(name))
