@@ -242,6 +242,98 @@ if unavailable_files:
     print 'The python versions will be used instead.'
     print
 
+def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
+                         gui_targets):
+    packages.append('tbzrcommands')
+
+    # ModuleFinder can't handle runtime changes to __path__, but
+    # win32com uses them.  Hook this in so win32com.shell is found.
+    import modulefinder
+    import win32com
+    for p in win32com.__path__[1:]:
+        modulefinder.AddPackagePath("win32com", p)
+    for extra in ["win32com.shell"]:
+        __import__(extra)
+        m = sys.modules[extra]
+        for p in m.__path__[1:]:
+            modulefinder.AddPackagePath(extra, p)
+
+    # TBZR points to the TBZR directory
+    tbzr_root = os.environ["TBZR"]
+
+    # Ensure tbzrlib itself is on sys.path
+    sys.path.append(tbzr_root)
+
+    # Ensure our COM "entry-point" is on sys.path
+    sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
+
+    packages.append("tbzrlib")
+    excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
+                       win32ui crawler.Crawler""".split())
+
+    tbzr = dict(
+        modules=["tbzr"],
+        create_exe = False, # we only want a .dll
+    )
+    com_targets.append(tbzr)
+
+    # tbzrcache executables - a "console" version for debugging and a
+    # GUI version that is generally used.
+    tbzrcache = dict(
+        script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
+        icon_resources = [(0,'bzr.ico')],
+    )
+    console_targets.append(tbzrcache)
+
+    # Make a windows version which is the same except for the base name.
+    tbzrcachew = tbzrcache.copy()
+    tbzrcachew["dest_base"]="tbzrcachew"
+    gui_targets.append(tbzrcachew)
+
+    # ditto for the tbzrcommand tool
+    tbzrcommand = dict(
+        script = os.path.join(tbzr_root, "Scripts", "tbzrcommand.py"),
+        icon_resources = [(0,'bzr.ico')],
+    )
+    console_targets.append(tbzrcommand)
+    tbzrcommandw = tbzrcommand.copy()
+    tbzrcommandw["dest_base"]="tbzrcommandw"
+    gui_targets.append(tbzrcommandw)
+    
+    # tbzr tests
+    tbzrtest = dict(
+        script = os.path.join(tbzr_root, "Scripts", "tbzrtest.py"),
+    )
+    console_targets.append(tbzrtest)
+
+    # A utility to see python output from the shell extension - this will
+    # die when we get a c++ extension
+    # any .py file from pywin32's win32 lib will do (other than
+    # win32traceutil itself that is)
+    import winerror
+    win32_lib_dir = os.path.dirname(winerror.__file__)
+    tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
+                  dest_base="tbzr_tracer")
+    console_targets.append(tracer)
+
+def get_qbzr_py2exe_info(includes, excludes, packages):
+    # PyQt4 itself still escapes the plugin detection code for some reason...
+    packages.append('PyQt4')
+    excludes.append('PyQt4.elementtree.ElementTree')
+    includes.append('sip') # extension module required for Qt.
+    packages.append('pygments') # colorizer for qbzr
+    # but we can avoid many Qt4 Dlls.
+    dll_excludes.extend(
+        """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
+        QtHelp4.dll QtNetwork4.dll QtOpenGL4.dll QtScript4.dll
+        QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
+        qscintilla2.dll""".split())
+    # the qt binaries might not be on PATH...
+    qt_dir = os.path.join(sys.prefix, "PyQt4", "bin")
+    path = os.environ.get("PATH","")
+    if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
+        os.environ["PATH"] = path + os.pathsep + qt_dir
+
 
 if 'bdist_wininst' in sys.argv:
     def find_docs():
@@ -411,101 +503,15 @@ elif 'py2exe' in sys.argv:
     com_targets = []
 
     if 'qbzr' in plugins:
-        # PyQt4 itself still escapes the plugin detection code for some reason...
-        packages.append('PyQt4')
-        excludes.append('PyQt4.elementtree.ElementTree')
-        includes.append('sip') # extension module required for Qt.
-        packages.append('pygments') # colorizer for qbzr
-        # but we can avoid many Qt4 Dlls.
-        dll_excludes.extend(
-            """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
-            QtHelp4.dll QtNetwork4.dll QtOpenGL4.dll QtScript4.dll
-            QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
-            qscintilla2.dll""".split())
-        # the qt binaries might not be on PATH...
-        qt_dir = os.path.join(sys.prefix, "PyQt4", "bin")
-        path = os.environ.get("PATH","")
-        if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
-            os.environ["PATH"] = path + os.pathsep + qt_dir
+        get_qbzr_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # Eg: via SVN: http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
         if not os.path.isfile(os.environ.get('TOVMSI_WIN32', '<nofile>')):
             raise RuntimeError, "Please set TOVMSI_WIN32 to the location of " \
                                 "the TortoiseOverlays .msi installerfile"
-
-        packages.append('tbzrcommands')
-
-        # ModuleFinder can't handle runtime changes to __path__, but
-        # win32com uses them.  Hook this in so win32com.shell is found.
-        import modulefinder
-        import win32com
-        for p in win32com.__path__[1:]:
-            modulefinder.AddPackagePath("win32com", p)
-        for extra in ["win32com.shell"]:
-            __import__(extra)
-            m = sys.modules[extra]
-            for p in m.__path__[1:]:
-                modulefinder.AddPackagePath(extra, p)
-
-        # TBZR points to the TBZR directory
-        tbzr_root = os.environ["TBZR"]
-
-        # Ensure tbzrlib itself is on sys.path
-        sys.path.append(tbzr_root)
-
-        # Ensure our COM "entry-point" is on sys.path
-        sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
-
-        packages.append("tbzrlib")
-        excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
-                           win32ui crawler.Crawler""".split())
-
-        tbzr = dict(
-            modules=["tbzr"],
-            create_exe = False, # we only want a .dll
-        )
-        com_targets.append(tbzr)
-
-        # tbzrcache executables - a "console" version for debugging and a
-        # GUI version that is generally used.
-        tbzrcache = dict(
-            script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
-            icon_resources = [(0,'bzr.ico')],
-        )
-        console_targets.append(tbzrcache)
-
-        # Make a windows version which is the same except for the base name.
-        tbzrcachew = tbzrcache.copy()
-        tbzrcachew["dest_base"]="tbzrcachew"
-        gui_targets.append(tbzrcachew)
-
-        # ditto for the tbzrcommand tool
-        tbzrcommand = dict(
-            script = os.path.join(tbzr_root, "Scripts", "tbzrcommand.py"),
-            icon_resources = [(0,'bzr.ico')],
-        )
-        console_targets.append(tbzrcommand)
-        tbzrcommandw = tbzrcommand.copy()
-        tbzrcommandw["dest_base"]="tbzrcommandw"
-        gui_targets.append(tbzrcommandw)
-        
-        # tbzr tests
-        tbzrtest = dict(
-            script = os.path.join(tbzr_root, "Scripts", "tbzrtest.py"),
-        )
-        console_targets.append(tbzrtest)
-
-        # A utility to see python output from the shell extension - this will
-        # die when we get a c++ extension
-        # any .py file from pywin32's win32 lib will do (other than
-        # win32traceutil itself that is)
-        import winerror
-        win32_lib_dir = os.path.dirname(winerror.__file__)
-        tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
-                      dest_base="tbzr_tracer")
-        console_targets.append(tracer)
-
+        get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
+                             gui_targets)
     else:
         # print this warning to stderr as output is redirected, so it is seen
         # at build time.  Also to stdout so it appears in the log
