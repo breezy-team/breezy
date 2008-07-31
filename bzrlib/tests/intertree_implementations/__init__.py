@@ -43,7 +43,7 @@ from bzrlib.workingtree import (
     )
 
 
-def return_provided_trees(source, target):
+def return_provided_trees(test_case, source, target):
     """Return the source and target tree unaltered."""
     return source, target
 
@@ -93,8 +93,9 @@ class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             result.append(scenario)
         return result
 
-def mutable_trees_to_preview_trees(source, target):
+def mutable_trees_to_preview_trees(test_case, source, target):
     preview = TransformPreview(target)
+    test_case.addCleanup(preview.finalize)
     return source, preview.get_preview_tree()
 
 def load_tests(basic_tests, module, loader):

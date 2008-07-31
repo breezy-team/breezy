@@ -49,7 +49,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -63,7 +63,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([('a', 'a-id', 'file'),
                           ('b', 'b-id', 'directory'),
@@ -93,7 +93,7 @@ class TestCompare(TestCaseWithTwoTrees):
         # default intertree, but may perform a commit for other tree types,
         # which may reduce the validity of the test. XXX: Think about how to
         # address this.
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -107,7 +107,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -124,7 +124,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_2(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([('a', 'a-id', 'file', True, False)], d.modified)
@@ -138,7 +138,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_3(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([('b/c', 'c-id', 'file', False, True)], d.modified)
@@ -152,7 +152,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_4(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -166,7 +166,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -180,7 +180,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_6(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -194,7 +194,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(specific_files=['a'])
         self.assertEqual([('a', 'a-id', 'file')], d.added)
         self.assertEqual([], d.modified)
@@ -207,7 +207,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(
             specific_files=['a', 'b/c'])
         self.assertEqual(
@@ -224,7 +224,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(specific_files=['b'])
         self.assertEqual(
             [('b', 'b-id', 'directory'),('b/c', 'c-id', 'file')],
@@ -240,7 +240,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(want_unchanged=True)
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -256,7 +256,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_3(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(specific_files=['b'])
         # the type of tree-3 does not matter - it is used as a lookup, not
         # a dispatch. XXX: For dirstate it does speak to the optimisability of
@@ -291,7 +291,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.assertRaises(errors.PathsNotVersionedError, 
             self.intertree_class(tree1, tree2).compare,
             specific_files=['d'],
@@ -306,7 +306,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree1.add(['a', 'c'], ['a-id', 'c-id'])
         tree2.add(['a', 'c'], ['a-id', 'c-id'])
 
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([(u'a', 'a-id', 'file', True, False),
@@ -326,7 +326,7 @@ class TestCompare(TestCaseWithTwoTrees):
             links_supported = True
         else:
             links_supported = False
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(want_unversioned=True)
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -366,7 +366,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         Read lock them, and add the unlock to the cleanup.
         """
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
         tree2.lock_read()
@@ -428,7 +428,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.assertEqual([], self.do_iter_changes(tree1, tree2))
 
     def added(self, tree, file_id):
@@ -593,7 +593,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_2(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         root_id = tree1.path2id('')
         self.assertEqual([('a-id', ('a', 'a'), True, (True, True),
                            (root_id, root_id), ('a', 'a'),
@@ -605,7 +605,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_3(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.assertEqual([('c-id', ('b/c', 'b/c'), False, (True, True),
                            ('b-id', 'b-id'), ('c', 'c'), ('file', 'file'),
                           (False, True))],
@@ -621,7 +621,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.build_tree(['1/a-empty/', '2/a-empty/'])
         tree1.add(['a-empty'], ['a-empty'])
         tree2.add(['a-empty'], ['a-empty'])
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         expected = []
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
@@ -630,7 +630,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_4(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         root_id = tree1.path2id('')
         self.assertEqual([('a-id', ('a', 'd'), False, (True, True),
                            (root_id, root_id), ('a', 'd'), ('file', 'file'),
@@ -642,7 +642,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         root_id = tree1.path2id('')
         self.assertEqual([('a-id', ('a', 'd'), True, (True, True),
                            (root_id, root_id), ('a', 'd'), ('file', 'file'),
@@ -654,7 +654,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_6(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         root_id = tree1.path2id('')
         self.assertEqual([('c-id', ('b/c', 'e'), False, (True, True),
                            ('b-id', root_id), ('c', 'e'), ('file', 'file'),
@@ -670,7 +670,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         os.unlink('2/a')
         shutil.rmtree('2/b')
         # TODO ? have a symlink here?
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         root_id = tree1.path2id('')
         expected = sorted([
             self.missing('a-id', 'a', 'a', root_id, 'file'),
@@ -941,7 +941,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('tree2')
         tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree2/dir/', 'tree2/dir/file'])
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         expected = [
             self.unversioned(tree2, 'dir'),
             ]
