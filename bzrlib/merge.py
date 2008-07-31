@@ -711,16 +711,19 @@ class Merge3Merger(object):
             if interesting_ids is not None and file_id not in interesting_ids:
                 continue
 
-            # I believe we can actually change this to see if last_rev is
-            # identical to *any* of the lca values. Though we should actually
-            # use the _lca_multi_way logic. However, it may be worthwhile to
-            # shortcut entries that are identical in all of LCA + OTHER, just
-            # to avoid the overhead of looking up information in BASE and THIS.
+            # If other_revision is found in any of the lcas, that means this
+            # node is uninteresting. This is because when merging, if there are
+            # multiple heads(), we have to create a new node. So if we didn't,
+            # we know that the ancestry is linear, and that OTHER did not
+            # modify anything
+            # See doc/developers/lca_merge_resolution.txt for details
             other_revision = other_ie.revision
+            is_unmodified = False
             for lca_path, ie in lca_values:
-                if ie is None or ie.revision != other_revision:
+                if ie is not None and ie.revision == other_revision:
+                    is_unmodified = True
                     break
-            else: # Identical in all trees
+            if is_unmodified:
                 continue
 
             lca_entries = []
@@ -744,13 +747,11 @@ class Merge3Merger(object):
             lca_parent_ids = []
             lca_names = []
             lca_executable = []
-            lca_sha1s = []
             for lca_ie in lca_entries:
                 lca_kinds.append(lca_ie.kind)
                 lca_parent_ids.append(lca_ie.parent_id)
                 lca_names.append(lca_ie.name)
                 lca_executable.append(lca_ie.executable)
-                lca_sha1s.append(lca_ie.text_sha1)
 
             kind_winner = Merge3Merger._lca_multi_way(
                 (base_ie.kind, lca_kinds),
@@ -775,9 +776,18 @@ class Merge3Merger(object):
                         continue
                     content_changed = False
                 elif other_ie.kind == 'file':
+                    def get_sha1(ie, tree):
+                        if ie.kind is None:
+                            return None
+                        return tree.get_file_sha1(file_id)
+                    base_sha1 = get_sha1(base_ie, self.base_tree)
+                    lca_sha1s = [get_sha1(ie, tree) for ie, tree
+                                 in zip(lca_entries, self._lca_trees)]
+                    this_sha1 = get_sha1(this_ie, self.this_tree)
+                    other_sha1 = get_sha1(other_ie, self.other_tree)
                     sha1_winner = Merge3Merger._lca_multi_way(
-                        (base_ie.text_sha1, lca_sha1s),
-                        other_ie.text_sha1, this_ie.text_sha1)
+                        (base_sha1, lca_sha1s), other_sha1, this_sha1,
+                        allow_overriding_lca=False)
                     exec_winner = Merge3Merger._lca_multi_way(
                         (base_ie.executable, lca_executable),
                         other_ie.executable, this_ie.executable)
@@ -907,7 +917,7 @@ class Merge3Merger(object):
             return "other"
 
     @staticmethod
-    def _lca_multi_way(bases, other, this):
+    def _lca_multi_way(bases, other, this, allow_overriding_lca=True):
         """Consider LCAs when determining whether a change has occurred.
 
         If LCAS are all identical, this is the same as a _three_way comparison.
@@ -915,9 +925,15 @@ class Merge3Merger(object):
         :param bases: value in (BASE, [LCAS])
         :param other: value in OTHER
         :param this: value in THIS
+        :param allow_overriding_lca: If there is more than one unique lca
+            value, allow OTHER to override THIS if it has a new value, and
+            THIS only has an lca value, or vice versa. This is appropriate for
+            truly scalar values, not as much for non-scalars.
         :return: 'this', 'other', or 'conflict' depending on whether an entry
             changed or not.
         """
+        # See doc/developers/lca_merge_resolution.txt for details about this
+        # algorithm.
         if other == this:
             # Either Ambiguously clean, or nothing was actually changed. We
             # don't really care
@@ -928,25 +944,24 @@ class Merge3Merger(object):
                                       if lca_val != base_val]
         if len(filtered_lca_vals) == 0:
             return Merge3Merger._three_way(base_val, other, this)
-        else:
-            first_lca_val = filtered_lca_vals[0]
-            for lca_val in filtered_lca_vals[1:]:
-                if lca_val != first_lca_val:
-                    break
-            else: # all lcas are equal, use 3-way logic
-                return Merge3Merger._three_way(first_lca_val, other, this)
-        if other in filtered_lca_vals:
-            if this in filtered_lca_vals:
-                # Each side picked a different lca, conflict
-                return 'conflict'
-            else:
-                # This has a value which supersedes both lca values, and other
+
+        unique_lca_vals = set(filtered_lca_vals)
+        if len(unique_lca_vals) == 1:
+            return Merge3Merger._three_way(unique_lca_vals.pop(), other, this)
+
+        if allow_overriding_lca:
+            if other in unique_lca_vals:
+                if this in unique_lca_vals:
+                    # Each side picked a different lca, conflict
+                    return 'conflict'
+                else:
+                    # This has a value which supersedes both lca values, and
+                    # other only has an lca value
+                    return 'this'
+            elif this in unique_lca_vals:
+                # OTHER has a value which supersedes both lca values, and this
                 # only has an lca value
-                return 'this'
-        elif this in filtered_lca_vals:
-            # OTHER has a value which supersedes both lca values, and this only
-            # has an lca value
-            return 'other'
+                return 'other'
 
         # At this point, the lcas disagree, and the tips disagree
         return 'conflict'

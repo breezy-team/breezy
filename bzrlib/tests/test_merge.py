@@ -1238,6 +1238,44 @@ class TestMergerInMemory(TestMergerBase):
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
+# XXX: Thing left to test:
+#       Double-criss-cross merge, the ultimate base value is different from the
+#       intermediate.
+#         A    value 'foo'
+#         |\
+#         B C  B value 'bar', C = 'foo'
+#         |X|
+#         D E  D = 'bar', E supersedes to 'bing'
+#         |X|
+#         F G  F = 'bing', G supersedes to 'barry'
+#
+#       In this case, we technically should not care about the value 'bar' for
+#       D, because it was clearly superseded by E's 'bing'. The
+#       per-file/attribute graph would actually look like:
+#         A
+#         |
+#         B
+#         |
+#         E
+#         |
+#         G
+#
+#       Because the other side of the merge never modifies the value, it just
+#       takes the value from the merge.
+#
+#       ATM I expect this to fail because we will prune 'foo' from the LCAs,
+#       and not 'bar'. I don't know if this is strictly a problem, as it is a
+#       distinctly edge case.
+#
+#       Another incorrect resolution from the same basic flaw:
+#         A    value 'foo'
+#         |\
+#         B C  B value 'bar', C = 'foo'
+#         |X|
+#         D E  D = 'bar', E reverts to 'foo'
+#         |X|
+#         F G  F = 'bar', G reverts to 'foo'
+
 
 class TestMergerEntriesLCA(TestMergerBase):
 
@@ -1383,6 +1421,32 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), None, False)),
                          ], entries)
 
+    def test_not_in_other_or_lca(self):
+        #       A    base, introduces 'foo'
+        #       |\ 
+        #       B C  B nothing, C deletes foo
+        #       |X|
+        #       D E  D restores foo (same as B), E leaves it deleted
+        # We should emit an entry for this
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('unversion', 'foo-id')])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('foo-id', True,
+                           ((root_id, [root_id, None]), None, root_id),
+                           ((u'foo', [u'foo', None]), None, 'foo'),
+                           ((False, [False, None]), None, False)),
+                         ], entries)
+
     def test_only_in_one_lca(self):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
@@ -1421,6 +1485,133 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [None, None]), u'a', None),
                            ((None, [None, None]), False, None)),
                          ], entries)
+
+    def test_one_lca_supersedes(self):
+        # One LCA supersede's the other LCA's last modified value, but the
+        # value is not the same as BASE.
+        #       A    base, introduces 'foo', last mod A
+        #       |\ 
+        #       B C  B modifies 'foo' (mod B), C does nothing (mod A)
+        #       |X|
+        #       D E  D does nothing (mod B), E updates 'foo' (mod E)
+        #       |X|
+        #       F G  F updates 'foo' (mod F). G does nothing (mod E)
+        #
+        #   At this point, G should not be considered to modify 'foo', even
+        #   though its LCAs disagree. This is because the modification in E
+        #   completely supersedes the value in D.
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('modify', ('foo-id', 'E content\n'))])
+        builder.build_snapshot('G-id', ['E-id', 'D-id'], [])
+        builder.build_snapshot('F-id', ['D-id', 'E-id'],
+            [('modify', ('foo-id', 'F content\n'))])
+        merge_obj = self.make_merge_obj(builder, 'G-id')
+
+        self.assertEqual([], list(merge_obj._entries_lca()))
+
+    def test_both_sides_revert(self):
+        # Both sides of a criss-cross revert the text to the lca
+        #       A    base, introduces 'foo'
+        #       |\ 
+        #       B C  B modifies 'foo', C modifies 'foo'
+        #       |X|
+        #       D E  D reverts to B, E reverts to C
+        # This should conflict
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('foo-id', 'C content\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('foo-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_different_lca_resolve_one_side_updates_content(self):
+        # Both sides converge, but then one side updates the text.
+        #       A    base, introduces 'foo'
+        #       |\ 
+        #       B C  B modifies 'foo', C modifies 'foo'
+        #       |X|
+        #       D E  D reverts to B, E reverts to C
+        #       |
+        #       F    F updates to a new value
+        # We need to emit an entry for 'foo', because D & E differed on the
+        # merge resolution
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('foo-id', 'C content\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        builder.build_snapshot('F-id', ['D-id'],
+            [('modify', ('foo-id', 'F content\n'))])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('foo-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_same_lca_resolution_one_side_updates_content(self):
+        # Both sides converge, but then one side updates the text.
+        #       A    base, introduces 'foo'
+        #       |\ 
+        #       B C  B modifies 'foo', C modifies 'foo'
+        #       |X|
+        #       D E  D and E use C's value
+        #       |
+        #       F    F updates to a new value
+        # I think it is a bug that this conflicts, but we don't have a way to
+        # detect otherwise. And because of:
+        #   test_different_lca_resolve_one_side_updates_content
+        # We need to conflict.
+
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('foo-id', 'C content\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('modify', ('foo-id', 'C content\n'))]) # Same as E
+        builder.build_snapshot('F-id', ['D-id'],
+            [('modify', ('foo-id', 'F content\n'))])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.expectFailure("We don't detect that LCA resolution was the"
+                           " same on both sides",
+            self.assertEqual, [], entries)
 
     def test_only_path_changed(self):
         builder = self.get_builder()
@@ -1761,6 +1952,35 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('foo-id', wt.path2id('foo'))
         self.assertEqual('bar', wt.get_symlink_target('foo-id'))
 
+    def test_both_sides_revert(self):
+        # Both sides of a criss-cross revert the text to the lca
+        #       A    base, introduces 'foo'
+        #       |\ 
+        #       B C  B modifies 'foo', C modifies 'foo'
+        #       |X|
+        #       D E  D reverts to B, E reverts to C
+        # This should conflict
+        # This must be done with a real WorkingTree, because normally their
+        # inventory contains "None" rather than a real sha1
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('modify', ('foo-id', 'C content\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        wt, conflicts = self.do_merge(builder, 'E-id')
+        self.assertEqual(1, conflicts)
+        self.assertEqualDiff('<<<<<<< TREE\n'
+                             'B content\n'
+                             '=======\n'
+                             'C content\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             wt.get_file_text('foo-id'))
+
     def test_modified_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
         #   A       Create symlink foo => bar
@@ -1983,9 +2203,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
 class TestLCAMultiWay(tests.TestCase):
 
-    def assertLCAMultiWay(self, expected, base, lcas, other, this):
+    def assertLCAMultiWay(self, expected, base, lcas, other, this,
+                          allow_overriding_lca=True):
         self.assertEqual(expected, _mod_merge.Merge3Merger._lca_multi_way(
-                                        (base, lcas), other, this))
+                                (base, lcas), other, this,
+                                allow_overriding_lca=allow_overriding_lca))
 
     def test_other_equal_equal_lcas(self):
         """Test when OTHER=LCA and all LCAs are identical."""
@@ -2061,12 +2283,24 @@ class TestLCAMultiWay(tests.TestCase):
             'bval', ['lca1val', 'lca2val'], 'lca1val', 'newval')
         self.assertLCAMultiWay('this',
             'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'newval')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val'], 'lca1val', 'newval',
+            allow_overriding_lca=False)
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'newval',
+            allow_overriding_lca=False)
         # THIS reverted back to BASE, but that is an explicit supersede of all
         # LCAs
         self.assertLCAMultiWay('this',
             'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'bval')
         self.assertLCAMultiWay('this',
             'bval', ['lca1val', 'lca2val', 'bval'], 'lca1val', 'bval')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'bval',
+            allow_overriding_lca=False)
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'bval'], 'lca1val', 'bval',
+            allow_overriding_lca=False)
 
     def test_this_in_lca(self):
         # THIS takes a value of one of the LCAs, OTHER takes a new value, which
@@ -2075,10 +2309,19 @@ class TestLCAMultiWay(tests.TestCase):
             'bval', ['lca1val', 'lca2val'], 'oval', 'lca1val')
         self.assertLCAMultiWay('other',
             'bval', ['lca1val', 'lca2val'], 'oval', 'lca2val')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val'], 'oval', 'lca1val',
+            allow_overriding_lca=False)
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val'], 'oval', 'lca2val',
+            allow_overriding_lca=False)
         # OTHER reverted back to BASE, but that is an explicit supersede of all
         # LCAs
         self.assertLCAMultiWay('other',
             'bval', ['lca1val', 'lca2val', 'lca3val'], 'bval', 'lca3val')
+        self.assertLCAMultiWay('conflict',
+            'bval', ['lca1val', 'lca2val', 'lca3val'], 'bval', 'lca3val',
+            allow_overriding_lca=False)
 
     def test_all_differ(self):
         self.assertLCAMultiWay('conflict',
