@@ -264,6 +264,7 @@ class TestStacking(TestCaseWithBranch):
         # repositories because of problems with text deltas spanning physical
         # repository boundaries.  however, i didn't actually get this test to
         # fail on that code. -- mbp
+        # see https://bugs.launchpad.net/bzr/+bug/252821
         if not self.branch_format.supports_stacking():
             raise TestNotApplicable("%r does not support stacking"
                 % self.branch_format)
@@ -303,7 +304,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_tree.pull(other_tree.branch)
         except errors.RevisionNotPresent:
-            # like bug 252428
+            # like bug 252821
             raise KnownFailure("can't fetch deltas into stacked repository")
         self.fail("unexpected success")
         stacked_tree.branch.repository.pack()
