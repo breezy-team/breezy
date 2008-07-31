@@ -1238,44 +1238,6 @@ class TestMergerInMemory(TestMergerBase):
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
-# XXX: Thing left to test:
-#       Double-criss-cross merge, the ultimate base value is different from the
-#       intermediate.
-#         A    value 'foo'
-#         |\
-#         B C  B value 'bar', C = 'foo'
-#         |X|
-#         D E  D = 'bar', E supersedes to 'bing'
-#         |X|
-#         F G  F = 'bing', G supersedes to 'barry'
-#
-#       In this case, we technically should not care about the value 'bar' for
-#       D, because it was clearly superseded by E's 'bing'. The
-#       per-file/attribute graph would actually look like:
-#         A
-#         |
-#         B
-#         |
-#         E
-#         |
-#         G
-#
-#       Because the other side of the merge never modifies the value, it just
-#       takes the value from the merge.
-#
-#       ATM I expect this to fail because we will prune 'foo' from the LCAs,
-#       and not 'bar'. I don't know if this is strictly a problem, as it is a
-#       distinctly edge case.
-#
-#       Another incorrect resolution from the same basic flaw:
-#         A    value 'foo'
-#         |\
-#         B C  B value 'bar', C = 'foo'
-#         |X|
-#         D E  D = 'bar', E reverts to 'foo'
-#         |X|
-#         F G  F = 'bar', G reverts to 'foo'
-
 
 class TestMergerEntriesLCA(TestMergerBase):
 
@@ -1516,6 +1478,93 @@ class TestMergerEntriesLCA(TestMergerBase):
         merge_obj = self.make_merge_obj(builder, 'G-id')
 
         self.assertEqual([], list(merge_obj._entries_lca()))
+
+    def test_one_lca_supersedes_path(self):
+        # Double-criss-cross merge, the ultimate base value is different from
+        # the intermediate.
+        #   A    value 'foo'
+        #   |\
+        #   B C  B value 'bar', C = 'foo'
+        #   |X|
+        #   D E  D = 'bar', E supersedes to 'bing'
+        #   |X|
+        #   F G  F = 'bing', G supersedes to 'barry'
+        #
+        # In this case, we technically should not care about the value 'bar' for
+        # D, because it was clearly superseded by E's 'bing'. The
+        # per-file/attribute graph would actually look like:
+        #   A
+        #   |
+        #   B
+        #   |
+        #   E
+        #   |
+        #   G
+        #
+        # Because the other side of the merge never modifies the value, it just
+        # takes the value from the merge.
+        #
+        # ATM this fails because we will prune 'foo' from the LCAs, but we
+        # won't prune 'bar'. This is getting far off into edge-case land, so we
+        # aren't supporting it yet.
+        #
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('rename', ('foo', 'bar'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('rename', ('foo', 'bing'))]) # override to bing
+        builder.build_snapshot('G-id', ['E-id', 'D-id'],
+            [('rename', ('bing', 'barry'))]) # override to barry
+        builder.build_snapshot('F-id', ['D-id', 'E-id'],
+            [('rename', ('bar', 'bing'))]) # Merge in E's change
+        merge_obj = self.make_merge_obj(builder, 'G-id')
+
+        self.expectFailure("We don't do an actual heads() check on lca values,"
+            " or use the per-attribute graph",
+            self.assertEqual, [], list(merge_obj._entries_lca()))
+
+    def test_one_lca_accidentally_pruned(self):
+        # Another incorrect resolution from the same basic flaw:
+        #   A    value 'foo'
+        #   |\
+        #   B C  B value 'bar', C = 'foo'
+        #   |X|
+        #   D E  D = 'bar', E reverts to 'foo'
+        #   |X|
+        #   F G  F = 'bing', G switches to 'bar'
+        #
+        # 'bar' will not be seen as an interesting change, because 'foo' will
+        # be pruned from the LCAs, even though it was newly introduced by E
+        # (superseding B).
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'foo', 'foo-id', 'file', 'A content\n'))])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('rename', ('foo', 'bar'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('G-id', ['E-id', 'D-id'],
+            [('rename', ('foo', 'bar'))])
+        builder.build_snapshot('F-id', ['D-id', 'E-id'],
+            [('rename', ('bar', 'bing'))]) # should end up conflicting
+        merge_obj = self.make_merge_obj(builder, 'G-id')
+
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.expectFailure("We prune values from BASE even when relevant.",
+            self.assertEqual,
+                [('foo-id', False,
+                  ((root_id, [root_id, root_id]), root_id, root_id),
+                  ((u'foo', [u'bar', u'foo']), u'bar', u'bing'),
+                  ((False, [False, False]), False, False)),
+                ], entries)
 
     def test_both_sides_revert(self):
         # Both sides of a criss-cross revert the text to the lca
@@ -1789,10 +1838,10 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         """Get a real WorkingTree from the builder."""
         the_branch = builder.get_branch()
         wt = the_branch.bzrdir.create_workingtree()
-        # XXX: This is a little bit ugly, but we are holding the branch
-        #      write-locked as part of the build process, and we would like to
-        #      maintain that. So we just force the WT to re-use the same branch
-        #      object.
+        # Note: This is a little bit ugly, but we are holding the branch
+        #       write-locked as part of the build process, and we would like to
+        #       maintain that. So we just force the WT to re-use the same
+        #       branch object.
         wt._branch = the_branch
         wt.lock_write()
         self.addCleanup(wt.unlock)
