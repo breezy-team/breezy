@@ -384,16 +384,26 @@ class TreeTransformBase(object):
             os.unlink(name)
             raise
 
+    def _does_tree_kind_match(self, trans_id, kind):
+        """Checks whether the kind of trans_id has changed from the tree.
+
+        Returns True if trans_id exists in the tree and matches the
+        kind passed. Returns False otherwise.
+        """
+        try:
+            if self.tree_kind(trans_id) == 'directory':
+                return True
+        except NoSuchFile:
+            pass
+        return False
+
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
         
         See also new_directory.
         """
-        try:
-            if self.tree_kind(trans_id) != 'directory':
-                self._kind_change.add(trans_id)
-        except NoSuchFile:
-            pass
+        if not self._does_tree_kind_match(trans_id, 'directory'):
+            self._kind_change.add(trans_id)
         os.mkdir(self._limbo_name(trans_id))
         unique_add(self._new_contents, trans_id, 'directory')
 
@@ -403,6 +413,8 @@ class TreeTransformBase(object):
         target is a bytestring.
         See also new_symlink.
         """
+        if not self._does_tree_kind_match(trans_id, 'symlink'):
+            self._kind_change.add(trans_id)
         if has_symlinks():
             os.symlink(target, self._limbo_name(trans_id))
             unique_add(self._new_contents, trans_id, 'symlink')
