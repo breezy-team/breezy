@@ -157,10 +157,9 @@ format_registry.register("subversion-wc", format.SvnWorkingTreeDirFormat,
                          native=False, hidden=True)
 SPEC_TYPES.append(revspec.RevisionSpec_svn)
 
-if getattr(log, "properties_handler_registry", None) is not None:
-    log.properties_handler_registry.register_lazy("subversion",
-                                                  "bzrlib.plugins.svn.log",
-                                                  "show_subversion_properties")
+log.properties_handler_registry.register_lazy("subversion",
+                                              "bzrlib.plugins.svn.log",
+                                              "show_subversion_properties")
 
 versions_checked = False
 def lazy_check_versions():
