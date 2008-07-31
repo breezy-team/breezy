@@ -3041,13 +3041,13 @@ format_registry.register_metadir('1.6-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('1.7',
+format_registry.register_metadir('1.7preview',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
     help='A format that supports stacking, views and content filtering',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_5.WorkingTreeFormat5',
     )
-format_registry.register_metadir('1.7-rich-root',
+format_registry.register_metadir('1.7preview-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A format that supports stacking, views, content filtering '
          'and rich root data (needed for bzr-svn). ',
