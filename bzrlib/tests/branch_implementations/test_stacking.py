@@ -262,7 +262,8 @@ class TestStacking(TestCaseWithBranch):
     def test_autopack_when_stacked(self):
         # in bzr.dev as of 20080730, autopack was reported to fail in stacked
         # repositories because of problems with text deltas spanning physical
-        # repository boundaries.
+        # repository boundaries.  however, i didn't actually get this test to
+        # fail on that code. -- mbp
         if not self.branch_format.supports_stacking():
             raise TestNotApplicable("%r does not support stacking"
                 % self.branch_format)
@@ -278,3 +279,32 @@ class TestStacking(TestCaseWithBranch):
             self.build_tree_contents([('stacked/a', ''.join(text_lines))])
             stacked_tree.commit('commit %d' % i)
         stacked_tree.branch.repository.pack()
+        stacked_tree.branch.check()
+
+    def test_pull_delta_when_stacked(self):
+        if not self.branch_format.supports_stacking():
+            raise TestNotApplicable("%r does not support stacking"
+                % self.branch_format)
+        stack_on = self.make_branch_and_tree('stack-on')
+        text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
+        self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
+        stack_on.add('a')
+        stack_on.commit('base commit')
+        # make a stacked branch from the mainline
+        stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
+        stacked_tree = stacked_dir.open_workingtree()
+        # make a second non-stacked branch from the mainline
+        other_dir = stack_on.bzrdir.sprout('other')
+        other_tree = other_dir.open_workingtree()
+        text_lines[9] = 'changed in other\n'
+        self.build_tree_contents([('other/a', ''.join(text_lines))])
+        other_tree.commit('commit in other')
+        # this should have generated a delta; try to pull that across
+        try:
+            stacked_tree.pull(other_tree.branch)
+        except errors.RevisionNotPresent:
+            # like bug 252428
+            raise KnownFailure("can't fetch deltas into stacked repository")
+        self.fail("unexpected success")
+        stacked_tree.branch.repository.pack()
+        stacked_tree.branch.check()
