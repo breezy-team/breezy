@@ -324,6 +324,8 @@ class TreeTransformBase(object):
         New file takes the permissions of any existing file with that id,
         unless mode_id is specified.
         """
+        if not self._does_tree_kind_match(trans_id, 'file'):
+            self._kind_change.add(trans_id)
         name = self._limbo_name(trans_id)
         f = open(name, 'wb')
         try:
@@ -391,7 +393,7 @@ class TreeTransformBase(object):
         kind passed. Returns False otherwise.
         """
         try:
-            if self.tree_kind(trans_id) == 'directory':
+            if self.tree_kind(trans_id) == kind:
                 return True
         except NoSuchFile:
             pass

@@ -1241,6 +1241,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertFalse(changes.has_changed(), changes)
 
     def test_file_to_symlink(self):
+        self.requireFeature(SymlinkFeature)
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         wt.add(['foo'])
@@ -1256,6 +1257,25 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(wt.unlock)
         self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
                 "symlink")
+
+    def test_dir_to_file(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.delete_contents(foo_trans_id)
+        tt.delete_versioned(bar_trans_id)
+        tt.create_file(["aa\n"], foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "file")
 
 
 class TransformGroup(object):
