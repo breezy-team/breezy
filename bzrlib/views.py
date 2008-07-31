@@ -31,7 +31,7 @@ from bzrlib import (
 
 
 _VIEWS_FORMAT_MARKER_RE = re.compile(r'Bazaar views format (\d+)')
-_VIEWS_FORMAT1_MARKER = "Bazaar views format 1"
+_VIEWS_FORMAT1_MARKER = "Bazaar views format 1\n"
 
 
 class _Views(object):
@@ -183,13 +183,13 @@ class PathBasedViews(_Views):
         """Convert a current view and view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         if current is None:
-            lines.append('')
+            lines.append("\n")
         else:
-            lines.append(current.encode('utf-8'))
+            lines.append((current + "\n").encode('utf-8'))
         for view in sorted(view_dict):
-            view_data = "%s\0%s" % (view, "\0".join(view_dict[view]))
+            view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
             lines.append(view_data.encode('utf-8'))
-        return "\n".join(lines)
+        return "".join(lines)
 
     def _deserialize_view_content(self, view_content):
         """Convert a stream into a current view and dictionary of views."""
