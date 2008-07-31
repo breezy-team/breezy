@@ -81,7 +81,7 @@ class Converter4to5(object):
         finally:
             tree._control_files.unlock()
 
-    def _init_custom_control_files(self, tree):
+    def init_custom_control_files(self, tree):
         """Initialize custom control files."""
         tree._transport.put_bytes('views', '',
             mode=tree.bzrdir._get_file_mode())
