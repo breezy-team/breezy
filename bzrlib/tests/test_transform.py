@@ -1219,6 +1219,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         wt.add(['foo'])
+        wt.commit("one")
         tt = TreeTransform(wt)
         self.addCleanup(tt.finalize)
         foo_trans_id = tt.trans_id_tree_path("foo")
@@ -1229,6 +1230,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.version_file("bar-1", bar_trans_id)
         tt.apply()
         self.failUnlessExists("foo/bar")
+        wt.commit("two")
+        changes = wt.changes_from(wt.basis_tree())
+        self.assertFalse(changes.has_changed(), changes)
 
 
 class TransformGroup(object):

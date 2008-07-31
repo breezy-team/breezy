@@ -137,6 +137,8 @@ class TreeTransformBase(object):
         self._case_sensitive_target = case_sensitive
         # A counter of how many files have been renamed
         self.rename_count = 0
+        # A set of the trans_ids that have changed kind
+        self._kind_change = set()
 
     def __get_root(self):
         return self._new_root
@@ -387,6 +389,11 @@ class TreeTransformBase(object):
         
         See also new_directory.
         """
+        try:
+            if self.tree_kind(trans_id) != 'directory':
+                self._kind_change.add(trans_id)
+        except NoSuchFile:
+            pass
         os.mkdir(self._limbo_name(trans_id))
         unique_add(self._new_contents, trans_id, 'directory')
 
@@ -1320,7 +1327,8 @@ class TreeTransform(TreeTransformBase):
                     if file_id is not None and (trans_id in self._new_id or
                         trans_id in self._new_name or
                         trans_id in self._new_parent
-                        or trans_id in self._new_executability):
+                        or trans_id in self._new_executability
+                        or trans_id in self._kind_change):
                         try:
                             kind = self.final_kind(trans_id)
                         except NoSuchFile:
