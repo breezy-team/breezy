@@ -432,26 +432,30 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([], self.do_iter_changes(tree1, tree2))
 
     def added(self, tree, file_id):
-        iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
-        path, entry = iterator.next()
+        path, entry = self.get_path_entry(tree, file_id)
         return (file_id, (None, path), True, (False, True), (None, entry.parent_id),
                 (None, entry.name), (None, entry.kind),
                 (None, entry.executable))
 
+    @staticmethod
+    def get_path_entry(tree, file_id):
+        iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
+        return iterator.next()
+
     def content_changed(self, tree, file_id):
-        entry = tree.inventory[file_id]
-        path = tree.id2path(file_id)
-        return (file_id, (path, path), True, (True, True), (entry.parent_id, entry.parent_id),
+        path, entry = self.get_path_entry(tree, file_id)
+        return (file_id, (path, path), True, (True, True),
+                (entry.parent_id, entry.parent_id),
                 (entry.name, entry.name), (entry.kind, entry.kind),
                 (entry.executable, entry.executable))
 
     def kind_changed(self, from_tree, to_tree, file_id):
-        old_entry = from_tree.inventory[file_id]
-        new_entry = to_tree.inventory[file_id]
-        path = to_tree.id2path(file_id)
-        from_path = from_tree.id2path(file_id)
-        return (file_id, (from_path, path), True, (True, True), (old_entry.parent_id, new_entry.parent_id),
-                (old_entry.name, new_entry.name), (old_entry.kind, new_entry.kind),
+        from_path, old_entry = self.get_path_entry(from_tree, file_id)
+        path, new_entry = self.get_path_entry(to_tree, file_id)
+        return (file_id, (from_path, path), True, (True, True),
+                (old_entry.parent_id, new_entry.parent_id),
+                (old_entry.name, new_entry.name),
+                (old_entry.kind, new_entry.kind),
                 (old_entry.executable, new_entry.executable))
 
     def missing(self, file_id, from_path, to_path, parent_id, kind):
@@ -494,7 +498,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def unversioned(self, tree, path):
         """Create an unversioned result."""
         _, basename = os.path.split(path)
-        kind = file_kind(tree.abspath(path))
+        kind = tree._comparison_data(None, path)[0]
         return (None, (None, path), True, (False, False), (None, None),
                 (None, basename), (None, kind),
                 (None, False))
