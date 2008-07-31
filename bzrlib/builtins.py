@@ -4518,8 +4518,7 @@ class cmd_view(Command):
     In most cases, a view has a short life-span: it is created to make
     a selected change and is deleted once that change is committed.
     At other times, you may wish to create one or more named views
-    and switch between them. To see the list of named views defined
-    for a tree, use the ``info`` command.
+    and switch between them.
     
     To disable the current view without deleting it, you can switch to
     the pseudo view called ``off``. This can be useful when you need
@@ -4527,7 +4526,7 @@ class cmd_view(Command):
     want to switch back to your view after that.
 
     :Examples:
-      To change the current view::
+      To define the current view::
 
         bzr view file1 dir1 ...
 
@@ -4543,7 +4542,7 @@ class cmd_view(Command):
 
         bzr view --switch off
 
-      To change a named view and switch to it::
+      To define a named view and switch to it::
 
         bzr view --name view-name file1 dir1 ...
 
@@ -4558,16 +4557,27 @@ class cmd_view(Command):
       To switch to a named view::
 
         bzr view --switch view-name
+
+      To list all views defined::
+
+        bzr view --all
+
+      To delete all views::
+
+        bzr view --delete --all
     """
 
-    _see_also = ['info']
+    _see_also = []
     takes_args = ['file*']
     takes_options = [
+        Option('all',
+            help='Apply list or delete action to all views.',
+            ),
         Option('delete',
             help='Delete the view.',
             ),
         Option('name',
-            help='Name of the view to list, save or delete.',
+            help='Name of the view to define, list or delete.',
             type=unicode,
             ),
         Option('switch',
@@ -4577,6 +4587,7 @@ class cmd_view(Command):
         ]
 
     def run(self, file_list,
+            all=False,
             delete=False,
             name=None,
             switch=None,
@@ -4592,6 +4603,9 @@ class cmd_view(Command):
             elif switch:
                 raise errors.BzrCommandError(
                     "Both --delete and --switch specified")
+            elif all:
+                tree.views.set_view_info(None, {})
+                self.outf.write("Deleted all views.\n")
             elif name is None:
                 raise errors.BzrCommandError("No current view to delete")
             else:
@@ -4601,6 +4615,9 @@ class cmd_view(Command):
             if file_list:
                 raise errors.BzrCommandError(
                     "Both --switch and a file list specified")
+            elif all:
+                raise errors.BzrCommandError(
+                    "Both --switch and --all specified")
             elif switch == 'off':
                 if current_view is None:
                     raise errors.BzrCommandError("No current view to disable")
@@ -4610,6 +4627,18 @@ class cmd_view(Command):
                 tree.views.set_view_info(switch, view_dict)
                 view_str = ", ".join(tree.views.lookup_view())
                 self.outf.write("Using '%s' view: %s\n" % (switch,view_str))
+        elif all:
+            if view_dict:
+                self.outf.write('Views defined:\n')
+                for view in sorted(view_dict):
+                    if view == current_view:
+                        active = "=>"
+                    else:
+                        active = "  "
+                    view_str = ", ".join(view_dict[view])
+                    self.outf.write('%s %-20s %s\n' % (active,view,view_str))
+            else:
+                self.outf.write('No views defined.\n')
         elif file_list:
             if name is None:
                 # No name given and no current view set
