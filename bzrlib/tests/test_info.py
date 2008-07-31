@@ -152,8 +152,8 @@ class TestInfo(tests.TestCaseWithTransport):
                     ' rich-root or rich-root-pack'
             elif key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
-            elif key in ('1.7', '1.7-rich-root'):
-                expected = '1.7 or 1.7-rich-root'
+            elif key in ('1.7preview', '1.7preview-rich-root'):
+                expected = '1.7preview or 1.7preview-rich-root'
             self.assertCheckoutDescription(key, expected)
 
     def test_describe_branch_format(self):
@@ -163,10 +163,10 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'knit'):
                 expected = 'dirstate or knit'
-            elif key in ('1.6', '1.7'):
-                expected = '1.6 or 1.7'
-            elif key in ('1.6-rich-root', '1.7-rich-root'):
-                expected = '1.6-rich-root or 1.7-rich-root'
+            elif key in ('1.6', '1.7preview'):
+                expected = '1.6 or 1.7preview'
+            elif key in ('1.6-rich-root', '1.7preview-rich-root'):
+                expected = '1.6-rich-root or 1.7preview-rich-root'
             self.assertBranchDescription(key, expected)
 
     def test_describe_repo_format(self):
@@ -176,10 +176,10 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):
                 expected = 'dirstate or dirstate-tags or knit'
-            elif key in ('1.6', '1.7'):
-                expected = '1.6 or 1.7'
-            elif key in ('1.6-rich-root', '1.7-rich-root'):
-                expected = '1.6-rich-root or 1.7-rich-root'
+            elif key in ('1.6', '1.7preview'):
+                expected = '1.6 or 1.7preview'
+            elif key in ('1.6-rich-root', '1.7preview-rich-root'):
+                expected = '1.6-rich-root or 1.7preview-rich-root'
             self.assertRepoDescription(key, expected)
 
         format = bzrdir.format_registry.make_bzrdir('metaweave')
