@@ -162,6 +162,24 @@ class TestRepositoryFormat(TestCaseWithTransport):
 
 class TestFormat6(TestCaseWithTransport):
 
+    def test_attribute__fetch_order(self):
+        """Weaves need topological data insertion."""
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        self.assertEqual('topological', repo._fetch_order)
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Weaves do not reuse deltas."""
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        self.assertEqual(False, repo._fetch_uses_deltas)
+
+    def test_attribute__fetch_reconcile(self):
+        """Weave repositories need a reconcile after fetch."""
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        self.assertEqual(True, repo._fetch_reconcile)
+
     def test_no_ancestry_weave(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
@@ -178,7 +196,25 @@ class TestFormat6(TestCaseWithTransport):
 
 
 class TestFormat7(TestCaseWithTransport):
-    
+
+    def test_attribute__fetch_order(self):
+        """Weaves need topological data insertion."""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        self.assertEqual('topological', repo._fetch_order)
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Weaves do not reuse deltas."""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        self.assertEqual(False, repo._fetch_uses_deltas)
+
+    def test_attribute__fetch_reconcile(self):
+        """Weave repositories need a reconcile after fetch."""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        self.assertEqual(True, repo._fetch_reconcile)
+
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
@@ -307,6 +343,18 @@ class TestFormat7(TestCaseWithTransport):
 
 class TestFormatKnit1(TestCaseWithTransport):
     
+    def test_attribute__fetch_order(self):
+        """Knits need topological data insertion."""
+        repo = self.make_repository('.',
+                format=bzrdir.format_registry.get('knit')())
+        self.assertEqual('topological', repo._fetch_order)
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Knits reuse deltas."""
+        repo = self.make_repository('.',
+                format=bzrdir.format_registry.get('knit')())
+        self.assertEqual(True, repo._fetch_uses_deltas)
+
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = knitrepo.RepositoryFormatKnit1().initialize(control)
@@ -558,6 +606,20 @@ class TestMisc(TestCase):
 
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
+    def test_attribute__fetch_order(self):
+        """Knits need topological data insertion."""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
+        repo = self.make_repository('.', format=format)
+        self.assertEqual('topological', repo._fetch_order)
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Knits reuse deltas."""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
+        repo = self.make_repository('.', format=format)
+        self.assertEqual(True, repo._fetch_uses_deltas)
+
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""
         format = bzrdir.BzrDirMetaFormat1()
@@ -681,6 +743,18 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir('pack-0.92')
+
+    def test_attribute__fetch_order(self):
+        """Packs do not need ordered data retrieval."""
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        self.assertEqual('unsorted', repo._fetch_order)
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Packs reuse deltas."""
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        self.assertEqual(True, repo._fetch_uses_deltas)
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -1131,10 +1205,14 @@ class TestExternalDevelopment1(object):
 
     # mixin class for testing stack-supporting development formats
 
-    def test_compatible_cross_formats(self):
+    def test_stack_checks_compatibility(self):
         # early versions of the packing code relied on pack internals to
         # stack, but the current version should be able to stack on any
         # format.
+        #
+        # TODO: Possibly this should be run per-repository-format and raise
+        # TestNotApplicable on formats that don't support stacking. -- mbp
+        # 20080729
         repo = self.make_repository('repo', format=self.get_format())
         if repo.supports_rich_root():
             # can only stack on repositories that have compatible internal
@@ -1149,8 +1227,12 @@ class TestExternalDevelopment1(object):
         # you can't stack on something with incompatible data
         bad_repo = self.make_repository('mismatch',
             format=mismatching_format_name)
-        self.assertRaises(errors.IncompatibleRepositories,
+        e = self.assertRaises(errors.IncompatibleRepositories,
             repo.add_fallback_repository, bad_repo)
+        self.assertContainsRe(str(e),
+            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+            r'KnitPackRepository.*/repo/.*\n'
+            r'different rich-root support')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())

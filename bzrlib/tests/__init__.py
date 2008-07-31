@@ -49,6 +49,7 @@ import warnings
 
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     debug,
     errors,
@@ -1993,6 +1994,11 @@ class TestCaseWithMemoryTransport(TestCase):
         b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
+    def make_branch_builder(self, relpath, format=None):
+        url = self.get_url(relpath)
+        tran = get_transport(url)
+        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
         os.environ['BZR_HOME'] = self.test_home_dir
@@ -2041,16 +2047,32 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected" % filename)
 
+    def _getTestDirPrefix(self):
+        # create a directory within the top level test directory
+        if sys.platform == 'win32':
+            name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
+            # windows is likely to have path-length limits so use a short name
+            name_prefix = name_prefix[-30:]
+        else:
+            name_prefix = re.sub('[/]', '_', self.id())
+        return name_prefix
+
     def makeAndChdirToTestDir(self):
         """See TestCaseWithMemoryTransport.makeAndChdirToTestDir().
         
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        # create a directory within the top level test directory
-        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
+        name_prefix = os.path.join(self.TEST_ROOT, self._getTestDirPrefix())
+        name = name_prefix
+        for i in range(100):
+            if os.path.exists(name):
+                name = name_prefix + '_' + str(i)
+            else:
+                os.mkdir(name)
+                break
         # now create test and home directories within this dir
-        self.test_base_dir = candidate_dir
+        self.test_base_dir = name
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
         self.test_dir = self.test_base_dir + '/work'
@@ -2116,7 +2138,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, basestring):
             for p in path:
-                self.assertInWorkingTree(p,tree=tree)
+                self.assertInWorkingTree(p, tree=tree)
         else:
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
