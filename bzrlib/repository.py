@@ -2753,10 +2753,10 @@ class InterPackRepo(InterSameDataRepository):
         """See InterRepository.fetch()."""
         if (len(self.source._fallback_repositories) > 0 or
             len(self.target._fallback_repositories) > 0):
-            # the pack fetcher assumes it can just copy pack binary data, but
-            # that may not be safe if there are fallback repositories on
-            # either side; instead we look at the revisions and deltas one by
-            # one.
+            # The pack layer is not aware of fallback repositories, so when
+            # fetching from a stacked repository or into a stacked repository
+            # we use the generic fetch logic which uses the VersionedFiles
+            # attributes on repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
