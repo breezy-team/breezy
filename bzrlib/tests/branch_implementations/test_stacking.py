@@ -267,12 +267,14 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable("%r does not support stacking"
                 % self.branch_format)
         stack_on = self.make_branch_and_tree('stack-on')
-        self.build_tree_contents([('stack-on/a', 'content\n')])
+        text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
+        self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
         stack_on.add('a')
         stack_on.commit('base commit')
         stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
         stacked_tree = stacked_dir.open_workingtree()
         for i in range(20):
-            self.build_tree_contents([('stacked/a', 'content %d\n' % i)])
+            text_lines[0] = 'changed in %d\n' % i
+            self.build_tree_contents([('stacked/a', ''.join(text_lines))])
             stacked_tree.commit('commit %d' % i)
         stacked_tree.branch.repository.pack()
