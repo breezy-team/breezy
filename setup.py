@@ -95,6 +95,7 @@ BZRLIB['packages'] = get_bzrlib_packages()
 
 from distutils.core import setup
 from distutils.command.install_scripts import install_scripts
+from distutils.command.install_data import install_data
 from distutils.command.build import build
 
 ###############################
@@ -292,6 +293,30 @@ elif 'py2exe' in sys.argv:
         version_number.append(str(i))
     version_str = '.'.join(version_number)
 
+    # An override to install_data used only by py2exe builds, which arranges
+    # to byte-compile any .py files in data_files (eg, our plugins)
+    # Necessary as we can't rely on the user having the relevant permissions
+    # to the "Program Files" directory to generate them on the fly.
+    class install_data_with_bytecompile(install_data):
+        def run(self):
+            from distutils.util import byte_compile
+
+            install_data.run(self)
+
+            py2exe = self.distribution.get_command_obj('py2exe', False)
+            optimize = py2exe.optimize
+            compile_names = [f for f in self.outfiles if f.endswith('.py')]
+            byte_compile(compile_names,
+                         optimize=optimize,
+                         force=self.force, prefix=self.install_dir,
+                         dry_run=self.dry_run)
+            if optimize:
+                suffix = 'o'
+            else:
+                suffix = 'c'
+            self.outfiles.extend([f + suffix for f in compile_names])
+    # end of class install_data_with_bytecompile
+
     target = py2exe.build_exe.Target(script = "bzr",
                                      dest_base = "bzr",
                                      icon_resources = [(0,'bzr.ico')],
@@ -334,6 +359,7 @@ elif 'py2exe' in sys.argv:
                   medusa medusa.filesys medusa.ftp_server
                   tools tools.doc_generate
                   resource validate""".split()
+    dll_excludes = []
 
     # email package from std python library use lazy import,
     # so we need to explicitly add all package
@@ -353,10 +379,16 @@ elif 'py2exe' in sys.argv:
 
     # built-in plugins
     plugins_files = []
+    # XXX - should we consider having the concept of an 'official' build,
+    # which hard-codes the list of plugins, gets more upset if modules are
+    # missing, etc?
+    plugins = None # will be a set after plugin sniffing...
     for root, dirs, files in os.walk('bzrlib/plugins'):
+        if root == 'bzrlib/plugins':
+            plugins = set(dirs)
         x = []
         for i in files:
-            if not i.endswith('.py'):
+            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue
@@ -378,6 +410,24 @@ elif 'py2exe' in sys.argv:
     gui_targets = []
     com_targets = []
 
+    if 'qbzr' in plugins:
+        # PyQt4 itself still escapes the plugin detection code for some reason...
+        packages.append('PyQt4')
+        excludes.append('PyQt4.elementtree.ElementTree')
+        includes.append('sip') # extension module required for Qt.
+        packages.append('pygments') # colorizer for qbzr
+        # but we can avoid many Qt4 Dlls.
+        dll_excludes.extend(
+            """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
+            QtHelp4.dll QtNetwork4.dll QtOpenGL4.dll QtScript4.dll
+            QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
+            qscintilla2.dll""".split())
+        # the qt binaries might not be on PATH...
+        qt_dir = os.path.join(sys.prefix, "PyQt4", "bin")
+        path = os.environ.get("PATH","")
+        if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
+            os.environ["PATH"] = path + os.pathsep + qt_dir
+
     if "TBZR" in os.environ:
         # Eg: via SVN: http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
         if not os.path.isfile(os.environ.get('TOVMSI_WIN32', '<nofile>')):
@@ -385,9 +435,6 @@ elif 'py2exe' in sys.argv:
                                 "the TortoiseOverlays .msi installerfile"
 
         packages.append('tbzrcommands')
-        # PyQt4 itself still escapes the plugin detection code for some reason...
-        packages.append('PyQt4')
-        includes.append('sip') # extension module required for Qt.
 
         # ModuleFinder can't handle runtime changes to __path__, but
         # win32com uses them.  Hook this in so win32com.shell is found.
@@ -468,10 +515,11 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
+    dll_excludes.append("MSWSOCK.dll")
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
-                               "dll_excludes": ["MSWSOCK.dll"],
+                               "dll_excludes": dll_excludes,
                                "dist_dir": "win32_bzr.exe",
                                "optimize": 1,
                               },
@@ -483,6 +531,7 @@ elif 'py2exe' in sys.argv:
           com_server=com_targets,
           zipfile='lib/library.zip',
           data_files=topics_files + plugins_files,
+          cmdclass={'install_data': install_data_with_bytecompile},
           )
 
 else:
