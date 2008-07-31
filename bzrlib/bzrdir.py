@@ -3051,7 +3051,7 @@ format_registry.register_metadir('development',
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_5.WorkingTreeFormat5',
     experimental=True,
     alias=True,
     )
@@ -3064,7 +3064,7 @@ format_registry.register_metadir('development-subtree',
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_5.WorkingTreeFormat5',
     experimental=True,
     alias=True,
     )
@@ -3110,6 +3110,28 @@ format_registry.register_metadir('development1-subtree',
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development2',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
+    help='A format that supports stacking, filtered views and content filters. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_5.WorkingTreeFormat5',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development2-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
+    help='A format that supports stacking, filtered views and content filters. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_5.WorkingTreeFormat5',
     hidden=True,
     experimental=True,
     )
