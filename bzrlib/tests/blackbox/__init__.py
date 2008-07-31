@@ -116,6 +116,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_version',
                      'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
+                     'bzrlib.tests.blackbox.test_view',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
     # add the tests for the sub modules
