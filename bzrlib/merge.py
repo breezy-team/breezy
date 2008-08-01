@@ -356,6 +356,7 @@ class Merger(object):
                      ensure_null(self.other_basis)]
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
+            self.base_tree = self.revision_tree(self.base_rev_id)
         else:
             lcas = self.revision_graph.find_lca(revisions[0], revisions[1])
             if len(lcas) == 0:
