@@ -40,6 +40,7 @@ Known limitations:
 # remote files...
 
 from bzrlib import (
+    branch,
     commands,
     lazy_import,
     option,
@@ -48,7 +49,6 @@ lazy_import.lazy_import(globals(), """
 import stat
 
 from bzrlib import (
-    branch,
     errors,
     revisionspec,
     transport,
@@ -372,6 +372,13 @@ class cmd_upload(commands.Command):
 
 
 commands.register_command(cmd_upload)
+
+
+from bzrlib.plugins.upload.auto_upload_hook import auto_upload_hook
+
+branch.Branch.hooks.install_named_hook('post_change_branch_tip',
+        auto_upload_hook,
+        'Auto upload code from a branch when it is changed.')
 
 
 def load_tests(basic_tests, module, loader):
