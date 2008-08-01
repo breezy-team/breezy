@@ -923,7 +923,7 @@ class MultiWalker(object):
         that they yield (path, object) tuples, where that object will have a
         '.file_id' member, that can be used to check equality.
 
-        :param master_tree: All trees will be 'slaved' to the master_tree. Such
+        :param master_tree: All trees will be 'slaved' to the master_tree such
             that nodes in master_tree will be used as 'first-pass' sync points.
             Any nodes that aren't in master_tree will be merged in a second
             pass.
@@ -982,7 +982,7 @@ class MultiWalker(object):
     @staticmethod
     def _path_key(other):
         path = other[0]
-        dirname, basename = os.path.split(path)
+        dirname, basename = osutils.split(path)
         return (dirname.split(u'/'), basename)
 
     def _lookup_by_file_id(self, extra_entries, other_tree, file_id):
