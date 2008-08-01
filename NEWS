@@ -106,6 +106,10 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Stricter checking of special files for links. (#219832)
 
+   * Avoid showing backtrace for RA_DAV_REQUEST_FAILED errors, since 
+     they may be raised in other situations than when a bug is hit.
+	 (#253376)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
