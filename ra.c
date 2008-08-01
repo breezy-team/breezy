@@ -348,15 +348,16 @@ static svn_error_t *py_cb_editor_open_directory(const char *path, void *parent_b
 static svn_error_t *py_cb_editor_change_prop(void *dir_baton, const char *name, const svn_string_t *value, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)dir_baton, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
 
 	if (value != NULL) {
 		ret = PyObject_CallMethod(self, "change_prop", "sz#", name, value->data, value->len);
 	} else {
 		ret = PyObject_CallMethod(self, "change_prop", "sO", name, Py_None);
 	}
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
 	Py_DECREF(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
@@ -579,16 +580,17 @@ static void ra_done_handler(void *_ra)
 }
 
 #define RUN_RA_WITH_POOL(pool, ra, cmd) { \
+	svn_error_t *err; \
 	PyThreadState *_save; \
 	_save = PyEval_SaveThread(); \
-	if (!check_error((cmd))) { \
+	err = (cmd); \
+	PyEval_RestoreThread(_save); \
+	if (!check_error(err)) { \
 		apr_pool_destroy(pool); \
 		ra->busy = false; \
-		PyEval_RestoreThread(_save); \
 		return NULL; \
 	} \
 	ra->busy = false; \
-	PyEval_RestoreThread(_save); \
 }
 
 static bool ra_check_busy(RemoteAccessObject *raobj)

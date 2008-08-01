@@ -272,10 +272,15 @@ static PyObject *adm_init(PyTypeObject *self, PyObject *args, PyObject *kwargs)
 	} else {
 		parent_wc = ((AdmObject *)associated)->adm;
 	}
+	Py_BEGIN_ALLOW_THREADS
 	if (!check_error(svn_wc_adm_open3(&ret->adm, parent_wc, path, 
 					 write_lock, depth, py_cancel_func, cancel_func, 
-					 ret->pool)))
+					 ret->pool))) {
+		PyEval_RestoreThread(_save);
 		return NULL;
+	}
+	Py_END_ALLOW_THREADS
+
 
 	return (PyObject *)ret;
 }
@@ -568,13 +573,16 @@ static PyObject *adm_get_update_editor(PyObject *self, PyObject *args)
 	if (pool == NULL)
 		return NULL;
 	latest_revnum = (svn_revnum_t *)apr_palloc(pool, sizeof(svn_revnum_t));
+	Py_BEGIN_ALLOW_THREADS
 	if (!check_error(svn_wc_get_update_editor2(latest_revnum, admobj->adm, target, 
 				use_commit_times, recurse, py_wc_notify_func, (void *)notify_func, 
 				py_cancel_func, (void *)cancel_func, diff3_cmd, &editor, &edit_baton, 
 				NULL, pool))) {
 		apr_pool_destroy(pool);
+		PyEval_RestoreThread(_save);
 		return NULL;
 	}
+	Py_END_ALLOW_THREADS
 	return new_editor_object(editor, edit_baton, pool, &Editor_Type, NULL, NULL);
 }
 
@@ -650,7 +658,9 @@ static PyObject *adm_close(PyObject *self)
 {
 	AdmObject *admobj = (AdmObject *)self;
 	if (admobj->adm != NULL) {
+		Py_BEGIN_ALLOW_THREADS
 		svn_wc_adm_close(admobj->adm);
+		Py_END_ALLOW_THREADS
 		admobj->adm = NULL;
 	}
 

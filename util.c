@@ -60,8 +60,10 @@ PyObject *PyErr_NewSubversionException(svn_error_t *error)
 
 void PyErr_SetSubversionException(svn_error_t *error)
 {
-	PyObject *coremod = PyImport_ImportModule("bzrlib.plugins.svn.core"), *excobj;
-	PyObject *excval;
+	PyObject *coremod;
+	PyObject *excval, *excobj;
+
+	coremod = PyImport_ImportModule("bzrlib.plugins.svn.core");
 
 	if (coremod == NULL) {
 		return;
