@@ -62,12 +62,31 @@ version_info = (0,1,0)
 plugin_name = 'upload'
 
 
-def set_upload_location(branch, location):
-    branch.get_config().set_user_option('upload_location', location)
+def _get_branch_option(branch, option):
+    return branch.get_config().get_user_option(option)
 
+def _set_branch_option(branch, option, value):
+    branch.get_config().set_user_option(option, value)
 
 def get_upload_location(branch):
-    return branch.get_config().get_user_option('upload_location')
+    return _get_branch_option(branch, 'upload_location')
+
+def set_upload_location(branch, location):
+    _set_branch_option(branch, 'upload_location', location)
+
+def get_upload_auto(branch):
+    result = _get_branch_option(branch, 'upload_auto')
+    # FIXME: is there a better way to do this with bzr's config API?
+    if result.strip() == "True":
+        return True
+    return False
+
+def set_upload_auto(branch, auto):
+    if auto:
+        auto_str = "True"
+    else:
+        auto_str = "False"
+    _set_branch_option(branch, 'upload_auto', auto_str)
 
 
 class BzrUploader(object):

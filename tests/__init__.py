@@ -20,6 +20,7 @@ def load_tests(basic_tests, module, loader):
     # unwanted tests and I think that's sufficient.
 
     testmod_names = [
+        'test_auto_upload_hook',
         'test_upload',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
