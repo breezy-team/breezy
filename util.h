@@ -58,4 +58,10 @@ svn_error_t *py_svn_log_entry_receiver(void *baton, svn_log_entry_t *log_entry, 
 
 #pragma GCC visibility pop
 
+#define CB_CHECK_PYRETVAL(ret) \
+	if (ret == NULL) { \
+		PyGILState_Release(state); \
+		return py_svn_error(); \
+	}
+
 #endif /* _BZR_SVN_UTIL_H_ */
