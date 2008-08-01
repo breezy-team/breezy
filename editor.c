@@ -53,6 +53,22 @@ static void py_editor_dealloc(PyObject *self)
 	PyObject_Del(self);
 }
 
+#if SIZEOF_SIZE_T == SIZEOF_LONG
+#define SIZE_T_PYFMT "k"
+#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+#define SIZE_T_PYFMT "K"
+#else
+#error "Unable to determine PyArg_Parse format for size_t"
+#endif
+
+#if SIZEOF_LONG == 8
+#define SVN_FILESIZE_T_PYFMT "k"
+#elif SIZEOF_LONG_LONG == 8
+#define SVN_FILESIZE_T_PYFMT "K"
+#else
+#error "Unable to determine PyArg_Parse format for size_t"
+#endif
+
 static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	char *kwnames[] = { "window", NULL };
@@ -72,7 +88,7 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 		Py_RETURN_NONE;
 	}
 
-	if (!PyArg_ParseTuple(py_window, "LIIiOO", &window.sview_offset, &window.sview_len, 
+	if (!PyArg_ParseTuple(py_window, SVN_FILESIZE_T_PYFMT SIZE_T_PYFMT SIZE_T_PYFMT "iOO", &window.sview_offset, &window.sview_len, 
 											&window.tview_len, &window.src_ops, &py_ops, &py_new_data))
 		return NULL;
 
@@ -94,7 +110,9 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 	window.ops = ops = malloc(sizeof(svn_txdelta_op_t) * window.num_ops);
 
 	for (i = 0; i < window.num_ops; i++) {
-		if (!PyArg_ParseTuple(PyList_GetItem(py_ops, i), "iII", &ops[i].action_code, &ops[i].offset, &ops[i].length)) {
+		PyObject *windowitem = PyList_GetItem(py_ops, i);
+		if (!PyArg_ParseTuple(windowitem, "i" SIZE_T_PYFMT SIZE_T_PYFMT, &ops[i].action_code, 
+							  &ops[i].offset, &ops[i].length)) {
 			free(ops);
 			return NULL;
 		}
