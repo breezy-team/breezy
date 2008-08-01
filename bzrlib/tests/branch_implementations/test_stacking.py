@@ -301,11 +301,8 @@ class TestStacking(TestCaseWithBranch):
         self.build_tree_contents([('other/a', ''.join(text_lines))])
         other_tree.commit('commit in other')
         # this should have generated a delta; try to pull that across
-        try:
-            stacked_tree.pull(other_tree.branch)
-        except errors.RevisionNotPresent:
-            # like bug 252821
-            raise KnownFailure("can't fetch deltas into stacked repository")
+        # bug 252821 caused a RevisionNotPresent here...
+        stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
         stacked_tree.branch.check()
 
