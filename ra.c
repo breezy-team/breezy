@@ -122,10 +122,9 @@ static PyObject *reporter_set_path(PyObject *self, PyObject *args)
 						  &lock_token))
 		return NULL;
 
-	if (!check_error(reporter->reporter->set_path(reporter->report_baton, 
+	RUN_SVN(reporter->reporter->set_path(reporter->report_baton, 
 												  path, revision, start_empty, 
-					 lock_token, reporter->pool)))
-		return NULL;
+					 lock_token, reporter->pool));
 
 	Py_RETURN_NONE;
 }
@@ -137,9 +136,8 @@ static PyObject *reporter_delete_path(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &path))
 		return NULL;
 
-	if (!check_error(reporter->reporter->delete_path(reporter->report_baton, 
-													path, reporter->pool)))
-		return NULL;
+	RUN_SVN(reporter->reporter->delete_path(reporter->report_baton, 
+													path, reporter->pool));
 
 	Py_RETURN_NONE;
 }
@@ -155,9 +153,8 @@ static PyObject *reporter_link_path(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "sslb|z", &path, &url, &revision, &start_empty, &lock_token))
 		return NULL;
 
-	if (!check_error(reporter->reporter->link_path(reporter->report_baton, path, url, 
-				revision, start_empty, lock_token, reporter->pool)))
-		return NULL;
+	RUN_SVN(reporter->reporter->link_path(reporter->report_baton, path, url, 
+				revision, start_empty, lock_token, reporter->pool));
 
 	Py_RETURN_NONE;
 }
@@ -168,9 +165,8 @@ static PyObject *reporter_finish(PyObject *self)
 
 	reporter->ra->busy = false;
 
-	if (!check_error(reporter->reporter->finish_report(reporter->report_baton, 
-													  reporter->pool)))
-		return NULL;
+	RUN_SVN(reporter->reporter->finish_report(reporter->report_baton, 
+													  reporter->pool));
 
 	Py_XDECREF(reporter->ra);
 
@@ -183,9 +179,8 @@ static PyObject *reporter_abort(PyObject *self)
 	
 	reporter->ra->busy = false;
 
-	if (!check_error(reporter->reporter->abort_report(reporter->report_baton, 
-													 reporter->pool)))
-		return NULL;
+	RUN_SVN(reporter->reporter->abort_report(reporter->report_baton, 
+													 reporter->pool));
 
 	Py_XDECREF(reporter->ra);
 

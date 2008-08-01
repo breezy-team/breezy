@@ -38,6 +38,17 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths,
 svn_error_t *py_svn_error(void);
 void PyErr_SetSubversionException(svn_error_t *error);
 
+#define RUN_SVN(cmd) { \
+	svn_error_t *err; \
+	PyThreadState *_save; \
+	_save = PyEval_SaveThread(); \
+	err = (cmd); \
+	PyEval_RestoreThread(_save); \
+	if (!check_error(err)) { \
+		return NULL; \
+	} \
+}
+
 #define RUN_SVN_WITH_POOL(pool, cmd) { \
 	svn_error_t *err; \
 	PyThreadState *_save; \
