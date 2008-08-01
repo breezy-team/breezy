@@ -702,8 +702,7 @@ class KnitVersionedFiles(VersionedFiles):
     :ivar _index: A _KnitGraphIndex or similar that can describe the 
         parents, graph, compression and data location of entries in this 
         KnitVersionedFiles.  Note that this is only the index for 
-        *this* vfs; if there are fallbacks their index must be 
-        queried separately.
+        *this* vfs; if there are fallbacks they must be queried separately.
     """
 
     def __init__(self, index, data_access, max_delta_chain=200,
