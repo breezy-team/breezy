@@ -2043,7 +2043,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     F     F changes it to bing
         #
         # Merging D & F should result in F cleanly overriding D, because D's
-        # value actually comes from F
+        # value actually comes from B
 
         # Have to use a real WT, because BranchBuilder and MemoryTree don't
         # have symlink support
@@ -2089,7 +2089,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         #     F     F renames barry to blah
         #
         # Merging D & F should result in F cleanly overriding D, because D's
-        # value actually comes from F
+        # value actually comes from B
 
         wt = self.make_branch_and_tree('path')
         wt.lock_write()
@@ -2182,6 +2182,67 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         conflicts = wt.merge_from_branch(wt.branch, to_revision='E-id')
         self.assertEqual(0, conflicts)
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
+
+    def test_symlink_all_wt(self):
+        """Check behavior if all trees are Working Trees."""
+        self.requireFeature(tests.SymlinkFeature)
+        # The big issue is that entry.symlink_target is None for WorkingTrees.
+        # So we need to make sure we handle that case correctly.
+        #   A   foo => bar
+        #   |\
+        #   B C B relinks foo => baz
+        #   |X|
+        #   D E D & E have foo => baz
+        #     |
+        #     F F changes it to bing
+        # Merging D & F should result in F cleanly overriding D, because D's
+        # value actually comes from B
+
+        wt = self.make_branch_and_tree('path')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        os.symlink('bar', 'path/foo')
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('add symlink', rev_id='A-id')
+        os.remove('path/foo')
+        os.symlink('baz', 'path/foo')
+        wt.commit('foo => baz', rev_id='B-id')
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.revert()
+        wt.commit('C', rev_id='C-id')
+        wt.merge_from_branch(wt.branch, 'B-id')
+        self.assertEqual('baz', wt.get_symlink_target('foo-id'))
+        wt.commit('E merges C & B', rev_id='E-id')
+        os.remove('path/foo')
+        os.symlink('bing', 'path/foo')
+        wt.commit('F foo => bing', rev_id='F-id')
+        wt.set_last_revision('B-id')
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.revert()
+        wt.merge_from_branch(wt.branch, 'C-id')
+        wt.commit('D merges B & C', rev_id='D-id')
+        wt_base = wt.bzrdir.sprout('base', 'A-id').open_workingtree()
+        wt_base.lock_read()
+        self.addCleanup(wt_base.unlock)
+        wt_lca1 = wt.bzrdir.sprout('b-tree', 'B-id').open_workingtree()
+        wt_lca1.lock_read()
+        self.addCleanup(wt_lca1.unlock)
+        wt_lca2 = wt.bzrdir.sprout('c-tree', 'C-id').open_workingtree()
+        wt_lca2.lock_read()
+        self.addCleanup(wt_lca2.unlock)
+        wt_other = wt.bzrdir.sprout('other', 'F-id').open_workingtree()
+        wt_other.lock_read()
+        self.addCleanup(wt_other.unlock)
+        merge_obj = _mod_merge.Merge3Merger(wt, wt, wt_base,
+            wt_other, lca_trees=[wt_lca1, wt_lca2], do_merge=False)
+        entries = list(merge_obj._entries_lca())
+        root_id = wt.path2id('')
+        self.assertEqual([('foo-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
 
     def test_other_reverted_path_to_base(self):
         #   A       Path at 'foo'

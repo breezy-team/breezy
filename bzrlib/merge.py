@@ -559,6 +559,8 @@ class Merge3Merger(object):
         self.reprocess = reprocess
         self.show_base = show_base
         self._lca_trees = lca_trees
+        # if lca_trees is None:
+        #     self._lca_trees = [self.base_tree]
         self.pb = pb
         self.pp = pp
         self.change_reporter = change_reporter
@@ -781,6 +783,11 @@ class Merge3Merger(object):
                     content_changed = False
                 elif other_ie.kind == 'file':
                     def get_sha1(ie, tree):
+                        # TODO: we should actually check that ie.kind == 'file'
+                        #       otherwise kind changes will break this. It is
+                        #       possible to have kind_winner = THIS and still
+                        #       have a kind change. We just don't have a kind
+                        #       change in 'other'
                         if ie.kind is None:
                             return None
                         return tree.get_file_sha1(file_id)
@@ -803,10 +810,18 @@ class Merge3Merger(object):
                     if sha1_winner == 'this':
                         content_changed = False
                 elif other_ie.kind == 'symlink':
-                    lca_targets = [ie.symlink_target for ie in lca_entries]
+                    def get_target(ie, tree):
+                        if ie.kind is None:
+                            return None
+                        return tree.get_symlink_target(file_id)
+                    base_target = get_target(base_ie, self.base_tree)
+                    lca_targets = [get_target(ie, tree) for ie, tree
+                                   in zip(lca_entries, self._lca_trees)]
+                    this_target = get_target(this_ie, self.this_tree)
+                    other_target = get_target(other_ie, self.other_tree)
                     target_winner = Merge3Merger._lca_multi_way(
-                        (base_ie.symlink_target, lca_targets),
-                        other_ie.symlink_target, this_ie.symlink_target)
+                        (base_target, lca_targets),
+                        other_target, this_target)
                     if (parent_id_winner == 'this' and name_winner == 'this'
                         and target_winner == 'this'):
                         # No kind, parent, name, or symlink target change
