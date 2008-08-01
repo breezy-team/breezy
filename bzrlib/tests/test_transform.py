@@ -40,7 +40,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingPendingDeletion, ImmortalLimbo,
                            ImmortalPendingDeletion, LockError)
 from bzrlib.osutils import file_kind, pathjoin
-from bzrlib.merge import Merge3Merger
+from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     CaseInsensitiveFilesystemFeature,
     HardlinkFeature,
@@ -2391,3 +2391,23 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.unversion_file(preview.trans_id_tree_path('removed-file'))
         self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
                          set(tree.extras()))
+
+    def test_merge_from(self):
+        work_tree = self.make_branch_and_tree('tree')
+        work_tree.commit('first commit')
+        child_tree = work_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree.commit('child commit')
+        child_tree.lock_write()
+        self.addCleanup(child_tree.unlock)
+        work_tree.lock_write()
+        self.addCleanup(work_tree.unlock)
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        preview_tree = preview.get_preview_tree()
+        pb = progress.DummyProgress()
+        merger = Merger.from_revision_ids(pb, preview_tree,
+                                          child_tree.branch.last_revision(),
+                                          other_branch=child_tree.branch,
+                                          tree_branch=work_tree.branch)
+        merger.merge_type = Merge3Merger
+        tt = merger.make_merger().make_preview_transform()
