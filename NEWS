@@ -40,6 +40,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Add more tests that stacking does not create deltas spanning
+      physical repository boundaries.
+      (Martin Pool, #252428)
+
     * Better message about incompatible repositories.
       (Martin Pool, #206258)
 
