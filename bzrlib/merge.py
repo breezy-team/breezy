@@ -814,6 +814,14 @@ class Merge3Merger(object):
                         continue
                     if target_winner == 'this':
                         content_changed = False
+                elif other_ie.kind == 'tree-reference':
+                    # The 'changed' information seems to be handled at a higher
+                    # level. At least, _entries3 returns False for content
+                    # changed, even when at a new revision_id.
+                    content_changed = False
+                    if (parent_id_winner == 'this' and name_winner == 'this'):
+                        # Nothing interesting
+                        continue
                 else:
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
                 # XXX: We need to handle kind == 'symlink'

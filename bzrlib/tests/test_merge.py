@@ -2300,6 +2300,169 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((False, [False, False]), False, False)),
                          ], entries)
 
+    def test_nested_tree_unmodified(self):
+        # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
+        # 'tree-reference'
+        wt = self.make_branch_and_tree('tree',
+            format='dirstate-with-subtree')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        sub_tree = self.make_branch_and_tree('tree/sub-tree',
+            format='dirstate-with-subtree')
+        wt.set_root_id('a-root-id')
+        sub_tree.set_root_id('sub-tree-root')
+        self.build_tree_contents([('tree/sub-tree/file', 'text1')])
+        sub_tree.add('file')
+        sub_tree.commit('foo', rev_id='sub-A-id')
+        wt.add_reference(sub_tree)
+        wt.commit('set text to 1', rev_id='A-id', recursive=None)
+        # Now create a criss-cross merge in the parent, without modifying the
+        # subtree
+        wt.commit('B', rev_id='B-id', recursive=None)
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.commit('C', rev_id='C-id', recursive=None)
+        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        wt.commit('E', rev_id='E-id', recursive=None)
+        wt.set_parent_ids(['B-id', 'C-id'])
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.commit('D', rev_id='D-id', recursive=None)
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        entries = list(merge_obj._entries_lca())
+        self.assertEqual([], entries)
+
+    def test_nested_tree_subtree_modified(self):
+        # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
+        # 'tree-reference'
+        wt = self.make_branch_and_tree('tree',
+            format='dirstate-with-subtree')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        sub_tree = self.make_branch_and_tree('tree/sub',
+            format='dirstate-with-subtree')
+        wt.set_root_id('a-root-id')
+        sub_tree.set_root_id('sub-tree-root')
+        self.build_tree_contents([('tree/sub/file', 'text1')])
+        sub_tree.add('file')
+        sub_tree.commit('foo', rev_id='sub-A-id')
+        wt.add_reference(sub_tree)
+        wt.commit('set text to 1', rev_id='A-id', recursive=None)
+        # Now create a criss-cross merge in the parent, without modifying the
+        # subtree
+        wt.commit('B', rev_id='B-id', recursive=None)
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.commit('C', rev_id='C-id', recursive=None)
+        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        self.build_tree_contents([('tree/sub/file', 'text2')])
+        sub_tree.commit('modify contents', rev_id='sub-B-id')
+        wt.commit('E', rev_id='E-id', recursive=None)
+        wt.set_parent_ids(['B-id', 'C-id'])
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.commit('D', rev_id='D-id', recursive=None)
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        # Nothing interesting about this sub-tree, because content changes are
+        # computed at a higher level
+        self.assertEqual([], entries)
+
+    def test_nested_tree_subtree_renamed(self):
+        # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
+        # 'tree-reference'
+        wt = self.make_branch_and_tree('tree',
+            format='dirstate-with-subtree')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        sub_tree = self.make_branch_and_tree('tree/sub',
+            format='dirstate-with-subtree')
+        wt.set_root_id('a-root-id')
+        sub_tree.set_root_id('sub-tree-root')
+        self.build_tree_contents([('tree/sub/file', 'text1')])
+        sub_tree.add('file')
+        sub_tree.commit('foo', rev_id='sub-A-id')
+        wt.add_reference(sub_tree)
+        wt.commit('set text to 1', rev_id='A-id', recursive=None)
+        # Now create a criss-cross merge in the parent, without modifying the
+        # subtree
+        wt.commit('B', rev_id='B-id', recursive=None)
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.commit('C', rev_id='C-id', recursive=None)
+        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        wt.rename_one('sub', 'alt_sub')
+        wt.commit('E', rev_id='E-id', recursive=None)
+        wt.set_last_revision('B-id')
+        wt.revert()
+        wt.set_parent_ids(['B-id', 'C-id'])
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.commit('D', rev_id='D-id', recursive=None)
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('sub-tree-root', False,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
+    def test_nested_tree_subtree_renamed_and_modified(self):
+        # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
+        # 'tree-reference'
+        wt = self.make_branch_and_tree('tree',
+            format='dirstate-with-subtree')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        sub_tree = self.make_branch_and_tree('tree/sub',
+            format='dirstate-with-subtree')
+        wt.set_root_id('a-root-id')
+        sub_tree.set_root_id('sub-tree-root')
+        self.build_tree_contents([('tree/sub/file', 'text1')])
+        sub_tree.add('file')
+        sub_tree.commit('foo', rev_id='sub-A-id')
+        wt.add_reference(sub_tree)
+        wt.commit('set text to 1', rev_id='A-id', recursive=None)
+        # Now create a criss-cross merge in the parent, without modifying the
+        # subtree
+        wt.commit('B', rev_id='B-id', recursive=None)
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.commit('C', rev_id='C-id', recursive=None)
+        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        self.build_tree_contents([('tree/sub/file', 'text2')])
+        sub_tree.commit('modify contents', rev_id='sub-B-id')
+        wt.rename_one('sub', 'alt_sub')
+        wt.commit('E', rev_id='E-id', recursive=None)
+        wt.set_last_revision('B-id')
+        wt.revert()
+        wt.set_parent_ids(['B-id', 'C-id'])
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.commit('D', rev_id='D-id', recursive=None)
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('sub-tree-root', False,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
+
 
 class TestLCAMultiWay(tests.TestCase):
 
