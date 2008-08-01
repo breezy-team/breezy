@@ -338,6 +338,9 @@ class cmd_upload(commands.Command):
                       short_name='d',
                       type=unicode,
                       ),
+        option.Option('auto',
+                      'Trigger an upload from this branch whenever the tip '
+                      'revision changes.')
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
