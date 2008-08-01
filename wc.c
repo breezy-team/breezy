@@ -34,55 +34,60 @@ static PyObject *py_entry(const svn_wc_entry_t *entry);
 static svn_error_t *py_ra_report_set_path(void *baton, const char *path, svn_revnum_t revision, int start_empty, const char *lock_token, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *py_lock_token, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
 	if (lock_token == NULL) {
 		py_lock_token = Py_None;
 	} else {
 		py_lock_token = PyString_FromString(lock_token);
 	}
 	ret = PyObject_CallMethod(self, "set_path", "slbO", path, revision, start_empty, py_lock_token);
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
 static svn_error_t *py_ra_report_delete_path(void *baton, const char *path, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
 	ret = PyObject_CallMethod(self, "delete_path", "s", path);
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
 static svn_error_t *py_ra_report_link_path(void *report_baton, const char *path, const char *url, svn_revnum_t revision, int start_empty, const char *lock_token, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)report_baton, *ret, *py_lock_token;
+	PyGILState_STATE state = PyGILState_Ensure();
 	if (lock_token == NULL) {
 		py_lock_token = Py_None;
 	} else { 
 		py_lock_token = PyString_FromString(lock_token);
 	}
 	ret = PyObject_CallMethod(self, "link_path", "sslbO", path, url, revision, start_empty, py_lock_token);
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
 static svn_error_t *py_ra_report_finish(void *baton, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
 	ret = PyObject_CallMethod(self, "finish", "");
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
 static svn_error_t *py_ra_report_abort(void *baton, apr_pool_t *pool)
 {
 	PyObject *self = (PyObject *)baton, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
 	ret = PyObject_CallMethod(self, "abort", "");
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
@@ -111,9 +116,10 @@ static PyObject *version(PyObject *self)
 static svn_error_t *py_wc_found_entry(const char *path, const svn_wc_entry_t *entry, void *walk_baton, apr_pool_t *pool)
 {
 	PyObject *fn = (PyObject *)walk_baton, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
 	ret = PyObject_CallFunction(fn, "sO", path, py_entry(entry));
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
@@ -266,10 +272,15 @@ static PyObject *adm_init(PyTypeObject *self, PyObject *args, PyObject *kwargs)
 	} else {
 		parent_wc = ((AdmObject *)associated)->adm;
 	}
+	Py_BEGIN_ALLOW_THREADS
 	if (!check_error(svn_wc_adm_open3(&ret->adm, parent_wc, path, 
 					 write_lock, depth, py_cancel_func, cancel_func, 
-					 ret->pool)))
+					 ret->pool))) {
+		PyEval_RestoreThread(_save);
 		return NULL;
+	}
+	Py_END_ALLOW_THREADS
+
 
 	return (PyObject *)ret;
 }
@@ -562,13 +573,16 @@ static PyObject *adm_get_update_editor(PyObject *self, PyObject *args)
 	if (pool == NULL)
 		return NULL;
 	latest_revnum = (svn_revnum_t *)apr_palloc(pool, sizeof(svn_revnum_t));
+	Py_BEGIN_ALLOW_THREADS
 	if (!check_error(svn_wc_get_update_editor2(latest_revnum, admobj->adm, target, 
 				use_commit_times, recurse, py_wc_notify_func, (void *)notify_func, 
 				py_cancel_func, (void *)cancel_func, diff3_cmd, &editor, &edit_baton, 
 				NULL, pool))) {
 		apr_pool_destroy(pool);
+		PyEval_RestoreThread(_save);
 		return NULL;
 	}
+	Py_END_ALLOW_THREADS
 	return new_editor_object(editor, edit_baton, pool, &Editor_Type, NULL, NULL);
 }
 
@@ -644,7 +658,9 @@ static PyObject *adm_close(PyObject *self)
 {
 	AdmObject *admobj = (AdmObject *)self;
 	if (admobj->adm != NULL) {
+		Py_BEGIN_ALLOW_THREADS
 		svn_wc_adm_close(admobj->adm);
+		Py_END_ALLOW_THREADS
 		admobj->adm = NULL;
 	}
 

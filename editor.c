@@ -61,14 +61,14 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 	PyObject *py_window, *py_ops, *py_new_data;
 	int i;
 	svn_string_t new_data;
+	svn_error_t *error;
 	svn_txdelta_op_t *ops;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwnames, &py_window))
 		return NULL;
 
 	if (py_window == Py_None) {
-		if (!check_error(obj->txdelta_handler(NULL, obj->txdelta_baton)))
-			return NULL;
+		RUN_SVN(obj->txdelta_handler(NULL, obj->txdelta_baton));
 		Py_RETURN_NONE;
 	}
 
@@ -100,7 +100,10 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 		}
 	}
 
-	if (!check_error(obj->txdelta_handler(&window, obj->txdelta_baton))) {
+	Py_BEGIN_ALLOW_THREADS
+	error = obj->txdelta_handler(&window, obj->txdelta_baton);
+	Py_END_ALLOW_THREADS
+	if (!check_error(error)) {
 		free(ops);
 		return NULL;
 	}
@@ -153,10 +156,9 @@ static PyObject *py_file_editor_apply_textdelta(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "|z", &c_base_checksum))
 		return NULL;
-	if (!check_error(editor->editor->apply_textdelta(editor->baton,
+	RUN_SVN(editor->editor->apply_textdelta(editor->baton,
 				c_base_checksum, editor->pool, 
-				&txdelta_handler, &txdelta_baton)))
-		return NULL;
+				&txdelta_handler, &txdelta_baton));
 	py_txdelta = PyObject_New(TxDeltaWindowHandlerObject, &TxDeltaWindowHandler_Type);
 	py_txdelta->txdelta_handler = txdelta_handler;
 	py_txdelta->txdelta_baton = txdelta_baton;
@@ -176,9 +178,8 @@ static PyObject *py_file_editor_change_prop(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "sz#", &name, &c_value.data, &c_value.len))
 		return NULL;
-	if (!check_error(editor->editor->change_file_prop(editor->baton, name, 
-				&c_value, editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->change_file_prop(editor->baton, name, 
+				&c_value, editor->pool));
 	Py_RETURN_NONE;
 }
 
@@ -194,9 +195,8 @@ static PyObject *py_file_editor_close(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "|z", &c_checksum))
 		return NULL;
-	if (!check_error(editor->editor->close_file(editor->baton, c_checksum, 
-					editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->close_file(editor->baton, c_checksum, 
+					editor->pool));
 	Py_RETURN_NONE;
 }
 
@@ -281,9 +281,8 @@ static PyObject *py_dir_editor_delete_entry(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s|l", &path, &revision))
 		return NULL;
 
-	if (!check_error(editor->editor->delete_entry(path, revision, editor->baton,
-											 editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->delete_entry(path, revision, editor->baton,
+											 editor->pool));
 
 	Py_RETURN_NONE;
 }
@@ -304,9 +303,8 @@ static PyObject *py_dir_editor_add_directory(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s|zl", &path, &copyfrom_path, &copyfrom_rev))
 		return NULL;
 
-	if (!check_error(editor->editor->add_directory(path, editor->baton,
-					copyfrom_path, copyfrom_rev, editor->pool, &child_baton)))
-		return NULL;
+	RUN_SVN(editor->editor->add_directory(path, editor->baton,
+					copyfrom_path, copyfrom_rev, editor->pool, &child_baton));
 
 	return new_editor_object(editor->editor, child_baton, editor->pool, 
 							 &DirectoryEditor_Type, NULL, NULL);
@@ -327,9 +325,8 @@ static PyObject *py_dir_editor_open_directory(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s|l", &path, &base_revision))
 		return NULL;
 
-	if (!check_error(editor->editor->open_directory(path, editor->baton,
-					base_revision, editor->pool, &child_baton)))
-		return NULL;
+	RUN_SVN(editor->editor->open_directory(path, editor->baton,
+					base_revision, editor->pool, &child_baton));
 
 	return new_editor_object(editor->editor, child_baton, editor->pool, 
 							 &DirectoryEditor_Type, NULL, NULL);
@@ -351,9 +348,8 @@ static PyObject *py_dir_editor_change_prop(PyObject *self, PyObject *args)
 
 	p_c_value = &c_value;
 
-	if (!check_error(editor->editor->change_dir_prop(editor->baton, name, 
-					p_c_value, editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->change_dir_prop(editor->baton, name, 
+					p_c_value, editor->pool));
 
 	Py_RETURN_NONE;
 }
@@ -367,9 +363,7 @@ static PyObject *py_dir_editor_close(PyObject *self)
 		return NULL;
 	}
 
-	if (!check_error(editor->editor->close_directory(editor->baton, 
-													 editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->close_directory(editor->baton, editor->pool));
 
 	Py_RETURN_NONE;
 }
@@ -388,9 +382,7 @@ static PyObject *py_dir_editor_absent_directory(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &path))
 		return NULL;
 	
-	if (!check_error(editor->editor->absent_directory(path, editor->baton, 
-					editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->absent_directory(path, editor->baton, editor->pool));
 
 	Py_RETURN_NONE;
 }
@@ -410,9 +402,8 @@ static PyObject *py_dir_editor_add_file(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s|zl", &path, &copy_path, &copy_rev))
 		return NULL;
 
-	if (!check_error(editor->editor->add_file(path, editor->baton, copy_path,
-					copy_rev, editor->pool, &file_baton)))
-		return NULL;
+	RUN_SVN(editor->editor->add_file(path, editor->baton, copy_path,
+					copy_rev, editor->pool, &file_baton));
 
 	return new_editor_object(editor->editor, file_baton, editor->pool,
 							 &FileEditor_Type, NULL, NULL);
@@ -433,9 +424,8 @@ static PyObject *py_dir_editor_open_file(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s|l", &path, &base_revision))
 		return NULL;
 
-	if (!check_error(editor->editor->open_file(path, editor->baton, 
-					base_revision, editor->pool, &file_baton)))
-		return NULL;
+	RUN_SVN(editor->editor->open_file(path, editor->baton, 
+					base_revision, editor->pool, &file_baton));
 
 	return new_editor_object(editor->editor, file_baton, editor->pool,
 							 &FileEditor_Type, NULL, NULL);
@@ -454,8 +444,7 @@ static PyObject *py_dir_editor_absent_file(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &path))
 		return NULL;
 
-	if (!check_error(editor->editor->absent_file(path, editor->baton, editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->absent_file(path, editor->baton, editor->pool));
 
 	Py_RETURN_NONE;
 }
@@ -548,9 +537,8 @@ static PyObject *py_editor_set_target_revision(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "i", &target_revision))
 		return NULL;
 
-	if (!check_error(editor->editor->set_target_revision(editor->baton,
-					target_revision, editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->set_target_revision(editor->baton,
+					target_revision, editor->pool));
 
 	Py_RETURN_NONE;
 }
@@ -569,9 +557,8 @@ static PyObject *py_editor_open_root(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "|l:open_root", &base_revision))
 		return NULL;
 
-	if (!check_error(editor->editor->open_root(editor->baton, base_revision,
-					editor->pool, &root_baton)))
-		return NULL;
+	RUN_SVN(editor->editor->open_root(editor->baton, base_revision,
+					editor->pool, &root_baton));
 
 	return new_editor_object(editor->editor, root_baton, editor->pool,
 							 &DirectoryEditor_Type, NULL, NULL);
@@ -586,8 +573,7 @@ static PyObject *py_editor_close(PyObject *self)
 		return NULL;
 	}
 
-	if (!check_error(editor->editor->close_edit(editor->baton, editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->close_edit(editor->baton, editor->pool));
 
 	if (editor->done_cb != NULL)
 		editor->done_cb(editor->done_baton);
@@ -604,8 +590,7 @@ static PyObject *py_editor_abort(PyObject *self)
 		return NULL;
 	}
 
-	if (!check_error(editor->editor->abort_edit(editor->baton, editor->pool)))
-		return NULL;
+	RUN_SVN(editor->editor->abort_edit(editor->baton, editor->pool));
 
 	if (editor->done_cb != NULL)
 		editor->done_cb(editor->done_baton);

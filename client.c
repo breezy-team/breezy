@@ -120,17 +120,18 @@ static PyObject *wrap_py_commit_items(const apr_array_header_t *commit_items)
 static svn_error_t *py_log_msg_func2(const char **log_msg, const char **tmp_file, const apr_array_header_t *commit_items, void *baton, apr_pool_t *pool)
 {
 	PyObject *py_commit_items, *ret, *py_log_msg, *py_tmp_file;
+	PyGILState_STATE state;
+
 	if (baton == Py_None)
 		return NULL;
 
+	state = PyGILState_Ensure();
 	py_commit_items = wrap_py_commit_items(commit_items);
-	if (py_commit_items == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(py_commit_items);
 
 	ret = PyObject_CallFunction(baton, "O", py_commit_items);
 	Py_DECREF(py_commit_items);
-	if (ret == NULL)
-		return py_svn_error();
+	CB_CHECK_PYRETVAL(ret);
 	if (PyTuple_Check(ret)) {
 		py_log_msg = PyTuple_GetItem(ret, 0);
 		py_tmp_file = PyTuple_GetItem(ret, 1);
@@ -145,6 +146,7 @@ static svn_error_t *py_log_msg_func2(const char **log_msg, const char **tmp_file
 		*tmp_file = PyString_AsString(py_tmp_file);
 	}
 	Py_DECREF(ret);
+	PyGILState_Release(state);
 	return NULL;
 }
 
@@ -269,13 +271,16 @@ static int client_set_auth(PyObject *self, PyObject *auth, void *closure)
 
 	Py_XDECREF(client->py_auth);
 
+
 	if (auth == Py_None) {
 		auth_providers = apr_array_make(client->pool, 0, sizeof(svn_auth_provider_object_t *));
 		if (auth_providers == NULL) {
 			PyErr_NoMemory();
 			return 1;
 		}
+		Py_BEGIN_ALLOW_THREADS
 		svn_auth_open(&client->client->auth_baton, auth_providers, client->pool);
+		Py_END_ALLOW_THREADS
 	} else {
 		client->client->auth_baton = ((AuthObject *)auth)->auth_baton;
 	}

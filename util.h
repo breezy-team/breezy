@@ -38,11 +38,28 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths,
 svn_error_t *py_svn_error(void);
 void PyErr_SetSubversionException(svn_error_t *error);
 
-#define RUN_SVN_WITH_POOL(pool, cmd)  \
-	if (!check_error((cmd))) { \
+#define RUN_SVN(cmd) { \
+	svn_error_t *err; \
+	PyThreadState *_save; \
+	_save = PyEval_SaveThread(); \
+	err = (cmd); \
+	PyEval_RestoreThread(_save); \
+	if (!check_error(err)) { \
+		return NULL; \
+	} \
+}
+
+#define RUN_SVN_WITH_POOL(pool, cmd) { \
+	svn_error_t *err; \
+	PyThreadState *_save; \
+	_save = PyEval_SaveThread(); \
+	err = (cmd); \
+	PyEval_RestoreThread(_save); \
+	if (!check_error(err)) { \
 		apr_pool_destroy(pool); \
 		return NULL; \
-	}
+	} \
+}
 
 PyObject *wrap_lock(svn_lock_t *lock);
 apr_array_header_t *revnum_list_to_apr_array(apr_pool_t *pool, PyObject *l);
@@ -57,5 +74,11 @@ svn_error_t *py_svn_log_entry_receiver(void *baton, svn_log_entry_t *log_entry, 
 #endif
 
 #pragma GCC visibility pop
+
+#define CB_CHECK_PYRETVAL(ret) \
+	if (ret == NULL) { \
+		PyGILState_Release(state); \
+		return py_svn_error(); \
+	}
 
 #endif /* _BZR_SVN_UTIL_H_ */
