@@ -17,6 +17,7 @@
 from bzrlib import (
     errors,
     conflicts,
+    osutils,
     revisiontree,
     tests,
     workingtree_4,
@@ -248,3 +249,16 @@ class TestHasId(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertTrue('file-id' in tree)
         self.assertFalse('dir-id' in tree)
+
+
+class TestGetFileSha1(TestCaseWithTree):
+
+    def test_get_file_sha1(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'file content')])
+        work_tree.add('file', 'file-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        expected = osutils.sha_strings('file content')
+        self.assertEqual(expected, tree.get_file_sha1('file-id'))
