@@ -980,8 +980,7 @@ class MultiWalker(object):
         return cmp(MultiWalker._path_key(path1), MultiWalker._path_key(path2))
 
     @staticmethod
-    def _path_key(other):
-        path = other[0]
+    def _path_key(path):
         dirname, basename = osutils.split(path)
         return (dirname.split(u'/'), basename)
 
