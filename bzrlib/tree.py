@@ -132,7 +132,8 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
-    __contains__ = has_id
+    def __contains__(self, file_id):
+        return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
