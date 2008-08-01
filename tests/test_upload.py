@@ -38,7 +38,7 @@ from bzrlib.tests import (
     )
 
 
-from bzrlib.plugins.upload import cmd_upload
+from bzrlib.plugins.upload import cmd_upload, BzrUploader
 
 
 class TransportAdapter(
@@ -402,7 +402,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_full_upload()
 
-        self.failUnlessUpFileExists(cmd_upload.bzr_upload_revid_file_name)
+        self.failUnlessUpFileExists(BzrUploader.bzr_upload_revid_file_name)
 
     def test_invalid_revspec(self):
         self.make_local_branch()
@@ -498,7 +498,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.make_local_branch()
         self.add_file('hello', 'bar')
 
-        self.failIfUpFileExists(cmd_upload.bzr_upload_revid_file_name)
+        self.failIfUpFileExists(BzrUploader.bzr_upload_revid_file_name)
 
         self.do_upload()
 
