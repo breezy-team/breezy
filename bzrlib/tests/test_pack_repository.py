@@ -481,91 +481,91 @@ class TestPackRepository(TestCaseWithTransport):
             repo._format.supports_external_lookups)
 
 
-class TestExternalDevelopment1(TestCaseWithTransport):
-
-
-
-    # mixin class for testing stack-supporting development formats
-
-    def test_stack_checks_compatibility(self):
-        # early versions of the packing code relied on pack internals to
-        # stack, but the current version should be able to stack on any
-        # format.
-        #
-        # TODO: Possibly this should be run per-repository-format and raise
-        # TestNotApplicable on formats that don't support stacking. -- mbp
-        # 20080729
-        repo = self.make_repository('repo', format=self.get_format())
-        if repo.supports_rich_root():
-            # can only stack on repositories that have compatible internal
-            # metadata
-            matching_format_name = 'pack-0.92-subtree'
-            mismatching_format_name = 'pack-0.92'
-        else:
-            matching_format_name = 'pack-0.92'
-            mismatching_format_name = 'pack-0.92-subtree'
-        base = self.make_repository('base', format=matching_format_name)
-        repo.add_fallback_repository(base)
-        # you can't stack on something with incompatible data
-        bad_repo = self.make_repository('mismatch',
-            format=mismatching_format_name)
-        e = self.assertRaises(errors.IncompatibleRepositories,
-            repo.add_fallback_repository, bad_repo)
-        self.assertContainsRe(str(e),
-            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
-            r'KnitPackRepository.*/repo/.*\n'
-            r'different rich-root support')
-
-    def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
-        base = self.make_branch_and_tree('base', format=self.get_format())
-        base.commit('foo')
-        referencing = self.make_branch_and_tree('repo', format=self.get_format())
-        referencing.branch.repository.add_fallback_repository(base.branch.repository)
-        referencing.commit('bar')
-        new_instance = referencing.bzrdir.open_repository()
-        new_instance.lock_read()
-        self.addCleanup(new_instance.unlock)
-        new_instance._pack_collection.ensure_loaded()
-        self.assertEqual(1, len(new_instance._pack_collection.all_packs()))
-
-    def test_autopack_only_considers_main_repo_packs(self):
-        base = self.make_branch_and_tree('base', format=self.get_format())
-        base.commit('foo')
-        tree = self.make_branch_and_tree('repo', format=self.get_format())
-        tree.branch.repository.add_fallback_repository(base.branch.repository)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
-        # This test could be a little cheaper by replacing the packs
-        # attribute on the repository to allow a different pack distribution
-        # and max packs policy - so we are checking the policy is honoured
-        # in the test. But for now 11 commits is not a big deal in a single
-        # test.
-        for x in range(9):
-            tree.commit('commit %s' % x)
-        # there should be 9 packs:
-        index = GraphIndex(trans, 'pack-names', None)
-        self.assertEqual(9, len(list(index.iter_all_entries())))
-        # committing one more should coalesce to 1 of 10.
-        tree.commit('commit triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
-        self.assertEqual(1, len(list(index.iter_all_entries())))
-        # packing should not damage data
-        tree = tree.bzrdir.open_workingtree()
-        check_result = tree.branch.repository.check(
-            [tree.branch.last_revision()])
-        # We should have 50 (10x5) files in the obsolete_packs directory.
-        obsolete_files = list(trans.list_dir('obsolete_packs'))
-        self.assertFalse('foo' in obsolete_files)
-        self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
-        # XXX: Todo check packs obsoleted correctly - old packs and indices
-        # in the obsolete_packs directory.
-        large_pack_name = list(index.iter_all_entries())[0][1][0]
-        # finally, committing again should not touch the large pack.
-        tree.commit('commit not triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
-        self.assertEqual(2, len(list(index.iter_all_entries())))
-        pack_names = [node[1][0] for node in index.iter_all_entries()]
-        self.assertTrue(large_pack_name in pack_names)
+## class TestExternalDevelopment1(TestCaseWithTransport):
+## 
+## 
+## 
+##     # mixin class for testing stack-supporting development formats
+## 
+##     def test_stack_checks_compatibility(self):
+##         # early versions of the packing code relied on pack internals to
+##         # stack, but the current version should be able to stack on any
+##         # format.
+##         #
+##         # TODO: Possibly this should be run per-repository-format and raise
+##         # TestNotApplicable on formats that don't support stacking. -- mbp
+##         # 20080729
+##         repo = self.make_repository('repo', format=self.get_format())
+##         if repo.supports_rich_root():
+##             # can only stack on repositories that have compatible internal
+##             # metadata
+##             matching_format_name = 'pack-0.92-subtree'
+##             mismatching_format_name = 'pack-0.92'
+##         else:
+##             matching_format_name = 'pack-0.92'
+##             mismatching_format_name = 'pack-0.92-subtree'
+##         base = self.make_repository('base', format=matching_format_name)
+##         repo.add_fallback_repository(base)
+##         # you can't stack on something with incompatible data
+##         bad_repo = self.make_repository('mismatch',
+##             format=mismatching_format_name)
+##         e = self.assertRaises(errors.IncompatibleRepositories,
+##             repo.add_fallback_repository, bad_repo)
+##         self.assertContainsRe(str(e),
+##             r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+##             r'KnitPackRepository.*/repo/.*\n'
+##             r'different rich-root support')
+## 
+##     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
+##         base = self.make_branch_and_tree('base', format=self.get_format())
+##         base.commit('foo')
+##         referencing = self.make_branch_and_tree('repo', format=self.get_format())
+##         referencing.branch.repository.add_fallback_repository(base.branch.repository)
+##         referencing.commit('bar')
+##         new_instance = referencing.bzrdir.open_repository()
+##         new_instance.lock_read()
+##         self.addCleanup(new_instance.unlock)
+##         new_instance._pack_collection.ensure_loaded()
+##         self.assertEqual(1, len(new_instance._pack_collection.all_packs()))
+## 
+##     def test_autopack_only_considers_main_repo_packs(self):
+##         base = self.make_branch_and_tree('base', format=self.get_format())
+##         base.commit('foo')
+##         tree = self.make_branch_and_tree('repo', format=self.get_format())
+##         tree.branch.repository.add_fallback_repository(base.branch.repository)
+##         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+##         # This test could be a little cheaper by replacing the packs
+##         # attribute on the repository to allow a different pack distribution
+##         # and max packs policy - so we are checking the policy is honoured
+##         # in the test. But for now 11 commits is not a big deal in a single
+##         # test.
+##         for x in range(9):
+##             tree.commit('commit %s' % x)
+##         # there should be 9 packs:
+##         index = GraphIndex(trans, 'pack-names', None)
+##         self.assertEqual(9, len(list(index.iter_all_entries())))
+##         # committing one more should coalesce to 1 of 10.
+##         tree.commit('commit triggering pack')
+##         index = GraphIndex(trans, 'pack-names', None)
+##         self.assertEqual(1, len(list(index.iter_all_entries())))
+##         # packing should not damage data
+##         tree = tree.bzrdir.open_workingtree()
+##         check_result = tree.branch.repository.check(
+##             [tree.branch.last_revision()])
+##         # We should have 50 (10x5) files in the obsolete_packs directory.
+##         obsolete_files = list(trans.list_dir('obsolete_packs'))
+##         self.assertFalse('foo' in obsolete_files)
+##         self.assertFalse('bar' in obsolete_files)
+##         self.assertEqual(50, len(obsolete_files))
+##         # XXX: Todo check packs obsoleted correctly - old packs and indices
+##         # in the obsolete_packs directory.
+##         large_pack_name = list(index.iter_all_entries())[0][1][0]
+##         # finally, committing again should not touch the large pack.
+##         tree.commit('commit not triggering pack')
+##         index = GraphIndex(trans, 'pack-names', None)
+##         self.assertEqual(2, len(list(index.iter_all_entries())))
+##         pack_names = [node[1][0] for node in index.iter_all_entries()]
+##         self.assertTrue(large_pack_name in pack_names)
 
 
 def load_tests(basic_tests, module, test_loader):
@@ -577,6 +577,13 @@ def load_tests(basic_tests, module, test_loader):
               format_string="Bazaar pack repository format 1 "
               "with subtree support (needs bzr 0.92)\n",
               format_supports_external_lookups=False),
+         dict(format_name='1.6',
+              format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
+              format_supports_external_lookups=True),
+         dict(format_name='1.6-rich-root',
+              format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
+                  "(bzr 1.6)\n",
+              format_supports_external_lookups=True),
          dict(format_name='development0',
               format_string="Bazaar development format 0 "
                   "(needs bzr.dev from before 1.3)\n",
