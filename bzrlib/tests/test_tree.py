@@ -409,11 +409,11 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertCmpByDirblock(1, u'a-a/a/a', u'a/a/a')
         self.assertCmpByDirblock(1, u'a=a/a/a', u'a/a/a')
 
-    def assertPathKey(self, expected, path):
-        self.assertEqual(expected, _mod_tree.MultiWalker._path_key(path))
+    def assertPathToKey(self, expected, path):
+        self.assertEqual(expected, _mod_tree.MultiWalker._path_to_key(path))
 
-    def test__path_key(self):
-        self.assertPathKey(([u''], u''), u'')
-        self.assertPathKey(([u''], u'a'), u'a')
-        self.assertPathKey(([u'a'], u'b'), u'a/b')
-        self.assertPathKey(([u'a', u'b'], u'c'), u'a/b/c')
+    def test__path_to_key(self):
+        self.assertPathToKey(([u''], u''), u'')
+        self.assertPathToKey(([u''], u'a'), u'a')
+        self.assertPathToKey(([u'a'], u'b'), u'a/b')
+        self.assertPathToKey(([u'a', u'b'], u'c'), u'a/b/c')
