@@ -2392,10 +2392,13 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
                          set(tree.extras()))
 
-    def test_merge_from(self):
+    def test_merge_into_preview(self):
         work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file','b\n')])
+        work_tree.add('file', 'file-id')
         work_tree.commit('first commit')
         child_tree = work_tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file','b\nc\n')])
         child_tree.commit('child commit')
         child_tree.lock_write()
         self.addCleanup(child_tree.unlock)
@@ -2411,3 +2414,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                                           tree_branch=work_tree.branch)
         merger.merge_type = Merge3Merger
         tt = merger.make_merger().make_preview_transform()
+        self.addCleanup(tt.finalize)
+        final_tree = tt.get_preview_tree()
+        self.assertEqual('a\nb\nc\n', final_tree.get_file_text('file-id'))
