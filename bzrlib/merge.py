@@ -560,6 +560,9 @@ class Merge3Merger(object):
         self.reprocess = reprocess
         self.show_base = show_base
         self._lca_trees = lca_trees
+        # Uncommenting this will change the default algorithm to always use
+        # _entries_lca. This can be useful for running the test suite and
+        # making sure we haven't missed any corner cases.
         # if lca_trees is None:
         #     self._lca_trees = [self.base_tree]
         self.pb = pb
