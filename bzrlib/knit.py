@@ -698,6 +698,12 @@ class KnitVersionedFiles(VersionedFiles):
     """Storage for many versioned files using knit compression.
 
     Backend storage is managed by indices and data objects.
+
+    :ivar _index: A _KnitGraphIndex or similar that can describe the 
+        parents, graph, compression and data location of entries in this 
+        KnitVersionedFiles.  Note that this is only the index for 
+        *this* vfs; if there are fallbacks their index must be 
+        queried separately.
     """
 
     def __init__(self, index, data_access, max_delta_chain=200,
@@ -892,6 +898,10 @@ class KnitVersionedFiles(VersionedFiles):
         for count in xrange(self._max_delta_chain):
             # XXX: Collapse these two queries:
             try:
+                # Note that this only looks in the index of this particular
+                # KnitVersionedFiles, not in the fallbacks.  This ensures that
+                # we won't store a delta spanning physical repository
+                # boundaries.
                 method = self._index.get_method(parent)
             except RevisionNotPresent:
                 # Some basis is not locally present: always delta
