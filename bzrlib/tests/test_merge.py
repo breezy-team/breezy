@@ -1704,6 +1704,24 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((False, [False, False]), False, False)),
                          ], entries)
 
+    def test_this_changed_kind(self):
+        # Identical content, but THIS changes a file to a directory
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('unversion', 'a-id'),
+             ('add', (u'a', 'a-id', 'directory', None))])
+        merge_obj = self.make_merge_obj(builder, 'E-id')
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        # Only the kind was changed (content)
+        self.assertEqual([], entries)
+
     def test_interesting_files(self):
         # Two files modified, but we should filter one of them
         builder = self.get_builder()
@@ -2183,6 +2201,58 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual(0, conflicts)
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
+    def test_symlink_this_changed_kind(self):
+        self.requireFeature(tests.SymlinkFeature)
+        #   A       Nothing
+        #  / \
+        # B   C     B creates symlink foo => bar
+        # |\ /|
+        # | X |
+        # |/ \|
+        # D   E     D changes foo into a file, E has foo => bing
+        #
+        # Mostly, this is trying to test that we don't try to os.readlink() on
+        # a file, or when there is nothing there
+        wt = self.make_branch_and_tree('path')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.commit('base', rev_id='A-id')
+        os.symlink('bar', 'path/foo')
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('add symlink foo => bar', rev_id='B-id')
+        wt.set_last_revision('A-id')
+        wt.branch.set_last_revision_info(1, 'A-id')
+        wt.revert()
+        wt.commit('C', rev_id='C-id')
+        wt.merge_from_branch(wt.branch, 'B-id')
+        self.assertEqual('bar', wt.get_symlink_target('foo-id'))
+        os.remove('path/foo')
+        # We have to change the link in E, or it won't try to do a comparison
+        os.symlink('bing', 'path/foo')
+        wt.commit('E merges C & B, overrides to bing', rev_id='E-id')
+        wt.set_last_revision('B-id')
+        wt.branch.set_last_revision_info(2, 'B-id')
+        wt.revert()
+        wt.merge_from_branch(wt.branch, 'C-id')
+        os.remove('path/foo')
+        self.build_tree_contents([('path/foo', 'file content\n')])
+        # XXX: workaround, WT doesn't detect kind changes unless you do
+        # iter_changes()
+        list(wt.iter_changes(wt.basis_tree()))
+        wt.commit('D merges B & C, makes it a file', rev_id='D-id')
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            wt, 'E-id')
+        merger.merge_type = _mod_merge.Merge3Merger
+        merge_obj = merger.make_merger()
+        entries = list(merge_obj._entries_lca())
+        root_id = wt.path2id('')
+        self.assertEqual([('foo-id', True,
+                           ((None, [root_id, None]), root_id, root_id),
+                           ((None, [u'foo', None]), u'foo', u'foo'),
+                           ((None, [False, None]), False, False)),
+                         ], entries)
+
     def test_symlink_all_wt(self):
         """Check behavior if all trees are Working Trees."""
         self.requireFeature(tests.SymlinkFeature)
@@ -2431,7 +2501,6 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         # Nothing interesting about this sub-tree, because content changes are
         # computed at a higher level
         self.assertEqual([], entries)

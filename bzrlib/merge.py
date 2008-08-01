@@ -783,12 +783,7 @@ class Merge3Merger(object):
                     content_changed = False
                 elif other_ie.kind == 'file':
                     def get_sha1(ie, tree):
-                        # TODO: we should actually check that ie.kind == 'file'
-                        #       otherwise kind changes will break this. It is
-                        #       possible to have kind_winner = THIS and still
-                        #       have a kind change. We just don't have a kind
-                        #       change in 'other'
-                        if ie.kind is None:
+                        if ie.kind != 'file':
                             return None
                         return tree.get_file_sha1(file_id)
                     base_sha1 = get_sha1(base_ie, self.base_tree)
@@ -811,7 +806,7 @@ class Merge3Merger(object):
                         content_changed = False
                 elif other_ie.kind == 'symlink':
                     def get_target(ie, tree):
-                        if ie.kind is None:
+                        if ie.kind != 'symlink':
                             return None
                         return tree.get_symlink_target(file_id)
                     base_target = get_target(base_ie, self.base_tree)
