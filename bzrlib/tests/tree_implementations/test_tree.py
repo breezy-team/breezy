@@ -225,3 +225,14 @@ class TestExtras(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(expected, list(tree.extras()))
+
+class TestHasId(TestCaseWithTree):
+
+    def test_has_id(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'file-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertTrue(tree.has_id('file-id'))
