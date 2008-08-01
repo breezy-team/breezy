@@ -41,17 +41,20 @@ PyAPI_DATA(PyTypeObject) TxDeltaWindowHandler_Type;
 static svn_error_t *py_commit_callback(const svn_commit_info_t *commit_info, void *baton, apr_pool_t *pool)
 {
 	PyObject *fn = (PyObject *)baton, *ret;
+	PyGILState_STATE state = PyGILState_Ensure();
+	svn_error_t *err = NULL;
 
-	if (fn == Py_None)
-		return NULL;
-
-	ret = PyObject_CallFunction(fn, "izz", 
-								commit_info->revision, commit_info->date, 
-								commit_info->author);
-	if (ret == NULL)
-		return py_svn_error();
-	Py_DECREF(ret);
-	return NULL;
+	if (fn != Py_None) {
+		ret = PyObject_CallFunction(fn, "izz", 
+						commit_info->revision, commit_info->date, 
+						commit_info->author);
+		if (ret == NULL)
+			err = py_svn_error();
+		else
+			Py_DECREF(ret);
+	}
+	PyGILState_Release(state);
+	return err;
 }
 
 static PyObject *pyify_lock(const svn_lock_t *lock)
@@ -659,14 +662,15 @@ static svn_error_t *py_open_tmp_file(apr_file_t **fp, void *callback,
 
 static void py_progress_func(apr_off_t progress, apr_off_t total, void *baton, apr_pool_t *pool)
 {
+	PyGILState_STATE state = PyGILState_Ensure();
 	RemoteAccessObject *ra = (RemoteAccessObject *)baton;
 	PyObject *fn = (PyObject *)ra->progress_func, *ret;
-	if (fn == Py_None) {
-		return;
+	if (fn != Py_None) {
+		ret = PyObject_CallFunction(fn, "LL", progress, total);
+		/* TODO: What to do with exceptions raised here ? */
+		Py_XDECREF(ret);
 	}
-	ret = PyObject_CallFunction(fn, "LL", progress, total);
-	/* TODO: What to do with exceptions raised here ? */
-	Py_XDECREF(ret);
+	PyGILState_Release(state);
 }
 
 static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
@@ -682,6 +686,7 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	apr_hash_t *config_hash;
 	svn_ra_callbacks2_t *callbacks2;
 	svn_auth_baton_t *auth_baton;
+	svn_error_t *err;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|OOOOO", kwnames, &url, &progress_cb, 
 									 (PyObject **)&auth, &config, &client_string_func,
@@ -731,8 +736,11 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 		PyObject_Del(ret);
 		return NULL;
 	}
-	if (!check_error(svn_ra_open2(&ret->ra, apr_pstrdup(ret->pool, url), 
-								  callbacks2, ret, config_hash, ret->pool))) {
+	Py_BEGIN_ALLOW_THREADS
+	err = svn_ra_open2(&ret->ra, apr_pstrdup(ret->pool, url),
+			   callbacks2, ret, config_hash, ret->pool);
+	Py_END_ALLOW_THREADS
+	if (!check_error(err)) {
 		apr_pool_destroy(ret->pool);
 		PyObject_Del(ret);
 		return NULL;
