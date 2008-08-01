@@ -718,13 +718,17 @@ class Merge3Merger(object):
             # modify anything
             # See doc/developers/lca_merge_resolution.txt for details
             other_revision = other_ie.revision
-            is_unmodified = False
-            for lca_path, ie in lca_values:
-                if ie is not None and ie.revision == other_revision:
-                    is_unmodified = True
-                    break
-            if is_unmodified:
-                continue
+            if other_revision is not None:
+                # We can't use this shortcut when other_revision is None,
+                # because it may be None because things are WorkingTrees, and
+                # not because it is *actually* None.
+                is_unmodified = False
+                for lca_path, ie in lca_values:
+                    if ie is not None and ie.revision == other_revision:
+                        is_unmodified = True
+                        break
+                if is_unmodified:
+                    continue
 
             lca_entries = []
             for lca_path, lca_ie in lca_values:

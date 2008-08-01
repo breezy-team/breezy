@@ -1189,8 +1189,8 @@ class TestMergerInMemory(TestMergerBase):
         #     |\ /| |
         #     | X | |\
         #     |/ \| | :
-        #   : D   E |  
-        #    \|   |/ 
+        #   : D   E |
+        #    \|   |/
         #     G   H
         builder = self.setup_criss_cross_graph()
         builder.build_snapshot('F-id', ['A-id'], [])
@@ -1247,7 +1247,7 @@ class TestMergerEntriesLCA(TestMergerBase):
             interesting_files=interesting_files,
             interesting_ids=interesting_ids)
         return merger.make_merger()
-        
+
     def test_simple(self):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
@@ -1281,14 +1281,14 @@ class TestMergerEntriesLCA(TestMergerBase):
         # LCA's all have the same last-modified revision for the file, as do
         # the tips, but the base has something different
         #       A    base, doesn't have the file
-        #       |\ 
+        #       |\
         #       B C  B introduces 'foo', C introduces 'bar'
         #       |X|
         #       D E  D and E now both have 'foo' and 'bar'
         #       |X|
         #       F G  the files are now in F, G, D and E, but not in A
         #            G modifies 'bar'
-            
+
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None))])
@@ -1385,7 +1385,7 @@ class TestMergerEntriesLCA(TestMergerBase):
 
     def test_not_in_other_or_lca(self):
         #       A    base, introduces 'foo'
-        #       |\ 
+        #       |\
         #       B C  B nothing, C deletes foo
         #       |X|
         #       D E  D restores foo (same as B), E leaves it deleted
@@ -1452,7 +1452,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         # One LCA supersede's the other LCA's last modified value, but the
         # value is not the same as BASE.
         #       A    base, introduces 'foo', last mod A
-        #       |\ 
+        #       |\
         #       B C  B modifies 'foo' (mod B), C does nothing (mod A)
         #       |X|
         #       D E  D does nothing (mod B), E updates 'foo' (mod E)
@@ -1569,7 +1569,7 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_both_sides_revert(self):
         # Both sides of a criss-cross revert the text to the lca
         #       A    base, introduces 'foo'
-        #       |\ 
+        #       |\
         #       B C  B modifies 'foo', C modifies 'foo'
         #       |X|
         #       D E  D reverts to B, E reverts to C
@@ -1597,7 +1597,7 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_different_lca_resolve_one_side_updates_content(self):
         # Both sides converge, but then one side updates the text.
         #       A    base, introduces 'foo'
-        #       |\ 
+        #       |\
         #       B C  B modifies 'foo', C modifies 'foo'
         #       |X|
         #       D E  D reverts to B, E reverts to C
@@ -1630,7 +1630,7 @@ class TestMergerEntriesLCA(TestMergerBase):
     def test_same_lca_resolution_one_side_updates_content(self):
         # Both sides converge, but then one side updates the text.
         #       A    base, introduces 'foo'
-        #       |\ 
+        #       |\
         #       B C  B modifies 'foo', C modifies 'foo'
         #       |X|
         #       D E  D and E use C's value
@@ -1930,7 +1930,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_executable_changes(self):
         #   A       Path at 'foo'
         #  / \
-        # B   C 
+        # B   C
         # |\ /|
         # | X |
         # |/ \|
@@ -1967,9 +1967,9 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_create_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
-        #   A       
+        #   A
         #  / \
-        # B   C 
+        # B   C
         # |\ /|
         # | X |
         # |/ \|
@@ -2004,7 +2004,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_both_sides_revert(self):
         # Both sides of a criss-cross revert the text to the lca
         #       A    base, introduces 'foo'
-        #       |\ 
+        #       |\
         #       B C  B modifies 'foo', C modifies 'foo'
         #       |X|
         #       D E  D reverts to B, E reverts to C
@@ -2248,6 +2248,57 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
             self.assertEqual, 'F content\n', wt.get_file_text('foo-id'))
         self.assertEqual(0, conflicts)
         self.assertEqual('F content\n', wt.get_file_text('foo-id'))
+
+    def test_all_wt(self):
+        """Check behavior if all trees are Working Trees."""
+        # The big issue is that entry.revision is None for WorkingTrees. (as is
+        # entry.text_sha1, etc. So we need to make sure we handle that case
+        # correctly.
+        #   A   Content of 'foo', path of 'a'
+        #   |\
+        #   B C B modifies content, C renames 'a' => 'b'
+        #   |X|
+        #   D E E updates content, renames 'b' => 'c'
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'base content\n')),
+             ('add', (u'foo', 'foo-id', 'file', 'base content\n'))])
+        builder.build_snapshot('B-id', ['A-id'],
+            [('modify', ('foo-id', 'B content\n'))])
+        builder.build_snapshot('C-id', ['A-id'],
+            [('rename', ('a', 'b'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'],
+            [('rename', ('b', 'c')),
+             ('modify', ('foo-id', 'E content\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'],
+            [('rename', ('a', 'b'))]) # merged change
+        wt_this = self.get_wt_from_builder(builder)
+        wt_base = wt_this.bzrdir.sprout('base', 'A-id').open_workingtree()
+        wt_base.lock_read()
+        self.addCleanup(wt_base.unlock)
+        wt_lca1 = wt_this.bzrdir.sprout('b-tree', 'B-id').open_workingtree()
+        wt_lca1.lock_read()
+        self.addCleanup(wt_lca1.unlock)
+        wt_lca2 = wt_this.bzrdir.sprout('c-tree', 'C-id').open_workingtree()
+        wt_lca2.lock_read()
+        self.addCleanup(wt_lca2.unlock)
+        wt_other = wt_this.bzrdir.sprout('other', 'E-id').open_workingtree()
+        wt_other.lock_read()
+        self.addCleanup(wt_other.unlock)
+        merge_obj = _mod_merge.Merge3Merger(wt_this, wt_this, wt_base,
+            wt_other, lca_trees=[wt_lca1, wt_lca2], do_merge=False)
+        entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
+        self.assertEqual([('a-id', False,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'a', [u'a', u'b']), u'c', u'b'),
+                           ((False, [False, False]), False, False)),
+                          ('foo-id', True,
+                           ((root_id, [root_id, root_id]), root_id, root_id),
+                           ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
+                           ((False, [False, False]), False, False)),
+                         ], entries)
 
 
 class TestLCAMultiWay(tests.TestCase):
