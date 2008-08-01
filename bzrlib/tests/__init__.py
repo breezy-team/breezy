@@ -2763,6 +2763,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_pack',
+                   'bzrlib.tests.test_pack_repository',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
