@@ -38,7 +38,7 @@ from bzrlib.tests import (
     )
 
 
-from bzrlib.plugins.upload import cmd_upload
+from bzrlib.plugins.upload import cmd_upload, BzrUploader, get_upload_auto
 
 
 class TransportAdapter(
@@ -392,6 +392,38 @@ class TestUploadMixin(object):
 
         self.assertUpPathModeEqual('hello', 0775)
 
+    def test_upload_auto(self):
+        """Test that upload --auto sets the upload_auto option"""
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.do_full_upload(auto=True)
+        self.assertUpFileEqual('foo', 'hello')
+        self.assertTrue(get_upload_auto(self.tree.branch))
+        # and check that it stays set until it is unset
+        self.add_file('bye', 'bar')
+        self.do_full_upload()
+        self.assertUpFileEqual('bar', 'bye')
+        self.assertTrue(get_upload_auto(self.tree.branch))
+
+    def test_upload_noauto(self):
+        """Test that upload --no-auto unsets the upload_auto option"""
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.do_full_upload(auto=True)
+        self.assertUpFileEqual('foo', 'hello')
+        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.add_file('bye', 'bar')
+        self.do_full_upload(auto=False)
+        self.assertUpFileEqual('bar', 'bye')
+        self.assertFalse(get_upload_auto(self.tree.branch))
+        # and check that it stays unset until it is set
+        self.add_file('again', 'baz')
+        self.do_full_upload()
+        self.assertUpFileEqual('baz', 'again')
+        self.assertFalse(get_upload_auto(self.tree.branch))
+
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
@@ -402,7 +434,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_full_upload()
 
-        self.failUnlessUpFileExists(cmd_upload.bzr_upload_revid_file_name)
+        self.failUnlessUpFileExists(BzrUploader.bzr_upload_revid_file_name)
 
     def test_invalid_revspec(self):
         self.make_local_branch()
@@ -498,7 +530,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.make_local_branch()
         self.add_file('hello', 'bar')
 
-        self.failIfUpFileExists(cmd_upload.bzr_upload_revid_file_name)
+        self.failIfUpFileExists(BzrUploader.bzr_upload_revid_file_name)
 
         self.do_upload()
 

@@ -40,6 +40,7 @@ Known limitations:
 # remote files...
 
 from bzrlib import (
+    branch,
     commands,
     lazy_import,
     option,
@@ -48,7 +49,6 @@ lazy_import.lazy_import(globals(), """
 import stat
 
 from bzrlib import (
-    branch,
     errors,
     revisionspec,
     transport,
@@ -61,82 +61,46 @@ from bzrlib import (
 version_info = (0,1,0)
 plugin_name = 'upload'
 
-class cmd_upload(commands.Command):
-    """Upload a working tree, as a whole or incrementally.
 
-    If no destination is specified use the last one used.
-    If no revision is specified upload the changes since the last upload.
-    """
-    takes_args = ['location?']
-    takes_options = [
-        'revision',
-        'remember',
-        option.Option('full', 'Upload the full working tree.'),
-        option.Option('quiet', 'Do not output what is being done.',
-                       short_name='q'),
-        option.Option('directory',
-                      help='Branch to upload from, '
-                      'rather than the one containing the working directory.',
-                      short_name='d',
-                      type=unicode,
-                      ),
-       ]
+def _get_branch_option(branch, option):
+    return branch.get_config().get_user_option(option)
 
-    def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None, quiet=False,
-            ):
-        if directory is None:
-            directory = u'.'
+def _set_branch_option(branch, option, value):
+    branch.get_config().set_user_option(option, value)
 
-        wt = workingtree.WorkingTree.open(directory)
-        changes = wt.changes_from(wt.basis_tree())
+def get_upload_location(branch):
+    return _get_branch_option(branch, 'upload_location')
 
-        if revision is None and  changes.has_changed():
-            raise errors.UncommittedChanges(wt)
+def set_upload_location(branch, location):
+    _set_branch_option(branch, 'upload_location', location)
 
-        self.branch = wt.branch
+def get_upload_auto(branch):
+    result = _get_branch_option(branch, 'upload_auto')
+    # FIXME: is there a better way to do this with bzr's config API?
+    if result is not None and result.strip() == "True":
+        return True
+    return False
 
-        if location is None:
-            stored_loc = self.get_upload_location()
-            if stored_loc is None:
-                raise errors.BzrCommandError('No upload location'
-                                             ' known or specified.')
-            else:
-                # FIXME: Not currently tested
-                display_url = urlutils.unescape_for_display(stored_loc,
-                        self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
-                location = stored_loc
+def set_upload_auto(branch, auto):
+    if auto:
+        auto_str = "True"
+    else:
+        auto_str = "False"
+    _set_branch_option(branch, 'upload_auto', auto_str)
 
-        self.to_transport = transport.get_transport(location)
-        if revision is None:
-            rev_id = self.branch.last_revision()
-        else:
-            if len(revision) != 1:
-                raise errors.BzrCommandError(
-                    'bzr upload --revision takes exactly 1 argument')
-            rev_id = revision[0].in_history(self.branch).rev_id
 
-        self.tree = self.branch.repository.revision_tree(rev_id)
+class BzrUploader(object):
+
+    def __init__(self, branch, to_transport, outf, tree, rev_id,
+            quiet=False):
+        self.branch = branch
+        self.to_transport = to_transport
+        self.outf = outf
+        self.tree = tree
         self.rev_id = rev_id
-        self._pending_renames = []
-        self._pending_deletions = []
         self.quiet = quiet
-
-        if full:
-            self.upload_full_tree()
-        else:
-            self.upload_tree()
-
-        # We uploaded successfully, remember it
-        if self.get_upload_location() is None or remember:
-            self.set_upload_location(self.to_transport.base)
-
-    def set_upload_location(self, location):
-        self.branch.get_config().set_user_option('upload_location', location)
-
-    def get_upload_location(self):
-        return self.branch.get_config().get_user_option('upload_location')
+        self._pending_deletions = []
+        self._pending_renames = []
 
     bzr_upload_revid_file_name = '.bzr-upload.revid'
 
@@ -355,7 +319,90 @@ class cmd_upload(commands.Command):
             self.tree.unlock()
 
 
+class cmd_upload(commands.Command):
+    """Upload a working tree, as a whole or incrementally.
+
+    If no destination is specified use the last one used.
+    If no revision is specified upload the changes since the last upload.
+    """
+    takes_args = ['location?']
+    takes_options = [
+        'revision',
+        'remember',
+        option.Option('full', 'Upload the full working tree.'),
+        option.Option('quiet', 'Do not output what is being done.',
+                       short_name='q'),
+        option.Option('directory',
+                      help='Branch to upload from, '
+                      'rather than the one containing the working directory.',
+                      short_name='d',
+                      type=unicode,
+                      ),
+        option.Option('auto',
+                      'Trigger an upload from this branch whenever the tip '
+                      'revision changes.')
+       ]
+
+    def run(self, location=None, full=False, revision=None, remember=None,
+            directory=None, quiet=False, auto=None
+            ):
+        if directory is None:
+            directory = u'.'
+
+        wt = workingtree.WorkingTree.open(directory)
+        changes = wt.changes_from(wt.basis_tree())
+
+        if revision is None and  changes.has_changed():
+            raise errors.UncommittedChanges(wt)
+
+        branch = wt.branch
+
+        if location is None:
+            stored_loc = get_upload_location(branch)
+            if stored_loc is None:
+                raise errors.BzrCommandError('No upload location'
+                                             ' known or specified.')
+            else:
+                # FIXME: Not currently tested
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        to_transport = transport.get_transport(location)
+        if revision is None:
+            rev_id = branch.last_revision()
+        else:
+            if len(revision) != 1:
+                raise errors.BzrCommandError(
+                    'bzr upload --revision takes exactly 1 argument')
+            rev_id = revision[0].in_history(branch).rev_id
+
+        tree = branch.repository.revision_tree(rev_id)
+
+        uploader = BzrUploader(branch, to_transport, self.outf, tree,
+                rev_id, quiet=quiet)
+
+        if full:
+            uploader.upload_full_tree()
+        else:
+            uploader.upload_tree()
+
+        # We uploaded successfully, remember it
+        if get_upload_location(branch) is None or remember:
+            set_upload_location(branch, to_transport.base)
+        if auto is not None:
+            set_upload_auto(branch, auto)
+
+
 commands.register_command(cmd_upload)
+
+
+from bzrlib.plugins.upload.auto_upload_hook import auto_upload_hook
+
+branch.Branch.hooks.install_named_hook('post_change_branch_tip',
+        auto_upload_hook,
+        'Auto upload code from a branch when it is changed.')
 
 
 def load_tests(basic_tests, module, loader):

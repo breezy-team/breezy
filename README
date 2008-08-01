@@ -43,6 +43,27 @@ If you need to re-upload the whole working tree for some reason, you can:
     bzr upload --full sftp://user@host/location/on/webserver
 
 
+Automatically Uploading
+-----------------------
+
+bzr-upload comes with a hook that can be used to trigger an upload whenever
+the tip of the branch changes, including on commit, push, uncommit etc. This
+would allow you to keep the code on the target up to date automatically.
+
+The easiest way to enable this is to run upload with the --auto option.
+
+     bzr upload --auto
+
+will enable the hook for this branch. If you were to do a commit in this branch
+now you would see it trigger the upload automatically.
+
+If you wish to disable this for a branch again then you can use the --no-auto
+option.
+
+     bzr upload --no-auto
+
+will disable the feature for that branch.
+
 
 Collaborating
 -------------
