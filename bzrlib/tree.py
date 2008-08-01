@@ -1029,11 +1029,11 @@ class MultiWalker(object):
         if not isinstance(path2, unicode):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
-        return cmp(MultiWalker._path_key(path1), MultiWalker._path_key(path2))
+        return cmp(MultiWalker._path_to_key(path1),
+                   MultiWalker._path_to_key(path2))
 
     @staticmethod
-    def _path_key(other):
-        path = other[0]
+    def _path_to_key(path):
         dirname, basename = osutils.split(path)
         return (dirname.split(u'/'), basename)
 
@@ -1173,7 +1173,8 @@ class MultiWalker(object):
         #       might ensure better ordering, in case a caller strictly
         #       requires parents before children.
         for idx, other_extra in enumerate(self._others_extra):
-            others = sorted(other_extra.itervalues(), key=self._path_key)
+            others = sorted(other_extra.itervalues(),
+                            key=lambda x: self._path_to_key(x[0]))
             for other_path, other_ie in others:
                 file_id = other_ie.file_id
                 # We don't need to check out_of_order_processed here, because
