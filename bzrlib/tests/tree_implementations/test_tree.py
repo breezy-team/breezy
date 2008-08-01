@@ -236,3 +236,4 @@ class TestHasId(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertTrue(tree.has_id('file-id'))
+        self.assertFalse(tree.has_id('dir-id'))
