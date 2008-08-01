@@ -851,7 +851,7 @@ class Merge3Merger(object):
                     self.text_merge(file_id, trans_id)
                 except BinaryFile:
                     return contents_conflict()
-                if file_id not in self.this_tree.inventory:
+                if file_id not in self.this_tree:
                     self.tt.version_file(file_id, trans_id)
                 try:
                     self.tt.tree_kind(trans_id)
