@@ -561,13 +561,18 @@ static void ra_done_handler(void *_ra)
 	Py_XDECREF(ra);
 }
 
-#define RUN_RA_WITH_POOL(pool, ra, cmd)  \
+#define RUN_RA_WITH_POOL(pool, ra, cmd) { \
+	PyThreadState *_save; \
+	_save = PyEval_SaveThread(); \
 	if (!check_error((cmd))) { \
 		apr_pool_destroy(pool); \
 		ra->busy = false; \
+		PyEval_RestoreThread(_save); \
 		return NULL; \
 	} \
-	ra->busy = false;
+	ra->busy = false; \
+	PyEval_RestoreThread(_save); \
+}
 
 static bool ra_check_busy(RemoteAccessObject *raobj)
 {
@@ -938,6 +943,7 @@ static PyObject *ra_do_update(PyObject *self, PyObject *args)
 	PyObject *update_editor;
 	const svn_ra_reporter2_t *reporter;
 	void *report_baton;
+	svn_error_t *err;
 	apr_pool_t *temp_pool;
 	ReporterObject *ret;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
@@ -953,16 +959,21 @@ static PyObject *ra_do_update(PyObject *self, PyObject *args)
 		return NULL;
 
 	Py_INCREF(update_editor);
-	if (!check_error(svn_ra_do_update(ra->ra, &reporter, 
+	Py_BEGIN_ALLOW_THREADS
+	err = svn_ra_do_update(ra->ra, &reporter, 
 												  &report_baton, 
 												  revision_to_update_to, 
 												  update_target, recurse, 
 												  &py_editor, update_editor, 
-												  temp_pool))) {
+												  temp_pool);
+	Py_END_ALLOW_THREADS
+	if (!check_error(err)) {
 		apr_pool_destroy(temp_pool);
 		ra->busy = false;
+		
 		return NULL;
 	}
+
 	ret = PyObject_New(ReporterObject, &Reporter_Type);
 	if (ret == NULL)
 		return NULL;
@@ -986,6 +997,7 @@ static PyObject *ra_do_switch(PyObject *self, PyObject *args)
 	void *report_baton;
 	apr_pool_t *temp_pool;
 	ReporterObject *ret;
+	svn_error_t *err;
 
 	if (!PyArg_ParseTuple(args, "lsbsO:do_switch", &revision_to_update_to, &update_target, 
 						  &recurse, &switch_url, &update_editor))
@@ -997,11 +1009,15 @@ static PyObject *ra_do_switch(PyObject *self, PyObject *args)
 	if (temp_pool == NULL)
 		return NULL;
 	Py_INCREF(update_editor);
-	if (!check_error(svn_ra_do_switch(
+	Py_BEGIN_ALLOW_THREADS
+	err = svn_ra_do_switch(
 						ra->ra, &reporter, &report_baton, 
 						revision_to_update_to, update_target, 
 						recurse, switch_url, &py_editor, 
-						update_editor, temp_pool))) {
+						update_editor, temp_pool);
+	Py_END_ALLOW_THREADS
+	
+	if (!check_error(err)) {
 		apr_pool_destroy(temp_pool);
 		ra->busy = false;
 		return NULL;
@@ -1155,6 +1171,7 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	void *edit_baton;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
 	apr_hash_t *hash_lock_tokens;
+	svn_error_t *err;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOb", kwnames, &revprops, &commit_callback, &lock_tokens, &keep_locks))
 		return NULL;
@@ -1183,10 +1200,14 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	if (ra_check_busy(ra))
 		return NULL;
 
-	if (!check_error(svn_ra_get_commit_editor2(ra->ra, &editor, 
+	Py_BEGIN_ALLOW_THREADS
+	err = svn_ra_get_commit_editor2(ra->ra, &editor, 
 		&edit_baton, 
 		PyString_AsString(PyDict_GetItemString(revprops, SVN_PROP_REVISION_LOG)), py_commit_callback, 
-		commit_callback, hash_lock_tokens, keep_locks, pool))) {
+		commit_callback, hash_lock_tokens, keep_locks, pool);
+	Py_END_ALLOW_THREADS
+	
+	if (!check_error(err)) {
 		apr_pool_destroy(pool);
 		ra->busy = false;
 		return NULL;
