@@ -77,7 +77,7 @@ def set_upload_location(branch, location):
 def get_upload_auto(branch):
     result = _get_branch_option(branch, 'upload_auto')
     # FIXME: is there a better way to do this with bzr's config API?
-    if result.strip() == "True":
+    if result is not None and result.strip() == "True":
         return True
     return False
 
@@ -341,7 +341,7 @@ class cmd_upload(commands.Command):
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None, quiet=False,
+            directory=None, quiet=False, auto=None
             ):
         if directory is None:
             directory = u'.'
@@ -388,6 +388,8 @@ class cmd_upload(commands.Command):
         # We uploaded successfully, remember it
         if get_upload_location(branch) is None or remember:
             set_upload_location(branch, to_transport.base)
+        if auto is not None:
+            set_upload_auto(branch, auto)
 
 
 commands.register_command(cmd_upload)
