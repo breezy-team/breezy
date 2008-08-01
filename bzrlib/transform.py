@@ -534,7 +534,7 @@ class TreeTransformBase(object):
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
             return self._tree.get_root_id()
-        return self._tree.inventory.path2id(path)
+        return self._tree.path2id(path)
 
     def final_file_id(self, trans_id):
         """Determine the file id after any changes are applied, or None.
@@ -992,7 +992,7 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.inventory[file_id]
+            from_entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -1413,7 +1413,8 @@ class TransformPreview(TreeTransformBase):
         file_id = self.tree_file_id(parent_id)
         if file_id is None:
             return
-        children = getattr(self._tree.inventory[file_id], 'children', {})
+        entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+        children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
