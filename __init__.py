@@ -36,7 +36,7 @@ else:
 __version__ = version_string
 __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
-min_compatible_bzr_version = (0, 92)
+min_compatible_bzr_version = (1, 6)
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
