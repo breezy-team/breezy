@@ -254,6 +254,7 @@ static PyObject *adm_init(PyTypeObject *self, PyObject *args, PyObject *kwargs)
 	int depth=0;
 	PyObject *cancel_func=Py_None;
 	svn_wc_adm_access_t *parent_wc;
+	svn_error_t *err;
 	AdmObject *ret;
 	char *kwnames[] = { "associated", "path", "write_lock", "depth", "cancel_func", NULL };
 
@@ -273,14 +274,14 @@ static PyObject *adm_init(PyTypeObject *self, PyObject *args, PyObject *kwargs)
 		parent_wc = ((AdmObject *)associated)->adm;
 	}
 	Py_BEGIN_ALLOW_THREADS
-	if (!check_error(svn_wc_adm_open3(&ret->adm, parent_wc, path, 
+	err = svn_wc_adm_open3(&ret->adm, parent_wc, path, 
 					 write_lock, depth, py_cancel_func, cancel_func, 
-					 ret->pool))) {
-		PyEval_RestoreThread(_save);
+					 ret->pool);
+	Py_END_ALLOW_THREADS
+	
+	if (!check_error(err)) {
 		return NULL;
 	}
-	Py_END_ALLOW_THREADS
-
 
 	return (PyObject *)ret;
 }
