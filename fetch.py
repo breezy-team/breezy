@@ -195,25 +195,14 @@ class DirectoryBuildEditor(object):
 
 
 class FileBuildEditor(object):
-    def __init__(self, editor, path, file_id, file_parents=[], data="", 
-                 is_symlink=False):
+    def __init__(self, editor, path):
         self.path = path
         self.editor = editor
-        self.file_id = file_id
-        self.file_data = data
-        self.is_symlink = is_symlink
-        self.is_special = None
-        self.file_parents = file_parents
         self.is_executable = None
-        self.file_stream = None
+        self.is_special = None
 
     def apply_textdelta(self, base_checksum=None):
-        actual_checksum = md5.new(self.file_data).hexdigest()
-        assert (base_checksum is None or base_checksum == actual_checksum,
-            "base checksum mismatch: %r != %r" % (base_checksum, 
-                                                  actual_checksum))
-        self.file_stream = StringIO()
-        return apply_txdelta_handler(self.file_data, self.file_stream)
+        return self._apply_textdelta(base_checksum)
 
     def change_prop(self, name, value):
         if name == properties.PROP_EXECUTABLE: 
@@ -242,47 +231,7 @@ class FileBuildEditor(object):
 
     def close(self, checksum=None):
         assert isinstance(self.path, unicode)
-        if self.file_stream is not None:
-            self.file_stream.seek(0)
-            lines = osutils.split_lines(self.file_stream.read())
-        else:
-            # Data didn't change or file is new
-            lines = osutils.split_lines(self.file_data)
-
-        actual_checksum = md5_strings(lines)
-        assert checksum is None or checksum == actual_checksum
-
-        self.editor.texts.add_lines((self.file_id, self.editor.revid), 
-                [(self.file_id, revid) for revid in self.file_parents], lines)
-
-        if self.is_special is not None:
-            self.is_symlink = (self.is_special and len(lines) > 0 and lines[0].startswith("link "))
-
-        assert self.is_symlink in (True, False)
-
-        if self.file_id in self.editor.inventory:
-            if self.is_executable is None:
-                self.is_executable = self.editor.inventory[self.file_id].executable
-            del self.editor.inventory[self.file_id]
-
-        if self.is_symlink:
-            ie = self.editor.inventory.add_path(self.path, 'symlink', self.file_id)
-            ie.symlink_target = "".join(lines)[len("link "):]
-            ie.text_sha1 = None
-            ie.text_size = None
-            ie.executable = False
-            ie.revision = self.editor.revid
-        else:
-            ie = self.editor.inventory.add_path(self.path, 'file', self.file_id)
-            ie.revision = self.editor.revid
-            ie.kind = 'file'
-            ie.symlink_target = None
-            ie.text_sha1 = osutils.sha_strings(lines)
-            ie.text_size = sum(map(len, lines))
-            assert ie.text_size is not None
-            ie.executable = self.is_executable
-
-        self.file_stream = None
+        return self._close()
 
 
 class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
@@ -371,7 +320,7 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             self.editor._premature_deletes.add(copyfrom_path)
             # No need to rename if it's already in the right spot
             self.editor._rename(file_id, self.new_id, copyfrom_path, path, 'file')
-        return FileBuildEditor(self.editor, path, file_id)
+        return FileRevisionBuildEditor(self.editor, path, file_id)
 
     def _open_file(self, path, base_revnum):
         base_file_id = self.editor._get_old_id(self.old_id, path)
@@ -386,8 +335,70 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             # Replace with historical version
             del self.editor.inventory[base_file_id]
             file_parents = []
-        return FileBuildEditor(self.editor, path, file_id, 
+        return FileRevisionBuildEditor(self.editor, path, file_id, 
                                file_parents, file_data, is_symlink=is_symlink)
+
+
+class FileRevisionBuildEditor(FileBuildEditor):
+    def __init__(self, editor, path, file_id, file_parents=[], data="", 
+                 is_symlink=False):
+        super(FileRevisionBuildEditor, self).__init__(editor, path)
+        self.file_id = file_id
+        self.file_data = data
+        self.is_symlink = is_symlink
+        self.file_parents = file_parents
+        self.file_stream = None
+
+    def _apply_textdelta(self, base_checksum=None):
+        actual_checksum = md5.new(self.file_data).hexdigest()
+        assert (base_checksum is None or base_checksum == actual_checksum,
+            "base checksum mismatch: %r != %r" % (base_checksum, 
+                                                  actual_checksum))
+        self.file_stream = StringIO()
+        return apply_txdelta_handler(self.file_data, self.file_stream)
+
+    def _close(self, checksum=None):
+        if self.file_stream is not None:
+            self.file_stream.seek(0)
+            lines = osutils.split_lines(self.file_stream.read())
+        else:
+            # Data didn't change or file is new
+            lines = osutils.split_lines(self.file_data)
+
+        actual_checksum = md5_strings(lines)
+        assert checksum is None or checksum == actual_checksum
+
+        self.editor.texts.add_lines((self.file_id, self.editor.revid), 
+                [(self.file_id, revid) for revid in self.file_parents], lines)
+
+        if self.is_special is not None:
+            self.is_symlink = (self.is_special and len(lines) > 0 and lines[0].startswith("link "))
+
+        assert self.is_symlink in (True, False)
+
+        if self.file_id in self.editor.inventory:
+            if self.is_executable is None:
+                self.is_executable = self.editor.inventory[self.file_id].executable
+            del self.editor.inventory[self.file_id]
+
+        if self.is_symlink:
+            ie = self.editor.inventory.add_path(self.path, 'symlink', self.file_id)
+            ie.symlink_target = "".join(lines)[len("link "):]
+            ie.text_sha1 = None
+            ie.text_size = None
+            ie.executable = False
+            ie.revision = self.editor.revid
+        else:
+            ie = self.editor.inventory.add_path(self.path, 'file', self.file_id)
+            ie.revision = self.editor.revid
+            ie.kind = 'file'
+            ie.symlink_target = None
+            ie.text_sha1 = osutils.sha_strings(lines)
+            ie.text_size = sum(map(len, lines))
+            assert ie.text_size is not None
+            ie.executable = self.is_executable
+
+        self.file_stream = None
 
 
 class RevisionBuildEditor(DeltaBuildEditor):
