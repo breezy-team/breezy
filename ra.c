@@ -331,8 +331,8 @@ static svn_error_t *py_cb_editor_add_directory(const char *path, void *parent_ba
 static svn_error_t *py_cb_editor_open_directory(const char *path, void *parent_baton, svn_revnum_t base_revision, apr_pool_t *pool, void **child_baton)
 {
 	PyObject *self = (PyObject *)parent_baton, *ret;
-	*child_baton = NULL;
 	PyGILState_STATE state = PyGILState_Ensure();
+	*child_baton = NULL;
 	ret = PyObject_CallMethod(self, "open_directory", "sl", path, base_revision);
 	CB_CHECK_PYRETVAL(ret);
 	*child_baton = (void *)ret;
