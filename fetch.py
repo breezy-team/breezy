@@ -16,7 +16,7 @@
 """Fetching revisions from Subversion repositories in batches."""
 
 import bzrlib
-from bzrlib import osutils, ui, urlutils
+from bzrlib import delta, osutils, ui, urlutils
 from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision, NULL_REVISION
@@ -84,16 +84,10 @@ def check_filename(path):
     if u"\\" in path:
         raise InvalidFileName(path)
 
-
-class RevisionBuildEditor(object):
-    """Implementation of the Subversion commit editor interface that builds a 
-    Bazaar revision.
+class DeltaBuildEditor(object):
+    """Implementation of the Subversion commit editor interface that 
+    converts Subversion to Bazaar semantics.
     """
-    def __init__(self, source, target):
-        self.target = target
-        self.source = source
-        self.texts = target.texts
-
     def set_target_revision(self, revnum):
         assert self.revnum == revnum
 
@@ -116,28 +110,6 @@ class RevisionBuildEditor(object):
         self._id_map = self.source.transform_fileid_map(self.revmeta, self.mapping)
 
         return self._id_map
-
-    def _get_revision(self, revid):
-        """Creates the revision object.
-
-        :param revid: Revision id of the revision to create.
-        """
-
-        # Commit SVN revision properties to a Revision object
-        parent_ids = self.revmeta.get_parent_ids(self.mapping)
-        if parent_ids == (NULL_REVISION,):
-            parent_ids = ()
-        assert not NULL_REVISION in parent_ids, "parents: %r" % parent_ids
-        rev = Revision(revision_id=revid, 
-                       parent_ids=parent_ids)
-
-        self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
-                                     self.revmeta.repository.uuid, self.revmeta.branch_path,
-                                     self.revmeta.revnum, rev)
-
-        signature = self.revmeta.revprops.get(SVN_REVPROP_BZR_SIGNATURE)
-
-        return (rev, signature)
 
     def open_root(self, base_revnum):
         if self.old_inventory.root is None:
@@ -162,13 +134,7 @@ class RevisionBuildEditor(object):
     def close(self):
         pass
 
-    def _finish_commit(self):
-        raise NotImplementedError(self._finish_commit)
-
     def abort(self):
-        pass
-
-    def _start_revision(self):
         pass
 
     def _get_existing_id(self, old_parent_id, new_parent_id, path):
@@ -214,7 +180,6 @@ class DirectoryBuildEditor(object):
     def close(self):
         self.editor.inventory[self.new_id].revision = self.editor.revid
 
-        # Only record root if the target repository supports it
         self.editor.texts.add_lines((self.new_id, self.editor.revid), 
                  [(self.new_id, revid) for revid in self.parent_revids], [])
 
@@ -431,6 +396,56 @@ class FileBuildEditor(object):
             ie.executable = self.is_executable
 
         self.file_stream = None
+
+
+class RevisionBuildEditor(DeltaBuildEditor):
+    """Implementation of the Subversion commit editor interface that builds a 
+    Bazaar revision.
+    """
+    def __init__(self, source, target):
+        self.target = target
+        self.source = source
+        self.texts = target.texts
+
+    def _get_revision(self, revid):
+        """Creates the revision object.
+
+        :param revid: Revision id of the revision to create.
+        """
+
+        # Commit SVN revision properties to a Revision object
+        parent_ids = self.revmeta.get_parent_ids(self.mapping)
+        if parent_ids == (NULL_REVISION,):
+            parent_ids = ()
+        assert not NULL_REVISION in parent_ids, "parents: %r" % parent_ids
+        rev = Revision(revision_id=revid, 
+                       parent_ids=parent_ids)
+
+        self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
+                                     self.revmeta.repository.uuid, self.revmeta.branch_path,
+                                     self.revmeta.revnum, rev)
+
+        signature = self.revmeta.revprops.get(SVN_REVPROP_BZR_SIGNATURE)
+
+        return (rev, signature)
+
+    def _finish_commit(self):
+        raise NotImplementedError(self._finish_commit)
+
+    def _start_revision(self):
+        pass
+
+
+
+class TreeDeltaBuildeditor(DeltaBuildEditor):
+    """Implementation of the Subversion commit editor interface that builds a 
+    Bazaar TreeDelta.
+    """
+    def __init__(self):
+        self.delta = delta.TreeDelta()
+        self.delta.unversioned = []
+        # To make sure we fall over if anybody tries to use it:
+        self.delta.unchanged = None
 
 
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
