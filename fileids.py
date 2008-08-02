@@ -279,9 +279,7 @@ class CachingFileIdMap(object):
             for i, revmeta in enumerate(reversed(todo)):
                 pb.update('generating file id map', i, len(todo))
                 revid = revmeta.get_revision_id(mapping)
-                expensive = False
                 def log_find_children(path, revnum):
-                    expensive = True
                     return self.repos._log.find_children(path, revnum)
 
                 (idmap, changes) = self.actual.apply_changes(
@@ -291,14 +289,9 @@ class CachingFileIdMap(object):
 
                 parent_revs = next_parent_revs
                        
-                saved = False
-                if i % 500 == 0 or expensive:
-                    self.save(revid, parent_revs, map)
-                    saved = True
+                self.save(revid, parent_revs, map)
                 next_parent_revs = [revid]
         finally:
             pb.finished()
-        if not saved:
-            self.save(revid, parent_revs, map)
         return map
 
