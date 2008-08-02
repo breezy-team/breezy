@@ -424,6 +424,13 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('baz', 'again')
         self.assertFalse(get_upload_auto(self.tree.branch))
 
+    def test_upload_from_subdir(self):
+        self.make_local_branch()
+        self.build_tree(['branch/foo/', 'branch/foo/bar'])
+        self.tree.add(['foo/', 'foo/bar'])
+        self.tree.commit("Add directory")
+        self.do_full_upload(directory='branch/foo')
+
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
