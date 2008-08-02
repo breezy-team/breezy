@@ -53,14 +53,12 @@ static void py_editor_dealloc(PyObject *self)
 	PyObject_Del(self);
 }
 
-#if SIZEOF_SIZE_T == SIZEOF_LONG
-#define SIZE_T_PYFMT "k"
-#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
-#define SIZE_T_PYFMT "K"
-#else
+/* paranoia check */
+#if defined(SIZEOF_SIZE_T) && SIZEOF_SIZE_T != SIZEOF_LONG
 #error "Unable to determine PyArg_Parse format for size_t"
 #endif
 
+/* svn_filesize_t is always 64 bits */
 #if SIZEOF_LONG == 8
 #define SVN_FILESIZE_T_PYFMT "k"
 #elif SIZEOF_LONG_LONG == 8
@@ -88,7 +86,7 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 		Py_RETURN_NONE;
 	}
 
-	if (!PyArg_ParseTuple(py_window, SVN_FILESIZE_T_PYFMT SIZE_T_PYFMT SIZE_T_PYFMT "iOO", &window.sview_offset, &window.sview_len, 
+	if (!PyArg_ParseTuple(py_window, SVN_FILESIZE_T_PYFMT "kkiOO", &window.sview_offset, &window.sview_len, 
 											&window.tview_len, &window.src_ops, &py_ops, &py_new_data))
 		return NULL;
 
@@ -111,7 +109,7 @@ static PyObject *txdelta_call(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	for (i = 0; i < window.num_ops; i++) {
 		PyObject *windowitem = PyList_GetItem(py_ops, i);
-		if (!PyArg_ParseTuple(windowitem, "i" SIZE_T_PYFMT SIZE_T_PYFMT, &ops[i].action_code, 
+		if (!PyArg_ParseTuple(windowitem, "ikk", &ops[i].action_code, 
 							  &ops[i].offset, &ops[i].length)) {
 			free(ops);
 			return NULL;
