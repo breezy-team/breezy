@@ -24,8 +24,11 @@ class LogTestCase(TestCase):
 
     def test_svnprops(self):
         rev = Revision("foo")
-        rev.svn_revision = 2
-        rev.svn_branch = "bar"
+        class Metaobj:
+            def __init__(self, revnum, branch):
+                self.revnum = revnum
+                self.branch_path = branch
+        rev.svn_meta = Metaobj(2, "bar")
         self.assertEquals({"svn revno": "2 (on /bar)"}, 
                           show_subversion_properties(rev))
 

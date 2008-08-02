@@ -20,8 +20,8 @@ from bzrlib.plugins.svn import mapping
 def show_subversion_properties(rev):
     data = None
     ret = {}
-    if getattr(rev, "svn_revision", None) is not None:
-        data = (rev.svn_revision, rev.svn_branch)
+    if getattr(rev, "svn_meta", None) is not None:
+        data = (rev.svn_meta.revnum, rev.svn_meta.branch_path)
     else:
         try:
             (uuid, bp, revnum, mapp) = mapping.parse_revision_id(rev.revision_id)

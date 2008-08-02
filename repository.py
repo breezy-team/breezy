@@ -541,8 +541,7 @@ class SvnRepository(Repository):
                        parent_ids=parent_ids,
                        inventory_sha1="")
 
-        rev.svn_revision = revnum
-        rev.svn_branch = path
+        rev.svn_meta = revmeta
         rev.svn_uuid = self.uuid
 
         mapping.import_revision(svn_revprops, svn_fileprops, self.uuid, path, 
