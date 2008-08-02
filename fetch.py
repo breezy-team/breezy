@@ -117,22 +117,13 @@ class DeltaBuildEditor(object):
     def abort(self):
         pass
 
-    def _get_existing_id(self, old_parent_id, new_parent_id, path):
-        assert isinstance(path, unicode)
-        assert isinstance(old_parent_id, str)
-        assert isinstance(new_parent_id, str)
-        ret = self._get_id_map().get(path)
-        if ret is not None:
-            return ret
-        return self.old_inventory[old_parent_id].children[urlutils.basename(path)].file_id
-
     def _get_new_id(self, parent_id, new_path):
         assert isinstance(new_path, unicode)
         assert isinstance(parent_id, str)
         ret = self._get_id_map().get(new_path)
         if ret is not None:
             return ret
-        return self.mapping.generate_file_id(self.source.uuid, self.revmeta.revnum, 
+        return self.mapping.generate_file_id(self.revmeta.uuid, self.revmeta.revnum, 
                                              self.revmeta.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, old_path, new_path, kind):
@@ -430,7 +421,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
                        parent_ids=parent_ids)
 
         self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
-                                     self.revmeta.repository.uuid, self.revmeta.branch_path,
+                                     self.revmeta.revmeta.uuid, self.revmeta.branch_path,
                                      self.revmeta.revnum, rev)
 
         signature = self.revmeta.revprops.get(SVN_REVPROP_BZR_SIGNATURE)
@@ -460,7 +451,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
         if self.old_inventory.root is None:
             # First time the root is set
             old_file_id = None
-            file_id = self.mapping.generate_file_id(self.source.uuid, self.revmeta.revnum, self.revmeta.branch_path, u"")
+            file_id = self.mapping.generate_file_id(self.revmeta.uuid, self.revmeta.revnum, self.revmeta.branch_path, u"")
             file_parents = []
         else:
             assert self.old_inventory.root.revision is not None
@@ -481,8 +472,18 @@ class RevisionBuildEditor(DeltaBuildEditor):
         assert isinstance(parent_id, str)
         return self.old_inventory[parent_id].children[urlutils.basename(old_path)].file_id
 
+    def _get_existing_id(self, old_parent_id, new_parent_id, path):
+        assert isinstance(path, unicode)
+        assert isinstance(old_parent_id, str)
+        assert isinstance(new_parent_id, str)
+        ret = self._get_id_map().get(path)
+        if ret is not None:
+            return ret
+        return self.old_inventory[old_parent_id].children[urlutils.basename(path)].file_id
 
-class TreeDeltaBuildeditor(DeltaBuildEditor):
+
+
+class TreeDeltaBuildEditor(DeltaBuildEditor):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar TreeDelta.
     """

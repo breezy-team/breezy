@@ -549,7 +549,6 @@ class SvnRepository(Repository):
 
         rev.svn_meta = revmeta
         rev.svn_mapping = mapping
-        rev.svn_uuid = self.uuid
 
         mapping.import_revision(svn_revprops, svn_fileprops, self.uuid, path, 
                                 revnum, rev)
