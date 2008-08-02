@@ -21,7 +21,12 @@ build-inplace-debug::
 	$(SETUP) build_ext --inplace --debug
 
 install::
+ifneq ($(DESTDIR),)
 	$(SETUP) install --root "$(DESTDIR)"
+else
+	$(SETUP) install
+endif
+ 
 
 clean::
 	$(SETUP) clean
