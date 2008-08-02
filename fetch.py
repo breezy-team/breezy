@@ -89,20 +89,14 @@ class DeltaBuildEditor(object):
     """Implementation of the Subversion commit editor interface that 
     converts Subversion to Bazaar semantics.
     """
-    def set_target_revision(self, revnum):
-        assert self.revmeta.revnum == revnum
-
-    def start_revision(self, revid, prev_inventory, revmeta):
-        self.revid = revid
-        self.mapping = self.source.lookup_revision_id(revid)[2]
+    def __init__(self, revmeta, mapping):
         self.revmeta = revmeta
         self._id_map = None
-        self.dir_baserev = {}
-        self._revinfo = None
         self._premature_deletes = set()
-        self.old_inventory = prev_inventory
-        self.inventory = prev_inventory.copy()
-        self._start_revision()
+        self.mapping = mapping
+
+    def set_target_revision(self, revnum):
+        assert self.revmeta.revnum == revnum
 
     def _get_id_map(self):
         if self._id_map is not None:
@@ -403,10 +397,16 @@ class RevisionBuildEditor(DeltaBuildEditor):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar revision.
     """
-    def __init__(self, source, target):
+    def __init__(self, source, target, revid, prev_inventory, revmeta):
         self.target = target
         self.source = source
         self.texts = target.texts
+        self.revid = revid
+        mapping = self.source.lookup_revision_id(revid)[2]
+        self.old_inventory = prev_inventory
+        self.inventory = prev_inventory.copy()
+        super(RevisionBuildEditor, self).__init__(revmeta, mapping)
+        self._start_revision()
 
     def _get_revision(self, revid):
         """Creates the revision object.
@@ -472,14 +472,6 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         if self._write_group_active:
             self.target.abort_write_group()
             self._write_group_active = False
-
-
-class CommitBuilderRevisionBuildEditor(RevisionBuildEditor):
-    """Revision Build Editor for Subversion that uses the CommitBuilder API.
-    """
-    def __init__(self, source, target):
-        RevisionBuildEditor.__init__(self, source, target)
-        raise NotImplementedError(self)
 
 
 def get_revision_build_editor(repository):
@@ -631,7 +623,6 @@ class InterFromSvnRepository(InterRepository):
         prev_inv = None
 
         revbuildklass = get_revision_build_editor(self.target)
-        editor = revbuildklass(self.source, self.target)
 
         try:
             for (revid, parent_revid, revmeta) in revids:
@@ -647,7 +638,7 @@ class InterFromSvnRepository(InterRepository):
                 else:
                     parent_inv = prev_inv
 
-                editor.start_revision(revid, parent_inv, revmeta)
+                editor = revbuildklass(self.source, self.target, revid, parent_inv, revmeta)
 
                 if parent_revid == NULL_REVISION:
                     parent_branch = revmeta.branch_path
