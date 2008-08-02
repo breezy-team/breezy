@@ -115,6 +115,7 @@ class FileIdMap(object):
         :param mapping: Mapping
         """
         renames = mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops)
+        assert revmeta.paths is not None
         changes = get_local_changes(revmeta.paths, revmeta.branch_path, mapping,
                     self.repos.get_layout(),
                     self.repos.generate_revision_id, find_children)

@@ -317,6 +317,37 @@ class SvnRepository(Repository):
     def _make_parents_provider(self):
         return CachingParentsProvider(self._real_parents_provider)
 
+    def get_deltas_for_revisions(self, revisions):
+        for revision in revisions:
+            yield self.get_revision_delta(revision)
+
+    def get_revision_delta(self, revision):
+        parentrevmeta = self.branch_prev_location(revision.svn_meta.branch_path, revision.svn_meta.revnum, 
+                                                  revision.svn_mapping)
+        from bzrlib.plugins.svn.fetch import TreeDeltaBuildEditor
+        if parentrevmeta is None:
+            parentfileidmap = {}
+            parent_branch_path = revision.svn_meta.branch_path
+            parentrevnum = revision.svn_meta.revnum
+            start_empty = True
+        else:
+            parentfileidmap = self.get_fileid_map(parentrevmeta.revnum, parentrevmeta.branch_path, revision.svn_mapping)
+            parent_branch_path = parentrevmeta.branch_path
+            parentrevnum = parentrevmeta.revnum
+            start_empty = False
+        editor = TreeDeltaBuildEditor(revision.svn_meta, revision.svn_mapping, 
+                                      self.get_fileid_map(revision.svn_meta.revnum, 
+                                                          revision.svn_meta.branch_path,
+                                                          revision.svn_mapping), parentfileidmap)
+        conn = self.transport.connections.get(urlutils.join(self.transport.get_svn_repos_root(), parent_branch_path))
+        try:
+            reporter = conn.do_diff(revision.svn_meta.revnum, "", urlutils.join(self.transport.get_svn_repos_root(), revision.svn_meta.branch_path), editor, True, True, False)
+            reporter.set_path("", parentrevnum, start_empty)
+            reporter.finish()
+        finally:
+            self.transport.add_connection(conn)
+        return editor.delta
+
     def set_layout(self, layout):
         self._layout = layout
 

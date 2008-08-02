@@ -110,6 +110,8 @@ bzr-svn 0.4.11    UNRELEASED
      they may be raised in other situations than when a bug is hit.
 	 (#253376)
 
+   * Fixed http exception during expensive log -v. (#94316)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES

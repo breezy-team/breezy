@@ -94,7 +94,6 @@ class DeltaBuildEditor(object):
     def __init__(self, revmeta, mapping):
         self.revmeta = revmeta
         self._id_map = None
-        self._premature_deletes = set()
         self.mapping = mapping
 
     def set_target_revision(self, revnum):
@@ -117,22 +116,14 @@ class DeltaBuildEditor(object):
     def abort(self):
         pass
 
-    def _get_new_id(self, parent_id, new_path):
-        assert isinstance(new_path, unicode)
-        assert isinstance(parent_id, str)
-        ret = self._get_id_map().get(new_path)
-        if ret is not None:
-            return ret
-        return self.mapping.generate_file_id(self.revmeta.uuid, self.revmeta.revnum, 
-                                             self.revmeta.branch_path, new_path)
-
-    def _rename(self, file_id, parent_id, old_path, new_path, kind):
-        raise NotImplementedError
+    def _get_map_id(self, new_path):
+        return self._get_id_map().get(new_path)
 
 
 class DirectoryBuildEditor(object):
-    def __init__(self, editor):
+    def __init__(self, editor, path):
         self.editor = editor
+        self.path = path
 
     def close(self):
         self._close()
@@ -150,7 +141,7 @@ class DirectoryBuildEditor(object):
         return self._open_directory(path, base_revnum)
 
     def change_prop(self, name, value):
-        if self.new_id == self.editor.inventory.root.file_id:
+        if self.path == "":
             # Replay lazy_dict, since it may be more expensive
             if type(self.editor.revmeta.fileprops) != dict:
                 self.editor.revmeta.fileprops = {}
@@ -186,6 +177,7 @@ class DirectoryBuildEditor(object):
 
 
 class FileBuildEditor(object):
+
     def __init__(self, editor, path):
         self.path = path
         self.editor = editor
@@ -226,8 +218,8 @@ class FileBuildEditor(object):
 
 
 class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
-    def __init__(self, editor, old_id, new_id, parent_revids=[]):
-        super(DirectoryRevisionBuildEditor, self).__init__(editor)
+    def __init__(self, editor, path, old_id, new_id, parent_revids=[]):
+        super(DirectoryRevisionBuildEditor, self).__init__(editor, path)
         self.old_id = old_id
         self.new_id = new_id
         self.parent_revids = parent_revids
@@ -253,7 +245,7 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             self.editor._finish_commit()
 
     def _add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
-        file_id = self.editor._get_new_id(self.new_id, path)
+        file_id = self.editor._get_new_id(path)
 
         if file_id in self.editor.inventory:
             # This directory was moved here from somewhere else, but the 
@@ -273,7 +265,7 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             ie = self.editor.inventory.add_path(path, 'directory', file_id)
         ie.revision = self.editor.revid
 
-        return DirectoryRevisionBuildEditor(self.editor, old_file_id, file_id)
+        return DirectoryRevisionBuildEditor(self.editor, path, old_file_id, file_id)
 
     def _open_directory(self, path, base_revnum):
         base_file_id = self.editor._get_old_id(self.old_id, path)
@@ -294,11 +286,11 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             ie.file_id = file_id
             file_parents = []
         ie.revision = self.editor.revid
-        return DirectoryRevisionBuildEditor(self.editor, base_file_id, file_id, 
+        return DirectoryRevisionBuildEditor(self.editor, path, base_file_id, file_id, 
                                     file_parents)
 
     def _add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
-        file_id = self.editor._get_new_id(self.new_id, path)
+        file_id = self.editor._get_new_id(path)
         if file_id in self.editor.inventory:
             # This file was moved here from somewhere else, but the 
             # other location hasn't been removed yet. 
@@ -401,6 +393,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
         self.source = source
         self.texts = target.texts
         self.revid = revid
+        self._premature_deletes = set()
         mapping = self.source.lookup_revision_id(revid)[2]
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
@@ -421,7 +414,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
                        parent_ids=parent_ids)
 
         self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, 
-                                     self.revmeta.revmeta.uuid, self.revmeta.branch_path,
+                                     self.revmeta.uuid, self.revmeta.branch_path,
                                      self.revmeta.revnum, rev)
 
         signature = self.revmeta.revprops.get(SVN_REVPROP_BZR_SIGNATURE)
@@ -465,7 +458,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
         else:
             ie = self.inventory.add_path("", 'directory', file_id)
         ie.revision = self.revid
-        return DirectoryRevisionBuildEditor(self, old_file_id, file_id, file_parents)
+        return DirectoryRevisionBuildEditor(self, "", old_file_id, file_id, file_parents)
 
     def _get_old_id(self, parent_id, old_path):
         assert isinstance(old_path, unicode)
@@ -481,26 +474,100 @@ class RevisionBuildEditor(DeltaBuildEditor):
             return ret
         return self.old_inventory[old_parent_id].children[urlutils.basename(path)].file_id
 
+    def _get_new_id(self, new_path):
+        assert isinstance(new_path, unicode)
+        ret = self._get_map_id(new_path)
+        if ret is not None:
+            return ret
+        return self.mapping.generate_file_id(self.revmeta.uuid, self.revmeta.revnum, 
+                                             self.revmeta.branch_path, new_path)
+
+
+class FileTreeDeltaBuildEditor(FileBuildEditor):
+
+    def __init__(self, editor, path, copyfrom_path, kind):
+        super(FileTreeDeltaBuildEditor, self).__init__(editor, path)
+        self.copyfrom_path = copyfrom_path
+        self.base_checksum = None
+        self.change_kind = kind
+
+    def _close(self, checksum=None):
+        text_changed = (self.base_checksum != checksum)
+        metadata_changed = (self.is_special is not None or self.is_executable is not None)
+        if self.is_special:
+            # FIXME: A special file doesn't necessarily mean a symlink
+            # we need to fetch it and see if it starts with "link "...
+            entry_kind = 'symlink'
+        else:
+            entry_kind = 'file'
+        if self.change_kind == 'add':
+            if self.copyfrom_path is not None and self._get_map_id(self.path) is not None:
+                self.editor.delta.renamed.append((self.copyfrom_path, self.path, self.editor._get_new_id(self.path), entry_kind, 
+                                                 text_changed, metadata_changed))
+            else:
+                self.editor.delta.added.append((self.path, self.editor._get_new_id(self.path), entry_kind))
+        else:
+            self.editor.delta.modified.append((self.path, self.editor._get_new_id(self.path), entry_kind, text_changed, metadata_changed))
+
+    def _apply_textdelta(self, base_checksum=None):
+        self.base_checksum = None
+        return lambda window: None
+
+
+class DirectoryTreeDeltaBuildEditor(DirectoryBuildEditor):
+
+    def _close(self):
+        pass
+
+    def _open_directory(self, path, base_revnum):
+        return DirectoryTreeDeltaBuildEditor(self.editor, path)
+
+    def _open_file(self, path, base_revnum):
+        return FileTreeDeltaBuildEditor(self.editor, path, None, 'open')
+
+    def _add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
+        return FileTreeDeltaBuildEditor(self.editor, path, copyfrom_path, 'add')
+
+    def _delete_entry(self, path, revnum):
+        # FIXME: old kind
+        self.editor.delta.removed.append((path, self.editor._get_old_id(path), 'unknown'))
+
+    def _add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
+        if copyfrom_path is not None and self.editor._was_renamed(path) is not None:
+            self.editor.delta.renamed.append((copyfrom_path, path, self.editor._get_new_id(path), 'directory', False, False))
+        else:
+            self.editor.delta.added.append((path, self.editor._get_new_id(path), 'directory'))
+        return DirectoryTreeDeltaBuildEditor(self.editor, path)
 
 
 class TreeDeltaBuildEditor(DeltaBuildEditor):
     """Implementation of the Subversion commit editor interface that builds a 
     Bazaar TreeDelta.
     """
-    def __init__(self):
+    def __init__(self, revmeta, mapping, newfileidmap, oldfileidmap):
+        super(TreeDeltaBuildEditor, self).__init__(revmeta, mapping)
+        self._parent_idmap = oldfileidmap
+        self._idmap = newfileidmap
         self.delta = delta.TreeDelta()
         self.delta.unversioned = []
         # To make sure we fall over if anybody tries to use it:
         self.delta.unchanged = None
 
-    def _rename(self, file_id, parent_id, old_path, new_path, kind):
-        # FIXME: Fill in text_modified and meta_modified
-        self.delta.renamed.append((old_path, new_path, file_id, kind, 
-                                   text_modified, meta_modified))
+    def _open_root(self, base_revnum):
+        return DirectoryTreeDeltaBuildEditor(self, "")
 
-    def _remove_recursive(self, file_id, path):
-        # FIXME: Fill in kind
-        self.delta.removed.append((path, file_id, 'unknown-kind'))
+    def _was_renamed(self, path):
+        fileid = self._get_new_id(path)
+        for fid, _ in self._parent_idmap.values():
+            if fileid == fid:
+                return True
+        return False
+
+    def _get_old_id(self, path):
+        return self._parent_idmap[path][0]
+
+    def _get_new_id(self, path):
+        return self._idmap[path][0]
 
 
 def report_inventory_contents(reporter, inv, revnum, start_empty):
