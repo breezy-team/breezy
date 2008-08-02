@@ -76,6 +76,28 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_rev_proplist(self):
         self.assertIsInstance(self.ra.rev_proplist(0), dict)
 
+    def test_do_diff(self):
+        self.do_commit()
+
+        class MyFileEditor:
+            def change_prop(self, name, val): pass 
+            def close(self, checksum=None): pass
+
+        class MyDirEditor:
+            def change_prop(self, name, val): pass 
+            def add_directory(self, *args): return MyDirEditor()
+            def add_file(self, *args): return MyFileEditor()
+            def close(self): pass
+
+        class MyEditor:
+            def set_target_revision(self, rev): pass 
+            def open_root(self, base_rev):
+                return MyDirEditor()
+            def close(self): pass
+        reporter = self.ra.do_diff(1, "", self.ra.get_repos_root(), MyEditor())
+        reporter.set_path("", 0, True)
+        reporter.finish()
+
     def test_get_log(self):
         returned = []
         def cb(*args):

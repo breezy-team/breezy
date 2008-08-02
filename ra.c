@@ -1056,6 +1056,60 @@ static PyObject *ra_do_switch(PyObject *self, PyObject *args)
 	return (PyObject *)ret;
 }
 
+static PyObject *ra_do_diff(PyObject *self, PyObject *args)
+{
+	svn_revnum_t revision_to_update_to;
+	char *diff_target, *versus_url; 
+	PyObject *diff_editor;
+	const svn_ra_reporter2_t *reporter;
+	void *report_baton;
+	svn_error_t *err;
+	apr_pool_t *temp_pool;
+	bool ignore_ancestry = false, text_deltas = false, recurse=true;
+	ReporterObject *ret;
+	RemoteAccessObject *ra = (RemoteAccessObject *)self;
+
+	if (!PyArg_ParseTuple(args, "lssO|bbb:do_diff", &revision_to_update_to, &diff_target, &versus_url, &diff_editor, &recurse, &ignore_ancestry, &text_deltas))
+		return NULL;
+
+	if (ra_check_busy(ra))
+		return NULL;
+
+	temp_pool = Pool(NULL);
+	if (temp_pool == NULL)
+		return NULL;
+
+	Py_INCREF(diff_editor);
+	Py_BEGIN_ALLOW_THREADS
+	err = svn_ra_do_diff2(ra->ra, &reporter, &report_baton, 
+												  revision_to_update_to, 
+												  diff_target, recurse,
+												  ignore_ancestry, 
+												  text_deltas,
+												  versus_url,
+												  &py_editor, diff_editor, 
+												  temp_pool);
+	Py_END_ALLOW_THREADS
+	if (!check_error(err)) {
+		apr_pool_destroy(temp_pool);
+		ra->busy = false;
+		
+		return NULL;
+	}
+
+	ret = PyObject_New(ReporterObject, &Reporter_Type);
+	if (ret == NULL)
+		return NULL;
+	ret->reporter = reporter;
+	ret->report_baton = report_baton;
+	ret->pool = temp_pool;
+	Py_INCREF(ra);
+	ret->ra = ra;
+	return (PyObject *)ret;
+}
+
+
+
 static PyObject *ra_replay(PyObject *self, PyObject *args)
 {
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
@@ -1823,6 +1877,7 @@ static PyMethodDef ra_methods[] = {
 	{ "replay_range", ra_replay_range, METH_VARARGS, NULL },
 	{ "do_switch", ra_do_switch, METH_VARARGS, NULL },
 	{ "do_update", ra_do_update, METH_VARARGS, NULL },
+	{ "do_diff", ra_do_diff, METH_VARARGS, NULL },
 	{ "get_repos_root", (PyCFunction)ra_get_repos_root, METH_VARARGS|METH_NOARGS, NULL },
 	{ "get_log", (PyCFunction)ra_get_log, METH_VARARGS|METH_KEYWORDS, NULL },
 	{ "get_latest_revnum", (PyCFunction)ra_get_latest_revnum, METH_NOARGS, NULL },
