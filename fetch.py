@@ -475,6 +475,20 @@ def get_revision_build_editor(repository):
     return WeaveRevisionBuildEditor
 
 
+def report_inventory_contents(reporter, inv, revnum, start_empty):
+    try:
+        reporter.set_path("", revnum, start_empty)
+
+        # Report status of existing paths
+        for path, entry in inv.iter_entries():
+            if path != "":
+                reporter.set_path(path.encode("utf-8"), revnum, start_empty)
+    except:
+        reporter.abort()
+        raise
+    reporter.finish()
+
+
 class InterFromSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
@@ -642,19 +656,7 @@ class InterFromSvnRepository(InterRepository):
                         else:
                             reporter = conn.do_update(editor.revnum, "", True, editor)
 
-                        try:
-                            # Report status of existing paths
-                            reporter.set_path("", parent_revnum, start_empty)
-
-                            for entry in parent_inv:
-                                path = parent_inv.id2path(entry)
-                                if len(path) > 1:
-                                    reporter.set_path(path, parent_revnum, start_empty)
-                        except:
-                            reporter.abort()
-                            raise
-
-                        reporter.finish()
+                        report_inventory_contents(reporter, parent_inv, parent_revnum, start_empty)
                     finally:
                         if conn is not None:
                             if not conn.busy:
