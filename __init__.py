@@ -349,7 +349,7 @@ class cmd_upload(commands.Command):
         if directory is None:
             directory = u'.'
 
-        wt = workingtree.WorkingTree.open(directory)
+        wt = workingtree.WorkingTree.open_containing(directory)[0]
         changes = wt.changes_from(wt.basis_tree())
 
         if revision is None and  changes.has_changed():
