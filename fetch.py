@@ -84,16 +84,17 @@ def check_filename(path):
     if u"\\" in path:
         raise InvalidFileName(path)
 
+
 class DeltaBuildEditor(object):
     """Implementation of the Subversion commit editor interface that 
     converts Subversion to Bazaar semantics.
     """
     def set_target_revision(self, revnum):
-        assert self.revnum == revnum
+        assert self.revmeta.revnum == revnum
 
     def start_revision(self, revid, prev_inventory, revmeta):
         self.revid = revid
-        (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
+        self.mapping = self.source.lookup_revision_id(revid)[2]
         self.revmeta = revmeta
         self._id_map = None
         self.dir_baserev = {}
@@ -115,7 +116,7 @@ class DeltaBuildEditor(object):
         if self.old_inventory.root is None:
             # First time the root is set
             old_file_id = None
-            file_id = self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, u"")
+            file_id = self.mapping.generate_file_id(self.source.uuid, self.revmeta.revnum, self.revmeta.branch_path, u"")
             file_parents = []
         else:
             assert self.old_inventory.root.revision is not None
@@ -157,8 +158,8 @@ class DeltaBuildEditor(object):
         ret = self._get_id_map().get(new_path)
         if ret is not None:
             return ret
-        return self.mapping.generate_file_id(self.source.uuid, self.revnum, 
-                                             self.branch_path, new_path)
+        return self.mapping.generate_file_id(self.source.uuid, self.revmeta.revnum, 
+                                             self.revmeta.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, path):
         assert isinstance(path, unicode)
@@ -649,8 +650,8 @@ class InterFromSvnRepository(InterRepository):
                 editor.start_revision(revid, parent_inv, revmeta)
 
                 if parent_revid == NULL_REVISION:
-                    parent_branch = editor.branch_path
-                    parent_revnum = editor.revnum
+                    parent_branch = revmeta.branch_path
+                    parent_revnum = revmeta.revnum
                     start_empty = True
                 else:
                     (parent_branch, parent_revnum, mapping) = \
@@ -662,14 +663,14 @@ class InterFromSvnRepository(InterRepository):
                     try:
                         conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
 
-                        assert editor.revnum > parent_revnum or start_empty
+                        assert revmeta.revnum > parent_revnum or start_empty
 
-                        if parent_branch != editor.branch_path:
-                            reporter = conn.do_switch(editor.revnum, "", True, 
-                                _url_escape_uri(urlutils.join(repos_root, editor.branch_path)), 
+                        if parent_branch != revmeta.branch_path:
+                            reporter = conn.do_switch(revmeta.revnum, "", True, 
+                                _url_escape_uri(urlutils.join(repos_root, revmeta.branch_path)), 
                                 editor)
                         else:
-                            reporter = conn.do_update(editor.revnum, "", True, editor)
+                            reporter = conn.do_update(revmeta.revnum, "", True, editor)
 
                         report_inventory_contents(reporter, parent_inv, parent_revnum, start_empty)
                     finally:
