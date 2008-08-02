@@ -1,4 +1,4 @@
-0.4		UNRELEASED
+0.4		2008-08-02
 
  CHANGES
 
@@ -10,7 +10,7 @@
 
   * Fixed overactive assertion. (#242245)
 
-  * Fixed O(history) access during plan creation (Robert  Collins, lp:#249823).
+  * Fixed O(history) access during plan creation. (Robert Collins, #249823)
 
  ENHANCEMENTS
 
