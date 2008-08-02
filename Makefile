@@ -7,6 +7,7 @@ CTAGS ?= ctags
 PYLINT ?= pylint
 RST2HTML ?= rst2html
 TESTS ?= 
+DESTDIR ?=
 
 all:: build build-inplace README.html FAQ.html AUTHORS.html
 
@@ -20,7 +21,7 @@ build-inplace-debug::
 	$(SETUP) build_ext --inplace --debug
 
 install::
-	$(SETUP) install
+	$(SETUP) install --root "$(DESTDIR)"
 
 clean::
 	$(SETUP) clean
