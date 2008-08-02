@@ -1,7 +1,7 @@
 DEBUGGER ?= 
 BZR ?= $(shell which bzr)
 PYTHON ?= $(shell which python)
-SETUP ?= ./setup.py
+SETUP ?= $(PYTHON) ./setup.py
 PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
