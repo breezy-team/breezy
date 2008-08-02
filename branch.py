@@ -436,13 +436,7 @@ class SvnBranch(Branch):
         source.lock_read()
         try:
             (result.old_revno, result.old_revid) = self.last_revision_info()
-            try:
-                self.update_revisions(source, stop_revision)
-            except DivergedBranches:
-                if overwrite:
-                    raise NotImplementedError('overwrite not supported for '
-                                              'Subversion branches')
-                raise
+            self.update_revisions(source, stop_revision, overwrite)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
@@ -483,8 +477,6 @@ class SvnBranch(Branch):
     def update_revisions(self, other, stop_revision=None, overwrite=False, 
                          graph=None):
         """See Branch.update_revisions()."""
-        if overwrite:
-            raise NotImplementedError("overwrite not supported for Subversion branches")
         if stop_revision is None:
             stop_revision = ensure_null(other.last_revision())
         if (self.last_revision() == stop_revision or
@@ -494,10 +486,10 @@ class SvnBranch(Branch):
             graph = self.repository.get_graph()
         if not other.repository.get_graph().is_ancestor(self.last_revision(), 
                                                         stop_revision):
-            if graph.is_ancestor(stop_revision, 
-                                                       self.last_revision()):
+            if graph.is_ancestor(stop_revision, self.last_revision()):
                 return
-            raise DivergedBranches(self, other)
+            if not overwrite:
+                raise DivergedBranches(self, other)
         todo = self.mainline_missing_revisions(other, stop_revision)
         if todo is None:
             # Not possible to add cleanly onto mainline, perhaps need a replace operation

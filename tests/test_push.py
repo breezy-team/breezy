@@ -692,15 +692,15 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         self.build_tree({'d2/myfile': "France"})
         bzrwt2.add("myfile")
-        revid2 = bzrwt1.commit("Do a commit")
+        revid2 = bzrwt2.commit("Do a commit")
 
         bzrwt1.branch.push(Branch.open(repos_url+"/trunk"))
-
-        raise KnownFailure("push --overwrite not supported yet")
+        self.assertEquals(bzrwt1.branch.revision_history(),
+                Branch.open(repos_url+"/trunk").revision_history())
 
         bzrwt2.branch.push(Branch.open(repos_url+"/trunk"), overwrite=True)
 
-        self.assertEquals([revid2], 
+        self.assertEquals(bzrwt2.branch.revision_history(),
                 Branch.open(repos_url+"/trunk").revision_history())
 
     def test_complex_rename(self):

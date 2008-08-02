@@ -22,7 +22,6 @@ Most Bazaar commands should work fine with Subversion branches. The following
 commands at the moment do not:
 
  - bzr uncommit
- - bzr push --overwrite
 
 bzr-svn also adds two new commands to Bazaar:
 
