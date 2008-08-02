@@ -42,6 +42,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Warn when trying to clone a repository root as a branch. (#244638)
 
+   * Much faster Repository.get_revision_delta(). (#127030)
+
   BUG FIXES
 
    * Now uses absolute imports and no longer adds plugin directory to the 
