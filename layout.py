@@ -26,6 +26,15 @@ class RepositoryLayout(object):
         """
         raise NotImplementedError
 
+    def push_merged_revisions(self, project=""):
+        """Determine whether or not right hand side (merged) revisions should be pushed.
+
+        Defaults to False.
+        
+        :param project: Name of the project.
+        """
+        return False
+
     def get_branch_path(self, name, project=""):
         """Return the path at which the branch with specified name should be found.
 

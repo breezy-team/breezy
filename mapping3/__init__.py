@@ -120,6 +120,13 @@ class SchemeDerivedLayout(RepositoryLayout):
         # Na, na, na...
         return self.scheme.is_tag_parent(path)
 
+    def push_merged_revisions(self, project=""):
+        try:
+            self.scheme.get_branch_path("somebranch")
+            return True
+        except NotImplementedError:
+            return False
+
 
 def get_stored_scheme(repository):
     """Retrieve the stored branching scheme, either in the repository 
