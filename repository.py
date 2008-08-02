@@ -16,7 +16,7 @@
 """Subversion repository access."""
 
 import bzrlib
-from bzrlib import osutils, ui, urlutils, xml7
+from bzrlib import delta, osutils, ui, urlutils, xml7
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat)
@@ -462,15 +462,7 @@ class SvnRepository(Repository):
 
         return SvnRevisionTree(self, revision_id)
 
-    def lhs_revision_parent(self, path, revnum, mapping):
-        """Find the mainline parent of the specified revision.
-
-        :param path: Path of the revision in Subversion
-        :param revnum: Subversion revision number
-        :param mapping: Mapping.
-        :return: Revision id of the left-hand-side parent or None if 
-                  this is the first revision
-        """
+    def branch_prev_location(self, path, revnum, mapping):
         assert isinstance(path, str)
         assert isinstance(revnum, int)
 
@@ -480,9 +472,23 @@ class SvnRepository(Repository):
         assert revmeta.branch_path == path
         assert revmeta.revnum == revnum
         try:
-            return iterator.next().get_revision_id(mapping)
+            return iterator.next()
         except StopIteration:
+            return None
+
+    def lhs_revision_parent(self, path, revnum, mapping):
+        """Find the mainline parent of the specified revision.
+
+        :param path: Path of the revision in Subversion
+        :param revnum: Subversion revision number
+        :param mapping: Mapping.
+        :return: Revision id of the left-hand-side parent or None if 
+                  this is the first revision
+        """
+        parentrevmeta = self.branch_prev_location(path, revnum)
+        if parentrevmeta is None:
             return NULL_REVISION
+        return parentrevmeta.get_revision_id(mapping)
 
     def get_parent_map(self, revids):
         parent_map = {}
@@ -542,6 +548,7 @@ class SvnRepository(Repository):
                        inventory_sha1="")
 
         rev.svn_meta = revmeta
+        rev.svn_mapping = mapping
         rev.svn_uuid = self.uuid
 
         mapping.import_revision(svn_revprops, svn_fileprops, self.uuid, path, 
