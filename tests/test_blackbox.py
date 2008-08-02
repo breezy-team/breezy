@@ -60,6 +60,21 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         self.run_bzr("push -d dc %s" % repos_url)
         self.check_output("", "status dc")
 
+    def test_push_overwrite(self):
+        repos_url = self.make_repository('d')
+        
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir('trunk')
+        trunk.add_file("trunk/foo").modify()
+        dc.close()
+
+        self.run_bzr("init dc")
+        self.build_tree({"dc/bar": "blaaaa"})
+        self.run_bzr("add dc/bar")
+        self.run_bzr("commit -m msg dc")
+        self.run_bzr("push --overwrite -d dc %s/trunk" % repos_url)
+        self.check_output("", "status dc")
+
     def test_dpush(self):
         repos_url = self.make_repository('d')
         

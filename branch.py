@@ -500,9 +500,9 @@ class SvnBranch(Branch):
             todo = self.otherline_missing_revisions(other, stop_revision, overwrite)
         if todo is None:
             raise DivergedBranches(self, other)
-        self._push_missing_revisions(todo)
+        self._push_missing_revisions(other, todo)
 
-    def _push_missing_revisions(self, todo):
+    def _push_missing_revisions(self, other, todo):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
