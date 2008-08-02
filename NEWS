@@ -44,7 +44,9 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Much faster Repository.get_revision_delta(). (#127030)
 
-   * Support push --overwrite. (#118787)
+   * Support bzr push --overwrite. (#118787)
+
+   * Support bzr uncommit.
 
   BUG FIXES
 

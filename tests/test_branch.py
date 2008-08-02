@@ -210,10 +210,44 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual(repos.generate_revision_id(2, "", mapping),
                 branch.last_revision())
 
-    def test_set_revision_history(self):
+    def test_set_revision_history_empty(self):
         repos_url = self.make_repository('a')
         branch = Branch.open(repos_url)
         self.assertRaises(NotImplementedError, branch.set_revision_history, [])
+
+    def test_set_revision_history_ghost(self):
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file('trunk/foo').modify()
+        dc.close()
+
+        branch = Branch.open(repos_url+"/trunk")
+        self.assertRaises(NotImplementedError, branch.set_revision_history, ["nonexistantt"])
+
+    def test_set_revision_history(self):
+        repos_url = self.make_repository('a')
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file('trunk/foo').modify()
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file('trunk/bla').modify()
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.add_file('trunk/bar').modify()
+        dc.close()
+
+        branch = Branch.open(repos_url+"/trunk")
+        orig_history = branch.revision_history()
+        branch.set_revision_history(orig_history[:-1])
+        self.assertEquals(orig_history[:-1], branch.revision_history())
 
     def test_break_lock(self):
         repos_url = self.make_repository('a')

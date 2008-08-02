@@ -333,7 +333,10 @@ class SvnBranch(Branch):
 
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history()."""
-        raise NotImplementedError(self.set_revision_history)
+        if rev_history == [] or not self.repository.has_revision(rev_history[-1]):
+            raise NotImplementedError("set_revision_history can't add ghosts")
+        push(self, self, rev_history[-1])
+        self._clear_cached_state()
 
     def set_last_revision_info(self, revno, revid):
         """See Branch.set_last_revision_info()."""

@@ -18,10 +18,9 @@
 
 Bazaar can be used with Subversion branches through the bzr-svn plugin.
 
-Most Bazaar commands should work fine with Subversion branches. The following 
-commands at the moment do not:
-
- - bzr uncommit
+Most Bazaar commands should work fine with Subversion branches. To 
+create new branches in Subversion using push, it is currently necessary
+to use the svn-push command rather than the standard push command.
 
 bzr-svn also adds two new commands to Bazaar:
 
