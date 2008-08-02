@@ -95,8 +95,8 @@ def svn_build_data():
                 svn_prefix = basedir
                 break
     if svn_prefix is not None:
-        return ([os.path.join(basedir, "include/subversion-1")], 
-                [os.path.join(basedir, "lib")], [])
+        return ([os.path.join(svn_prefix, "include/subversion-1")], 
+                [os.path.join(svn_prefix, "lib")], [])
     raise Exception("Subversion development files not found. "
                     "Please set SVN_PREFIX environment variable. ")
 
