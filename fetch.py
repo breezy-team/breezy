@@ -155,14 +155,11 @@ class DeltaBuildEditor(object):
         return self.mapping.generate_file_id(self.source.uuid, self.revmeta.revnum, 
                                              self.revmeta.branch_path, new_path)
 
-    def _rename(self, file_id, parent_id, path):
-        assert isinstance(path, unicode)
-        assert isinstance(parent_id, str)
-        # Only rename if not right yet
-        if (self.inventory[file_id].parent_id == parent_id and 
-            self.inventory[file_id].name == urlutils.basename(path)):
-            return
-        self.inventory.rename(file_id, parent_id, urlutils.basename(path))
+    def _rename(self, file_id, parent_id, old_path, new_path, kind):
+        raise NotImplementedError
+
+    def _remove_recursive(self, file_id, path):
+        raise NotImplementedError
 
 
 class DirectoryBuildEditor(object):
@@ -198,7 +195,7 @@ class DirectoryBuildEditor(object):
             assert copyfrom_path == self.editor.old_inventory.id2path(file_id)
             assert copyfrom_path not in self.editor._premature_deletes
             self.editor._premature_deletes.add(copyfrom_path)
-            self.editor._rename(file_id, self.new_id, path)
+            self.editor._rename(file_id, self.new_id, copyfrom_path, path, 'directory')
             ie = self.editor.inventory[file_id]
             old_file_id = file_id
         else:
@@ -268,7 +265,7 @@ class DirectoryBuildEditor(object):
             assert copyfrom_path not in self.editor._premature_deletes
             self.editor._premature_deletes.add(copyfrom_path)
             # No need to rename if it's already in the right spot
-            self.editor._rename(file_id, self.new_id, path)
+            self.editor._rename(file_id, self.new_id, copyfrom_path, path, 'file')
         return FileBuildEditor(self.editor, path, file_id)
 
     def open_file(self, path, base_revnum):
@@ -299,7 +296,7 @@ class DirectoryBuildEditor(object):
                 if p.startswith("%s/" % path):
                     self.editor._premature_deletes.remove(p)
         else:
-            self.editor.inventory.remove_recursive_id(self.editor._get_old_id(self.old_id, path))
+            self.editor._remove_recursive(self.editor._get_old_id(self.old_id, path), path)
 
 
 class FileBuildEditor(object):
@@ -436,6 +433,18 @@ class RevisionBuildEditor(DeltaBuildEditor):
     def _start_revision(self):
         pass
 
+    def _rename(self, file_id, parent_id, old_path, new_path, kind):
+        assert isinstance(new_path, unicode)
+        assert isinstance(parent_id, str)
+        # Only rename if not right yet
+        if (self.inventory[file_id].parent_id == parent_id and 
+            self.inventory[file_id].name == urlutils.basename(new_path)):
+            return
+        self.inventory.rename(file_id, parent_id, urlutils.basename(new_path))
+
+    def _remove_recursive(self, file_id, path):
+        self.editor.inventory.remove_recursive_id(file_id)
+
 
 
 class TreeDeltaBuildeditor(DeltaBuildEditor):
@@ -447,6 +456,15 @@ class TreeDeltaBuildeditor(DeltaBuildEditor):
         self.delta.unversioned = []
         # To make sure we fall over if anybody tries to use it:
         self.delta.unchanged = None
+
+    def _rename(self, file_id, parent_id, old_path, new_path, kind):
+        # FIXME: Fill in text_modified and meta_modified
+        self.delta.renamed.append((old_path, new_path, file_id, kind, 
+                                   text_modified, meta_modified))
+
+    def _remove_recursive(self, file_id, path):
+        # FIXME: Fill in kind
+        self.delta.removed.append((path, file_id, 'unknown-kind'))
 
 
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
