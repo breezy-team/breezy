@@ -42,6 +42,8 @@ from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
 from bzrlib.plugins.svn.transport import _url_escape_uri
 from bzrlib.plugins.svn.tree import inventory_add_external
 
+FETCH_COMMIT_WRITE_SIZE = 500
+
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
     if message is None:
@@ -403,7 +405,6 @@ class RevisionBuildEditor(DeltaBuildEditor):
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
         super(RevisionBuildEditor, self).__init__(revmeta, mapping)
-        self._start_revision()
 
     def _get_revision(self, revid):
         """Creates the revision object.
@@ -429,9 +430,6 @@ class RevisionBuildEditor(DeltaBuildEditor):
 
     def _finish_commit(self):
         raise NotImplementedError(self._finish_commit)
-
-    def _start_revision(self):
-        pass
 
     def _rename(self, file_id, parent_id, old_path, new_path, kind):
         assert isinstance(new_path, unicode)
@@ -470,10 +468,6 @@ class TreeDeltaBuildeditor(DeltaBuildEditor):
 class WeaveRevisionBuildEditor(RevisionBuildEditor):
     """Subversion commit editor that can write to a weave-based repository.
     """
-    def _start_revision(self):
-        self._write_group_active = True
-        self.target.start_write_group()
-
     def _finish_commit(self):
         (rev, signature) = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
@@ -483,13 +477,6 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         self.target.add_revision(self.revid, rev, self.inventory)
         if signature is not None:
             self.target.add_signature_text(self.revid, signature)
-        self.target.commit_write_group()
-        self._write_group_active = False
-
-    def abort(self):
-        if self._write_group_active:
-            self.target.abort_write_group()
-            self._write_group_active = False
 
 
 def get_revision_build_editor(repository):
@@ -656,8 +643,6 @@ class InterFromSvnRepository(InterRepository):
                 else:
                     parent_inv = prev_inv
 
-                editor = revbuildklass(self.source, self.target, revid, parent_inv, revmeta)
-
                 if parent_revid == NULL_REVISION:
                     parent_branch = revmeta.branch_path
                     parent_revnum = revmeta.revnum
@@ -667,32 +652,43 @@ class InterFromSvnRepository(InterRepository):
                             self.source.lookup_revision_id(parent_revid)
                     start_empty = False
 
+                if not self.target.is_in_write_group():
+                    self.target.start_write_group()
                 try:
-                    conn = None
+                    editor = revbuildklass(self.source, self.target, revid, parent_inv, revmeta)
                     try:
-                        conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
+                        conn = None
+                        try:
+                            conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
 
-                        assert revmeta.revnum > parent_revnum or start_empty
+                            assert revmeta.revnum > parent_revnum or start_empty
 
-                        if parent_branch != revmeta.branch_path:
-                            reporter = conn.do_switch(revmeta.revnum, "", True, 
-                                _url_escape_uri(urlutils.join(repos_root, revmeta.branch_path)), 
-                                editor)
-                        else:
-                            reporter = conn.do_update(revmeta.revnum, "", True, editor)
+                            if parent_branch != revmeta.branch_path:
+                                reporter = conn.do_switch(revmeta.revnum, "", True, 
+                                    _url_escape_uri(urlutils.join(repos_root, revmeta.branch_path)), 
+                                    editor)
+                            else:
+                                reporter = conn.do_update(revmeta.revnum, "", True, editor)
 
-                        report_inventory_contents(reporter, parent_inv, parent_revnum, start_empty)
-                    finally:
-                        if conn is not None:
-                            if not conn.busy:
-                                self.source.transport.add_connection(conn)
+                            report_inventory_contents(reporter, parent_inv, parent_revnum, start_empty)
+                        finally:
+                            if conn is not None:
+                                if not conn.busy:
+                                    self.source.transport.add_connection(conn)
+                    except:
+                        editor.abort()
+                        raise
                 except:
-                    editor.abort()
-                    raise
+                    if self.target.is_in_write_group():
+                        self.target.abort_write_group()
+                if num % FETCH_COMMIT_WRITE_SIZE == 0:
+                    self.target.commit_write_group()
 
                 prev_inv = editor.inventory
                 prev_revid = revid
                 num += 1
+            if self.target.is_in_write_group():
+                self.target.commit_write_group()
         finally:
             if nested_pb is not None:
                 nested_pb.finished()
