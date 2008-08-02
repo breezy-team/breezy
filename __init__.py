@@ -387,8 +387,7 @@ class cmd_merge_upstream(Command):
 
     tree, _ = WorkingTree.open_containing('.')
 
-    config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)])
+    config = debuild_config(tree, working_tree=True, no_user_config=False)
 
     if config.merge:
       raise BzrCommandError("Merge upstream in merge mode is not yet "
