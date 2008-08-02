@@ -645,6 +645,11 @@ class InterFromSvnRepository(InterRepository):
                         try:
                             # Report status of existing paths
                             reporter.set_path("", parent_revnum, start_empty)
+
+                            for entry in parent_inv:
+                                path = parent_inv.id2path(entry)
+                                if len(path) > 1:
+                                    reporter.set_path(path, parent_revnum, start_empty)
                         except:
                             reporter.abort()
                             raise
