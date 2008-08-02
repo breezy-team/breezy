@@ -353,11 +353,12 @@ class SvnBranch(Branch):
             missing.append(revid)
         return None
 
-    def otherline_missing_revisions(self, other, stop_revision):
+    def otherline_missing_revisions(self, other, stop_revision, overwrite=False):
         """Find the revisions missing on the mainline.
         
         :param other: Other branch to retrieve revisions from.
         :param stop_revision: Revision to stop fetching at.
+        :param overwrite: Whether or not the existing data should be overwritten
         """
         missing = []
         for revid in other.repository.iter_reverse_revision_history(stop_revision):
@@ -365,7 +366,10 @@ class SvnBranch(Branch):
                 missing.reverse()
                 return missing
             missing.append(revid)
-        return None
+        if not overwrite:
+            return None
+        else:
+            return missing
  
     def last_revision_info(self):
         """See Branch.last_revision_info()."""
@@ -493,7 +497,7 @@ class SvnBranch(Branch):
         todo = self.mainline_missing_revisions(other, stop_revision)
         if todo is None:
             # Not possible to add cleanly onto mainline, perhaps need a replace operation
-            todo = self.otherline_missing_revisions(other, stop_revision)
+            todo = self.otherline_missing_revisions(other, stop_revision, overwrite)
         if todo is None:
             raise DivergedBranches(self, other)
             

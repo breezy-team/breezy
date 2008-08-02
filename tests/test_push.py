@@ -703,6 +703,40 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals(bzrwt2.branch.revision_history(),
                 Branch.open(repos_url+"/trunk").revision_history())
 
+    def test_push_overwrite_unrelated(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/bloe").modify("text")
+        dc.close()
+
+        os.mkdir("d1")
+        bzrdir = BzrDir.open(repos_url+"/trunk").sprout("d1")
+        bzrwt1 = bzrdir.open_workingtree()
+
+        bzrwt2 = BzrDir.create_standalone_workingtree("d2", 
+            format=format.get_rich_root_format())
+
+        self.build_tree({'d1/myfile': "Tour"})
+        bzrwt1.add("myfile")
+        revid1 = bzrwt1.commit("Do a commit")
+
+        self.build_tree({'d2/myfile': "France"})
+        bzrwt2.add("myfile")
+        revid2 = bzrwt2.commit("Do a commit")
+
+        bzrwt1.branch.push(Branch.open(repos_url+"/trunk"))
+        self.assertEquals(bzrwt1.branch.revision_history(),
+                Branch.open(repos_url+"/trunk").revision_history())
+
+        bzrwt2.branch.push(Branch.open(repos_url+"/trunk"), overwrite=True)
+
+        self.assertEquals(bzrwt2.branch.revision_history(),
+                Branch.open(repos_url+"/trunk").revision_history())
+
+
+
     def test_complex_rename(self):
         repos_url = self.make_repository("a")
         bzrwt = BzrDir.create_standalone_workingtree("c", 
