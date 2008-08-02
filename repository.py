@@ -485,7 +485,7 @@ class SvnRepository(Repository):
         :return: Revision id of the left-hand-side parent or None if 
                   this is the first revision
         """
-        parentrevmeta = self.branch_prev_location(path, revnum)
+        parentrevmeta = self.branch_prev_location(path, revnum, mapping)
         if parentrevmeta is None:
             return NULL_REVISION
         return parentrevmeta.get_revision_id(mapping)
