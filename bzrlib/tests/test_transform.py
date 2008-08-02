@@ -1278,6 +1278,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 "file")
 
     def test_dir_to_hardlink(self):
+        self.requireFeature(HardlinkFeature)
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/', 'foo/bar'])
         wt.add(['foo', 'foo/bar'])
