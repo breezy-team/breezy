@@ -429,7 +429,14 @@ class RevisionBuildEditor(DeltaBuildEditor):
         return (rev, signature)
 
     def _finish_commit(self):
-        raise NotImplementedError(self._finish_commit)
+        (rev, signature) = self._get_revision(self.revid)
+        self.inventory.revision_id = self.revid
+        # Escaping the commit message is really the task of the serialiser
+        rev.message = _escape_commit_message(rev.message)
+        rev.inventory_sha1 = None
+        self.target.add_revision(self.revid, rev, self.inventory)
+        if signature is not None:
+            self.target.add_signature_text(self.revid, signature)
 
     def _rename(self, file_id, parent_id, old_path, new_path, kind):
         assert isinstance(new_path, unicode)
@@ -463,29 +470,6 @@ class TreeDeltaBuildeditor(DeltaBuildEditor):
     def _remove_recursive(self, file_id, path):
         # FIXME: Fill in kind
         self.delta.removed.append((path, file_id, 'unknown-kind'))
-
-
-class WeaveRevisionBuildEditor(RevisionBuildEditor):
-    """Subversion commit editor that can write to a weave-based repository.
-    """
-    def _finish_commit(self):
-        (rev, signature) = self._get_revision(self.revid)
-        self.inventory.revision_id = self.revid
-        # Escaping the commit message is really the task of the serialiser
-        rev.message = _escape_commit_message(rev.message)
-        rev.inventory_sha1 = None
-        self.target.add_revision(self.revid, rev, self.inventory)
-        if signature is not None:
-            self.target.add_signature_text(self.revid, signature)
-
-
-def get_revision_build_editor(repository):
-    """Obtain a RevisionBuildEditor for a particular target repository.
-    
-    :param repository: Repository to obtain the buildeditor for.
-    :return: Class object of class descending from RevisionBuildEditor
-    """
-    return WeaveRevisionBuildEditor
 
 
 def report_inventory_contents(reporter, inv, revnum, start_empty):
@@ -627,8 +611,6 @@ class InterFromSvnRepository(InterRepository):
         num = 0
         prev_inv = None
 
-        revbuildklass = get_revision_build_editor(self.target)
-
         try:
             for (revid, parent_revid, revmeta) in revids:
                 assert revid != NULL_REVISION
@@ -655,7 +637,7 @@ class InterFromSvnRepository(InterRepository):
                 if not self.target.is_in_write_group():
                     self.target.start_write_group()
                 try:
-                    editor = revbuildklass(self.source, self.target, revid, parent_inv, revmeta)
+                    editor = RevisionBuildEditor(self.source, self.target, revid, parent_inv, revmeta)
                     try:
                         conn = None
                         try:
