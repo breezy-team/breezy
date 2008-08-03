@@ -522,7 +522,7 @@ class SvnBranch(Branch):
                         merged_revs = dict(zip(unique_ancestors, other.repository.get_revisions(unique_ancestors)))
                         for x in graph.iter_topo_order(unique_ancestors):
                             push_new(self.repository, 
-                                    self.layout.get_branch_path(merged_revs[x].properties.get('nick') or "merged", self.project),
+                                    self.layout.get_branch_path(merged_revs[x].properties.get('branch-nick') or "merged", self.project),
                                      other, x)
                             self._clear_cached_state()
                 push(self, other, revid)
