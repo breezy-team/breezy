@@ -243,7 +243,6 @@ class SvnRepository(Repository):
 
     def lock_write(self):
         """See Branch.lock_write()."""
-        # TODO: Obtain lock on the remote server?
         if self._lock_mode:
             assert self._lock_mode == 'w'
             self._lock_count += 1
@@ -251,11 +250,23 @@ class SvnRepository(Repository):
             self._lock_mode = 'w'
             self._lock_count = 1
 
+    def is_write_locked(self):
+        return (self._lock_mode == 'w')
+
     def get_latest_revnum(self):
         if self._lock_mode in ('r','w') and self._cached_revnum:
             return self._cached_revnum
         self._cached_revnum = self.transport.get_latest_revnum()
         return self._cached_revnum
+
+    def start_write_group(self):
+        pass
+
+    def abort_write_group(self):
+        pass
+
+    def commit_write_group(self):
+        pass
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         fileids = {}
@@ -749,7 +760,10 @@ class SvnRepository(Repository):
 
     def add_signature_text(self, revision_id, signature):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        self.transport.change_rev_prop(revnum, SVN_REVPROP_BZR_SIGNATURE, signature)
+        try:
+            self.transport.change_rev_prop(revnum, SVN_REVPROP_BZR_SIGNATURE, signature)
+        except SubversionException, (_, errors.ERR_REPOS_DISABLED_FEATURE):
+            raise errors.RevpropChangeFailed(SVN_REVPROP_BZR_SIGNATURE)
 
     @needs_read_lock
     def find_branches(self, using=False, layout=None):

@@ -48,6 +48,9 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Support bzr uncommit.
 
+   * Support bzr sign-my-commits. (Requires revision properties in the 
+	 Subversion repository to be mutable)
+
   BUG FIXES
 
    * Now uses absolute imports and no longer adds plugin directory to the 
