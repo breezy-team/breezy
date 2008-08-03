@@ -130,6 +130,9 @@ class SchemeDerivedLayout(RepositoryLayout):
         except NotImplementedError:
             return False
 
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self.scheme))
+
 
 def get_stored_scheme(repository):
     """Retrieve the stored branching scheme, either in the repository 
