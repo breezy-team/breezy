@@ -1,6 +1,5 @@
 pushmerge:
  - make pushmerge option in repository configuration
- - deal with ghosts in rhs parents
  - create branches/ dir automatically
  - invoke from InterSvnBzrRepository as well
 

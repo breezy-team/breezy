@@ -519,11 +519,11 @@ class SvnBranch(Branch):
                     for parent_revid in parent_revids[1:]:
                         # Push merged revisions
                         unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
-                        merged_revs = dict(zip(unique_ancestors, other.repository.get_revisions(unique_ancestors)))
                         for x in graph.iter_topo_order(unique_ancestors):
+                            rev = other.repository.get_revision(x)
                             push_new(self.repository, 
-                                    self.layout.get_branch_path(merged_revs[x].properties.get('branch-nick') or "merged", self.project),
-                                     other, x)
+                                    self.layout.get_branch_path(rev.properties.get('branch-nick') or "merged", self.project),
+                                    other, x)
                             self._clear_cached_state()
                 push(self, other, revid)
                 self._clear_cached_state()
