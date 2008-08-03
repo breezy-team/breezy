@@ -5,6 +5,7 @@ SETUP ?= ./setup.py
 CTAGS ?= ctags
 PYLINT ?= pylint
 TESTS ?= 
+DESTDIR ?= 
 
 all:: build 
 
@@ -12,7 +13,11 @@ build::
 	$(SETUP) build
 
 install::
+ifneq ($(DESTDIR),)
+	$(SETUP) install --root "$(DESTDIR)"
+else
 	$(SETUP) install
+endif
 
 clean::
 	$(SETUP) clean
