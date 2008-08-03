@@ -112,6 +112,9 @@ class SchemeDerivedLayout(RepositoryLayout):
     def get_tag_path(self, name, project=""):
         return self.scheme.get_tag_path(name)
 
+    def get_branch_path(self, name, project=""):
+        return self.scheme.get_branch_path(name, project)
+
     def is_branch_parent(self, path):
         # Na, na, na...
         return self.scheme.is_branch_parent(path)

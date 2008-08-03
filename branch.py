@@ -30,7 +30,7 @@ from bzrlib.workingtree import WorkingTree
 from bzrlib.plugins.svn import core, wc
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client, get_config
-from bzrlib.plugins.svn.commit import push
+from bzrlib.plugins.svn.commit import push, push_new
 from bzrlib.plugins.svn.config import BranchConfig
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
@@ -506,11 +506,25 @@ class SvnBranch(Branch):
         self._push_missing_revisions(other, todo)
 
     def _push_missing_revisions(self, other, todo):
+        push_merged = self.layout.push_merged_revisions(self.project)
+        if push_merged:
+            graph = other.repository.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
+                if push_merged:
+                    parent_revids = graph.get_parent_map([revid])[revid]
+                    if len(parent_revids) > 1:
+                        # Push merged revisions
+                        unique_ancestors = graph.find_unique_ancestors(parent_revids[1], [parent_revids[0]])
+                        merged_revs = dict(zip(unique_ancestors, other.repository.get_revisions(unique_ancestors)))
+                        for x in graph.iter_topo_order(unique_ancestors):
+                            push_new(self.repository, 
+                                    self.layout.get_branch_path(merged_revs[x].properties.get('nick') or "merged", self.project),
+                                     other, x)
+                            self._clear_cached_state()
                 push(self, other, revid)
                 self._clear_cached_state()
         finally:

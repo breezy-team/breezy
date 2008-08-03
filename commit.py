@@ -854,6 +854,13 @@ class InterToSvnRepository(InterRepository):
                 return
             mutter("pushing %r into svn", todo)
             target_branch = None
+            layout = target_branch.repository.get_layout()
+            if layout.push_merged_revisions(target_branch.project):
+                push_merged = True
+                graph = target.repository.get_graph()
+            else:
+                push_merged = False
+            target_config = target_branch.get_config()
             for revision_id in todo:
                 if pb is not None:
                     pb.update("pushing revisions", todo.index(revision_id), len(todo))
@@ -869,7 +876,16 @@ class InterToSvnRepository(InterRepository):
                 if target_branch.get_branch_path() != bp:
                     target_branch.set_branch_path(bp)
 
-                push_revision_tree(target_branch, target_branch.get_config(), self.source, 
+                if push_merged and len(rev.parent_ids) > 1:
+                    # Push merged revisions
+                    unique_ancestors = graph.find_unique_ancestors(revision_id, todo)
+                    merged_revs = dict(zip(unique_ancestors, self.source.get_revisions(unique_ancestors)))
+                    for x in graph.iter_topo_order(unique_ancestors):
+                        push_revision_tree(layout.get_branch_path(merged_revs[x].properties['nick']), target_config, 
+                                       self.source, 
+                                       merged_revs[x].parent_ids[0], x, merged_revs[x])
+
+                push_revision_tree(target_branch, target_config, self.source, 
                                    parent_revid, revision_id, rev)
         finally:
             self.source.unlock()

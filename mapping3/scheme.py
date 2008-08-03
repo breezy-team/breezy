@@ -266,7 +266,7 @@ class TrunkBranchingScheme(ListBranchingScheme):
             return urlutils.join("tags", name)
         raise NotImplementedError
 
-    def get_branch_path(self, name):
+    def get_branch_path(self, name, project=""):
         # Only implemented for level 0
         if self.level == 0:
             if name == "trunk":
