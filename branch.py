@@ -521,7 +521,8 @@ class SvnBranch(Branch):
                         unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
                         for x in graph.iter_topo_order(unique_ancestors):
                             rev = other.repository.get_revision(x)
-                            rhs_branch_path = self.layout.get_branch_path(rev.properties.get('branch-nick') or "merged", self.project)
+                            nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8")
+                            rhs_branch_path = self.layout.get_branch_path(nick, self.project)
                             assert rhs_branch_path != self.get_branch_path()
                             push_new(self.repository, 
                                     rhs_branch_path,
