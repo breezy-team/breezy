@@ -1,3 +1,3 @@
 version=3
-opts="uversionmangle=s/rc/~rc/" \
+opts="uversionmangle=s/rc/~rc/;s/b/~b/" \
 http://bazaar-vcs.org/releases/src/bzr-(.*)\.tar\.gz
