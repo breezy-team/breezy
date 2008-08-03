@@ -93,6 +93,7 @@ class RevidMap(object):
                 yield (entry_revid, branch, revno, BzrSvnMappingv3FileProps(BranchingScheme.find_scheme(scheme)))
 
     def bisect_revid_revnum(self, revid, branch_path, min_revnum, max_revnum):
+        assert min_revnum <= max_revnum
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
         for revmeta in self.repos.iter_reverse_branch_changes(branch_path, max_revnum, min_revnum):
@@ -159,6 +160,7 @@ class CachingRevidMap(object):
             assert isinstance(branch_path, str)
             assert isinstance(scheme, str)
             # Entry already complete?
+            assert min_revnum <= max_revnum
             if min_revnum == max_revnum:
                 return (branch_path, min_revnum, BzrSvnMappingv3FileProps(get_scheme(scheme)))
         except NoSuchRevision, e:
@@ -183,6 +185,7 @@ class CachingRevidMap(object):
             if not found:
                 raise e
             (branch_path, min_revnum, max_revnum, scheme) = self.cache.lookup_revid(revid)
+            assert min_revnum <= max_revnum
             assert isinstance(branch_path, str)
 
         return self.actual.bisect_revid_revnum(revid, branch_path, min_revnum,
@@ -281,9 +284,10 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(scheme, str)
         assert isinstance(branch, str)
         assert isinstance(min_revnum, int) and isinstance(max_revnum, int)
+        assert min_revnum <= max_revnum
         self.mutter("insert revid %r:%r-%r -> %r", branch, min_revnum, max_revnum, revid)
         cursor = self.cachedb.execute(
-            "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
+            "update revmap set min_revnum = MIN(MAX(min_revnum,?), max_revnum), max_revnum = MAX(MIN(max_revnum, ?), min_revnum) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))
         if cursor.rowcount == 0:
             self.cachedb.execute(
