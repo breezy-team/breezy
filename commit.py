@@ -65,6 +65,7 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     for i in range(len(bp_parts), 0, -1):
         current = bp_parts[:i]
         path = "/".join(current).strip("/")
+        assert isinstance(path, str)
         if transport.check_path(path, base_rev) == core.NODE_DIR:
             return current
     return []
@@ -438,7 +439,9 @@ class SvnCommitBuilder(RootCommitBuilder):
             """
             self.revision_metadata = args
         
-        bp_parts = self.branch.get_branch_path().split("/")
+        bp = self.branch.get_branch_path()
+        assert isinstance(bp, str), "%r" % bp
+        bp_parts = bp.split("/")
         repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
         set_revprops = self._config.get_set_revprops()
