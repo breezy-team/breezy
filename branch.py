@@ -516,9 +516,9 @@ class SvnBranch(Branch):
                           len(todo))
                 if push_merged:
                     parent_revids = graph.get_parent_map([revid])[revid]
-                    if len(parent_revids) > 1:
+                    for parent_revid in parent_revids[1:]:
                         # Push merged revisions
-                        unique_ancestors = graph.find_unique_ancestors(parent_revids[1], [parent_revids[0]])
+                        unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
                         merged_revs = dict(zip(unique_ancestors, other.repository.get_revisions(unique_ancestors)))
                         for x in graph.iter_topo_order(unique_ancestors):
                             push_new(self.repository, 
