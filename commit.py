@@ -671,6 +671,9 @@ def push_new(target_repository, target_branch_path, source, stop_revision,
             self.repository = repository
             self._revision_history = None
 
+        def _get_append_revisions_only(self):
+            return False
+
         def get_config(self):
             """See Branch.get_config()."""
             return self.repository.get_config()
