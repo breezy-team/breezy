@@ -670,6 +670,31 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual("someid", tree.inventory.path2id("foo"))
         self.assertFalse("1@%s::foo" % repository.uuid in tree.inventory)
 
+    def test_get_revision_delta(self):
+        repos_url = self.make_repository('d')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("data")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        dc.open_file("foo").modify("data2")
+        dc.close()
+
+        r = Repository.open(repos_url)
+        d1 = r.get_revision_delta(r.get_revision(r.generate_revision_id(1, "", r.get_mapping())))
+        self.assertEquals(None, d1.unchanged)
+        self.assertEquals(1, len(d1.added))
+        self.assertEquals("foo", d1.added[0][0])
+        self.assertEquals(0, len(d1.modified))
+        self.assertEquals(0, len(d1.removed))
+
+        d2 = r.get_revision_delta(r.get_revision(r.generate_revision_id(2, "", r.get_mapping())))
+        self.assertEquals(None, d2.unchanged)
+        self.assertEquals(0, len(d2.added))
+        self.assertEquals("foo", d2.modified[0][0])
+        self.assertEquals(0, len(d2.removed))
+
     def test_revision_ghost_parents(self):
         repos_url = self.make_repository('d')
 
