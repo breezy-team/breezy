@@ -42,7 +42,8 @@ def find_prev_location(paths, branch_path, revnum):
         if paths[branch_path][1] is None: 
             return None # Was added here
         revnum = paths[branch_path][2]
-        branch_path = paths[branch_path][1].encode("utf-8")
+        assert isinstance(paths[branch_path][1], str)
+        branch_path = paths[branch_path][1]
         return (branch_path, revnum)
     
     # Make sure we get the right location for the next time if 

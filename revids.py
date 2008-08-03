@@ -247,7 +247,11 @@ class RevisionIdMapCache(CacheTable):
             "select path, min_revnum, max_revnum, scheme from revmap where revid=?", (revid,)).fetchone()
         if ret is None:
             raise NoSuchRevision(self, revid)
-        return (ret[0].encode("utf-8"), int(ret[1]), int(ret[2]), ret[3].encode("utf-8"))
+        (path, min_revnum, max_revnum, scheme) = (ret[0].encode("utf-8"), int(ret[1]), int(ret[2]), ret[3].encode("utf-8"))
+        if min_revnum > max_revnum:
+            return (path, max_revnum, min_revnum, scheme)
+        else:
+            return (path, min_revnum, max_revnum, scheme)
 
     def lookup_branch_revnum(self, revnum, path, scheme):
         """Lookup a revision by revision number, branch path and branching scheme.
@@ -260,7 +264,7 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(path, str)
         assert isinstance(scheme, str)
         row = self.cachedb.execute(
-                "select revid from revmap where max_revnum = ? and min_revnum=? and path=? and scheme=?", (revnum, revnum, path, scheme)).fetchone()
+                "select revid from revmap where max_revnum=? and min_revnum=? and path=? and scheme=?", (revnum, revnum, path, scheme)).fetchone()
         if row is not None:
             ret = str(row[0])
         else:
@@ -287,7 +291,7 @@ class RevisionIdMapCache(CacheTable):
         assert min_revnum <= max_revnum
         self.mutter("insert revid %r:%r-%r -> %r", branch, min_revnum, max_revnum, revid)
         cursor = self.cachedb.execute(
-            "update revmap set min_revnum = MIN(MAX(min_revnum,?), max_revnum), max_revnum = MAX(MIN(max_revnum, ?), min_revnum) WHERE revid=? AND path=? AND scheme=?",
+            "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))
         if cursor.rowcount == 0:
             self.cachedb.execute(
