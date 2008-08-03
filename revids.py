@@ -175,17 +175,18 @@ class CachingRevidMap(object):
                 return (branch_path, min_revnum, BzrSvnMappingv3FileProps(get_scheme(scheme)))
         except NoSuchRevision, e:
             last_revnum = self.actual.repos.get_latest_revnum()
-            if (last_revnum <= self.cache.last_revnum_checked(repr(layout))):
+            last_checked = self.cache.last_revnum_checked(repr(layout))
+            if (last_revnum <= last_checked):
                 # All revision ids in this repository for the current 
                 # layout have already been discovered. No need to 
                 # check again.
                 raise e
             found = False
-            for entry_revid, branch, revno, mapping in self.actual.discover_revids(layout, self.cache.last_revnum_checked(repr(layout)), last_revnum):
+            for entry_revid, branch, revno, mapping in self.actual.discover_revids(layout, last_checked, last_revnum):
                 if entry_revid == revid:
                     found = True
                 if entry_revid not in self.revid_seen:
-                    self.cache.insert_revid(entry_revid, branch, 0, revno, str(mapping.scheme))
+                    self.cache.insert_revid(entry_revid, branch, last_checked, revno, str(mapping.scheme))
                     self.revid_seen.add(entry_revid)
                 
             # We've added all the revision ids for this layout in the repository,
