@@ -517,9 +517,13 @@ class SvnBranch(Branch):
                 if push_merged:
                     parent_revids = graph.get_parent_map([revid])[revid]
                     for parent_revid in parent_revids[1:]:
+                        if self.repository.has_revision(parent_revid):
+                            continue
                         # Push merged revisions
                         unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
                         for x in graph.iter_topo_order(unique_ancestors):
+                            if self.repository.has_revision(x):
+                                continue
                             rev = other.repository.get_revision(x)
                             nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8")
                             rhs_branch_path = self.layout.get_branch_path(nick, self.project)
