@@ -451,8 +451,8 @@ class TrunkScheme(TestCase):
                           TrunkBranchingScheme().get_tag_path("foo"))
 
     def test_get_tag_path_nonzero(self):
-        self.assertRaises(NotImplementedError,
-                          TrunkBranchingScheme(2).get_tag_path, "foo")
+        self.assertEquals("my/project/tags/foo",
+                          TrunkBranchingScheme(2).get_tag_path("foo", "my/project"))
 
     def test_get_branch_path_zero(self):
         self.assertEquals("branches/foo", 
@@ -463,8 +463,8 @@ class TrunkScheme(TestCase):
                           TrunkBranchingScheme().get_branch_path("trunk"))
 
     def test_get_branch_path_nonzero(self):
-        self.assertRaises(NotImplementedError,
-                          TrunkBranchingScheme(2).get_branch_path, "foo")
+        self.assertEquals("my/project/branches/foo",
+                          TrunkBranchingScheme(2).get_branch_path("foo", "my/project"))
 
 
 

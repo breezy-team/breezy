@@ -110,7 +110,10 @@ class SchemeDerivedLayout(RepositoryLayout):
         return self._get_root_paths(revnum, self.scheme.is_tag, project, pb)
 
     def get_tag_path(self, name, project=""):
-        return self.scheme.get_tag_path(name)
+        return self.scheme.get_tag_path(name, project)
+
+    def get_branch_path(self, name, project=""):
+        return self.scheme.get_branch_path(name, project)
 
     def is_branch_parent(self, path):
         # Na, na, na...

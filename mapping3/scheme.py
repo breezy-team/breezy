@@ -260,20 +260,23 @@ class TrunkBranchingScheme(ListBranchingScheme):
              "*/" * level + "branches/*",
              "*/" * level + "tags/*"])
 
-    def get_tag_path(self, name):
-        # Only implemented for level 0
-        if self.level == 0:
+    def get_tag_path(self, name, project=""):
+        if project == "":
             return urlutils.join("tags", name)
-        raise NotImplementedError
+        return urlutils.join(project, "tags", name)
 
-    def get_branch_path(self, name):
+    def get_branch_path(self, name, project=""):
         # Only implemented for level 0
-        if self.level == 0:
-            if name == "trunk":
+        if name == "trunk":
+            if project == "":
                 return "trunk"
             else:
+                return urlutils.join(project, "trunk")
+        else:
+            if project == "":
                 return urlutils.join("branches", name)
-        raise NotImplementedError
+            else:
+                return urlutils.join(project, "branches", name)
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
