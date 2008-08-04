@@ -529,8 +529,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 for prop, value in self._svnprops.items():
                     if not properties.is_valid_property_name(prop):
                         warning("Setting property %r with invalid characters in name", prop)
-                    if value is not None:
-                        value = value.encode('utf-8')
+                    assert isinstance(value, str)
                     branch_editors[-1].change_prop(prop, value)
                     self.mutter("Setting root file property %r -> %r", prop, value)
 
