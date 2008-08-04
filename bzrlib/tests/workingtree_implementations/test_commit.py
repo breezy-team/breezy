@@ -195,6 +195,31 @@ class TestCommit(TestCaseWithWorkingTree):
                           ('xyz/m', 'm-id'),
                          ], paths)
 
+    def test_commit_exclude_pending_merge_fails(self):
+        """Excludes are a form of partial commit."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add('foo')
+        wt.commit('commit one')
+        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2.commit('change_right')
+        wt.merge_from_branch(wt2.branch)
+        self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            wt.commit, 'test', exclude=['foo'])
+
+    def test_commit_exclude_excludes_modified_files(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        tree.commit('test', exclude=['b', 'c'])
+        # If b was ignored it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(2, len(changes))
+        self.assertEqual((None, 'b'), changes[0][1])
+        self.assertEqual((None, 'c'), changes[1][1])
+
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         committed_id = tree.commit('foo', rev_id='foo')

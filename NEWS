@@ -23,6 +23,9 @@ IN DEVELOPMENT
     * ``bzr check`` can now be told which elements at a location it should
       check.  (Daniel Watkins)
 
+    * Commit now supports ``--exclude`` (or ``-x``) to exclude some files
+      from the commit. (Robert Collins, #3117)
+
     * Give a more specific error when target branch is not reachable.
       (James Westby)
 
@@ -94,6 +97,17 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.branchbuilder.BranchBuilder`` is now much more capable of
+      putting together a real history without having to create a full
+      WorkingTree. It is recommended that tests that are not directly
+      testing the WorkingTree use BranchBuilder instead.  See
+      ``BranchBuilder.build_snapshot`` or
+      ``TestCaseWithMemoryTree.make_branch_builder``.  (John Arbash Meinel)
+
+    * ``bzrlib.builtins.internal_tree_files`` broken into two giving a new
+      helper ``safe_relpath_files`` - used by the new ``exclude``
+      parameter to commit. (Robert Collins)
+
     * Make it easier to introduce new WorkingTree formats.
       (Ian Clatworthy)
 
@@ -102,13 +116,6 @@ IN DEVELOPMENT
 
     * RuleSearchers return () instead of [] now when there are no matches.
       (Ian Clatworthy)
-
-    * ``bzrlib.branchbuilder.BranchBuilder`` is now much more capable of
-      putting together a real history without having to create a full
-      WorkingTree. It is recommended that tests that are not directly
-      testing the WorkingTree use BranchBuilder instead.  See
-      ``BranchBuilder.build_snapshot`` or
-      ``TestCaseWithMemoryTree.make_branch_builder``.  (John Arbash Meinel)
 
 
 bzr 1.6beta3 2008-07-17
