@@ -186,14 +186,18 @@ static PyObject *py_file_editor_change_prop(PyObject *self, PyObject *args)
 	EditorObject *editor = (EditorObject *)self;
 	char *name;
    	svn_string_t c_value;
+	int vallen;
 
 	if (!FileEditor_Check(self)) {
 		PyErr_BadArgument();
 		return NULL;
 	}
 
-	if (!PyArg_ParseTuple(args, "sz#", &name, &c_value.data, &c_value.len))
+	if (!PyArg_ParseTuple(args, "sz#", &name, &c_value.data, &vallen))
 		return NULL;
+
+	c_value.len = vallen;
+
 	RUN_SVN(editor->editor->change_file_prop(editor->baton, name, 
 				&c_value, editor->pool));
 	Py_RETURN_NONE;
@@ -353,19 +357,20 @@ static PyObject *py_dir_editor_change_prop(PyObject *self, PyObject *args)
 	char *name;
 	svn_string_t c_value, *p_c_value;
 	EditorObject *editor = (EditorObject *)self;
+	int vallen;
 
 	if (!DirectoryEditor_Check(self)) {
 		PyErr_BadArgument();
 		return NULL;
 	}
 
-	if (!PyArg_ParseTuple(args, "sz#", &name, &c_value.data, &c_value.len))
+	if (!PyArg_ParseTuple(args, "sz#", &name, &c_value.data, &vallen))
 		return NULL;
 
-	p_c_value = &c_value;
+	c_value.len = vallen;
 
 	RUN_SVN(editor->editor->change_dir_prop(editor->baton, name, 
-					p_c_value, editor->pool));
+					&c_value, editor->pool));
 
 	Py_RETURN_NONE;
 }
