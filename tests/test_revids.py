@@ -54,6 +54,6 @@ class TestRevidMapCache(TestCase):
 
     def test_lookup_branch_incomplete(self):
         revidmap = RevisionIdMapCache()
-        revidmap.insert_revid("bla", "mypath", 200, 42, "brainslug")
+        revidmap.insert_revid("bla", "mypath", 42, 200, "brainslug")
         self.assertEquals(None, 
                 revidmap.lookup_branch_revnum(42, "mypath", "brainslug"))

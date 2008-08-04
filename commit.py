@@ -21,7 +21,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches,
                            UnrelatedBranches, AppendRevisionsOnlyViolation,
                            NoSuchRevision)
 from bzrlib.inventory import Inventory
-from bzrlib.repository import RootCommitBuilder, InterRepository
+from bzrlib.repository import RootCommitBuilder, InterRepository, Repository
 from bzrlib.revision import NULL_REVISION, ensure_null
 from bzrlib.trace import mutter, warning
 
@@ -65,6 +65,7 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     for i in range(len(bp_parts), 0, -1):
         current = bp_parts[:i]
         path = "/".join(current).strip("/")
+        assert isinstance(path, str)
         if transport.check_path(path, base_rev) == core.NODE_DIR:
             return current
     return []
@@ -438,7 +439,9 @@ class SvnCommitBuilder(RootCommitBuilder):
             """
             self.revision_metadata = args
         
-        bp_parts = self.branch.get_branch_path().split("/")
+        bp = self.branch.get_branch_path()
+        assert isinstance(bp, str), "%r" % bp
+        bp_parts = bp.split("/")
         repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
         set_revprops = self._config.get_set_revprops()
@@ -526,8 +529,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 for prop, value in self._svnprops.items():
                     if not properties.is_valid_property_name(prop):
                         warning("Setting property %r with invalid characters in name", prop)
-                    if value is not None:
-                        value = value.encode('utf-8')
+                    assert isinstance(value, str)
                     branch_editors[-1].change_prop(prop, value)
                     self.mutter("Setting root file property %r -> %r", prop, value)
 
@@ -647,10 +649,10 @@ def push_new(target_repository, target_branch_path, source, stop_revision,
 
     :param target_repository: Repository to push to
     :param target_branch_path: Path to create new branch at
-    :param source: Branch to pull the revision from
+    :param source: Source repository
     """
-    assert isinstance(source, Branch)
-    revhistory = list(source.repository.iter_reverse_revision_history(stop_revision))
+    assert isinstance(source, Repository)
+    revhistory = list(source.iter_reverse_revision_history(stop_revision))
     history = list(revhistory)
     history.reverse()
     start_revid_parent = NULL_REVISION
@@ -670,6 +672,9 @@ def push_new(target_repository, target_branch_path, source, stop_revision,
         def __init__(self, repository):
             self.repository = repository
             self._revision_history = None
+
+        def _get_append_revisions_only(self):
+            return False
 
         def get_config(self):
             """See Branch.get_config()."""
@@ -730,7 +735,7 @@ def dpush(target, source, stop_revision=None):
             for revid in todo:
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
-                revid_map[revid] = push(target, source, revid, 
+                revid_map[revid] = push(target, source.repository, revid, 
                                         push_metadata=False)
                 source.repository.fetch(target.repository, 
                                         revision_id=revid_map[revid])
@@ -776,18 +781,18 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
     return revid
 
 
-def push(target, source, revision_id, push_metadata=True):
+def push(target, source_repo, revision_id, push_metadata=True):
     """Push a revision into Subversion.
 
     This will do a new commit in the target branch.
 
     :param target: Branch to push to
-    :param source: Branch to pull the revision from
+    :param source_repo: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
     :return: revision id of revision that was pushed
     """
-    assert isinstance(source, Branch)
-    rev = source.repository.get_revision(revision_id)
+    assert isinstance(source_repo, Repository)
+    rev = source_repo.get_revision(revision_id)
     mutter('pushing %r (%r)', revision_id, rev.parent_ids)
 
     # revision on top of which to commit
@@ -799,13 +804,13 @@ def push(target, source, revision_id, push_metadata=True):
     else:
         base_revid = target.last_revision()
 
-    source.lock_read()
+    source_repo.lock_read()
     try:
         revid = push_revision_tree(target, target.get_config(), 
-                                   source.repository, base_revid, revision_id, 
+                                   source_repo, base_revid, revision_id, 
                                    rev, push_metadata=push_metadata)
     finally:
-        source.unlock()
+        source_repo.unlock()
 
     assert revid == revision_id or not push_metadata
 
@@ -854,6 +859,8 @@ class InterToSvnRepository(InterRepository):
                 return
             mutter("pushing %r into svn", todo)
             target_branch = None
+            layout = self.target.get_layout()
+            graph = self.target.get_graph()
             for revision_id in todo:
                 if pb is not None:
                     pb.update("pushing revisions", todo.index(revision_id), len(todo))
@@ -869,7 +876,11 @@ class InterToSvnRepository(InterRepository):
                 if target_branch.get_branch_path() != bp:
                     target_branch.set_branch_path(bp)
 
-                push_revision_tree(target_branch, target_branch.get_config(), self.source, 
+                if layout.push_merged_revisions(target_branch.project) and len(rev.parent_ids) > 1:
+                    push_ancestors(self.target, self.source, layout, "", rev.parent_ids, graph)
+
+                target_config = target_branch.get_config()
+                push_revision_tree(target_branch, target_config, self.source, 
                                    parent_revid, revision_id, rev)
         finally:
             self.source.unlock()
@@ -883,3 +894,18 @@ class InterToSvnRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         return isinstance(target, SvnRepository)
+
+
+def push_ancestors(target_repo, source_repo, layout, project, parent_revids, graph):
+    for parent_revid in parent_revids[1:]:
+        if target_repo.has_revision(parent_revid):
+            continue
+        # Push merged revisions
+        unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
+        for x in graph.iter_topo_order(unique_ancestors):
+            if target_repo.has_revision(x):
+                continue
+            rev = source_repo.get_revision(x)
+            nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8").replace("/","_")
+            rhs_branch_path = layout.get_branch_path(nick, project)
+            push_new(target_repo, rhs_branch_path, source_repo, x)

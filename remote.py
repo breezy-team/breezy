@@ -139,7 +139,7 @@ class SvnRemoteAccess(BzrDir):
                 if repos.transport.check_path(target_branch_path,
                     repos.get_latest_revnum()) != core.NODE_NONE:
                     raise AlreadyBranchError(full_branch_url)
-                push_new(repos, target_branch_path, source, stop_revision)
+                push_new(repos, target_branch_path, source.repository, stop_revision)
             finally:
                 repos.unlock()
             branch = self.open_branch()

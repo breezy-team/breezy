@@ -67,8 +67,8 @@ class PathPropertyProvider(object):
         if prev_path is None and prev_revnum == -1:
             previous = {}
         else:
-            previous = self.get_properties(prev_path.encode("utf-8"), 
-                                           prev_revnum)
+            assert isinstance(prev_path, str)
+            previous = self.get_properties(prev_path, prev_revnum)
         ret = {}
         for key, val in current.items():
             if previous.get(key) != val:

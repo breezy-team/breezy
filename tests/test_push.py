@@ -437,12 +437,12 @@ class TestPush(TestCaseWithSubversionRepository):
         self.build_tree({'mybranch/foo': 'bladata'})
         wt = self.bzrdir.open_workingtree()
         revid = wt.commit(message="Commit from Bzr")
-        push(Branch.open("%s/trunk" % self.repos_url), wt.branch, 
+        push(Branch.open("%s/trunk" % self.repos_url), wt.branch.repository, 
              wt.branch.revision_history()[-2])
         mutter('log %r' % self.client_log("%s/trunk" % self.repos_url, 0, 4)[4][0])
         self.assertEquals('M',
             self.client_log("%s/trunk" % self.repos_url, 0, 4)[4][0]['/trunk'][0])
-        push(Branch.open("%s/trunk" % self.repos_url), wt.branch, wt.branch.last_revision())
+        push(Branch.open("%s/trunk" % self.repos_url), wt.branch.repository, wt.branch.last_revision())
         mutter('log %r' % self.client_log("%s/trunk" % self.repos_url, 0, 5)[5][0])
         self.assertEquals("/branches/mybranch", 
             self.client_log("%s/trunk" % self.repos_url, 0, 5)[5][0]['/trunk'][1])

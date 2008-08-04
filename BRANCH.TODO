@@ -1,5 +1,8 @@
+pushmerge:
+ - make pushmerge option in repository configuration
+ - create branches/ dir automatically
+
 before 0.4.10:
- - regression in http hack?
  - use parents cache more agressively
  - move some config options from RepositoryConfig to BranchConfig
  - use -1 to mean youngest revnum

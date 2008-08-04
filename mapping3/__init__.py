@@ -115,6 +115,9 @@ class SchemeDerivedLayout(RepositoryLayout):
     def get_branch_path(self, name, project=""):
         return self.scheme.get_branch_path(name, project)
 
+    def get_branch_path(self, name, project=""):
+        return self.scheme.get_branch_path(name, project)
+
     def is_branch_parent(self, path):
         # Na, na, na...
         return self.scheme.is_branch_parent(path)
@@ -126,9 +129,12 @@ class SchemeDerivedLayout(RepositoryLayout):
     def push_merged_revisions(self, project=""):
         try:
             self.scheme.get_branch_path("somebranch")
-            return True
+            return self.repository.get_config().get_push_merged_revisions()
         except NotImplementedError:
             return False
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self.scheme))
 
 
 def get_stored_scheme(repository):
