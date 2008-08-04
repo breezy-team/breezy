@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1010,3 +1010,34 @@ class TestInterDifferingSerializer(TestCaseWithTransport):
         inter_repo.fetch('rev-3', pb)
         self.assertEqual(2, pb.last_cnt)
         self.assertEqual(2, pb.last_total)
+
+
+class TestStackUpgrade(TestCaseWithTransport):
+    # TODO: This should possibly be repeated for all stacking repositories,
+    # pairwise by rich/non-rich format; should possibly also try other kinds
+    # of upgrades like knit->pack. -- mbp 20080804
+
+    def test_stack_upgrade(self):
+        """Correct checks when stacked-on repository is upgraded.
+        
+        We initially stack on a repo with the same rich root support, 
+        we then upgrade it and should fail, we then upgrade the overlaid 
+        repository.
+        """
+        base = self.make_branch_and_tree('base', format='1.6')
+        self.build_tree(['base/foo'])
+        base.commit('base commit')
+        # make another one stacked
+        stacked = base.bzrdir.sprout('stacked', stacked=True)
+        # you can't stack on something with incompatible data
+        from bzrlib.upgrade import upgrade
+        new_format = bzrdir.format_registry.make_bzrdir('1.6-rich-root')
+        upgrade('base', new_format)
+        stacked = bzrdir.BzrDir.open('stacked')
+        self.assertRaises(errors.IncompatibleRepositories,
+            stacked.open_branch)
+        # but we can upgrade the stacked repository
+        upgrade('stacked', new_format)
+        # and now it's ok
+        stacked = bzrdir.BzrDir.open('stacked')
+        stacked.open_branch().check()
