@@ -19,7 +19,7 @@
 These tests are repeated for all pack-based repository formats.
 """
 
-from StringIO import StringIO
+from cStringIO import StringIO
 from stat import S_ISDIR
 
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
