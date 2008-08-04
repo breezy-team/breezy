@@ -76,6 +76,15 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``MutableTree.commit`` has an extra optional keywork parameter
+      ``exclude`` that will be unconditionally supplied by the command
+      line UI - plugins that add tree formats may need an update.
+      (Robert Collins)
+
+    * The API minimum version for plugin compatibility has been raised to
+      1.6 - there are significant changes throughout the code base.
+      (Robert Collins)
+
     * The generic fetch code now uses three attributes on Repository objects
       to control fetch. The streams requested are controlled via :
       ``_fetch_order`` and ``_fetch_uses_deltas``. Setting these
