@@ -559,7 +559,7 @@ class SvnWorkingTree(WorkingTree):
             wc = self._get_wc(os.path.dirname(f), write_lock=True)
             try:
                 try:
-                    wc.add(os.path.join(self.basedir, f))
+                    wc.add(self.abspath(f))
                     if ids is not None:
                         self._change_fileid_mapping(ids.next(), f, wc)
                 except SubversionException, (_, num):
