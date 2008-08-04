@@ -661,7 +661,7 @@ class Commit(object):
         # ADHB 11-07-2006
 
         exclude = self.exclude
-        specific_files = self.specific_files
+        specific_files = self.specific_files or []
         mutter("Selecting files for commit with filter %s", specific_files)
 
         # Build the new inventory
