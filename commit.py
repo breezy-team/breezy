@@ -859,13 +859,8 @@ class InterToSvnRepository(InterRepository):
                 return
             mutter("pushing %r into svn", todo)
             target_branch = None
-            layout = target_branch.repository.get_layout()
-            if layout.push_merged_revisions(target_branch.project):
-                push_merged = True
-                graph = target.repository.get_graph()
-            else:
-                push_merged = False
-            target_config = target_branch.get_config()
+            layout = self.target.get_layout()
+            graph = self.target.get_graph()
             for revision_id in todo:
                 if pb is not None:
                     pb.update("pushing revisions", todo.index(revision_id), len(todo))
@@ -881,15 +876,10 @@ class InterToSvnRepository(InterRepository):
                 if target_branch.get_branch_path() != bp:
                     target_branch.set_branch_path(bp)
 
-                if push_merged and len(rev.parent_ids) > 1:
-                    # Push merged revisions
-                    unique_ancestors = graph.find_unique_ancestors(revision_id, todo)
-                    merged_revs = dict(zip(unique_ancestors, self.source.get_revisions(unique_ancestors)))
-                    for x in graph.iter_topo_order(unique_ancestors):
-                        push_revision_tree(layout.get_branch_path(merged_revs[x].properties['nick']), target_config, 
-                                       self.source, 
-                                       merged_revs[x].parent_ids[0], x, merged_revs[x])
+                if layout.push_merged_revisions(target_branch.project) and len(rev.parent_ids) > 1:
+                    push_ancestors(self.target, layout, "", rev.parent_ids, graph)
 
+                target_config = target_branch.get_config()
                 push_revision_tree(target_branch, target_config, self.source, 
                                    parent_revid, revision_id, rev)
         finally:
@@ -904,3 +894,18 @@ class InterToSvnRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         return isinstance(target, SvnRepository)
+
+
+def push_ancestors(repository, layout, project, parent_revids, graph):
+    for parent_revid in parent_revids[1:]:
+        if repository.has_revision(parent_revid):
+            continue
+        # Push merged revisions
+        unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
+        for x in graph.iter_topo_order(unique_ancestors):
+            if repository.has_revision(x):
+                continue
+            rev = other.repository.get_revision(x)
+            nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8").replace("/","_")
+            rhs_branch_path = layout.get_branch_path(nick, project)
+            push_new(repository, rhs_branch_path, other, x)

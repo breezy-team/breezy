@@ -1,7 +1,6 @@
 pushmerge:
  - make pushmerge option in repository configuration
  - create branches/ dir automatically
- - invoke from InterSvnBzrRepository as well
 
 before 0.4.10:
  - use parents cache more agressively

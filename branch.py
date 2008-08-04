@@ -30,7 +30,7 @@ from bzrlib.workingtree import WorkingTree
 from bzrlib.plugins.svn import core, wc
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client, get_config
-from bzrlib.plugins.svn.commit import push, push_new
+from bzrlib.plugins.svn.commit import push, push_new, push_ancestors
 from bzrlib.plugins.svn.config import BranchConfig
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
@@ -516,22 +516,7 @@ class SvnBranch(Branch):
                           len(todo))
                 if push_merged:
                     parent_revids = graph.get_parent_map([revid])[revid]
-                    for parent_revid in parent_revids[1:]:
-                        if self.repository.has_revision(parent_revid):
-                            continue
-                        # Push merged revisions
-                        unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
-                        for x in graph.iter_topo_order(unique_ancestors):
-                            if self.repository.has_revision(x):
-                                continue
-                            rev = other.repository.get_revision(x)
-                            nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8").replace("/","_")
-                            rhs_branch_path = self.layout.get_branch_path(nick, self.project)
-                            assert rhs_branch_path != self.get_branch_path()
-                            push_new(self.repository, 
-                                    rhs_branch_path,
-                                    other, x)
-                            self._clear_cached_state()
+                    push_ancestors(self.repository, self.layout, self.project, parent_revids, graph)
                 push(self, other, revid)
                 self._clear_cached_state()
         finally:
