@@ -4482,11 +4482,12 @@ class cmd_switch(Command):
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
             this_branch = control_dir.open_branch()
+            this_url = this_branch.get_bound_location()
             # This might be a heavyweight checkout
-            if this_branch.get_bound_location() != None:
-                this_branch = Branch.open(this_branch.get_bound_location())
+            if this_url is None:
+                this_url = this_branch.base
             to_branch = Branch.open(
-                this_branch.base + '../' + to_location)
+                this_url + '../' + to_location)
         switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
