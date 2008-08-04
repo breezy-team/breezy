@@ -525,7 +525,7 @@ class SvnBranch(Branch):
                             if self.repository.has_revision(x):
                                 continue
                             rev = other.repository.get_revision(x)
-                            nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8")
+                            nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8").replace("/","_")
                             rhs_branch_path = self.layout.get_branch_path(nick, self.project)
                             assert rhs_branch_path != self.get_branch_path()
                             push_new(self.repository, 
