@@ -219,11 +219,12 @@ def generate_revision_metadata(timestamp, timezone, committer, revprops):
     if timestamp is not None:
         text += "timestamp: %s\n" % format_highres_date(timestamp, timezone) 
     if committer is not None:
-        text += "committer: %s\n" % committer
+        text += "committer: %s\n" % committer.encode("utf-8")
     if revprops is not None and revprops != {}:
         text += "properties: \n"
         for k, v in sorted(revprops.items()):
-            text += "\t%s: %s\n" % (k, v)
+            text += "\t%s: %s\n" % (k.encode("utf-8"), v.encode("utf-8"))
+    assert isinstance(text, str)
     return text
 
 
