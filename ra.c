@@ -869,11 +869,10 @@ static PyObject *ra_get_log(PyObject *self, PyObject *args, PyObject *kwargs)
 	if (temp_pool == NULL)
 		return NULL;
 	if (paths == Py_None) {
-		/* FIXME: The subversion libraries don't behave as expected, 
+		/* The subversion libraries don't behave as expected, 
 		 * so tweak our own parameters a bit. */
 		apr_paths = apr_array_make(temp_pool, 1, sizeof(char *));
 		APR_ARRAY_PUSH(apr_paths, char *) = apr_pstrdup(temp_pool, "");
-		apr_paths = NULL;
 	} else if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
 		apr_pool_destroy(temp_pool);
 		return NULL;
