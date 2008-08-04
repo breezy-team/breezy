@@ -30,7 +30,7 @@ from bzrlib.workingtree import WorkingTree
 from bzrlib.plugins.svn import core, wc
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import Client, get_config
-from bzrlib.plugins.svn.commit import push, push_new, push_ancestors
+from bzrlib.plugins.svn.commit import push, push_ancestors
 from bzrlib.plugins.svn.config import BranchConfig
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
@@ -335,7 +335,7 @@ class SvnBranch(Branch):
         """See Branch.set_revision_history()."""
         if rev_history == [] or not self.repository.has_revision(rev_history[-1]):
             raise NotImplementedError("set_revision_history can't add ghosts")
-        push(self, self, rev_history[-1])
+        push(self, self.repository, rev_history[-1])
         self._clear_cached_state()
 
     def set_last_revision_info(self, revno, revid):
@@ -516,8 +516,8 @@ class SvnBranch(Branch):
                           len(todo))
                 if push_merged:
                     parent_revids = graph.get_parent_map([revid])[revid]
-                    push_ancestors(self.repository, self.layout, self.project, parent_revids, graph)
-                push(self, other, revid)
+                    push_ancestors(self.repository, other.repository, self.layout, self.project, parent_revids, graph)
+                push(self, other.repository, revid)
                 self._clear_cached_state()
         finally:
             pb.finished()

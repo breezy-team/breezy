@@ -21,7 +21,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches,
                            UnrelatedBranches, AppendRevisionsOnlyViolation,
                            NoSuchRevision)
 from bzrlib.inventory import Inventory
-from bzrlib.repository import RootCommitBuilder, InterRepository
+from bzrlib.repository import RootCommitBuilder, InterRepository, Repository
 from bzrlib.revision import NULL_REVISION, ensure_null
 from bzrlib.trace import mutter, warning
 
@@ -649,10 +649,10 @@ def push_new(target_repository, target_branch_path, source, stop_revision,
 
     :param target_repository: Repository to push to
     :param target_branch_path: Path to create new branch at
-    :param source: Branch to pull the revision from
+    :param source: Source repository
     """
-    assert isinstance(source, Branch)
-    revhistory = list(source.repository.iter_reverse_revision_history(stop_revision))
+    assert isinstance(source, Repository)
+    revhistory = list(source.iter_reverse_revision_history(stop_revision))
     history = list(revhistory)
     history.reverse()
     start_revid_parent = NULL_REVISION
@@ -735,7 +735,7 @@ def dpush(target, source, stop_revision=None):
             for revid in todo:
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
-                revid_map[revid] = push(target, source, revid, 
+                revid_map[revid] = push(target, source.repository, revid, 
                                         push_metadata=False)
                 source.repository.fetch(target.repository, 
                                         revision_id=revid_map[revid])
@@ -781,18 +781,18 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
     return revid
 
 
-def push(target, source, revision_id, push_metadata=True):
+def push(target, source_repo, revision_id, push_metadata=True):
     """Push a revision into Subversion.
 
     This will do a new commit in the target branch.
 
     :param target: Branch to push to
-    :param source: Branch to pull the revision from
+    :param source_repo: Branch to pull the revision from
     :param revision_id: Revision id of the revision to push
     :return: revision id of revision that was pushed
     """
-    assert isinstance(source, Branch)
-    rev = source.repository.get_revision(revision_id)
+    assert isinstance(source_repo, Repository)
+    rev = source_repo.get_revision(revision_id)
     mutter('pushing %r (%r)', revision_id, rev.parent_ids)
 
     # revision on top of which to commit
@@ -804,13 +804,13 @@ def push(target, source, revision_id, push_metadata=True):
     else:
         base_revid = target.last_revision()
 
-    source.lock_read()
+    source_repo.lock_read()
     try:
         revid = push_revision_tree(target, target.get_config(), 
-                                   source.repository, base_revid, revision_id, 
+                                   source_repo, base_revid, revision_id, 
                                    rev, push_metadata=push_metadata)
     finally:
-        source.unlock()
+        source_repo.unlock()
 
     assert revid == revision_id or not push_metadata
 
@@ -877,7 +877,7 @@ class InterToSvnRepository(InterRepository):
                     target_branch.set_branch_path(bp)
 
                 if layout.push_merged_revisions(target_branch.project) and len(rev.parent_ids) > 1:
-                    push_ancestors(self.target, layout, "", rev.parent_ids, graph)
+                    push_ancestors(self.target, self.source, layout, "", rev.parent_ids, graph)
 
                 target_config = target_branch.get_config()
                 push_revision_tree(target_branch, target_config, self.source, 
@@ -896,16 +896,16 @@ class InterToSvnRepository(InterRepository):
         return isinstance(target, SvnRepository)
 
 
-def push_ancestors(repository, layout, project, parent_revids, graph):
+def push_ancestors(target_repo, source_repo, layout, project, parent_revids, graph):
     for parent_revid in parent_revids[1:]:
-        if repository.has_revision(parent_revid):
+        if target_repo.has_revision(parent_revid):
             continue
         # Push merged revisions
         unique_ancestors = graph.find_unique_ancestors(parent_revid, [parent_revids[0]])
         for x in graph.iter_topo_order(unique_ancestors):
-            if repository.has_revision(x):
+            if target_repo.has_revision(x):
                 continue
-            rev = other.repository.get_revision(x)
+            rev = source_repo.get_revision(x)
             nick = (rev.properties.get('branch-nick') or "merged").encode("utf-8").replace("/","_")
             rhs_branch_path = layout.get_branch_path(nick, project)
-            push_new(repository, rhs_branch_path, other, x)
+            push_new(target_repo, rhs_branch_path, source_repo, x)
