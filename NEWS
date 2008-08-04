@@ -51,6 +51,9 @@ bzr-svn 0.4.11    UNRELEASED
    * Support bzr sign-my-commits. (Requires revision properties in the 
 	 Subversion repository to be mutable)
 
+   * Support pushing merged revisions. To enable, set 
+     ``push_merged_revisions = True'' in the repository config. (#158883)
+
   BUG FIXES
 
    * Now uses absolute imports and no longer adds plugin directory to the 

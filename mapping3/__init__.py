@@ -126,7 +126,7 @@ class SchemeDerivedLayout(RepositoryLayout):
     def push_merged_revisions(self, project=""):
         try:
             self.scheme.get_branch_path("somebranch")
-            return True
+            return self.repository.get_config().get_push_merged_revisions()
         except NotImplementedError:
             return False
 

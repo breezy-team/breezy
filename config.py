@@ -173,6 +173,13 @@ class SvnRepositoryConfig(IniBasedConfig):
             return set()
         return set(val.split(";"))
 
+    def get_push_merged_revisions(self):
+        """Check whether merged revisions should be pushed."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "push_merged_revisions")
+        except KeyError:
+            return None
+
     def add_location(self, location):
         """Add a location for this repository.
 
