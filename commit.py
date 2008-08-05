@@ -457,8 +457,9 @@ class SvnCommitBuilder(RootCommitBuilder):
 
                 if (not child_ie.file_id in old_inv or 
                     old_inv.id2path(child_ie.file_id) != new_child_path or
+                    old_inv[child_ie.file_id].revision != child_ie.revision or
                     old_inv[child_ie.file_id].parent_id != child_ie.parent_id):
-                    ret.append((child_ie.file_id, new_child_path))
+                    ret.append((child_ie.file_id, new_child_path, child_ie.revision))
 
                 if (child_ie.kind == 'directory' and 
                     child_ie.file_id in self.modified_dirs):
@@ -466,14 +467,22 @@ class SvnCommitBuilder(RootCommitBuilder):
             return ret
 
         fileids = {}
+        text_parents = {}
+
+        changes = []
 
         if (self.old_inv.root is None or 
             self.new_inventory.root.file_id != self.old_inv.root.file_id):
-            fileids[""] = self.new_inventory.root.file_id
+            changes.append((self.new_inventory.root.file_id, "", self.new_inventory.root.revision))
 
-        for id, path in _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id):
+        changes += _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id)
+
+        for id, path, revid in changes:
             fileids[path] = id
+            if revid is not None and revid != self.base_revid:
+                text_parents[path] = revid
 
+        self.bsae_mapping.export_text_parents(text_parents, self._svn_revprops, self._svn_props)
         self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
         if self._config.get_log_strip_trailing_newline():
             self.base_mapping.export_message(message, self._svn_revprops, self._svnprops)
