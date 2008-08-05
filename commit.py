@@ -482,7 +482,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if revid is not None and revid != self.base_revid:
                 text_parents[path] = revid
 
-        self.bsae_mapping.export_text_parents(text_parents, self._svn_revprops, self._svn_props)
+        self.base_mapping.export_text_parents(text_parents, self._svn_revprops, self._svnprops)
         self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
         if self._config.get_log_strip_trailing_newline():
             self.base_mapping.export_message(message, self._svn_revprops, self._svnprops)
