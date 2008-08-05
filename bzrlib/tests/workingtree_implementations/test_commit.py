@@ -233,7 +233,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         tree.smart_add(['.'])
-        tree.commit('test', exclude=['a/b'])
+        tree.commit('test', specific_files=['a'], exclude=['a/b'])
         # If a/b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
