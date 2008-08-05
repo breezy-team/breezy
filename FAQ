@@ -48,6 +48,8 @@ numbers, use the "svn:" revision specifier. For example:
 
   $ bzr ls -rsvn:34 svn://example.com/bar
 
+bzr log will also show the Subversion revision number.
+
 After upgrading bzr-svn, Bazaar reports branches have diverged while pulling, when they haven't
 -----------------------------------------------------------------------------------------------
 As of version 0.4, bzr-svn creates revisions with different revision ids than 
