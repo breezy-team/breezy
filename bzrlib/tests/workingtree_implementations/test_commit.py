@@ -195,6 +195,52 @@ class TestCommit(TestCaseWithWorkingTree):
                           ('xyz/m', 'm-id'),
                          ], paths)
 
+    def test_commit_exclude_pending_merge_fails(self):
+        """Excludes are a form of partial commit."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add('foo')
+        wt.commit('commit one')
+        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2.commit('change_right')
+        wt.merge_from_branch(wt2.branch)
+        self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            wt.commit, 'test', exclude=['foo'])
+
+    def test_commit_exclude_exclude_changed_is_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.smart_add(['.'])
+        tree.commit('setup test')
+        self.build_tree_contents([('a', 'new contents for "a"\n')])
+        self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
+            exclude=['a'], allow_pointless=False)
+
+    def test_commit_exclude_excludes_modified_files(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        tree.commit('test', exclude=['b', 'c'])
+        # If b was excluded it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(2, len(changes))
+        self.assertEqual((None, 'b'), changes[0][1])
+        self.assertEqual((None, 'c'), changes[1][1])
+
+    def test_commit_exclude_subtree_of_selected(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tree.smart_add(['.'])
+        tree.commit('test', exclude=['a/b'])
+        # If a/b was excluded it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(1, len(changes))
+        self.assertEqual((None, 'a/b'), changes[0][1])
+
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         committed_id = tree.commit('foo', rev_id='foo')
