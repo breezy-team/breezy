@@ -2815,6 +2815,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_upgrade_stacked',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
