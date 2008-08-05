@@ -4392,6 +4392,8 @@ class cmd_tags(Command):
             ):
         branch, relpath = Branch.open_containing(directory)
         tags = branch.tags.get_tag_dict().items()
+        if not tags:
+            return
         if sort == 'alpha':
             tags.sort()
         elif sort == 'time':
