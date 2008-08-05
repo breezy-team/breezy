@@ -68,6 +68,9 @@ IN DEVELOPMENT
       cause subsequent errors in ``bzr st`` and ``bzr commit``.
       (Robert Collins, #150438)
 
+    * The help for ``bzr ignored`` now sugests ``bzr ls --ignored`` for
+      scripting use. (Robert Collins, #3834)
+
   DOCUMENTATION:
 
 
