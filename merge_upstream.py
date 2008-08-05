@@ -114,8 +114,6 @@ def merge_upstream(tree, source, version_number):
     :return: None
     :throws NoSuchTag: if the tag for the last upstream version is not found.
     """
-    if tree.changes_from(tree.basis_tree()).has_changed():
-      raise BzrCommandError("Working tree has uncommitted changes.")
     if not os.path.exists(source):
       raise NoSuchFile(source)
     empty_branch = len(tree.branch.revision_history()) == 0

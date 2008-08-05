@@ -422,6 +422,9 @@ class cmd_merge_upstream(Command):
                             "file, or use it as the argument to import.")
     filename = os.path.join(orig_dir, dest_name)
 
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise BzrCommandError("Working tree has uncommitted changes.")
+
     try:
       merge_upstream(tree, filename, version)
     # TODO: tidy all of this up, and be more precise in what is wrong and
