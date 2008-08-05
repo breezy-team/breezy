@@ -147,6 +147,37 @@ class TestAnnotate(TestCaseWithTransport):
                          ' exactly 1 argument\n',
                          err)
 
+
+class TestSimpleAnnotate(TestCaseWithTransport):
+    """Annotate tests with no complex setup."""
+
+    def _setup_edited_file(self):
+        """Create a tree with a locally edited file."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('file', 'foo\ngam\n')])
+        tree.add('file')
+        tree.commit('add file', committer="test@host", rev_id="1")
+        self.build_tree_contents([('file', 'foo\nbar\ngam\n')])
+        tree.branch.get_config().set_user_option('email', 'current@host2')
+
+    def test_annotate_edited_file(self):
+        tree = self._setup_edited_file()
+        out, err = self.run_bzr('annotate file')
+        self.assertEqual(
+            '1   test@ho | foo\n'
+            '2?  current | bar\n'
+            '1   test@ho | gam\n',
+            out)
+
+    def test_annotate_edited_file_show_ids(self):
+        tree = self._setup_edited_file()
+        out, err = self.run_bzr('annotate file --show-ids')
+        self.assertEqual(
+            '       1 | foo\n'
+            'current: | bar\n'
+            '       1 | gam\n',
+            out)
+
     def test_annotate_empty_file(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/empty', '')])

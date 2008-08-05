@@ -3498,7 +3498,7 @@ class cmd_annotate(Command):
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False):
-        from bzrlib.annotate import annotate_file
+        from bzrlib.annotate import annotate_file, annotate_file_tree
         wt, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(filename)
         if wt is not None:
@@ -3520,8 +3520,14 @@ class cmd_annotate(Command):
             if file_id is None:
                 raise errors.NotVersionedError(filename)
             file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, self.outf,
-                          show_ids=show_ids)
+            if wt is not None and revision is None:
+                # If there is a tree and we're not annotating historical
+                # versions, annotate the working tree's content.
+                annotate_file_tree(wt, file_id, self.outf, long, all,
+                    show_ids=show_ids)
+            else:
+                annotate_file(branch, file_version, file_id, long, all, self.outf,
+                              show_ids=show_ids)
         finally:
             if wt is not None:
                 wt.unlock()

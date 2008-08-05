@@ -20,6 +20,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr annotate`` will now include uncommitted changes from the local
+      working tree by default. Such uncommitted changes are given the
+      revision number they would get if a commit was done, followed with a
+      ? to indicate that its not actually known. (Robert Collins, #3439)
+
     * ``bzr check`` can now be told which elements at a location it should
       check.  (Daniel Watkins)
 
