@@ -578,6 +578,51 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.exists("bzrco/baz.txt"))
         wt.branch.push(Branch.open(repos_url+"/trunk"))
 
+    def test_push_merge_unchanged_file(self):
+        repos_url = self.make_repository("test")
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.add_file("trunk/foo.txt").modify("add file")
+        dc.close()
+
+        os.mkdir('bzrco1')
+        dir1 = BzrDir.open(repos_url+"/trunk").sprout("bzrco1")
+
+        os.mkdir('bzrco2')
+        dir2 = BzrDir.open(repos_url+"/trunk").sprout("bzrco2")
+
+        wt1 = dir1.open_workingtree()
+        self.build_tree({'bzrco1/bar.txt': 'bar'})
+        wt1.add("bar.txt")
+        base_revid = wt1.commit("add another file", rev_id="mybase")
+        wt1.branch.push(Branch.open(repos_url+"/trunk"))
+
+        wt2 = dir2.open_workingtree()
+        self.build_tree({'bzrco2/bar2.txt': 'bar'})
+        wt2.add("bar2.txt")
+        other_revid = wt2.commit("add yet another file", rev_id="side1")
+
+        wt1.lock_write()
+        try:
+            wt1.branch.repository.fetch(wt2.branch.repository)
+            merge = Merger.from_revision_ids(DummyProgress(), wt1, other=other_revid)
+            merge.merge_type = Merge3Merger
+            merge.do_merge()
+            merge.set_pending()
+            self.assertEquals([wt1.last_revision(), other_revid], wt1.get_parent_ids())
+            mergingrevid = wt1.commit("merge", rev_id="side2")
+        finally:
+            wt1.unlock()
+        self.assertTrue(os.path.exists("bzrco1/bar2.txt"))
+        wt1.branch.push(Branch.open(repos_url+"/trunk"))
+        r = Repository.open(repos_url)
+        t = r.revision_tree(mergingrevid)
+        props = r.branchprop_list.get_changed_properties("trunk", 3)
+        self.assertEquals(props['bzr:text-parents'], 'bar2.txt\tside1\n')
+        self.assertEquals(base_revid, t.inventory[t.path2id("bar.txt")].revision)
+        self.assertEquals(other_revid, t.inventory[t.path2id("bar2.txt")].revision)
+
     def test_missing_prefix_error(self):
         repos_url = self.make_repository("a")
         bzrwt = BzrDir.create_standalone_workingtree("c", 
