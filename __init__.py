@@ -364,7 +364,7 @@ class cmd_merge_upstream(Command):
   will change the name of the source package then you can use this option
   to set the new name.
   """
-  takes_args = ['path']
+  takes_args = ['location']
   aliases = ['mu']
 
   package_opt = Option('package', help="The name of the source package.",
@@ -373,7 +373,7 @@ class cmd_merge_upstream(Command):
                        "upstream release. (Required).", type=str)
   takes_options = [package_opt, version_opt]
 
-  def run(self, path, version=None, package=None):
+  def run(self, location, version=None, package=None):
 
     from bzrlib.errors import (NoSuchTag,
                                TagAlreadyExists,
@@ -405,7 +405,7 @@ class cmd_merge_upstream(Command):
       try:
         package = find_changelog(tree, False)[0].package
       except MissingChangelogError:
-        raise BzrCommandError("There is no changelog to rertrieve the package "
+        raise BzrCommandError("There is no changelog to retrieve the package "
                               "information from, please use the --package "
                               "option to give the name of the package")
 
@@ -414,7 +414,7 @@ class cmd_merge_upstream(Command):
 
     dest_name = tarball_name(package, version)
     try:
-      repack_tarball(path, dest_name, target_dir=orig_dir)
+      repack_tarball(location, dest_name, target_dir=orig_dir)
     except FileExists:
       raise BzrCommandError("The target file %s already exists, and is either "
                             "different to the new upstream tarball, or they "
