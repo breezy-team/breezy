@@ -7,7 +7,7 @@ bzr_plugin_version = (0, 7, 0, 'dev', 0)
 bzr_minimum_version = (1, 1, 0)
 bzr_maximum_version = None
 
-if __name__ == 'main':
+if __name__ == '__main__':
     setup(name="fastimport",
           version="0.7.0dev0",
           description="stream-based import into and export from Bazaar.",
@@ -15,6 +15,7 @@ if __name__ == 'main':
           author_email="bazaar@lists.canonical.com",
           license = "GNU GPL v2",
           url="https://launchpad.net/bzr-fastimport",
+          scripts=['exporters/bzr-fast-export'],
           packages=['bzrlib.plugins.fastimport',
                     'bzrlib.plugins.fastimport.processors',
                     'bzrlib.plugins.fastimport.tests',
