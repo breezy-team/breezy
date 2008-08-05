@@ -46,7 +46,7 @@ How emails are sent is determined by the value of the configuration option
  - ``smtplib``: Use python's smtplib to send the mail. If you use 'smtplib' you
    can also configure the settings "smtp_server=host[:port]",
    "smtp_username=userid", "smtp_password". If "smtp_username" is set but
-   "smtp_password" is not, you will be prompted for a password.S
+   "smtp_password" is not, you will be prompted for a password.
 
    Also, if using 'smtplib', the messages will be sent as a UTF-8 text message,
    with a 8-bit text diff attached (rather than all-as-one). Work has also been
