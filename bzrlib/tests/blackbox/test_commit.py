@@ -339,7 +339,7 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b'])
         self.assertFalse('added b' in out)
         self.assertFalse('added b' in err)
-        # If b was ignored it will still be 'added' in status.
+        # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(['added'])
         self.assertEqual('b\n', out)
         self.assertEqual('', err)
@@ -354,9 +354,10 @@ class TestCommit(ExternalBase):
         self.assertFalse('added c' in out)
         self.assertFalse('added b' in err)
         self.assertFalse('added c' in err)
-        # If b was ignored it will still be 'added' in status.
+        # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(['added'])
-        self.assertEqual('b\nc\n', out)
+        self.assertTrue('b\n' in out)
+        self.assertTrue('c\n' in out)
         self.assertEqual('', err)
 
     def test_commit_respects_spec_for_removals(self):

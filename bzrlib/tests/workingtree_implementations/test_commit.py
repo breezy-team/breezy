@@ -221,7 +221,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b', 'c'])
         tree.smart_add(['.'])
         tree.commit('test', exclude=['b', 'c'])
-        # If b was ignored it will still be 'added' in status.
+        # If b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
@@ -234,7 +234,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b'])
         tree.smart_add(['.'])
         tree.commit('test', exclude=['a/b'])
-        # If a/b was ignored it will still be 'added' in status.
+        # If a/b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
