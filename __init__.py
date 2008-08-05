@@ -37,7 +37,7 @@ The URL of the branch is determined from the following checks (in order):
  - The URL of the branch itself.
 
 Setting public_branch is highly recommended if you commit via a protocol which
-has a pricate address (e.g. bzr+ssh but anonymous access might be bzr:// or
+has a private address (e.g. bzr+ssh but anonymous access might be bzr:// or
 http://).
 
 How emails are sent is determined by the value of the configuration option
