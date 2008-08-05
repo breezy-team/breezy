@@ -322,6 +322,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
     def __eq__(self, other):
         return type(self) == type(other) and self.scheme == other.scheme
 
+
 class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
     pass
 
@@ -348,6 +349,12 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         else:
             return self.fileprops.get_revision_id(branch_path, revprops, fileprops)
 
+    def import_text_parents(self, svn_revprops, fileprops):
+        if svn_revprops.has_key(mapping.SVN_REVPROP_BZR_TEXT_PARENTS):
+            return self.revprops.import_text_parents(svn_revprops, fileprops)
+        else:
+            return self.fileprops.import_text_parents(svn_revprops, fileprops)
+
     def import_fileid_map(self, svn_revprops, fileprops):
         if svn_revprops.has_key(mapping.SVN_REVPROP_BZR_MAPPING_VERSION):
             return self.revprops.import_fileid_map(svn_revprops, fileprops)
@@ -365,6 +372,10 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
     def export_fileid_map(self, fileids, revprops, fileprops):
         self.fileprops.export_fileid_map(fileids, revprops, fileprops)
         self.revprops.export_fileid_map(fileids, revprops, fileprops)
+
+    def export_text_parents(self, text_parents, revprops, fileprops):
+        self.fileprops.export_text_parents(text_parents, revprops, fileprops)
+        self.revprops.export_text_parents(text_parents, revprops, fileprops)
 
     def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         self.fileprops.import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)

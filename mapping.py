@@ -32,6 +32,7 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
+SVN_PROP_BZR_TEXT_PARENTS = 'bzr:text-parents'
 
 SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
 SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
@@ -44,6 +45,7 @@ SVN_REVPROP_BZR_ROOT = 'bzr:root'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_REVPROP_BZR_TIMESTAMP = 'bzr:timestamp'
 SVN_REVPROP_BZR_LOG = 'bzr:log'
+SVN_REVPROP_BZR_TEXT_PARENTS = 'bzr:text-parents'
 
 
 def escape_svn_path(x):
@@ -364,6 +366,23 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.export_fileid_map)
 
+    def import_text_parents(self, revprops, fileprops):
+        """Obtain a text parent map from properties.
+
+        :param revprops: Subversion revision properties.
+        :param fileprops: File properties.
+        """
+        raise NotImplementedError(self.import_text_parents)
+
+    def export_text_parents(self, text_parents, revprops, fileprops):
+        """Store a text parent map.
+
+        :param text_parents: Text parent map
+        :param revprops: Revision properties
+        :param fileprops: File properties
+        """
+        raise NotImplementedError(self.export_text_parents)
+
     def export_revision(self, branch_root, timestamp, timezone, committer, revprops, 
                         revision_id, revno, merges, fileprops):
         """Determines the revision properties and branch root file 
@@ -435,7 +454,7 @@ class BzrSvnMappingv2(BzrSvnMapping):
 def parse_fileid_property(text):
     ret = {}
     for line in text.splitlines():
-        (path, key) = line.split("\t", 2)
+        (path, key) = line.split("\t", 1)
         ret[urllib.unquote(path)] = osutils.safe_file_id(key)
     return ret
 
@@ -443,6 +462,18 @@ def parse_fileid_property(text):
 def generate_fileid_property(fileids):
     """Marshall a dictionary with file ids."""
     return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), fileids[path]) for path in sorted(fileids.keys())])
+
+
+def parse_text_parents_property(text):
+    ret = {}
+    for line in text.splitlines():
+        (entry, parent_revid) = line.split("\t", 1)
+        ret[urllib.unquote(entry)] = osutils.safe_revision_id(parent_revid)
+    return ret
+
+
+def generate_text_parents_property(text_parents):
+    return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), text_parents[path]) for path in sorted(text_parents.keys())])
 
 
 class BzrSvnMappingFileProps(object):
@@ -456,6 +487,18 @@ class BzrSvnMappingFileProps(object):
         metadata = fileprops.get(SVN_PROP_BZR_REVISION_INFO)
         if metadata is not None:
             parse_revision_metadata(metadata, rev)
+
+    def import_text_parents(self, svn_revprops, fileprops):
+        metadata = fileprops.get(SVN_PROP_BZR_TEXT_PARENTS)
+        if metadata is None:
+            return {}
+        return parse_text_parents_property(metadata)
+
+    def export_text_parents(self, text_parents, svn_revprops, fileprops):
+        if text_parents != {}:
+            fileprops[SVN_PROP_BZR_TEXT_PARENTS] = generate_text_parents_property(text_parents)
+        else:
+            fileprops[SVN_PROP_BZR_TEXT_PARENTS] = ""
 
     def get_rhs_parents(self, branch_path, revprops, fileprops):
         bzr_merges = fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
@@ -546,6 +589,14 @@ class BzrSvnMappingRevProps(object):
         if not svn_revprops.has_key(SVN_REVPROP_BZR_FILEIDS):
             return {}
         return parse_fileid_property(svn_revprops[SVN_REVPROP_BZR_FILEIDS])
+
+    def import_text_parents(self, svn_revprops, fileprops):
+        if not svn_revprops.has_key(SVN_REVPROP_BZR_TEXT_PARENTS):
+            return {}
+        return parse_text_parents_property(svn_revprops[SVN_REVPROP_BZR_TEXT_PARENTS])
+
+    def export_text_parents(self, text_parents, svn_revprops, fileprops):
+        svn_revprops[SVN_REVPROP_BZR_TEXT_PARENTS] = generate_text_parents_property(text_parents)
 
     def get_rhs_parents(self, branch_path, svn_revprops, 
                         fileprops):

@@ -24,8 +24,8 @@ from bzrlib.trace import mutter
 
 from bzrlib.plugins.svn.errors import InvalidPropertyValue
 from bzrlib.plugins.svn.mapping import (generate_revision_metadata, parse_revision_metadata, 
-                     parse_revid_property, parse_merge_property, 
-                     BzrSvnMappingv1, BzrSvnMappingv2, 
+                     parse_revid_property, parse_merge_property, parse_text_parents_property,
+                     generate_text_parents_property, BzrSvnMappingv1, BzrSvnMappingv2, 
                      BzrSvnMappingv4, parse_revision_id)
 from bzrlib.plugins.svn.mapping3 import (BzrSvnMappingv3FileProps, BzrSvnMappingv3RevProps, 
                       BzrSvnMappingv3Hybrid)
@@ -114,6 +114,22 @@ class MetadataMarshallerTests(TestCase):
                 lambda: parse_revid_property("foo\nbar"))
 
 
+class ParseTextParentsTestCase(TestCase):
+    def test_text_parents(self):
+        self.assertEquals({"bla": "bloe"}, parse_text_parents_property("bla\tbloe\n"))
+
+    def test_text_parents_empty(self):
+        self.assertEquals({}, parse_text_parents_property(""))
+
+
+class GenerateTextParentsTestCase(TestCase):
+    def test_generate_empty(self):
+        self.assertEquals("", generate_text_parents_property({}))
+
+    def test_generate_simple(self):
+        self.assertEquals("bla\tbloe\n", generate_text_parents_property({"bla": "bloe"}))
+
+
 class ParseMergePropertyTestCase(TestCase):
     def test_parse_merge_space(self):
         self.assertEqual((), parse_merge_property("bla bla"))
@@ -144,6 +160,16 @@ class MappingTestAdapter(object):
         revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
         self.assertEquals(fileids, 
                 self.mapping.import_fileid_map(revprops, fileprops))
+
+    def test_text_parents(self):
+        if not self.mapping.supports_roundtripping():
+            raise TestNotApplicable
+        revprops = {}
+        fileprops = {}
+        text_parents = {"bla": "bloe", "ll": "12"}
+        self.mapping.export_text_parents(text_parents, revprops, fileprops)
+        self.assertEquals(text_parents,
+            self.mapping.import_text_parents(revprops, fileprops))
 
     def test_message(self):
         if not self.mapping.supports_roundtripping():
