@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Blackbox tests."""
 
+import bzrlib.gpg
 from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import KnownFailure
@@ -31,11 +32,14 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         repos_url = self.make_repository('d')
         self.run_bzr("branch %s dc" % repos_url)
 
+    def commit_something(self, repos_url):
+        dc = self.get_commit_editor(repos_url)
+        dc.add_file("foo").modify("bar")
+        dc.close()
+
     def test_branch_onerev(self):
         repos_url = self.make_client('d', 'de')
-        self.build_tree({'de/foo': 'bar'})
-        self.client_add('de/foo')
-        self.client_commit("de", "msg")
+        self.commit_something()
         self.run_bzr("branch %s dc" % repos_url)
         self.check_output("2\n", "revno de")
         
@@ -354,3 +358,26 @@ if len(sys.argv) == 2:
         self.make_fake_editor()
         repos_url = self.make_repository("a")
         self.check_output("", 'svn-branching-scheme --repository-wide --set %s' % repos_url)
+
+    def monkey_patch_gpg(self):
+        """Monkey patch the gpg signing strategy to be a loopback.
+
+        This also registers the cleanup, so that we will revert to
+        the original gpg strategy when done.
+        """
+        self._oldstrategy = bzrlib.gpg.GPGStrategy
+
+        # monkey patch gpg signing mechanism
+        bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+
+        self.addCleanup(self._fix_gpg_strategy)
+
+    def _fix_gpg_strategy(self):
+        bzrlib.gpg.GPGStrategy = self._oldstrategy
+
+    def test_sign_my_commits(self):
+        repos_url = self.make_repository('dc')
+        self.commit_something(repos_url)
+
+        self.monkey_patch_gpg()
+        self.run_bzr('sign-my-commits')
