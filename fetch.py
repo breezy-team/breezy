@@ -30,12 +30,7 @@ from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
 from bzrlib.plugins.svn.errors import InvalidFileName
 from bzrlib.plugins.svn.logwalker import lazy_dict
-from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE, 
-                     SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                     SVN_PROP_BZR_REVISION_ID,
-                     SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
-                     parse_merge_property,
-                     parse_revision_metadata)
+from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_PREFIX, SVN_REVPROP_BZR_SIGNATURE)
 from bzrlib.plugins.svn.properties import parse_externals_description
 from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
 from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
@@ -424,6 +419,9 @@ class RevisionBuildEditor(DeltaBuildEditor):
     def _finish_commit(self):
         (rev, signature) = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
+        for path, textrevid in self.mapping.import_text_parents(self.revmeta.revprops, 
+                                                                self.revmeta.fileprops).items():
+            self.inventory[self.inventory.path2id(path)].revision = textrevid
         # Escaping the commit message is really the task of the serialiser
         rev.message = _escape_commit_message(rev.message)
         rev.inventory_sha1 = None

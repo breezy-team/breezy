@@ -579,6 +579,9 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         wt.branch.push(Branch.open(repos_url+"/trunk"))
 
     def test_push_merge_unchanged_file(self):
+        def check_tree(t):
+            self.assertEquals(base_revid, t.inventory[t.path2id("bar.txt")].revision)
+            self.assertEquals(other_revid, t.inventory[t.path2id("bar2.txt")].revision)
         repos_url = self.make_repository("test")
 
         dc = self.get_commit_editor(repos_url)
@@ -612,16 +615,23 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
             merge.set_pending()
             self.assertEquals([wt1.last_revision(), other_revid], wt1.get_parent_ids())
             mergingrevid = wt1.commit("merge", rev_id="side2")
+            check_tree(wt1.branch.repository.revision_tree(mergingrevid))
         finally:
             wt1.unlock()
         self.assertTrue(os.path.exists("bzrco1/bar2.txt"))
         wt1.branch.push(Branch.open(repos_url+"/trunk"))
         r = Repository.open(repos_url)
-        t = r.revision_tree(mergingrevid)
         props = r.branchprop_list.get_changed_properties("trunk", 3)
         self.assertEquals(props['bzr:text-parents'], 'bar2.txt\tside1\n')
-        self.assertEquals(base_revid, t.inventory[t.path2id("bar.txt")].revision)
-        self.assertEquals(other_revid, t.inventory[t.path2id("bar2.txt")].revision)
+
+        os.mkdir("cpy")
+        cpy = BzrDir.create("cpy", format.get_rich_root_format())
+        cpyrepos = cpy.create_repository()
+        r.copy_content_into(cpyrepos)
+        check_tree(cpyrepos.revision_tree(mergingrevid))
+
+        t = r.revision_tree(mergingrevid)
+        check_tree(t)
 
     def test_missing_prefix_error(self):
         repos_url = self.make_repository("a")
