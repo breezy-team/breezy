@@ -86,6 +86,8 @@ def apr_build_data():
 
 def svn_build_data():
     """Determine the Subversion header file location."""
+    if "SVN_HEADER_PATH" in os.environ and "SVN_LIBRARY_PATH" in os.environ:
+        return ([os.getenv("SVN_HEADER_PATH")], [os.getenv("SVN_LIBRARY_PATH")], [])
     svn_prefix = os.getenv("SVN_PREFIX")
     if svn_prefix is None:
         basedirs = ["/usr/local", "/usr"]
@@ -98,7 +100,7 @@ def svn_build_data():
         return ([os.path.join(svn_prefix, "include/subversion-1")], 
                 [os.path.join(svn_prefix, "lib")], [])
     raise Exception("Subversion development files not found. "
-                    "Please set SVN_PREFIX environment variable. ")
+                    "Please set SVN_PREFIX or (SVN_LIBRARY_PATH and SVN_HEADER_PATH) environment variable. ")
 
 # Windows versions - we use environment variables to locate the directories
 # and hard-code a list of libraries.
