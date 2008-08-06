@@ -1,8 +1,9 @@
-bzr (1.5-2) UNRELEASED; urgency=low
+bzr (1.6~rc1-1) UNRELEASED; urgency=low
 
+  * New upstream release.
   * Remove unused lintian overrides.
 
- -- Jelmer Vernooij <jelmer@samba.org>  Sun, 27 Jul 2008 15:36:14 +0200
+ -- Jelmer Vernooij <jelmer@samba.org>  Wed, 06 Aug 2008 17:37:14 +0200
 
 bzr (1.5-1) unstable; urgency=low
 
