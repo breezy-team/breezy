@@ -87,13 +87,27 @@ def internal_tree_files(file_list, default_branch=u'.'):
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
+    return tree, safe_relpath_files(tree, file_list)
+
+
+def safe_relpath_files(tree, file_list):
+    """Convert file_list into a list of relpaths in tree.
+
+    :param tree: A tree to operate on.
+    :param file_list: A list of user provided paths or None.
+    :return: A list of relative paths.
+    :raises errors.PathNotChild: When a provided path is in a different tree
+        than tree.
+    """
+    if file_list is None:
+        return None
     new_list = []
     for filename in file_list:
         try:
             new_list.append(tree.relpath(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
-    return tree, new_list
+    return new_list
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -2121,6 +2135,12 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
+    When excludes are given, they take precedence over selected files.
+    For example, too commit only changes within foo, but not changes within
+    foo/bar::
+
+      bzr commit foo -x foo/bar
+
     If author of the change is not the same person as the committer, you can
     specify the author's name using the --author option. The name should be
     in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
@@ -2156,6 +2176,8 @@ class cmd_commit(Command):
     _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
+            ListOption('exclude', type=str, short_name='x',
+                help="Do not consider changes made to a given path."),
             Option('message', type=unicode,
                    short_name='m',
                    help="Description of the new revision."),
@@ -2210,7 +2232,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False):
+            author=None, show_diff=False, exclude=None):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2260,7 +2282,7 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError(
                     "please specify either --message or --file")
             if file:
-                my_message = codecs.open(file, 'rt', 
+                my_message = codecs.open(file, 'rt',
                                          bzrlib.user_encoding).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
@@ -2271,7 +2293,8 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        author=author)
+                        author=author,
+                        exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -2292,8 +2315,7 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate working tree structure, branch consistency and repository
-    history.
+    """Validate working tree structure, branch consistency and repository history.
 
     This command checks various invariants about branch and repository storage
     to detect data corruption or bzr bugs.
@@ -2314,17 +2336,43 @@ class cmd_check(Command):
             in the checked revisions.  Texts can be repeated when their file
             entries are modified, but the file contents are not.  It does not
             indicate a problem.
+
+    If no restrictions are specified, all Bazaar data that is found at the given
+    location will be checked.
+
+    :Examples:
+
+        Check the tree and branch at 'foo'::
+
+            bzr check --tree --branch foo
+
+        Check only the repository at 'bar'::
+
+            bzr check --repo bar
+
+        Check everything at 'baz'::
+
+            bzr check baz
     """
 
     _see_also = ['reconcile']
     takes_args = ['path?']
-    takes_options = ['verbose']
+    takes_options = ['verbose',
+                     Option('branch', help="Check the branch related to the"
+                                           " current directory."),
+                     Option('repo', help="Check the repository related to the"
+                                         " current directory."),
+                     Option('tree', help="Check the working tree related to"
+                                         " the current directory.")]
 
-    def run(self, path=None, verbose=False):
+    def run(self, path=None, verbose=False, branch=False, repo=False,
+            tree=False):
         from bzrlib.check import check_dwim
         if path is None:
             path = '.'
-        check_dwim(path, verbose)
+        if not branch and not repo and not tree:
+            branch = repo = tree = True
+        check_dwim(path, verbose, do_branch=branch, do_repo=repo, do_tree=tree)
 
 
 class cmd_upgrade(Command):
@@ -4131,7 +4179,7 @@ class cmd_send(Command):
                 raise errors.BzrCommandError('No submit branch known or'
                                              ' specified')
             if remembered_submit_branch:
-                note('Using saved location: %s', submit_branch)
+                note('Using saved location "%s" to determine what changes to submit.', submit_branch)
 
             if mail_to is None:
                 submit_config = Branch.open(submit_branch).get_config()
@@ -4359,6 +4407,8 @@ class cmd_tags(Command):
             ):
         branch, relpath = Branch.open_containing(directory)
         tags = branch.tags.get_tag_dict().items()
+        if not tags:
+            return
         if sort == 'alpha':
             tags.sort()
         elif sort == 'time':

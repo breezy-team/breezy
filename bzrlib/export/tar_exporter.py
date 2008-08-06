@@ -52,9 +52,9 @@ def tar_exporter(tree, dest, root, compression=None, filtered=False):
     entries = inv.iter_entries()
     entries.next() # skip root
     for dp, ie in entries:
-        # .bzrignore has no meaning outside of a working tree
-        # so do not export it
-        if dp == ".bzrignore":
+        # The .bzr* namespace is reserved for "magic" files like
+        # .bzrignore and .bzrrules - do not export these
+        if dp.startswith(".bzr"):
             continue
 
         filename = osutils.pathjoin(root, dp).encode('utf8')

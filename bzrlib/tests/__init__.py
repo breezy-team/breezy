@@ -49,6 +49,7 @@ import warnings
 
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     debug,
     errors,
@@ -1993,6 +1994,11 @@ class TestCaseWithMemoryTransport(TestCase):
         b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
+    def make_branch_builder(self, relpath, format=None):
+        url = self.get_url(relpath)
+        tran = get_transport(url)
+        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
         os.environ['BZR_HOME'] = self.test_home_dir
@@ -2132,7 +2138,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, basestring):
             for p in path:
-                self.assertInWorkingTree(p,tree=tree)
+                self.assertInWorkingTree(p, tree=tree)
         else:
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
@@ -2758,6 +2764,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_pack',
+                   'bzrlib.tests.test_pack_repository',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -2809,6 +2816,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_upgrade_stacked',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',

@@ -1879,9 +1879,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # Recurse directory and add all files
             # so we can check if they have changed.
             for parent_info, file_infos in\
-                osutils.walkdirs(self.abspath(directory),
-                    directory):
-                for relpath, basename, kind, lstat, abspath in file_infos:
+                self.walkdirs(directory):
+                for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.path2id(relpath) or self.is_ignored(relpath):
                         # Add nested content for deletion.
@@ -1897,8 +1896,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             filename = self.relpath(abspath)
             if len(filename) > 0:
                 new_files.add(filename)
-                if osutils.isdir(abspath):
-                    recurse_directory_to_add_files(filename)
+                recurse_directory_to_add_files(filename)
 
         files = list(new_files)
 
@@ -2438,10 +2436,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 relroot = ""
             # FIXME: stash the node in pending
             entry = inv[top_id]
-            for name, child in entry.sorted_children():
-                dirblock.append((relroot + name, name, child.kind, None,
-                    child.file_id, child.kind
-                    ))
+            if entry.kind == 'directory':
+                for name, child in entry.sorted_children():
+                    dirblock.append((relroot + name, name, child.kind, None,
+                        child.file_id, child.kind
+                        ))
             yield (currentdir[0], entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):

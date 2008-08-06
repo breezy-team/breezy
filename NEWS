@@ -30,6 +30,15 @@ IN DEVELOPMENT
       that displays/saves the content after content filters are applied.
       (Ian Clatworthy)
 
+    * ``bzr check`` can now be told which elements at a location it should
+      check.  (Daniel Watkins)
+
+    * Commit now supports ``--exclude`` (or ``-x``) to exclude some files
+      from the commit. (Robert Collins, #3117)
+
+    * Give a more specific error when target branch is not reachable.
+      (James Westby)
+
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
       This uses a pyrex extension to get direct access to the
       ``FindFirstFileW`` style apis, rather than using ``listdir`` +
@@ -38,12 +47,25 @@ IN DEVELOPMENT
       Anywhere from 2x-6x faster depending on the size of the tree (bigger
       trees, bigger benefit.) (John Arbash Meinel)
 
+    * Fetching data between repositories that have the same model but no 
+      optimised fetcher will not reserialise all the revisions, increasing
+      performance. (Robert Collins, John Arbash Meinel)
 
   BUG FIXES:
+
+    * Add more tests that stacking does not create deltas spanning
+      physical repository boundaries.
+      (Martin Pool, #252428)
+
+    * Better message about incompatible repositories.
+      (Martin Pool, #206258)
 
     * ``bzr branch --stacked`` ensures the destination branch format can
       support stacking, even if the origin does not.
       (Martin Pool)
+
+    * ``bzr export`` no longer exports ``.bzrrules``.
+      (Ian Clatworthy)
 
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
@@ -52,6 +74,9 @@ IN DEVELOPMENT
       smart server protocol to or from Windows.
       (Andrew Bennetts, #246180)
 
+    * Deleting directories by hand before running ``bzr rm`` will not
+      cause subsequent errors in ``bzr st`` and ``bzr commit``.
+      (Robert Collins, #150438)
 
   DOCUMENTATION:
 
@@ -61,8 +86,52 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``MutableTree.commit`` has an extra optional keywork parameter
+      ``exclude`` that will be unconditionally supplied by the command
+      line UI - plugins that add tree formats may need an update.
+      (Robert Collins)
+
+    * The API minimum version for plugin compatibility has been raised to
+      1.6 - there are significant changes throughout the code base.
+      (Robert Collins)
+
+    * The generic fetch code now uses three attributes on Repository objects
+      to control fetch. The streams requested are controlled via :
+      ``_fetch_order`` and ``_fetch_uses_deltas``. Setting these
+      appropriately allows different repository implementations to recieve
+      data in their optimial form. If the ``_fetch_reconcile`` is set then
+      a reconcile operation is triggered at the end of the fetch.
+      (Robert Collins)
+
+    * The ``put_on_disk`` and ``get_tar_item`` methods in
+      ``InventoryEntry`` were deprecated. (Ian Clatworthy)
+
+    * ``Repository.is_shared`` doesn't take a read lock. It didn't
+      need one in the first place (nobody cached the value, and
+      ``RemoteRepository`` wasn't taking one either). This saves a round
+      trip when probing Pack repositories, as they read the ``pack-names``
+      file when locked. And during probe, locking the repo isn't very
+      useful. (John Arbash Meinel)
+
 
   INTERNALS:
+
+    * ``bzrlib.branchbuilder.BranchBuilder`` is now much more capable of
+      putting together a real history without having to create a full
+      WorkingTree. It is recommended that tests that are not directly
+      testing the WorkingTree use BranchBuilder instead.  See
+      ``BranchBuilder.build_snapshot`` or
+      ``TestCaseWithMemoryTree.make_branch_builder``.  (John Arbash Meinel)
+
+    * ``bzrlib.builtins.internal_tree_files`` broken into two giving a new
+      helper ``safe_relpath_files`` - used by the new ``exclude``
+      parameter to commit. (Robert Collins)
+
+    * Make it easier to introduce new WorkingTree formats.
+      (Ian Clatworthy)
+
+    * The code for exporting trees was refactored not to use the
+      deprecated ``InventoryEntry`` methods. (Ian Clatworthy)
 
     * RuleSearchers return () instead of [] now when there are no matches.
       (Ian Clatworthy)

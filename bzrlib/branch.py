@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import sys
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from itertools import chain
@@ -533,8 +535,6 @@ class Branch(object):
         finally:
             other.unlock()
 
-
-
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
@@ -899,7 +899,7 @@ class Branch(object):
         elif relation == 'a_descends_from_b':
             return False
         else:
-            raise AssertionError("invalid heads: %r" % heads)
+            raise AssertionError("invalid relation: %r" % (relation,))
 
     def _revision_relations(self, revision_a, revision_b, graph):
         """Determine the relationship between two revisions.
@@ -915,7 +915,7 @@ class Branch(object):
         elif heads == set([revision_a]):
             return 'a_descends_from_b'
         else:
-            raise AssertionError("invalid heads: %r" % heads)
+            raise AssertionError("invalid heads: %r" % (heads,))
 
 
 class BranchFormat(object):
@@ -1586,11 +1586,22 @@ class BzrBranch(Branch):
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         for rev_id in rev_history:
             check_not_reserved_id(rev_id)
+        if Branch.hooks['post_change_branch_tip']:
+            # Don't calculate the last_revision_info() if there are no hooks
+            # that will use it.
+            old_revno, old_revid = self.last_revision_info()
+        if len(rev_history) == 0:
+            revid = _mod_revision.NULL_REVISION
+        else:
+            revid = rev_history[-1]
+        self._run_pre_change_branch_tip_hooks(len(rev_history), revid)
         self._write_revision_history(rev_history)
         self._clear_cached_state()
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
+        if Branch.hooks['post_change_branch_tip']:
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
         """Run the pre_change_branch_tip hooks."""
@@ -1601,7 +1612,15 @@ class BzrBranch(Branch):
         params = ChangeBranchTipParams(
             self, old_revno, new_revno, old_revid, new_revid)
         for hook in hooks:
-            hook(params)
+            try:
+                hook(params)
+            except errors.TipChangeRejected:
+                raise
+            except Exception:
+                exc_info = sys.exc_info()
+                hook_name = Branch.hooks.get_hook_name(hook)
+                raise errors.HookFailed(
+                    'pre_change_branch_tip', hook_name, exc_info)
  
     def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
         """Run the post_change_branch_tip hooks."""
@@ -1627,16 +1646,13 @@ class BzrBranch(Branch):
         be permitted.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
-        old_revno, old_revid = self.last_revision_info()
         # this old format stores the full history, but this api doesn't
         # provide it, so we must generate, and might as well check it's
         # correct
         history = self._lefthand_history(revision_id)
         if len(history) != revno:
             raise AssertionError('%d != %d' % (len(history), revno))
-        self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self.set_revision_history(history)
-        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
         history = self._transport.get_bytes('revision-history').split('\n')

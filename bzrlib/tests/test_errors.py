@@ -18,6 +18,7 @@
 
 """Tests for the formatting and construction of errors."""
 
+import sys
 from bzrlib import (
     bzrdir,
     errors,
@@ -383,6 +384,15 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_target_not_branch(self):
+        """Test the formatting of TargetNotBranch."""
+        error = errors.TargetNotBranch('foo')
+        self.assertEqual(
+            "Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "foo.", str(error))
+
     def test_malformed_bug_identifier(self):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
@@ -509,6 +519,27 @@ class TestErrors(TestCaseWithTransport):
     def test_unknown_rules(self):
         err = errors.UnknownRules(['foo', 'bar'])
         self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+
+    def test_hook_failed(self):
+        # Create an exc_info tuple by raising and catching an exception.
+        try:
+            1/0
+        except ZeroDivisionError:
+            exc_info = sys.exc_info()
+        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        self.assertStartsWith(
+            str(err), 'Hook \'hook name\' during hook stage failed:\n')
+        self.assertEndsWith(
+            str(err), 'integer division or modulo by zero')
+
+    def test_tip_change_rejected(self):
+        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        self.assertEquals(
+            u'Tip change rejected: Unicode message\N{INTERROBANG}',
+            unicode(err))
+        self.assertEquals(
+            'Tip change rejected: Unicode message\xe2\x80\xbd',
+            str(err))
 
 
 class PassThroughError(errors.BzrError):

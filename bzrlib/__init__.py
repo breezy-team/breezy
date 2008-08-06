@@ -44,8 +44,8 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 version_info = (1, 6, 0, 'beta', 4)
 
 
-# API compatibility version: bzrlib is currently API compatible with 0.18.
-api_minimum_version = (0, 18, 0)
+# API compatibility version: bzrlib is currently API compatible with 1.6.
+api_minimum_version = (1, 6, 0)
 
 def _format_version_tuple(version_info):
     """Turn a version number 3-tuple or 5-tuple into a short string.
