@@ -369,7 +369,7 @@ class TestPush(TestCaseWithSubversionRepository):
     def test_change(self):
         self.build_tree({'dc/foo/bla': 'other data'})
         wt = self.newdir.open_workingtree()
-        wt.commit(message="Commit from Bzr")
+        wt.commit(message="Commit from Bzr") # Commit 2
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 

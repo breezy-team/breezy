@@ -178,8 +178,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         # Determine revisions merged in this one
         merges = filter(lambda x: x != self.base_revid, parents)
 
+        self.visit_dirs = set()
         self.modified_files = {}
-        self.modified_dirs = set()
         if self.base_revid == NULL_REVISION:
             base_branch_props = {}
         else:
@@ -204,22 +204,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def finish_inventory(self):
         """See CommitBuilder.finish_inventory()."""
-
-    def modified_file_text(self, file_id, file_parents,
-                           get_content_byte_lines, text_sha1=None,
-                           text_size=None):
-        """See CommitBuilder.modified_file_text()."""
-        new_lines = get_content_byte_lines()
-        self.modified_files[file_id] = "".join(new_lines)
-        return osutils.sha_strings(new_lines), sum(map(len, new_lines))
-
-    def modified_link(self, file_id, file_parents, link_target):
-        """See CommitBuilder.modified_link()."""
-        self.modified_files[file_id] = "link %s" % link_target
-
-    def modified_directory(self, file_id, file_parents):
-        """See CommitBuilder.modified_directory()."""
-        self.modified_dirs.add(file_id)
 
     def _file_process(self, file_id, contents, file_editor):
         """Pass the changes to a file to the Subversion commit editor.
@@ -290,7 +274,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     self.base_revnum)
 
             # open if they existed at the same location
-            elif child_ie.revision is None:
+            elif child_ie.file_id in self.modified_files:
                 self.mutter('open %s %r', child_ie.kind, new_child_path)
 
                 child_editor = dir_editor.open_file(
@@ -298,7 +282,6 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             else:
                 # Old copy of the file was retained. No need to send changes
-                assert child_ie.file_id not in self.modified_files
                 child_editor = None
 
             if child_ie.file_id in self.old_inv:
@@ -358,19 +341,17 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # open if they existed at the same location and 
             # the directory was touched
-            elif self.new_inventory[child_ie.file_id].revision is None:
+            elif child_ie.file_id in self.visit_dirs:
                 self.mutter('open dir %r', new_child_path)
 
                 child_editor = dir_editor.open_directory(
                         urlutils.join(self.branch.get_branch_path(), new_child_path), 
                         self.base_revnum)
             else:
-                assert child_ie.file_id not in self.modified_dirs
                 continue
 
             # Handle this directory
-            if child_ie.file_id in self.modified_dirs:
-                self._dir_process(new_child_path, child_ie.file_id, child_editor)
+            self._dir_process(new_child_path, child_ie.file_id, child_editor)
 
             child_editor.close()
 
@@ -462,7 +443,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     ret.append((child_ie.file_id, new_child_path, child_ie.revision))
 
                 if (child_ie.kind == 'directory' and 
-                    child_ie.file_id in self.modified_dirs):
+                    child_ie.file_id in self.visit_dirs):
                     ret += _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
             return ret
 
@@ -598,6 +579,20 @@ class SvnCommitBuilder(RootCommitBuilder):
                 it is a candidate to commit.
         """
         self.new_inventory.add(ie)
+        assert ie.file_id not in self.old_inv or self.old_inv[ie.file_id].revision is not None
+        if (ie.file_id in self.old_inv and ie == self.old_inv[ie.file_id] and 
+            (ie.kind != 'directory' or ie.children == self.old_inv[ie.file_id].children)):
+            return
+        if ie.kind == 'file':
+            self.modified_files[ie.file_id] = tree.get_file_text(ie.file_id)
+        elif ie.kind == 'symlink':
+            self.modified_files[ie.file_id] = "link %s" % ie.symlink_target
+        elif ie.kind == 'directory':
+            self.visit_dirs.add(ie.file_id)
+        fid = ie.parent_id
+        while fid is not None and fid not in self.visit_dirs:
+            self.visit_dirs.add(fid)
+            fid = self.new_inventory[fid].parent_id
 
 
 def replay_delta(builder, old_tree, new_tree):
@@ -611,43 +606,6 @@ def replay_delta(builder, old_tree, new_tree):
         builder.record_entry_contents(ie.copy(), [old_tree.inventory], 
                                       path, new_tree, None)
     builder.finish_inventory()
-    delta = new_tree.changes_from(old_tree)
-    def touch_id(id):
-        ie = builder.new_inventory[id]
-
-        id = ie.file_id
-        while builder.new_inventory[id].parent_id is not None:
-            if builder.new_inventory[id].revision is None:
-                break
-            builder.new_inventory[id].revision = None
-            if builder.new_inventory[id].kind == 'directory':
-                builder.modified_directory(id, [])
-            id = builder.new_inventory[id].parent_id
-
-        assert ie.kind in ('symlink', 'file', 'directory')
-        if ie.kind == 'symlink':
-            builder.modified_link(ie.file_id, [], ie.symlink_target)
-        elif ie.kind == 'file':
-            def get_text():
-                return new_tree.get_file_text(ie.file_id)
-            builder.modified_file_text(ie.file_id, [], get_text)
-
-    for (_, id, _) in delta.added:
-        touch_id(id)
-
-    for (_, id, _, _, _) in delta.modified:
-        touch_id(id)
-
-    for (oldpath, _, id, _, _, _) in delta.renamed:
-        touch_id(id)
-        old_parent_id = old_tree.inventory.path2id(urlutils.dirname(oldpath))
-        if old_parent_id in builder.new_inventory:
-            touch_id(old_parent_id)
-
-    for (path, _, _) in delta.removed:
-        old_parent_id = old_tree.inventory.path2id(urlutils.dirname(path))
-        if old_parent_id in builder.new_inventory:
-            touch_id(old_parent_id)
 
 
 def push_new(target_repository, target_branch_path, source, stop_revision,
