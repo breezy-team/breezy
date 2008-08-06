@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * sftp transport: added missing ``FileExists`` case to
+      ``_translate_io_exception`` (Christophe Troestler, #123475)
+
   API CHANGES:
 
   INTERNALS:
