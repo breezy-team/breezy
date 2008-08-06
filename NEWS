@@ -4,9 +4,28 @@ Bazaar Release Notes
 
 .. contents::
 
-
 IN DEVELOPMENT
 --------------
+
+  CHANGES:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  API CHANGES:
+
+  INTERNALS:
+
+
+bzr 1.6rc1 2008-08-06
+---------------------
+
+This release candidate for bzr 1.6 solidifies the new branch stacking
+feature.  Bazaar now recommends that users upgrade all knit repositories,
+because later formats are much faster.  However, we plan to continue read/write and
+upgrade support for knit repostories for the forseeable future.  Several
+other bugs and performance issues were fixed.
 
   CHANGES:
 
@@ -14,10 +33,6 @@ IN DEVELOPMENT
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
       
-
-  FEATURES:
-
-
   IMPROVEMENTS:
 
     * ``bzr check`` can now be told which elements at a location it should
@@ -83,12 +98,6 @@ IN DEVELOPMENT
     * Handle a file turning in to a directory in TreeTransform.
       (James Westby, #248448)
 
-  DOCUMENTATION:
-
-
-  TESTING:
-
-
   API CHANGES:
 
     * ``MutableTree.commit`` has an extra optional keywork parameter
@@ -117,7 +126,6 @@ IN DEVELOPMENT
       trip when probing Pack repositories, as they read the ``pack-names``
       file when locked. And during probe, locking the repo isn't very
       useful. (John Arbash Meinel)
-
 
   INTERNALS:
 
