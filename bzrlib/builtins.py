@@ -97,6 +97,22 @@ def internal_tree_files(file_list, default_branch=u'.', apply_view=True):
                 note("ignoring files outside view: %s" % view_str)
         return tree, file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
+    return tree, safe_relpath_files(tree, file_list, apply_view=apply_view)
+
+
+def safe_relpath_files(tree, file_list, apply_view=True):
+    """Convert file_list into a list of relpaths in tree.
+
+    :param tree: A tree to operate on.
+    :param file_list: A list of user provided paths or None.
+    :param apply_view: if True and a view is set, apply it or check that
+        specified files are within it
+    :return: A list of relative paths.
+    :raises errors.PathNotChild: When a provided path is in a different tree
+        than tree.
+    """
+    if file_list is None:
+        return None
     if tree.supports_views() and apply_view:
         view_files = tree.views.lookup_view()
     else:
@@ -110,7 +126,7 @@ def internal_tree_files(file_list, default_branch=u'.', apply_view=True):
             new_list.append(relpath)
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
-    return tree, new_list
+    return new_list
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -2123,6 +2139,12 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
+    When excludes are given, they take precedence over selected files.
+    For example, too commit only changes within foo, but not changes within
+    foo/bar::
+
+      bzr commit foo -x foo/bar
+
     If author of the change is not the same person as the committer, you can
     specify the author's name using the --author option. The name should be
     in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
@@ -2158,6 +2180,8 @@ class cmd_commit(Command):
     _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
+            ListOption('exclude', type=str, short_name='x',
+                help="Do not consider changes made to a given path."),
             Option('message', type=unicode,
                    short_name='m',
                    help="Description of the new revision."),
@@ -2212,7 +2236,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False):
+            author=None, show_diff=False, exclude=None):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2262,7 +2286,7 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError(
                     "please specify either --message or --file")
             if file:
-                my_message = codecs.open(file, 'rt', 
+                my_message = codecs.open(file, 'rt',
                                          bzrlib.user_encoding).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
@@ -2273,7 +2297,8 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        author=author)
+                        author=author,
+                        exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -4386,6 +4411,8 @@ class cmd_tags(Command):
             ):
         branch, relpath = Branch.open_containing(directory)
         tags = branch.tags.get_tag_dict().items()
+        if not tags:
+            return
         if sort == 'alpha':
             tags.sort()
         elif sort == 'time':
