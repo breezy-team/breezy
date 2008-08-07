@@ -38,12 +38,19 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('tar')
         self.build_tree(['tar/a'])
         tree.add('a')
+        self.build_tree_contents([('tar/.bzrrules', '')])
+        tree.add('.bzrrules')
+        self.build_tree(['tar/.bzr-adir/', 'tar/.bzr-adir/afile'])
+        tree.add(['.bzr-adir/', '.bzr-adir/afile'])
 
         os.chdir('tar')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
+        self.failUnless(tree.has_filename('.bzr-adir'))
+        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.tar.gz')
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
@@ -75,12 +82,19 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('zip')
         self.build_tree(['zip/a'])
         tree.add('a')
+        self.build_tree_contents([('zip/.bzrrules', '')])
+        tree.add('.bzrrules')
+        self.build_tree(['zip/.bzr-adir/', 'zip/.bzr-adir/afile'])
+        tree.add(['.bzr-adir/', '.bzr-adir/afile'])
 
         os.chdir('zip')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
+        self.failUnless(tree.has_filename('.bzr-adir'))
+        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.zip')
 
         zfile = zipfile.ZipFile('test.zip')
@@ -139,12 +153,19 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('dir')
         self.build_tree(['dir/a'])
         tree.add('a')
+        self.build_tree_contents([('dir/.bzrrules', '')])
+        tree.add('.bzrrules')
+        self.build_tree(['dir/.bzr-adir/', 'dir/.bzr-adir/afile'])
+        tree.add(['.bzr-adir/', '.bzr-adir/afile'])
 
         os.chdir('dir')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
+        self.failUnless(tree.has_filename('.bzr-adir'))
+        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export direxport')
 
         files = sorted(os.listdir('direxport'))
