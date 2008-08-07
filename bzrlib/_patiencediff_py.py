@@ -176,7 +176,7 @@ def _collapse_sequences(matches):
     length = 0
     for i_a, i_b in matches:
         if (start_a is not None
-            and (i_a == start_a + length) 
+            and (i_a == start_a + length)
             and (i_b == start_b + length)):
             length += 1
         else:

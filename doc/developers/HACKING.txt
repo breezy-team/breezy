@@ -406,6 +406,17 @@ When writing blackbox tests please honour the following conventions:
     subprocess you can use ``run_bzr_subprocess``. By default the spawned
     process will not load plugins unless ``--allow-plugins`` is supplied.
 
+When writing library functionality, it is often necessary to set up a
+branch with a certain history. Most current tests do this by inheriting
+from ``TestCaseWithTransport`` and using the ``make_branch_and_tree``
+helper to give them a ``WorkingTree`` that they can commit to. However,
+there is a newer api available from ``TestCaseWithMemoryTransport`` using
+the ``make_branch_builder`` helper. This helper is preferred, because it
+can build the changes in memory, rather than on disk. Tests that are
+explictly testing how we work with disk objects should, of course, use a
+real ``WorkingTree``. See ``bzrlib/branch_builder.py`` for how to use the
+class.
+
 
 Doctests
 --------
@@ -894,6 +905,29 @@ mapping from names to objects or classes.  The registry allows for
 loading in registered code only when it's needed, and keeping
 associated information such as a help string or description.
 
+
+InterObject and multiple dispatch
+=================================
+
+The ``InterObject`` provides for two-way `multiple dispatch`__: matching
+up for example a source and destination repository to find the right way
+to transfer data between them. 
+
+.. __: http://en.wikipedia.org/wiki/Multiple_dispatch
+
+There is a subclass ``InterObject`` classes for each type of object that is
+dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
+class will return an ``InterObject`` instance providing the best match for 
+those parameters, and this instance then has methods for operations
+between the objects.
+
+  inter = InterRepository.get(source_repo, target_repo)
+  inter.fetch(revision_id)
+
+``InterRepository`` also acts as a registry-like object for its
+subclasses, and they can be added through ``.register_optimizer``.  The
+right one to run is selected by asking each class, in reverse order of
+registration, whether it ``.is_compatible`` with the relevant objects.
 
 Lazy Imports
 ============

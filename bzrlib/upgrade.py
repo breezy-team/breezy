@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,12 +51,15 @@ class Convert(object):
                 self.pb.note("This is a checkout. The branch (%s) needs to be "
                              "upgraded separately.",
                              branch.bzrdir.root_transport.base)
-        except errors.NotBranchError:
+            del branch
+        except (errors.NotBranchError, errors.IncompatibleRepositories):
+            # might not be a format we can open without upgrading; see e.g. 
+            # https://bugs.launchpad.net/bzr/+bug/253891
             pass
         if not self.bzrdir.needs_format_conversion(self.format):
             raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_convert_format():
-            raise errors.BzrError("cannot upgrade from branch format %s" %
+            raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
         if self.format is None:
             target_format = BzrDirFormat.get_default_format()

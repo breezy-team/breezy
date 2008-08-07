@@ -1217,10 +1217,10 @@ class TreeTransform(TreeTransformBase):
                 mover = _mover
             try:
                 child_pb.update('Apply phase', 0, 2)
-                self._apply_removals(new_inventory_delta, mover)
+                kind_changes = self._apply_removals(new_inventory_delta, mover)
                 child_pb.update('Apply phase', 1, 2)
                 modified_paths = self._apply_insertions(new_inventory_delta,
-                                                        mover)
+                                                        mover, kind_changes)
             except:
                 mover.rollback()
                 raise
@@ -1244,6 +1244,7 @@ class TreeTransform(TreeTransformBase):
         """
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
+        kind_changes = set()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, data in enumerate(tree_paths):
@@ -1251,6 +1252,12 @@ class TreeTransform(TreeTransformBase):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
+                    try:
+                        if (self.tree_kind(trans_id)
+                                != self.final_kind(trans_id)):
+                            kind_changes.add(trans_id)
+                    except NoSuchFile:
+                        pass
                     mover.pre_delete(full_path, os.path.join(self._deletiondir,
                                      trans_id))
                 elif trans_id in self._new_name or trans_id in \
@@ -1274,8 +1281,9 @@ class TreeTransform(TreeTransformBase):
                     inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
+        return kind_changes
 
-    def _apply_insertions(self, inventory_delta, mover):
+    def _apply_insertions(self, inventory_delta, mover, kind_changes):
         """Perform tree operations that insert directory/inventory names.
 
         That is, create any files that need to be created, and restore from
@@ -1284,6 +1292,9 @@ class TreeTransform(TreeTransformBase):
 
         If inventory_delta is None, no inventory delta is calculated, and
         no list of modified paths is returned.
+
+        kind_changes is a set of trans ids where the entry has changed
+        kind, and so an inventory delta entry should be created for them.
         """
         new_paths = self.new_paths(filesystem_only=(inventory_delta is None))
         modified_paths = []
@@ -1320,7 +1331,8 @@ class TreeTransform(TreeTransformBase):
                     if file_id is not None and (trans_id in self._new_id or
                         trans_id in self._new_name or
                         trans_id in self._new_parent
-                        or trans_id in self._new_executability):
+                        or trans_id in self._new_executability
+                        or trans_id in kind_changes):
                         try:
                             kind = self.final_kind(trans_id)
                         except NoSuchFile:
@@ -1410,6 +1422,7 @@ class _PreviewTree(tree.Tree):
         self._transform = transform
         self._final_paths = FinalPaths(transform)
         self.__by_parent = None
+        self._parent_ids = []
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
@@ -1423,9 +1436,29 @@ class _PreviewTree(tree.Tree):
         # InterTree.iter_changes.
         return (changes is not None and changes[2])
 
+    def _get_repository(self):
+        repo = getattr(self._transform._tree, '_repository', None)
+        if repo is None:
+            repo = self._transform._tree.branch.repository
+        return repo
+
+    def _iter_parent_trees(self):
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self._get_repository().revision_tree(revision_id)
+
     def _get_file_revision(self, file_id, vf, tree_revision):
-        return self._transform._tree._get_file_revision(file_id, vf,
-                                                        tree_revision)
+        parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+                       self._iter_parent_trees()]
+        vf.add_lines((file_id, tree_revision), parent_keys,
+                     self.get_file(file_id).readlines())
+        repo = self._get_repository()
+        base_vf = repo.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return tree_revision
 
     def _stat_limbo_file(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1682,7 +1715,10 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.walkdirs(prefix)
 
     def get_parent_ids(self):
-        return self._transform._tree.get_parent_ids()
+        return self._parent_ids
+
+    def set_parent_ids(self, parent_ids):
+        self._parent_ids = parent_ids
 
     def get_revision_tree(self, revision_id):
         return self._transform._tree.get_revision_tree(revision_id)
