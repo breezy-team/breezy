@@ -2063,7 +2063,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        name_prefix = urlutils.join(self.TEST_ROOT, self._getTestDirPrefix())
+        name_prefix = osutils.join(self.TEST_ROOT, self._getTestDirPrefix())
         name = name_prefix
         for i in range(100):
             if os.path.exists(name):
