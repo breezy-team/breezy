@@ -1488,7 +1488,8 @@ class cmd_diff(Command):
                                          ' one or two revision specifiers')
 
         old_tree, new_tree, specific_files, extra_trees = \
-                _get_trees_to_diff(file_list, revision, old, new)
+                _get_trees_to_diff(file_list, revision, old, new,
+                apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout, 
                                specific_files=specific_files,
                                external_diff_options=diff_options,

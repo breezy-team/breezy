@@ -36,6 +36,7 @@ from bzrlib import (
     patiencediff,
     textfile,
     timestamp,
+    views,
     )
 """)
 
@@ -43,7 +44,7 @@ from bzrlib.symbol_versioning import (
         deprecated_function,
         one_three
         )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter, note, warning
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -275,7 +276,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
+def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
+    apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
@@ -292,6 +294,9 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     :param new_url:
         The url of the new branch or tree. If None, the tree to use is
         taken from the first path, if any, or the current working tree.
+    :param apply_view:
+        if True and a view is set, apply the view or check that the paths
+        are within it
     :returns:
         a tuple of (old_tree, new_tree, specific_files, extra_trees) where
         extra_trees is a sequence of additional trees to search in for
@@ -331,6 +336,8 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
     if consider_relpath and relpath != '':
+        if working_tree is not None and apply_view:
+            _check_path_in_view(working_tree, relpath)
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -341,22 +348,44 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
         if consider_relpath and relpath != '':
+            if working_tree is not None and apply_view:
+                _check_path_in_view(working_tree, relpath)
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
-        other_paths = _relative_paths_in_tree(working_tree, other_paths)
+        try:
+            from bzrlib.builtins import safe_relpath_files
+            other_paths = safe_relpath_files(working_tree, other_paths,
+            apply_view=apply_view)
+        except errors.FileInWrongBranch:
+            raise errors.BzrCommandError("Files are in different branches")
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
         specific_files = None
+        if (working_tree is not None and working_tree.supports_views()
+            and apply_view):
+            view_files = working_tree.views.lookup_view()
+            if view_files:
+                specific_files = view_files
+                view_str = views.view_display_str(view_files)
+                note("*** ignoring files outside view: %s" % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
     return old_tree, new_tree, specific_files, extra_trees
+
+
+def _check_path_in_view(tree, relpath):
+    """If a working tree has a view enabled, check the path is within it."""
+    if tree.supports_views():
+        view_files = tree.views.lookup_view()
+        if  view_files and not osutils.is_inside_any(view_files, relpath):
+            raise errors.FileOutsideView(relpath, view_files)
 
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
@@ -374,21 +403,6 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
         branch = _mod_branch.Branch.open(spec.get_branch())
     revision_id = spec.as_revision_id(branch)
     return branch.repository.revision_tree(revision_id)
-
-
-def _relative_paths_in_tree(tree, paths):
-    """Get the relative paths within a working tree.
-
-    Each path may be either an absolute path or a path relative to the
-    current working directory.
-    """
-    result = []
-    for filename in paths:
-        try:
-            result.append(tree.relpath(osutils.dereference_path(filename)))
-        except errors.PathNotChild:
-            raise errors.BzrCommandError("Files are in different branches")
-    return result
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
