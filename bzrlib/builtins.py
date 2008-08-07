@@ -46,6 +46,7 @@ from bzrlib import (
     tree as _mod_tree,
     ui,
     urlutils,
+    views,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
@@ -93,7 +94,7 @@ def internal_tree_files(file_list, default_branch=u'.', apply_view=True):
             view_files = tree.views.lookup_view()
             if view_files:
                 file_list = view_files
-                view_str = ", ".join(view_files)
+                view_str = views.view_display_str(view_files)
                 note("ignoring files outside view: %s" % view_str)
         return tree, file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
@@ -121,7 +122,7 @@ def safe_relpath_files(tree, file_list, apply_view=True):
     for filename in file_list:
         try:
             relpath = tree.relpath(osutils.dereference_path(filename))
-            if  view_files and not is_inside_any(view_files, relpath):
+            if  view_files and not osutils.is_inside_any(view_files, relpath):
                 raise errors.FileOutsideView(filename, view_files)
             new_list.append(relpath)
         except errors.PathNotChild:
@@ -4649,8 +4650,8 @@ class cmd_view(Command):
                 self.outf.write("Disabled '%s' view.\n" % (current_view))
             else:
                 tree.views.set_view_info(switch, view_dict)
-                view_str = ", ".join(tree.views.lookup_view())
-                self.outf.write("Using '%s' view: %s\n" % (switch,view_str))
+                view_str = views.view_display_str(tree.views.lookup_view())
+                self.outf.write("Using '%s' view: %s\n" % (switch, view_str))
         elif all:
             if view_dict:
                 self.outf.write('Views defined:\n')
@@ -4659,8 +4660,8 @@ class cmd_view(Command):
                         active = "=>"
                     else:
                         active = "  "
-                    view_str = ", ".join(view_dict[view])
-                    self.outf.write('%s %-20s %s\n' % (active,view,view_str))
+                    view_str = views.view_display_str(view_dict[view])
+                    self.outf.write('%s %-20s %s\n' % (active, view, view_str))
             else:
                 self.outf.write('No views defined.\n')
         elif file_list:
@@ -4671,7 +4672,7 @@ class cmd_view(Command):
                 raise errors.BzrCommandError(
                     "Cannot change the 'off' pseudo view")
             tree.views.set_view(name, sorted(file_list))
-            view_str = ", ".join(tree.views.lookup_view())
+            view_str = views.view_display_str(tree.views.lookup_view())
             self.outf.write("Using '%s' view: %s\n" % (name, view_str))
         else:
             # list the files
@@ -4679,7 +4680,7 @@ class cmd_view(Command):
                 # No name given and no current view set
                 self.outf.write('No current view.\n')
             else:
-                view_str = ", ".join(tree.views.lookup_view(name))
+                view_str = views.view_display_str(tree.views.lookup_view(name))
                 self.outf.write("'%s' view is: %s\n" % (name, view_str))
 
 

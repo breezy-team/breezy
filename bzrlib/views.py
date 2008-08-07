@@ -240,3 +240,15 @@ class DisabledViews(_Views):
     lookup_view = _not_supported
     set_view = _not_supported
     delete_view = _not_supported
+
+
+def view_display_str(view_files, encoding=None):
+    """Get the display string for a list of view files.
+
+    :param view_files: the list of file names
+    :param encoding: the encoding to display the files in
+    """
+    if encoding is None:
+        return ", ".join(view_files)
+    else:
+        return ", ".join([v.encode(encoding, 'replace') for v in view_files])
