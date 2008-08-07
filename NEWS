@@ -16,6 +16,9 @@ IN DEVELOPMENT
     * sftp transport: added missing ``FileExists`` case to
       ``_translate_io_exception`` (Christophe Troestler, #123475)
 
+    * ``bzr upgrade`` on remote branches accessed via bzr:// and
+      bzr+ssh:// now works.  (Andrew Bennetts)
+
   API CHANGES:
 
   INTERNALS:
