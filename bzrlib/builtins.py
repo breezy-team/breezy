@@ -398,10 +398,7 @@ class cmd_add(Command):
             base_tree.lock_read()
         try:
             file_list = self._maybe_expand_globs(file_list)
-            if file_list:
-                tree = WorkingTree.open_containing(file_list[0])[0]
-            else:
-                tree = WorkingTree.open_containing(u'.')[0]
+            tree, file_list = tree_files(file_list)
             added, ignored = tree.smart_add(file_list, not
                 no_recurse, action=action, save=not dry_run)
         finally:
