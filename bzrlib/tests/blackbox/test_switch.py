@@ -64,8 +64,13 @@ class TestSwitch(ExternalBase):
         self.assertEqual(tree2.branch.base, checkout.branch.base)
 
     def test_switch_finds_relative_bound_branch(self):
-        """switch should find the sibling of the bound branch for a heavy checkout
-        rather than attempt to find a local sibling"""
+        """Using switch on a heavy checkout should find master sibling
+
+        The behaviour of lighweight and heavy checkouts should be 
+        consistentwhen using the convenient "switch to sibling" feature
+        Both should switch to a sibling of the branch
+        they are bound to, and not a sibling of themself"""
+
         self.build_tree(['repo/',
                          'heavyco/'])
         tree1 = self.make_branch_and_tree('repo/brancha')
