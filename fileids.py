@@ -96,6 +96,7 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
 
     return map
 
+
 class FileIdMap(object):
     """File id store. 
 
@@ -106,6 +107,12 @@ class FileIdMap(object):
     def __init__(self, apply_changes_fn, repos):
         self.apply_changes_fn = apply_changes_fn
         self.repos = repos
+
+    def _use_text_revids(self, mapping, revmeta, map):
+        text_revids = mapping.import_text_parents(revmeta.revprops, revmeta.fileprops).items()
+        for path, revid in text_revids:
+            assert path in map
+            map[path] = (map[path][0], revid)
 
     def apply_changes(self, revmeta, mapping, find_children=None):
         """Change file id map to incorporate specified changes.
@@ -163,6 +170,7 @@ class FileIdMap(object):
                 (idmap, changes) = self.apply_changes(revmeta, 
                         mapping, self.repos._log.find_children)
                 self.update_map(map, revid, idmap, changes)
+                self._use_text_revids(mapping, revmeta, map)
 
                 parent_revs = next_parent_revs
 
@@ -229,6 +237,7 @@ class CachingFileIdMap(object):
         self.cache = FileIdMapCache(cache_transport)
         self.actual = actual
         self.apply_changes = actual.apply_changes
+        self._use_text_revids = actual._use_text_revids
         self.repos = actual.repos
 
     def get_map(self, uuid, revnum, branch, mapping):
@@ -281,6 +290,8 @@ class CachingFileIdMap(object):
                         revmeta, mapping, log_find_children)
 
                 self.actual.update_map(map, revid, idmap, changes)
+                self._use_text_revids(mapping, revmeta, map)
+                mutter('%r -> %r' % (revid, map))
 
                 parent_revs = next_parent_revs
                        
