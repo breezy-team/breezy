@@ -432,13 +432,14 @@ class SvnWorkingTree(WorkingTree):
     def commit(self, message=None, message_callback=None, revprops=None, 
                timestamp=None, timezone=None, committer=None, rev_id=None, 
                allow_pointless=True, strict=False, verbose=False, local=False, 
-               reporter=None, config=None, specific_files=None, author=None):
+               reporter=None, config=None, specific_files=None, author=None, exclude=None):
         if author is not None:
             revprops['author'] = author
         # FIXME: Use allow_pointless
         # FIXME: Use verbose
         # FIXME: Use reporter
         # FIXME: Use strict
+        # FIXME: Use exclude
         if local:
             raise LocalCommitsUnsupported()
 
