@@ -19,6 +19,13 @@ IN DEVELOPMENT
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
       bzr+ssh:// now works.  (Andrew Bennetts)
 
+    * The default ``annotate`` logic will now always assign the
+      last-modified value of a line to one of the revisions that modified
+      it, rather than a merge revision. This would happen when both sides
+      claimed to have modified the line resulting in the same text. The
+      choice is arbitrary but stable, so merges in different directions
+      will get the same results.  (John Arbash Meinel, #232188)
+
   API CHANGES:
 
   INTERNALS:
