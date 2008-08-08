@@ -530,21 +530,21 @@ class Repository(object):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
-        if not self._add_fallback_repository_check(repository):
-            raise errors.IncompatibleRepositories(self, repository)
+        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
 
-    def _add_fallback_repository_check(self, repository):
+    def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
+
+        Raise an error if not.
         
         :param repository: A repository to fallback to.
-        :return: True if the repositories can stack ok.
         """
-        return InterRepository._same_model(self, repository)
+        return InterRepository._assert_same_model(self, repository)
 
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
@@ -1626,7 +1626,6 @@ class Repository(object):
         else:
             return self.get_inventory(revision_id)
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2006,7 +2005,6 @@ class MetaDirRepository(Repository):
         super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         return self._transport.has('shared-storage')
@@ -2753,10 +2751,15 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        if len(self.source._fallback_repositories) > 0:
+        if (len(self.source._fallback_repositories) > 0 or
+            len(self.target._fallback_repositories) > 0):
+            # The pack layer is not aware of fallback repositories, so when
+            # fetching from a stacked repository or into a stacked repository
+            # we use the generic fetch logic which uses the VersionedFiles
+            # attributes on repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
-                                      pb, find_ghosts)
+                                  pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
         from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
