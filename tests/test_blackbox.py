@@ -312,6 +312,13 @@ Node-copyfrom-path: x
         self.client_commit("dc", "Msg")
         self.run_bzr("checkout --lightweight dc de")
 
+    def test_commit(self):
+        repos_url = self.make_client('d', 'de')
+        self.build_tree({'de/foo': 'bla'})
+        self.run_bzr("add de/foo")
+        self.run_bzr("commit -m test de")
+        self.check_output("2\n", "revno de")
+
     # this method imported from bzrlib.tests.test_msgeditor:
     def make_fake_editor(self, message='test message from fed\\n'):
         """Set up environment so that an editor will be a known script.
