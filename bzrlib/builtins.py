@@ -1941,12 +1941,20 @@ class cmd_ignore(Command):
             print "Warning: the following files are version controlled and" \
                   " match your ignore pattern:\n%s" % ("\n".join(matches),)
 
+
 class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
+
+    List all the ignored files and the ignore pattern that caused the file to
+    be ignored.
+
+    Alternatively, to list just the files::
+
+        bzr ls --ignored
     """
 
     encoding_type = 'replace'
-    _see_also = ['ignore']
+    _see_also = ['ignore', 'ls']
 
     @display_command
     def run(self):
