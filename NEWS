@@ -4,9 +4,37 @@ Bazaar Release Notes
 
 .. contents::
 
-
 IN DEVELOPMENT
 --------------
+
+  CHANGES:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+    * ``bzr upgrade`` on remote branches accessed via bzr:// and
+      bzr+ssh:// now works.  (Andrew Bennetts)
+
+    * sftp transport: added missing ``FileExists`` case to
+      ``_translate_io_exception`` (Christophe Troestler, #123475)
+
+    * The help for ``bzr ignored`` now suggests ``bzr ls --ignored`` for
+      scripting use. (Robert Collins, #3834)
+
+  API CHANGES:
+
+  INTERNALS:
+
+
+bzr 1.6rc1 2008-08-06
+---------------------
+
+This release candidate for bzr 1.6 solidifies the new branch stacking
+feature.  Bazaar now recommends that users upgrade all knit repositories,
+because later formats are much faster.  However, we plan to continue read/write and
+upgrade support for knit repostories for the forseeable future.  Several
+other bugs and performance issues were fixed.
 
   CHANGES:
 
@@ -14,10 +42,6 @@ IN DEVELOPMENT
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
       
-
-  FEATURES:
-
-
   IMPROVEMENTS:
 
     * ``bzr check`` can now be told which elements at a location it should
@@ -25,6 +49,10 @@ IN DEVELOPMENT
 
     * Commit now supports ``--exclude`` (or ``-x``) to exclude some files
       from the commit. (Robert Collins, #3117)
+
+    * Fetching data between repositories that have the same model but no 
+      optimised fetcher will not reserialise all the revisions, increasing
+      performance. (Robert Collins, John Arbash Meinel)
 
     * Give a more specific error when target branch is not reachable.
       (James Westby)
@@ -37,9 +65,9 @@ IN DEVELOPMENT
       Anywhere from 2x-6x faster depending on the size of the tree (bigger
       trees, bigger benefit.) (John Arbash Meinel)
 
-    * Fetching data between repositories that have the same model but no 
-      optimised fetcher will not reserialise all the revisions, increasing
-      performance. (Robert Collins, John Arbash Meinel)
+    * New registry for log properties handles  and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
 
   BUG FIXES:
 
@@ -57,6 +85,15 @@ IN DEVELOPMENT
     * ``bzr export`` no longer exports ``.bzrrules``.
       (Ian Clatworthy)
 
+    * ``bzr serve --directory=/`` now correctly allows the whole
+      filesystem to be accessed on Windows, not just the root of the drive
+      that Python is running from.
+      (Adrian Wilkins, #240910)
+
+    * Deleting directories by hand before running ``bzr rm`` will not
+      cause subsequent errors in ``bzr st`` and ``bzr commit``.
+      (Robert Collins, #150438)
+
     * Fix a test case that was failing if encoding wasn't UTF-8.
       (John Arbash Meinel, #247585)
 
@@ -64,18 +101,11 @@ IN DEVELOPMENT
       smart server protocol to or from Windows.
       (Andrew Bennetts, #246180)
 
-    * Deleting directories by hand before running ``bzr rm`` will not
-      cause subsequent errors in ``bzr st`` and ``bzr commit``.
-      (Robert Collins, #150438)
+    * Fixed problem in branching from smart server.
+      (#249256, Michael Hudson, Martin Pool) 
 
-    * The help for ``bzr ignored`` now sugests ``bzr ls --ignored`` for
-      scripting use. (Robert Collins, #3834)
-
-  DOCUMENTATION:
-
-
-  TESTING:
-
+    * Handle a file turning in to a directory in TreeTransform.
+      (James Westby, #248448)
 
   API CHANGES:
 
@@ -106,7 +136,6 @@ IN DEVELOPMENT
       file when locked. And during probe, locking the repo isn't very
       useful. (John Arbash Meinel)
 
-
   INTERNALS:
 
     * ``bzrlib.branchbuilder.BranchBuilder`` is now much more capable of
@@ -133,6 +162,12 @@ IN DEVELOPMENT
 bzr 1.6beta3 2008-07-17
 -----------------------
 
+This release adds a new 'stacked branches' feature allowing branches to
+share storage without being in the same repository or on the same machine.
+(See the user guide for more details.)  It also adds a new hook, improved
+weaves, aliases for related locations, faster bzr+ssh push, and several
+bug fixes.
+
   FEATURES:
 
     * New ``pre_change_branch_tip`` hook that is called before the
@@ -149,7 +184,9 @@ bzr 1.6beta3 2008-07-17
     * Sites may suggest a branch to stack new branches on.  (Aaron Bentley)
 
     * Stacked branches are now supported. See ``bzr help branch`` and 
-      ``bzr help push``. (Robert Collins)
+      ``bzr help push``.  Branches must be in the ``development1`` format
+      to stack, though the stacked-on branch can be of any format. 
+      (Robert Collins)
 
   IMPROVEMENTS:
 
@@ -173,10 +210,6 @@ bzr 1.6beta3 2008-07-17
       revision info directly.  This makes operations like push
       faster.  The new request method name is
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
-      
-    * New registry for log properties handles  and the method in 
-      LongLogFormatter to display the custom properties returned by the 
-      registered handlers. (Guillermo Gonzalez, #162469)
 
   BUG FIXES:
 
@@ -193,11 +226,6 @@ bzr 1.6beta3 2008-07-17
       requires a branch to be present.
       (Daniel Watkins, #64783)
 
-    * ``bzr serve --directory=/`` now correctly allows the whole
-      filesystem to be accessed on Windows, not just the root of the drive
-      that Python is running from.
-      (Adrian Wilkins, #240910)
-
     * Clearer message about how to set the PYTHONPATH if bzrlib can't be
       loaded. 
       (Martin Pool, #205230)
@@ -206,9 +234,6 @@ bzr 1.6beta3 2008-07-17
       and with a suggestion to install the library.  The full traceback is 
       still in ``.bzr.log`` and can be shown with ``-Derror``.
       (Martin Pool, #240161)
-
-    * Fixed problem in branching from smart server.
-      (#249256, Michael Hudson, Martin Pool) 
 
     * Fetch from a stacked branch copies all required data.
       (Aaron Bentley, #248506)
@@ -238,9 +263,6 @@ bzr 1.6beta3 2008-07-17
 
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
-
-    * Handle a file turning in to a directory in TreeTransform.
-      (James Westby, #248448)
 
   DOCUMENTATION:
 
