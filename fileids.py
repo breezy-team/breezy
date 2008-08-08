@@ -207,14 +207,11 @@ class FileIdMap(object):
                 map[parent] = map[parent][0], revid
 
 
-class CachingFileIdMap(object):
-    """A file id map that uses a cache."""
-    def __init__(self, cache_transport, actual):
+class FileIdMapCache(object):
+
+    def __init__(self, cache_transport):
         mapper = ConstantMapper("fileidmap-v%d" % FILEIDMAP_VERSION)
         self.idmap_knit = make_file_factory(True, mapper)(cache_transport)
-        self.actual = actual
-        self.apply_changes = actual.apply_changes
-        self.repos = actual.repos
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r', revid)
@@ -237,6 +234,15 @@ class CachingFileIdMap(object):
 
         return map
 
+
+class CachingFileIdMap(object):
+    """A file id map that uses a cache."""
+    def __init__(self, cache_transport, actual):
+        self.cache = FileIdMapCache(cache_transport)
+        self.actual = actual
+        self.apply_changes = actual.apply_changes
+        self.repos = actual.repos
+
     def get_map(self, uuid, revnum, branch, mapping):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
@@ -255,7 +261,7 @@ class CachingFileIdMap(object):
                 pb.update("fetching changes for file ids", revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)
                 try:
-                    map = self.load(revid)
+                    map = self.cache.load(revid)
                     # found the nearest cached map
                     next_parent_revs = [revid]
                     break
@@ -290,7 +296,7 @@ class CachingFileIdMap(object):
 
                 parent_revs = next_parent_revs
                        
-                self.save(revid, parent_revs, map)
+                self.cache.save(revid, parent_revs, map)
                 next_parent_revs = [revid]
         finally:
             pb.finished()
