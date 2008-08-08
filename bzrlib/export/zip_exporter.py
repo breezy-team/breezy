@@ -19,11 +19,13 @@
 
 import os
 import stat
+import time
 import zipfile
 
 from bzrlib import (
     osutils,
     )
+from bzrlib.export import _export_iter_entries
 from bzrlib.trace import mutter
 
 
@@ -41,30 +43,15 @@ def zip_exporter(tree, dest, root, subdir):
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be overwritten".
     """
-    import time
+    mutter('export version %r', tree)
 
     now = time.localtime()[:6]
-    mutter('export version %r', tree)
 
     compression = zipfile.ZIP_DEFLATED
     zipf = zipfile.ZipFile(dest, "w", compression)
 
-    inv = tree.inventory
-
     try:
-        if subdir is None:
-            subdir_id = None
-        else:
-            subdir_id = inv.path2id(subdir)
-        entries = inv.iter_entries(subdir_id)
-        if subdir is None:
-            entries.next() # skip root
-        for dp, ie in entries:
-            # The .bzr* namespace is reserved for "magic" files like
-            # .bzrignore and .bzrrules - do not export these
-            if dp.startswith(".bzr"):
-                continue
-
+        for dp, ie in _export_iter_entries(tree, subdir):
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 

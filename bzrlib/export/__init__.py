@@ -132,6 +132,28 @@ def get_root_name(dest):
     return dest
 
 
+def _export_iter_entries(tree, subdir):
+    """Iter the entries for tree suitable for exporting.
+
+    :param tree: A tree object.
+    :param subdir: None or the path of a directory to start exporting from.
+    """
+    inv = tree.inventory
+    if subdir is None:
+        subdir_id = None
+    else:
+        subdir_id = inv.path2id(subdir)
+    entries = inv.iter_entries(subdir_id)
+    if subdir is None:
+        entries.next() # skip root
+    for entry in entries:
+        # The .bzr* namespace is reserved for "magic" files like
+        # .bzrignore and .bzrrules - do not export these
+        if entry[0].startswith(".bzr"):
+            continue
+        yield entry
+
+
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'tar_exporter')

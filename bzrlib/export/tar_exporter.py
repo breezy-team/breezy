@@ -23,6 +23,7 @@ import tarfile
 import time
 
 from bzrlib import errors, export, osutils
+from bzrlib.export import _export_iter_entries
 from bzrlib.trace import mutter
 
 
@@ -32,6 +33,7 @@ def tar_exporter(tree, dest, root, subdir, compression=None):
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
+    mutter('export version %r', tree)
     now = time.time()
     compression = str(compression or '')
     if dest == '-':
@@ -42,21 +44,7 @@ def tar_exporter(tree, dest, root, subdir, compression=None):
         if root is None:
             root = export.get_root_name(dest)
         ball = tarfile.open(dest, 'w:' + compression)
-    mutter('export version %r', tree)
-    inv = tree.inventory
-    if subdir is None:
-        subdir_id = None
-    else:
-        subdir_id = inv.path2id(subdir)
-    entries = inv.iter_entries(subdir_id)
-    if subdir is None:
-        entries.next() # skip root
-    for dp, ie in entries:
-        # The .bzr* namespace is reserved for "magic" files like
-        # .bzrignore and .bzrrules - do not export these
-        if dp.startswith(".bzr"):
-            continue
-
+    for dp, ie in _export_iter_entries(tree, subdir):
         filename = osutils.pathjoin(root, dp).encode('utf8')
         item = tarfile.TarInfo(filename)
         item.mtime = now
