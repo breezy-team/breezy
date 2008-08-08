@@ -194,18 +194,6 @@ class FileIdMap(object):
             if delta[x] is not None:
                 map[x] = (str(delta[x]), revid)
 
-        # Mark all parent paths as changed
-        for p in delta:
-            if delta[p] is None:
-                continue
-            parts = p.split("/")
-            for j in range(1, len(parts)+1):
-                parent = "/".join(parts[0:len(parts)-j])
-                assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
-                if map[parent][1] == revid:
-                    break
-                map[parent] = map[parent][0], revid
-
 
 class FileIdMapCache(object):
 
