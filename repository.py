@@ -421,7 +421,7 @@ class SvnRepository(Repository):
                             if not bp in paths:
                                 svn_fileprops = {}
                             else:
-                                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, bp, revnum)
+                                svn_fileprops = self.branchprop_list.get_changed_properties(bp, revnum)
                             yield RevisionMetadata(self, bp, paths, revnum, revprops, svn_fileprops)
 
     def all_revision_ids(self, layout=None, mapping=None):
@@ -544,7 +544,7 @@ class SvnRepository(Repository):
             except NoSuchRevision:
                 continue
 
-            svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
+            svn_fileprops = self.branchprop_list.get_changed_properties(branch, revnum)
             svn_revprops = self._log.revprop_list(revnum)
             revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
 
@@ -578,7 +578,7 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
         svn_revprops = self._log.revprop_list(revnum)
-        svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
+        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
 
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
 
@@ -622,7 +622,7 @@ class SvnRepository(Repository):
             revprops = self._log.revprop_list(revnum)
 
         if changed_fileprops is None:
-            changed_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
+            changed_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
@@ -723,7 +723,7 @@ class SvnRepository(Repository):
             if not bp in paths:
                 svn_fileprops = {}
             else:
-                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, bp, revnum)
+                svn_fileprops = self.branchprop_list.get_changed_properties(bp, revnum)
 
             yield RevisionMetadata(self, bp, paths, revnum, revprops, svn_fileprops)
 

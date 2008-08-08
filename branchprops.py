@@ -19,6 +19,7 @@
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 
+from bzrlib.plugins.svn import logwalker
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NO_SUCH_REVISION
 
@@ -58,6 +59,9 @@ class PathPropertyProvider(object):
         """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
+        return logwalker.lazy_dict({}, self._real_get_changed_properties, path, revnum)
+
+    def _real_get_changed_properties(self, path, revnum):
         if self.log.get_change(path, revnum) is None:
             return {}
         current = self.get_properties(path, revnum)
