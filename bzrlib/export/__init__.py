@@ -55,14 +55,14 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root):
+    def _loader(tree, dest, root, subdir):
         mod = __import__(module, globals(), locals(), [funcname])
         func = getattr(mod, funcname)
-        return func(tree, dest, root)
+        return func(tree, dest, root, subdir)
     register_exporter(scheme, extensions, _loader)
 
 
-def export(tree, dest, format=None, root=None):
+def export(tree, dest, format=None, root=None, subdir=None):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -76,6 +76,9 @@ def export(tree, dest, format=None, root=None):
                  If root is None, the default root will be
                  selected as the destination without its
                  extension.
+    :param subdir: A starting directory within the tree. None means to export
+        the entire tree, and anything else should specify the relative path to
+        a directory to start exporting from.
     """
     global _exporters, _exporter_extensions
 
@@ -94,7 +97,7 @@ def export(tree, dest, format=None, root=None):
         raise errors.NoSuchExportFormat(format)
     tree.lock_read()
     try:
-        return _exporters[format](tree, dest, root)
+        return _exporters[format](tree, dest, root, subdir)
     finally:
         tree.unlock()
 

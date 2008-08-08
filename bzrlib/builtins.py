@@ -2010,7 +2010,7 @@ class cmd_export(Command):
          zip                          .zip
       =================       =========================
     """
-    takes_args = ['dest', 'branch?']
+    takes_args = ['dest', 'branch_or_subdir?']
     takes_options = [
         Option('format',
                help="Type of file to export to.",
@@ -2020,14 +2020,16 @@ class cmd_export(Command):
                type=str,
                help="Name of the root directory inside the exported file."),
         ]
-    def run(self, dest, branch=None, revision=None, format=None, root=None):
+    def run(self, dest, branch_or_subdir=None, revision=None, format=None,
+        root=None):
         from bzrlib.export import export
 
-        if branch is None:
+        if branch_or_subdir is None:
             tree = WorkingTree.open_containing(u'.')[0]
             b = tree.branch
+            subdir = None
         else:
-            b = Branch.open(branch)
+            b, subdir = Branch.open_containing(branch_or_subdir)
             
         if revision is None:
             # should be tree.last_revision  FIXME
@@ -2038,7 +2040,7 @@ class cmd_export(Command):
             rev_id = revision[0].as_revision_id(b)
         t = b.repository.revision_tree(rev_id)
         try:
-            export(t, dest, format, root)
+            export(t, dest, format, root, subdir)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 

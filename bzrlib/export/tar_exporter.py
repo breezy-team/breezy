@@ -26,7 +26,7 @@ from bzrlib import errors, export, osutils
 from bzrlib.trace import mutter
 
 
-def tar_exporter(tree, dest, root, compression=None):
+def tar_exporter(tree, dest, root, subdir, compression=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -44,8 +44,13 @@ def tar_exporter(tree, dest, root, compression=None):
         ball = tarfile.open(dest, 'w:' + compression)
     mutter('export version %r', tree)
     inv = tree.inventory
-    entries = inv.iter_entries()
-    entries.next() # skip root
+    if subdir is None:
+        subdir_id = None
+    else:
+        subdir_id = inv.path2id(subdir)
+    entries = inv.iter_entries(subdir_id)
+    if subdir is None:
+        entries.next() # skip root
     for dp, ie in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
@@ -82,9 +87,9 @@ def tar_exporter(tree, dest, root, compression=None):
     ball.close()
 
 
-def tgz_exporter(tree, dest, root):
-    tar_exporter(tree, dest, root, compression='gz')
+def tgz_exporter(tree, dest, root, subdir):
+    tar_exporter(tree, dest, root, subdir, compression='gz')
 
 
-def tbz_exporter(tree, dest, root):
-    tar_exporter(tree, dest, root, compression='bz2')
+def tbz_exporter(tree, dest, root, subdir):
+    tar_exporter(tree, dest, root, subdir, compression='bz2')

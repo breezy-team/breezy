@@ -24,7 +24,7 @@ from bzrlib import errors, osutils
 from bzrlib.trace import mutter
 
 
-def dir_exporter(tree, dest, root):
+def dir_exporter(tree, dest, root, subdir):
     """Export this tree to a new directory.
 
     `dest` should not exist, and will be created holding the
@@ -39,8 +39,13 @@ def dir_exporter(tree, dest, root):
     os.mkdir(dest)
     mutter('export version %r', tree)
     inv = tree.inventory
-    entries = inv.iter_entries()
-    entries.next() # skip root
+    if subdir is None:
+        subdir_id = None
+    else:
+        subdir_id = inv.path2id(subdir)
+    entries = inv.iter_entries(subdir_id)
+    if subdir is None:
+        entries.next() # skip root
     for dp, ie in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these

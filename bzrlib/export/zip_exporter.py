@@ -35,7 +35,7 @@ _FILE_ATTR = stat.S_IFREG
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 
-def zip_exporter(tree, dest, root):
+def zip_exporter(tree, dest, root, subdir):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -52,8 +52,13 @@ def zip_exporter(tree, dest, root):
     inv = tree.inventory
 
     try:
-        entries = inv.iter_entries()
-        entries.next() # skip root
+        if subdir is None:
+            subdir_id = None
+        else:
+            subdir_id = inv.path2id(subdir)
+        entries = inv.iter_entries(subdir_id)
+        if subdir is None:
+            entries.next() # skip root
         for dp, ie in entries:
             # The .bzr* namespace is reserved for "magic" files like
             # .bzrignore and .bzrrules - do not export these

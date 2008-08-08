@@ -11,6 +11,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr export`` can now export a subdirectory of a project.
+      (Robert Collins)
+
   BUG FIXES:
 
     * sftp transport: added missing ``FileExists`` case to
@@ -20,6 +23,8 @@ IN DEVELOPMENT
       bzr+ssh:// now works.  (Andrew Bennetts)
 
   API CHANGES:
+
+    * Exporters now take 4 parameters. (Robert Collins)
 
   INTERNALS:
 
