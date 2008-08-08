@@ -39,7 +39,7 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
 
     def test_branch_onerev(self):
         repos_url = self.make_client('d', 'de')
-        self.commit_something()
+        self.commit_something(repos_url)
         self.run_bzr("branch %s dc" % repos_url)
         self.check_output("2\n", "revno de")
         
