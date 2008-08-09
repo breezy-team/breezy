@@ -75,7 +75,7 @@ class SvnRevisionTree(RevisionTree):
         self._inventory.revision_id = revision_id
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
                                                 mapping)
-        editor = TreeBuildEditor(self, revision_id)
+        editor = TreeBuildEditor(self)
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
         conn = repository.transport.get_connection()
