@@ -23,6 +23,7 @@ from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import errors
+from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.tree import SvnBasisTree, inventory_add_external
 
