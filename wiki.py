@@ -34,9 +34,11 @@ def write_releaselist(f):
 
     def version_sort(a, b):
         def versiontuple(a):
+            a = a.rstrip("~rc1")
             return [int(x) for x in a.split(".")]
         return cmp(versiontuple(a), versiontuple(b))
 
+    print versions
     versions.sort(version_sort, reverse=True)
 
     for version in versions:

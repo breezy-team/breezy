@@ -19,7 +19,7 @@ from bzrlib.inventory import Inventory, TreeReference
 from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import errors
@@ -100,7 +100,12 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         file.change_prop("svn:special", "*")
         dc.close()
 
-        self.client_update("dc")
+        try:
+            self.client_update("dc")
+        except SubversionException, (msg, num):
+            if num == errors.ERR_WC_BAD_ADM_LOG:
+                raise TestSkipped("Unable to run test with svn 1.4")
+            raise
         tree = SvnBasisTree(self.open_checkout("dc"))
         self.assertEqual('file', 
                          tree.inventory[tree.inventory.path2id("file")].kind)
@@ -154,7 +159,12 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         file.change_prop("svn:executable", "*")
         dc.close()
 
-        self.client_update("dc")
+        try:
+            self.client_update("dc")
+        except SubversionException, (msg, num):
+            if num == errors.ERR_WC_BAD_ADM_LOG:
+                raise TestSkipped("Unable to run test with svn 1.4")
+            raise
 
         wt = self.open_checkout("dc")
         tree = SvnBasisTree(wt)
