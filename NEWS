@@ -1,4 +1,4 @@
-bzr-svn 0.4.11    UNRELEASED
+bzr-svn 0.4.11	UNRELEASED
 
   CHANGES
 
@@ -31,7 +31,9 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Set mergeinfo properties when pushing merges. (write part of #131323)
 
-   * Basic support for stacked branches.
+   * Basic (experimental) support for stacked branches. Not very
+     efficient at the moment because of certain assumptions in the 
+	 stacking implementation.
 
    * Avoid reopening connections to branch and repository when finding 
      branches. (#243749)
