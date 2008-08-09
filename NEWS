@@ -124,6 +124,8 @@ bzr-svn 0.4.11    UNRELEASED
 
    * Fixed http exception during expensive log -v. (#94316)
 
+   * Preserve individual text revision ids correctly when round-tripping. (#250480)
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES

@@ -72,9 +72,10 @@ class SvnRevisionTree(RevisionTree):
         self._revision_id = revision_id
         (self.branch_path, self.revnum, mapping) = repository.lookup_revision_id(revision_id)
         self._inventory = Inventory()
+        self._inventory.revision_id = revision_id
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
                                                 mapping)
-        editor = TreeBuildEditor(self)
+        editor = TreeBuildEditor(self, revision_id)
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
         conn = repository.transport.get_connection()
@@ -105,7 +106,6 @@ class TreeBuildEditor(object):
         file_id, revision_id = self.tree.id_map[""]
         ie = self.tree._inventory.add_path("", 'directory', file_id)
         ie.revision = revision_id
-        self.tree._inventory.revision_id = revision_id
         return DirectoryTreeEditor(self.tree, file_id)
 
     def close(self):

@@ -291,7 +291,6 @@ class CachingFileIdMap(object):
 
                 self.actual.update_map(map, revid, idmap, changes)
                 self._use_text_revids(mapping, revmeta, map)
-                mutter('%r -> %r' % (revid, map))
 
                 parent_revs = next_parent_revs
                        

@@ -460,8 +460,9 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         for id, path, revid in changes:
             fileids[path] = id
-            if revid is not None and revid != self.base_revid:
+            if revid is not None and revid != self.base_revid and revid != self._new_revision_id:
                 text_parents[path] = revid
+                mutter('in %r: overriding text revid for %r -> %r' % (self._new_revision_id, path, revid))
 
         self.base_mapping.export_text_parents(text_parents, self._svn_revprops, self._svnprops)
         self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)

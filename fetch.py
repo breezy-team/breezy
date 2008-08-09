@@ -230,12 +230,19 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             self.editor.inventory.remove_recursive_id(self.editor._get_old_id(self.old_id, path))
 
     def _close(self):
-        self.editor.inventory[self.new_id].revision = self.editor.revid
+        if (not self.new_id in self.editor.old_inventory or 
+            self.editor.inventory[self.new_id] != self.editor.old_inventory[self.new_id] or
+            self.editor._get_text_revid(self.path) is not None):
+            ie = self.editor.inventory[self.new_id]
+            assert self.editor.revid is not None
+            ie.revision = self.editor.revid
 
-        self.editor.texts.add_lines((self.new_id, self.editor.revid), 
-                 [(self.new_id, revid) for revid in self.parent_revids], [])
+            self.editor.texts.add_lines(
+                (self.new_id, self.editor._get_text_revid(self.path) or ie.revision),
+                [(self.new_id, revid) for revid in self.parent_revids], [])
 
         if self.new_id == self.editor.inventory.root.file_id:
+            assert self.editor.inventory.root.revision is not None
             assert len(self.editor._premature_deletes) == 0
             self.editor._finish_commit()
 
@@ -258,7 +265,6 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
         else:
             old_file_id = None
             ie = self.editor.inventory.add_path(path, 'directory', file_id)
-        ie.revision = self.editor.revid
 
         return DirectoryRevisionBuildEditor(self.editor, path, old_file_id, file_id)
 
@@ -280,7 +286,6 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
             self.editor.inventory._byid[file_id] = ie
             ie.file_id = file_id
             file_parents = []
-        ie.revision = self.editor.revid
         return DirectoryRevisionBuildEditor(self.editor, path, base_file_id, file_id, 
                                     file_parents)
 
@@ -346,7 +351,7 @@ class FileRevisionBuildEditor(FileBuildEditor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        self.editor.texts.add_lines((self.file_id, self.editor.revid), 
+        self.editor.texts.add_lines((self.file_id, self.editor._get_text_revid(self.path) or self.editor.revid), 
                 [(self.file_id, revid) for revid in self.file_parents], lines)
 
         if self.is_special is not None:
@@ -365,16 +370,15 @@ class FileRevisionBuildEditor(FileBuildEditor):
             ie.text_sha1 = None
             ie.text_size = None
             ie.executable = False
-            ie.revision = self.editor.revid
         else:
             ie = self.editor.inventory.add_path(self.path, 'file', self.file_id)
-            ie.revision = self.editor.revid
             ie.kind = 'file'
             ie.symlink_target = None
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             assert ie.text_size is not None
             ie.executable = self.is_executable
+        ie.revision = self.editor._get_text_revid(self.path) or self.editor.revid
 
         self.file_stream = None
 
@@ -388,10 +392,12 @@ class RevisionBuildEditor(DeltaBuildEditor):
         self.source = source
         self.texts = target.texts
         self.revid = revid
+        self._text_revids = None
         self._premature_deletes = set()
         mapping = self.source.lookup_revision_id(revid)[2]
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
+        assert prev_inventory.root is None or self.inventory.root.revision == prev_inventory.root.revision
         super(RevisionBuildEditor, self).__init__(revmeta, mapping)
 
     def _get_revision(self, revid):
@@ -419,12 +425,10 @@ class RevisionBuildEditor(DeltaBuildEditor):
     def _finish_commit(self):
         (rev, signature) = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
-        for path, textrevid in self.mapping.import_text_parents(self.revmeta.revprops, 
-                                                                self.revmeta.fileprops).items():
-            self.inventory[self.inventory.path2id(path)].revision = textrevid
         # Escaping the commit message is really the task of the serialiser
         rev.message = _escape_commit_message(rev.message)
         rev.inventory_sha1 = None
+        assert self.inventory.root.revision is not None
         self.target.add_revision(self.revid, rev, self.inventory)
         if signature is not None:
             self.target.add_signature_text(self.revid, signature)
@@ -439,6 +443,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
         self.inventory.rename(file_id, parent_id, urlutils.basename(new_path))
 
     def _open_root(self, base_revnum):
+        assert self.revid is not None
         if self.old_inventory.root is None:
             # First time the root is set
             old_file_id = None
@@ -455,7 +460,8 @@ class RevisionBuildEditor(DeltaBuildEditor):
             ie = self.inventory.root
         else:
             ie = self.inventory.add_path("", 'directory', file_id)
-        ie.revision = self.revid
+            ie.revision = self.revid
+        assert ie.revision is not None
         return DirectoryRevisionBuildEditor(self, "", old_file_id, file_id, file_parents)
 
     def _get_old_id(self, parent_id, old_path):
@@ -479,6 +485,13 @@ class RevisionBuildEditor(DeltaBuildEditor):
             return ret
         return self.mapping.generate_file_id(self.revmeta.uuid, self.revmeta.revnum, 
                                              self.revmeta.branch_path, new_path)
+
+    def _get_text_revid(self, path):
+        if self._text_revids is None:
+            self._text_revids = self.mapping.import_text_parents(self.revmeta.revprops, 
+                                                                 self.revmeta.fileprops)
+        return self._text_revids.get(path)
+
 
 
 class FileTreeDeltaBuildEditor(FileBuildEditor):

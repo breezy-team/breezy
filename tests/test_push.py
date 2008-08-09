@@ -307,16 +307,17 @@ class TestPush(TestCaseWithSubversionRepository):
         b = Branch.open("b")
 
         def check_tree_revids(rtree):
-            self.assertEqual(rtree.inventory.root.revision, revid)
             self.assertEqual(rtree.inventory[rtree.path2id("file")].revision,
                              revid)
             self.assertEqual(rtree.inventory[rtree.path2id("foo")].revision,
-                             revid)
+                             b.revision_history()[1])
             self.assertEqual(rtree.inventory[rtree.path2id("foo/bla")].revision,
                              revid)
+            self.assertEqual(rtree.inventory.root.revision, b.revision_history()[0])
+
+        check_tree_revids(wt.branch.repository.revision_tree(b.last_revision()))
 
         check_tree_revids(b.repository.revision_tree(b.last_revision()))
-
         bc = self.svndir.open_branch()
         check_tree_revids(bc.repository.revision_tree(bc.last_revision()))
 
@@ -608,11 +609,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         wt1.lock_write()
         try:
-            wt1.branch.repository.fetch(wt2.branch.repository)
-            merge = Merger.from_revision_ids(DummyProgress(), wt1, other=other_revid)
-            merge.merge_type = Merge3Merger
-            merge.do_merge()
-            merge.set_pending()
+            wt1.merge_from_branch(wt2.branch)
             self.assertEquals([wt1.last_revision(), other_revid], wt1.get_parent_ids())
             mergingrevid = wt1.commit("merge", rev_id="side2")
             check_tree(wt1.branch.repository.revision_tree(mergingrevid))
