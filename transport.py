@@ -1,4 +1,5 @@
 # Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,7 +119,14 @@ def Connection(url):
         if num == ERR_BAD_URL:
             raise InvalidURL(url)
         if num == ERR_RA_DAV_RELOCATED:
-            raise RedirectRequested(url, msg.split("'")[1], is_permanent=True)
+            # Try to guess the new url
+            if "'" in msg:
+                new_url = msg.split("'")[1]
+            elif "«" in msg:
+                new_url = msg[msg.index("»")+2:msg.index("«")]
+            else:
+                new_url = None
+            raise RedirectRequested(source=url, target=new_url, is_permanent=True)
         raise
 
     from bzrlib.plugins.svn import lazy_check_versions
