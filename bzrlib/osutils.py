@@ -1170,8 +1170,13 @@ def walkdirs(top, prefix=""):
         append = dirblock.append
         try:
             names = sorted(_listdir(top))
-        except OSError, e:
-            if getattr(e, 'errno', None) == errno.ENOTDIR:
+        except EnvironmentError, e:
+            # Py 2.4 and earlier will set errno to EINVAL to 
+            # ERROR_DIRECTORY (267).  Later versions set it to
+            # EINVAL and winerror gets set to ERROR_DIRECTORY.
+            en = getattr(e, 'errno', None)
+            if (en == errno.ENOTDIR or
+                (sys.platform=='win32' and en in (267, errno.EINVAL))):
                 # We have been asked to examine a file, this is fine.
                 pass
             else:
