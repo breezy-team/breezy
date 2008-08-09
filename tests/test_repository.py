@@ -203,13 +203,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         results = [(l.branch_path, l.paths, l.revnum) for l in repos.iter_reverse_branch_changes("pygments/trunk", 3, 0, TrunkBranchingScheme(1))]
 
-        # Results differ per Subversion version
+        # Results differ per Subversion version, yay
         # For <= 1.4:
         if ra.version()[1] <= 4:
             self.assertEquals([
             ('pygments/trunk', {'pygments': (u'A', 'pykleur', 1),
                                 'pygments/trunk': (u'R', 'pykleur/trunk', 2),
                                 'pykleur': (u'D', None, -1)}, 3),
+            ('pykleur/trunk', {'pykleur/trunk/pykleur/afile': (u'A', None, -1)}, 2),
             ('pykleur/trunk',
                     {'pykleur': (u'A', None, -1),
                      'pykleur/trunk': (u'A', None, -1),
