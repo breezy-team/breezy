@@ -1,3 +1,10 @@
+bzr (1.6~rc1-2) experimental; urgency=low
+
+  * Bump standards version.
+  * Include patch for inventory root revision copy, required for bzr-svn.
+
+ -- Jelmer Vernooij <jelmer@samba.org>  Sat, 09 Aug 2008 15:54:51 +0200
+
 bzr (1.6~rc1-1) experimental; urgency=low
 
   * New upstream release.
