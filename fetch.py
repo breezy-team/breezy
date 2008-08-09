@@ -154,6 +154,10 @@ class DirectoryBuildEditor(object):
         elif name.startswith(properties.PROP_PREFIX):
             mutter('unsupported dir property %r', name)
 
+        if (not name.startswith(properties.PROP_ENTRY_PREFIX) and
+            not name.startswith(properties.PROP_WC_PREFIX)):
+            self._metadata_changed = True
+
     def add_file(self, path, copyfrom_path=None, copyfrom_revnum=-1):
         assert isinstance(path, str)
         path = path.decode("utf-8")
@@ -218,6 +222,7 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
         self.old_id = old_id
         self.new_id = new_id
         self.parent_revids = parent_revids
+        self._metadata_changed = False
 
     def _delete_entry(self, path, revnum):
         if path in self.editor._premature_deletes:
@@ -231,6 +236,7 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
 
     def _close(self):
         if (not self.new_id in self.editor.old_inventory or 
+            (self._metadata_changed and self.path != "") or 
             self.editor.inventory[self.new_id] != self.editor.old_inventory[self.new_id] or
             self.editor._get_text_revid(self.path) is not None):
             ie = self.editor.inventory[self.new_id]
@@ -243,7 +249,6 @@ class DirectoryRevisionBuildEditor(DirectoryBuildEditor):
 
         if self.new_id == self.editor.inventory.root.file_id:
             assert self.editor.inventory.root.revision is not None
-            assert len(self.editor._premature_deletes) == 0
             self.editor._finish_commit()
 
     def _add_directory(self, path, copyfrom_path=None, copyfrom_revnum=-1):
@@ -423,6 +428,7 @@ class RevisionBuildEditor(DeltaBuildEditor):
         return (rev, signature)
 
     def _finish_commit(self):
+        assert len(self._premature_deletes) == 0
         (rev, signature) = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
         # Escaping the commit message is really the task of the serialiser

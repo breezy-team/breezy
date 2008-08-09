@@ -199,7 +199,10 @@ class FileIdMap(object):
                         del map[p]
 
         for x in sorted(delta.keys()):
-            if delta[x] is not None:
+            if (delta[x] is not None and 
+                # special case - we change metadata in svn at the branch root path
+                # but that's not reflected as a bzr metadata change in bzr
+                (x != "" or not "" in map or map[x][1] == NULL_REVISION)):
                 map[x] = (str(delta[x]), revid)
 
 
