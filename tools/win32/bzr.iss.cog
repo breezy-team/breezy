@@ -93,29 +93,29 @@ PrivilegesRequired=admin
 ; if "TBZR" in os.environ: # we need a more formal way of controlling this...
 ;     tovmsi = os.environ["TOVMSI_WIN32"] # point at TortoiseOverlays .msi
 ;     cog.outl('Source: "%s"; Flags: dontcopy ignoreversion ; Components: tortoise' % tovmsi)
-;     cog.outl('Source: "tbzrcache.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: tortoise')
-;     cog.outl('Source: "tbzrcachew.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: tortoise')
-;     cog.outl('Source: "tbzrcommand.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: tortoise')
-;     cog.outl('Source: "tbzrcommandw.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: tortoise')
-;     cog.outl('Source: "tbzr_tracer.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: debug')
+;     cog.outl('Source: "tbzrcache.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrcachew.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrcommand.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzrcommandw.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl('Source: "tbzr_tracer.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: debug')
 ;     # Note 'regserver' here appears to run regsvr32 without elevation, which
 ;     # is no good for us - so we have a [run] entry below.
-;     cog.outl('Source: "tbzr.dll"; DestDir: "{app}"; Flags: ignoreversion regserver restartreplace; Components: tortoise')
-;     cog.outl(r'Source: "plugins\qbzr\*"; DestDir: "{app}\plugins\qbzr"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace; Components: tortoise')
+;     cog.outl('Source: "tbzr.dll"; DestDir: "{app}"; Flags: ignoreversion regserver restartreplace uninsrestartdelete; Components: tortoise')
+;     cog.outl(r'Source: "plugins\qbzr\*"; DestDir: "{app}\plugins\qbzr"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: tortoise')
 ;
 ;     cog.outl('Source: "%s\\doc\\index.html"; DestDir: "{app}\\doc\\tbzr"; Flags: ignoreversion; Components: tortoise' % os.environ['TBZR'])
 ; ]]]
 ; [[[end]]]
 
 ; We can't say '*.*' due to optional components.
-Source: "plugins\*.*"; DestDir: "{app}\\plugins"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace; Components: plugins
-Source: "*.bat"; DestDir: "{app}"; Flags: ignoreversion;
-Source: "*.url"; DestDir: "{app}"; Flags: ignoreversion;
-Source: "msvc*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace;
-Source: "bz*.exe"; DestDir: "{app}"; Flags: ignoreversion;
-Source: "Python*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace;
-Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace;
-Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs;
+Source: "plugins\*.*"; DestDir: "{app}\\plugins"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: plugins
+Source: "*.bat"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "*.url"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "msvc*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "bz*.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "Python*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;
+Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;
 ; [[[cog
 ; try:
 ;     import pycurl
@@ -224,22 +224,28 @@ const
 procedure SHChangeNotify(wEventId, uFlags, dwItem1, dwItem2: Integer);
  external 'SHChangeNotify@shell32.dll stdcall';
 
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure ShutdownTBZR;
 var
-    S, tovmsi, fqtovmsi, params: String;
-    ErrorCode: Integer;
     hwnd: HWND;
 begin
-    if CurStep=ssInstall then begin
 // [[[cog
 // if "TBZR" not in os.environ:
 //     cog.outl('        Exit;  // No TSVN set - exit this procedure.')
 // ]]]
 // [[[end]]]
-        // ask the cache process to shut-down.
-        hwnd := FindWindowByClassName('TBZRCache_Taskbar');
-        if hwnd <> 0 then
-            PostMessage(hwnd, WM_QUIT, 1, 0);
+    // ask the cache process to shut-down.
+    hwnd := FindWindowByClassName('TBZRCache_Taskbar');
+    if hwnd <> 0 then
+        PostMessage(hwnd, WM_QUIT, 1, 0);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+    S, tovmsi, fqtovmsi, params: String;
+    ErrorCode: Integer;
+begin
+    if CurStep=ssInstall then begin
+        ShutdownTBZR;
     end;
 
     if CurStep=ssPostInstall then begin
@@ -270,3 +276,9 @@ begin
     end;
 end;
 
+
+function InitializeUninstall(): Boolean; 
+begin
+    ShutdownTBZR;
+    result := True;
+end;
