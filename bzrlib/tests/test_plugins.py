@@ -441,12 +441,18 @@ class TestSetPluginsPath(TestCase):
         old_path = bzrlib.plugins.__path__
         old_env = os.environ.get('BZR_PLUGIN_PATH')
         try:
+            # first determine the default builtin path
+            bzrlib.plugins.__path__ = []
+            if old_env is not None:
+                del os.environ['BZR_PLUGIN_PATH']
+            bzrlib.plugin.set_plugins_path()
+            default = bzrlib.plugins.__path__[-1:]
+            # now adjust env and new ones correctly added.
             bzrlib.plugins.__path__ = []
             os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
                 "second/\\/\\/"
             bzrlib.plugin.set_plugins_path()
-            expected_path = ['first', 'second',
-                os.path.dirname(bzrlib.plugins.__file__)]
+            expected_path = ['first', 'second'] + default
             self.assertEqual(expected_path,
                 bzrlib.plugins.__path__[:len(expected_path)])
         finally:
