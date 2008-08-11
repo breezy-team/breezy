@@ -437,22 +437,17 @@ class TestSetPluginsPath(TestCase):
 
     def test_set_plugins_path_with_trailing_slashes(self):
         """set_plugins_path should set the module __path__ based on
-        BZR_PLUGIN_PATH."""
+        BZR_PLUGIN_PATH after removing all trailing slashes."""
         old_path = bzrlib.plugins.__path__
         old_env = os.environ.get('BZR_PLUGIN_PATH')
         try:
-            # After setting BZR_PLUGIN_PATH, we expect the new path to be
-            # the nominated paths followed by the builtin plugin path.
-            # The builtin plugin path is always at the end (some platforms
-            # may stick default entries at the start if BZR_PLUGIN_PATH 
-            # isn't set)
-            builtin_path = bzrlib.plugins.__path__[-1]
             bzrlib.plugins.__path__ = []
             os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
                 "second/\\/\\/"
             bzrlib.plugin.set_plugins_path()
-            # We expect our nominated paths to have all path-seps removed.
-            expected_path = ['first', 'second', builtin_path]
+            # We expect our nominated paths to have all path-seps removed,
+            # and this is testing only that.
+            expected_path = ['first', 'second']
             self.assertEqual(expected_path,
                 bzrlib.plugins.__path__[:len(expected_path)])
         finally:
