@@ -55,7 +55,7 @@ class TestSourceHelper(TestCase):
 
     def source_file_name(self, package):
         """Return the path of the .py file for package."""
-        if hasattr(sys, "frozen"):
+        if getattr(sys, "frozen", None) is not None:
             raise TestSkipped("can't test sources in frozen distributions.")
         path = package.__file__
         if path[-1] in 'co':
