@@ -11,6 +11,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr export`` can now export a subdirectory of a project.
+      (Robert Collins)
+
   BUG FIXES:
 
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
@@ -30,6 +33,8 @@ IN DEVELOPMENT
       will get the same results.  (John Arbash Meinel, #232188)
 
   API CHANGES:
+
+    * Exporters now take 4 parameters. (Robert Collins)
 
   INTERNALS:
 
