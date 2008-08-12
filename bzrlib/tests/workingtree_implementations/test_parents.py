@@ -337,8 +337,10 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # the delta.
         result_basis = tree.basis_tree()
         result_basis.lock_read()
-        self.addCleanup(result_basis.unlock)
-        self.assertEqual(expected_inventory, result_basis.inventory)
+        try:
+            self.assertEqual(expected_inventory, result_basis.inventory)
+        finally:
+            result_basis.unlock()
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
