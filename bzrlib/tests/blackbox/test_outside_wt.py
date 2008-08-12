@@ -34,6 +34,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
     def test_cwd_log(self):
         tmp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
+        self.addCleanup(lambda: os.chdir('..'))
         os.chdir(tmp_dir)
         out, err = self.run_bzr('log', retcode=3)
         self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n'
@@ -49,6 +50,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
     def test_diff_outside_tree(self):
         tmp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
+        self.addCleanup(lambda: os.chdir('..'))
         os.chdir(tmp_dir)
         self.run_bzr('init branch1')
         self.run_bzr(['commit', '-m', 'nothing',
