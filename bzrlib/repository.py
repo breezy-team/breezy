@@ -291,8 +291,13 @@ class CommitBuilder(object):
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
-                # appropriate.
-                return None, (ie.revision == self._new_revision_id)
+                # appropriate. If its not being considered for committing then
+                # it and all its parents to the root must be unaltered so
+                # no-change against the basis.
+                if ie.revision == self._new_revision_id:
+                    raise AssertionError("Impossible situation, a skipped "
+                        "inventory entry claims to be modified in this commit.")
+                return None, False
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
