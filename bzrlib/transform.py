@@ -1204,10 +1204,8 @@ class TreeTransform(TreeTransformBase):
             if len(conflicts) != 0:
                 raise MalformedTransform(conflicts=conflicts)
         if precomputed_delta is None:
-            new_inventory_delta = []
-            inventory_delta = new_inventory_delta
+            inventory_delta = self._generate_inventory_delta()
         else:
-            new_inventory_delta = None
             inventory_delta = precomputed_delta
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -1217,10 +1215,9 @@ class TreeTransform(TreeTransformBase):
                 mover = _mover
             try:
                 child_pb.update('Apply phase', 0, 2)
-                kind_changes = self._apply_removals(new_inventory_delta, mover)
+                self._apply_removals(mover)
                 child_pb.update('Apply phase', 1, 2)
-                modified_paths = self._apply_insertions(new_inventory_delta,
-                                                        mover, kind_changes)
+                modified_paths = self._apply_insertions(mover)
             except:
                 mover.rollback()
                 raise
@@ -1233,7 +1230,79 @@ class TreeTransform(TreeTransformBase):
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
 
-    def _apply_removals(self, inventory_delta, mover):
+    def _generate_inventory_delta(self):
+        inventory_delta = []
+        tree_paths = list(self._tree_path_ids.iteritems())
+        tree_paths.sort(reverse=True)
+        kind_changes = set()
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for num, data in enumerate(tree_paths):
+                path, trans_id = data
+                child_pb.update('removing file', num, len(tree_paths))
+                if trans_id in self._removed_contents:
+                    try:
+                        if (self.tree_kind(trans_id)
+                            != self.final_kind(trans_id)):
+                            kind_changes.add(trans_id)
+                    except NoSuchFile:
+                        pass
+                if (trans_id in self._removed_id):
+                    if trans_id == self._new_root:
+                        file_id = self._tree.get_root_id()
+                    else:
+                        file_id = self.tree_file_id(trans_id)
+                    # File-id isn't really being deleted, just moved
+                    if file_id in self._r_new_id:
+                        continue
+                    inventory_delta.append((path, None, file_id, None))
+        finally:
+            child_pb.finished()
+        new_paths = self.new_paths(filesystem_only=False)
+        new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
+                                 new_paths)
+        entries = self._tree.iter_entries_by_dir(
+            new_path_file_ids.values())
+        old_paths = dict((e.file_id, p) for p, e in entries)
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for num, (path, trans_id) in enumerate(new_paths):
+                new_entry = None
+                if (num % 10) == 0:
+                    child_pb.update('adding file', num, len(new_paths))
+                file_id = new_path_file_ids[trans_id]
+                if file_id is not None and (trans_id in self._new_id or
+                    trans_id in self._new_name or
+                    trans_id in self._new_parent
+                    or trans_id in self._new_executability
+                    or trans_id in kind_changes):
+                    try:
+                        kind = self.final_kind(trans_id)
+                    except NoSuchFile:
+                        kind = self._tree.stored_kind(file_id)
+                    parent_trans_id = self.final_parent(trans_id)
+                    parent_file_id = new_path_file_ids.get(parent_trans_id)
+                    if parent_file_id is None:
+                        parent_file_id = self.final_file_id(
+                            parent_trans_id)
+                    if trans_id in self._new_reference_revision:
+                        new_entry = inventory.TreeReference(
+                            file_id,
+                            self._new_name[trans_id],
+                            self.final_file_id(self._new_parent[trans_id]),
+                            None, self._new_reference_revision[trans_id])
+                    else:
+                        new_entry = inventory.make_entry(kind,
+                            self.final_name(trans_id),
+                            parent_file_id, file_id)
+                    old_path = old_paths.get(new_entry.file_id)
+                    inventory_delta.append(
+                        (old_path, path, new_entry.file_id, new_entry))
+        finally:
+            child_pb.finished()
+        return inventory_delta
+
+    def _apply_removals(self, mover):
         """Perform tree operations that remove directory/inventory names.
 
         That is, delete files that are to be deleted, and put any files that
@@ -1252,12 +1321,6 @@ class TreeTransform(TreeTransformBase):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    try:
-                        if (self.tree_kind(trans_id)
-                                != self.final_kind(trans_id)):
-                            kind_changes.add(trans_id)
-                    except NoSuchFile:
-                        pass
                     mover.pre_delete(full_path, os.path.join(self._deletiondir,
                                      trans_id))
                 elif trans_id in self._new_name or trans_id in \
@@ -1269,21 +1332,11 @@ class TreeTransform(TreeTransformBase):
                             raise
                     else:
                         self.rename_count += 1
-                if (trans_id in self._removed_id
-                    and inventory_delta is not None):
-                    if trans_id == self._new_root:
-                        file_id = self._tree.get_root_id()
-                    else:
-                        file_id = self.tree_file_id(trans_id)
-                    # File-id isn't really being deleted, just moved
-                    if file_id in self._r_new_id:
-                        continue
-                    inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
         return kind_changes
 
-    def _apply_insertions(self, inventory_delta, mover, kind_changes):
+    def _apply_insertions(self, mover):
         """Perform tree operations that insert directory/inventory names.
 
         That is, create any files that need to be created, and restore from
@@ -1296,19 +1349,13 @@ class TreeTransform(TreeTransformBase):
         kind_changes is a set of trans ids where the entry has changed
         kind, and so an inventory delta entry should be created for them.
         """
-        new_paths = self.new_paths(filesystem_only=(inventory_delta is None))
+        new_paths = self.new_paths(filesystem_only=True)
         modified_paths = []
-        completed_new = []
         new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                  new_paths)
-        if inventory_delta is not None:
-            entries = self._tree.iter_entries_by_dir(
-                new_path_file_ids.values())
-            old_paths = dict((e.file_id, p) for p, e in entries)
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
-                new_entry = None
                 if (num % 10) == 0:
                     child_pb.update('adding file', num, len(new_paths))
                 full_path = self._tree.abspath(path)
@@ -1321,50 +1368,15 @@ class TreeTransform(TreeTransformBase):
                             raise
                     else:
                         self.rename_count += 1
-                if inventory_delta is not None:
-                    if (trans_id in self._new_contents or
-                        self.path_changed(trans_id)):
-                        if trans_id in self._new_contents:
-                            modified_paths.append(full_path)
-                            completed_new.append(trans_id)
-                    file_id = new_path_file_ids[trans_id]
-                    if file_id is not None and (trans_id in self._new_id or
-                        trans_id in self._new_name or
-                        trans_id in self._new_parent
-                        or trans_id in self._new_executability
-                        or trans_id in kind_changes):
-                        try:
-                            kind = self.final_kind(trans_id)
-                        except NoSuchFile:
-                            kind = self._tree.stored_kind(file_id)
-                        parent_trans_id = self.final_parent(trans_id)
-                        parent_file_id = new_path_file_ids.get(parent_trans_id)
-                        if parent_file_id is None:
-                            parent_file_id = self.final_file_id(
-                                parent_trans_id)
-                        if trans_id in self._new_reference_revision:
-                            new_entry = inventory.TreeReference(
-                                file_id,
-                                self._new_name[trans_id],
-                                self.final_file_id(self._new_parent[trans_id]),
-                                None, self._new_reference_revision[trans_id])
-                        else:
-                            new_entry = inventory.make_entry(kind,
-                                self.final_name(trans_id),
-                                parent_file_id, file_id)
-                        old_path = old_paths.get(new_entry.file_id)
-                        inventory_delta.append(
-                            (old_path, path, new_entry.file_id, new_entry))
-
+                if (trans_id in self._new_contents or
+                    self.path_changed(trans_id)):
+                    if trans_id in self._new_contents:
+                        modified_paths.append(full_path)
                 if trans_id in self._new_executability:
-                    self._set_executability(path, new_entry, trans_id)
+                    self._set_executability(path, None, trans_id)
         finally:
             child_pb.finished()
-        if inventory_delta is None:
-            self._new_contents.clear()
-        else:
-            for trans_id in completed_new:
-                del self._new_contents[trans_id]
+        self._new_contents.clear()
         return modified_paths
 
 
