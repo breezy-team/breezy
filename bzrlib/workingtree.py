@@ -2593,11 +2593,14 @@ class WorkingTree3(WorkingTree):
         except errors.NoSuchFile:
             return _mod_conflicts.ConflictList()
         try:
-            if confile.next() != CONFLICT_HEADER_1 + '\n':
+            try:
+                if confile.next() != CONFLICT_HEADER_1 + '\n':
+                    raise errors.ConflictFormatError()
+            except StopIteration:
                 raise errors.ConflictFormatError()
-        except StopIteration:
-            raise errors.ConflictFormatError()
-        return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
+            return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
+        finally:
+            confile.close()
 
     def unlock(self):
         # do non-implementation specific cleanup
