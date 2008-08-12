@@ -1217,20 +1217,23 @@ class TreeTransform(TreeTransformBase):
             conflicts = self.find_conflicts()
             if len(conflicts) != 0:
                 raise MalformedTransform(conflicts=conflicts)
-        if precomputed_delta is None:
-            inventory_delta = self._generate_inventory_delta()
-        else:
-            inventory_delta = precomputed_delta
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            if precomputed_delta is None:
+                child_pb.update('Apply phase', 0, 2)
+                inventory_delta = self._generate_inventory_delta()
+                offset = 1
+            else:
+                inventory_delta = precomputed_delta
+                offset = 0
             if _mover is None:
                 mover = _FileMover()
             else:
                 mover = _mover
             try:
-                child_pb.update('Apply phase', 0, 2)
+                child_pb.update('Apply phase', 0 + offset, 2 + offset)
                 self._apply_removals(mover)
-                child_pb.update('Apply phase', 1, 2)
+                child_pb.update('Apply phase', 1 + offset, 2 + offset)
                 modified_paths = self._apply_insertions(mover)
             except:
                 mover.rollback()
@@ -1247,9 +1250,12 @@ class TreeTransform(TreeTransformBase):
     def _generate_inventory_delta(self):
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        new_paths = self._inventory_altered()
+        total_entries = len(new_paths) + len(self._removed_id)
         try:
             for num, trans_id in enumerate(self._removed_id):
-                child_pb.update('removing file', num, len(self._removed_id))
+                if (num % 10) == 0:
+                    child_pb.update('removing file', num, total_entries)
                 if trans_id == self._new_root:
                     file_id = self._tree.get_root_id()
                 else:
@@ -1259,20 +1265,16 @@ class TreeTransform(TreeTransformBase):
                     continue
                 path = self._tree_id_paths[trans_id]
                 inventory_delta.append((path, None, file_id, None))
-        finally:
-            child_pb.finished()
-        new_paths = self._inventory_altered()
-        new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
-                                 new_paths)
-        entries = self._tree.iter_entries_by_dir(
-            new_path_file_ids.values())
-        old_paths = dict((e.file_id, p) for p, e in entries)
-        final_kinds = {}
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
+            new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
+                                     new_paths)
+            entries = self._tree.iter_entries_by_dir(
+                new_path_file_ids.values())
+            old_paths = dict((e.file_id, p) for p, e in entries)
+            final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
-                    child_pb.update('adding file', num, len(new_paths))
+                    child_pb.update('adding file',
+                                    num + len(self._removed_id), total_entries)
                 file_id = new_path_file_ids[trans_id]
                 if file_id is None:
                     continue
