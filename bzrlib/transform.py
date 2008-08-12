@@ -478,16 +478,11 @@ class TreeTransformBase(object):
             new_ids.update(id_set)
         return sorted(FinalPaths(self).get_paths(new_ids))
 
-    def _inv_new_paths(self):
-        """Determine the paths of all new and changed files.
-
-        :param filesystem_only: if True, only calculate values for files
-            that require renames or execute bit changes.
-        """
+    def _inventory_altered(self):
+        """Get the trans_ids and paths of files needing new inv entries."""
         new_ids = set()
-        id_sets = (self._new_name, self._new_parent,
-                   self._new_id, self._new_executability)
-        for id_set in id_sets:
+        for id_set in [self._new_name, self._new_parent, self._new_id,
+                       self._new_executability]:
             new_ids.update(id_set)
         changed_kind = set(self._removed_contents)
         changed_kind.intersection_update(self._new_contents)
@@ -496,7 +491,6 @@ class TreeTransformBase(object):
                         self.final_kind(t))
         new_ids.update(changed_kind)
         return sorted(FinalPaths(self).get_paths(new_ids))
-
 
     def tree_kind(self, trans_id):
         """Determine the file kind in the working tree.
@@ -1267,7 +1261,7 @@ class TreeTransform(TreeTransformBase):
                 inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
-        new_paths = self._inv_new_paths()
+        new_paths = self._inventory_altered()
         new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                  new_paths)
         entries = self._tree.iter_entries_by_dir(
