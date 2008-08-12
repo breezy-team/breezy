@@ -1257,7 +1257,6 @@ class TreeTransform(TreeTransformBase):
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
-                new_entry = None
                 if (num % 10) == 0:
                     child_pb.update('adding file', num, len(new_paths))
                 file_id = new_path_file_ids[trans_id]
