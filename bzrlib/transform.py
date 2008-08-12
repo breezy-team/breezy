@@ -884,12 +884,10 @@ class TreeTransformBase(object):
         self._limbo_files[trans_id] = limbo_name
         return limbo_name
 
-    def _set_executability(self, path, entry, trans_id):
+    def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        new_executability = self._new_executability[trans_id]
-        if entry is not None:
-            entry.executable = new_executability
         if supports_executable():
+            new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
             if new_executability:
@@ -1298,6 +1296,9 @@ class TreeTransform(TreeTransformBase):
                         self.final_name(trans_id),
                         parent_file_id, file_id)
                 old_path = old_paths.get(new_entry.file_id)
+                new_executability = self._new_executability.get(trans_id)
+                if new_executability is not None:
+                    new_entry.executable = new_executability
                 inventory_delta.append(
                     (old_path, path, new_entry.file_id, new_entry))
         finally:
@@ -1375,7 +1376,7 @@ class TreeTransform(TreeTransformBase):
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
                 if trans_id in self._new_executability:
-                    self._set_executability(path, None, trans_id)
+                    self._set_executability(path, trans_id)
         finally:
             child_pb.finished()
         self._new_contents.clear()
