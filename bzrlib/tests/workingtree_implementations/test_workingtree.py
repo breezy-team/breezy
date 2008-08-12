@@ -900,7 +900,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.commit('added file')
         def fake_link(source, target):
             raise OSError(errno.EPERM, 'Operation not permitted')
-        real_os_link = os.link
+        try:
+            real_os_link = os.link
+        except AttributeError:
+            raise TestSkipped("This platform doesn't provide os.link")
         os.link = fake_link
         try:
             # Hard-link support is optional, so supplying hardlink=True may
