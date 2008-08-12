@@ -1232,30 +1232,19 @@ class TreeTransform(TreeTransformBase):
 
     def _generate_inventory_delta(self):
         inventory_delta = []
-        tree_paths = list(self._tree_path_ids.iteritems())
-        tree_paths.sort(reverse=True)
-        kind_changes = set()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            for num, data in enumerate(tree_paths):
-                path, trans_id = data
-                child_pb.update('removing file', num, len(tree_paths))
-                if trans_id in self._removed_contents:
-                    try:
-                        if (self.tree_kind(trans_id)
-                            != self.final_kind(trans_id)):
-                            kind_changes.add(trans_id)
-                    except NoSuchFile:
-                        pass
-                if (trans_id in self._removed_id):
-                    if trans_id == self._new_root:
-                        file_id = self._tree.get_root_id()
-                    else:
-                        file_id = self.tree_file_id(trans_id)
-                    # File-id isn't really being deleted, just moved
-                    if file_id in self._r_new_id:
-                        continue
-                    inventory_delta.append((path, None, file_id, None))
+            for num, trans_id in enumerate(self._removed_id):
+                child_pb.update('removing file', num, len(self._removed_id))
+                if trans_id == self._new_root:
+                    file_id = self._tree.get_root_id()
+                else:
+                    file_id = self.tree_file_id(trans_id)
+                # File-id isn't really being deleted, just moved
+                if file_id in self._r_new_id:
+                    continue
+                path = self._tree_id_paths[trans_id]
+                inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
         new_paths = self.new_paths(filesystem_only=False)
@@ -1264,6 +1253,7 @@ class TreeTransform(TreeTransformBase):
         entries = self._tree.iter_entries_by_dir(
             new_path_file_ids.values())
         old_paths = dict((e.file_id, p) for p, e in entries)
+        final_kinds = {}
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
@@ -1271,15 +1261,30 @@ class TreeTransform(TreeTransformBase):
                 if (num % 10) == 0:
                     child_pb.update('adding file', num, len(new_paths))
                 file_id = new_path_file_ids[trans_id]
-                if file_id is not None and (trans_id in self._new_id or
+                if file_id is None:
+                    continue
+                needs_entry = False
+                if (trans_id in self._new_id or
                     trans_id in self._new_name or
                     trans_id in self._new_parent
-                    or trans_id in self._new_executability
-                    or trans_id in kind_changes):
-                    try:
-                        kind = self.final_kind(trans_id)
-                    except NoSuchFile:
-                        kind = self._tree.stored_kind(file_id)
+                    or trans_id in self._new_executability):
+                    needs_entry = True
+                else:
+                    if trans_id in self._removed_contents:
+                        try:
+                            final_kind = self.final_kind(trans_id)
+                            if (self.tree_kind(trans_id) != final_kind):
+                                needs_entry = True
+                            final_kinds[trans_id] = final_kind
+                        except NoSuchFile:
+                            pass
+                if needs_entry:
+                    kind = final_kinds.get(trans_id)
+                    if kind is None:
+                        try:
+                            kind = self.final_kind(trans_id)
+                        except NoSuchFile:
+                            kind = self._tree.stored_kind(file_id)
                     parent_trans_id = self.final_parent(trans_id)
                     parent_file_id = new_path_file_ids.get(parent_trans_id)
                     if parent_file_id is None:
