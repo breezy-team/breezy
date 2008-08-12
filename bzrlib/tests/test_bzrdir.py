@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     help_topics,
     repository,
+    osutils,
     symbol_versioning,
     urlutils,
     win32utils,
@@ -532,8 +533,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('topdir'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
-            repo.bzrdir.transport.local_abspath('repository').replace("/", os.path.sep))
+            osutils.realpath(os.path.join('topdir', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
     def test_open_containing_tree_branch_or_repository_no_tree(self):
@@ -545,8 +546,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
-            repo.bzrdir.transport.local_abspath('repository').replace("/", os.path.sep))
+            osutils.realpath(os.path.join('branch', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
     def test_open_containing_tree_branch_or_repository_repo(self):
@@ -557,8 +558,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
-            repo.bzrdir.transport.local_abspath('repository').replace("/", os.path.sep))
+            osutils.realpath(os.path.join('repo', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
     def test_open_containing_tree_branch_or_repository_shared_repo(self):
@@ -572,8 +573,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('shared/branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
-            repo.bzrdir.transport.local_abspath('repository').replace("/", os.path.sep))
+            osutils.realpath(os.path.join('shared', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
     def test_open_containing_tree_branch_or_repository_branch_subdir(self):
@@ -587,8 +588,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('foo'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
-            repo.bzrdir.transport.local_abspath('repository').replace("/", os.path.sep))
+            osutils.realpath(os.path.join('foo', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'bar')
 
     def test_open_containing_tree_branch_or_repository_repo_subdir(self):
@@ -600,8 +601,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
-            repo.bzrdir.transport.local_abspath('repository').replace("/", os.path.sep))
+            osutils.realpath(os.path.join('bar', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'baz')
 
     def test_open_containing_from_transport(self):
