@@ -1263,45 +1263,39 @@ class TreeTransform(TreeTransformBase):
                 if file_id is None:
                     continue
                 needs_entry = False
-                if (trans_id in self._new_id or
-                    trans_id in self._new_name or
-                    trans_id in self._new_parent
-                    or trans_id in self._new_executability):
-                    needs_entry = True
-                else:
-                    if trans_id in self._removed_contents:
-                        try:
+                if (trans_id not in self._new_id and
+                    trans_id not in self._new_name and
+                    trans_id not in self._new_parent and
+                    trans_id not in self._new_executability):
+                    if (trans_id in self._removed_contents and
+                        trans_id in self._new_contents):
                             final_kind = self.final_kind(trans_id)
-                            if (self.tree_kind(trans_id) != final_kind):
-                                needs_entry = True
                             final_kinds[trans_id] = final_kind
-                        except NoSuchFile:
-                            pass
-                if needs_entry:
-                    kind = final_kinds.get(trans_id)
-                    if kind is None:
-                        try:
-                            kind = self.final_kind(trans_id)
-                        except NoSuchFile:
-                            kind = self._tree.stored_kind(file_id)
-                    parent_trans_id = self.final_parent(trans_id)
-                    parent_file_id = new_path_file_ids.get(parent_trans_id)
-                    if parent_file_id is None:
-                        parent_file_id = self.final_file_id(
-                            parent_trans_id)
-                    if trans_id in self._new_reference_revision:
-                        new_entry = inventory.TreeReference(
-                            file_id,
-                            self._new_name[trans_id],
-                            self.final_file_id(self._new_parent[trans_id]),
-                            None, self._new_reference_revision[trans_id])
-                    else:
-                        new_entry = inventory.make_entry(kind,
-                            self.final_name(trans_id),
-                            parent_file_id, file_id)
-                    old_path = old_paths.get(new_entry.file_id)
-                    inventory_delta.append(
-                        (old_path, path, new_entry.file_id, new_entry))
+                            if (self.tree_kind(trans_id) == final_kind):
+                                continue
+                kind = final_kinds.get(trans_id)
+                if kind is None:
+                    try:
+                        kind = self.final_kind(trans_id)
+                    except NoSuchFile:
+                        kind = self._tree.stored_kind(file_id)
+                parent_trans_id = self.final_parent(trans_id)
+                parent_file_id = new_path_file_ids.get(parent_trans_id)
+                if parent_file_id is None:
+                    parent_file_id = self.final_file_id(parent_trans_id)
+                if trans_id in self._new_reference_revision:
+                    new_entry = inventory.TreeReference(
+                        file_id,
+                        self._new_name[trans_id],
+                        self.final_file_id(self._new_parent[trans_id]),
+                        None, self._new_reference_revision[trans_id])
+                else:
+                    new_entry = inventory.make_entry(kind,
+                        self.final_name(trans_id),
+                        parent_file_id, file_id)
+                old_path = old_paths.get(new_entry.file_id)
+                inventory_delta.append(
+                    (old_path, path, new_entry.file_id, new_entry))
         finally:
             child_pb.finished()
         return inventory_delta
