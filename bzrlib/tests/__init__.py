@@ -1591,7 +1591,10 @@ class TestCase(unittest.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            command = [sys.executable, bzr_path]
+            command = [sys.executable]
+            # frozen executables don't need the path to bzr
+            if getattr(sys, "frozen", None) is None:
+                command.append(bzr_path)
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
