@@ -1246,6 +1246,7 @@ class TreeTransform(TreeTransformBase):
         return _TransformResults(modified_paths, self.rename_count)
 
     def _generate_inventory_delta(self):
+        """Generate an inventory delta for the current transform."""
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         new_paths = self._inventory_altered()
