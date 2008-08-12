@@ -470,7 +470,14 @@ class TreeTransformBase(object):
         """
         new_ids = set()
         if filesystem_only:
-            id_sets = (self._needs_rename, self._new_executability)
+            active_ids = set(self._new_name)
+            active_ids.update(self._new_parent)
+            active_ids.update(self._new_contents)
+            active_ids.update(self._new_id)
+            needs_rename = set(self._needs_rename)
+            bad_ids = needs_rename.symmetric_difference(active_ids)
+            needs_rename.difference_update(bad_ids)
+            id_sets = (needs_rename, self._new_executability)
         else:
             id_sets = (self._new_name, self._new_parent, self._new_contents,
                        self._new_id, self._new_executability)
