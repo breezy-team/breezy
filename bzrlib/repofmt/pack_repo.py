@@ -2186,14 +2186,14 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return self.__doc__
+        return "Packs 5 (adds stacking support, requires bzr 1.6)"
 
     def check_conversion_target(self, target_format):
         pass
 
 
 class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
-    """A repository with subtrees and external references.
+    """A repository with rich roots and external references.
 
     New in release 1.6.
 
@@ -2228,8 +2228,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return self.__doc__
+        return "Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
 
 
 class RepositoryFormatPackDevelopment0(RepositoryFormatPack):
