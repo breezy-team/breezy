@@ -20,7 +20,7 @@ from bzrlib import errors
 from bzrlib.directory_service import DirectoryServiceRegistry, directories
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
-
+from bzrlib.urlutils import join
 
 class FooService(object):
     """A directory service that maps the name to a FILE url"""
@@ -82,6 +82,11 @@ class TestAliasDirectory(TestCaseWithTransport):
     def test_lookup_this(self):
         branch = self.make_branch('.')
         self.assertEqual(branch.base, directories.dereference(':this'))
+
+    def test_extra_path(self):
+        branch = self.make_branch('.')
+        self.assertEqual(
+            join(branch.base, 'arg'), directories.dereference(':this/arg'))
 
     def test_lookup_badname(self):
         branch = self.make_branch('.')
