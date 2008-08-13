@@ -296,7 +296,8 @@ class CommitBuilder(object):
                 # no-change against the basis.
                 if ie.revision == self._new_revision_id:
                     raise AssertionError("Impossible situation, a skipped "
-                        "inventory entry claims to be modified in this commit.")
+                        "inventory entry (%r) claims to be modified in this "
+                        "commit (%r).", (ie, self._new_revision_id))
                 return None, False
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
