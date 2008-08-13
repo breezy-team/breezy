@@ -259,6 +259,53 @@ class TestStacking(TestCaseWithBranch):
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
 
+    def test_autopack_when_stacked(self):
+        # in bzr.dev as of 20080730, autopack was reported to fail in stacked
+        # repositories because of problems with text deltas spanning physical
+        # repository boundaries.  however, i didn't actually get this test to
+        # fail on that code. -- mbp
+        # see https://bugs.launchpad.net/bzr/+bug/252821
+        if not self.branch_format.supports_stacking():
+            raise TestNotApplicable("%r does not support stacking"
+                % self.branch_format)
+        stack_on = self.make_branch_and_tree('stack-on')
+        text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
+        self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
+        stack_on.add('a')
+        stack_on.commit('base commit')
+        stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
+        stacked_tree = stacked_dir.open_workingtree()
+        for i in range(20):
+            text_lines[0] = 'changed in %d\n' % i
+            self.build_tree_contents([('stacked/a', ''.join(text_lines))])
+            stacked_tree.commit('commit %d' % i)
+        stacked_tree.branch.repository.pack()
+        stacked_tree.branch.check()
+
+    def test_pull_delta_when_stacked(self):
+        if not self.branch_format.supports_stacking():
+            raise TestNotApplicable("%r does not support stacking"
+                % self.branch_format)
+        stack_on = self.make_branch_and_tree('stack-on')
+        text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
+        self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
+        stack_on.add('a')
+        stack_on.commit('base commit')
+        # make a stacked branch from the mainline
+        stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
+        stacked_tree = stacked_dir.open_workingtree()
+        # make a second non-stacked branch from the mainline
+        other_dir = stack_on.bzrdir.sprout('other')
+        other_tree = other_dir.open_workingtree()
+        text_lines[9] = 'changed in other\n'
+        self.build_tree_contents([('other/a', ''.join(text_lines))])
+        other_tree.commit('commit in other')
+        # this should have generated a delta; try to pull that across
+        # bug 252821 caused a RevisionNotPresent here...
+        stacked_tree.pull(other_tree.branch)
+        stacked_tree.branch.repository.pack()
+        stacked_tree.branch.check()
+
     def test_fetch_revisions_with_file_changes(self):
         # Fetching revisions including file changes into a stacked branch
         # works without error.

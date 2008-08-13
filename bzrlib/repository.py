@@ -2753,9 +2753,13 @@ class InterPackRepo(InterSameDataRepository):
         """See InterRepository.fetch()."""
         if (len(self.source._fallback_repositories) > 0 or
             len(self.target._fallback_repositories) > 0):
+            # The pack layer is not aware of fallback repositories, so when
+            # fetching from a stacked repository or into a stacked repository
+            # we use the generic fetch logic which uses the VersionedFiles
+            # attributes on repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
-                                      pb, find_ghosts)
+                                  pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
         from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
