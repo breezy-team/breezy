@@ -16,6 +16,19 @@ IN DEVELOPMENT
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
       bzr+ssh:// now works.  (Andrew Bennetts)
 
+    * Change the ``get_format_description()`` strings for
+      ``RepositoryFormatKnitPack5`` et al to be single line messages.
+      (Aaron Bentley)
+
+    * Fix for a regression on Win32 where we would try to call
+      ``os.listdir()`` on a file and not catch the exception properly.
+      (Windows raises a different exception.) This would manifest in
+      places like ``bzr rm file`` or ``bzr switch``.
+      (Mark Hammond, John Arbash Meinel)
+
+    * ``Inventory.copy()`` was failing to set the revision property for
+      the root entry. (Jelmer Vernooij)
+
     * sftp transport: added missing ``FileExists`` case to
       ``_translate_io_exception`` (Christophe Troestler, #123475)
 
