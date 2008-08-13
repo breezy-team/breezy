@@ -27,6 +27,7 @@ from bzrlib import (
     delta,
     errors,
     inventory,
+    osutils,
     revision as _mod_revision,
     )
 """)
