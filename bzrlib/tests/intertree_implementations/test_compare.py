@@ -695,6 +695,38 @@ class TestIterChanges(TestCaseWithTwoTrees):
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
+    def test_only_in_source_and_missing(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
+        self.build_tree(['tree1/file'])
+        tree1.add(['file'], ['file-id'])
+        os.unlink('tree1/file')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        root_id = tree1.path2id('')
+        if not tree1.path2id('file'):
+            # The locked test trees conversion could not preserve the missing
+            # file status. This is normal (e.g. InterDirstateTree falls back
+            # to InterTree if the basis is not a DirstateRevisionTree, and
+            # revision trees cannot have missing files. 
+            return
+        expected = [('file-id', ('file', None), False, (True, False),
+            (root_id, None), ('file', None), (None, None), (False, None))]
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_only_in_target_and_missing(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
+        self.build_tree(['tree2/file'])
+        tree2.add(['file'], ['file-id'])
+        os.unlink('tree2/file')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        root_id = tree1.path2id('')
+        expected = [('file-id', (None, 'file'), False, (False, True),
+            (None, root_id), (None, 'file'), (None, None), (None, False))]
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
     def test_unchanged_with_renames_and_modifications(self):
         """want_unchanged should generate a list of unchanged entries."""
         tree1 = self.make_branch_and_tree('1')

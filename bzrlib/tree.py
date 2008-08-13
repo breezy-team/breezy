@@ -953,7 +953,7 @@ class InterTree(InterObject):
                 self.source._comparison_data(from_entry, path)
             kind = (from_kind, None)
             executable = (from_executable, None)
-            changed_content = True
+            changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
