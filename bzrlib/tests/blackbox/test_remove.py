@@ -18,7 +18,7 @@
 import os
 import sys
 
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
@@ -33,15 +33,16 @@ files=(a, b, c, d)
 
 class TestRemove(ExternalBase):
 
-    def _make_add_and_assert_tree(self, files):
+    def _make_add_and_assert_tree(self, paths):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(files)
-        for f in files:
-            id=str(f).replace('/', '_') + _id
-            tree.add(f, id)
-            self.assertEqual(tree.path2id(f), id)
-            self.failUnlessExists(f)
-            self.assertInWorkingTree(f)
+        tree.lock_write()
+        try:
+            self.build_tree(paths)
+            for path in paths:
+                file_id=str(path).replace('/', '_') + _id
+                tree.add(path, file_id)
+        finally:
+            tree.unlock()
         return tree
 
     def assertFilesDeleted(self, files):
@@ -71,14 +72,58 @@ class TestRemove(ExternalBase):
         self.run_bzr(['remove', '--force'] + list(files_to_remove))
 
     def test_remove_no_files_specified(self):
-        tree = self._make_add_and_assert_tree([])
-        self.run_bzr_error(["bzr: ERROR: Specify one or more files to remove, "
-            "or use --new."], 'remove')
+        tree = self._make_add_and_assert_tree(['foo'])
+        out, err = self.run_bzr(['rm'])
+        self.assertEqual('', err)
+        self.assertEqual('', out)
+        self.assertInWorkingTree('foo', tree=tree)
+        self.failUnlessExists('foo')
 
-        self.run_bzr_error(["bzr: ERROR: No matching files."], 'remove --new')
+    def test_remove_no_files_specified_missing_dir_and_contents(self):
+        tree = self._make_add_and_assert_tree(
+            ['foo', 'dir/', 'dir/missing/', 'dir/missing/child'])
+        self.get_transport('.').delete_tree('dir/missing')
+        out, err = self.run_bzr(['rm'])
+        self.assertEqual('', out)
+        self.assertEqual(
+            'removed dir/missing/child\n'
+            'removed dir/missing\n',
+            err)
+        # non-missing paths not touched:
+        self.assertInWorkingTree('foo', tree=tree)
+        self.failUnlessExists('foo')
+        self.assertInWorkingTree('dir', tree=tree)
+        self.failUnlessExists('dir')
+        # missing files unversioned
+        self.assertNotInWorkingTree('dir/missing', tree=tree)
+        self.assertNotInWorkingTree('dir/missing/child', tree=tree)
 
-        self.run_bzr_error(["bzr: ERROR: No matching files."],
-            'remove --new .')
+    def test_remove_no_files_specified_missing_file(self):
+        tree = self._make_add_and_assert_tree(['foo', 'bar'])
+        os.unlink('bar')
+        out, err = self.run_bzr(['rm'])
+        self.assertEqual('', out)
+        self.assertEqual('removed bar\n', err)
+        # non-missing files not touched:
+        self.assertInWorkingTree('foo', tree=tree)
+        self.failUnlessExists('foo')
+        # missing files unversioned
+        self.assertNotInWorkingTree('bar', tree=tree)
+
+    def test_remove_no_files_specified_missing_link(self):
+        self.requireFeature(SymlinkFeature)
+        tree = self._make_add_and_assert_tree(['foo'])
+        os.symlink('foo', 'linkname')
+        tree.add(['linkname'])
+        os.unlink('linkname')
+        out, err = self.run_bzr(['rm'])
+        self.assertEqual('', out)
+        self.assertEqual('removed linkname\n', err)
+        # non-missing files not touched:
+        self.assertInWorkingTree('foo', tree=tree)
+        self.failUnlessExists('foo')
+        # missing files unversioned
+        self.assertNotInWorkingTree('linkname', tree=tree)
 
     def test_rm_one_file(self):
         tree = self._make_add_and_assert_tree([a])

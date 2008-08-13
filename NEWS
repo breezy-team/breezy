@@ -14,6 +14,10 @@ IN DEVELOPMENT
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
+    * ``bzr rm`` will now scan for files that are missing and remove just
+      them automatically, much as ``bzr add`` scans for new files that
+      are not ignored and adds them automatically. (Robert Collins)
+
   BUG FIXES:
 
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
