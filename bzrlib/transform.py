@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
@@ -637,12 +636,11 @@ class TreeTransformBase(object):
         try:
             children = os.listdir(self._tree.abspath(path))
         except OSError, e:
-            # See comments in osutils regarding winerror etc.
-            if ((e.errno not in (errno.ENOENT, errno.ESRCH, errno.ENOTDIR)) and
-                (sys.platform!='win32' or e.errno not in (267, errno.EINVAL))):
+            if not (osutils._is_error_enotdir(e)
+                    or e.errno in (errno.ENOENT, errno.ESRCH)):
                 raise
             return
-            
+
         for child in children:
             childpath = joinpath(path, child)
             if self._tree.is_control_filename(childpath):
