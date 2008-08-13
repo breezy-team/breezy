@@ -1196,16 +1196,13 @@ class TestCase(unittest.TestCase):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
 
-    def addCleanup(self, callable):
+    def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
 
         Callables are run in the reverse of the order they are registered, 
         ie last-in first-out.
         """
-        if callable in self._cleanups:
-            raise ValueError("cleanup function %r already registered on %s" 
-                    % (callable, self))
-        self._cleanups.append(callable)
+        self._cleanups.append((callable, args, kwargs))
 
     def _cleanEnvironment(self):
         new_env = {
@@ -1320,7 +1317,8 @@ class TestCase(unittest.TestCase):
         # Actually pop the cleanups from the list so tearDown running
         # twice is safe (this happens for skipped tests).
         while self._cleanups:
-            self._cleanups.pop()()
+            cleanup, args, kwargs = self._cleanups.pop()
+            cleanup(*args, **kwargs)
 
     def log(self, *args):
         mutter(*args)
