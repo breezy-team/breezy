@@ -241,12 +241,6 @@ TestNotApplicable
         to use more precise parameterization to avoid generating the test
         at all.
 
-TestPlatformLimit
-        **(Not implemented yet)**
-        The test can't be run because of an inherent limitation of the
-        environment, such as not having symlinks or not supporting
-        unicode.
-
 UnavailableFeature
         The test can't be run because a dependency (typically a Python
         library) is not available in the test environment.  These
@@ -284,8 +278,7 @@ result                  strict  default lax
 ======================= ======= ======= ========
 TestSkipped             pass    pass    pass
 TestNotApplicable       pass    pass    pass
-TestPlatformLimit       pass    pass    pass
-TestDependencyMissing   fail    pass    pass
+UnavailableFeature      fail    pass    pass
 KnownFailure            fail    pass    pass
 ======================= ======= ======= ========
      
@@ -309,12 +302,8 @@ For example::
 
         _test_needs_features = [StraceFeature]
 
-This means all tests in this class need the feature.  The feature itself
-should provide a ``_probe`` method which is called once to determine if
-it's available.
-
-These should generally be equivalent to either TestDependencyMissing or
-sometimes TestPlatformLimit.
+This means all tests in this class need the feature.  If the feature is
+not available the test will be skipped using UnavailableFeature.
 
 Individual tests can also require a feature using the ``requireFeature``
 method::
