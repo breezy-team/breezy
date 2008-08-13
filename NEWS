@@ -36,6 +36,13 @@ IN DEVELOPMENT
 
     * Exporters now take 4 parameters. (Robert Collins)
 
+  TESTING:
+
+    * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
+      which are then passed to the cleanup callable as it is run. In
+      addition, addCleanup no longer requires that the callables passed to
+      it be unique. (Jonathan Lange)
+
   INTERNALS:
 
 
