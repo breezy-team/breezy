@@ -4,17 +4,29 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.6rc2 2008-08-13
+---------------------
 
-  CHANGES:
-
-  IMPROVEMENTS:
+This release candidate has a few minor bug fixes, and some regression
+fixes for Windows.
 
   BUG FIXES:
 
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
       bzr+ssh:// now works.  (Andrew Bennetts)
+
+    * Change the ``get_format_description()`` strings for
+      ``RepositoryFormatKnitPack5`` et al to be single line messages.
+      (Aaron Bentley)
+
+    * Fix for a regression on Win32 where we would try to call
+      ``os.listdir()`` on a file and not catch the exception properly.
+      (Windows raises a different exception.) This would manifest in
+      places like ``bzr rm file`` or ``bzr switch``.
+      (Mark Hammond, John Arbash Meinel)
+
+    * ``Inventory.copy()`` was failing to set the revision property for
+      the root entry. (Jelmer Vernooij)
 
     * sftp transport: added missing ``FileExists`` case to
       ``_translate_io_exception`` (Christophe Troestler, #123475)
@@ -28,10 +40,6 @@ IN DEVELOPMENT
       claimed to have modified the line resulting in the same text. The
       choice is arbitrary but stable, so merges in different directions
       will get the same results.  (John Arbash Meinel, #232188)
-
-  API CHANGES:
-
-  INTERNALS:
 
 
 bzr 1.6rc1 2008-08-06
@@ -48,7 +56,7 @@ other bugs and performance issues were fixed.
     * Knit format repositories are deprecated and bzr will now emit
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
-      
+
   IMPROVEMENTS:
 
     * ``bzr check`` can now be told which elements at a location it should

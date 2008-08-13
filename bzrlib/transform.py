@@ -27,6 +27,7 @@ from bzrlib import (
     delta,
     errors,
     inventory,
+    osutils,
     revision as _mod_revision,
     )
 """)
@@ -636,10 +637,11 @@ class TreeTransformBase(object):
         try:
             children = os.listdir(self._tree.abspath(path))
         except OSError, e:
-            if e.errno not in (errno.ENOENT, errno.ESRCH, errno.ENOTDIR):
+            if not (osutils._is_error_enotdir(e)
+                    or e.errno in (errno.ENOENT, errno.ESRCH)):
                 raise
             return
-            
+
         for child in children:
             childpath = joinpath(path, child)
             if self._tree.is_control_filename(childpath):
