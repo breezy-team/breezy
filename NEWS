@@ -11,26 +11,7 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * ``bzr export`` can now export a subdirectory of a project.
-      (Robert Collins)
-
   BUG FIXES:
-
-    * ``bzr upgrade`` on remote branches accessed via bzr:// and
-      bzr+ssh:// now works.  (Andrew Bennetts)
-
-    * sftp transport: added missing ``FileExists`` case to
-      ``_translate_io_exception`` (Christophe Troestler, #123475)
-
-    * The help for ``bzr ignored`` now suggests ``bzr ls --ignored`` for
-      scripting use. (Robert Collins, #3834)
-
-    * The default ``annotate`` logic will now always assign the
-      last-modified value of a line to one of the revisions that modified
-      it, rather than a merge revision. This would happen when both sides
-      claimed to have modified the line resulting in the same text. The
-      choice is arbitrary but stable, so merges in different directions
-      will get the same results.  (John Arbash Meinel, #232188)
 
   API CHANGES:
 
@@ -44,6 +25,47 @@ IN DEVELOPMENT
       it be unique. (Jonathan Lange)
 
   INTERNALS:
+
+
+bzr 1.6rc2 2008-08-13
+---------------------
+
+This release candidate has a few minor bug fixes, and some regression
+fixes for Windows.
+
+    * ``bzr export`` can now export a subdirectory of a project.
+      (Robert Collins)
+
+  BUG FIXES:
+
+    * ``bzr upgrade`` on remote branches accessed via bzr:// and
+      bzr+ssh:// now works.  (Andrew Bennetts)
+
+    * Change the ``get_format_description()`` strings for
+      ``RepositoryFormatKnitPack5`` et al to be single line messages.
+      (Aaron Bentley)
+
+    * Fix for a regression on Win32 where we would try to call
+      ``os.listdir()`` on a file and not catch the exception properly.
+      (Windows raises a different exception.) This would manifest in
+      places like ``bzr rm file`` or ``bzr switch``.
+      (Mark Hammond, John Arbash Meinel)
+
+    * ``Inventory.copy()`` was failing to set the revision property for
+      the root entry. (Jelmer Vernooij)
+
+    * sftp transport: added missing ``FileExists`` case to
+      ``_translate_io_exception`` (Christophe Troestler, #123475)
+
+    * The help for ``bzr ignored`` now suggests ``bzr ls --ignored`` for
+      scripting use. (Robert Collins, #3834)
+
+    * The default ``annotate`` logic will now always assign the
+      last-modified value of a line to one of the revisions that modified
+      it, rather than a merge revision. This would happen when both sides
+      claimed to have modified the line resulting in the same text. The
+      choice is arbitrary but stable, so merges in different directions
+      will get the same results.  (John Arbash Meinel, #232188)
 
 
 bzr 1.6rc1 2008-08-06
@@ -60,7 +82,7 @@ other bugs and performance issues were fixed.
     * Knit format repositories are deprecated and bzr will now emit
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
-      
+
   IMPROVEMENTS:
 
     * ``bzr check`` can now be told which elements at a location it should
