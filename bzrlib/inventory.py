@@ -850,6 +850,7 @@ class Inventory(object):
         if self.root is None:
             return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
         for path, entry in entries:

@@ -1941,12 +1941,20 @@ class cmd_ignore(Command):
             print "Warning: the following files are version controlled and" \
                   " match your ignore pattern:\n%s" % ("\n".join(matches),)
 
+
 class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
+
+    List all the ignored files and the ignore pattern that caused the file to
+    be ignored.
+
+    Alternatively, to list just the files::
+
+        bzr ls --ignored
     """
 
     encoding_type = 'replace'
-    _see_also = ['ignore']
+    _see_also = ['ignore', 'ls']
 
     @display_command
     def run(self):
@@ -4315,6 +4323,9 @@ class cmd_tag(Command):
 
     It is an error to give a tag name that already exists unless you pass 
     --force, in which case the tag is moved to point to the new revision.
+
+    To rename a tag (change the name but keep it on the same revsion), run ``bzr
+    tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
     """
 
     _see_also = ['commit', 'tags']

@@ -21,6 +21,7 @@
 
 from bzrlib.bzrdir import ConvertBzrDir4To5, ConvertBzrDir5To6, BzrDir, BzrDirFormat4, BzrDirFormat5, BzrDirFormat
 import bzrlib.errors as errors
+from bzrlib.remote import RemoteBzrDir
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 
@@ -30,6 +31,9 @@ class Convert(object):
     def __init__(self, url, format):
         self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
+        if isinstance(self.bzrdir, RemoteBzrDir):
+            self.bzrdir._ensure_real()
+            self.bzrdir = self.bzrdir._real_bzrdir
         if self.bzrdir.root_transport.is_readonly():
             raise errors.UpgradeReadonly
         self.transport = self.bzrdir.root_transport

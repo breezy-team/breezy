@@ -4,6 +4,35 @@ Bazaar Release Notes
 
 .. contents::
 
+IN DEVELOPMENT
+--------------
+
+  CHANGES:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+    * ``bzr upgrade`` on remote branches accessed via bzr:// and
+      bzr+ssh:// now works.  (Andrew Bennetts)
+
+    * sftp transport: added missing ``FileExists`` case to
+      ``_translate_io_exception`` (Christophe Troestler, #123475)
+
+    * The help for ``bzr ignored`` now suggests ``bzr ls --ignored`` for
+      scripting use. (Robert Collins, #3834)
+
+    * The default ``annotate`` logic will now always assign the
+      last-modified value of a line to one of the revisions that modified
+      it, rather than a merge revision. This would happen when both sides
+      claimed to have modified the line resulting in the same text. The
+      choice is arbitrary but stable, so merges in different directions
+      will get the same results.  (John Arbash Meinel, #232188)
+
+  API CHANGES:
+
+  INTERNALS:
+
 
 bzr 1.6rc1 2008-08-06
 ---------------------
@@ -113,7 +142,6 @@ other bugs and performance issues were fixed.
       trip when probing Pack repositories, as they read the ``pack-names``
       file when locked. And during probe, locking the repo isn't very
       useful. (John Arbash Meinel)
-
 
   INTERNALS:
 
