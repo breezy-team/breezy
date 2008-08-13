@@ -4,12 +4,11 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.6rc2 2008-08-13
+---------------------
 
-  CHANGES:
-
-  IMPROVEMENTS:
+This release candidate has a few minor bug fixes, and some regression
+fixes for Windows.
 
   BUG FIXES:
 
@@ -42,10 +41,6 @@ IN DEVELOPMENT
       choice is arbitrary but stable, so merges in different directions
       will get the same results.  (John Arbash Meinel, #232188)
 
-  API CHANGES:
-
-  INTERNALS:
-
 
 bzr 1.6rc1 2008-08-06
 ---------------------
@@ -61,7 +56,7 @@ other bugs and performance issues were fixed.
     * Knit format repositories are deprecated and bzr will now emit
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
-      
+
   IMPROVEMENTS:
 
     * ``bzr check`` can now be told which elements at a location it should
