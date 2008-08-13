@@ -202,7 +202,7 @@ Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Fl
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Shell; Flags: skipifdoesntexist skipifsilent runhidden;
 ; [[[cog
 ; if "TBZR" in os.environ:
-;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/s tbzr.dll"; WorkingDir: "{app}"; Components: tortoise; Description: "Register TBZR"; StatusMsg: "Registering TBZR"')
+;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/s tbzr.dll"; WorkingDir: "{app}"; Components: tortoise; Description: "Registering Tortoise"; StatusMsg: "Registering Tortoise"')
 ;     cog.outl(r'Filename: "{app}\doc\tbzr\index.html"; Tasks: TBZRReadme; Flags: shellexec')
 ; ]]]
 ; [[[end]]]
@@ -211,7 +211,7 @@ Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Sh
 [UninstallRun]
 ; [[[cog
 ; if "TBZR" in os.environ:
-;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s tbzr.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering TBZR"; Flags: skipifdoesntexist')
+;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s tbzr.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist')
 ; ]]]
 ; [[[end]]]
 
