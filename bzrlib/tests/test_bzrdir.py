@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     help_topics,
     repository,
+    osutils,
     symbol_versioning,
     urlutils,
     win32utils,
@@ -42,6 +43,7 @@ from bzrlib.errors import (NotBranchError,
                            )
 from bzrlib.tests import (
     TestCase,
+    TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
     test_sftp_transport
@@ -531,7 +533,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('topdir'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('topdir', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -544,7 +546,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('branch', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -556,7 +558,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('repo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -571,7 +573,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('shared/branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('shared', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -586,7 +588,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('foo'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('foo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'bar')
 
@@ -599,7 +601,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('bar', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'baz')
 
@@ -1113,3 +1115,72 @@ class TestDotBzrHidden(TestCaseWithTransport):
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
         self.assertEquals(['a'], self.get_ls())
+
+
+class _TestBzrDirFormat(bzrdir.BzrDirMetaFormat1):
+    """Test BzrDirFormat implementation for TestBzrDirSprout."""
+
+    def _open(self, transport):
+        return _TestBzrDir(transport, self)
+
+
+class _TestBzrDir(bzrdir.BzrDirMeta1):
+    """Test BzrDir implementation for TestBzrDirSprout.
+    
+    When created a _TestBzrDir already has repository and a branch.  The branch
+    is a test double as well.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(_TestBzrDir, self).__init__(*args, **kwargs)
+        self.test_branch = _TestBranch()
+        self.test_branch.repository = self.create_repository()
+
+    def open_branch(self, unsupported=False):
+        return self.test_branch
+
+    def cloning_metadir(self):
+        return _TestBzrDirFormat()
+
+
+class _TestBranch(bzrlib.branch.Branch):
+    """Test Branch implementation for TestBzrDirSprout."""
+
+    def __init__(self, *args, **kwargs):
+        super(_TestBranch, self).__init__(*args, **kwargs)
+        self.calls = []
+    
+    def sprout(self, *args, **kwargs):
+        self.calls.append('sprout')
+
+
+class TestBzrDirSprout(TestCaseWithMemoryTransport):
+
+    def test_sprout_uses_branch_sprout(self):
+        """BzrDir.sprout calls Branch.sprout.
+
+        Usually, BzrDir.sprout should delegate to the branch's sprout method
+        for part of the work.  This allows the source branch to control the
+        choice of format for the new branch.
+        
+        There are exceptions, but this tests avoids them:
+          - if there's no branch in the source bzrdir,
+          - or if the stacking has been requested and the format needs to be
+            overridden to satisfy that.
+        """
+        # Make an instrumented bzrdir.
+        t = self.get_transport('source')
+        t.ensure_base()
+        source_bzrdir = _TestBzrDirFormat().initialize_on_transport(t)
+        # The instrumented bzrdir has a test_branch attribute that logs calls
+        # made to the branch contained in that bzrdir.  Initially the test
+        # branch exists but no calls have been made to it.
+        self.assertEqual([], source_bzrdir.test_branch.calls)
+
+        # Sprout the bzrdir
+        target_url = self.get_url('target')
+        result = source_bzrdir.sprout(target_url, recurse='no')
+
+        # The bzrdir called the branch's sprout method.
+        self.assertEqual(['sprout'], source_bzrdir.test_branch.calls)
+        

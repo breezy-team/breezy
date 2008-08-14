@@ -217,7 +217,7 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo, stack_on)
+                force_new_repo, stack_on, self.root_transport.base)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
@@ -380,6 +380,7 @@ class BzrDir(object):
         repository used instead.
 
         If stack_on is supplied, will not seek a containing shared repo.
+
         :param force_new_repo: If True, require a new repository to be created.
         :param stack_on: If supplied, the location to stack on.  If not
             supplied, a default_stack_on location may be used.
@@ -978,7 +979,10 @@ class BzrDir(object):
             return False
 
     def _cloning_metadir(self):
-        """Produce a metadir suitable for cloning with."""
+        """Produce a metadir suitable for cloning with.
+        
+        :returns: (destination_bzrdir_format, source_repository)
+        """
         result_format = self._format.__class__()
         try:
             try:
@@ -1013,6 +1017,10 @@ class BzrDir(object):
         These operations may produce workingtrees (yes, even though they're
         "cloning" something that doesn't have a tree), so a viable workingtree
         format must be selected.
+
+        :returns: a BzrDirFormat with all component formats either set
+            appropriately or set to None if that component should not be 
+            created.
         """
         format, repository = self._cloning_metadir()
         if format._workingtree_format is None:
@@ -1073,15 +1081,39 @@ class BzrDir(object):
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo = repository_policy.acquire_repository()
         if source_repository is not None:
+            # XXX: Isn't this redundant with the copy_content_into used below
+            # after creating the branch? -- mbp 20080724
             result_repo.fetch(source_repository, revision_id=revision_id)
 
         # Create/update the result branch
-        if source_branch is not None:
-            result_branch = source_branch.sprout(result,
-                revision_id=revision_id)
-        else:
+        format_forced = False
+        if ((stacked 
+             or repository_policy._require_stacking 
+             or repository_policy._stack_on)
+            and not result._format.get_branch_format().supports_stacking()):
+            # We need to make a stacked branch, but the default format for the
+            # target doesn't support stacking.  So force a branch that *can*
+            # support stacking. 
+            from bzrlib.branch import BzrBranchFormat7
+            format = BzrBranchFormat7()
+            result_branch = format.initialize(result)
+            mutter("using %r for stacking" % (format,))
+            format_forced = True
+        elif source_branch is None:
+            # this is for sprouting a bzrdir without a branch; is that
+            # actually useful?
             result_branch = result.create_branch()
+        else:
+            result_branch = source_branch.sprout(
+                result, revision_id=revision_id)
+        mutter("created new branch %r" % (result_branch,))
         repository_policy.configure_branch(result_branch)
+        if source_branch is not None and format_forced:
+            # XXX: this duplicates Branch.sprout(); it probably belongs on an
+            # InterBranch method? -- mbp 20080724
+            source_branch.copy_content_into(result_branch,
+                 revision_id=revision_id)
+            result_branch.set_parent(self.root_transport.base)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (
@@ -2859,7 +2891,29 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 
         Creates the desired repository in the bzrdir we already have.
         """
-        repository = self._bzrdir.create_repository(shared=shared)
+        if self._stack_on or self._require_stacking:
+            # we may be coming from a format that doesn't support stacking,
+            # but we require it in the destination, so force creation of a new
+            # one here.
+            #
+            # TODO: perhaps this should be treated as a distinct repository
+            # acquisition policy?
+            repository_format = self._bzrdir._format.repository_format
+            if not repository_format.supports_external_lookups:
+                # should possibly be controlled by the registry rather than
+                # hardcoded here.
+                from bzrlib.repofmt import pack_repo
+                if repository_format.rich_root_data:
+                    repository_format = \
+                        pack_repo.RepositoryFormatKnitPack5RichRoot()
+                else:
+                    repository_format = pack_repo.RepositoryFormatKnitPack5()
+                note("using %r for stacking" % (repository_format,))
+            repository = repository_format.initialize(self._bzrdir,
+                shared=shared)
+        else:
+            # let bzrdir choose
+            repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
@@ -2971,6 +3025,19 @@ format_registry.register_metadir('rich-root-pack',
         'rich-root format repositories. Incompatible with'
         ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('1.6',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
+    help='A branch and pack based repository that supports stacking. ',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('1.6-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
+    help='A branch and pack based repository that supports stacking '
+         'and rich root data (needed for bzr-svn). ',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 # The following two formats should always just be aliases.

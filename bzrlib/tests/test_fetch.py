@@ -170,8 +170,11 @@ class TestFetch(TestCaseWithTransport):
         knit3_tree = self.make_branch_and_tree('knit3',
             format='dirstate-with-subtree')
         knit3_tree.commit('blah')
-        self.assertRaises(errors.IncompatibleRepositories,
-                          knit_tree.branch.fetch, knit3_tree.branch)
+        e = self.assertRaises(errors.IncompatibleRepositories,
+                              knit_tree.branch.fetch, knit3_tree.branch)
+        self.assertContainsRe(str(e),
+            r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
+            r"different rich-root support")
 
 
 class TestMergeFetch(TestCaseWithTransport):
