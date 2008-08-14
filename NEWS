@@ -11,6 +11,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr init`` and ``bzr init-repo`` will now print out the same as
+      ``bzr info`` if it completed successfully.
+      (Marius Kruger)
+
   BUG FIXES:
 
     * ``WorkingTree4`` trees will now correctly report missing-and-new
