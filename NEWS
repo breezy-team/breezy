@@ -38,6 +38,14 @@ IN DEVELOPMENT
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
 
+    * ``GraphIndex`` objects will internally read an entire index if more
+      than 1/20th of their keyspace is requested in a single operation.
+      This largely mitigates a performance regression in ``bzr log FILE``
+      and completely corrects the performance regression in ``bzr log``.
+      The regression was caused by removing an accomodation which had been
+      supporting the index format in use. A newer index format is in
+      development which is substantially faster. (Robert Collins)
+
 
 bzr 1.6rc2 2008-08-13
 ---------------------
