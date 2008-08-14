@@ -46,6 +46,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
+      is unknown in both source and target.
+      (Robert Collins, Aaron Bentley)
+
 
 bzr 1.6rc1 2008-08-06
 ---------------------
