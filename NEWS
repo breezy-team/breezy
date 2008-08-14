@@ -9,6 +9,9 @@ IN DEVELOPMENT
 
   CHANGES:
 
+    * ``bzr export`` can now export a subdirectory of a project.
+      (Robert Collins)
+
   IMPROVEMENTS:
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
@@ -79,9 +82,6 @@ bzr 1.6rc2 2008-08-13
 
 This release candidate has a few minor bug fixes, and some regression
 fixes for Windows.
-
-    * ``bzr export`` can now export a subdirectory of a project.
-      (Robert Collins)
 
   BUG FIXES:
 
