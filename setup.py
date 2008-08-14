@@ -242,6 +242,7 @@ if unavailable_files:
     print 'The python versions will be used instead.'
     print
 
+
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
                          gui_targets):
     packages.append('tbzrcommands')
@@ -315,6 +316,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
                   dest_base="tbzr_tracer")
     console_targets.append(tracer)
+
 
 def get_qbzr_py2exe_info(includes, excludes, packages):
     # PyQt4 itself still escapes the plugin detection code for some reason...
@@ -506,10 +508,15 @@ elif 'py2exe' in sys.argv:
         get_qbzr_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
-        # Eg: via SVN: http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
-        if not os.path.isfile(os.environ.get('TOVMSI_WIN32', '<nofile>')):
-            raise RuntimeError, "Please set TOVMSI_WIN32 to the location of " \
-                                "the TortoiseOverlays .msi installerfile"
+        # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
+        # TortoiseOverlays MSI installer file. It is in the TSVN svn repo and
+        # can be downloaded from (username=guest, blank password):
+        # http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
+        if not os.path.isfile(os.environ.get('TORTOISE_OVERLAYS_MSI_WIN32',
+                                             '<nofile>')):
+            raise RuntimeError("Please set TORTOISE_OVERLAYS_MSI_WIN32 to the"
+                               " location of the Win32 TortoiseOverlays .msi"
+                               " installer file")
         get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
                              gui_targets)
     else:

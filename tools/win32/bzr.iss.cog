@@ -91,7 +91,7 @@ PrivilegesRequired=admin
 ; start for best performance.
 ; [[[cog
 ; if "TBZR" in os.environ: # we need a more formal way of controlling this...
-;     tovmsi = os.environ["TOVMSI_WIN32"] # point at TortoiseOverlays .msi
+;     tovmsi = os.environ["TORTOISE_OVERLAYS_MSI_WIN32"] # point at TortoiseOverlays .msi
 ;     cog.outl('Source: "%s"; Flags: dontcopy ignoreversion ; Components: tortoise' % tovmsi)
 ;     cog.outl('Source: "tbzrcache.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
 ;     cog.outl('Source: "tbzrcachew.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise')
@@ -256,7 +256,7 @@ begin
 // [[[cog
 // if "TBZR" in os.environ:
 //     import os
-//     cog.outl("tovmsi := '%s';" % os.path.basename(os.environ["TOVMSI_WIN32"]))
+//     cog.outl("tovmsi := '%s';" % os.path.basename(os.environ["TORTOISE_OVERLAYS_MSI_WIN32"]))
 // else:
 //     cog.outl("tovmsi := '';")
 // ]]]
