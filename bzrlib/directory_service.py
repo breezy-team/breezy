@@ -22,7 +22,8 @@ to true URLs.  Examples include lp:urls and per-user location aliases.
 
 from bzrlib import errors, registry
 from bzrlib.branch import Branch
-from bzrlib.urlutils import join
+from bzrlib import urlutils
+
 
 class DirectoryServiceRegistry(registry.Registry):
     """This object maintains and uses a list of directory services.
@@ -88,7 +89,7 @@ class AliasDirectory(object):
         if result is None:
             raise errors.UnsetLocationAlias(url)
         if extra is not None:
-            result = join(result, extra)
+            result = urlutils.join(result, extra)
         return result
 
 directories.register(':', AliasDirectory,
