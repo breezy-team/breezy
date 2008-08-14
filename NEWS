@@ -11,6 +11,48 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+  BUG FIXES:
+
+    * ``WorkingTree4`` trees will now correctly report missing-and-new
+      paths in the output of ``iter_changes``. (Robert Collins)
+
+  API CHANGES:
+
+    * Exporters now take 4 parameters. (Robert Collins)
+
+    * ``Tree.iter_changes`` will now return False for the content change
+      field when a file is missing in the basis tree and not present in
+      the target tree. Previously it returned True unconditionally.
+      (Robert Collins)
+
+  TESTING:
+
+    * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
+      which are then passed to the cleanup callable as it is run. In
+      addition, addCleanup no longer requires that the callables passed to
+      it be unique. (Jonathan Lange)
+
+  INTERNALS:
+
+    * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
+      is unknown in both source and target.
+      (Robert Collins, Aaron Bentley)
+
+    * ``GraphIndex`` objects will internally read an entire index if more
+      than 1/20th of their keyspace is requested in a single operation.
+      This largely mitigates a performance regression in ``bzr log FILE``
+      and completely corrects the performance regression in ``bzr log``.
+      The regression was caused by removing an accomodation which had been
+      supporting the index format in use. A newer index format is in
+      development which is substantially faster. (Robert Collins)
+
+
+bzr 1.6rc2 2008-08-13
+---------------------
+
+This release candidate has a few minor bug fixes, and some regression
+fixes for Windows.
+
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
@@ -18,6 +60,19 @@ IN DEVELOPMENT
 
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
       bzr+ssh:// now works.  (Andrew Bennetts)
+
+    * Change the ``get_format_description()`` strings for
+      ``RepositoryFormatKnitPack5`` et al to be single line messages.
+      (Aaron Bentley)
+
+    * Fix for a regression on Win32 where we would try to call
+      ``os.listdir()`` on a file and not catch the exception properly.
+      (Windows raises a different exception.) This would manifest in
+      places like ``bzr rm file`` or ``bzr switch``.
+      (Mark Hammond, John Arbash Meinel)
+
+    * ``Inventory.copy()`` was failing to set the revision property for
+      the root entry. (Jelmer Vernooij)
 
     * sftp transport: added missing ``FileExists`` case to
       ``_translate_io_exception`` (Christophe Troestler, #123475)
@@ -31,20 +86,6 @@ IN DEVELOPMENT
       claimed to have modified the line resulting in the same text. The
       choice is arbitrary but stable, so merges in different directions
       will get the same results.  (John Arbash Meinel, #232188)
-
-  API CHANGES:
-
-    * Exporters now take 4 parameters. (Robert Collins)
-
-  INTERNALS:
-
-    * ``GraphIndex`` objects will internally read an entire index if more
-      than 1/20th of their keyspace is requested in a single operation.
-      This largely mitigates a performance regression in ``bzr log FILE``
-      and completely corrects the performance regression in ``bzr log``.
-      The regression was caused by removing an accomodation which had been
-      supporting the index format in use. A newer index format is in
-      development which is substantially faster. (Robert Collins)
 
 
 bzr 1.6rc1 2008-08-06
@@ -61,7 +102,7 @@ other bugs and performance issues were fixed.
     * Knit format repositories are deprecated and bzr will now emit
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
-      
+
   IMPROVEMENTS:
 
     * ``bzr check`` can now be told which elements at a location it should
