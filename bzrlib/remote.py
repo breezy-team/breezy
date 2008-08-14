@@ -1593,6 +1593,11 @@ class RemoteBranch(branch.Branch):
     def is_locked(self):
         return self._lock_count >= 1
 
+    @needs_read_lock
+    def revision_id_to_revno(self, revision_id):
+        self._ensure_real()
+        return self._real_branch.revision_id_to_revno(revision_id)
+
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         revision_id = ensure_null(revision_id)
