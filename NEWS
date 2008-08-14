@@ -13,9 +13,17 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``WorkingTree4`` trees will now correctly report missing-and-new
+      paths in the output of ``iter_changes``. (Robert Collins)
+
   API CHANGES:
 
     * Exporters now take 4 parameters. (Robert Collins)
+
+    * ``Tree.iter_changes`` will now return False for the content change
+      field when a file is missing in the basis tree and not present in
+      the target tree. Previously it returned True unconditionally.
+      (Robert Collins)
 
   TESTING:
 
@@ -25,6 +33,10 @@ IN DEVELOPMENT
       it be unique. (Jonathan Lange)
 
   INTERNALS:
+
+    * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
+      is unknown in both source and target.
+      (Robert Collins, Aaron Bentley)
 
 
 bzr 1.6rc2 2008-08-13

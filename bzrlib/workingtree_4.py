@@ -1980,7 +1980,6 @@ class InterDirStateTree(InterTree):
         # record is handled, but isn't interesting to process (unchanged)
         uninteresting = object()
 
-
         old_dirname_to_file_id = {}
         new_dirname_to_file_id = {}
         # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
@@ -2169,14 +2168,15 @@ class InterDirStateTree(InterTree):
                     return uninteresting
             elif source_minikind in 'a' and target_minikind in 'fdlt':
                 # looks like a new file
+                path = pathjoin(entry[0][0], entry[0][1])
+                # parent id is the entry for the path in the target tree
+                # TODO: these are the same for an entire directory: cache em.
+                parent_id = state._get_entry(target_index,
+                                             path_utf8=entry[0][0])[0][2]
+                if parent_id == entry[0][2]:
+                    parent_id = None
                 if path_info is not None:
-                    path = pathjoin(entry[0][0], entry[0][1])
-                    # parent id is the entry for the path in the target tree
-                    # TODO: these are the same for an entire directory: cache em.
-                    parent_id = state._get_entry(target_index,
-                                                 path_utf8=entry[0][0])[0][2]
-                    if parent_id == entry[0][2]:
-                        parent_id = None
+                    # Present on disk:
                     if use_filesystem_for_exec:
                         # We need S_ISREG here, because we aren't sure if this
                         # is a file or not.
@@ -2194,9 +2194,15 @@ class InterDirStateTree(InterTree):
                            (None, path_info[2]),
                            (None, target_exec))
                 else:
-                    # but its not on disk: we deliberately treat this as just
-                    # never-present. (Why ?! - RBC 20070224)
-                    pass
+                    # Its a missing file, report it as such.
+                    return (entry[0][2],
+                           (None, utf8_decode(path)[0]),
+                           False,
+                           (False, True),
+                           (None, parent_id),
+                           (None, utf8_decode(entry[0][1])[0]),
+                           (None, None),
+                           (None, False))
             elif source_minikind in 'fdlt' and target_minikind in 'a':
                 # unversioned, possibly, or possibly not deleted: we dont care.
                 # if its still on disk, *and* theres no other entry at this
@@ -2520,7 +2526,6 @@ class InterDirStateTree(InterTree):
                         current_dir_info = dir_iterator.next()
                     except StopIteration:
                         current_dir_info = None
-
 
     @staticmethod
     def is_compatible(source, target):
