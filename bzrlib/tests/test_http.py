@@ -34,9 +34,11 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     osutils,
+    remote as _mod_remote,
     tests,
     transport,
     ui,
@@ -1666,6 +1668,13 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
     def create_transport_readonly_server(self):
         return http_utils.HTTPServerWithSmarts(
             protocol_version=self._protocol_version)
+
+    def test_open_bzrdir(self):
+        branch = self.make_branch('relpath')
+        http_server = self.get_readonly_server()
+        url = http_server.get_url() + 'relpath'
+        bd = bzrdir.BzrDir.open(url)
+        self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
 
     def test_bulk_data(self):
         # We should be able to send and receive bulk data in a single message.
