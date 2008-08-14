@@ -32,7 +32,7 @@ class TestUncommit(TestCaseWithTransport):
         wt.add(['a', 'b', 'c'])
         wt.commit('initial commit', rev_id='a1')
 
-        open('tree/a', 'wb').write('new contents of a\n')
+        self.build_tree_contents([('tree/a', 'new contents of a\n')])
         wt.commit('second commit', rev_id='a2')
 
         return wt
@@ -213,6 +213,13 @@ class TestUncommit(TestCaseWithTransport):
 
         self.assertEqual(['a2', 'b3', 'c3'], wt.get_parent_ids())
 
+    def test_uncommit_shows_log_with_revision_id(self):
+        wt = self.create_simple_tree()
+
+        out, err = self.run_bzr('uncommit --force', working_dir='tree')
+        self.assertContainsRe(out, r'second commit')
+        self.assertContainsRe(out, r'revision-id:a2')
+
     def test_uncommit_octopus_merge(self):
         # Check that uncommit keeps the pending merges in the same order
         # though it will also filter out ones in the ancestry
@@ -223,7 +230,7 @@ class TestUncommit(TestCaseWithTransport):
 
         tree2.commit('unchanged', rev_id='b3')
         tree3.commit('unchanged', rev_id='c3')
-        
+
         wt.merge_from_branch(tree2.branch)
         wt.merge_from_branch(tree3.branch)
         wt.commit('merge b3, c3', rev_id='a3')

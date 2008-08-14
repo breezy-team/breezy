@@ -3740,7 +3740,8 @@ class cmd_uncommit(Command):
 
         lf = log_formatter('short',
                            to_file=self.outf,
-                           show_timezone='original')
+                           show_timezone='original',
+                           show_ids=True)
 
         show_log(b,
                  lf,
@@ -3761,6 +3762,8 @@ class cmd_uncommit(Command):
                     print 'Canceled'
                     return 0
 
+        mutter('Uncommitting from {%s} to {%s}',
+               last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
 

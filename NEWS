@@ -9,6 +9,11 @@ IN DEVELOPMENT
 
   CHANGES:
 
+    * ``bzr uncommit`` shows the revision ids for the revisions you will
+      be removing. This allows you to easily change your mind and
+      ``bzr pull`` your branch back to what it was.
+      (John Arbash Meinel)
+
   IMPROVEMENTS:
 
   BUG FIXES:
