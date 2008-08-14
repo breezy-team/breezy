@@ -557,11 +557,6 @@ class Tree(object):
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
-        file_id = self.path2id(rules.RULES_TREE_FILENAME)
-        if file_id is not None:
-            ini_file = self.get_file(file_id)
-            searcher = rules._StackedRulesSearcher(
-                [rules._IniBasedRulesSearcher(ini_file), default_searcher])
         return searcher
 
 
