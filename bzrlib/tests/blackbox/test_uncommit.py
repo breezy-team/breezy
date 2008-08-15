@@ -218,7 +218,8 @@ class TestUncommit(TestCaseWithTransport):
 
         out, err = self.run_bzr('uncommit --force', working_dir='tree')
         self.assertContainsRe(out, r'second commit')
-        self.assertContainsRe(out, r'revision-id:a2')
+        self.assertContainsRe(err, r'You can restore the old tip by running')
+        self.assertContainsRe(err, r'bzr pull . -r revid:a2')
 
     def test_uncommit_octopus_merge(self):
         # Check that uncommit keeps the pending merges in the same order

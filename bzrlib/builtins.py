@@ -3740,8 +3740,7 @@ class cmd_uncommit(Command):
 
         lf = log_formatter('short',
                            to_file=self.outf,
-                           show_timezone='original',
-                           show_ids=True)
+                           show_timezone='original')
 
         show_log(b,
                  lf,
@@ -3766,6 +3765,8 @@ class cmd_uncommit(Command):
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
+        note('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s', last_rev_id)
 
 
 class cmd_break_lock(Command):
