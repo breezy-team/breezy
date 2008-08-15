@@ -12,6 +12,10 @@ IN DEVELOPMENT
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
+    * ``bzr rm`` will now scan for files that are missing and remove just
+      them automatically, much as ``bzr add`` scans for new files that
+      are not ignored and adds them automatically. (Robert Collins)
+
   IMPROVEMENTS:
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
@@ -19,6 +23,9 @@ IN DEVELOPMENT
       (Marius Kruger)
 
   BUG FIXES:
+
+    * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
+      users. (Robert Collins, #205416)
 
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
