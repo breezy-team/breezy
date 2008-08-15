@@ -1299,6 +1299,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
                 "file")
 
+    def test_no_final_path(self):
+        transform, root = self.get_transform()
+        trans_id = transform.trans_id_file_id('foo')
+        transform.create_file('bar', trans_id)
+        transform.cancel_creation(trans_id)
+        transform.apply()
+
 
 class TransformGroup(object):
 
