@@ -254,7 +254,14 @@ class FileFileStream(FileStream):
         self.file_handle.close()
 
     def write(self, bytes):
-        self.file_handle.write(bytes)
+        # Write data in 5MB chunks rather than all at once, because very large
+        # writes fail on some platforms (e.g. Windows with SMB  mounted
+        # drives).
+        segment_size = 5242880 # 5MB
+        segments = range(len(bytes) / segment_size + 1)
+        for segment_index in segments:
+            segment = buffer(bytes, segment_index * segment_size, segment_size)
+            self.file_handle.write(segment)
 
 
 class AppendBasedFileStream(FileStream):

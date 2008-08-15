@@ -20,6 +20,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Pack operations on windows network shares will work even with large
+      files. (Robert Collins, #255656)
+
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
