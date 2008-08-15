@@ -1066,10 +1066,10 @@ class cmd_info(Command):
 class cmd_remove(Command):
     """Remove files or directories.
 
-    This makes bzr stop tracking changes to the specified files and delete them
-    if they can easily be recovered using revert. If no options or parameters
-    are given bzr will scan for files that are versioned by bzr but missing in
-    your tree and unversion them for you.
+    This makes bzr stop tracking changes to the specified files. bzr will delete
+    them if they can easily be recovered using revert. If no options or
+    parameters are given bzr will scan for files that are being tracked by bzr
+    but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -1107,7 +1107,8 @@ class cmd_remove(Command):
                 # versioned-with-no-kind.
                 missing = []
                 for change in tree.iter_changes(tree.basis_tree()):
-                    if change[6][1] is None:
+                    # Find paths in the working tree that have no kind:
+                    if change[1][1] is not None and change[6][1] is None:
                         missing.append(change[1][1])
                 file_list = sorted(missing, reverse=True)
                 file_deletion_strategy = 'keep'
