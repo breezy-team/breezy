@@ -1196,16 +1196,13 @@ class TestCase(unittest.TestCase):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
 
-    def addCleanup(self, callable):
+    def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
 
         Callables are run in the reverse of the order they are registered, 
         ie last-in first-out.
         """
-        if callable in self._cleanups:
-            raise ValueError("cleanup function %r already registered on %s" 
-                    % (callable, self))
-        self._cleanups.append(callable)
+        self._cleanups.append((callable, args, kwargs))
 
     def _cleanEnvironment(self):
         new_env = {
@@ -1320,7 +1317,8 @@ class TestCase(unittest.TestCase):
         # Actually pop the cleanups from the list so tearDown running
         # twice is safe (this happens for skipped tests).
         while self._cleanups:
-            self._cleanups.pop()()
+            cleanup, args, kwargs = self._cleanups.pop()
+            cleanup(*args, **kwargs)
 
     def log(self, *args):
         mutter(*args)
@@ -1591,7 +1589,10 @@ class TestCase(unittest.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            command = [sys.executable, bzr_path]
+            command = [sys.executable]
+            # frozen executables don't need the path to bzr
+            if getattr(sys, "frozen", None) is None:
+                command.append(bzr_path)
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -2063,7 +2064,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        name_prefix = os.path.join(self.TEST_ROOT, self._getTestDirPrefix())
+        name_prefix = osutils.pathjoin(self.TEST_ROOT, self._getTestDirPrefix())
         name = name_prefix
         for i in range(100):
             if os.path.exists(name):

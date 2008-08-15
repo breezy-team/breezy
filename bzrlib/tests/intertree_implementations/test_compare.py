@@ -21,6 +21,7 @@ import shutil
 
 from bzrlib import errors, tests, workingtree_4
 from bzrlib.osutils import file_kind, has_symlinks
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 # TODO: test the include_root option.
@@ -709,7 +710,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
             # revision trees cannot have missing files. 
-            return
+            raise TestNotApplicable()
         expected = [('file-id', ('file', None), False, (True, False),
             (root_id, None), ('file', None), (None, None), (False, None))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))

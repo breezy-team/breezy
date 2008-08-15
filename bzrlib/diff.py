@@ -874,7 +874,9 @@ class DiffTree(object):
                 return path.encode(self.path_encoding, "replace")
         for (file_id, paths, changed_content, versioned, parent, name, kind,
              executable) in sorted(iterator, key=changes_key):
-            if parent == (None, None):
+            # The root does not get diffed, and items with no known kind (that
+            # is, missing) in both trees are skipped as well.
+            if parent == (None, None) or kind == (None, None):
                 continue
             oldpath, newpath = paths
             oldpath_encoded = get_encoded_path(paths[0])

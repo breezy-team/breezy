@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     help_topics,
     repository,
+    osutils,
     symbol_versioning,
     urlutils,
     win32utils,
@@ -532,7 +533,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('topdir'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('topdir', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -545,7 +546,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('branch', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -557,7 +558,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('repo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -572,7 +573,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('shared/branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('shared', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -587,7 +588,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('foo'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('foo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'bar')
 
@@ -600,7 +601,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('bar', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'baz')
 

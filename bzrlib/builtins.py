@@ -1321,6 +1321,10 @@ class cmd_init(Command):
             except errors.UpgradeRequired:
                 raise errors.BzrCommandError('This branch format cannot be set'
                     ' to append-revisions-only.  Try --experimental-branch6')
+        if not is_quiet():
+            from bzrlib.info import show_bzrdir_info
+            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
+                to_transport)[0], verbose=0, outfile=self.outf)
 
 
 class cmd_init_repository(Command):
@@ -1372,6 +1376,10 @@ class cmd_init_repository(Command):
         newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(not no_trees)
+        if not is_quiet():
+            from bzrlib.info import show_bzrdir_info
+            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
+                to_transport)[0], verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):
