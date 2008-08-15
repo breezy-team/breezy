@@ -34,7 +34,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation, PathsNotVersionedError)
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, TestNotApplicable
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -900,10 +900,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.commit('added file')
         def fake_link(source, target):
             raise OSError(errno.EPERM, 'Operation not permitted')
-        try:
-            real_os_link = os.link
-        except AttributeError:
-            raise TestSkipped("This platform doesn't provide os.link")
+        real_os_link = getattr(os, 'link', None)
+        if real_os_link is None:
+            raise TestNotApplicable("This platform doesn't provide os.link")
         os.link = fake_link
         try:
             # Hard-link support is optional, so supplying hardlink=True may
