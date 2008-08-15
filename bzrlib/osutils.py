@@ -569,6 +569,24 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     return length
 
 
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
+
+
 def file_iterator(input_file, readsize=32768):
     while True:
         b = input_file.read(readsize)
