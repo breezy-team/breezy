@@ -9,7 +9,14 @@ IN DEVELOPMENT
 
   CHANGES:
 
+    * ``bzr export`` can now export a subdirectory of a project.
+      (Robert Collins)
+
   IMPROVEMENTS:
+
+    * ``bzr init`` and ``bzr init-repo`` will now print out the same as
+      ``bzr info`` if it completed successfully.
+      (Marius Kruger)
 
     * ``bzr uncommit`` logs the old tip revision id, and displays how to
       restore the branch to that tip using ``bzr pull``.  This allows you
@@ -44,14 +51,42 @@ IN DEVELOPMENT
       (Robert Collins, Aaron Bentley)
 
 
+bzr 1.6rc3 2008-08-14
+---------------------
+
+  CHANGES:
+
+    * Disable reading ``.bzrrules`` as a per-branch rule preferences
+      file. The feature was not quite ready for a full release.
+      (Robert Collins)
+
+  IMPROVEMENTS:
+
+    * Update the windows installer to bundle TortoiseBzr and ``qbzr``
+      into the standalone installer. This will be the first official
+      windows release that installs Tortoise by default.
+      (Mark Hammond)
+
+  BUG FIXES: 
+
+    * Fix a regression in ``bzr+http`` support. There was a missing
+      function (``_read_line``) that needed to be carried over from
+      ``bzr+ssh`` support. (Andrew Bennetts)
+
+    * ``GraphIndex`` objects will internally read an entire index if more
+      than 1/20th of their keyspace is requested in a single operation.
+      This largely mitigates a performance regression in ``bzr log FILE``
+      and completely corrects the performance regression in ``bzr log``.
+      The regression was caused by removing an accomodation which had been
+      supporting the index format in use. A newer index format is in
+      development which is substantially faster. (Robert Collins)
+
+
 bzr 1.6rc2 2008-08-13
 ---------------------
 
 This release candidate has a few minor bug fixes, and some regression
 fixes for Windows.
-
-    * ``bzr export`` can now export a subdirectory of a project.
-      (Robert Collins)
 
   BUG FIXES:
 
