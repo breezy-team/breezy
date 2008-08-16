@@ -3779,8 +3779,12 @@ class cmd_uncommit(Command):
                     print 'Canceled'
                     return 0
 
+        mutter('Uncommitting from {%s} to {%s}',
+               last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
+        note('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s', last_rev_id)
 
 
 class cmd_break_lock(Command):
