@@ -363,6 +363,12 @@ def _mac_getcwd():
     return unicodedata.normalize('NFC', os.getcwdu())
 
 
+def _mac_mkdtemp(*args, **kwargs):
+    tmp_dir = tempfile.mkdtemp(*args, **kwargs)
+    os.chown(tmp_dir, os.getuid(), os.getgid())
+    return tmp_dir
+   
+    
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
 abspath = _posix_abspath
@@ -411,6 +417,7 @@ if sys.platform == 'win32':
         return shutil.rmtree(path, ignore_errors, onerror)
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
+    mkdtemp = _mac_mkdtemp
 
 
 def get_terminal_encoding():
