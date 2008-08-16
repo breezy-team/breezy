@@ -20,6 +20,13 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
+      status. Status is also about 7% faster on mozilla sized trees
+      when the path to the root of the tree has been given. Users of
+      the internal ``show_tree_status`` function should be aware that
+      the show_pending flag is now authoritative for showing pending
+      merges, as it was originally. (Robert Collins, #225204)
+
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
