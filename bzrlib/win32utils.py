@@ -69,6 +69,11 @@ try:
     has_win32file = True
 except ImportError:
     has_win32file = False
+try:
+    import win32api
+    has_win32api = True
+except ImportError:
+    has_win32api = False
 
 
 # Special Win32 API constants
@@ -210,6 +215,15 @@ def get_host_name():
     To convert plain string to unicode use
     s.decode(bzrlib.user_encoding)
     """
+    if has_win32api:
+        try:
+            # 3 == ComputerNameDnsFullyQualified, which returns "The 
+            # fully-qualified DNS name that uniquely identifies the local 
+            # computer or the cluster associated with the local computer."
+            return win32api.GetComputerNameEx(3)
+        except (NotImplementedError, win32api.error):
+            # NotImplemented will happen on win9x...
+            pass
     if has_ctypes:
         try:
             kernel32 = ctypes.windll.kernel32
@@ -221,8 +235,12 @@ def get_host_name():
             n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
             if GetComputerName(buf, ctypes.byref(n)):
                 return buf.value
-    # otherwise try env variables
-    return os.environ.get('COMPUTERNAME', None)
+    # otherwise try env variables, which will be 'mbcs' encoded
+    # on Windows (Python doesn't expose the native win32 unicode environment)
+    try:
+        return os.environ['COMPUTERNAME'].decode("mbcs")
+    except KeyError:
+        return None
 
 
 def _ensure_unicode(s):
