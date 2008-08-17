@@ -541,6 +541,16 @@ error:
 }
 
 
+static void
+delete_lines(struct line *lines, Py_ssize_t size)
+{
+    while (size-- > 0) {
+        Py_XDECREF(lines->data);
+        lines++;
+    }
+}
+
+
 static Py_ssize_t
 load_lines(PyObject *orig, struct line **lines)
 {
@@ -559,7 +569,8 @@ load_lines(PyObject *orig, struct line **lines)
         return 0;
     }
 
-    line = *lines = (struct line *)malloc(sizeof(struct line) * size);
+    /* Allocate a memory block for line data, initialized to 0 */
+    line = *lines = (struct line *)calloc(size, sizeof(struct line));
     if (line == NULL) {
         PyErr_NoMemory();
         Py_DECREF(seq);
@@ -568,6 +579,7 @@ load_lines(PyObject *orig, struct line **lines)
 
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
+        Py_INCREF(item);
         line->data = item;
         line->hash = PyObject_Hash(item);
         if (line->hash == (-1)) {
@@ -581,6 +593,10 @@ load_lines(PyObject *orig, struct line **lines)
 
     cleanup:
     Py_DECREF(seq);
+    if (size == -1) {
+        /* Error -- cleanup unused object references */
+        delete_lines(*lines, i);
+    }
     return size;
 }
 
@@ -633,16 +649,16 @@ py_unique_lcs(PyObject *self, PyObject *args)
     free(backpointers);
     free(matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     return res;
 
 error:
     free(backpointers);
     free(matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     return NULL;
 }
 
@@ -711,16 +727,16 @@ py_recurse_matches(PyObject *self, PyObject *args)
     free(backpointers);
     free(matches.matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     Py_RETURN_NONE;
 
 error:
     free(backpointers);
     free(matches.matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     return NULL;
 }
 
@@ -769,8 +785,8 @@ PatienceSequenceMatcher_dealloc(PatienceSequenceMatcher* self)
 {
     free(self->backpointers);
     free(self->hashtable.table);
-    free(self->b);
-    free(self->a);
+    delete_lines(self->b, self->bsize);
+    delete_lines(self->a, self->asize);
     self->ob_type->tp_free((PyObject *)self);
 }
 
