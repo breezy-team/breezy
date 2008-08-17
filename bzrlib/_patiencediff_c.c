@@ -544,10 +544,12 @@ error:
 static void
 delete_lines(struct line *lines, Py_ssize_t size)
 {
+    struct line *line = lines;
     while (size-- > 0) {
-        Py_XDECREF(lines->data);
-        lines++;
+        Py_XDECREF(line->data);
+        line++;
     }
+    free(lines);
 }
 
 
@@ -596,6 +598,7 @@ load_lines(PyObject *orig, struct line **lines)
     if (size == -1) {
         /* Error -- cleanup unused object references */
         delete_lines(*lines, i);
+        *lines = NULL;
     }
     return size;
 }
