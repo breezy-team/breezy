@@ -180,7 +180,7 @@ class RepoFetcher(object):
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
                         text_keys, self.to_repository._fetch_order,
-                        self.to_repository._fetch_uses_deltas))
+                        not self.to_repository._fetch_uses_deltas))
                     # Cause an error if a text occurs after we have done the
                     # copy.
                     text_keys = None
