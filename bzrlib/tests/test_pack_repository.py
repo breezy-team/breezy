@@ -65,7 +65,7 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs do not need ordered data retrieval."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('unsorted', repo._fetch_order)
+        self.assertEqual('unordered', repo._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Packs reuse deltas."""
