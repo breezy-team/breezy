@@ -245,7 +245,7 @@ class RepoReconciler(object):
         revision_keys = [(rev_id,) for rev_id in
             TopoSorter(self._rev_graph.items()).iter_topo_order()]
         stream = self._change_inv_parents(
-            self.inventory.get_record_stream(revision_keys, 'unsorted', True),
+            self.inventory.get_record_stream(revision_keys, 'unordered', True),
             self._new_inv_parents,
             set(revision_keys))
         new_inventories.insert_record_stream(stream)
@@ -377,7 +377,7 @@ class KnitReconciler(RepoReconciler):
         revision_ids = [key[-1] for key in revision_keys]
         self._setup_steps(len(revision_keys))
         stream = self._change_inv_parents(
-            self.inventory.get_record_stream(revision_keys, 'unsorted', True),
+            self.inventory.get_record_stream(revision_keys, 'unordered', True),
             graph.__getitem__,
             set(revision_keys))
         new_inventories.insert_record_stream(stream)

@@ -255,7 +255,7 @@ class RepoFetcher(object):
         to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
             [(rev_id,) for rev_id in revs],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas)))
+            not self.to_repository._fetch_uses_deltas)))
         self._fetch_just_revision_texts(revs)
 
     def _fetch_just_revision_texts(self, version_ids):
