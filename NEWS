@@ -10,10 +10,8 @@ IN DEVELOPMENT
   BUG FIXES: 
 
     * Fix a regression in knit => pack fetching.  We had a logic
-      inversion, causing fetches that should use deltas to use fulltexts.
-      We also weren't inserting in topological order, which caused some
-      entries to get bloated to fulltexts instead of staying deltas.
-      (John Arbash Meinel, #256757)
+      inversion, causing the fetch to insert fulltexts in random order,
+      rather than preserving deltas.  (John Arbash Meinel, #256757)
 
 
 bzr 1.6rc3 2008-08-14
