@@ -691,9 +691,10 @@ class Repository(object):
         # Additional places to query for data.
         self._fallback_repositories = []
         # What order should fetch operations request streams in?
-        # The default is unsorted as that is the cheapest for an origin to
-        # provide.
-        self._fetch_order = 'unsorted'
+        # The default is topological, because it is the style that is 'most
+        # correct' for targets, even if it is the most expensive for source
+        # formats to generate.
+        self._fetch_order = 'topological'
         # Does this repository use deltas that can be fetched as-deltas ?
         # (E.g. knits, where the knit deltas can be transplanted intact.
         # We default to False, which will ensure that enough data to get

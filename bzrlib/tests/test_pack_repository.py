@@ -62,10 +62,14 @@ class TestPackRepository(TestCaseWithTransport):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
     def test_attribute__fetch_order(self):
-        """Packs do not need ordered data retrieval."""
+        """Packs do not need ordered data retrieval.
+
+        Except experience shows they need ordered data insertion, so for now,
+        they request topological.
+        """
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('unsorted', repo._fetch_order)
+        self.assertEqual('topological', repo._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Packs reuse deltas."""

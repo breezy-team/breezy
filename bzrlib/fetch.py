@@ -243,7 +243,7 @@ class RepoFetcher(object):
             to_weave.insert_record_stream(from_weave.get_record_stream(
                 [(rev_id,) for rev_id in revs],
                 self.to_repository._fetch_order,
-                self.to_repository._fetch_uses_deltas))
+                not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
 
@@ -264,7 +264,7 @@ class RepoFetcher(object):
         to_rf.insert_record_stream(from_rf.get_record_stream(
             [(rev_id,) for rev_id in version_ids],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas))
+            not self.to_repository._fetch_uses_deltas))
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
