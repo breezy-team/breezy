@@ -112,10 +112,7 @@ class Editor(MailClient):
                                         body,
                                         attachment,
                                         attachment_mime_subtype=mime_subtype)
-mail_client_registry.register_lazy(
-                'editor',
-                'bzrlib.mail_client',
-                'Editor')
+mail_client_registry.register('editor', Editor)
 
 
 class ExternalMailClient(MailClient):
@@ -229,10 +226,7 @@ class Evolution(ExternalMailClient):
                         sorted(message_options.iteritems())]
         return ['mailto:%s?%s' % (self._encode_safe(to or ''),
             '&'.join(options_list))]
-mail_client_registry.register_lazy(
-                'evolution',
-                'bzrlib.mail_client',
-                'Evolution')
+mail_client_registry.register('evolution', Evolution)
 
 
 class Mutt(ExternalMailClient):
@@ -251,10 +245,7 @@ class Mutt(ExternalMailClient):
         if to is not None:
             message_options.append(self._encode_safe(to))
         return message_options
-mail_client_registry.register_lazy(
-                'mutt',
-                'bzrlib.mail_client',
-                'Mutt')
+mail_client_registry.register('mutt', Mutt)
 
 
 class Thunderbird(ExternalMailClient):
@@ -284,10 +275,7 @@ class Thunderbird(ExternalMailClient):
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
-mail_client_registry.register_lazy(
-                'thunderbird',
-                'bzrlib.mail_client',
-                'Thunderbird')
+mail_client_registry.register('thunderbird', Thunderbird)
 
 
 class KMail(ExternalMailClient):
@@ -306,10 +294,7 @@ class KMail(ExternalMailClient):
         if to is not None:
             message_options.extend([self._encode_safe(to)])
         return message_options
-mail_client_registry.register_lazy(
-                'kmail',
-                'bzrlib.mail_client',
-                'KMail')
+mail_client_registry.register('kmail', KMail)
 
 
 class XDGEmail(ExternalMailClient):
@@ -328,10 +313,7 @@ class XDGEmail(ExternalMailClient):
             commandline.extend(['--attach',
                 self._encode_path(attach_path, 'attachment')])
         return commandline
-mail_client_registry.register_lazy(
-                'xdg-email',
-                'bzrlib.mail_client',
-                'XDGEmail')
+mail_client_registry.register('xdg-email', XDGEmail)
 
 
 class EmacsMail(ExternalMailClient):
@@ -433,10 +415,7 @@ class EmacsMail(ExternalMailClient):
             commandline.append(rmform)
 
         return commandline
-mail_client_registry.register_lazy(
-                'emacsclient',
-                'bzrlib.mail_client',
-                'EmacsMail')
+mail_client_registry.register('emacsclient', EmacsMail)
 
 
 class MAPIClient(ExternalMailClient):
@@ -455,10 +434,7 @@ class MAPIClient(ExternalMailClient):
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise errors.MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])
-mail_client_registry.register_lazy(
-                'mapi',
-                'bzrlib.mail_client',
-                'MAPIClient')
+mail_client_registry.register('mapi', MAPIClient)
 
 
 class DefaultMail(MailClient):
@@ -491,8 +467,5 @@ class DefaultMail(MailClient):
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename)
-mail_client_registry.register_lazy(
-                'default',
-                'bzrlib.mail_client',
-                'DefaultMail')
+mail_client_registry.register('default', DefaultMail)
 mail_client_registry.default_key = 'default'
