@@ -85,6 +85,7 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.util.configobj import configobj
+from bzrlib.mail_client import mail_client_registry
 """)
 
 
@@ -148,20 +149,7 @@ class Config(object):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
         try:
-            mail_client_class = {
-                None: mail_client.DefaultMail,
-                # Specific clients
-                'emacsclient': mail_client.EmacsMail,
-                'evolution': mail_client.Evolution,
-                'kmail': mail_client.KMail,
-                'mutt': mail_client.Mutt,
-                'thunderbird': mail_client.Thunderbird,
-                # Generic options
-                'default': mail_client.DefaultMail,
-                'editor': mail_client.Editor,
-                'mapi': mail_client.MAPIClient,
-                'xdg-email': mail_client.XDGEmail,
-            }[selected_client]
+            mail_client_class = mail_client_registry.get(selected_client)
         except KeyError:
             raise errors.UnknownMailClient(selected_client)
         return mail_client_class(self)

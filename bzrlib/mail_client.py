@@ -27,8 +27,50 @@ from bzrlib import (
     msgeditor,
     osutils,
     urlutils,
+    registry
     )
 
+mail_client_registry = registry.Registry()
+# Specific clients
+mail_client_registry.register_lazy(
+                'emacsclient',
+                'bzrlib.mail_client',
+                'EmacsMail')
+mail_client_registry.register_lazy(
+                'evolution',
+                'bzrlib.mail_client',
+                'Evolution')
+mail_client_registry.register_lazy(
+                'kmail',
+                'bzrlib.mail_client',
+                'KMail')
+mail_client_registry.register_lazy(
+                'mutt',
+                'bzrlib.mail_client',
+                'Mutt')
+mail_client_registry.register_lazy(
+                'thunderbird',
+                'bzrlib.mail_client',
+                'Thunderbird')
+# Generic options
+mail_client_registry.register_lazy(
+                'default',
+                'bzrlib.mail_client',
+                'DefaultMail')
+mail_client_registry.default_key = 'default'
+
+mail_client_registry.register_lazy(
+                'editor',
+                'bzrlib.mail_client',
+                'Editor')
+mail_client_registry.register_lazy(
+                'mapi',
+                'bzrlib.mail_client',
+                'MAPIClient')
+mail_client_registry.register_lazy(
+                'xdg-email',
+                'bzrlib.mail_client',
+                'XDGEmail')
 
 class MailClient(object):
     """A mail client that can send messages with attachements."""
@@ -253,7 +295,8 @@ class Thunderbird(ExternalMailClient):
     """
 
     _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove',
-        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin']
+        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin',
+        '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
