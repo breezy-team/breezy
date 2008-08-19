@@ -390,15 +390,7 @@ class BzrDir(object):
         def repository_policy(found_bzrdir):
             stack_on = None
             stack_on_pwd = None
-            config = found_bzrdir.get_config()
             stop = False
-            if config is not None:
-                stack_on = config.get_default_stack_on()
-                if stack_on is not None:
-                    stack_on_pwd = found_bzrdir.root_transport.base
-                    stop = True
-                    note('Using default stacking branch %s at %s', stack_on,
-                         stack_on_pwd)
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
