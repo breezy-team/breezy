@@ -4748,7 +4748,6 @@ bzr 0.11rc1  2006-09-25
       of the current state of the tree. This is especially useful as part
       of a build commands. See ``doc/version_info.txt`` for more information 
       (John Arbash Meinel)
->>>>>>> MERGE-SOURCE
 
   BUG FIXES:
 
