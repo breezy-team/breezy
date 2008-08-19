@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Development Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,13 +20,15 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
+import gzip
 import os
+from cStringIO import StringIO
+
+from bzrlib import osutils
+from bzrlib.errors import BzrError, NoSuchFile, FileExists
 import bzrlib.store
 from bzrlib.trace import mutter
-from bzrlib.errors import BzrError, NoSuchFile, FileExists
 
-import gzip
-from cStringIO import StringIO
 
 
 class TextStore(bzrlib.store.TransportStore):
@@ -99,7 +101,7 @@ class TextStore(bzrlib.store.TransportStore):
             if not self._prefixed:
                 raise
             try:
-                self._transport.mkdir(self.hash_prefix(fileid)[:-1], mode=self._dir_mode)
+                self._transport.mkdir(osutils.dirname(path), mode=self._dir_mode)
             except FileExists:
                 pass
             result = other._transport.copy_to([path], self._transport,

@@ -78,6 +78,40 @@ class TestEncodeCache(TestCase):
         xp = cache_utf8.get_cached_unicode(x)
         yp = cache_utf8.get_cached_unicode(y)
 
-        self.failUnless(xp is x)
-        self.failUnless(xp is yp)
+        self.assertIs(xp, x)
+        self.assertIs(xp, yp)
 
+    def test_cached_utf8(self):
+        x = u'\xb5yy\xe5zz'.encode('utf8')
+        y = u'\xb5yy\xe5zz'.encode('utf8')
+        self.failIf(x is y)
+        xp = cache_utf8.get_cached_utf8(x)
+        yp = cache_utf8.get_cached_utf8(y)
+
+        self.assertIs(xp, x)
+        self.assertIs(xp, yp)
+
+    def test_cached_ascii(self):
+        x = '%s %s' % ('simple', 'text')
+        y = '%s %s' % ('simple', 'text')
+        self.failIf(x is y)
+        xp = cache_utf8.get_cached_ascii(x)
+        yp = cache_utf8.get_cached_ascii(y)
+
+        self.assertIs(xp, x)
+        self.assertIs(xp, yp)
+
+        # after caching, encode and decode should also return the right
+        # objects.
+        uni_x = cache_utf8.decode(x)
+        self.assertEqual(u'simple text', uni_x)
+        self.assertIsInstance(uni_x, unicode)
+
+        utf8_x = cache_utf8.encode(uni_x)
+        self.assertIs(utf8_x, x)
+
+    def test_decode_with_None(self):
+        self.assertEqual(None, cache_utf8._utf8_decode_with_None(None))
+        self.assertEqual(u'foo', cache_utf8._utf8_decode_with_None('foo'))
+        self.assertEqual(u'f\xb5',
+                         cache_utf8._utf8_decode_with_None('f\xc2\xb5'))

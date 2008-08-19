@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,12 @@
 
 import errno
 
-from bzrlib import config
+import bzrlib
+from bzrlib import (
+    atomicfile,
+    config,
+    globbing,
+    )
 
 # This was the full ignore list for bzr 0.8
 # please keep these sorted (in C locale order) to aid merging
@@ -102,7 +107,7 @@ def parse_ignore_file(f):
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
-        ignored.add(line)
+        ignored.add(globbing.normalize_pattern(line))
     return ignored
 
 
@@ -163,6 +168,7 @@ def add_unique_user_ignores(new_ignores):
     ignored = get_user_ignores()
     to_add = []
     for ignore in new_ignores:
+        ignore = globbing.normalize_pattern(ignore)
         if ignore not in ignored:
             ignored.add(ignore)
             to_add.append(ignore)
@@ -201,3 +207,38 @@ def add_runtime_ignores(ignores):
 def get_runtime_ignores():
     """Get the current set of runtime ignores."""
     return _runtime_ignores
+
+
+def tree_ignores_add_patterns(tree, name_pattern_list):
+    """Retrieve a list of ignores from the ignore file in a tree.
+
+    :param tree: Tree to retrieve the ignore list from.
+    :return: 
+    """
+    ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
+    if tree.has_filename(ifn):
+        f = open(ifn, 'rt')
+        try:
+            igns = f.read().decode('utf-8')
+        finally:
+            f.close()
+    else:
+        igns = ""
+
+    # TODO: If the file already uses crlf-style termination, maybe
+    # we should use that for the newly added lines?
+
+    if igns and igns[-1] != '\n':
+        igns += '\n'
+    for name_pattern in name_pattern_list:
+        igns += name_pattern + '\n'
+
+    f = atomicfile.AtomicFile(ifn, 'wb')
+    try:
+        f.write(igns.encode('utf-8'))
+        f.commit()
+    finally:
+        f.close()
+
+    if not tree.path2id('.bzrignore'):
+        tree.add(['.bzrignore'])

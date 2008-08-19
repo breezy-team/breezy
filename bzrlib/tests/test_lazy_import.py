@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -96,6 +96,15 @@ class TestScopeReplacer(TestCase):
     get collisions.
     """
 
+    def setUp(self):
+        TestCase.setUp(self)
+        # These tests assume we will not be proxying, so make sure proxying is
+        # disabled.
+        orig_proxy = lazy_import.ScopeReplacer._should_proxy
+        def restore():
+            lazy_import.ScopeReplacer._should_proxy = orig_proxy
+        lazy_import.ScopeReplacer._should_proxy = False
+
     def test_object(self):
         """ScopeReplacer can create an instance in local scope.
         
@@ -140,6 +149,41 @@ class TestScopeReplacer(TestCase):
                           ('foo', 1),
                           ('foo', 2),
                          ], actions)
+
+    def test_setattr_replaces(self):
+        """ScopeReplacer can create an instance in local scope.
+
+        An object should appear in globals() by constructing a ScopeReplacer,
+        and it will be replaced with the real object upon the first request.
+        """
+        actions = []
+        TestClass.use_actions(actions)
+        def factory(replacer, scope, name):
+            return TestClass()
+        try:
+            test_obj6
+        except NameError:
+            # test_obj6 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_obj6 was not supposed to exist yet')
+
+        orig_globals = set(globals().keys())
+
+        lazy_import.ScopeReplacer(scope=globals(), name='test_obj6',
+                                  factory=factory)
+
+        new_globals = set(globals().keys())
+
+        # We can't use isinstance() because that uses test_obj6.__class__
+        # and that goes through __getattribute__ which would activate
+        # the replacement
+        self.assertEqual(lazy_import.ScopeReplacer,
+                         object.__getattribute__(test_obj6, '__class__'))
+        test_obj6.bar = 'test'
+        self.assertNotEqual(lazy_import.ScopeReplacer,
+                            object.__getattribute__(test_obj6, '__class__'))
+        self.assertEqual('test', test_obj6.bar)
 
     def test_replace_side_effects(self):
         """Creating a new object should only create one entry in globals.
@@ -326,7 +370,6 @@ class TestScopeReplacer(TestCase):
         self.assertRaises(errors.IllegalUseOfScopeReplacer,
                           getattr, test_obj3, 'foo')
         
-        # However, the 
         self.assertEqual([('__getattribute__', 'foo'),
                           '_replace',
                           'factory',
@@ -336,6 +379,65 @@ class TestScopeReplacer(TestCase):
                           ('foo', 3),
                           ('__getattribute__', 'foo'),
                           '_replace',
+                         ], actions)
+
+    def test_enable_proxying(self):
+        """Test that we can allow ScopeReplacer to proxy."""
+        actions = []
+        InstrumentedReplacer.use_actions(actions)
+        TestClass.use_actions(actions)
+
+        def factory(replacer, scope, name):
+            actions.append('factory')
+            return TestClass()
+
+        try:
+            test_obj4
+        except NameError:
+            # test_obj4 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_obj4 was not supposed to exist yet')
+
+        lazy_import.ScopeReplacer._should_proxy = True
+        InstrumentedReplacer(scope=globals(), name='test_obj4',
+                             factory=factory)
+
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj4, '__class__'))
+        test_obj5 = test_obj4
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj4, '__class__'))
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj5, '__class__'))
+
+        # The first use of the alternate variable causes test_obj2 to
+        # be replaced.
+        self.assertEqual('foo', test_obj4.foo(1))
+        self.assertEqual(TestClass,
+                         object.__getattribute__(test_obj4, '__class__'))
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj5, '__class__'))
+        # We should be able to access test_obj4 attributes normally
+        self.assertEqual('foo', test_obj4.foo(2))
+        # because we enabled proxying, test_obj5 can access its members as well
+        self.assertEqual('foo', test_obj5.foo(3))
+        self.assertEqual('foo', test_obj5.foo(4))
+
+        # However, it cannot be replaced by the ScopeReplacer
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj5, '__class__'))
+
+        self.assertEqual([('__getattribute__', 'foo'),
+                          '_replace',
+                          'factory',
+                          'init',
+                          ('foo', 1),
+                          ('foo', 2),
+                          ('__getattribute__', 'foo'),
+                          ('foo', 3),
+                          ('__getattribute__', 'foo'),
+                          ('foo', 4),
                          ], actions)
 
 

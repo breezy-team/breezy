@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,9 @@ from bzrlib import (
     gpg,
     urlutils,
     transactions,
+    remote,
     repository,
+    tests,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
@@ -38,72 +40,68 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.osutils import getcwd
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
 
-# TODO: Make a branch using basis branch, and check that it 
-# doesn't request any files that could have been avoided, by 
-# hooking into the Transport.
-
-
-class TestCaseWithBranch(TestCaseWithBzrDir):
-
-    def setUp(self):
-        super(TestCaseWithBranch, self).setUp()
-        self.branch = None
-
-    def get_branch(self):
-        if self.branch is None:
-            self.branch = self.make_branch('')
-        return self.branch
-
-    def make_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=format)
-        # fixme RBC 20060210 this isnt necessarily a fixable thing,
-        # Skipped is the wrong exception to raise.
-        try:
-            return self.branch_format.initialize(repo.bzrdir)
-        except errors.UninitializableFormat:
-            raise TestSkipped('Uninitializable branch format')
-
-    def make_repository(self, relpath, shared=False, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository(shared=shared)
-
-
 class TestBranch(TestCaseWithBranch):
 
-    def test_append_revisions(self):
-        """Test appending more than one revision"""
+    def test_create_tree_with_merge(self):
+        tree = self.create_tree_with_merge()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        ancestry_graph = graph.get_parent_map(
+            tree.branch.repository.all_revision_ids())
+        self.assertEqual({'rev-1':('null:',),
+                          'rev-2':('rev-1', ),
+                          'rev-1.1.1':('rev-1', ),
+                          'rev-3':('rev-2', 'rev-1.1.1', ),
+                         }, ancestry_graph)
+
+    def test_revision_ids_are_utf8(self):
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+
         br = self.get_branch()
-        br.append_revision("rev1")
-        self.assertEquals(br.revision_history(), ["rev1",])
-        br.append_revision("rev2", "rev3")
-        self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+        br.fetch(wt.branch)
+        br.set_revision_history(['rev1', 'rev2', 'rev3'])
+        rh = br.revision_history()
+        self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
+        for revision_id in rh:
+            self.assertIsInstance(revision_id, str)
+        last = br.last_revision()
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
+        revno, last = br.last_revision_info()
+        self.assertEqual(3, revno)
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
-        get_transport(self.get_url()).mkdir('b1')
-        get_transport(self.get_url()).mkdir('b2')
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
-        b2 = self.make_branch('b2')
-        file('b1/foo', 'w').write('hello')
+        self.build_tree_contents([('b1/foo', 'hello')])
         wt.add(['foo'], ['foo-id'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
-        mutter('start fetch')
+        b2 = self.make_branch('b2')
         self.assertEqual((1, []), b2.fetch(b1))
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def test_get_revision_delta(self):
@@ -124,13 +122,11 @@ class TestBranch(TestCaseWithBranch):
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
-        get_transport(self.get_url()).mkdir('a')
         tree_a = self.make_branch_and_tree('a')
-        file('a/b', 'wb').write('b')
+        self.build_tree_contents([('a/b', 'b')])
         tree_a.add('b')
         tree_a.commit("silly commit", rev_id='A')
 
-        get_transport(self.get_url()).mkdir('b')
         tree_b = self.make_branch_and_tree('b')
         return tree_a, tree_b
 
@@ -140,20 +136,11 @@ class TestBranch(TestCaseWithBranch):
         tree_b.branch.repository.fetch(tree_a.branch.repository)
         return tree_a, tree_b
 
-    def test_clone_branch(self):
-        """Copy the stores from one branch to another"""
-        tree_a, tree_b = self.get_balanced_branch_pair()
-        tree_b.commit("silly commit")
-        os.mkdir('c')
-        # this fails to test that the history from a was not used.
-        dir_c = tree_a.bzrdir.clone('c', basis=tree_b.bzrdir)
-        self.assertEqual(tree_a.branch.revision_history(),
-                         dir_c.open_branch().revision_history())
-
     def test_clone_partial(self):
         """Copy only part of the history of a branch."""
         # TODO: RBC 20060208 test with a revision not on revision-history.
         #       what should that behaviour be ? Emailed the list.
+        # First, make a branch with two commits.
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
@@ -161,24 +148,16 @@ class TestBranch(TestCaseWithBranch):
         self.build_tree(['a/two'])
         wt_a.add(['two'])
         wt_a.commit('commit two', rev_id='2')
+        # Now make a copy of the repository.
         repo_b = self.make_repository('b')
-        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
-        br_b = wt_a.bzrdir.open_branch().clone(repo_b.bzrdir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
-
-    def test_sprout_partial(self):
-        # test sprouting with a prefix of the revision-history.
-        # also needs not-on-revision-history behaviour defined.
-        wt_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/one'])
-        wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
-        self.build_tree(['a/two'])
-        wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
-        repo_b = self.make_repository('b')
-        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
-        br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
+        wt_a.branch.repository.copy_content_into(repo_b)
+        # wt_a might be a lightweight checkout, so get a hold of the actual
+        # branch (because you can't do a partial clone of a lightweight
+        # checkout).
+        branch = wt_a.branch.bzrdir.open_branch()
+        # Then make a branch where the new repository is, but specify a revision
+        # ID.  The new branch's history will stop at the specified revision.
+        br_b = branch.clone(repo_b.bzrdir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
 
     def get_parented_branch(self):
@@ -187,13 +166,13 @@ class TestBranch(TestCaseWithBranch):
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
 
-        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.bzrdir.sprout('b', revision_id='1').open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
     def test_clone_branch_nickname(self):
         # test the nick name is preserved always
-        raise TestSkipped('XXX branch cloning is not yet tested..')
+        raise TestSkipped('XXX branch cloning is not yet tested.')
 
     def test_clone_branch_parent(self):
         # test the parent is preserved always
@@ -212,15 +191,6 @@ class TestBranch(TestCaseWithBranch):
         branch_d = branch_b.clone(repo_d.bzrdir)
         self.assertEqual(random_parent, branch_d.get_parent())
 
-    def test_sprout_branch_nickname(self):
-        # test the nick name is reset always
-        raise TestSkipped('XXX branch sprouting is not yet tested..')
-
-    def test_sprout_branch_parent(self):
-        source = self.make_branch('source')
-        target = source.bzrdir.sprout(self.get_url('target')).open_branch()
-        self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
-
     def test_submit_branch(self):
         """Submit location can be queried and set"""
         branch = self.make_branch('branch')
@@ -230,11 +200,24 @@ class TestBranch(TestCaseWithBranch):
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
         
+    def test_public_branch(self):
+        """public location can be queried and set"""
+        branch = self.make_branch('branch')
+        self.assertEqual(branch.get_public_branch(), None)
+        branch.set_public_branch('sftp://example.com')
+        self.assertEqual(branch.get_public_branch(), 'sftp://example.com')
+        branch.set_public_branch('sftp://example.net')
+        self.assertEqual(branch.get_public_branch(), 'sftp://example.net')
+        branch.set_public_branch(None)
+        self.assertEqual(branch.get_public_branch(), None)
+
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
+        self.assertEqual(['non:existent@rev--ision--0--2'],
+            wt.get_parent_ids())
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
@@ -272,53 +255,111 @@ class TestBranch(TestCaseWithBranch):
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         strategy = gpg.LoopbackGPGStrategy(None)
+        branch.repository.lock_write()
+        branch.repository.start_write_group()
         branch.repository.sign_revision('A', strategy)
-        self.assertEqual(Testament.from_revision(branch.repository, 
-                         'A').as_short_text(),
+        branch.repository.commit_write_group()
+        branch.repository.unlock()
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+                         Testament.from_revision(branch.repository,
+                         'A').as_short_text() +
+                         '-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
-        branch.repository.store_revision_signature(
-            gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        branch.lock_write()
+        try:
+            branch.repository.start_write_group()
+            try:
+                branch.repository.store_revision_signature(
+                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+            except:
+                branch.repository.abort_write_group()
+                raise
+            else:
+                branch.repository.commit_write_group()
+        finally:
+            branch.unlock()
+        # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.assertEqual('FOO', 
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
-        wt.branch.repository.sign_revision('A',
-            gpg.LoopbackGPGStrategy(None))
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
-        d2 = wt.bzrdir.clone('target')
-        self.assertEqual(wt.branch.repository.get_signature_text('A'),
+        d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
+        self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
+    def test_missing_revisions(self):
+        t1 = self.make_branch_and_tree('b1')
+        rev1 = t1.commit('one')
+        t2 = t1.bzrdir.sprout('b2').open_workingtree()
+        rev2 = t1.commit('two')
+        rev3 = t1.commit('three')
+
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch))
+
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=1))
+        self.assertEqual([rev2],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=2))
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=3))
+
+        self.assertRaises(errors.NoSuchRevision,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=4)
+
+        rev4 = t2.commit('four')
+        self.assertRaises(errors.DivergedBranches,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch)
+
     def test_nicks(self):
-        """Branch nicknames"""
+        """Test explicit and implicit branch nicknames.
+        
+        Nicknames are implicitly the name of the branch's directory, unless an
+        explicit nickname is set.  That is, an explicit nickname always
+        overrides the implicit one.
+        """
         t = get_transport(self.get_url())
-        t.mkdir('bzr.dev')
         branch = self.make_branch('bzr.dev')
+        # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
+        # Move the branch to a different directory, 'bzr.ab'.  Now that branch
+        # will report its nick as 'bzr.ab'.
         t.move('bzr.dev', 'bzr.ab')
         branch = Branch.open(self.get_url('bzr.ab'))
         self.assertEqual(branch.nick, 'bzr.ab')
+        # Set the branch nick explicitly.  This will ensure there's a branch
+        # config file in the branch.
         branch.nick = "Aaron's branch"
-        branch.nick = "Aaron's branch"
-        self.failUnless(
-            t.has(
-                t.relpath(
-                    branch.control_files.controlfilename("branch.conf")
-                    )
-                )
-            )
+        if not isinstance(branch, remote.RemoteBranch):
+            self.failUnless(branch._transport.has("branch.conf"))
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = Branch.open(self.get_url('integration'))
@@ -328,13 +369,12 @@ class TestBranch(TestCaseWithBranch):
 
     def test_commit_nicks(self):
         """Nicknames are committed to the revision"""
-        get_transport(self.get_url()).mkdir('bzr.dev')
         wt = self.make_branch_and_tree('bzr.dev')
         branch = wt.branch
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"], 
+        self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
     def test_create_open_branch_uses_repository(self):
@@ -342,8 +382,9 @@ class TestBranch(TestCaseWithBranch):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
-        repo.bzrdir.root_transport.mkdir('child')
-        child_dir = self.bzrdir_format.initialize('child')
+        child_transport = repo.bzrdir.root_transport.clone('child')
+        child_transport.mkdir('.')
+        child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -360,17 +401,13 @@ class TestBranch(TestCaseWithBranch):
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
 
-    def test_check_branch_report_results(self):
-        """Checking a branch produces results which can be printed"""
-        branch = self.make_branch('.')
-        result = branch.check()
-        # reports results through logging
-        result.report_results(verbose=True)
-        result.report_results(verbose=False)
-
     def test_get_commit_builder(self):
-        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
-            repository.CommitBuilder)
+        branch = self.make_branch(".")
+        branch.lock_write()
+        builder = branch.get_commit_builder([])
+        self.assertIsInstance(builder, repository.CommitBuilder)
+        branch.repository.commit_write_group()
+        branch.unlock()
 
     def test_generate_revision_history(self):
         """Create a fake revision history easily."""
@@ -391,31 +428,56 @@ class TestBranch(TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
+        self.assertEqual('null:', checkout_b.last_revision())
         checkout_b.commit('rev1', rev_id='rev1')
         self.assertEqual('rev1', branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
         checkout_c = branch_a.create_checkout('c', lightweight=True)
+        self.assertEqual('rev1', checkout_c.last_revision())
         checkout_c.commit('rev2', rev_id='rev2')
         self.assertEqual('rev2', branch_a.last_revision())
         self.assertEqual(checkout_c.branch.base, branch_a.base)
 
         os.mkdir('d')
         checkout_d = branch_a.create_checkout('d', lightweight=True)
+        self.assertEqual('rev2', checkout_d.last_revision())
         os.mkdir('e')
         checkout_e = branch_a.create_checkout('e')
+        self.assertEqual('rev2', checkout_e.last_revision())
 
     def test_create_anonymous_lightweight_checkout(self):
-        """A checkout from a readonly branch should succeed."""
+        """A lightweight checkout from a readonly branch should succeed."""
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
-        source_branch = bzrlib.branch.Branch.open(
-            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # open the branch via a readonly transport
+        source_branch = bzrlib.branch.Branch.open(self.get_readonly_url('a'))
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
         checkout = source_branch.create_checkout('c', lightweight=True)
         self.assertEqual(rev_id, checkout.last_revision())
+
+    def test_create_anonymous_heavyweight_checkout(self):
+        """A regular checkout from a readonly branch should succeed."""
+        tree_a = self.make_branch_and_tree('a')
+        rev_id = tree_a.commit('put some content in the branch')
+        # open the branch via a readonly transport
+        source_branch = bzrlib.branch.Branch.open(self.get_readonly_url('a'))
+        # sanity check that the test will be valid
+        self.assertRaises((errors.LockError, errors.TransportNotPossible),
+            source_branch.lock_write)
+        checkout = source_branch.create_checkout('c')
+        self.assertEqual(rev_id, checkout.last_revision())
+
+    def test_set_revision_history(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('a commit', rev_id='rev1')
+        br = tree.branch
+        br.set_revision_history(["rev1"])
+        self.assertEquals(br.revision_history(), ["rev1"])
+        br.set_revision_history([])
+        self.assertEquals(br.revision_history(), [])
 
 
 class ChrootedTests(TestCaseWithBranch):
@@ -428,7 +490,7 @@ class ChrootedTests(TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
@@ -506,55 +568,6 @@ class TestDecorators(TestCase):
         self.assertEqual(['lw', 'ul'], branch._calls)
 
 
-class TestBranchTransaction(TestCaseWithBranch):
-
-    def setUp(self):
-        super(TestBranchTransaction, self).setUp()
-        self.branch = None
-        
-    def test_default_get_transaction(self):
-        """branch.get_transaction on a new branch should give a PassThrough."""
-        self.failUnless(isinstance(self.get_branch().get_transaction(),
-                                   transactions.PassThroughTransaction))
-
-    def test__set_new_transaction(self):
-        self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
-
-    def test__set_over_existing_transaction_raises(self):
-        self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
-        self.assertRaises(errors.LockError,
-                          self.get_branch()._set_transaction,
-                          transactions.ReadOnlyTransaction())
-
-    def test_finish_no_transaction_raises(self):
-        self.assertRaises(errors.LockError, self.get_branch()._finish_transaction)
-
-    def test_finish_readonly_transaction_works(self):
-        self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
-        self.get_branch()._finish_transaction()
-        self.assertEqual(None, self.get_branch().control_files._transaction)
-
-    def test_unlock_calls_finish(self):
-        self.get_branch().lock_read()
-        transaction = InstrumentedTransaction()
-        self.get_branch().control_files._transaction = transaction
-        self.get_branch().unlock()
-        self.assertEqual(['finish'], transaction.calls)
-
-    def test_lock_read_acquires_ro_transaction(self):
-        self.get_branch().lock_read()
-        self.failUnless(isinstance(self.get_branch().get_transaction(),
-                                   transactions.ReadOnlyTransaction))
-        self.get_branch().unlock()
-        
-    def test_lock_write_acquires_write_transaction(self):
-        self.get_branch().lock_write()
-        # cannot use get_transaction as its magic
-        self.failUnless(isinstance(self.get_branch().control_files._transaction,
-                                   transactions.WriteTransaction))
-        self.get_branch().unlock()
-
-
 class TestBranchPushLocations(TestCaseWithBranch):
 
     def test_get_push_location_unset(self):
@@ -565,29 +578,48 @@ class TestBranchPushLocations(TestCaseWithBranch):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
-        print >> open(fn, 'wt'), ("[%s]\n"
-                                  "push_location=foo" %
-                                  self.get_branch().base[:-1])
+        open(fn, 'wt').write(("[%s]\n"
+                                  "push_location=foo\n" %
+                                  self.get_branch().base[:-1]))
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
         branch = self.get_branch()
         branch.set_push_location('foo')
-        local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % local_path,
-                             fn)
-
-    # TODO RBC 20051029 test getting a push location from a branch in a 
-    # recursive section - that is, it appends the branch name.
+        self.assertEqual('foo', branch.get_push_location())
 
 
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
+
+    def test_get_reference(self):
+        """get_reference on all regular branches should return None."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        made_branch = self.make_branch('.')
+        self.assertEqual(None,
+            made_branch._format.get_reference(made_branch.bzrdir))
+
+    def test_set_reference(self):
+        """set_reference on all regular branches should be callable."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        this_branch = self.make_branch('this')
+        other_branch = self.make_branch('other')
+        try:
+            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+        except NotImplementedError:
+            # that's ok
+            pass
+        else:
+            ref = this_branch._format.get_reference(this_branch.bzrdir)
+            self.assertEqual(ref, other_branch.base)
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -621,6 +653,67 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+                         opened_control.find_branch_format())
 
 
+class TestBound(TestCaseWithBranch):
+
+    def test_bind_unbind(self):
+        branch = self.make_branch('1')
+        branch2 = self.make_branch('2')
+        try:
+            branch.bind(branch2)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.assertTrue(branch.unbind())
+        self.assertFalse(branch.unbind())
+        self.assertIs(None, branch.get_bound_location())
+
+    def test_old_bound_location(self):
+        branch = self.make_branch('branch1')
+        try:
+            self.assertIs(None, branch.get_old_bound_location())
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable(
+                    'Format does not store old bound locations')
+        branch2 = self.make_branch('branch2')
+        branch.bind(branch2)
+        self.assertIs(None, branch.get_old_bound_location())
+        branch.unbind()
+        self.assertContainsRe(branch.get_old_bound_location(), '\/branch2\/$')
+
+    def test_bind_diverged(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('rev1a')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_a.commit('rev2a')
+        tree_b.commit('rev2b')
+        try:
+            tree_b.branch.bind(tree_a.branch)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+
+
+class TestStrict(TestCaseWithBranch):
+
+    def test_strict_history(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        try:
+            tree1.branch.set_append_revisions_only(True)
+        except errors.UpgradeRequired:
+            raise TestSkipped('Format does not support strict history')
+        tree1.commit('empty commit')
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        tree2.commit('empty commit 2')
+        tree1.pull(tree2.branch)
+        tree1.commit('empty commit 3')
+        tree2.commit('empty commit 4')
+        self.assertRaises(errors.DivergedBranches, tree1.pull, tree2.branch)
+        tree2.merge_from_branch(tree1.branch)
+        tree2.commit('empty commit 5')
+        self.assertRaises(errors.AppendRevisionsOnlyViolation, tree1.pull,
+                          tree2.branch)
+        tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
+        tree3.merge_from_branch(tree2.branch)
+        tree3.commit('empty commit 6')
+        tree2.pull(tree3.branch)

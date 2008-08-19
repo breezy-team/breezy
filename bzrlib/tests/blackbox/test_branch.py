@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,56 +19,34 @@
 
 import os
 
-from bzrlib import branch, bzrdir
-from bzrlib.repository import RepositoryFormatKnit1
+from bzrlib import (branch, bzrdir, errors, repository)
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import HardlinkFeature
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
 class TestBranch(ExternalBase):
 
-    def example_branch(test):
-        test.runbzr('init')
-        file('hello', 'wt').write('foo')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
+    def example_branch(self, path='.'):
+        tree = self.make_branch_and_tree(path)
+        self.build_tree_contents([(path + '/hello', 'foo')])
+        tree.add('hello')
+        tree.commit(message='setup')
+        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        tree.add('goodbye')
+        tree.commit(message='setup')
 
     def test_branch(self):
         """Branch from one branch to another."""
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.runbzr('branch a b')
+        self.example_branch('a')
+        self.run_bzr('branch a b')
         b = branch.Branch.open('b')
-        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
-        self.runbzr('branch a c -r 1')
-        os.chdir('b')
-        self.runbzr('commit -m foo --unchanged')
-        os.chdir('..')
-
-    def test_branch_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_branch_and_tree('source')
-        # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(source.branch.repository)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        tree.bzrdir.open_branch().copy_content_into(source.branch)
-        tree.copy_content_into(source)
-        self.assertFalse(source.branch.repository.has_revision('2'))
-        dir = source.bzrdir
-        self.runbzr('branch source target --basis commit_tree')
-        target = bzrdir.BzrDir.open('target')
-        self.assertEqual('2', target.open_branch().last_revision())
-        self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
-        self.assertTrue(target.open_branch().repository.has_revision('2'))
+        self.run_bzr('branch a c -r 1')
+        # previously was erroneously created by branching
+        self.assertFalse(b._transport.has('branch-name'))
+        b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.
@@ -101,11 +79,167 @@ class TestBranch(ExternalBase):
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
-        self.run_bzr('branch', 'repo/b', 'branch-b')
+        self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
         self.assertFalse(pushed_repo.has_revision('a-1'))
         self.assertFalse(pushed_repo.has_revision('a-2'))
         self.assertTrue(pushed_repo.has_revision('b-1'))
 
+    def test_branch_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        self.run_bzr(['branch', 'source', 'target', '--hardlink'])
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
+
+class TestBranchStacked(ExternalBase):
+    """Tests for branch --stacked"""
+
+    def check_shallow_branch(self, branch_revid, stacked_on):
+        """Assert that the branch 'newbranch' has been published correctly.
+        
+        :param stacked_on: url of a branch this one is stacked upon.
+        :param branch_revid: a revision id that should be the only 
+            revision present in the stacked branch, and it should not be in
+            the reference branch.
+        """
+        new_branch = branch.Branch.open('newbranch')
+        # The branch refers to the mainline
+        self.assertEqual(stacked_on, new_branch.get_stacked_on_url())
+        # and the branch's work was pushed
+        self.assertTrue(new_branch.repository.has_revision(branch_revid))
+        # The newly committed revision shoud be present in the stacked branch,
+        # but not in the stacked-on branch.  Because stacking is set up by the
+        # branch object, if we open the stacked branch's repository directly,
+        # bypassing the branch, we see only what's in the stacked repository.
+        stacked_repo = bzrdir.BzrDir.open('newbranch').open_repository()
+        stacked_repo_revisions = set(stacked_repo.all_revision_ids())
+        if len(stacked_repo_revisions) != 1:
+            self.fail("wrong revisions in stacked repository: %r"
+                % (stacked_repo_revisions,))
+
+    def assertRevisionInRepository(self, repo_path, revid):
+        """Check that a revision is in a repository, disregarding stacking."""
+        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        self.assertTrue(repo.has_revision(revid))
+
+    def assertRevisionNotInRepository(self, repo_path, revid):
+        """Check that a revision is not in a repository, disregarding stacking."""
+        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        self.assertFalse(repo.has_revision(revid))
+
+    def assertRevisionsInBranchRepository(self, revid_list, branch_path):
+        repo = branch.Branch.open(branch_path).repository
+        self.assertEqual(set(revid_list),
+            repo.has_revisions(revid_list))
+
+    def test_branch_stacked_branch_not_stacked(self):
+        """Branching a stacked branch is not stacked by default"""
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
+        # with some work on it
+        branch_tree.commit('moar work plz')
+        # branching our local branch gives us a new stacked branch pointing at
+        # mainline.
+        out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Branched 1 revision(s).\n',
+            err)
+        # it should have preserved the branch format, and so it should be
+        # capable of supporting stacking, but not actually have a stacked_on
+        # branch configured
+        self.assertRaises(errors.NotStacked,
+            bzrdir.BzrDir.open('newbranch').open_branch().get_stacked_on_url)
+
+    def test_branch_stacked_branch_stacked(self):
+        """Asking to stack on a stacked branch does work"""
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_revid = trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
+        # with some work on it
+        branch_revid = branch_tree.commit('moar work plz')
+        # you can chain branches on from there
+        out, err = self.run_bzr(['branch', 'branch', '--stacked', 'branch2'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            branch_tree.branch.base, err)
+        self.assertEqual(branch_tree.branch.base,
+            branch.Branch.open('branch2').get_stacked_on_url())
+        branch2_tree = WorkingTree.open('branch2')
+        branch2_revid = branch2_tree.commit('work on second stacked branch')
+        self.assertRevisionInRepository('branch2', branch2_revid)
+        self.assertRevisionsInBranchRepository(
+            [trunk_revid, branch_revid, branch2_revid],
+            'branch2')
+
+    def test_branch_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development')
+        original_revid = trunk_tree.commit('mainline')
+        self.assertRevisionInRepository('mainline', original_revid)
+        # and a branch from it which is stacked
+        out, err = self.run_bzr(['branch', '--stacked', 'mainline',
+            'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        self.assertRevisionNotInRepository('newbranch', original_revid)
+        new_tree = WorkingTree.open('newbranch')
+        new_revid = new_tree.commit('new work')
+        self.check_shallow_branch(new_revid, trunk_tree.branch.base)
+
+    def test_branch_stacked_from_smart_server(self):
+        # We can branch stacking on a smart server
+        from bzrlib.smart.server import SmartTCPServer_for_testing
+        self.transport_server = SmartTCPServer_for_testing
+        trunk = self.make_branch('mainline', format='development')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
+
+    def test_branch_stacked_from_non_stacked_format(self):
+        """The origin format doesn't support stacking"""
+        trunk = self.make_branch('trunk', format='pack-0.92')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', 'trunk', 'shallow'])
+
+
+class TestRemoteBranch(TestCaseWithSFTPServer):
+
+    def setUp(self):
+        super(TestRemoteBranch, self).setUp()
+        tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/file', 'file content\n')])
+        tree.add('file')
+        tree.commit('file created')
+
+    def test_branch_local_remote(self):
+        self.run_bzr(['branch', 'branch', self.get_url('remote')])
+        t = self.get_transport()
+        # Ensure that no working tree what created remotely
+        self.assertFalse(t.has('remote/file'))
+
+    def test_branch_remote_remote(self):
+        # Light cheat: we access the branch remotely
+        self.run_bzr(['branch', self.get_url('branch'),
+                      self.get_url('remote')])
+        t = self.get_transport()
+        # Ensure that no working tree what created remotely
+        self.assertFalse(t.has('remote/file'))
 

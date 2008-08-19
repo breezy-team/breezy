@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,157 +14,158 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import errno
-import urllib, urllib2
-import errno
-from StringIO import StringIO
+from cStringIO import StringIO
+import urllib
+import urlparse
 
-import bzrlib  # for the version
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
-                           TransportError, ConnectionError)
-from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import (HttpTransportBase, HttpServer,
-                                   extract_auth, response)
-
-register_urlparse_netloc_protocol('http+urllib')
-
-
-class Request(urllib2.Request):
-    """Request object for urllib2 that allows the method to be overridden."""
-
-    method = None
-
-    def get_method(self):
-        if self.method is not None:
-            return self.method
-        else:
-            return urllib2.Request.get_method(self)
+from bzrlib import (
+    errors,
+    trace,
+    urlutils,
+    )
+from bzrlib.transport import http
+# TODO: handle_response should be integrated into the http/__init__.py
+from bzrlib.transport.http.response import handle_response
+from bzrlib.transport.http._urllib2_wrappers import (
+    Opener,
+    Request,
+    )
 
 
-class HttpTransport_urllib(HttpTransportBase):
+class HttpTransport_urllib(http.HttpTransportBase):
     """Python urllib transport for http and https."""
 
-    # TODO: Implement pipelined versions of all of the *_multi() functions.
+    # In order to debug we have to issue our traces in sync with
+    # httplib, which use print :(
+    _debuglevel = 0
 
-    def __init__(self, base, from_transport=None):
-        """Set the base path where files will be stored."""
-        super(HttpTransport_urllib, self).__init__(base)
-        # HttpTransport_urllib doesn't maintain any per-transport state yet
-        # so nothing to do with from_transport
+    _opener_class = Opener
 
-    def _get(self, relpath, ranges, tail_amount=0):
-        path = relpath
-        try:
-            path = self._real_abspath(relpath)
-            resp = self._get_url_impl(path, method='GET', ranges=ranges,
-                                      tail_amount=tail_amount)
-            return resp.code, response.handle_response(path,
-                                resp.code, resp.headers, resp)
-        except urllib2.HTTPError, e:
-            mutter('url error code: %s for has url: %r', e.code, path)
-            if e.code == 404:
-                raise NoSuchFile(path, extra=e)
-            raise
-        except (BzrError, IOError), e:
-            if getattr(e, 'errno', None) is not None:
-                mutter('io error: %s %s for has url: %r',
-                    e.errno, errno.errorcode.get(e.errno), path)
-                if e.errno == errno.ENOENT:
-                    raise NoSuchFile(path, extra=e)
-            raise ConnectionError(msg = "Error retrieving %s: %s"
-                                  % (self.abspath(relpath), str(e)),
-                                  orig_error=e)
+    def __init__(self, base, _from_transport=None):
+        super(HttpTransport_urllib, self).__init__(
+            base, _from_transport=_from_transport)
+        if _from_transport is not None:
+            self._opener = _from_transport._opener
+        else:
+            self._opener = self._opener_class()
 
-    def _get_url_impl(self, url, method, ranges, tail_amount=0):
-        """Actually pass get request into urllib
+    def _perform(self, request):
+        """Send the request to the server and handles common errors.
 
-        :returns: urllib Response object
+        :returns: urllib2 Response object
         """
-        manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        url = extract_auth(url, manager)
-        auth_handler = urllib2.HTTPBasicAuthHandler(manager)
-        opener = urllib2.build_opener(auth_handler)
-        request = Request(url)
-        request.method = method
-        request.add_header('Pragma', 'no-cache')
-        request.add_header('Cache-control', 'max-age=0')
-        request.add_header('User-Agent',
-                           'bzr/%s (urllib)' % (bzrlib.__version__,))
-        if ranges or tail_amount:
-            bytes = 'bytes=' + self.range_header(ranges, tail_amount)
-            request.add_header('Range', bytes)
-        response = opener.open(request)
+        connection = self._get_connection()
+        if connection is not None:
+            # Give back shared info
+            request.connection = connection
+            (auth, proxy_auth) = self._get_credentials()
+            # Clean the httplib.HTTPConnection pipeline in case the previous
+            # request couldn't do it
+            connection.cleanup_pipe()
+        else:
+            # First request, initialize credentials.
+            # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
+            auth = self._create_auth()
+            # Proxy initialization will be done by the first proxied request
+            proxy_auth = dict()
+        # Ensure authentication info is provided
+        request.auth = auth
+        request.proxy_auth = proxy_auth
+
+        if self._debuglevel > 0:
+            print 'perform: %s base: %s, url: %s' % (request.method, self.base,
+                                                     request.get_full_url())
+        response = self._opener.open(request)
+        if self._get_connection() is not request.connection:
+            # First connection or reconnection
+            self._set_connection(request.connection,
+                                 (request.auth, request.proxy_auth))
+        else:
+            # http may change the credentials while keeping the
+            # connection opened
+            self._update_credentials((request.auth, request.proxy_auth))
+
+        code = response.code
+        if request.follow_redirections is False \
+                and code in (301, 302, 303, 307):
+            raise errors.RedirectRequested(request.get_full_url(),
+                                           request.redirected_to,
+                                           is_permanent=(code == 301),
+                                           qual_proto=self._scheme)
+
+        if request.redirected_to is not None:
+            trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
+                                                         request.redirected_to))
+
         return response
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
+    def _get(self, relpath, offsets, tail_amount=0):
+        """See HttpTransport._get"""
+
+        abspath = self._remote_path(relpath)
+        headers = {}
+        accepted_errors = [200, 404]
+        if offsets or tail_amount:
+            range_header = self._attempted_range_header(offsets, tail_amount)
+            if range_header is not None:
+                accepted_errors.append(206)
+                accepted_errors.append(400)
+                accepted_errors.append(416)
+                bytes = 'bytes=' + range_header
+                headers = {'Range': bytes}
+
+        request = Request('GET', abspath, None, headers,
+                          accepted_errors=accepted_errors)
+        response = self._perform(request)
+
+        code = response.code
+        if code == 404: # not found
+            raise errors.NoSuchFile(abspath)
+        elif code in (400, 416):
+            # We don't know which, but one of the ranges we specified was
+            # wrong.
+            raise errors.InvalidHttpRange(abspath, range_header,
+                                          'Server return code %d' % code)
+
+        data = handle_response(abspath, code, response.info(), response)
+        return code, data
+
+    def _post(self, body_bytes):
+        abspath = self._remote_path('.bzr/smart')
+        # We include 403 in accepted_errors so that send_http_smart_request can
+        # handle a 403.  Otherwise a 403 causes an unhandled TransportError.
+        response = self._perform(Request('POST', abspath, body_bytes,
+                                         accepted_errors=[200, 403]))
+        code = response.code
+        data = handle_response(abspath, code, response.info(), response)
+        return code, data
+
+    def _head(self, relpath):
+        """Request the HEAD of a file.
+
+        Performs the request and leaves callers handle the results.
         """
-        return True
+        abspath = self._remote_path(relpath)
+        request = Request('HEAD', abspath,
+                          accepted_errors=[200, 404])
+        response = self._perform(request)
+
+        return response
 
     def has(self, relpath):
         """Does the target location exist?
         """
-        abspath = self._real_abspath(relpath)
-        try:
-            f = self._get_url_impl(abspath, 'HEAD', [])
-            # Without the read and then close()
-            # we tend to have busy sockets.
-            f.read()
-            f.close()
+        response = self._head(relpath)
+
+        code = response.code
+        if code == 200: # "ok",
             return True
-        except urllib2.HTTPError, e:
-            mutter('url error code: %s, for has url: %r', e.code, abspath)
-            if e.code == 404:
-                return False
-            raise
-        except urllib2.URLError, e:
-            mutter('url error: %s, for has url: %r', e.reason, abspath)
-            raise
-        except IOError, e:
-            mutter('io error: %s %s for has url: %r',
-                e.errno, errno.errorcode.get(e.errno), abspath)
-            if e.errno == errno.ENOENT:
-                return False
-            raise TransportError(orig_error=e)
-
-    def copy_to(self, relpaths, other, mode=None, pb=None):
-        """Copy a set of entries from self into another Transport.
-
-        :param relpaths: A list/generator of entries to be copied.
-
-        TODO: if other is LocalTransport, is it possible to
-              do better than put(get())?
-        """
-        # At this point HttpTransport_urllib might be able to check and see if
-        # the remote location is the same, and rather than download, and
-        # then upload, it could just issue a remote copy_this command.
-        if isinstance(other, HttpTransport_urllib):
-            raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
-            return super(HttpTransport_urllib, self).copy_to(relpaths, other, mode=mode, pb=pb)
-
-    def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support move()')
-
-    def delete(self, relpath):
-        """Delete the item at relpath"""
-        raise TransportNotPossible('http does not support delete()')
-
-
-class HttpServer_urllib(HttpServer):
-    """Subclass of HttpServer that gives http+urllib urls.
-
-    This is for use in testing: connections to this server will always go
-    through urllib where possible.
-    """
-
-    # urls returned by this server should require the urllib client impl
-    _url_protocol = 'http+urllib'
+            return False
 
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
+    from bzrlib.tests.http_server import HttpServer_urllib
     return [(HttpTransport_urllib, HttpServer_urllib),
             ]

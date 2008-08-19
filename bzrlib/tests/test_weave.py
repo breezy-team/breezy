@@ -1,6 +1,4 @@
-#! /usr/bin/python2.4
-
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,11 +23,13 @@
 
 from pprint import pformat
 
-import bzrlib.errors as errors
-from bzrlib.weave import Weave, WeaveFormatError, WeaveError, reweave
-from bzrlib.weavefile import write_weave, read_weave
-from bzrlib.tests import TestCase
+from bzrlib import (
+    errors,
+    )
 from bzrlib.osutils import sha_string
+from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.weave import Weave, WeaveFormatError, WeaveError
+from bzrlib.weavefile import write_weave, read_weave
 
 
 # texts for use in testing
@@ -39,6 +39,7 @@ TEXT_1 = ["Hello world",
 
 
 class TestBase(TestCase):
+
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
         from tempfile import TemporaryFile
@@ -64,7 +65,7 @@ class TestBase(TestCase):
 class WeaveContains(TestBase):
     """Weave __contains__ operator"""
     def runTest(self):
-        k = Weave()
+        k = Weave(get_scope=lambda:None)
         self.assertFalse('foo' in k)
         k.add_lines('foo', [], TEXT_1)
         self.assertTrue('foo' in k)
@@ -75,16 +76,6 @@ class Easy(TestBase):
         k = Weave()
 
 
-class StoreText(TestBase):
-    """Store and retrieve a simple text."""
-
-    def test_storing_text(self):
-        k = Weave()
-        idx = k.add_lines('text0', [], TEXT_0)
-        self.assertEqual(k.get_lines(idx), TEXT_0)
-        self.assertEqual(idx, 0)
-
-
 class AnnotateOne(TestBase):
     def runTest(self):
         k = Weave()
@@ -92,32 +83,6 @@ class AnnotateOne(TestBase):
         self.assertEqual(k.annotate('text0'),
                          [('text0', TEXT_0[0])])
 
-
-class StoreTwo(TestBase):
-    def runTest(self):
-        k = Weave()
-
-        idx = k.add_lines('text0', [], TEXT_0)
-        self.assertEqual(idx, 0)
-
-        idx = k.add_lines('text1', [], TEXT_1)
-        self.assertEqual(idx, 1)
-
-        self.assertEqual(k.get_lines(0), TEXT_0)
-        self.assertEqual(k.get_lines(1), TEXT_1)
-
-
-class GetSha1(TestBase):
-    def test_get_sha1(self):
-        k = Weave()
-        k.add_lines('text0', [], 'text0')
-        self.assertEqual('34dc0e430c642a26c3dd1c2beb7a8b4f4445eb79',
-                         k.get_sha1('text0'))
-        self.assertRaises(errors.RevisionNotPresent,
-                          k.get_sha1, 0)
-        self.assertRaises(errors.RevisionNotPresent,
-                          k.get_sha1, 'text1')
-                        
 
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
@@ -133,7 +98,8 @@ class InvalidAdd(TestBase):
 
 class RepeatedAdd(TestBase):
     """Add the same version twice; harmless."""
-    def runTest(self):
+
+    def test_duplicate_add(self):
         k = Weave()
         idx = k.add_lines('text0', [], TEXT_0)
         idx2 = k.add_lines('text0', [], TEXT_0)
@@ -691,76 +657,6 @@ class JoinWeavesTests(TestBase):
         self.weave1.add_lines('v1', [], self.lines1)
         self.weave1.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
         self.weave1.add_lines('v3', ['v2'], self.lines3)
-        
-    def test_join_empty(self):
-        """Join two empty weaves."""
-        eq = self.assertEqual
-        w1 = Weave()
-        w2 = Weave()
-        w1.join(w2)
-        eq(len(w1), 0)
-        
-    def test_join_empty_to_nonempty(self):
-        """Join empty weave onto nonempty."""
-        self.weave1.join(Weave())
-        self.assertEqual(len(self.weave1), 3)
-
-    def test_join_unrelated(self):
-        """Join two weaves with no history in common."""
-        wb = Weave()
-        wb.add_lines('b1', [], ['line from b\n'])
-        w1 = self.weave1
-        w1.join(wb)
-        eq = self.assertEqual
-        eq(len(w1), 4)
-        eq(sorted(w1.versions()),
-           ['b1', 'v1', 'v2', 'v3'])
-
-    def test_join_related(self):
-        wa = self.weave1.copy()
-        wb = self.weave1.copy()
-        wa.add_lines('a1', ['v3'], ['hello\n', 'sweet\n', 'world\n'])
-        wb.add_lines('b1', ['v3'], ['hello\n', 'pale blue\n', 'world\n'])
-        eq = self.assertEquals
-        eq(len(wa), 4)
-        eq(len(wb), 4)
-        wa.join(wb)
-        eq(len(wa), 5)
-        eq(wa.get_lines('b1'),
-           ['hello\n', 'pale blue\n', 'world\n'])
-
-    def test_join_parent_disagreement(self):
-        #join reconciles differening parents into a union.
-        wa = Weave()
-        wb = Weave()
-        wa.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v0', [], [])
-        wb.add_lines('v1', ['v0'], ['hello\n'])
-        wa.join(wb)
-        self.assertEqual(['v0'], wa.get_parents('v1'))
-
-    def test_join_text_disagreement(self):
-        """Cannot join weaves with different texts for a version."""
-        wa = Weave()
-        wb = Weave()
-        wa.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v1', [], ['not\n', 'hello\n'])
-        self.assertRaises(WeaveError,
-                          wa.join, wb)
-
-    def test_join_unordered(self):
-        """Join weaves where indexes differ.
-        
-        The source weave contains a different version at index 0."""
-        wa = self.weave1.copy()
-        wb = Weave()
-        wb.add_lines('x1', [], ['line from x1\n'])
-        wb.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
-        wa.join(wb)
-        eq = self.assertEquals
-        eq(sorted(wa.versions()), ['v1', 'v2', 'v3', 'x1',])
-        eq(wa.get_text('x1'), 'line from x1\n')
 
     def test_written_detection(self):
         # Test detection of weave file corruption.
@@ -811,6 +707,21 @@ class JoinWeavesTests(TestBase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
 
+class TestWeave(TestCase):
+
+    def test_allow_reserved_false(self):
+        w = Weave('name', allow_reserved=False)
+        # Add lines is checked at the WeaveFile level, not at the Weave level
+        w.add_lines('name:', [], TEXT_1)
+        # But get_lines is checked at this level
+        self.assertRaises(errors.ReservedId, w.get_lines, 'name:')
+
+    def test_allow_reserved_true(self):
+        w = Weave('name', allow_reserved=True)
+        w.add_lines('name:', [], TEXT_1)
+        self.assertEqual(TEXT_1, w.get_lines('name:'))
+
+
 class InstrumentedWeave(Weave):
     """Keep track of how many times functions are called."""
     
@@ -821,57 +732,6 @@ class InstrumentedWeave(Weave):
     def _extract(self, versions):
         self._extract_count += 1
         return Weave._extract(self, versions)
-
-
-class JoinOptimization(TestCase):
-    """Test that Weave.join() doesn't extract all texts, only what must be done."""
-
-    def test_join(self):
-        w1 = InstrumentedWeave()
-        w2 = InstrumentedWeave()
-
-        txt0 = ['a\n']
-        txt1 = ['a\n', 'b\n']
-        txt2 = ['a\n', 'c\n']
-        txt3 = ['a\n', 'b\n', 'c\n']
-
-        w1.add_lines('txt0', [], txt0) # extract 1a
-        w2.add_lines('txt0', [], txt0) # extract 1b
-        w1.add_lines('txt1', ['txt0'], txt1)# extract 2a
-        w2.add_lines('txt2', ['txt0'], txt2)# extract 2b
-        w1.join(w2) # extract 3a to add txt2 
-        w2.join(w1) # extract 3b to add txt1 
-
-        w1.add_lines('txt3', ['txt1', 'txt2'], txt3) # extract 4a 
-        w2.add_lines('txt3', ['txt2', 'txt1'], txt3) # extract 4b
-        # These secretly have inverted parents
-
-        # This should not have to do any extractions
-        w1.join(w2) # NO extract, texts already present with same parents
-        w2.join(w1) # NO extract, texts already present with same parents
-
-        self.assertEqual(4, w1._extract_count)
-        self.assertEqual(4, w2._extract_count)
-
-    def test_double_parent(self):
-        # It should not be considered illegal to add
-        # a revision with the same parent twice
-        w1 = InstrumentedWeave()
-        w2 = InstrumentedWeave()
-
-        txt0 = ['a\n']
-        txt1 = ['a\n', 'b\n']
-        txt2 = ['a\n', 'c\n']
-        txt3 = ['a\n', 'b\n', 'c\n']
-
-        w1.add_lines('txt0', [], txt0)
-        w2.add_lines('txt0', [], txt0)
-        w1.add_lines('txt1', ['txt0'], txt1)
-        w2.add_lines('txt1', ['txt0', 'txt0'], txt1)
-        # Same text, effectively the same, because the
-        # parent is only repeated
-        w1.join(w2) # extract 3a to add txt2 
-        w2.join(w1) # extract 3b to add txt1 
 
 
 class TestNeedsReweave(TestCase):
@@ -890,3 +750,14 @@ class TestNeedsReweave(TestCase):
         self.assertFalse(w1._compatible_parents(set(), set([1])))
         self.assertFalse(w1._compatible_parents(my_parents, set([1, 2, 3, 4])))
         self.assertFalse(w1._compatible_parents(my_parents, set([4])))
+
+
+class TestWeaveFile(TestCaseInTempDir):
+    
+    def test_empty_file(self):
+        f = open('empty.weave', 'wb+')
+        try:
+            self.assertRaises(errors.WeaveFormatError,
+                              read_weave, f)
+        finally:
+            f.close()

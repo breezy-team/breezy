@@ -56,7 +56,7 @@ class LockWrapper(object):
             return self._other.lock_read()
         raise TestPreventLocking('lock_read disabled')
 
-    def lock_write(self):
+    def lock_write(self, token=None):
         self._sequence.append((self._other_id, 'lw', self._allow_write))
         if self._allow_write:
             return self._other.lock_write()

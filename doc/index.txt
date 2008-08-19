@@ -1,48 +1,60 @@
-======
-Bazaar
-======
--------------------
-Documentation index
--------------------
+============================
+Bazaar Main Document Catalog
+============================
 
-These documents originally came from the Bazaar wiki hosted at
-http://bazaar-vcs.org. The documents on the wiki take precedence 
-in the event of a discrepancy between what is documented here 
-and what is documented on the wiki.
+The latest version of these documents are available from Bazaar's
+documentation site, <http://doc.bazaar-vcs.org/>, and more documentation
+may be linked from <http://bazaar-vcs.org/Documentation>.
+
+Core Documentation
+==================
+
+* `User Guide <en/user-guide/index.html>`_ 
+
+* `User Reference <en/user-reference/bzr_man.html>`_ 
+
+* `Quick Start Card <en/quick-reference/quick-start-summary.svg>`_
+  (`PDF <en/quick-reference/quick-start-summary.pdf>`_,
+  `PNG <en/quick-reference/quick-start-summary.png>`_)
+
+* `Release Notes <en/release-notes/NEWS.html>`_
+
+* `Developer Document Catalog <developers/index.html>`_ |--| for developers
+  of Bazaar and plugins
 
 
-* `Tutorial <tutorial.htm>`_ 
-  (wiki page: http://bazaar-vcs.org/IntroductionToBzr)
+Tutorials
+=========
 
-    Explains how to use bzr. Loaded with examples.
+* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
 
-* `Configuration <configuration.htm>`_ 
-  (wiki page: http://bazaar-vcs.org/ConfiguringBzr)
+* `A longer tutorial <en/tutorials/tutorial.html>`_ 
 
-    Information on how to configure Bazaar
+* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_ 
 
-* `Setting up email <setting_up_email.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrSettingEmail)
+* `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
 
-    The various ways that exist to tell Bazaar your email address for
-    commits
 
-* `Plugins <plugins.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrPlugins)
-    
-    Information on how to use plugins in Bazaar
+Web links
+=========
 
-* `Specifying revision <specifying_revisions.htm>`_
-  (wiki page: http://bazaar-vcs.org/BzrRevisionSpec)
+* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_ 
+  |--| for users moving from another VCS tool
 
-    Description of the subarguments for ``-r`` as used by commands such as
-    **bzr log** and **bzr merge**
+* `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
+  |--| for teams migrating history from another VCS tool
 
-* `Using aliases <using_aliases.htm>`_
-  (wiki page: http://bazaar-vcs.org/CommandAliases)
+* `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
 
-    How to setup and use command aliases.
+* `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
 
-This document automatically created based on output of **bzr help**:
 
-* `Man page (help for bzr commands) <bzr_man.htm>`_
+Other Languages
+===============
+
+* `Spanish Documentation <index.es.html>`_
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

@@ -19,22 +19,26 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
-import errno
 import os
-import shutil
-import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
-import tempfile
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
+import shutil
 
 from bzrlib import (
     atomicfile,
     osutils,
     urlutils,
+    symbol_versioning,
+    transport,
     )
-from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
-                            check_legal_path, rmtree)
-from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
+from bzrlib.transport import LateReadError
+""")
+
 from bzrlib.transport import Transport, Server
 
 
@@ -48,7 +52,8 @@ class LocalTransport(Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if not base.startswith('file://'):
-            warn("Instantiating LocalTransport with a filesystem path"
+            symbol_versioning.warn(
+                "Instantiating LocalTransport with a filesystem path"
                 " is deprecated as of bzr 0.8."
                 " Please use bzrlib.transport.get_transport()"
                 " or pass in a file:// url.",
@@ -58,11 +63,17 @@ class LocalTransport(Transport):
             base = urlutils.local_path_to_url(base)
         if base[-1] != '/':
             base = base + '/'
+
+        # Special case : windows has no "root", but does have
+        # multiple lettered drives inside it. #240910
+        if sys.platform == 'win32' and base == 'file:///':
+            base = ''
+            self._local_base = ''
+            super(LocalTransport, self).__init__(base)
+            return
+            
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-
-    def should_cache(self):
-        return False
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
@@ -72,7 +83,13 @@ class LocalTransport(Transport):
         if offset is None:
             return LocalTransport(self.base)
         else:
-            return LocalTransport(self.abspath(offset))
+            abspath = self.abspath(offset)
+            if abspath == 'file://':
+                # fix upwalk for UNC path
+                # when clone from //HOST/path updir recursively
+                # we should stop at least at //HOST part
+                abspath = self.base
+            return LocalTransport(abspath)
 
     def _abspath(self, relative_reference):
         """Return a path for use in os calls.
@@ -88,10 +105,10 @@ class LocalTransport(Transport):
     def abspath(self, relpath):
         """Return the full url to the given relative URL."""
         # TODO: url escape the result. RBC 20060523.
-        assert isinstance(relpath, basestring), (type(relpath), relpath)
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
-        path = normpath(pathjoin(self._local_base, urlutils.unescape(relpath)))
+        path = osutils.normpath(osutils.pathjoin(
+                    self._local_base, urlutils.unescape(relpath)))
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
@@ -100,8 +117,9 @@ class LocalTransport(Transport):
         This function only exists for the LocalTransport, since it is
         the only one that has direct local access.
         This is mostly for stuff like WorkingTree which needs to know
-        the local working directory.
-        
+        the local working directory.  The returned path will always contain
+        forward slashes as the path separator, regardless of the platform.
+
         This function is quite expensive: it calls realpath which resolves
         symlinks.
         """
@@ -116,7 +134,7 @@ class LocalTransport(Transport):
             abspath = u'.'
 
         return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(self.base),
             urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):
@@ -127,10 +145,15 @@ class LocalTransport(Transport):
 
         :param relpath: The relative path to the file
         """
+        canonical_url = self.abspath(relpath)
+        if canonical_url in transport._file_streams:
+            transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
             return open(path, 'rb')
         except (IOError, OSError),e:
+            if e.errno == errno.EISDIR:
+                return LateReadError(relpath)
             self._translate_error(e, path)
 
     def put_file(self, relpath, f, mode=None):
@@ -145,15 +168,16 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            check_legal_path(path)
+            osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
-            self._pump(f, fp)
+            length = self._pump(f, fp)
             fp.commit()
         finally:
             fp.close()
+        return length
 
     def put_bytes(self, relpath, bytes, mode=None):
         """Copy the string into the location.
@@ -165,7 +189,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            check_legal_path(path)
+            osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -288,6 +312,17 @@ class LocalTransport(Transport):
         """Create a directory at the given path."""
         self._mkdir(self._abspath(relpath), mode=mode)
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # initialise the file
+        self.put_bytes_non_atomic(relpath, "", mode=mode)
+        abspath = self._abspath(relpath)
+        handle = open(abspath, 'wb')
+        if mode is not None:
+            self._check_mode_and_size(abspath, handle.fileno(), mode)
+        transport._file_streams[self.abspath(relpath)] = handle
+        return transport.FileFileStream(self, relpath, handle)
+
     def _get_append_file(self, relpath, mode=None):
         """Call os.open() for the given relpath"""
         file_abspath = self._abspath(relpath)
@@ -366,7 +401,7 @@ class LocalTransport(Transport):
 
         try:
             # this version will delete the destination if necessary
-            rename(path_from, path_to)
+            osutils.rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
@@ -379,6 +414,11 @@ class LocalTransport(Transport):
             os.remove(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # File URL's are externally usable.
+        return self.base
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -470,24 +510,49 @@ class LocalTransport(Transport):
             return True
 
 
-class LocalRelpathServer(Server):
-    """A pretend server for local transports, using relpaths."""
+class EmulatedWin32LocalTransport(LocalTransport):
+    """Special transport for testing Win32 [UNC] paths on non-windows"""
 
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return "."
+    def __init__(self, base):
+        if base[-1] != '/':
+            base = base + '/'
+        super(LocalTransport, self).__init__(base)
+        self._local_base = urlutils._win32_local_path_from_url(base)
 
+    def abspath(self, relpath):
+        path = osutils.normpath(osutils.pathjoin(
+                    self._local_base, urlutils.unescape(relpath)))
+        return urlutils._win32_local_path_to_url(path)
 
-class LocalAbspathServer(Server):
-    """A pretend server for local transports, using absolute paths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return os.path.abspath("")
+    def clone(self, offset=None):
+        """Return a new LocalTransport with root at self.base + offset
+        Because the local filesystem does not require a connection, 
+        we can just return a new object.
+        """
+        if offset is None:
+            return EmulatedWin32LocalTransport(self.base)
+        else:
+            abspath = self.abspath(offset)
+            if abspath == 'file://':
+                # fix upwalk for UNC path
+                # when clone from //HOST/path updir recursively
+                # we should stop at least at //HOST part
+                abspath = self.base
+            return EmulatedWin32LocalTransport(abspath)
 
 
 class LocalURLServer(Server):
-    """A pretend server for local transports, using file:// urls."""
+    """A pretend server for local transports, using file:// urls.
+    
+    Of course no actual server is required to access the local filesystem, so
+    this just exists to tell the test code how to get to it.
+    """
+
+    def setUp(self):
+        """Setup the server to service requests.
+        
+        :param decorated_transport: ignored by this implementation.
+        """
 
     def get_url(self):
         """See Transport.Server.get_url."""
@@ -496,7 +561,6 @@ class LocalURLServer(Server):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(LocalTransport, LocalRelpathServer),
-            (LocalTransport, LocalAbspathServer),
+    return [
             (LocalTransport, LocalURLServer),
             ]

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Aaron Bentley
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,20 +20,27 @@
 # point down
 
 import os
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 
-import bzrlib
-from bzrlib.commands import register_command
-from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
+from bzrlib import (
+    builtins,
+    commands,
+    errors,
+    osutils,
+    rio,
+    trace,
+    )
+""")
 from bzrlib.option import Option
-from bzrlib.osutils import rename, delete_any
-from bzrlib.rio import Stanza
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 
 
-class cmd_conflicts(bzrlib.commands.Command):
+class cmd_conflicts(commands.Command):
     """List files with conflicts.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -41,21 +48,32 @@ class cmd_conflicts(bzrlib.commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Use bzr resolve when you have fixed a problem.
+    Conflicts normally are listed as short, human-readable messages.  If --text
+    is supplied, the pathnames of files with text conflicts are listed,
+    instead.  (This is useful for editing all files with text conflicts.)
 
-    (conflicts are determined by the presence of .BASE .TREE, and .OTHER 
-    files.)
+    Use bzr resolve when you have fixed a problem.
 
     See also bzr resolve.
     """
-    def run(self):
+    takes_options = [
+            Option('text',
+                   help='List paths of files with text conflicts.'),
+        ]
+
+    def run(self, text=False):
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing(u'.')[0]
         for conflict in wt.conflicts():
-            print conflict
+            if text:
+                if conflict.typestring != 'text conflict':
+                    continue
+                self.outf.write(conflict.path + '\n')
+            else:
+                self.outf.write(str(conflict) + '\n')
 
 
-class cmd_resolve(bzrlib.commands.Command):
+class cmd_resolve(commands.Command):
     """Mark a conflict as resolved.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -63,31 +81,55 @@ class cmd_resolve(bzrlib.commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Once you have fixed a problem, use "bzr resolve FILE.." to mark
-    individual files as fixed, or "bzr resolve --all" to mark all conflicts as
-    resolved.
+    Once you have fixed a problem, use "bzr resolve" to automatically mark
+    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    resolved, or "bzr resolve --all" to mark all conflicts as resolved.
 
     See also bzr conflicts.
     """
     aliases = ['resolved']
     takes_args = ['file*']
-    takes_options = [Option('all', help='Resolve all conflicts in this tree')]
+    takes_options = [
+            Option('all', help='Resolve all conflicts in this tree.'),
+            ]
     def run(self, file_list=None, all=False):
         from bzrlib.workingtree import WorkingTree
         if all:
             if file_list:
-                raise BzrCommandError("If --all is specified, no FILE may be provided")
+                raise errors.BzrCommandError("If --all is specified,"
+                                             " no FILE may be provided")
             tree = WorkingTree.open_containing('.')[0]
             resolve(tree)
         else:
+            tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
-                raise BzrCommandError("command 'resolve' needs one or more FILE, or --all")
-            tree = WorkingTree.open_containing(file_list[0])[0]
-            to_resolve = [tree.relpath(p) for p in file_list]
-            resolve(tree, to_resolve)
+                un_resolved, resolved = tree.auto_resolve()
+                if len(un_resolved) > 0:
+                    trace.note('%d conflict(s) auto-resolved.', len(resolved))
+                    trace.note('Remaining conflicts:')
+                    for conflict in un_resolved:
+                        trace.note(conflict)
+                    return 1
+                else:
+                    trace.note('All conflicts resolved.')
+                    return 0
+            else:
+                resolve(tree, file_list)
 
 
-def resolve(tree, paths=None, ignore_misses=False):
+def resolve(tree, paths=None, ignore_misses=False, recursive=False):
+    """Resolve some or all of the conflicts in a working tree.
+
+    :param paths: If None, resolve all conflicts.  Otherwise, select only
+        specified conflicts.
+    :param recursive: If True, then elements of paths which are directories
+        have all their children resolved, etc.  When invoked as part of
+        recursive commands like revert, this should be True.  For commands
+        or applications wishing finer-grained control, like the resolve
+        command, this should be False.
+    :ignore_misses: If False, warnings will be printed if the supplied paths
+        do not have conflicts.
+    """
     tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
@@ -96,10 +138,11 @@ def resolve(tree, paths=None, ignore_misses=False):
             selected_conflicts = tree_conflicts
         else:
             new_conflicts, selected_conflicts = \
-                tree_conflicts.select_conflicts(tree, paths, ignore_misses)
+                tree_conflicts.select_conflicts(tree, paths, ignore_misses,
+                    recursive)
         try:
             tree.set_conflicts(new_conflicts)
-        except UnsupportedOperation:
+        except errors.UnsupportedOperation:
             pass
         selected_conflicts.remove_files(tree)
     finally:
@@ -113,7 +156,7 @@ def restore(filename):
     """
     conflicted = False
     try:
-        rename(filename + ".THIS", filename)
+        osutils.rename(filename + ".THIS", filename)
         conflicted = True
     except OSError, e:
         if e.errno != errno.ENOENT:
@@ -131,7 +174,7 @@ def restore(filename):
         if e.errno != errno.ENOENT:
             raise
     if not conflicted:
-        raise NotConflicted(filename)
+        raise errors.NotConflicted(filename)
 
 
 class ConflictList(object):
@@ -198,12 +241,13 @@ class ConflictList(object):
                 continue
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    delete_any(tree.abspath(conflict.path+suffix))
+                    osutils.delete_any(tree.abspath(conflict.path+suffix))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
 
-    def select_conflicts(self, tree, paths, ignore_misses=False):
+    def select_conflicts(self, tree, paths, ignore_misses=False,
+                         recurse=False):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
@@ -228,6 +272,11 @@ class ConflictList(object):
                 if cpath in path_set:
                     selected = True
                     selected_paths.add(cpath)
+                if recurse:
+                    if osutils.is_inside_any(path_set, cpath):
+                        selected = True
+                        selected_paths.add(cpath)
+
             for key in ('file_id', 'conflict_file_id'):
                 cfile_id = getattr(conflict, key, None)
                 if cfile_id is None:
@@ -258,12 +307,15 @@ class Conflict(object):
 
     def __init__(self, path, file_id=None):
         self.path = path
-        self.file_id = file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__ and Stanza is purely a Unicode api.
+        self.file_id = osutils.safe_file_id(file_id, warn=False)
 
     def as_stanza(self):
-        s = Stanza(type=self.typestring, path=self.path)
+        s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
-            s.add('file_id', self.file_id)
+            # Stanza requires Unicode apis
+            s.add('file_id', self.file_id.decode('utf8'))
         return s
 
     def _cmp_list(self):
@@ -377,7 +429,10 @@ class HandledPathConflict(HandledConflict):
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path 
-        self.conflict_file_id = conflict_file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__.
+        self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
+                                                     warn=False)
         
     def _cmp_list(self):
         return HandledConflict._cmp_list(self) + [self.conflict_path, 
@@ -387,7 +442,7 @@ class HandledPathConflict(HandledConflict):
         s = HandledConflict.as_stanza(self)
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
-            s.add('conflict_file_id', self.conflict_file_id)
+            s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
             
         return s
 
@@ -460,6 +515,16 @@ class DeletingParent(HandledConflict):
              "%(action)s."
 
 
+class NonDirectoryParent(HandledConflict):
+    """An attempt to add files to a directory that is not a director or
+    an attempt to change the kind of a directory with files.
+    """
+
+    typestring = 'non-directory parent'
+
+    format = "Conflict: %(path)s is not a directory, but has files in it."\
+             "  %(action)s."
+
 ctype = {}
 
 
@@ -472,4 +537,4 @@ def register_types(*conflict_types):
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
                DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
-               DeletingParent,)
+               DeletingParent, NonDirectoryParent)

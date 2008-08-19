@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -86,7 +86,7 @@ class SignMyCommits(TestCaseWithTransport):
 
         self.monkey_patch_gpg()
 
-        self.run_bzr('sign-my-commits', 'other')
+        self.run_bzr('sign-my-commits other')
 
         self.assertSigned(repo, 'A')
         self.assertSigned(repo, 'B')
@@ -99,7 +99,7 @@ class SignMyCommits(TestCaseWithTransport):
 
         self.monkey_patch_gpg()
 
-        self.run_bzr('sign-my-commits', '.', 'Alternate <alt@foo.com>')
+        self.run_bzr(['sign-my-commits', '.', 'Alternate <alt@foo.com>'])
 
         self.assertUnsigned(repo, 'A')
         self.assertUnsigned(repo, 'B')
@@ -112,7 +112,7 @@ class SignMyCommits(TestCaseWithTransport):
 
         self.monkey_patch_gpg()
 
-        out = self.run_bzr('sign-my-commits', '--dry-run')[0]
+        out = self.run_bzr('sign-my-commits --dry-run')[0]
 
         self.assertEquals('A\nB\nC\nSigned 3 revisions\n', out)
         self.assertUnsigned(repo, 'A')

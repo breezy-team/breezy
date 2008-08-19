@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 import os
 import sys
 
+# update this on each release
+_script_version = (1, 7, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -32,7 +34,7 @@ except AttributeError:
 
 REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4',)
+KNOWN_PYTHONS = ('python2.4', 'python2.5')
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):
@@ -43,12 +45,11 @@ if version_info < NEED_VERS:
                 os.execvp(python, [python] + sys.argv)
             except OSError:
                 pass
-    print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
-    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
+    sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
+    sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
     sys.exit(1)
 if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
-
 
 
 profiling = False
@@ -58,27 +59,72 @@ if '--profile-imports' in sys.argv:
     profile_imports.install()
     profiling = True
 
+if sys.platform == 'darwin':
+    # jameinel says this hack is to force python to honor the LANG setting,
+    # even on Darwin.  Otherwise it is apparently hardcoded to Mac-Roman,
+    # which is incorrect for the normal Terminal.app which wants UTF-8.  
+    #
+    # "It might be that I should be setting the "system locale" somewhere else
+    # on the system, rather than setting LANG=en_US.UTF-8 in .bashrc.
+    # Switching to 'posix' and setting LANG worked for me." 
+    #
+    # So we can remove this if someone works out the right way to tell Mac
+    # Python which encoding to use.  -- mbp 20080703
+    sys.platform = 'posix'
+    try:
+        import locale
+    finally:
+        sys.platform = 'darwin'
+else:
+    import locale
+
+try:
+    locale.setlocale(locale.LC_ALL, '')
+except locale.Error, e:
+    sys.stderr.write('bzr: warning: %s\n'
+                     '  bzr could not set the application locale.\n'
+                     '  Although this should be no problem for bzr itself,\n'
+                     '  it might cause problems with some plugins.\n'
+                     '  To investigate the issue, look at the output\n'
+                     '  of the locale(1p) tool available on POSIX systems.\n'
+                     % e)
 
 try:
     import bzrlib
 except ImportError, e:
     sys.stderr.write("bzr: ERROR: "
-                     "Couldn't import bzrlib and dependencies.\n"
-                     "Please check bzrlib is on your PYTHONPATH.\n"
-                     "\n")
+        "Couldn't import bzrlib and dependencies.\n"
+        "Please check the directory containing bzrlib is on your PYTHONPATH.\n"
+        "\n")
     raise
 
-import bzrlib.inspect_for_copy
-bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
-
-import bzrlib.commands
-import bzrlib.trace
-
-if bzrlib.version_info[:3] != (0, 11, 0):
+if bzrlib.version_info[:3] != _script_version:
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
             "This may indicate an installation problem.\n"
             "bzrlib from %s is version %r\n"
             % (bzrlib.__path__, bzrlib.version_info))
+
+import bzrlib.inspect_for_copy
+bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
+
+import bzrlib.lazy_regex
+bzrlib.lazy_regex.install_lazy_compile()
+
+import bzrlib.breakin
+bzrlib.breakin.hook_sigquit()
+
+import bzrlib.decorators
+if ('--lsprof' in sys.argv
+    or '--lsprof-file' in sys.argv
+    or '--profile' in sys.argv
+    or '--lsprof-timed' in sys.argv):
+    bzrlib.decorators.use_pretty_decorators()
+else:
+    bzrlib.decorators.use_fast_decorators()
+
+import bzrlib.commands
+import bzrlib.trace
+
 
 if __name__ == '__main__':
     bzrlib.trace.enable_default_logging()
@@ -86,6 +132,30 @@ if __name__ == '__main__':
 
     if profiling:
         profile_imports.log_stack_info(sys.stderr)
-    sys.exit(exit_val)
+
+    # run anything registered by atexit, because it won't be run in the normal
+    # way
+    sys.exitfunc()
+
+    # By this point we really have completed everything we want to do, and
+    # there's no point doing any additional cleanup.  Abruptly exiting here
+    # stops any background threads getting into trouble as code is unloaded,
+    # and it may also be slightly faster, through avoiding gc of objects that
+    # are just about to be discarded anyhow.  This does mean that atexit hooks
+    # won't run but we don't use them.  Also file buffers won't be flushed,
+    # but our policy is to always close files from a finally block. -- mbp 20070215
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError, e:
+        import errno
+        if e.errno in [errno.EINVAL, errno.EPIPE]:
+            pass
+        else:
+            raise
+    if bzrlib.trace._trace_file:
+        # this is also _bzr_log
+        bzrlib.trace._trace_file.flush()
+    os._exit(exit_val)
 else:
-    pass    # should this give an error? - it can't be used as a lib
+    raise ImportError("The bzr script cannot be imported.")

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import config, errors, ignores
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
 class TestParseIgnoreFile(TestCase):
@@ -99,13 +99,27 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(patterns, added)
         self.assertEqual(set(patterns), ignores.get_user_ignores())
 
+    def test_add_directory(self):
+        """Test that adding a directory will strip any trailing slash"""
+        # Create an empty file
+        ignores._set_user_ignores([])
+
+        in_patterns = ['foo/', 'bar/', 'baz\\']
+        added = ignores.add_unique_user_ignores(in_patterns)
+        out_patterns = [ x.rstrip('/\\') for x in in_patterns ]
+        self.assertEqual(out_patterns, added)
+        self.assertEqual(set(out_patterns), ignores.get_user_ignores())
+
     def test_add_unique(self):
         """Test that adding will not duplicate ignores"""
-        ignores._set_user_ignores(['foo', './bar', u'b\xe5z'])
+        ignores._set_user_ignores(
+            ['foo', './bar', u'b\xe5z', 'dir1/', 'dir3\\'])
 
-        added = ignores.add_unique_user_ignores(['xxx', './bar', 'xxx'])
-        self.assertEqual(['xxx'], added)
-        self.assertEqual(set(['foo', './bar', u'b\xe5z', 'xxx']),
+        added = ignores.add_unique_user_ignores(
+            ['xxx', './bar', 'xxx', 'dir1/', 'dir2/', 'dir3\\'])
+        self.assertEqual(['xxx', 'dir2'], added)
+        self.assertEqual(set(['foo', './bar', u'b\xe5z', 
+                              'xxx', 'dir1', 'dir2', 'dir3']),
                          ignores.get_user_ignores())
 
 
@@ -136,3 +150,30 @@ class TestRuntimeIgnores(TestCase):
 
         ignores.add_runtime_ignores(['bar'])
         self.assertEqual(set(['foo', 'bar']), ignores.get_runtime_ignores())
+
+
+class TestTreeIgnores(TestCaseWithTransport):
+
+    def test_new_file(self):
+        tree = self.make_branch_and_tree(".")
+        ignores.tree_ignores_add_patterns(tree, ["myentry"])
+        self.assertTrue(tree.has_filename(".bzrignore"))
+        self.assertEquals("myentry\n", 
+                          open(".bzrignore", 'r').read())
+
+    def test_add_to_existing(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([('.bzrignore', "myentry1\n")]) 
+        tree.add([".bzrignore"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
+        self.assertEquals("myentry1\nmyentry2\nfoo\n", 
+                          open(".bzrignore", 'r').read())
+
+    def test_adds_ending_newline(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([('.bzrignore', "myentry1")]) 
+        tree.add([".bzrignore"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry2"])
+        self.assertEquals("myentry1\nmyentry2\n", 
+                          open(".bzrignore", 'r').read())
+

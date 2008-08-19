@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,8 +41,8 @@ class TestLocale(TestCaseWithTransport):
         self.tree = tree
 
     def test_log_C(self):
-        out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
-               '-q', 'log', '--log-format=long', 'tree',
+        out, err = self.run_bzr_subprocess(
+            '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
                             'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         self.assertEqual('', err)
@@ -57,13 +57,19 @@ message:
 """, out)
 
     def test_log_BOGUS(self):
-        out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
-               '-q', 'log', '--log-format=long', 'tree',
+        out, err = self.run_bzr_subprocess(
+            '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none',
                             'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         # XXX: This depends on the exact formatting of a locale.Error
         # as the first part of the string. It may be a little tempermental
         self.assertEqualDiff("""\
+bzr: warning: unsupported locale setting
+  bzr could not set the application locale.
+  Although this should be no problem for bzr itself,
+  it might cause problems with some plugins.
+  To investigate the issue, look at the output
+  of the locale(1p) tool available on POSIX systems.
 bzr: warning: unsupported locale setting
   Could not determine what text encoding to use.
   This error usually means your Python interpreter

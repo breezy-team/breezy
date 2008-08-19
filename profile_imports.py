@@ -82,7 +82,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
         # scope_name, frame_name, frame_lineno
         out_file.write('%5.1f %5.1f %s %-35s\t@ %s:%d\n'
             % (info[-1]*1000., mod_time*1000., '+'*info[0], 
-               cur[1][:40], info[1], info[2]))
+               cur[1][:35], info[1], info[2]))
 
         if sorted:
             c_times.sort()
@@ -117,17 +117,19 @@ def timed_import(name, globals, locals, fromlist):
     extra = ''
     if frame_name.endswith('demandload'):
         # If this was demandloaded, we have 3 frames to ignore
-        extra = ' (demandload)'
+        extra = '(demandload) '
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     elif frame_name.endswith('lazy_import'):
         # If this was lazily imported, we have 3 frames to ignore
-        extra = ' (lazy)'
+        extra = '[l] '
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
+    if fromlist:
+        extra += ' [%s]' % (', '.join(map(str, fromlist)),)
     frame_lineno = frame.f_lineno
 
-    this = stack_add(name+extra, frame_name, frame_lineno, scope_name)
+    this = stack_add(extra + name, frame_name, frame_lineno, scope_name)
 
     tstart = time.time()
     try:
@@ -148,9 +150,15 @@ def timed_compile(*args, **kwargs):
     # And who is requesting this?
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
-    frame_lineno = frame.f_lineno
 
-    this = stack_add(repr(args[0]), frame_name, frame_lineno)
+    extra = ''
+    if frame_name.endswith('lazy_regex'):
+        # If this was lazily compiled, we have 3 more frames to ignore
+        extra = '[l] '
+        frame = sys._getframe(5)
+        frame_name = frame.f_globals.get('__name__', '<unknown>')
+    frame_lineno = frame.f_lineno
+    this = stack_add(extra+repr(args[0]), frame_name, frame_lineno)
 
     tstart = time.time()
     try:

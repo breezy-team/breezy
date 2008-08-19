@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,24 +28,34 @@
 # TODO: "--profile=cum", to change sort order.  Is there any value in leaving
 # the profile output behind so it can be interactively examined?
 
-import codecs
-import errno
 import os
-from warnings import warn
 import sys
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import codecs
+import errno
+from warnings import warn
+
 import bzrlib
-import bzrlib.errors as errors
-from bzrlib.errors import (BzrError,
-                           BzrCommandError,
-                           BzrCheckError,
-                           NotBranchError)
-from bzrlib import option
+from bzrlib import (
+    debug,
+    errors,
+    option,
+    osutils,
+    registry,
+    trace,
+    win32utils,
+    )
+""")
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_method,
+    )
+# Compatibility
 from bzrlib.option import Option
-import bzrlib.osutils
-from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
-import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning, be_quiet
+
 
 plugin_cmds = {}
 
@@ -66,7 +76,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = k
     if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
-        mutter('registered plugin command %s', k_unsquished)
+        ## trace.mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
             return _builtin_commands()[k_unsquished]
     elif decorate:
@@ -74,8 +84,10 @@ def register_command(cmd, decorate=False):
         plugin_cmds[k_unsquished] = cmd
         return result
     else:
-        log_error('Two plugins defined the same command: %r' % k)
-        log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
+        trace.log_error('Two plugins defined the same command: %r' % k)
+        trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
+        trace.log_error('Previously this command was registered from %r' %
+                        sys.modules[plugin_cmds[k_unsquished].__module__])
 
 
 def _squish_command_name(cmd):
@@ -83,7 +95,6 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
 
@@ -127,6 +138,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     plugins_override
         If true, plugin commands can override builtins.
     """
+    try:
+        return _get_cmd_object(cmd_name, plugins_override)
+    except KeyError:
+        raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+
+
+def _get_cmd_object(cmd_name, plugins_override=True):
+    """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
     from bzrlib.externalcommand import ExternalCommand
 
     # We want only 'ascii' command names, but the user may have typed
@@ -150,7 +169,17 @@ def get_cmd_object(cmd_name, plugins_override=True):
     if cmd_obj:
         return cmd_obj
 
-    raise BzrCommandError('unknown command "%s"' % cmd_name)
+    # look for plugins that provide this command but aren't installed
+    for provider in command_providers_registry:
+        try:
+            plugin_metadata = provider.plugin_for_command(cmd_name)
+        except errors.NoPluginAvailable:
+            pass
+        else:
+            raise errors.CommandAvailableInPlugin(cmd_name, 
+                                                  plugin_metadata, provider)
+
+    raise KeyError
 
 
 class Command(object):
@@ -204,6 +233,12 @@ class Command(object):
             replace - put in a bogus character (typically '?')
             exact - do not encode sys.stdout
 
+            NOTE: by default on Windows, sys.stdout is opened as a text
+            stream, therefore LF line-endings are converted to CRLF.
+            When a command uses encoding_type = 'exact', then
+            sys.stdout is forced to be a binary stream, and line-endings
+            will not mangled.
+
     """
     aliases = []
     takes_args = []
@@ -216,58 +251,240 @@ class Command(object):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
+        # List of standard options directly supported
+        self.supported_std_options = []
+
+    def _maybe_expand_globs(self, file_list):
+        """Glob expand file_list if the platform does not do that itself.
+        
+        :return: A possibly empty list of unicode paths.
+
+        Introduced in bzrlib 0.18.
+        """
+        if not file_list:
+            file_list = []
+        if sys.platform == 'win32':
+            file_list = win32utils.glob_expand(file_list)
+        return list(file_list)
+
+    def _usage(self):
+        """Return single-line grammar for this command.
+
+        Only describes arguments, not options.
+        """
+        s = 'bzr ' + self.name() + ' '
+        for aname in self.takes_args:
+            aname = aname.upper()
+            if aname[-1] in ['$', '+']:
+                aname = aname[:-1] + '...'
+            elif aname[-1] == '?':
+                aname = '[' + aname[:-1] + ']'
+            elif aname[-1] == '*':
+                aname = '[' + aname[:-1] + '...]'
+            s += aname + ' '
+        s = s[:-1]      # remove last space
+        return s
+
+    def get_help_text(self, additional_see_also=None, plain=True,
+                      see_also_as_links=False):
+        """Return a text string with help for this command.
+        
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        :param plain: if False, raw help (reStructuredText) is
+            returned instead of plain text.
+        :param see_also_as_links: if True, convert items in 'See also'
+            list to internal links (used by bzr_man rstx generator)
+        """
+        doc = self.help()
+        if doc is None:
+            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+
+        # Extract the summary (purpose) and sections out from the text
+        purpose,sections = self._get_help_parts(doc)
+
+        # If a custom usage section was provided, use it
+        if sections.has_key('Usage'):
+            usage = sections.pop('Usage')
+        else:
+            usage = self._usage()
+
+        # The header is the purpose and usage
+        result = ""
+        result += ':Purpose: %s\n' % purpose
+        if usage.find('\n') >= 0:
+            result += ':Usage:\n%s\n' % usage
+        else:
+            result += ':Usage:   %s\n' % usage
+        result += '\n'
+
+        # Add the options
+        options = option.get_optparser(self.options()).format_option_help()
+        if options.startswith('Options:'):
+            result += ':' + options
+        elif options.startswith('options:'):
+            # Python 2.4 version of optparse
+            result += ':Options:' + options[len('options:'):]
+        else:
+            result += options
+        result += '\n'
+
+        # Add the description, indenting it 2 spaces
+        # to match the indentation of the options
+        if sections.has_key(None):
+            text = sections.pop(None)
+            text = '\n  '.join(text.splitlines())
+            result += ':%s:\n  %s\n\n' % ('Description',text)
+
+        # Add the custom sections (e.g. Examples). Note that there's no need
+        # to indent these as they must be indented already in the source.
+        if sections:
+            labels = sorted(sections.keys())
+            for label in labels:
+                result += ':%s:\n%s\n\n' % (label,sections[label])
+
+        # Add the aliases, source (plug-in) and see also links, if any
+        if self.aliases:
+            result += ':Aliases:  '
+            result += ', '.join(self.aliases) + '\n'
+        plugin_name = self.plugin_name()
+        if plugin_name is not None:
+            result += ':From:     plugin "%s"\n' % plugin_name
+        see_also = self.get_see_also(additional_see_also)
+        if see_also:
+            if not plain and see_also_as_links:
+                see_also_links = []
+                for item in see_also:
+                    if item == 'topics':
+                        # topics doesn't have an independent section
+                        # so don't create a real link
+                        see_also_links.append(item)
+                    else:
+                        # Use a reST link for this entry
+                        see_also_links.append("`%s`_" % (item,))
+                see_also = see_also_links
+            result += ':See also: '
+            result += ', '.join(see_also) + '\n'
+
+        # If this will be rendered as plan text, convert it
+        if plain:
+            import bzrlib.help_topics
+            result = bzrlib.help_topics.help_as_plain_text(result)
+        return result
+
+    @staticmethod
+    def _get_help_parts(text):
+        """Split help text into a summary and named sections.
+
+        :return: (summary,sections) where summary is the top line and
+            sections is a dictionary of the rest indexed by section name.
+            A section starts with a heading line of the form ":xxx:".
+            Indented text on following lines is the section value.
+            All text found outside a named section is assigned to the
+            default section which is given the key of None.
+        """
+        def save_section(sections, label, section):
+            if len(section) > 0:
+                if sections.has_key(label):
+                    sections[label] += '\n' + section
+                else:
+                    sections[label] = section
+            
+        lines = text.rstrip().splitlines()
+        summary = lines.pop(0)
+        sections = {}
+        label,section = None,''
+        for line in lines:
+            if line.startswith(':') and line.endswith(':') and len(line) > 2:
+                save_section(sections, label, section)
+                label,section = line[1:-1],''
+            elif (label is not None) and len(line) > 1 and not line[0].isspace():
+                save_section(sections, label, section)
+                label,section = None,line
+            else:
+                if len(section) > 0:
+                    section += '\n' + line
+                else:
+                    section = line
+        save_section(sections, label, section)
+        return summary, sections
+
+    def get_help_topic(self):
+        """Return the commands help topic - its name."""
+        return self.name()
+
+    def get_see_also(self, additional_terms=None):
+        """Return a list of help topics that are related to this command.
+        
+        The list is derived from the content of the _see_also attribute. Any
+        duplicates are removed and the result is in lexical order.
+        :param additional_terms: Additional help topics to cross-reference.
+        :return: A list of help topics.
+        """
+        see_also = set(getattr(self, '_see_also', []))
+        if additional_terms:
+            see_also.update(additional_terms)
+        return sorted(see_also)
 
     def options(self):
         """Return dict of valid options for this command.
 
         Maps from long option name to option object."""
-        r = dict()
-        r['help'] = Option.OPTIONS['help']
+        r = Option.STD_OPTIONS.copy()
+        std_names = r.keys()
         for o in self.takes_options:
             if isinstance(o, basestring):
-                o = Option.OPTIONS[o]
+                o = option.Option.OPTIONS[o]
             r[o.name] = o
+            if o.name in std_names:
+                self.supported_std_options.append(o.name)
         return r
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        assert self.encoding_type in ['strict', 'exact', 'replace']
-
         # Originally I was using self.stdout, but that looks
         # *way* too much like sys.stdout
         if self.encoding_type == 'exact':
+            # force sys.stdout to be binary stream on win32
+            if sys.platform == 'win32':
+                fileno = getattr(sys.stdout, 'fileno', None)
+                if fileno:
+                    import msvcrt
+                    msvcrt.setmode(fileno(), os.O_BINARY)
             self.outf = sys.stdout
             return
 
-        output_encoding = bzrlib.osutils.get_terminal_encoding()
+        output_encoding = osutils.get_terminal_encoding()
 
-        # use 'replace' so that we don't abort if trying to write out
-        # in e.g. the default C locale.
-        self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
+        self.outf = codecs.getwriter(output_encoding)(sys.stdout,
+                        errors=self.encoding_type)
         # For whatever reason codecs.getwriter() does not advertise its encoding
         # it just returns the encoding of the wrapped file, which is completely
         # bogus. So set the attribute, so we can find the correct encoding later.
         self.outf.encoding = output_encoding
 
-    @deprecated_method(zero_eight)
-    def run_argv(self, argv):
-        """Parse command line and run.
-        
-        See run_argv_aliases for the 0.8 and beyond api.
-        """
-        return self.run_argv_aliases(argv)
-
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10", 
+            warn("Passing None for [] is deprecated from bzrlib 0.10",
                  DeprecationWarning, stacklevel=2)
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
+
+        # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
-            from bzrlib.help import help_on_command
-            help_on_command(self.name())
+            sys.stdout.write(self.get_help_text())
             return 0
+        trace.set_verbosity_level(option._verbosity_level)
+        if 'verbose' in self.supported_std_options:
+            opts['verbose'] = trace.is_verbose()
+        elif opts.has_key('verbose'):
+            del opts['verbose']
+        if 'quiet' in self.supported_std_options:
+            opts['quiet'] = trace.is_quiet()
+        elif opts.has_key('quiet'):
+            del opts['quiet']
+
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -291,7 +508,7 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
         """
-        raise NotImplementedError('no implementation of command %r' 
+        raise NotImplementedError('no implementation of command %r'
                                   % self.name())
 
     def help(self):
@@ -316,37 +533,6 @@ class Command(object):
             return None
 
 
-def parse_spec(spec):
-    """
-    >>> parse_spec(None)
-    [None, None]
-    >>> parse_spec("./")
-    ['./', None]
-    >>> parse_spec("../@")
-    ['..', -1]
-    >>> parse_spec("../f/@35")
-    ['../f', 35]
-    >>> parse_spec('./@revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67')
-    ['.', 'revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67']
-    """
-    if spec is None:
-        return [None, None]
-    if '/@' in spec:
-        parsed = spec.split('/@')
-        assert len(parsed) == 2
-        if parsed[1] == "":
-            parsed[1] = -1
-        else:
-            try:
-                parsed[1] = int(parsed[1])
-            except ValueError:
-                pass # We can allow stuff like ./@revid:blahblahblah
-            else:
-                assert parsed[1] >=0
-    else:
-        parsed = [spec, None]
-    return parsed
-
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
     
@@ -363,7 +549,7 @@ def parse_args(command, argv, alias_argv=None):
         args = argv
 
     options, args = parser.parse_args(args)
-    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if 
+    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
 
@@ -385,32 +571,46 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise BzrCommandError("command %r needs one or more %s"
-                        % (cmd, argname.upper()))
+                raise errors.BzrCommandError("command %r needs one or more %s"
+                                             % (cmd, argname.upper()))
             else:
                 argdict[argname + '_list'] = args[:]
                 args = []
         elif ap[-1] == '$': # all but one
             if len(args) < 2:
-                raise BzrCommandError("command %r needs one or more %s"
-                        % (cmd, argname.upper()))
+                raise errors.BzrCommandError("command %r needs one or more %s"
+                                             % (cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
             args[:-1] = []
         else:
             # just a plain arg
             argname = ap
             if not args:
-                raise BzrCommandError("command %r requires argument %s"
-                        % (cmd, argname.upper()))
+                raise errors.BzrCommandError("command %r requires argument %s"
+                               % (cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
             
     if args:
-        raise BzrCommandError("extra argument to command %s: %s"
-                              % (cmd, args[0]))
+        raise errors.BzrCommandError("extra argument to command %s: %s"
+                                     % (cmd, args[0]))
 
     return argdict
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    # Cannot use "import trace", as that would import bzrlib.trace instead of
+    # the standard library's trace.
+    trace = __import__('trace')
+
+    tracer = trace.Trace(count=1, trace=0)
+    sys.settrace(tracer.globaltrace)
+
+    ret = the_callable(*args, **kwargs)
+
+    sys.settrace(None)
+    results = tracer.results()
+    results.write_results(show_missing=1, summary=False,
+                          coverdir=dirname)
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -438,24 +638,37 @@ def apply_profiled(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    import cPickle
     ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
     else:
-        stats.freeze()
-        cPickle.dump(stats, open(filename, 'w'), 2)
-        print 'Profile data written to %r.' % filename
+        stats.save(filename)
+        trace.note('Profile data written to "%s".', filename)
     return ret
 
 
-def get_alias(cmd):
-    """Return an expanded alias, or None if no alias exists"""
-    import bzrlib.config
-    alias = bzrlib.config.GlobalConfig().get_alias(cmd)
+def shlex_split_unicode(unsplit):
+    import shlex
+    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+
+
+def get_alias(cmd, config=None):
+    """Return an expanded alias, or None if no alias exists.
+
+    cmd
+        Command to be checked for an alias.
+    config
+        Used to specify an alternative config to use,
+        which is especially useful for testing.
+        If it is unspecified, the global config will be used.
+    """
+    if config is None:
+        import bzrlib.config
+        config = bzrlib.config.GlobalConfig()
+    alias = config.get_alias(cmd)
     if (alias):
-        return alias.split(' ')
+        return shlex_split_unicode(alias)
     return None
 
 
@@ -490,12 +703,16 @@ def run_bzr(argv):
 
     --lsprof
         Run under the Python lsprof profiler.
+
+    --coverage
+        Generate line coverage report in the specified directory.
     """
     argv = list(argv)
+    trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
-    opt_lsprof_file = None
+    opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -519,8 +736,11 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
-        elif a in ('--quiet', '-q'):
-            be_quiet()
+        elif a == '--coverage':
+            opt_coverage_dir = argv[i + 1]
+            i += 1
+        elif a.startswith('-D'):
+            debug.debug_flags.add(a[2:])
         else:
             argv_copy.append(a)
         i += 1
@@ -532,8 +752,8 @@ def run_bzr(argv):
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.version import show_version
-        show_version()
+        from bzrlib.builtins import cmd_version
+        cmd_version().run_argv_aliases([])
         return 0
         
     if not opt_no_plugins:
@@ -557,24 +777,39 @@ def run_bzr(argv):
     # 'command not found' error later.
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
-    if not getattr(cmd_obj.run_argv, 'is_deprecated', False):
-        run = cmd_obj.run_argv
-        run_argv = [argv]
-    else:
-        run = cmd_obj.run_argv_aliases
-        run_argv = [argv, alias_argv]
+    run = cmd_obj.run_argv_aliases
+    run_argv = [argv, alias_argv]
 
     try:
         if opt_lsprof:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --lsprof is in use.')
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --profile is in use.')
             ret = apply_profiled(run, *run_argv)
+        elif opt_coverage_dir:
+            ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
+        if 'memory' in debug.debug_flags:
+            try:
+                status_file = file('/proc/%s/status' % os.getpid(), 'rb')
+            except IOError:
+                pass
+            else:
+                status = status_file.read()
+                status_file.close()
+                trace.note("Process status after command:")
+                for line in status.splitlines():
+                    trace.note(line)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
-        be_quiet(False)
+        option._verbosity_level = 0
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -588,7 +823,7 @@ def display_command(func):
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe
-                if sys.platform != 'win32' or e.errno != 0:
+                if sys.platform != 'win32' or (e.errno not in (0, errno.EINVAL)):
                     raise
             pass
         except KeyboardInterrupt:
@@ -600,26 +835,98 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
-    argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+     
+    # Is this a final release version? If so, we should suppress warnings
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib import symbol_versioning
+        symbol_versioning.suppress_deprecation_warnings(override=False)
+    try:
+        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
     ret = run_bzr_catch_errors(argv)
-    mutter("return code %d", ret)
+    trace.mutter("return code %d", ret)
     return ret
 
 
 def run_bzr_catch_errors(argv):
+    # Note: The except clause logic below should be kept in sync with the
+    # profile() routine in lsprof.py.
     try:
         return run_bzr(argv)
-        # do this here inside the exception wrappers to catch EPIPE
-        sys.stdout.flush()
-    except Exception, e:
+    except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+        exitcode = trace.report_exception(sys.exc_info(), sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
             import pdb
             pdb.post_mortem(sys.exc_traceback)
-        return 3
+        return exitcode
+
+
+def run_bzr_catch_user_errors(argv):
+    """Run bzr and report user errors, but let internal errors propagate.
+
+    This is used for the test suite, and might be useful for other programs
+    that want to wrap the commandline interface.
+    """
+    try:
+        return run_bzr(argv)
+    except Exception, e:
+        if (isinstance(e, (OSError, IOError))
+            or not getattr(e, 'internal_error', True)):
+            trace.report_exception(sys.exc_info(), sys.stderr)
+            return 3
+        else:
+            raise
+
+
+class HelpCommandIndex(object):
+    """A index for bzr help that returns commands."""
+
+    def __init__(self):
+        self.prefix = 'commands/'
+
+    def get_topics(self, topic):
+        """Search for topic amongst commands.
+
+        :param topic: A topic to search for.
+        :return: A list which is either empty or contains a single
+            Command entry.
+        """
+        if topic and topic.startswith(self.prefix):
+            topic = topic[len(self.prefix):]
+        try:
+            cmd = _get_cmd_object(topic)
+        except KeyError:
+            return []
+        else:
+            return [cmd]
+
+
+class Provider(object):
+    '''Generic class to be overriden by plugins'''
+
+    def plugin_for_command(self, cmd_name):
+        '''Takes a command and returns the information for that plugin
+        
+        :return: A dictionary with all the available information 
+        for the requested plugin
+        '''
+        raise NotImplementedError
+
+
+class ProvidersRegistry(registry.Registry):
+    '''This registry exists to allow other providers to exist'''
+
+    def __iter__(self):
+        for key, provider in self.iteritems():
+            yield provider
+
+command_providers_registry = ProvidersRegistry()
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

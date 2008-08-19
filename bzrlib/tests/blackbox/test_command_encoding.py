@@ -1,5 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +34,7 @@ class cmd_echo_exact(Command):
 
 
 class cmd_echo_strict(cmd_echo_exact):
-    """Replace bogus unicode characters."""
+    """Raise a UnicodeError for unrepresentable characters."""
 
     encoding_type = 'strict'
 
@@ -54,12 +53,14 @@ class TestCommandEncoding(TestCase):
 
         register_command(cmd_echo_exact)
         try:
-            self.assertEqual('foo', bzr('echo-exact', 'foo'))
+            self.assertEqual('foo', bzr('echo-exact foo'))
             # This is cheating a little bit, because 'foo\xb5' shouldn't
             # get past main()
-            self.assertEqual('foo\xb5', bzr('echo-exact', 'foo\xb5'))
+            self.assertEqual('foo\xb5', bzr('echo-exact foo\xb5'))
             # Exact should fail to decode the string
-            bzr('echo-exact', u'foo\xb5', retcode=3)
+            self.assertRaises(UnicodeEncodeError,
+                bzr,
+                ['echo-exact', u'foo\xb5'])
         finally:
             plugin_cmds.pop('echo-exact')
 
@@ -70,9 +71,9 @@ class TestCommandEncoding(TestCase):
 
         register_command(cmd_echo_strict)
         try:
-            self.assertEqual('foo', bzr('echo-strict', 'foo'))
+            self.assertEqual('foo', bzr('echo-strict foo'))
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
-                bzr('echo-strict', u'foo\xb5'))
+                             bzr(['echo-strict', u'foo\xb5']))
         finally:
             plugin_cmds.pop('echo-strict')
 
@@ -83,9 +84,11 @@ class TestCommandEncoding(TestCase):
 
         register_command(cmd_echo_strict)
         try:
-            self.assertEqual('foo', bzr('echo-strict', 'foo'))
+            self.assertEqual('foo', bzr('echo-strict foo'))
             # ascii can't encode \xb5
-            bzr('echo-strict', u'foo\xb5', retcode=3)
+            self.assertRaises(UnicodeEncodeError,
+                bzr,
+                ['echo-strict', u'foo\xb5'])
         finally:
             plugin_cmds.pop('echo-strict')
 
@@ -96,9 +99,9 @@ class TestCommandEncoding(TestCase):
 
         register_command(cmd_echo_replace)
         try:
-            self.assertEqual('foo', bzr('echo-replace', 'foo'))
+            self.assertEqual('foo', bzr('echo-replace foo'))
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
-                             bzr('echo-replace', u'foo\xb5'))
+                             bzr(['echo-replace', u'foo\xb5']))
         finally:
             plugin_cmds.pop('echo-replace')
 
@@ -109,9 +112,9 @@ class TestCommandEncoding(TestCase):
 
         register_command(cmd_echo_replace)
         try:
-            self.assertEqual('foo', bzr('echo-replace', 'foo'))
+            self.assertEqual('foo', bzr('echo-replace foo'))
             # ascii can't encode \xb5
-            self.assertEqual('foo?', bzr('echo-replace', u'foo\xb5'))
+            self.assertEqual('foo?', bzr(['echo-replace', u'foo\xb5']))
         finally:
             plugin_cmds.pop('echo-replace')
 

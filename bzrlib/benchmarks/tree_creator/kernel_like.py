@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ import errno
 import os
 
 from bzrlib import (
-    add,
     bzrdir,
     osutils,
     workingtree,
@@ -31,7 +30,7 @@ from bzrlib.benchmarks.tree_creator import TreeCreator
 
 
 class KernelLikeTreeCreator(TreeCreator):
-    """Create a basic tree with ~10k unversioned files""" 
+    """Create a basic tree with ~10k unversioned files"""
 
     def __init__(self, test, link_working=False, url=None):
         super(KernelLikeTreeCreator, self).__init__(test,
@@ -97,6 +96,7 @@ class KernelLikeTreeCreator(TreeCreator):
 
 
 class KernelLikeAddedTreeCreator(TreeCreator):
+    """Create a tree with ~10k versioned but not committed files"""
 
     def __init__(self, test, link_working=False, hot_cache=True):
         super(KernelLikeAddedTreeCreator, self).__init__(test,
@@ -118,7 +118,7 @@ class KernelLikeAddedTreeCreator(TreeCreator):
         # Add everything to it
         tree.lock_write()
         try:
-            add.smart_add_tree(tree, [root], recurse=True, save=True)
+            tree.smart_add([root], recurse=True, save=True)
             if in_cache:
                 self._protect_files(root+'/.bzr')
         finally:
@@ -188,9 +188,11 @@ class KernelLikeInventoryCreator(TreeCreator):
         finally:
             f.close()
 
-    def create(self):
+    def create(self, root=None):
         """Create a kernel like inventory
 
+        :param root: Exists to mimic the base class, but this class
+            returns only an in-memory Inventory, so it should always be None.
         :return: An Inventory object.
         """
         cache_dir = self._get_cache_dir()
@@ -207,7 +209,12 @@ class KernelLikeInventoryCreator(TreeCreator):
                                                  link_bzr=True,
                                                  hot_cache=False)
         tree = creator.create('.')
-        return tree.basis_tree().inventory
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            return basis.inventory
+        finally:
+            basis.unlock()
 
     def _open_cached(self, cache_dir):
         f = open(cache_dir + '/inventory', 'rb')

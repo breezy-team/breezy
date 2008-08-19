@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,18 +26,22 @@ import base64
 import os
 import sys
 
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    progress,
+    repository,
+    workingtree,
+    workingtree_4,
+    )
 import bzrlib.branch
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-import bzrlib.repository as repository
-from bzrlib.revision import is_ancestor
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
-import bzrlib.workingtree as workingtree
 
 
-class TestUpgrade(TestCaseInTempDir):
+class TestUpgrade(TestCaseWithTransport):
     
     def test_build_tree(self):
         """Test tree-building test helper"""
@@ -63,31 +67,39 @@ class TestUpgrade(TestCaseInTempDir):
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
         foo_id = 'foo-20051004035605-91e788d1875603ae'
-        eq(rt.get_file_text(foo_id), 'initial contents\n')
+        rt.lock_read()
+        try:
+            eq(rt.get_file_text(foo_id), 'initial contents\n')
+        finally:
+            rt.unlock()
         rt = b.repository.revision_tree(rh[1])
-        eq(rt.get_file_text(foo_id), 'new contents\n')
+        rt.lock_read()
+        try:
+            eq(rt.get_file_text(foo_id), 'new contents\n')
+        finally:
+            rt.unlock()
         # check a backup was made:
         transport = get_transport(b.base)
-        transport.stat('.bzr.backup')
-        transport.stat('.bzr.backup/README')
-        transport.stat('.bzr.backup/branch-format')
-        transport.stat('.bzr.backup/revision-history')
-        transport.stat('.bzr.backup/merged-patches')
-        transport.stat('.bzr.backup/pending-merged-patches')
-        transport.stat('.bzr.backup/pending-merges')
-        transport.stat('.bzr.backup/branch-name')
-        transport.stat('.bzr.backup/branch-lock')
-        transport.stat('.bzr.backup/inventory')
-        transport.stat('.bzr.backup/stat-cache')
-        transport.stat('.bzr.backup/text-store')
-        transport.stat('.bzr.backup/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
-        transport.stat('.bzr.backup/text-store/foo-20051004035756-4081373d897c3453.gz')
-        transport.stat('.bzr.backup/inventory-store/')
-        transport.stat('.bzr.backup/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat('.bzr.backup/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
-        transport.stat('.bzr.backup/revision-store/')
-        transport.stat('.bzr.backup/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat('.bzr.backup/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        transport.stat('backup.bzr')
+        transport.stat('backup.bzr/README')
+        transport.stat('backup.bzr/branch-format')
+        transport.stat('backup.bzr/revision-history')
+        transport.stat('backup.bzr/merged-patches')
+        transport.stat('backup.bzr/pending-merged-patches')
+        transport.stat('backup.bzr/pending-merges')
+        transport.stat('backup.bzr/branch-name')
+        transport.stat('backup.bzr/branch-lock')
+        transport.stat('backup.bzr/inventory')
+        transport.stat('backup.bzr/stat-cache')
+        transport.stat('backup.bzr/text-store')
+        transport.stat('backup.bzr/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
+        transport.stat('backup.bzr/text-store/foo-20051004035756-4081373d897c3453.gz')
+        transport.stat('backup.bzr/inventory-store/')
+        transport.stat('backup.bzr/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        transport.stat('backup.bzr/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        transport.stat('backup.bzr/revision-store/')
+        transport.stat('backup.bzr/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        transport.stat('backup.bzr/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
 
     def test_upgrade_with_ghosts(self):
         """Upgrade v0.0.4 tree containing ghost references.
@@ -121,11 +133,12 @@ class TestUpgrade(TestCaseInTempDir):
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
         # and we should be able to read the names for the file id 
         # 'dir-20051005095101-da1441ea3fa6917a'
-        self.assertNotEqual(
-            [],
-            repo.text_store.get_weave(
-                'dir-20051005095101-da1441ea3fa6917a',
-                repo.get_transaction()))
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        text_keys = repo.texts.keys()
+        dir_keys = [key for key in text_keys if key[0] ==
+                'dir-20051005095101-da1441ea3fa6917a']
+        self.assertNotEqual([], dir_keys)
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)
@@ -141,10 +154,10 @@ class TestUpgrade(TestCaseInTempDir):
         upgrade('.', bzrdir.BzrDirFormat6())
         transport = get_transport('.')
         transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
-        assert not transport.has('.bzr/stat-cache')
-        # XXX: upgrade fails if a .bzr.backup is already present
+        self.assertFalse(transport.has('.bzr/stat-cache'))
+        # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
-        transport.delete_tree('.bzr.backup')
+        transport.delete_tree('backup.bzr')
         # At this point, we have a format6 branch without checkout files.
         upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
@@ -159,13 +172,94 @@ class TestUpgrade(TestCaseInTempDir):
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
+    def test_convert_branch5_branch6(self):
+        branch = self.make_branch('branch', format='knit')
+        branch.set_revision_history(['AB', 'CD'])
+        branch.set_parent('file:///EF')
+        branch.set_bound_location('file:///GH')
+        branch.set_push_location('file:///IJ')
+        target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        converter = branch.bzrdir._format.get_converter(target)
+        converter.convert(branch.bzrdir, progress.DummyProgress())
+        new_branch = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(new_branch.__class__, _mod_branch.BzrBranch6)
+        self.assertEqual('CD', new_branch.last_revision())
+        self.assertEqual('file:///EF', new_branch.get_parent())
+        self.assertEqual('file:///GH', new_branch.get_bound_location())
+        branch_config = new_branch.get_config()._get_branch_data_config()
+        self.assertEqual('file:///IJ',
+            branch_config.get_user_option('push_location'))
+
+        branch2 = self.make_branch('branch2', format='knit')
+        converter = branch2.bzrdir._format.get_converter(target)
+        converter.convert(branch2.bzrdir, progress.DummyProgress())
+        branch2 = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
+
+    def test_convert_knit_dirstate_empty(self):
+        # test that asking for an upgrade from knit to dirstate works.
+        tree = self.make_branch_and_tree('tree', format='knit')
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual('null:', new_tree.last_revision())
+
+    def test_convert_knit_dirstate_content(self):
+        # smoke test for dirstate conversion: we call dirstate primitives,
+        # and its there that the core logic is tested.
+        tree = self.make_branch_and_tree('tree', format='knit')
+        self.build_tree(['tree/file'])
+        tree.add(['file'], ['file-id'])
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual('null:', new_tree.last_revision())
+
+    def test_convert_knit_one_parent_dirstate(self):
+        # test that asking for an upgrade from knit to dirstate works.
+        tree = self.make_branch_and_tree('tree', format='knit')
+        rev_id = tree.commit('first post')
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual(rev_id, new_tree.last_revision())
+        for path in ['basis-inventory-cache', 'inventory', 'last-revision',
+            'pending-merges', 'stat-cache']:
+            self.failIfExists('tree/.bzr/checkout/' + path)
+
+    def test_convert_knit_merges_dirstate(self):
+        tree = self.make_branch_and_tree('tree', format='knit')
+        rev_id = tree.commit('first post')
+        merge_tree = tree.bzrdir.sprout('tree2').open_workingtree()
+        rev_id2 = tree.commit('second post')
+        rev_id3 = merge_tree.commit('second merge post')
+        tree.merge_from_branch(merge_tree.branch)
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual(rev_id2, new_tree.last_revision())
+        self.assertEqual([rev_id2, rev_id3], new_tree.get_parent_ids())
+        for path in ['basis-inventory-cache', 'inventory', 'last-revision',
+            'pending-merges', 'stat-cache']:
+            self.failIfExists('tree/.bzr/checkout/' + path)
+
 
 _upgrade1_template = \
      [
      ('foo', 'new contents\n'),
      ('.bzr/',),
      ('.bzr/README',
-      'This is a Bazaar-NG control directory.\nDo not change any files in this directory.\n'),
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'),
      ('.bzr/branch-format', 'Bazaar-NG branch, format 0.0.4\n'),
      ('.bzr/revision-history',
       'mbp@sourcefrog.net-20051004035611-176b16534b086b3c\n'
@@ -205,8 +299,9 @@ _ghost_template = [
     ),
     ( './.bzr/', ),
     ( './.bzr/README',
-        'This is a Bazaar-NG control directory.\n'
-        'Do not change any files in this directory.\n'
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'
@@ -270,8 +365,9 @@ _ghost_template = [
 _upgrade_dir_template = [
     ( './.bzr/', ),
     ( './.bzr/README',
-        'This is a Bazaar-NG control directory.\n'
-        'Do not change any files in this directory.\n'
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'

@@ -19,15 +19,34 @@ build
 [#]*#
 .#*
 ./tags
+./bzrlib/tags
+./TAGS
 # The shelf plugin uses this dir
 ./.shelf
 # Mac droppings
 .DS_Store
 # win32 installer generated files
-./doc/*.htm
+./doc/*.html
 ./doc/bzr_man.txt
 ./py2exe.log
 ./tools/win32/bzr.iss
 ./dist
 # performance history data file
 ./.perf_history
+./html_docs
+./pretty_docs
+./api
+doc/**/*.html
+doc/developers/performance.png
+bzrlib/_dirstate_helpers_c.c
+bzrlib/_knit_load_data_c.c
+bzrlib/_walkdirs_win32.c
+doc/en/release-notes/NEWS.txt
+doc/en/developer-guide/HACKING.txt
+doc/en/user-reference/bzr_man.txt
+# built extension modules
+bzrlib/_*_c.dll
+bzrlib/_*_c.so
+bzrlib/_*_c.pyd
+# generated help topics
+doc/en/user-reference/*.txt

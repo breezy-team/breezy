@@ -1,5 +1,6 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,19 +62,30 @@ h=help
 up=pull
 """
 
+import os
+import sys
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
-import os
 import re
-import sys
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib
-from bzrlib import errors, urlutils
-from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter, warning
-import bzrlib.util.configobj.configobj as configobj
+from bzrlib import (
+    debug,
+    errors,
+    mail_client,
+    osutils,
+    symbol_versioning,
+    trace,
+    ui,
+    urlutils,
+    win32utils,
+    )
+from bzrlib.util.configobj import configobj
+""")
 
 
 CHECK_IF_POSSIBLE=0
@@ -84,6 +96,30 @@ CHECK_NEVER=2
 SIGN_WHEN_REQUIRED=0
 SIGN_ALWAYS=1
 SIGN_NEVER=2
+
+
+POLICY_NONE = 0
+POLICY_NORECURSE = 1
+POLICY_APPENDPATH = 2
+
+_policy_name = {
+    POLICY_NONE: None,
+    POLICY_NORECURSE: 'norecurse',
+    POLICY_APPENDPATH: 'appendpath',
+    }
+_policy_value = {
+    None: POLICY_NONE,
+    'none': POLICY_NONE,
+    'norecurse': POLICY_NORECURSE,
+    'appendpath': POLICY_APPENDPATH,
+    }
+
+
+STORE_LOCATION = POLICY_NONE
+STORE_LOCATION_NORECURSE = POLICY_NORECURSE
+STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
+STORE_BRANCH = 3
+STORE_GLOBAL = 4
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -107,6 +143,28 @@ class Config(object):
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
+
+    def get_mail_client(self):
+        """Get a mail client to use"""
+        selected_client = self.get_user_option('mail_client')
+        try:
+            mail_client_class = {
+                None: mail_client.DefaultMail,
+                # Specific clients
+                'emacsclient': mail_client.EmacsMail,
+                'evolution': mail_client.Evolution,
+                'kmail': mail_client.KMail,
+                'mutt': mail_client.Mutt,
+                'thunderbird': mail_client.Thunderbird,
+                # Generic options
+                'default': mail_client.DefaultMail,
+                'editor': mail_client.Editor,
+                'mapi': mail_client.MAPIClient,
+                'xdg-email': mail_client.XDGEmail,
+            }[selected_client]
+        except KeyError:
+            raise errors.UnknownMailClient(selected_client)
+        return mail_client_class(self)
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
@@ -179,15 +237,11 @@ class Config(object):
         v = os.environ.get('BZR_EMAIL')
         if v:
             return v.decode(bzrlib.user_encoding)
-        v = os.environ.get('BZREMAIL')
-        if v:
-            warning('BZREMAIL is deprecated in favor of BZR_EMAIL. Please update your configuration.')
-            return v.decode(bzrlib.user_encoding)
-    
+
         v = self._get_user_id()
         if v:
             return v
-        
+
         v = os.environ.get('EMAIL')
         if v:
             return v.decode(bzrlib.user_encoding)
@@ -218,8 +272,8 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
-                warning("Please use create_signatures, not check_signatures "
-                        "to set signing policy.")
+                trace.warning("Please use create_signatures,"
+                              " not check_signatures to set signing policy.")
             if policy == CHECK_ALWAYS:
                 return True
         elif policy == SIGN_ALWAYS:
@@ -238,6 +292,15 @@ class Config(object):
     def _get_nickname(self):
         return None
 
+    def get_bzr_remote_path(self):
+        try:
+            return os.environ['BZR_REMOTE_PATH']
+        except KeyError:
+            path = self.get_user_option("bzr_remote_path")
+            if path is None:
+                path = 'bzr'
+            return path
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -255,9 +318,25 @@ class IniBasedConfig(Config):
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
 
+    def _get_matching_sections(self):
+        """Return an ordered list of (section_name, extra_path) pairs.
+
+        If the section contains inherited configuration, extra_path is
+        a string containing the additional path components.
+        """
+        section = self._get_section()
+        if section is not None:
+            return [(section, '')]
+        else:
+            return []
+
     def _get_section(self):
         """Override this to define the section used by the config."""
         return "DEFAULT"
+
+    def _get_option_policy(self, section, option_name):
+        """Return the policy for the given (section, option_name) pair."""
+        return POLICY_NONE
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -277,11 +356,28 @@ class IniBasedConfig(Config):
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
-        try:
-            return self._get_parser().get_value(self._get_section(),
-                                                option_name)
-        except KeyError:
-            pass
+        for (section, extra_path) in self._get_matching_sections():
+            try:
+                value = self._get_parser().get_value(section, option_name)
+            except KeyError:
+                continue
+            policy = self._get_option_policy(section, option_name)
+            if policy == POLICY_NONE:
+                return value
+            elif policy == POLICY_NORECURSE:
+                # norecurse items only apply to the exact path
+                if extra_path:
+                    continue
+                else:
+                    return value
+            elif policy == POLICY_APPENDPATH:
+                if extra_path:
+                    value = urlutils.join(value, extra_path)
+                return value
+            else:
+                raise AssertionError('Unexpected config policy %r' % policy)
+        else:
+            return None
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
@@ -344,13 +440,36 @@ class GlobalConfig(IniBasedConfig):
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
+        self._set_option(option, value, 'DEFAULT')
+
+    def get_aliases(self):
+        """Return the aliases section."""
+        if 'ALIASES' in self._get_parser():
+            return self._get_parser()['ALIASES']
+        else:
+            return {}
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the configuration."""
+        self._set_option(alias_name, alias_command, 'ALIASES')
+
+    def unset_alias(self, alias_name):
+        """Unset an existing alias."""
+        aliases = self._get_parser().get('ALIASES')
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
+        del aliases[alias_name]
+        self._write_config_file()
+
+    def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if 'DEFAULT' not in self._get_parser():
-            self._get_parser()['DEFAULT'] = {}
-        self._get_parser()['DEFAULT'][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
+        self._write_config_file()
+
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
@@ -361,15 +480,15 @@ class LocationConfig(IniBasedConfig):
 
     def __init__(self, location):
         name_generator = locations_config_filename
-        if (not os.path.exists(name_generator()) and 
+        if (not os.path.exists(name_generator()) and
                 os.path.exists(branches_config_filename())):
             if sys.platform == 'win32':
-                warning('Please rename %s to %s' 
-                         % (branches_config_filename(),
-                            locations_config_filename()))
+                trace.warning('Please rename %s to %s'
+                              % (branches_config_filename(),
+                                 locations_config_filename()))
             else:
-                warning('Please rename ~/.bazaar/branches.conf'
-                        ' to ~/.bazaar/locations.conf')
+                trace.warning('Please rename ~/.bazaar/branches.conf'
+                              ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
         # local file locations are looked up by local path, rather than
@@ -379,13 +498,8 @@ class LocationConfig(IniBasedConfig):
             location = urlutils.local_path_from_url(location)
         self.location = location
 
-    def _get_section(self):
-        """Get the section we should look in for config items.
-
-        Returns None if none exists. 
-        TODO: perhaps return a NullSection that thunks through to the 
-              global config.
-        """
+    def _get_matching_sections(self):
+        """Return an ordered list of section names matching this location."""
         sections = self._get_parser()
         location_names = self.location.split('/')
         if self.location.endswith('/'):
@@ -415,21 +529,75 @@ class LocationConfig(IniBasedConfig):
             # if section is longer, no match.
             if len(section_names) > len(location_names):
                 continue
-            # if path is longer, and recurse is not true, no match
-            if len(section_names) < len(location_names):
-                try:
-                    if not self._get_parser()[section].as_bool('recurse'):
-                        continue
-                except KeyError:
-                    pass
-            matches.append((len(section_names), section))
-        if not len(matches):
-            return None
+            matches.append((len(section_names), section,
+                            '/'.join(location_names[len(section_names):])))
         matches.sort(reverse=True)
-        return matches[0][1]
+        sections = []
+        for (length, section, extra_path) in matches:
+            sections.append((section, extra_path))
+            # should we stop looking for parent configs here?
+            try:
+                if self._get_parser()[section].as_bool('ignore_parents'):
+                    break
+            except KeyError:
+                pass
+        return sections
 
-    def set_user_option(self, option, value):
+    def _get_option_policy(self, section, option_name):
+        """Return the policy for the given (section, option_name) pair."""
+        # check for the old 'recurse=False' flag
+        try:
+            recurse = self._get_parser()[section].as_bool('recurse')
+        except KeyError:
+            recurse = True
+        if not recurse:
+            return POLICY_NORECURSE
+
+        policy_key = option_name + ':policy'
+        try:
+            policy_name = self._get_parser()[section][policy_key]
+        except KeyError:
+            policy_name = None
+
+        return _policy_value[policy_name]
+
+    def _set_option_policy(self, section, option_name, option_policy):
+        """Set the policy for the given option name in the given section."""
+        # The old recurse=False option affects all options in the
+        # section.  To handle multiple policies in the section, we
+        # need to convert it to a policy_norecurse key.
+        try:
+            recurse = self._get_parser()[section].as_bool('recurse')
+        except KeyError:
+            pass
+        else:
+            symbol_versioning.warn(
+                'The recurse option is deprecated as of 0.14.  '
+                'The section "%s" has been converted to use policies.'
+                % section,
+                DeprecationWarning)
+            del self._get_parser()[section]['recurse']
+            if not recurse:
+                for key in self._get_parser()[section].keys():
+                    if not key.endswith(':policy'):
+                        self._get_parser()[section][key +
+                                                    ':policy'] = 'norecurse'
+
+        policy_key = option_name + ':policy'
+        policy_name = _policy_name[option_policy]
+        if policy_name is not None:
+            self._get_parser()[section][policy_key] = policy_name
+        else:
+            if policy_key in self._get_parser()[section]:
+                del self._get_parser()[section][policy_key]
+
+    def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
+        if store not in [STORE_LOCATION,
+                         STORE_LOCATION_NORECURSE,
+                         STORE_LOCATION_APPENDPATH]:
+            raise ValueError('bad storage policy %r for %r' %
+                (store, option))
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
@@ -443,6 +611,8 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
+        # the allowed values of store match the config policies
+        self._set_option_policy(location, option, store)
         self._get_parser().write(file(self._get_filename(), 'wb'))
 
 
@@ -494,12 +664,11 @@ class BranchConfig(Config):
     def _get_user_id(self):
         """Return the full user id for the branch.
     
-        e.g. "John Hacker <jhacker@foo.org>"
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email") 
-                    .read()
+            return (self.branch._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -523,11 +692,28 @@ class BranchConfig(Config):
                 return value
         return None
 
-    def set_user_option(self, name, value, local=False):
-        if local is True:
-            self._get_location_config().set_user_option(name, value)
-        else:
+    def set_user_option(self, name, value, store=STORE_BRANCH,
+        warn_masked=False):
+        if store == STORE_BRANCH:
             self._get_branch_data_config().set_option(value, name)
+        elif store == STORE_GLOBAL:
+            self._get_global_config().set_user_option(name, value)
+        else:
+            self._get_location_config().set_user_option(name, value, store)
+        if not warn_masked:
+            return
+        if store in (STORE_GLOBAL, STORE_BRANCH):
+            mask_value = self._get_location_config().get_user_option(name)
+            if mask_value is not None:
+                trace.warning('Value "%s" is masked by "%s" from'
+                              ' locations.conf', value, mask_value)
+            else:
+                if store == STORE_GLOBAL:
+                    branch_config = self._get_branch_data_config()
+                    mask_value = branch_config.get_user_option(name)
+                    if mask_value is not None:
+                        trace.warning('Value "%s" is masked by "%s" from'
+                                      ' branch.conf', value, mask_value)
 
 
     def _gpg_signing_command(self):
@@ -552,7 +738,7 @@ class BranchConfig(Config):
         value = self._get_explicit_nickname()
         if value is not None:
             return value
-        return self.branch.base.split('/')[-2]
+        return urlutils.unescape(self.branch.base.split('/')[-2])
 
     def has_explicit_nickname(self):
         """Return true if a nickname has been explicitly assigned."""
@@ -578,9 +764,9 @@ def ensure_config_dir_exists(path=None):
         if sys.platform == 'win32':
             parent_dir = os.path.dirname(path)
             if not os.path.isdir(parent_dir):
-                mutter('creating config parent directory: %r', parent_dir)
+                trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
-        mutter('creating config directory: %r', path)
+        trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
 
 
@@ -594,37 +780,43 @@ def config_dir():
     base = os.environ.get('BZR_HOME', None)
     if sys.platform == 'win32':
         if base is None:
-            base = os.environ.get('APPDATA', None)
+            base = win32utils.get_appdata_location_unicode()
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
-        return pathjoin(base, 'bazaar', '2.0')
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
+                                  ' or HOME set')
+        return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
-        return pathjoin(base, ".bazaar")
+        return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'bazaar.conf')
+    return osutils.pathjoin(config_dir(), 'bazaar.conf')
 
 
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'branches.conf')
+    return osutils.pathjoin(config_dir(), 'branches.conf')
 
 
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'locations.conf')
+    return osutils.pathjoin(config_dir(), 'locations.conf')
+
+
+def authentication_config_filename():
+    """Return per-user authentication ini file filename."""
+    return osutils.pathjoin(config_dir(), 'authentication.conf')
 
 
 def user_ignore_config_filename():
     """Return the user default ignore filename"""
-    return pathjoin(config_dir(), 'ignore')
+    return osutils.pathjoin(config_dir(), 'ignore')
 
 
 def _auto_user_id():
@@ -640,7 +832,16 @@ def _auto_user_id():
     """
     import socket
 
-    # XXX: Any good way to get real user name on win32?
+    if sys.platform == 'win32':
+        name = win32utils.get_user_name_unicode()
+        if name is None:
+            raise errors.BzrError("Cannot autodetect user name.\n"
+                                  "Please, set your name with command like:\n"
+                                  'bzr whoami "Your Name <name@domain.com>"')
+        host = win32utils.get_host_name_unicode()
+        if host is None:
+            host = socket.gethostname()
+        return name, (name + '@' + host)
 
     try:
         import pwd
@@ -686,51 +887,52 @@ def _auto_user_id():
     return realname, (username + '@' + socket.gethostname())
 
 
+def parse_username(username):
+    """Parse e-mail username and return a (name, address) tuple."""
+    match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
+    if match is None:
+        return (username, '')
+    else:
+        return (match.group(1), match.group(2))
+
+
 def extract_email_address(e):
     """Return just the address part of an email string.
-    
+
     That is just the user@domain part, nothing else. 
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
-    
+
     >>> extract_email_address('Jane Tester <jane@test.com>')
     "jane@test.com"
     """
-    m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-    if not m:
-        raise errors.BzrError("%r doesn't seem to contain "
-                              "a reasonable email address" % e)
-    return m.group(0)
+    name, email = parse_username(e)
+    if not email:
+        raise errors.NoEmailInUsername(e)
+    return email
 
 
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
+
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+
     def __init__(self, branch):
+        # XXX: Really this should be asking the branch for its configuration
+        # data, rather than relying on a Transport, so that it can work 
+        # more cleanly with a RemoteBranch that has no transport.
+        self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
         if file is not None:
             return IniBasedConfig._get_parser(file)
-        return self._get_config()
-
-    def _get_config(self):
-        try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'), 
-                            encoding='utf-8')
-        except errors.NoSuchFile:
-            obj = ConfigObj(encoding='utf=8')
-        return obj
+        return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
         self.branch.lock_read()
         try:
-            obj = self._get_config()
-            try:
-                if section is not None:
-                    obj[section]
-                result = obj[name]
-            except KeyError:
-                result = default
+            return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
         return result
@@ -739,19 +941,290 @@ class TreeConfig(IniBasedConfig):
         """Set a per-branch configuration option"""
         self.branch.lock_write()
         try:
-            cfg_obj = self._get_config()
-            if section is None:
-                obj = cfg_obj
-            else:
-                try:
-                    obj = cfg_obj[section]
-                except KeyError:
-                    cfg_obj[section] = {}
-                    obj = cfg_obj[section]
-            obj[name] = value
-            out_file = StringIO()
-            cfg_obj.write(out_file)
-            out_file.seek(0)
-            self.branch.control_files.put('branch.conf', out_file)
+            self._config.set_option(value, name, section)
         finally:
             self.branch.unlock()
+
+
+class AuthenticationConfig(object):
+    """The authentication configuration file based on a ini file.
+
+    Implements the authentication.conf file described in
+    doc/developers/authentication-ring.txt.
+    """
+
+    def __init__(self, _file=None):
+        self._config = None # The ConfigObj
+        if _file is None:
+            self._filename = authentication_config_filename()
+            self._input = self._filename = authentication_config_filename()
+        else:
+            # Tests can provide a string as _file
+            self._filename = None
+            self._input = _file
+
+    def _get_config(self):
+        if self._config is not None:
+            return self._config
+        try:
+            # FIXME: Should we validate something here ? Includes: empty
+            # sections are useless, at least one of
+            # user/password/password_encoding should be defined, etc.
+
+            # Note: the encoding below declares that the file itself is utf-8
+            # encoded, but the values in the ConfigObj are always Unicode.
+            self._config = ConfigObj(self._input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            raise errors.ParseConfigError(e.errors, e.config.filename)
+        return self._config
+
+    def _save(self):
+        """Save the config file, only tests should use it for now."""
+        conf_dir = os.path.dirname(self._filename)
+        ensure_config_dir_exists(conf_dir)
+        self._get_config().write(file(self._filename, 'wb'))
+
+    def _set_option(self, section_name, option_name, value):
+        """Set an authentication configuration option"""
+        conf = self._get_config()
+        section = conf.get(section_name)
+        if section is None:
+            conf[section] = {}
+            section = conf[section]
+        section[option_name] = value
+        self._save()
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None):
+        """Returns the matching credentials from authentication.conf file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: A dict containing the matching credentials or None.
+           This includes:
+           - name: the section name of the credentials in the
+             authentication.conf file,
+           - user: can't de different from the provided user if any,
+           - password: the decoded password, could be None if the credential
+             defines only the user
+           - verify_certificates: https specific, True if the server
+             certificate should be verified, False otherwise.
+        """
+        credentials = None
+        for auth_def_name, auth_def in self._get_config().items():
+            if type(auth_def) is not configobj.Section:
+                raise ValueError("%s defined outside a section" % auth_def_name)
+
+            a_scheme, a_host, a_user, a_path = map(
+                auth_def.get, ['scheme', 'host', 'user', 'path'])
+
+            try:
+                a_port = auth_def.as_int('port')
+            except KeyError:
+                a_port = None
+            except ValueError:
+                raise ValueError("'port' not numeric in %s" % auth_def_name)
+            try:
+                a_verify_certificates = auth_def.as_bool('verify_certificates')
+            except KeyError:
+                a_verify_certificates = True
+            except ValueError:
+                raise ValueError(
+                    "'verify_certificates' not boolean in %s" % auth_def_name)
+
+            # Attempt matching
+            if a_scheme is not None and scheme != a_scheme:
+                continue
+            if a_host is not None:
+                if not (host == a_host
+                        or (a_host.startswith('.') and host.endswith(a_host))):
+                    continue
+            if a_port is not None and port != a_port:
+                continue
+            if (a_path is not None and path is not None
+                and not path.startswith(a_path)):
+                continue
+            if (a_user is not None and user is not None
+                and a_user != user):
+                # Never contradict the caller about the user to be used
+                continue
+            if a_user is None:
+                # Can't find a user
+                continue
+            credentials = dict(name=auth_def_name,
+                               user=a_user,
+                               password=auth_def.get('password', None),
+                               verify_certificates=a_verify_certificates)
+            self.decode_password(credentials,
+                                 auth_def.get('password_encoding', None))
+            if 'auth' in debug.debug_flags:
+                trace.mutter("Using authentication section: %r", auth_def_name)
+            break
+
+        return credentials
+
+    def get_user(self, scheme, host, port=None,
+                 realm=None, path=None, prompt=None):
+        """Get a user from authentication file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user=None,
+                                           path=path)
+        if credentials is not None:
+            user = credentials['user']
+        else:
+            user = None
+        return user
+
+    def get_password(self, scheme, host, user, port=None,
+                     realm=None, path=None, prompt=None):
+        """Get a password from authentication file or prompt the user for one.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found password or the one entered by the user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user, path)
+        if credentials is not None:
+            password = credentials['password']
+            if password is not None and scheme is 'ssh':
+                trace.warning('password ignored in section [%s],'
+                              ' use an ssh agent instead'
+                              % credentials['name'])
+                password = None
+        else:
+            password = None
+        # Prompt user only if we could't find a password
+        if password is None:
+            if prompt is None:
+                # Create a default prompt suitable for most cases
+                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
+            # Special handling for optional fields in the prompt
+            if port is not None:
+                prompt_host = '%s:%d' % (host, port)
+            else:
+                prompt_host = host
+            password = ui.ui_factory.get_password(prompt,
+                                                  host=prompt_host, user=user)
+        return password
+
+    def decode_password(self, credentials, encoding):
+        return credentials
+
+
+class BzrDirConfig(object):
+
+    def __init__(self, transport):
+        self._config = TransportConfig(transport, 'control.conf')
+
+    def set_default_stack_on(self, value):
+        """Set the default stacking location.
+
+        It may be set to a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if value is None:
+            self._config.set_option('', 'default_stack_on')
+        else:
+            self._config.set_option(value, 'default_stack_on')
+
+    def get_default_stack_on(self):
+        """Return the default stacking location.
+
+        This will either be a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        value = self._config.get_option('default_stack_on')
+        if value == '':
+            value = None
+        return value
+
+
+class TransportConfig(object):
+    """A Config that reads/writes a config file on a Transport.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section.  Assigning meaning to the these
+    values is done at higher levels like TreeConfig.
+    """
+
+    def __init__(self, transport, filename):
+        self._transport = transport
+        self._filename = filename
+
+    def get_option(self, name, section=None, default=None):
+        """Return the value associated with a named option.
+
+        :param name: The name of the value
+        :param section: The section the option is in (if any)
+        :param default: The value to return if the value is not set
+        :return: The value or default value
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            section_obj = configobj
+        else:
+            try:
+                section_obj = configobj[section]
+            except KeyError:
+                return default
+        return section_obj.get(name, default)
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            configobj[name] = value
+        else:
+            configobj.setdefault(section, {})[name] = value
+        self._set_configobj(configobj)
+
+    def _get_configobj(self):
+        try:
+            return ConfigObj(self._transport.get(self._filename),
+                             encoding='utf-8')
+        except errors.NoSuchFile:
+            return ConfigObj(encoding='utf-8')
+
+    def _set_configobj(self, configobj):
+        out_file = StringIO()
+        configobj.write(out_file)
+        out_file.seek(0)
+        self._transport.put_file(self._filename, out_file)

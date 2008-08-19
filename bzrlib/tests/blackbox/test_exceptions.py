@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,27 +16,50 @@
 
 """Tests for display of exceptions."""
 
+from cStringIO import StringIO
 import os
 import sys
 
-from bzrlib import bzrdir, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    repository,
+    trace,
+    )
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.errors import NotBranchError
+
 
 class TestExceptionReporting(TestCase):
 
     def test_report_exception(self):
         """When an error occurs, display bug report details to stderr"""
-        out, err = self.run_bzr("assert-fail", retcode=3)
+        try:
+            raise AssertionError("failed")
+        except AssertionError, e:
+            erf = StringIO()
+            trace.report_exception(sys.exc_info(), erf)
+        err = erf.getvalue()
+        self.assertContainsRe(err,
+            r'bzr: ERROR: exceptions\.AssertionError: failed\n')
+        self.assertContainsRe(err,
+            r'Please report a bug at https://bugs\.launchpad\.net/bzr/\+filebug')
+        self.assertContainsRe(err,
+            '(?m)^encoding: .*, fsenc: .*, lang: .*')
+        self.assertContainsRe(err,
+            '(?m)^plugins:$')
+
+    def test_exception_exitcode(self):
+        # we must use a subprocess, because the normal in-memory mechanism
+        # allows errors to propagate up through the test suite
+        out, err = self.run_bzr_subprocess(['assert-fail'],
+            universal_newlines=True,
+            retcode=errors.EXIT_INTERNAL_ERROR)
+        self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err,
                 r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
-        self.assertContainsRe(err, r'please send this report to')
-
-    # TODO: assert-fail doesn't need to always be present; we could just
-    # register (and unregister) it from tests that want to touch it.
-    #
-    # TODO: Some kind of test for the feature of invoking pdb
+        self.assertContainsRe(err, r'Please report a bug at')
     
 
 class TestDeprecationWarning(TestCaseInTempDir):
@@ -48,8 +71,9 @@ class TestDeprecationWarning(TestCaseInTempDir):
         try:
             os.mkdir('foo')
             bzrdir.BzrDirFormat5().initialize('foo')
-            out, err = self.run_bzr("status", "foo")
-            self.assertContainsRe(self._get_log(), "bzr upgrade")
+            out, err = self.run_bzr("status foo")
+            self.assertContainsRe(self._get_log(keep_log_file=True),
+                                  "bzr upgrade")
         finally:
             repository._deprecation_warning_done = True
 

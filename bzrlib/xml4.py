@@ -1,3 +1,5 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -12,38 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
-from bzrlib.revision import Revision        
+from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
-
-
-
-
 
 
 class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
-    You should use the serializer_v4 singleton."""
+    You should use the serializer_v4 singleton.
+    
+    v4 serialisation is no longer supported, only deserialisation.
+    """
     
     __slots__ = []
     
-    def _pack_inventory(self, inv):
-        """Convert to XML Element"""
-        # v4 serialization is not used any more.
-        raise NotImplementedError(self._pack_inventory)
-        e = Element('inventory')
-        e.text = '\n'
-        if inv.root.file_id not in (None, ROOT_ID):
-            e.set('file_id', inv.root.file_id)
-        for path, ie in inv.iter_entries():
-            e.append(self._pack_entry(ie))
-        return e
-
-
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -63,7 +50,6 @@ class _Serializer_v4(Serializer):
         # for now, leaving them as null in the xml form.  in a future
         # version it will be implied by nested elements.
         if ie.parent_id != ROOT_ID:
-            assert isinstance(ie.parent_id, basestring)
             e.set('parent_id', ie.parent_id)
 
         e.tail = '\n'
@@ -71,10 +57,11 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt):
+    def _unpack_inventory(self, elt, revision_id=None):
         """Construct from XML Element
+
+        :param revision_id: Ignored parameter used by xml5.
         """
-        assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID
         inv = Inventory(root_id)
         for e in elt:
@@ -86,8 +73,6 @@ class _Serializer_v4(Serializer):
 
 
     def _unpack_entry(self, elt):
-        assert elt.tag == 'entry'
-
         ## original format inventories don't have a parent_id for
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
@@ -144,7 +129,6 @@ class _Serializer_v4(Serializer):
             for i, parent_id in enumerate(rev.parents):
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                assert parent_id
                 p.set('revision_id', parent_id)
                 if i < len(rev.parent_sha1s):
                     p.set('revision_sha1', rev.parent_sha1s[i])
@@ -172,14 +156,11 @@ class _Serializer_v4(Serializer):
 
         if pelts:
             for p in pelts:
-                assert p.tag == 'revision_ref', \
-                       "bad parent node tag %r" % p.tag
                 rev.parent_ids.append(p.get('revision_id'))
                 rev.parent_sha1s.append(p.get('revision_sha1'))
             if precursor:
                 # must be consistent
                 prec_parent = rev.parent_ids[0]
-                assert prec_parent == precursor
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
             # give as an attribute

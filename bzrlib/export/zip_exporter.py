@@ -18,54 +18,69 @@
 """
 
 import os
-from bzrlib.trace import mutter
+import stat
+import time
 import zipfile
 
-def zip_exporter(tree, dest, root):
+from bzrlib import (
+    osutils,
+    )
+from bzrlib.export import _export_iter_entries
+from bzrlib.trace import mutter
+
+
+# Windows expects this bit to be set in the 'external_attr' section
+# Or it won't consider the entry a directory
+ZIP_DIRECTORY_BIT = (1 << 4)
+
+_FILE_ATTR = stat.S_IFREG
+_DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
+
+
+def zip_exporter(tree, dest, root, subdir):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be overwritten".
     """
-    import time
+    mutter('export version %r', tree)
 
     now = time.localtime()[:6]
-    mutter('export version %r', tree)
 
     compression = zipfile.ZIP_DEFLATED
     zipf = zipfile.ZipFile(dest, "w", compression)
 
-    inv = tree.inventory
-
     try:
-        entries = inv.iter_entries()
-        entries.next() # skip root
-        for dp, ie in entries:
-            # .bzrignore has no meaning outside of a working tree
-            # so do not export it
-            if dp == ".bzrignore":
-                continue
-
+        for dp, ie in _export_iter_entries(tree, subdir):
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
-            if ie.kind == "file": 
+            # zipfile.ZipFile switches all paths to forward
+            # slashes anyway, so just stick with that.
+            filename = osutils.pathjoin(root, dp).encode('utf8')
+            if ie.kind == "file":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp)),
+                            filename=filename,
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
+                # Directories must contain a trailing slash, to indicate
+                # to the zip routine that they are really directories and
+                # not just empty files.
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp)+os.sep),
+                            filename=filename + '/',
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _DIR_ATTR
                 zipf.writestr(zinfo,'')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp+".lnk")),
+                            filename=(filename + '.lnk'),
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, ie.symlink_target)
 
         zipf.close()

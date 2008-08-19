@@ -3,10 +3,13 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
+import cPickle
+import os
 import sys
 import thread
 import threading
 from _lsprof import Profiler, profiler_entry
+
 
 __all__ = ['profile', 'Stats']
 
@@ -29,8 +32,17 @@ def profile(f, *args, **kwds):
     p = Profiler()
     p.enable(subcalls=True)
     threading.setprofile(_thread_profile)
+    # Note: The except clause is needed below so that profiling data still
+    # gets dumped even when exceptions are encountered. The except clause code
+    # is taken straight from run_bzr_catch_errrors() in commands.py and ought
+    # to be kept in sync with it.
     try:
-        ret = f(*args, **kwds)
+        try:
+            ret = f(*args, **kwds)
+        except (KeyboardInterrupt, Exception), e:
+            import bzrlib.trace
+            bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+            ret = 3
     finally:
         p.disable()
         for pp in _g_threadmap.values():
@@ -104,8 +116,47 @@ class Stats(object):
         """Output profiling data in calltree format (for KCacheGrind)."""
         _CallTreeFilter(self.data).output(file)
 
+    def save(self, filename, format=None):
+        """Save profiling data to a file.
+
+        :param filename: the name of the output file
+        :param format: 'txt' for a text representation;
+            'callgrind' for calltree format;
+            otherwise a pickled Python object. A format of None indicates
+            that the format to use is to be found from the filename. If
+            the name starts with callgrind.out, callgrind format is used
+            otherwise the format is given by the filename extension.
+        """
+        if format is None:
+            basename = os.path.basename(filename)
+            if basename.startswith('callgrind.out'):
+                format = "callgrind"
+            else:
+                ext = os.path.splitext(filename)[1]
+                if len(ext) > 1:
+                    format = ext[1:]
+        outfile = open(filename, 'wb')
+        try:
+            if format == "callgrind":
+                self.calltree(outfile)
+            elif format == "txt":
+                self.pprint(file=outfile)
+            else:
+                self.freeze()
+                cPickle.dump(self, outfile, 2)
+        finally:
+            outfile.close()
+
 
 class _CallTreeFilter(object):
+    """Converter of a Stats object to input suitable for KCacheGrind.
+
+    This code is taken from http://ddaa.net/blog/python/lsprof-calltree
+    with the changes made by J.P. Calderone and Itamar applied. Note that
+    isinstance(code, str) needs to be used at times to determine if the code 
+    object is actually an external code object (with a filename, etc.) or
+    a Python built-in.
+    """
 
     def __init__(self, data):
         self.data = data
@@ -113,7 +164,7 @@ class _CallTreeFilter(object):
 
     def output(self, out_file):
         self.out_file = out_file        
-        print >> out_file, 'events: Ticks'
+        out_file.write('events: Ticks\n')
         self._print_summary()
         for entry in self.data:
             self._entry(entry)
@@ -123,36 +174,49 @@ class _CallTreeFilter(object):
         for entry in self.data:
             totaltime = int(entry.totaltime * 1000)
             max_cost = max(max_cost, totaltime)
-        print >> self.out_file, 'summary: %d' % (max_cost,)
+        self.out_file.write('summary: %d\n' % (max_cost,))
 
     def _entry(self, entry):
         out_file = self.out_file
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
-        #print >> out_file, 'ob=%s' % (code.co_filename,)
-        print >> out_file, 'fi=%s' % (code.co_filename,)
-        print >> out_file, 'fn=%s' % (label(code, True),)
-        print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
+        #out_file.write('ob=%s\n' % (code.co_filename,))
+        if isinstance(code, str):
+            out_file.write('fi=~\n')
+        else:
+            out_file.write('fi=%s\n' % (code.co_filename,))
+        out_file.write('fn=%s\n' % (label(code, True),))
+        if isinstance(code, str):
+            out_file.write('0  %s\n' % (inlinetime,))
+        else:
+            out_file.write('%d %d\n' % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
         if entry.calls:
             calls = entry.calls
         else:
             calls = []
+        if isinstance(code, str):
+            lineno = 0
+        else:
+            lineno = code.co_firstlineno
         for subentry in calls:
-            self._subentry(code.co_firstlineno, subentry)
-        print >> out_file
+            self._subentry(lineno, subentry)
+        out_file.write('\n')
 
     def _subentry(self, lineno, subentry):
         out_file = self.out_file
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
-        #print >> out_file, 'cob=%s' % (code.co_filename,)
-        print >> out_file, 'cfn=%s' % (label(code, True),)
-        print >> out_file, 'cfi=%s' % (code.co_filename,)
-        print >> out_file, 'calls=%d %d' % (
-            subentry.callcount, code.co_firstlineno)
-        print >> out_file, '%d %d' % (lineno, totaltime)
-
+        #out_file.write('cob=%s\n' % (code.co_filename,))
+        out_file.write('cfn=%s\n' % (label(code, True),))
+        if isinstance(code, str):
+            out_file.write('cfi=~\n')
+            out_file.write('calls=%d 0\n' % (subentry.callcount,))
+        else:
+            out_file.write('cfi=%s\n' % (code.co_filename,))
+            out_file.write('calls=%d %d\n' % (
+                subentry.callcount, code.co_firstlineno))
+        out_file.write('%d %d\n' % (lineno, totaltime))
 
 _fn2mod = {}
 
@@ -184,7 +248,7 @@ if __name__ == '__main__':
     import os
     sys.argv = sys.argv[1:]
     if not sys.argv:
-        print >> sys.stderr, "usage: lsprof.py <script> <arguments...>"
+        sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
     sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
     stats = profile(execfile, sys.argv[0], globals(), locals())

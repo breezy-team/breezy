@@ -55,14 +55,14 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root):
+    def _loader(tree, dest, root, subdir):
         mod = __import__(module, globals(), locals(), [funcname])
         func = getattr(mod, funcname)
-        return func(tree, dest, root)
+        return func(tree, dest, root, subdir)
     register_exporter(scheme, extensions, _loader)
 
 
-def export(tree, dest, format=None, root=None):
+def export(tree, dest, format=None, root=None, subdir=None):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -76,6 +76,9 @@ def export(tree, dest, format=None, root=None):
                  If root is None, the default root will be
                  selected as the destination without its
                  extension.
+    :param subdir: A starting directory within the tree. None means to export
+        the entire tree, and anything else should specify the relative path to
+        a directory to start exporting from.
     """
     global _exporters, _exporter_extensions
 
@@ -92,12 +95,18 @@ def export(tree, dest, format=None, root=None):
 
     if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
-    return _exporters[format](tree, dest, root)
+    tree.lock_read()
+    try:
+        return _exporters[format](tree, dest, root, subdir)
+    finally:
+        tree.unlock()
 
 
 def get_root_name(dest):
     """Get just the root name for an export.
 
+    >>> get_root_name('../mytest.tar')
+    'mytest'
     >>> get_root_name('mytar.tar')
     'mytar'
     >>> get_root_name('mytar.tar.bz2')
@@ -121,6 +130,28 @@ def get_root_name(dest):
         if dest.endswith(ext):
             return dest[:-len(ext)]
     return dest
+
+
+def _export_iter_entries(tree, subdir):
+    """Iter the entries for tree suitable for exporting.
+
+    :param tree: A tree object.
+    :param subdir: None or the path of a directory to start exporting from.
+    """
+    inv = tree.inventory
+    if subdir is None:
+        subdir_id = None
+    else:
+        subdir_id = inv.path2id(subdir)
+    entries = inv.iter_entries(subdir_id)
+    if subdir is None:
+        entries.next() # skip root
+    for entry in entries:
+        # The .bzr* namespace is reserved for "magic" files like
+        # .bzrignore and .bzrrules - do not export these
+        if entry[0].startswith(".bzr"):
+            continue
+        yield entry
 
 
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter')

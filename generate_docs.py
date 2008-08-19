@@ -83,7 +83,8 @@ Available OUTPUT_FORMAT:
         outfile = open(outfilename,"w")
 
     if options.show_filename and (outfilename != "-"):
-        print >>sys.stdout, outfilename
+        sys.stdout.write(outfilename)
+        sys.stdout.write('\n')
     
     infogen_mod.infogen(options, outfile)
 
@@ -93,7 +94,8 @@ def print_extended_help(option, opt, value, parser):
     Prints out the examples stored in the docstring. 
 
     """
-    print >>sys.stdout, __doc__ % {"prog":sys.argv[0]}
+    sys.stdout.write(__doc__ % {"prog":sys.argv[0]})
+    sys.stdout.write('\n')
     sys.exit(0)
 
 if __name__ == '__main__':

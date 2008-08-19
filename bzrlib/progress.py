@@ -1,50 +1,56 @@
 # Copyright (C) 2005 Aaron Bentley <aaron.bentley@utoronto.ca>
-# Copyright (C) 2005, 2006 Canonical <canonical.com>
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Simple text-mode progress indicator.
+"""Progress indicators.
 
-To display an indicator, create a ProgressBar object.  Call it,
-passing Progress objects indicating the current state.  When done,
-call clear().
+The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
+will maintain a ProgressBarStack for you.
 
-Progress is suppressed when output is not sent to a terminal, so as
-not to clutter log files.
+For direct use, the factory ProgressBar will return an auto-detected progress
+bar that should match your terminal type. You can manually create a
+ProgressBarStack too if you need multiple levels of cooperating progress bars.
+Note that bzrlib's internal functions use the ui module, so if you are using
+bzrlib it really is best to use bzrlib.ui.ui_factory.
 """
-
-# TODO: should be a global option e.g. --silent that disables progress
-# indicators, preferably without needing to adjust all code that
-# potentially calls them.
-
-# TODO: If not on a tty perhaps just print '......' for the benefit of IDEs, etc
 
 # TODO: Optionally show elapsed time instead/as well as ETA; nicer
 # when the rate is unpredictable
-
 
 import sys
 import time
 import os
 
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    )
+""")
+
 from bzrlib.trace import mutter
 
 
 def _supports_progress(f):
+    """Detect if we can use pretty progress bars on the output stream f.
+
+    If this returns true we expect that a human may be looking at that 
+    output, and that we can repaint a line to update it.
+    """
     isatty = getattr(f, 'isatty', None)
     if isatty is None:
         return False
@@ -69,7 +75,7 @@ def ProgressBar(to_file=None, **kwargs):
         if _supports_progress(to_file):
             return TTYProgressBar(to_file=to_file, **kwargs)
         else:
-            return DotsProgressBar(to_file=to_file, **kwargs)
+            return DummyProgress(to_file=to_file, **kwargs)
     else:
         # Minor sanitation to prevent spurious errors
         requested_bar_type = requested_bar_type.lower().strip()
@@ -174,7 +180,7 @@ class _BaseProgressBar(object):
         self._stack = _stack
         # seed throttler
         self.MIN_PAUSE = 0.1 # seconds
-        now = time.clock()
+        now = time.time()
         # starting now
         self.start_time = now
         # next update should not throttle
@@ -183,7 +189,6 @@ class _BaseProgressBar(object):
     def finished(self):
         """Return this bar to its progress stack."""
         self.clear()
-        assert self._stack is not None
         self._stack.return_pb(self)
 
     def note(self, fmt_string, *args, **kwargs):
@@ -288,15 +293,11 @@ class TTYProgressBar(_BaseProgressBar):
         self.child_fraction = 0
         self._have_output = False
     
-
     def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
         # time.time consistently takes 40/4000 ms = 0.01 ms.
-        # but every single update to the pb invokes it.
-        # so we use time.clock which takes 20/4000 ms = 0.005ms
-        # on the downside, time.clock() appears to have approximately
-        # 10ms granularity, so we treat a zero-time change as 'throttled.'
-        now = time.clock()
+        # time.clock() is faster, but gives us CPU time, not wall-clock time
+        now = time.time()
         if self.start_time is not None and (now - self.start_time) < 1:
             return True
         if old_msg != self.last_msg:
@@ -313,7 +314,7 @@ class TTYProgressBar(_BaseProgressBar):
         return False
         
     def tick(self):
-        self.update(self.last_msg, self.last_cnt, self.last_total, 
+        self.update(self.last_msg, self.last_cnt, self.last_total,
                     self.child_fraction)
 
     def child_update(self, message, current, total):
@@ -323,13 +324,11 @@ class TTYProgressBar(_BaseProgressBar):
                 pass
             elif self.last_cnt + child_fraction <= self.last_total:
                 self.child_fraction = child_fraction
-            else:
-                mutter('not updating child fraction')
         if self.last_msg is None:
             self.last_msg = ''
         self.tick()
 
-    def update(self, msg, current_cnt=None, total_cnt=None, 
+    def update(self, msg, current_cnt=None, total_cnt=None,
                child_fraction=0):
         """Update and redraw progress bar."""
         if msg is None:
@@ -427,13 +426,11 @@ class TTYProgressBar(_BaseProgressBar):
             bar_str = ''
 
         m = spin_str + bar_str + self.last_msg + count_str + pct_str + eta_str
-
-        assert len(m) < self.width
-        self.to_file.write('\r' + m.ljust(self.width - 1))
+        self.to_file.write('\r%-*.*s' % (self.width - 1, self.width - 1, m))
         self._have_output = True
         #self.to_file.flush()
             
-    def clear(self):        
+    def clear(self):
         if self._have_output:
             self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         self._have_output = False
@@ -456,7 +453,8 @@ class ChildProgress(_BaseProgressBar):
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.current = current_cnt
-        self.total = total_cnt
+        if total_cnt is not None:
+            self.total = total_cnt
         self.message = msg
         self.child_fraction = 0
         self.tick()
@@ -485,7 +483,24 @@ class ChildProgress(_BaseProgressBar):
     def note(self, *args, **kwargs):
         self.parent.note(*args, **kwargs)
 
- 
+
+class InstrumentedProgress(TTYProgressBar):
+    """TTYProgress variant that tracks outcomes"""
+
+    def __init__(self, *args, **kwargs):
+        self.always_throttled = True
+        self.never_throttle = False
+        TTYProgressBar.__init__(self, *args, **kwargs)
+
+    def throttle(self, old_message):
+        if self.never_throttle:
+            result =  False
+        else:
+            result = TTYProgressBar.throttle(self, old_message)
+        if result is False:
+            self.always_throttled = False
+
+
 def str_tdelta(delt):
     if delt is None:
         return "-:--:--"
@@ -508,14 +523,12 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     if current > total:
         return None                     # wtf?
 
-    elapsed = time.clock() - start_time
+    elapsed = time.time() - start_time
 
     if elapsed < 2.0:                   # not enough time to estimate
         return None
     
     total_duration = float(elapsed) * float(total) / float(current)
-
-    assert total_duration >= elapsed
 
     if last_updates and len(last_updates) >= n_recent:
         avg = sum(last_updates) / float(len(last_updates))
@@ -543,42 +556,4 @@ class ProgressPhase(object):
             self.cur_phase = 0
         else:
             self.cur_phase += 1
-        assert self.cur_phase < self.total 
         self.pb.update(self.message, self.cur_phase, self.total)
-
-
-def run_tests():
-    import doctest
-    result = doctest.testmod()
-    if result[1] > 0:
-        if result[0] == 0:
-            print "All tests passed"
-    else:
-        print "No tests to run"
-
-
-def demo():
-    sleep = time.sleep
-    
-    print 'dumb-terminal test:'
-    pb = DotsProgressBar()
-    for i in range(100):
-        pb.update('Leoparden', i, 99)
-        sleep(0.1)
-    sleep(1.5)
-    pb.clear()
-    sleep(1.5)
-    
-    print 'smart-terminal test:'
-    pb = ProgressBar(show_pct=True, show_bar=True, show_spinner=False)
-    for i in range(100):
-        pb.update('Elephanten', i, 99)
-        sleep(0.1)
-    sleep(2)
-    pb.clear()
-    sleep(1)
-
-    print 'done!'
-
-if __name__ == "__main__":
-    demo()

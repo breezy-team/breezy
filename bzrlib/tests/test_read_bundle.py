@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,11 +23,41 @@ import bzrlib.bundle
 from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
+from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    adapter = TransportTestProviderAdapter()
+    for test in tests.iter_suite_tests(standard_tests):
+        result.addTests(adapter.adapt(test))
+    return result
+
+
+def create_bundle_file(test_case):
+    test_case.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
+
+    format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+
+    bzrdir = format.initialize('tree')
+    repo = bzrdir.create_repository()
+    branch = repo.bzrdir.create_branch()
+    wt = branch.bzrdir.create_workingtree()
+
+    wt.add(['a', 'subdir/'])
+    wt.commit('new project', rev_id='commit-1')
+
+    out = cStringIO.StringIO()
+    rev_ids = write_bundle(wt.branch.repository,
+                           wt.get_parent_ids()[0], 'null:', out)
+    out.seek(0)
+    return out, wt
 
 
 class TestReadBundleFromURL(TestTransportImplementation):
@@ -37,50 +67,30 @@ class TestReadBundleFromURL(TestTransportImplementation):
         return bzrlib.urlutils.join(self._server.get_url(), relpath)
 
     def create_test_bundle(self):
-        # Can't use self.get_transport() because that asserts that 
-        # it is not readonly, so just skip tests where the server is readonly
-        self._transport = self.get_transport()
-        #if isinstance(self._transport, MemoryTransport):
-        #    return None
-        self.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
-
-        format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-
-
-        bzrdir = format.initialize('tree')
-        repo = bzrdir.create_repository()
-        branch = repo.bzrdir.create_branch()
-        wt = branch.bzrdir.create_workingtree()
-
-        wt.add(['a', 'subdir/'])
-        wt.commit('new project', rev_id='commit-1')
-
-        out = cStringIO.StringIO()
-        rev_ids = write_bundle(wt.branch.repository,
-                               wt.get_parent_ids()[0], None, out)
-        out.seek(0)
-        if self._transport.is_readonly():
+        out, wt = create_bundle_file(self)
+        if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
             f.write(out.getvalue())
             f.close()
         else:
-            self._transport.put_file('test_bundle', out)
+            self.get_transport().put_file('test_bundle', out)
             self.log('Put to: %s', self.get_url('test_bundle'))
         return wt
 
     def test_read_bundle_from_url(self):
+        self._captureVar('BZR_NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return
-
         info = bzrlib.bundle.read_bundle_from_url(
-                    self.get_url('test_bundle'))
-        bundle_tree = info.revision_tree(wt.branch.repository, info.target)
-        self.assertEqual('commit-1', bundle_tree.revision_id)
+                    unicode(self.get_url('test_bundle')))
+        revision = info.real_revisions[-1]
+        self.assertEqual('commit-1', revision.revision_id)
 
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file
         # should fail with NotABundle
+        self._captureVar('BZR_NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return
@@ -91,3 +101,14 @@ class TestReadBundleFromURL(TestTransportImplementation):
         self.assertRaises(errors.NotABundle, 
             bzrlib.bundle.read_bundle_from_url, 
             self.get_url('tree/a'))
+
+    def test_read_mergeable_populates_possible_transports(self):
+        self._captureVar('BZR_NO_SMART_VFS', None)
+        wt = self.create_test_bundle()
+        if wt is None:
+            return
+        possible_transports = []
+        url = unicode(self.get_url('test_bundle'))
+        info = bzrlib.bundle.read_mergeable_from_url(url,
+            possible_transports=possible_transports)
+        self.assertEqual(1, len(possible_transports))

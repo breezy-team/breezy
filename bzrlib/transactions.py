@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -79,7 +79,8 @@ class ReadOnlyTransaction(object):
 
     def set_cache_size(self, size):
         """Set a new cache size."""
-        assert -1 <= size
+        if size < -1:
+            raise ValueError(size)
         self._limit = size
         self._trim()
 

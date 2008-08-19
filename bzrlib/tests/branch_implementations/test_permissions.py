@@ -1,5 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,6 +34,7 @@ from StringIO import StringIO
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.remote import RemoteBranchFormat
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_permissions import chmod_r, check_mode_r
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -45,6 +45,10 @@ from bzrlib.workingtree import WorkingTree
 class TestPermissions(TestCaseWithTransport):
 
     def test_new_branch(self):
+        if isinstance(self.branch_format, RemoteBranchFormat):
+            # Remote branch format have no permission logic in them; there's
+            # nothing to test here.
+            return
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
         # also, these are BzrBranch format specific things..
@@ -52,12 +56,16 @@ class TestPermissions(TestCaseWithTransport):
         mode = stat.S_IMODE(os.stat('a').st_mode)
         t = self.make_branch_and_tree('.')
         b = t.branch
+        self.assertEqualMode(mode, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(mode & ~07111, b.bzrdir._get_file_mode())
         self.assertEqualMode(mode, b.control_files._dir_mode)
         self.assertEqualMode(mode & ~07111, b.control_files._file_mode)
 
         os.mkdir('b')
         os.chmod('b', 02777)
         b = self.make_branch('b')
+        self.assertEqualMode(02777, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(00666, b.bzrdir._get_file_mode())
         self.assertEqualMode(02777, b.control_files._dir_mode)
         self.assertEqualMode(00666, b.control_files._file_mode)
         check_mode_r(self, 'b/.bzr', 00666, 02777)
@@ -65,6 +73,8 @@ class TestPermissions(TestCaseWithTransport):
         os.mkdir('c')
         os.chmod('c', 02750)
         b = self.make_branch('c')
+        self.assertEqualMode(02750, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(00640, b.bzrdir._get_file_mode())
         self.assertEqualMode(02750, b.control_files._dir_mode)
         self.assertEqualMode(00640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
@@ -72,6 +82,8 @@ class TestPermissions(TestCaseWithTransport):
         os.mkdir('d')
         os.chmod('d', 0700)
         b = self.make_branch('d')
+        self.assertEqualMode(0700, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0600, b.bzrdir._get_file_mode())
         self.assertEqualMode(0700, b.control_files._dir_mode)
         self.assertEqualMode(0600, b.control_files._file_mode)
         check_mode_r(self, 'd/.bzr', 00600, 00700)

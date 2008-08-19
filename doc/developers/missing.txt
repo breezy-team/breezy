@@ -1,0 +1,27 @@
+Missing
+=======
+
+Missing is used to find out the differences between the current branch and
+another branch.
+
+The performance analysis itself brings no further points than the
+incremental-push-pull one.
+
+More importantly, the UI have been considered not optimal: missing finds and
+displays the differences between two branches, presenting the revisions that
+are not common to both branches as two sets:
+
+* the revisions that are present only in the current branch,
+* the revisions that are present only in the other branch.
+
+A quick and dirty survey indicates that most of the users are interested in
+only one set of revisions at a time.
+
+From a performance point of view, it may be more appropriate to calculate only
+the set the user is asking for.
+
+It has been proposed that the missing command be deprecated in favor of a
+--dry-run option for the push, pull, merge commands.
+
+In the mean time, the missing command stays interesting as it provides an easy
+way to test, measure and optimize graph differences processing.

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,9 @@
 
 import os
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.inventory import InventoryFile
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -41,15 +44,12 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def check_exist(self, tree):
         """Just check that both files have the right executable bits set"""
-        measured = []
-        for cn, ie in tree.inventory.iter_entries():
-            if isinstance(ie, InventoryFile):
-                measured.append((cn, ie.executable))
-        self.assertEqual([('a', True), ('b', False)], measured)
+        tree.lock_read()
         self.failUnless(tree.is_executable(self.a_id),
                         "'a' lost the execute bit")
         self.failIf(tree.is_executable(self.b_id),
                     "'b' gained an execute bit")
+        tree.unlock()
 
     def check_empty(self, tree, ignore_inv=False):
         """Check that the files are truly missing
@@ -57,6 +57,7 @@ class TestExecutable(TestCaseWithWorkingTree):
                 the inventory still shows them, so don't assert that
                 the inventory is empty, just that the tree doesn't have them
         """
+        tree.lock_read()
         if not ignore_inv:
             self.assertEqual(
                 [('', tree.inventory.root)],
@@ -65,11 +66,11 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.failIf(tree.has_filename('a'))
         self.failIf(tree.has_id(self.b_id))
         self.failIf(tree.has_filename('b'))
+        tree.unlock()
 
     def commit_and_branch(self):
         """Commit the current tree, and create a second tree"""
         self.wt.commit('adding a,b', rev_id='r1')
-
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
         # TODO: Maybe this should be a blackbox test
@@ -126,7 +127,7 @@ class TestExecutable(TestCaseWithWorkingTree):
 
         rev_tree = self.wt.branch.repository.revision_tree('r1')
         # Now revert back to the previous commit
-        self.wt.revert([], rev_tree, backups=False)
+        self.wt.revert(old_tree=rev_tree, backups=False)
 
         self.check_exist(self.wt)
 
@@ -157,7 +158,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         # so that the second branch can pull the changes
         # and make sure that the executable bit has been copied
         rev_tree = self.wt.branch.repository.revision_tree('r1')
-        self.wt.revert([], rev_tree, backups=False)
+        self.wt.revert(old_tree=rev_tree, backups=False)
         self.wt.commit('resurrected', rev_id='r3')
 
         self.check_exist(self.wt)
@@ -174,6 +175,25 @@ class TestExecutable(TestCaseWithWorkingTree):
         """
         self.wt.commit('adding a,b', rev_id='r1')
         rev_tree = self.wt.branch.repository.revision_tree('r1')
-        self.wt.revert([], rev_tree, backups=False)
+        self.wt.revert(old_tree=rev_tree, backups=False)
         self.check_exist(self.wt)
 
+    def test_commit_with_exec_from_basis(self):
+        self.wt._is_executable_from_path_and_stat = \
+            self.wt._is_executable_from_path_and_stat_from_basis
+        rev_id1 = self.wt.commit('one')
+        rev_tree1 = self.wt.branch.repository.revision_tree(rev_id1)
+        a_executable = rev_tree1.inventory[self.a_id].executable
+        b_executable = rev_tree1.inventory[self.b_id].executable
+        self.assertIsNot(None, a_executable)
+        self.assertTrue(a_executable)
+        self.assertIsNot(None, b_executable)
+        self.assertFalse(b_executable)
+
+    def test_use_exec_from_basis(self):
+        if osutils.supports_executable():
+            self.assertEqual(self.wt._is_executable_from_path_and_stat_from_stat,
+                             self.wt._is_executable_from_path_and_stat)
+        else:
+            self.assertEqual(self.wt._is_executable_from_path_and_stat_from_basis,
+                             self.wt._is_executable_from_path_and_stat)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,12 @@ from cStringIO import StringIO
 import os
 import pprint
 
+from bzrlib import (
+    osutils,
+    timestamp,
+    )
 import bzrlib.errors
+from bzrlib.bundle import apply_bundle
 from bzrlib.errors import (TestamentMismatch, BzrError, 
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
@@ -72,19 +77,38 @@ class RevisionInfo(object):
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
-                assert key_end is not None
-                key = property[:key_end].encode('utf-8')
-                value = property[key_end+2:].encode('utf-8')
+                if key_end == -1:
+                    if not property.endswith(':'):
+                        raise ValueError(property)
+                    key = str(property[:-1])
+                    value = ''
+                else:
+                    key = str(property[:key_end])
+                    value = property[key_end+2:]
                 rev.properties[key] = value
 
         return rev
+
+    @staticmethod
+    def from_revision(revision):
+        revision_info = RevisionInfo(revision.revision_id)
+        date = timestamp.format_highres_date(revision.timestamp,
+                                             revision.timezone)
+        revision_info.date = date
+        revision_info.timezone = revision.timezone
+        revision_info.timestamp = revision.timestamp
+        revision_info.message = revision.message.split('\n')
+        revision_info.properties = [': '.join(p) for p in
+                                    revision.properties.iteritems()]
+        return revision_info
 
 
 class BundleInfo(object):
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
-    def __init__(self):
+    def __init__(self, bundle_format=None):
+        self.bundle_format = None
         self.committer = None
         self.date = None
         self.message = None
@@ -101,6 +125,9 @@ class BundleInfo(object):
         self.timestamp = None
         self.timezone = None
 
+        # Have we checked the repository yet?
+        self._validated_revisions_against_repo = False
+
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
@@ -109,7 +136,7 @@ class BundleInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from bzrlib.bundle.serializer import unpack_highres_date
+        from bzrlib.timestamp import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -170,8 +197,10 @@ class BundleInfo(object):
     def revision_tree(self, repository, revision_id, base=None):
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
-        assert base != revision_id
-        self._validate_references_from_repository(repository)
+        if base == revision_id:
+            raise AssertionError()
+        if not self._validated_revisions_against_repo:
+            self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
         bundle_tree = BundleTree(repository.revision_tree(base), 
@@ -223,7 +252,8 @@ class BundleInfo(object):
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository, 
                                                           revision_id)
-                local_sha1 = testament.as_sha1()
+                local_sha1 = self._testament_sha1_from_revision(repository,
+                                                                revision_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
@@ -232,40 +262,24 @@ class BundleInfo(object):
             elif revision_id not in checked:
                 missing[revision_id] = sha1
 
-        for inv_id, sha1 in inv_to_sha.iteritems():
-            if repository.has_revision(inv_id):
-                # Note: branch.get_inventory_sha1() just returns the value that
-                # is stored in the revision text, and that value may be out
-                # of date. This is bogus, because that means we aren't
-                # validating the actual text, just that we wrote and read the
-                # string. But for now, what the hell.
-                local_sha1 = repository.get_inventory_sha1(inv_id)
-                if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For inventory id {%s}' 
-                                   'local: %s, bundle: %s' % 
-                                   (inv_id, local_sha1, sha1))
-                else:
-                    count += 1
-
         if len(missing) > 0:
             # I don't know if this is an error yet
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the bundle.' % count)
+        self._validated_revisions_against_repo = True
 
     def _validate_inventory(self, inv, revision_id):
         """At this point we should have generated the BundleTree,
         so build up an inventory, and make sure the hashes match.
         """
-
-        assert inv is not None
-
         # Now we should have a complete inventory entry.
         s = serializer_v5.write_inventory_to_string(inv)
         sha1 = sha_string(s)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)
-        assert rev.revision_id == revision_id
+        if rev.revision_id != revision_id:
+            raise AssertionError()
         if sha1 != rev.inventory_sha1:
             open(',,bogus-inv', 'wb').write(s)
             warning('Inventory sha hash mismatch for revision %s. %s'
@@ -279,9 +293,11 @@ class BundleInfo(object):
         
         rev = self.get_revision(revision_id)
         rev_info = self.get_revision_info(revision_id)
-        assert rev.revision_id == rev_info.revision_id
-        assert rev.revision_id == revision_id
-        sha1 = StrictTestament(rev, inventory).as_sha1()
+        if not (rev.revision_id == rev_info.revision_id):
+            raise AssertionError()
+        if not (rev.revision_id == revision_id):
+            raise AssertionError()
+        sha1 = self._testament_sha1(rev, inventory)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -298,7 +314,10 @@ class BundleInfo(object):
 
         def get_rev_id(last_changed, path, kind):
             if last_changed is not None:
-                changed_revision_id = last_changed.decode('utf-8')
+                # last_changed will be a Unicode string because of how it was
+                # read. Convert it back to utf8.
+                changed_revision_id = osutils.safe_revision_id(last_changed,
+                                                               warn=False)
             else:
                 changed_revision_id = revision_id
             bundle_tree.note_last_changed(path, changed_revision_id)
@@ -315,7 +334,6 @@ class BundleInfo(object):
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
-                    assert value in ('yes', 'no'), value
                     val = (value == 'yes')
                     bundle_tree.note_executable(new_path, val)
                 elif name == 'target':
@@ -325,11 +343,12 @@ class BundleInfo(object):
             return last_changed, encoding
 
         def do_patch(path, lines, encoding):
-            if encoding is not None:
-                assert encoding == 'base64'
+            if encoding == 'base64':
                 patch = base64.decodestring(''.join(lines))
-            else:
+            elif encoding is None:
                 patch =  ''.join(lines)
+            else:
+                raise ValueError(encoding)
             bundle_tree.note_patch(path, patch)
 
         def renamed(kind, extra, lines):
@@ -371,7 +390,9 @@ class BundleInfo(object):
             if not info[1].startswith('file-id:'):
                 raise BzrError('The file-id should follow the path for an add'
                         ': %r' % extra)
-            file_id = info[1][8:]
+            # This will be Unicode because of how the stream is read. Turn it
+            # back into a utf8 file_id
+            file_id = osutils.safe_file_id(info[1][8:], warn=False)
 
             bundle_tree.note_id(file_id, path, kind)
             # this will be overridden in extra_info if executable is specified.
@@ -422,6 +443,22 @@ class BundleInfo(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
+    def install_revisions(self, target_repo, stream_input=True):
+        """Install revisions and return the target revision
+
+        :param target_repo: The repository to install into
+        :param stream_input: Ignored by this implementation.
+        """
+        apply_bundle.install_bundle(target_repo, self)
+        return self.target
+
+    def get_merge_request(self, target_repo):
+        """Provide data for performing a merge
+
+        Returns suggested base, suggested target, and patch verification status
+        """
+        return None, self.target, 'inapplicable'
+
 
 class BundleTree(Tree):
     def __init__(self, base_tree, revision_id):
@@ -445,8 +482,10 @@ class BundleTree(Tree):
 
     def note_rename(self, old_path, new_path):
         """A file/directory has been renamed from old_path => new_path"""
-        assert new_path not in self._renamed
-        assert old_path not in self._renamed_r
+        if new_path in self._renamed:
+            raise AssertionError(new_path)
+        if old_path in self._renamed_r:
+            raise AssertionError(old_path)
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
@@ -482,7 +521,8 @@ class BundleTree(Tree):
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
-        assert new_path[:1] not in ('\\', '/')
+        if new_path[:1] in ('\\', '/'):
+            raise ValueError(new_path)
         old_path = self._renamed.get(new_path)
         if old_path is not None:
             return old_path
@@ -508,7 +548,8 @@ class BundleTree(Tree):
         """Get the new_path (path in the target_tree) for the file at old_path
         in the base tree.
         """
-        assert old_path[:1] not in ('\\', '/')
+        if old_path[:1] in ('\\', '/'):
+            raise ValueError(old_path)
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
             return new_path
@@ -577,7 +618,8 @@ class BundleTree(Tree):
                 then be cached.
         """
         base_id = self.old_contents_id(file_id)
-        if base_id is not None:
+        if (base_id is not None and
+            base_id != self.base_tree.inventory.root.file_id):
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
@@ -586,11 +628,13 @@ class BundleTree(Tree):
             if (patch_original is None and 
                 self.get_kind(file_id) == 'directory'):
                 return StringIO()
-            assert patch_original is not None, "None: %s" % file_id
+            if patch_original is None:
+                raise AssertionError("None: %s" % file_id)
             return patch_original
 
-        assert not file_patch.startswith('\\'), \
-            'Malformed patch for %s, %r' % (file_id, file_patch)
+        if file_patch.startswith('\\'):
+            raise ValueError(
+                'Malformed patch for %s, %r' % (file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
     def get_symlink_target(self, file_id):
@@ -643,25 +687,17 @@ class BundleTree(Tree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
-
-        assert self.base_tree is not None
         base_inv = self.base_tree.inventory
-        root_id = base_inv.root.file_id
-        try:
-            # New inventories have a unique root_id
-            inv = Inventory(root_id, self.revision_id)
-        except TypeError:
-            inv = Inventory(revision_id=self.revision_id)
-        inv.root.revision = self.get_last_changed(root_id)
+        inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
             if path is None:
                 return
-            parent_path = dirname(path)
-            if parent_path == u'':
-                parent_id = root_id
+            if path == '':
+                parent_id = None
             else:
+                parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
             kind = self.get_kind(file_id)
@@ -688,8 +724,6 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            if file_id == inv.root.file_id:
-                continue
             add_entry(file_id)
 
         return inv

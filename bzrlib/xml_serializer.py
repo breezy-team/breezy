@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,43 +22,65 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
+from bzrlib import registry
 from bzrlib.trace import mutter, warning
 
 try:
-    from cElementTree import (ElementTree, SubElement, Element,
-                              XMLTreeBuilder, fromstring, tostring)
-    import elementtree
+    try:
+        # it's in this package in python2.5
+        from xml.etree.cElementTree import (ElementTree, SubElement, Element,
+            XMLTreeBuilder, fromstring, tostring)
+        import xml.etree as elementtree
+    except ImportError:
+        from cElementTree import (ElementTree, SubElement, Element,
+                                  XMLTreeBuilder, fromstring, tostring)
+        import elementtree.ElementTree
+    ParseError = SyntaxError
 except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
            " and make sure it's on your PYTHONPATH")
+    # this copy is shipped with bzr
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
     import util.elementtree as elementtree
+    from xml.parsers.expat import ExpatError as ParseError
 
 from bzrlib import errors
 
 
 class Serializer(object):
     """Abstract object serialize/deserialize"""
+
     def write_inventory(self, inv, f):
         """Write inventory to a file"""
-        elt = self._pack_inventory(inv)
-        self._write_element(elt, f)
+        raise NotImplementedError(self.write_inventory)
 
     def write_inventory_to_string(self, inv):
-        return tostring(self._pack_inventory(inv)) + '\n'
+        raise NotImplementedError(self.write_inventory_to_string)
 
-    def read_inventory_from_string(self, xml_string):
+    def read_inventory_from_string(self, xml_string, revision_id=None):
+        """Read xml_string into an inventory object.
+
+        :param xml_string: The xml to read.
+        :param revision_id: If not-None, the expected revision id of the
+            inventory. Some serialisers use this to set the results' root
+            revision. This should be supplied for deserialising all
+            from-repository inventories so that xml5 inventories that were
+            serialised without a revision identifier can be given the right
+            revision id (but not for working tree inventories where users can
+            edit the data without triggering checksum errors or anything).
+        """
         try:
-            return self._unpack_inventory(fromstring(xml_string))
-        except SyntaxError, e:
+            return self._unpack_inventory(fromstring(xml_string), revision_id)
+        except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
-    def read_inventory(self, f):
+    def read_inventory(self, f, revision_id=None):
         try:
-            return self._unpack_inventory(self._read_element(f))
-        except SyntaxError, e:
+            return self._unpack_inventory(self._read_element(f),
+                revision_id=None)
+        except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def write_revision(self, rev, f):
@@ -146,3 +168,15 @@ def _escape_cdata(text, encoding=None, replace=None):
         elementtree.ElementTree._raise_serialization_error(text)
 
 elementtree.ElementTree._escape_cdata = _escape_cdata
+
+
+class SerializerRegistry(registry.Registry):
+    """Registry for serializer objects"""
+
+
+format_registry = SerializerRegistry()
+format_registry.register_lazy('4', 'bzrlib.xml4', 'serializer_v4')
+format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
+format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
+format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')
+format_registry.register_lazy('8', 'bzrlib.xml8', 'serializer_v8')

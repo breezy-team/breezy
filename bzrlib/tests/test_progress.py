@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,33 +19,24 @@ from StringIO import StringIO
 
 from bzrlib import errors
 from bzrlib.progress import (
-        DummyProgress, ChildProgress,
+        DummyProgress,
+        ChildProgress,
         TTYProgressBar,
         DotsProgressBar,
         ProgressBarStack,
+        InstrumentedProgress,
         )
 from bzrlib.tests import TestCase
 
 
 class FakeStack:
+
     def __init__(self, top):
         self.__top = top
 
     def top(self):
         return self.__top
 
-class InstrumentedProgress(TTYProgressBar):
-    """TTYProgress variant that tracks outcomes"""
-
-    def __init__(self, *args, **kwargs):
-        self.always_throttled = True
-        TTYProgressBar.__init__(self, *args, **kwargs)
-
-    def throttle(self, old_message):
-        result = TTYProgressBar.throttle(self, old_message)
-        if result is False:
-            self.always_throttled = False
-        
 
 class _TTYStringIO(StringIO):
     """A helper class which makes a StringIO look like a terminal"""
@@ -62,6 +53,7 @@ class _NonTTYStringIO(StringIO):
 
 
 class TestProgress(TestCase):
+
     def setUp(self):
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
@@ -243,19 +235,27 @@ class TestProgressTypes(TestCase):
                          '\r                   \r',
                          out.getvalue())
 
-    def test_dots_progress(self):
-        # Make sure the ProgressBarStack thinks it is
-        # not writing out to a terminal, and thus uses a 
-        # DotsProgressBar
+    def test_noninteractive_progress(self):
         out = _NonTTYStringIO()
         pb = self.get_nested(out, 'xterm')
+        self.assertIsInstance(pb, DummyProgress)
+        try:
+            pb.update('foo', 1, 2)
+            pb.update('bar', 2, 2)
+        finally:
+            pb.finished()
+        self.assertEqual('', out.getvalue())
+
+    def test_dots_progress(self):
+        # make sure we get the right progress bar when not on a terminal
+        out = _NonTTYStringIO()
+        pb = self.get_nested(out, 'xterm', 'dots')
         self.assertIsInstance(pb, DotsProgressBar)
         try:
             pb.update('foo', 1, 2)
             pb.update('bar', 2, 2)
         finally:
             pb.finished()
-
         self.assertEqual('foo: .'
                          '\nbar: .'
                          '\n',
@@ -267,16 +267,14 @@ class TestProgressTypes(TestCase):
         out = cStringIO.StringIO()
         pb = self.get_nested(out, 'xterm')
         pb.finished()
-        self.assertIsInstance(pb, DotsProgressBar)
+        self.assertIsInstance(pb, DummyProgress)
 
     def test_dumb_progress(self):
-        # Make sure the ProgressBarStack thinks it is writing out to a 
-        # terminal, but it is the emacs 'dumb' terminal, so it uses
-        # Dots
+        # using a terminal that can't do cursor movement
         out = _TTYStringIO()
         pb = self.get_nested(out, 'dumb')
         pb.finished()
-        self.assertIsInstance(pb, DotsProgressBar)
+        self.assertIsInstance(pb, DummyProgress)
 
     def test_progress_env_tty(self):
         # The environ variable BZR_PROGRESS_BAR controls what type of
@@ -289,13 +287,6 @@ class TestProgressTypes(TestCase):
         pb.finished()
         # Even though we are not a tty, the env_var will override
         self.assertIsInstance(pb, TTYProgressBar)
-
-    def test_progress_env_dots(self):
-        # Even though we are in a tty, the env_var will override
-        out = _TTYStringIO()
-        pb = self.get_nested(out, 'xterm', 'dots')
-        pb.finished()
-        self.assertIsInstance(pb, DotsProgressBar)
 
     def test_progress_env_none(self):
         # Even though we are in a valid tty, no progress

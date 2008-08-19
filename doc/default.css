@@ -9,7 +9,7 @@ body {
   margin-bottom: 70px;
   font-family: Verdana, Geneva, Arial, sans-serif;
   font-size: small;
-  line-height: 180%
+  line-height: 140%
   }
 
 /* p {
@@ -33,6 +33,21 @@ div.contents p {
 
 div.contents p a:hover {
   color: inherit;
+  }
+
+/* Format ".. note:" sections nicely */
+div.note {
+  margin-left: 5em;
+  margin-right: 5em;
+  color: #000000;
+  background-color: #c1d1ff;
+  border: 1px solid #888888;
+  padding-left: 1em;
+  padding-right: 1em;
+  }
+
+div.note .first {
+  font-weight: bold;
   }
 
 h1 {
@@ -111,6 +126,7 @@ dt:active
 
 tt, .literal-block {
   font-family: monospace;
+  line-height: 100%
   }
 
 tt {
@@ -120,9 +136,9 @@ tt {
 
 .literal-block {
   margin-left: 5em;
+  margin-right: 5em;
   color: #000000;
   font-weight: normal;
-  background-color: #c1d1ff;
   background-color: #e5ecf9;
   border: 1px solid #888888;
   padding: 1em;
@@ -142,3 +158,7 @@ a:hover {
   color: #b52727;
   text-decoration: none;
   }
+
+span, th.field-name {
+  white-space: nowrap;
+}

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,37 +25,21 @@ import sys
 from bzrlib.commands import Command
 from bzrlib.trace import warning
 
-class cmd_weave_list(Command):
-    """List the revision ids present in a weave, in alphabetical order"""
+class cmd_versionedfile_list(Command):
+    """List the revision ids present in a versionedfile, alphabetically"""
 
     hidden = True
-    takes_args = ['weave_filename']
+    takes_args = ['filename']
+    aliases = ['weave-list']
 
-    def run(self, weave_filename):
+    def run(self, filename):
         from bzrlib.weavefile import read_weave
-        weave = read_weave(file(weave_filename, 'rb'))
-        names = weave.versions()
+        from bzrlib.transport import get_transport
+        from bzrlib import osutils
+        vf = read_weave(file(filename, 'rb'))
+        names = vf.versions()
         names.sort()
         print '\n'.join(names)
-
-
-class cmd_weave_join(Command):
-    """Join the contents of two weave files.
-
-    The resulting weave is sent to stdout.
-
-    This command is only intended for bzr developer use.
-    """
-
-    hidden = True
-    takes_args = ['weave1', 'weave2']
-
-    def run(self, weave1, weave2):
-        from bzrlib.weavefile import read_weave, write_weave
-        w1 = read_weave(file(weave1, 'rb'))
-        w2 = read_weave(file(weave2, 'rb'))
-        w1.join(w2)
-        write_weave(w1, sys.stdout)
 
 
 class cmd_weave_plan_merge(Command):

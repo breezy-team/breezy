@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,13 +40,6 @@ in an on-demand fashion. Typically use looks like:
     to inherit from them).
 """
 
-import re
-import sys
-
-from bzrlib import (
-    errors,
-    )
-
 
 class ScopeReplacer(object):
     """A lazy object that will replace itself in the appropriate scope.
@@ -55,7 +48,12 @@ class ScopeReplacer(object):
     needed.
     """
 
-    __slots__ = ('_scope', '_factory', '_name')
+    __slots__ = ('_scope', '_factory', '_name', '_real_obj')
+
+    # Setting this to True will allow you to do x = y, and still access members
+    # from both variables. This should not normally be enabled, but is useful
+    # when building documentation.
+    _should_proxy = False
 
     def __init__(self, scope, factory, name):
         """Create a temporary object in the specified scope.
@@ -66,9 +64,10 @@ class ScopeReplacer(object):
             It will be passed (self, scope, name)
         :param name: The variable name in the given scope.
         """
-        self._scope = scope
-        self._factory = factory
-        self._name = name
+        object.__setattr__(self, '_scope', scope)
+        object.__setattr__(self, '_factory', factory)
+        object.__setattr__(self, '_name', name)
+        object.__setattr__(self, '_real_obj', None)
         scope[name] = self
 
     def _replace(self):
@@ -88,6 +87,8 @@ class ScopeReplacer(object):
                           " to another variable?",
                 extra=e)
         obj = factory(self, scope, name)
+        if ScopeReplacer._should_proxy:
+            object.__setattr__(self, '_real_obj', obj)
         scope[name] = obj
         return obj
 
@@ -99,11 +100,22 @@ class ScopeReplacer(object):
         # del self._name
 
     def __getattribute__(self, attr):
-        _replace = object.__getattribute__(self, '_replace')
-        obj = _replace()
-        _cleanup = object.__getattribute__(self, '_cleanup')
-        _cleanup()
+        obj = object.__getattribute__(self, '_real_obj')
+        if obj is None:
+            _replace = object.__getattribute__(self, '_replace')
+            obj = _replace()
+            _cleanup = object.__getattribute__(self, '_cleanup')
+            _cleanup()
         return getattr(obj, attr)
+
+    def __setattr__(self, attr, value):
+        obj = object.__getattribute__(self, '_real_obj')
+        if obj is None:
+            _replace = object.__getattribute__(self, '_replace')
+            obj = _replace()
+            _cleanup = object.__getattribute__(self, '_cleanup')
+            _cleanup()
+        return setattr(obj, attr, value)
 
     def __call__(self, *args, **kwargs):
         _replace = object.__getattribute__(self, '_replace')
@@ -158,13 +170,12 @@ class ImportReplacer(ScopeReplacer):
             from foo import bar, baz would get translated into 2 import
             requests. On for 'name=bar' and one for 'name=baz'
         """
-        if member is not None:
-            assert not children, \
-                'Cannot supply both a member and children'
+        if (member is not None) and children:
+            raise ValueError('Cannot supply both a member and children')
 
-        self._import_replacer_children = children
-        self._member = member
-        self._module_path = module_path
+        object.__setattr__(self, '_import_replacer_children', children)
+        object.__setattr__(self, '_member', member)
+        object.__setattr__(self, '_module_path', module_path)
 
         # Indirecting through __class__ so that children can
         # override _import (especially our instrumented version)
@@ -248,7 +259,8 @@ class ImportProcessor(object):
 
         :param import_str: The import string to process
         """
-        assert import_str.startswith('import ')
+        if not import_str.startswith('import '):
+            raise ValueError('bad import string %r' % (import_str,))
         import_str = import_str[len('import '):]
 
         for path in import_str.split(','):
@@ -293,7 +305,8 @@ class ImportProcessor(object):
 
         :param from_str: The import string to process
         """
-        assert from_str.startswith('from ')
+        if not from_str.startswith('from '):
+            raise ValueError('bad from/import %r' % from_str)
         from_str = from_str[len('from '):]
 
         from_module, import_list = from_str.split(' import ')
@@ -377,3 +390,12 @@ def lazy_import(scope, text, lazy_import_class=None):
     # This is just a helper around ImportProcessor.lazy_import
     proc = ImportProcessor(lazy_import_class=lazy_import_class)
     return proc.lazy_import(scope, text)
+
+
+# The only module that this module depends on is 'bzrlib.errors'. But it
+# can actually be imported lazily, since we only need it if there is a
+# problem.
+
+lazy_import(globals(), """
+from bzrlib import errors
+""")

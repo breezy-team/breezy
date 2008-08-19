@@ -21,7 +21,6 @@ import os
 from bzrlib import errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import basename
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport

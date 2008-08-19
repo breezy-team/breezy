@@ -1,18 +1,44 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import os
 import stat
 import sys
 
 import bzrlib
-from bzrlib.add import smart_add_tree
-from bzrlib.builtins import merge
+from bzrlib import (
+    generate_ids,
+    merge_directive,
+    osutils,
+    )
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
+from bzrlib import errors
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-import bzrlib.inventory as inventory
-from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import (file_kind, getcwd, mkdtemp, pathjoin, rename, rmtree,
-                            sha_file, 
+from bzrlib import  inventory
+from bzrlib.merge import (
+    Merge3Merger,
+    Diff3Merger,
+    WeaveMerger,
+    Merger,
+    )
+from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
+                            sha_file,
                             )
+from bzrlib import progress
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
@@ -20,13 +46,16 @@ from bzrlib.workingtree import WorkingTree
 
 class MergeBuilder(object):
     def __init__(self, dir=None):
-        self.dir = mkdtemp(prefix="merge-test", dir=dir)
+        self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
+        self.tree_root = generate_ids.gen_root_id()
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
            wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
            # the tests perform pulls, so need a branch that is writeable.
            wt.lock_write()
+           wt.set_root_id(self.tree_root)
+           wt.flush()
            tt = TreeTransform(wt)
            return wt, tt
         self.base, self.base_tt = wt('base')
@@ -35,7 +64,8 @@ class MergeBuilder(object):
 
     def get_cset_path(self, parent, name):
         if name is None:
-            assert (parent is None)
+            if parent is not None:
+                raise AssertionError()
             return None
         return pathjoin(self.cset.entries[parent].path, name)
 
@@ -55,9 +85,14 @@ class MergeBuilder(object):
             # why does this not do wt.pull() ?
             wt.branch.pull(self.base.branch)
             wt.set_parent_ids([wt.branch.last_revision()])
+            wt.flush()
+            # We maintain a write lock, so make sure changes are flushed to
+            # disk first
             tt.apply()
             wt.commit('branch commit')
-            assert len(wt.branch.revision_history()) == 2
+            wt.flush()
+            if len(wt.branch.revision_history()) != 2:
+                raise AssertionError()
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 
@@ -164,11 +199,14 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
-    def cleanup(self):
+    def unlock(self):
         self.base.unlock()
         self.this.unlock()
         self.other.unlock()
-        rmtree(self.dir)
+
+    def cleanup(self):
+        self.unlock()
+        osutils.rmtree(self.dir)
 
 
 class MergeTest(TestCaseWithTransport):
@@ -176,16 +214,16 @@ class MergeTest(TestCaseWithTransport):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
+        builder.add_file("1", builder.tree_root, "name1", "hello1", True)
         builder.change_name("1", other="name2")
-        builder.add_file("2", "TREE_ROOT", "name3", "hello2", True)
+        builder.add_file("2", builder.tree_root, "name3", "hello2", True)
         builder.change_name("2", base="name4")
-        builder.add_file("3", "TREE_ROOT", "name5", "hello3", True)
+        builder.add_file("3", builder.tree_root, "name5", "hello3", True)
         builder.change_name("3", this="name6")
         builder.merge()
         builder.cleanup()
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
+        builder.add_file("1", builder.tree_root, "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
         conflicts = builder.merge()
         self.assertEqual(conflicts, [PathConflict('name3', 'name2', '1')])
@@ -193,9 +231,9 @@ class MergeTest(TestCaseWithTransport):
 
     def test_merge_one(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
+        builder.add_file("1", builder.tree_root, "name1", "hello1", True)
         builder.change_contents("1", other="text4")
-        builder.add_file("2", "TREE_ROOT", "name2", "hello1", True)
+        builder.add_file("2", builder.tree_root, "name2", "hello1", True)
         builder.change_contents("2", other="text4")
         builder.merge(interesting_ids=["1"])
         self.assertEqual(builder.this.get_file("1").read(), "text4" )
@@ -205,8 +243,8 @@ class MergeTest(TestCaseWithTransport):
     def test_file_moves(self):
         """Test moves"""
         builder = MergeBuilder(getcwd())
-        builder.add_dir("1", "TREE_ROOT", "dir1")
-        builder.add_dir("2", "TREE_ROOT", "dir2")
+        builder.add_dir("1", builder.tree_root, "dir1")
+        builder.add_dir("2", builder.tree_root, "dir2")
         builder.add_file("3", "1", "file1", "hello1", True)
         builder.add_file("4", "1", "file2", "hello2", True)
         builder.add_file("5", "1", "file3", "hello3", True)
@@ -217,9 +255,9 @@ class MergeTest(TestCaseWithTransport):
         builder.cleanup()
 
         builder = MergeBuilder(getcwd())
-        builder.add_dir("1", "TREE_ROOT", "dir1")
-        builder.add_dir("2", "TREE_ROOT", "dir2")
-        builder.add_dir("3", "TREE_ROOT", "dir3")
+        builder.add_dir("1", builder.tree_root, "dir1")
+        builder.add_dir("2", builder.tree_root, "dir2")
+        builder.add_dir("3", builder.tree_root, "dir3")
         builder.add_file("4", "1", "file1", "hello1", False)
         builder.change_parent("4", other="2", this="3")
         conflicts = builder.merge()
@@ -234,6 +272,9 @@ class MergeTest(TestCaseWithTransport):
 
     def test_contents_merge2(self):
         """Test diff3 merging"""
+        if sys.platform == 'win32':
+            raise TestSkipped("diff3 does not have --binary flag"
+                              " and therefore always fails on win32")
         try:
             self.do_contents_test(Diff3Merger)
         except NoDiff3:
@@ -246,7 +287,7 @@ class MergeTest(TestCaseWithTransport):
     def test_reprocess_weave(self):
         # Reprocess works on weaves, and behaves as expected
         builder = MergeBuilder(getcwd())
-        builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
+        builder.add_file('a', builder.tree_root, 'blah', 'a', False)
         builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
         builder.merge(WeaveMerger, reprocess=True)
         expected = """<<<<<<< TREE
@@ -273,33 +314,39 @@ y
 
     def contents_test_success(self, merge_factory):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text4")
-        builder.add_file("2", "TREE_ROOT", "name3", "text2", False)
+        builder.add_file("2", builder.tree_root, "name3", "text2", False)
         builder.change_contents("2", base="text5")
-        builder.add_file("3", "TREE_ROOT", "name5", "text3", True)
-        builder.add_file("4", "TREE_ROOT", "name6", "text4", True)
+        builder.add_file("3", builder.tree_root, "name5", "text3", True)
+        builder.add_file("4", builder.tree_root, "name6", "text4", True)
         builder.remove_file("4", base=True)
-        builder.add_file("5", "TREE_ROOT", "name7", "a\nb\nc\nd\ne\nf\n", True)
+        builder.add_file("5", builder.tree_root, "name7", "a\nb\nc\nd\ne\nf\n",
+                         True)
         builder.change_contents("5", other="a\nz\nc\nd\ne\nf\n", 
                                      this="a\nb\nc\nd\ne\nz\n")
-        builder.merge(merge_factory)
-        self.assertEqual(builder.this.get_file("1").read(), "text4" )
-        self.assertEqual(builder.this.get_file("2").read(), "text2" )
-        self.assertEqual(builder.this.get_file("5").read(), 
-                         "a\nz\nc\nd\ne\nz\n")
-        self.assertIs(builder.this.is_executable("1"), True)
-        self.assertIs(builder.this.is_executable("2"), False)
-        self.assertIs(builder.this.is_executable("3"), True)
+        conflicts = builder.merge(merge_factory)
+        try:
+            self.assertEqual([], conflicts)
+            self.assertEqual("text4", builder.this.get_file("1").read())
+            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("a\nz\nc\nd\ne\nz\n", 
+                             builder.this.get_file("5").read())
+            self.assertTrue(builder.this.is_executable("1"))
+            self.assertFalse(builder.this.is_executable("2"))
+            self.assertTrue(builder.this.is_executable("3"))
+        except:
+            builder.unlock()
+            raise
         return builder
 
     def contents_test_conflicts(self, merge_factory):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
-        builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
+        builder.add_file("2", builder.tree_root, "name2", "text1", True)
         builder.change_contents("2", other="\x00", this="text3")
-        builder.add_file("3", "TREE_ROOT", "name3", "text5", False)
+        builder.add_file("3", builder.tree_root, "name3", "text5", False)
         builder.change_perms("3", this=True)
         builder.change_contents('3', this='moretext')
         builder.remove_file('3', other=True)
@@ -313,7 +360,7 @@ y
     def test_symlink_conflicts(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
+            builder.add_symlink("2", builder.tree_root, "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
             conflicts = builder.merge()
             self.assertEqual(conflicts, [ContentsConflict('name2', 
@@ -323,9 +370,9 @@ y
     def test_symlink_merge(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            builder.add_symlink("1", "TREE_ROOT", "name1", "target1")
-            builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
-            builder.add_symlink("3", "TREE_ROOT", "name3", "target1")
+            builder.add_symlink("1", builder.tree_root, "name1", "target1")
+            builder.add_symlink("2", builder.tree_root, "name2", "target1")
+            builder.add_symlink("3", builder.tree_root, "name3", "target1")
             builder.change_target("1", this="target2")
             builder.change_target("2", base="target2")
             builder.change_target("3", other="target2")
@@ -337,20 +384,20 @@ y
 
     def test_no_passive_add(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.remove_file("1", this=True)
         builder.merge()
         builder.cleanup()
 
     def test_perms_merge(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_perms("1", other=False)
-        builder.add_file("2", "TREE_ROOT", "name2", "text2", True)
+        builder.add_file("2", builder.tree_root, "name2", "text2", True)
         builder.change_perms("2", base=False)
-        builder.add_file("3", "TREE_ROOT", "name3", "text3", True)
+        builder.add_file("3", builder.tree_root, "name3", "text3", True)
         builder.change_perms("3", this=False)
-        builder.add_file('4', 'TREE_ROOT', 'name4', 'text4', False)
+        builder.add_file('4', builder.tree_root, 'name4', 'text4', False)
         builder.change_perms('4', this=True)
         builder.remove_file('4', base=True)
         builder.merge()
@@ -361,23 +408,31 @@ y
 
     def test_new_suffix(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text3")
-        builder.add_file("2", "TREE_ROOT", "name1.new", "text2", True)
+        builder.add_file("2", builder.tree_root, "name1.new", "text2", True)
         builder.merge()
         os.lstat(builder.this.id2abspath("2"))
         builder.cleanup()
 
     def test_spurious_conflict(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", False)
+        builder.add_file("1", builder.tree_root, "name1", "text1", False)
         builder.remove_file("1", other=True)
-        builder.add_file("2", "TREE_ROOT", "name1", "text1", False, this=False, 
-                         base=False)
+        builder.add_file("2", builder.tree_root, "name1", "text1", False, 
+                         this=False, base=False)
         conflicts = builder.merge()
         self.assertEqual(conflicts, []) 
         builder.cleanup()
 
+    def test_merge_one_renamed(self):
+        builder = MergeBuilder(getcwd())
+        builder.add_file('1', builder.tree_root, 'name1', 'text1a', False)
+        builder.change_name('1', this='name2')
+        builder.change_contents('1', other='text2')
+        builder.merge(interesting_files=['name2'])
+        self.assertEqual('text2', builder.this.get_file('1').read())
+        builder.cleanup()
 
 class FunctionalMergeTest(TestCaseWithTransport):
 
@@ -387,7 +442,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree(("original/", "original/file1", "original/file2"))
         tree = self.make_branch_and_tree('original')
         branch = tree.branch
-        smart_add_tree(tree, ["original"])
+        tree.smart_add(["original"])
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
@@ -405,14 +460,9 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file.close()
         mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
-        merge_type = Merge3Merger
         base = [None, None]
         other = ("mary", -1)
-        self.assertRaises(BzrCommandError, merge, other, base, check_clean=True,
-                          merge_type=WeaveMerger, this_dir="original",
-                          show_base=True)
-        merge(other, base, check_clean=True, merge_type=merge_type,
-              this_dir="original")
+        tree.merge_from_branch(mary_tree.branch)
         self.assertEqual("John\n", open("original/file1", "rt").read())
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
  
@@ -430,16 +480,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('b/file', 'wb').write('this contents contents\n')
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
-        self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
+        self.assertEqual(1, wtb.merge_from_branch(wta.branch))
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(os.path.lexists('b/file.BASE'))
         self.assert_(os.path.lexists('b/file.OTHER'))
-        self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
-                          [None, None], this_dir='b', check_clean=False,
-                          merge_type=WeaveMerger)
-        wtb.revert([])
-        self.assertEqual(merge(['a', -1], [None, None], this_dir='b', 
-                               check_clean=False, merge_type=WeaveMerger), 1)
+        wtb.revert()
+        self.assertEqual(1, wtb.merge_from_branch(wta.branch,
+                                                  merge_type=WeaveMerger))
         self.assert_(os.path.lexists('b/file'))
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(not os.path.lexists('b/file.BASE'))
@@ -457,7 +504,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('b/b_file', 'wb').write('contents\n')
         wtb.add('b_file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
-        merge(['b', -1], ['b', 0], this_dir='a')
+        wta.merge_from_branch(wtb.branch, b_rev, 'null:')
         self.assert_(os.path.lexists('a/b_file'))
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
@@ -473,7 +520,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('b/file', 'wb').write('contents\n')
         wtb.add('file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
-        merge(['b', -1], ['b', 0], this_dir='a')
+        wta.merge_from_branch(wtb.branch, b_rev, 'null:')
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
@@ -483,13 +530,14 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('contents\n')
         wta.add('file')
         wta.commit('a_revision', allow_pointless=False)
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         os.remove('a/file')
         wta.commit('removed file', allow_pointless=False)
         file('b/file', 'wb').write('changed contents\n')
         wtb = WorkingTree.open('b')
         wtb.commit('changed file', allow_pointless=False)
-        merge(['a', -1], ['a', 1], this_dir='b')
+        wtb.merge_from_branch(wta.branch, wta.branch.last_revision(),
+                              wta.branch.get_rev_id(1))
         self.failIf(os.path.lexists('b/file'))
 
     def test_merge_metadata_vs_deletion(self):
@@ -498,7 +546,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('contents\n')
         a_wt.add('file')
         a_wt.commit('r0')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.chmod('b/file', 0755)
         os.remove('a/file')
@@ -506,23 +554,24 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual(a_wt.branch.revno(), 2)
         self.assertFalse(os.path.exists('a/file'))
         b_wt.commit('exec a')
-        merge(['b', -1], ['b', 0], this_dir='a')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(), 'null:')
         self.assert_(os.path.exists('a/file'))
 
     def test_merge_swapping_renames(self):
         a_wt = self.make_branch_and_tree('a')
         file('a/un','wb').write('UN')
         file('a/deux','wb').write('DEUX')
-        a_wt.add('un', 'un')
-        a_wt.add('deux', 'deux')
+        a_wt.add('un', 'un-id')
+        a_wt.add('deux', 'deux-id')
         a_wt.commit('r0', rev_id='r0')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('un','tmp')
         b_wt.rename_one('deux','un')
         b_wt.rename_one('tmp','deux')
         b_wt.commit('r1', rev_id='r1')
-        self.assertEqual(0, merge(['b', -1], ['b', 1], this_dir='a'))
+        self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
+            b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
         self.failUnlessExists('a/un')
         self.failUnless('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))
@@ -534,14 +583,15 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('THIS')
         a_wt.add('file')
         a_wt.commit('r0')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.remove('b/file')
         b_wt.commit('r1')
         file('b/file', 'wb').write('THAT')
         b_wt.add('file')
         b_wt.commit('r2')
-        merge(['b', -1],['b', 1],this_dir='a')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
+                               b_wt.branch.get_rev_id(1))
         self.assert_(os.path.exists('a/file'))
         self.assertEqual(file('a/file').read(),'THAT')
 
@@ -563,13 +613,14 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/foo', 'wb').write('A/FOO')
         a_wt.add('foo')
         a_wt.commit('added foo')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('foo', 'bar')
         file('b/foo', 'wb').write('B/FOO')
         b_wt.add('foo')
         b_wt.commit('moved foo to bar, added new foo')
-        merge(['b', -1],['b', 1],this_dir='a')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
+                               b_wt.branch.get_rev_id(1))
 
     def test_merge_create_before_rename(self):
         """create before rename, target parents before children
@@ -591,13 +642,14 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/foo', 'wb').write('A/FOO')
         a_wt.add('foo')
         a_wt.commit('added foo')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.mkdir('b/bar')
         b_wt.add('bar')
         b_wt.rename_one('foo', 'bar/foo')
         b_wt.commit('created bar dir, moved foo into bar')
-        merge(['b', -1],['b', 1],this_dir='a')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
+                               b_wt.branch.get_rev_id(1))
 
     def test_merge_rename_to_temp_before_delete(self):
         """rename to temp before delete, source children before parents
@@ -620,13 +672,14 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.add('foo')
         a_wt.add('foo/bar')
         a_wt.commit('added foo/bar')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         b_wt.rename_one('foo/bar', 'bar')
         os.rmdir('b/foo')
         b_wt.remove('foo')
         b_wt.commit('moved foo/bar to bar, deleted foo')
-        merge(['b', -1],['b', 1],this_dir='a')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
+                               b_wt.branch.get_rev_id(1))
 
     def test_merge_delete_before_rename_to_temp(self):
         """delete before rename to temp
@@ -649,11 +702,80 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.add('foo')
         a_wt.add('bar')
         a_wt.commit('added foo and bar')
-        self.run_bzr('branch', 'a', 'b')
+        self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
         os.unlink('b/foo')
         b_wt.remove('foo')
         b_wt.rename_one('bar', 'foo')
         b_wt.commit('deleted foo, renamed bar to foo')
-        merge(['b', -1],['b', 1],this_dir='a')
+        a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
+                               b_wt.branch.get_rev_id(1))
 
+
+class TestMerger(TestCaseWithTransport):
+
+    def set_up_trees(self):
+        this = self.make_branch_and_tree('this')
+        this.commit('rev1', rev_id='rev1')
+        other = this.bzrdir.sprout('other').open_workingtree()
+        this.commit('rev2a', rev_id='rev2a')
+        other.commit('rev2b', rev_id='rev2b')
+        return this, other
+
+    def test_from_revision_ids(self):
+        this, other = self.set_up_trees()
+        self.assertRaises(errors.NoSuchRevision, Merger.from_revision_ids,
+                          progress.DummyProgress(), this, 'rev2b')
+        this.lock_write()
+        self.addCleanup(this.unlock)
+        merger = Merger.from_revision_ids(progress.DummyProgress(), this,
+            'rev2b', other_branch=other.branch)
+        self.assertEqual('rev2b', merger.other_rev_id)
+        self.assertEqual('rev1', merger.base_rev_id)
+        merger = Merger.from_revision_ids(progress.DummyProgress(), this,
+            'rev2b', 'rev2a', other_branch=other.branch)
+        self.assertEqual('rev2a', merger.base_rev_id)
+
+    def test_from_uncommitted(self):
+        this, other = self.set_up_trees()
+        merger = Merger.from_uncommitted(this, other, progress.DummyProgress())
+        self.assertIs(other, merger.other_tree)
+        self.assertIs(None, merger.other_rev_id)
+        self.assertEqual('rev2b', merger.base_rev_id)
+
+    def prepare_for_merging(self):
+        this, other = self.set_up_trees()
+        other.commit('rev3', rev_id='rev3')
+        this.lock_write()
+        self.addCleanup(this.unlock)
+        return this, other
+
+    def test_from_mergeable(self):
+        this, other = self.prepare_for_merging()
+        md = merge_directive.MergeDirective2.from_objects(
+            other.branch.repository, 'rev3', 0, 0, 'this')
+        other.lock_read()
+        self.addCleanup(other.unlock)
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        md.patch = None
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        self.assertEqual('inapplicable', verified)
+        self.assertEqual('rev3', merger.other_rev_id)
+        self.assertEqual('rev1', merger.base_rev_id)
+        md.base_revision_id = 'rev2b'
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        self.assertEqual('rev2b', merger.base_rev_id)
+
+    def test_from_mergeable_old_merge_directive(self):
+        this, other = self.prepare_for_merging()
+        other.lock_write()
+        self.addCleanup(other.unlock)
+        md = merge_directive.MergeDirective.from_objects(
+            other.branch.repository, 'rev3', 0, 0, 'this')
+        merger, verified = Merger.from_mergeable(this, md,
+            progress.DummyProgress())
+        self.assertEqual('rev3', merger.other_rev_id)
+        self.assertEqual('rev1', merger.base_rev_id)

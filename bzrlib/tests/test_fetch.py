@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,17 +15,29 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import re
 import sys
 
+import bzrlib
+from bzrlib import (
+    bzrdir,
+    errors,
+    merge,
+    repository,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.builtins import merge
-import bzrlib.errors
+from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
+from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
+
+# These tests are a bit old; please instead add new tests into
+# interrepository_implementations/ so they'll run on all relevant
+# combinations.
 
 
 def has_revision(branch, revision_id):
@@ -86,16 +98,13 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
-    # InstallFailed should be raised if the branch is missing a revision
-    # from its own revision history
-    br_a2.append_revision('a-b-c')
-    self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
+    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
 
-    # TODO: jam 20051218 Branch should no longer allow append_revision for revisions
-    #       which don't exist. So this test needs to be rewritten
-    #       RBC 20060403 the way to do this is to uncommit the revision from the
-    #           repository after the commit
+    # TODO: Test trying to fetch from a branch that points to a revision not
+    # actually present in its repository.  Not every branch format allows you
+    # to directly point to such revisions, so it's a bit complicated to
+    # construct.  One way would be to uncommit and gc the revision, but not
+    # every branch supports that.  -- mbp 20070814
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 
@@ -106,12 +115,66 @@ class TestFetch(TestCaseWithTransport):
 
     def test_fetch(self):
         #highest indices a: 5, b: 7
-        br_a, br_b = make_branches(self)
+        br_a, br_b = make_branches(self, format='dirstate-tags')
         fetch_steps(self, br_a, br_b, br_a)
 
     def test_fetch_self(self):
         wt = self.make_branch_and_tree('br')
         self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
+
+    def test_fetch_root_knit(self):
+        """Ensure that knit2.fetch() updates the root knit
+        
+        This tests the case where the root has a new revision, but there are no
+        corresponding filename, parent, contents or other changes.
+        """
+        knit1_format = bzrdir.BzrDirMetaFormat1()
+        knit1_format.repository_format = knitrepo.RepositoryFormatKnit1()
+        knit2_format = bzrdir.BzrDirMetaFormat1()
+        knit2_format.repository_format = knitrepo.RepositoryFormatKnit3()
+        # we start with a knit1 repository because that causes the
+        # root revision to change for each commit, even though the content,
+        # parent, name, and other attributes are unchanged.
+        tree = self.make_branch_and_tree('tree', knit1_format)
+        tree.set_root_id('tree-root')
+        tree.commit('rev1', rev_id='rev1')
+        tree.commit('rev2', rev_id='rev2')
+
+        # Now we convert it to a knit2 repository so that it has a root knit
+        Convert(tree.basedir, knit2_format)
+        tree = WorkingTree.open(tree.basedir)
+        branch = self.make_branch('branch', format=knit2_format)
+        branch.pull(tree.branch, stop_revision='rev1')
+        repo = branch.repository
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev1'):()},
+                repo.texts.get_parent_map(
+                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
+        branch.pull(tree.branch)
+        # Make sure that the next revision in the root knit was retrieved,
+        # even though the text, name, parent_id, etc., were unchanged.
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
+                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
+
+    def test_fetch_incompatible(self):
+        knit_tree = self.make_branch_and_tree('knit', format='knit')
+        knit3_tree = self.make_branch_and_tree('knit3',
+            format='dirstate-with-subtree')
+        knit3_tree.commit('blah')
+        e = self.assertRaises(errors.IncompatibleRepositories,
+                              knit_tree.branch.fetch, knit3_tree.branch)
+        self.assertContainsRe(str(e),
+            r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
+            r"different rich-root support")
 
 
 class TestMergeFetch(TestCaseWithTransport):
@@ -125,8 +188,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt2 = self.make_branch_and_tree('br2')
         br2 = wt2.branch
         wt2.commit(message='rev 2-1', rev_id='2-1')
-        merge(other_revision=['br1', -1], base_revision=['br1', 0],
-              this_dir='br2')
+        wt2.merge_from_branch(br1, from_revision='null:')
         self._check_revs_present(br2)
 
     def test_merge_fetches(self):
@@ -137,9 +199,9 @@ class TestMergeFetch(TestCaseWithTransport):
         dir_2 = br1.bzrdir.sprout('br2')
         br2 = dir_2.open_branch()
         wt1.commit(message='rev 1-2', rev_id='1-2')
-        dir_2.open_workingtree().commit(message='rev 2-1', rev_id='2-1')
-        merge(other_revision=['br1', -1], base_revision=[None, None], 
-              this_dir='br2')
+        wt2 = dir_2.open_workingtree()
+        wt2.commit(message='rev 2-1', rev_id='2-1')
+        wt2.merge_from_branch(br1)
         self._check_revs_present(br2)
 
     def _check_revs_present(self, br2):
@@ -174,8 +236,10 @@ class TestMergeFileHistory(TestCaseWithTransport):
     def test_merge_fetches_file_history(self):
         """Merge brings across file histories"""
         br2 = Branch.open('br2')
-        merge(other_revision=['br1', -1], base_revision=[None, None], 
-              this_dir='br2')
+        br1 = Branch.open('br1')
+        wt2 = WorkingTree.open('br2').merge_from_branch(br1)
+        br2.lock_read()
+        self.addCleanup(br2.unlock)
         for rev_id, text in [('1-2', 'original from 1\n'),
                              ('1-3', 'agreement\n'),
                              ('2-1', 'contents in 2\n'),
@@ -198,28 +262,27 @@ class TestHttpFetch(TestCaseWithWebserver):
 
     def _count_log_matches(self, target, logs):
         """Count the number of times the target file pattern was fetched in an http log"""
-        log_pattern = '%s HTTP/1.1" 200 - "-" "bzr/%s' % \
-            (target, bzrlib.__version__)
+        get_succeeds_re = re.compile(
+            '.*"GET .*%s HTTP/1.1" 20[06] - "-" "bzr/%s' %
+            (     target,                    bzrlib.__version__))
         c = 0
         for line in logs:
-            # TODO: perhaps use a regexp instead so we can match more
-            # precisely?
-            if line.find(log_pattern) > -1:
+            if get_succeeds_re.match(line):
                 c += 1
         return c
 
     def test_weaves_are_retrieved_once(self):
         self.build_tree(("source/", "source/file", "target/"))
-        wt = self.make_branch_and_tree('source')
+        # This test depends on knit dasta storage.
+        wt = self.make_branch_and_tree('source', format='dirstate-tags')
         branch = wt.branch
         wt.add(["file"], ["id"])
         wt.commit("added file")
-        print >>open("source/file", 'w'), "blah"
+        open("source/file", 'w').write("blah\n")
         wt.commit("changed file")
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (2, []))
-        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
@@ -229,16 +292,27 @@ class TestHttpFetch(TestCaseWithWebserver):
         # unfortunately this log entry is branch format specific. We could 
         # factor out the 'what files does this format use' to a method on the 
         # repository, which would let us to this generically. RBC 20060419
+        # RBC 20080408: Or perhaps we can assert that no files are fully read
+        # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
         self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
-        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
+        self.assertTrue(1 >= self._count_log_matches('revision-history',
+                                                     http_logs))
+        self.assertTrue(1 >= self._count_log_matches('last-revision',
+                                                     http_logs))
         # FIXME naughty poking in there.
         self.get_readonly_server().logs = []
-        # check there is nothing more to fetch
-        source = Branch.open(self.get_readonly_url("source/"))
+        # check there is nothing more to fetch.  We take care to re-use the
+        # existing transport so that the request logs we're about to examine
+        # aren't cluttered with redundant probes for a smart server.
+        # XXX: Perhaps this further parameterisation: test http with smart
+        # server, and test http without smart server?
+        source = Branch.open(
+            self.get_readonly_url("source/"),
+            possible_transports=[source.bzrdir.root_transport])
         self.assertEqual(target.fetch(source), (0, []))
         # should make just two requests
         http_logs = self.get_readonly_server().logs
@@ -246,6 +320,87 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.log('\n'.join(http_logs))
         self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
+        self.assertEqual(1, self._count_log_matches('repository/format',
+            http_logs))
+        self.assertTrue(1 >= self._count_log_matches('revision-history',
+                                                     http_logs))
+        self.assertTrue(1 >= self._count_log_matches('last-revision',
+                                                     http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class Test1To2Fetch(TestCaseWithTransport):
+    """Tests for Model1To2 failure modes"""
+
+    def make_tree_and_repo(self):
+        self.tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        self.repo = self.make_repository('rich-repo', format='rich-root-pack')
+        self.repo.lock_write()
+        self.addCleanup(self.repo.unlock)
+
+    def do_fetch_order_test(self, first, second):
+        """Test that fetch works no matter what the set order of revision is.
+
+        This test depends on the order of items in a set, which is
+        implementation-dependant, so we test A, B and then B, A.
+        """
+        self.make_tree_and_repo()
+        self.tree.commit('Commit 1', rev_id=first)
+        self.tree.commit('Commit 2', rev_id=second)
+        self.repo.fetch(self.tree.branch.repository, second)
+
+    def test_fetch_order_AB(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('A', 'B')
+
+    def test_fetch_order_BA(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('B', 'A')
+
+    def get_parents(self, file_id, revision_id):
+        self.repo.lock_read()
+        try:
+            parent_map = self.repo.texts.get_parent_map([(file_id, revision_id)])
+            return parent_map[(file_id, revision_id)]
+        finally:
+            self.repo.unlock()
+
+    def test_fetch_ghosts(self):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='left-parent')
+        self.tree.add_parent_tree_id('ghost-parent')
+        fork = self.tree.bzrdir.sprout('fork', 'null:').open_workingtree()
+        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        self.tree.branch.repository.fetch(fork.branch.repository,
+                                     'not-ghost-parent')
+        self.tree.add_parent_tree_id('not-ghost-parent')
+        self.tree.commit('second commit', rev_id='second-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+        root_id = self.tree.get_root_id()
+        self.assertEqual(
+            ((root_id, 'left-parent'), (root_id, 'ghost-parent'),
+             (root_id, 'not-ghost-parent')),
+            self.get_parents(root_id, 'second-id'))
+
+    def make_two_commits(self, change_root, fetch_twice):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='first-id')
+        if change_root:
+            self.tree.set_root_id('unique-id')
+        self.tree.commit('second commit', rev_id='second-id')
+        if fetch_twice:
+            self.repo.fetch(self.tree.branch.repository, 'first-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+
+    def test_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=False)
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=True)
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetches(self):
+        self.make_two_commits(change_root=False, fetch_twice=True)
+        self.assertEqual((('TREE_ROOT', 'first-id'),),
+            self.get_parents('TREE_ROOT', 'second-id'))

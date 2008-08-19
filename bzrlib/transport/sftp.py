@@ -1,5 +1,5 @@
 # Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,31 +30,49 @@ import random
 import select
 import socket
 import stat
-import subprocess
 import sys
 import time
 import urllib
 import urlparse
-import weakref
+import warnings
 
-from bzrlib.errors import (FileExists, 
+from bzrlib import (
+    errors,
+    urlutils,
+    )
+from bzrlib.errors import (FileExists,
                            NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, 
+                           LockError,
                            PathError,
                            ParamikoNotPresent,
-                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
-    register_urlparse_netloc_protocol,
+    FileFileStream,
+    _file_streams,
+    local,
     Server,
-    split_url,
     ssh,
-    Transport,
+    ConnectedTransport,
     )
-import bzrlib.urlutils as urlutils
+
+# Disable one particular warning that comes from paramiko in Python2.5; if
+# this is emitted at the wrong time it tends to cause spurious test failures
+# or at least noise in the test case::
+#
+# [1770/7639 in 86s, 1 known failures, 50 skipped, 2 missing features]
+# test_permissions.TestSftpPermissions.test_new_files
+# /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
+#  self.packet.write(struct.pack('>I', n))
+warnings.filterwarnings('ignore',
+        'integer argument expected, got float',
+        category=DeprecationWarning,
+        module='paramiko.message')
 
 try:
     import paramiko
@@ -68,27 +86,9 @@ else:
     from paramiko.sftp_file import SFTPFile
 
 
-register_urlparse_netloc_protocol('sftp')
-
-
-# This is a weakref dictionary, so that we can reuse connections
-# that are still active. Long term, it might be nice to have some
-# sort of expiration policy, such as disconnect if inactive for
-# X seconds. But that requires a lot more fanciness.
-_connected_hosts = weakref.WeakValueDictionary()
-
-
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
-
-
-def clear_connection_cache():
-    """Remove all hosts from the SFTP connection cache.
-
-    Primarily useful for test cases wanting to force garbage collection.
-    """
-    _connected_hosts.clear()
 
 
 class SFTPLock(object):
@@ -102,8 +102,6 @@ class SFTPLock(object):
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
 
     def __init__(self, path, transport):
-        assert isinstance(transport, SFTPTransport)
-
         self.lock_file = None
         self.path = path
         self.lock_path = path + '.write-lock'
@@ -133,7 +131,7 @@ class SFTPLock(object):
             pass
 
 
-class SFTPTransport(Transport):
+class SFTPTransport(ConnectedTransport):
     """Transport implementation for SFTP access."""
 
     _do_prefetch = _default_do_prefetch
@@ -154,97 +152,65 @@ class SFTPTransport(Transport):
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
 
-    def __init__(self, base, clone_from=None):
-        assert base.startswith('sftp://')
-        self._parse_url(base)
-        base = self._unparse_url()
-        if base[-1] != '/':
-            base += '/'
-        super(SFTPTransport, self).__init__(base)
-        if clone_from is None:
-            self._sftp_connect()
-        else:
-            # use the same ssh connection, etc
-            self._sftp = clone_from._sftp
-        # super saves 'self.base'
-    
-    def should_cache(self):
-        """
-        Return True if the data pulled across should be cached locally.
-        """
-        return True
+    def __init__(self, base, _from_transport=None):
+        super(SFTPTransport, self).__init__(base,
+                                            _from_transport=_from_transport)
 
-    def clone(self, offset=None):
-        """
-        Return a new SFTPTransport with root at self.base + offset.
-        We share the same SFTP session between such transports, because it's
-        fairly expensive to set them up.
-        """
-        if offset is None:
-            return SFTPTransport(self.base, self)
-        else:
-            return SFTPTransport(self.abspath(offset), self)
-
-    def abspath(self, relpath):
-        """
-        Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
-        """
-        return self._unparse_url(self._remote_path(relpath))
-    
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         
-        relpath is a urlencoded string.
+        :param relpath: is a urlencoded string.
         """
-        # FIXME: share the common code across transports
-        assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath).split('/')
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        remote_path = self._combine_paths(self._path, relative)
+        # the initial slash should be removed from the path, and treated as a
+        # homedir relative path (the path begins with a double slash if it is
+        # absolute).  see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'
+        # vila--20070602 and leave absolute paths begin with a single slash.
+        if remote_path.startswith('/~/'):
+            remote_path = remote_path[3:]
+        elif remote_path == '/~':
+            remote_path = ''
+        return remote_path
 
-        for p in relpath:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.':
-                continue # No-op
-            else:
-                basepath.append(p)
+    def _create_connection(self, credentials=None):
+        """Create a new connection with the provided credentials.
 
-        path = '/'.join(basepath)
-        # mutter('relpath => remotepath %s => %s', relpath, path)
-        return path
+        :param credentials: The credentials needed to establish the connection.
 
-    def relpath(self, abspath):
-        username, password, host, port, path = self._split_url(abspath)
-        error = []
-        if (username != self._username):
-            error.append('username mismatch')
-        if (host != self._host):
-            error.append('host mismatch')
-        if (port != self._port):
-            error.append('port mismatch')
-        if (not path.startswith(self._path)):
-            error.append('path mismatch')
-        if error:
-            extra = ': ' + ', '.join(error)
-            raise PathNotChild(abspath, self.base, extra=extra)
-        pl = len(self._path)
-        return path[pl:].strip('/')
+        :return: The created connection and its associated credentials.
+
+        The credentials are only the password as it may have been entered
+        interactively by the user and may be different from the one provided
+        in base url at transport creation time.
+        """
+        if credentials is None:
+            password = self._password
+        else:
+            password = credentials
+
+        vendor = ssh._get_ssh_vendor()
+        connection = vendor.connect_sftp(self._user, password,
+                                         self._host, self._port)
+        return connection, password
+
+    def _get_sftp(self):
+        """Ensures that a connection is established"""
+        connection = self._get_connection()
+        if connection is None:
+            # First connection ever
+            connection, credentials = self._create_connection()
+            self._set_connection(connection, credentials)
+        return connection
 
     def has(self, relpath):
         """
         Does the target location exist?
         """
         try:
-            self._sftp.stat(self._remote_path(relpath))
+            self._get_sftp().stat(self._remote_path(relpath))
             return True
         except IOError:
             return False
@@ -257,14 +223,15 @@ class SFTPTransport(Transport):
         """
         try:
             path = self._remote_path(relpath)
-            f = self._sftp.file(path, mode='rb')
+            f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path, ': error retrieving')
+            self._translate_io_exception(e, path, ': error retrieving',
+                failure_exc=errors.ReadError)
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         """See Transport.readv()"""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.
@@ -274,16 +241,24 @@ class SFTPTransport(Transport):
 
         try:
             path = self._remote_path(relpath)
-            fp = self._sftp.file(path, mode='rb')
+            fp = self._get_sftp().file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
             if readv:
-                return self._sftp_readv(fp, offsets)
+                return self._sftp_readv(fp, offsets, relpath)
             mutter('seek and read %s offsets', len(offsets))
-            return self._seek_and_read(fp, offsets)
+            return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def _sftp_readv(self, fp, offsets):
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For SFTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
+
+    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
 
         And then read them using paramiko.readv(). paramiko.readv()
@@ -359,9 +334,10 @@ class SFTPTransport(Transport):
 
             if cur_data_len < cur_coalesced.length:
                 continue
-            assert cur_data_len == cur_coalesced.length, \
-                "Somehow we read too much: %s != %s" % (cur_data_len,
-                                                        cur_coalesced.length)
+            if cur_data_len != cur_coalesced.length:
+                raise AssertionError(
+                    "Somehow we read too much: %s != %s" 
+                    % (cur_data_len, cur_coalesced.length))
             all_data = ''.join(cur_data)
             cur_data = []
             cur_data_len = 0
@@ -376,9 +352,15 @@ class SFTPTransport(Transport):
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
 
+            # We read a coalesced entry, so mark it as done
+            cur_coalesced = None
             # Now that we've read all of the data for this coalesced section
             # on to the next
             cur_coalesced = cur_coalesced_stack.next()
+
+        if cur_coalesced is not None:
+            raise errors.ShortReadvError(relpath, cur_coalesced.start,
+                cur_coalesced.length, len(data))
 
     def put_file(self, relpath, f, mode=None):
         """
@@ -389,7 +371,7 @@ class SFTPTransport(Transport):
         :param mode: The final mode for the file
         """
         final_path = self._remote_path(relpath)
-        self._put(final_path, f, mode=mode)
+        return self._put(final_path, f, mode=mode)
 
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code"""
@@ -400,7 +382,7 @@ class SFTPTransport(Transport):
         try:
             try:
                 fout.set_pipelined(True)
-                self._pump(f, fout)
+                length = self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
             # XXX: This doesn't truly help like we would like it to.
@@ -417,10 +399,11 @@ class SFTPTransport(Transport):
             # Because we set_pipelined() earlier, theoretically we might 
             # avoid the round trip for fout.close()
             if mode is not None:
-                self._sftp.chmod(tmp_abspath, mode)
+                self._get_sftp().chmod(tmp_abspath, mode)
             fout.close()
             closed = True
             self._rename_and_overwrite(tmp_abspath, abspath)
+            return length
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -432,7 +415,7 @@ class SFTPTransport(Transport):
             try:
                 if not closed:
                     fout.close()
-                self._sftp.remove(tmp_abspath)
+                self._get_sftp().remove(tmp_abspath)
             except:
                 # raise the saved except
                 raise e
@@ -453,7 +436,7 @@ class SFTPTransport(Transport):
             fout = None
             try:
                 try:
-                    fout = self._sftp.file(abspath, mode='wb')
+                    fout = self._get_sftp().file(abspath, mode='wb')
                     fout.set_pipelined(True)
                     writer(fout)
                 except (paramiko.SSHException, IOError), e:
@@ -464,7 +447,7 @@ class SFTPTransport(Transport):
                 # Because we set_pipelined() earlier, theoretically we might 
                 # avoid the round trip for fout.close()
                 if mode is not None:
-                    self._sftp.chmod(abspath, mode)
+                    self._get_sftp().chmod(abspath, mode)
             finally:
                 if fout is not None:
                     fout.close()
@@ -534,9 +517,23 @@ class SFTPTransport(Transport):
         else:
             local_mode = mode
         try:
-            self._sftp.mkdir(abspath, local_mode)
+            self._get_sftp().mkdir(abspath, local_mode)
             if mode is not None:
-                self._sftp.chmod(abspath, mode=mode)
+                # chmod a dir through sftp will erase any sgid bit set
+                # on the server side.  So, if the bit mode are already
+                # set, avoid the chmod.  If the mode is not fine but
+                # the sgid bit is set, report a warning to the user
+                # with the umask fix.
+                stat = self._get_sftp().lstat(abspath)
+                mode = mode & 0777 # can't set special bits anyway
+                if mode != stat.st_mode & 0777:
+                    if stat.st_mode & 06000:
+                        warning('About to chmod %s over sftp, which will result'
+                                ' in its suid or sgid bits being cleared.  If'
+                                ' you want to preserve those bits, change your '
+                                ' environment on the server to use umask 0%03o.'
+                                % (abspath, 0777 - mode))
+                    self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
@@ -545,7 +542,29 @@ class SFTPTransport(Transport):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
 
-    def _translate_io_exception(self, e, path, more_info='', 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # initialise the file to zero-length
+        # this is three round trips, but we don't use this 
+        # api more than once per write_group at the moment so 
+        # it is a tolerable overhead. Better would be to truncate
+        # the file after opening. RBC 20070805
+        self.put_bytes_non_atomic(relpath, "", mode)
+        abspath = self._remote_path(relpath)
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+        handle = None
+        try:
+            handle = self._get_sftp().file(abspath, mode='wb')
+            handle.set_pipelined(True)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath,
+                                         ': unable to open')
+        _file_streams[self.abspath(relpath)] = handle
+        return FileFileStream(self, relpath, handle)
+
+    def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):
         """Translate a paramiko or IOError into a friendlier exception.
 
@@ -565,7 +584,8 @@ class SFTPTransport(Transport):
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
-            if (e.args == ('mkdir failed',)):
+            if (e.args == ('mkdir failed',) or
+                e.args[0].startswith('syserr: File exists')):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
@@ -582,9 +602,9 @@ class SFTPTransport(Transport):
         """
         try:
             path = self._remote_path(relpath)
-            fout = self._sftp.file(path, 'ab')
+            fout = self._get_sftp().file(path, 'ab')
             if mode is not None:
-                self._sftp.chmod(path, mode)
+                self._get_sftp().chmod(path, mode)
             result = fout.tell()
             self._pump(f, fout)
             return result
@@ -594,7 +614,7 @@ class SFTPTransport(Transport):
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         try:
-            self._sftp.rename(self._remote_path(rel_from),
+            self._get_sftp().rename(self._remote_path(rel_from),
                               self._remote_path(rel_to))
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, rel_from,
@@ -606,11 +626,13 @@ class SFTPTransport(Transport):
         Using the implementation provided by osutils.
         """
         try:
+            sftp = self._get_sftp()
             fancy_rename(abs_from, abs_to,
-                    rename_func=self._sftp.rename,
-                    unlink_func=self._sftp.remove)
+                         rename_func=sftp.rename,
+                         unlink_func=sftp.remove)
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, abs_from, ': unable to rename to %r' % (abs_to))
+            self._translate_io_exception(e, abs_from,
+                                         ': unable to rename to %r' % (abs_to))
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -622,10 +644,15 @@ class SFTPTransport(Transport):
         """Delete the item at relpath"""
         path = self._remote_path(relpath)
         try:
-            self._sftp.remove(path)
+            self._get_sftp().remove(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
             
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # the external path for SFTP is the base
+        return self.base
+
     def listable(self):
         """Return True if this store supports listing."""
         return True
@@ -640,7 +667,7 @@ class SFTPTransport(Transport):
         # -- David Allouche 2006-08-11
         path = self._remote_path(relpath)
         try:
-            entries = self._sftp.listdir(path)
+            entries = self._get_sftp().listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
@@ -649,7 +676,7 @@ class SFTPTransport(Transport):
         """See Transport.rmdir."""
         path = self._remote_path(relpath)
         try:
-            return self._sftp.rmdir(path)
+            return self._get_sftp().rmdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
@@ -657,7 +684,7 @@ class SFTPTransport(Transport):
         """Return the stat information for a file."""
         path = self._remote_path(relpath)
         try:
-            return self._sftp.stat(path)
+            return self._get_sftp().stat(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to stat')
 
@@ -687,51 +714,6 @@ class SFTPTransport(Transport):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-    def _unparse_url(self, path=None):
-        if path is None:
-            path = self._path
-        path = urllib.quote(path)
-        # handle homedir paths
-        if not path.startswith('/'):
-            path = "/~/" + path
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
-
-    def _split_url(self, url):
-        (scheme, username, password, host, port, path) = split_url(url)
-        assert scheme == 'sftp'
-
-        # the initial slash should be removed from the path, and treated
-        # as a homedir relative path (the path begins with a double slash
-        # if it is absolute).
-        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        # RBC 20060118 we are not using this as its too user hostile. instead
-        # we are following lftp and using /~/foo to mean '~/foo'.
-        # handle homedir paths
-        if path.startswith('/~/'):
-            path = path[3:]
-        elif path == '/~':
-            path = ''
-        return (username, password, host, port, path)
-
-    def _parse_url(self, url):
-        (self._username, self._password,
-         self._host, self._port, self._path) = self._split_url(url)
-
-    def _sftp_connect(self):
-        """Connect to the remote sftp server.
-        After this, self._sftp should have a valid connection (or
-        we raise an TransportError 'could not connect').
-
-        TODO: Raise a more reasonable ConnectionFailed exception
-        """
-        self._sftp = _sftp_connect(self._host, self._port, self._username,
-                self._password)
-
     def _sftp_open_exclusive(self, abspath, mode=None):
         """Open a remote path exclusively.
 
@@ -750,7 +732,7 @@ class SFTPTransport(Transport):
         #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
         #       However, there is no way to set the permission mode at open 
         #       time using the sftp_client.file() functionality.
-        path = self._sftp._adjust_cwd(abspath)
+        path = self._get_sftp()._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
@@ -758,11 +740,11 @@ class SFTPTransport(Transport):
         omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
-            t, msg = self._sftp._request(CMD_OPEN, path, omode, attr)
+            t, msg = self._get_sftp()._request(CMD_OPEN, path, omode, attr)
             if t != CMD_HANDLE:
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
-            return SFTPFile(self._sftp, handle, 'wb', -1)
+            return SFTPFile(self._get_sftp(), handle, 'wb', -1)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
@@ -921,13 +903,14 @@ class SocketDelay(object):
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
 
-    def __init__(self):
+    def __init__(self, server_interface=StubServer):
         self._original_vendor = None
         self._homedir = None
         self._server_homedir = None
         self._listener = None
         self._root = None
         self._vendor = ssh.ParamikoVendor()
+        self._server_interface = server_interface
         # sftp server logs
         self.logs = []
         self.add_latency = 0
@@ -958,7 +941,7 @@ class SFTPServer(Server):
         f.close()
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
-        server = StubServer(self)
+        server = self._server_interface(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=self._root,
                                          home=self._server_homedir)
@@ -966,9 +949,16 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
     
-    def setUp(self):
-        self._original_vendor = ssh._ssh_vendor
-        ssh._ssh_vendor = self._vendor
+    def setUp(self, backing_server=None):
+        # XXX: TODO: make sftpserver back onto backing_server rather than local
+        # disk.
+        if not (backing_server is None or
+                isinstance(backing_server, local.LocalURLServer)):
+            raise AssertionError(
+                "backing_server should not be %r, because this can only serve the "
+                "local current working directory." % (backing_server,))
+        self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
+        ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = getcwd()
@@ -987,7 +977,7 @@ class SFTPServer(Server):
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._listener.stop()
-        ssh._ssh_vendor = self._original_vendor
+        ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
@@ -1004,7 +994,11 @@ class SFTPFullAbsoluteServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        homedir = self._homedir
+        if sys.platform != 'win32':
+            # Remove the initial '/' on all platforms but win32
+            homedir = homedir[1:]
+        return self._get_sftp_url(urlutils.escape(homedir))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1018,7 +1012,6 @@ class SFTPServerWithoutSSH(SFTPServer):
         # Re-import these as locals, so that they're still accessible during
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
-        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self
@@ -1031,10 +1024,12 @@ class SFTPServerWithoutSSH(SFTPServer):
             def close(self):
                 pass
 
-        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
-                                     root=self._root, home=self._server_homedir)
+        server = paramiko.SFTPServer(
+            FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+            root=self._root, home=self._server_homedir)
         try:
-            server.start_subsystem('sftp', None, sock)
+            server.start_subsystem(
+                'sftp', None, ssh.SocketAsChannelAdapter(sock))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly
@@ -1043,7 +1038,13 @@ class SFTPServerWithoutSSH(SFTPServer):
             else:
                 raise
         except Exception, e:
-            import sys; sys.stderr.write('\nEXCEPTION %r\n\n' % e.__class__)
+            # This typically seems to happen during interpreter shutdown, so
+            # most of the useful ways to report this error are won't work.
+            # Writing the exception type, and then the text of the exception,
+            # seems to be the best we can do.
+            import sys
+            sys.stderr.write('\nEXCEPTION %r: ' % (e.__class__,))
+            sys.stderr.write('%s\n\n' % (e,))
         server.finish_subsystem()
 
 
@@ -1052,10 +1053,11 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        if sys.platform == 'win32':
-            return self._get_sftp_url(urlutils.escape(self._homedir))
-        else:
-            return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        homedir = self._homedir
+        if sys.platform != 'win32':
+            # Remove the initial '/' on all platforms but win32
+            homedir = homedir[1:]
+        return self._get_sftp_url(urlutils.escape(homedir))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):
@@ -1067,36 +1069,14 @@ class SFTPHomeDirServer(SFTPServerWithoutSSH):
 
 
 class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
-    """A test servere for sftp transports, using absolute urls to non-home."""
+    """A test server for sftp transports where only absolute paths will work.
 
-    def setUp(self):
-        self._server_homedir = '/dev/noone/runs/tests/here'
-        super(SFTPSiblingAbsoluteServer, self).setUp()
-
-
-def _sftp_connect(host, port, username, password):
-    """Connect to the remote sftp server.
-
-    :raises: a TransportError 'could not connect'.
-
-    :returns: an paramiko.sftp_client.SFTPClient
-
-    TODO: Raise a more reasonable ConnectionFailed exception
+    It does this by serving from a deeply-nested directory that doesn't exist.
     """
-    idx = (host, port, username)
-    try:
-        return _connected_hosts[idx]
-    except KeyError:
-        pass
-    
-    sftp = _sftp_connect_uncached(host, port, username, password)
-    _connected_hosts[idx] = sftp
-    return sftp
 
-def _sftp_connect_uncached(host, port, username, password):
-    vendor = ssh._get_ssh_vendor()
-    sftp = vendor.connect_sftp(username, password, host, port)
-    return sftp
+    def setUp(self, backing_server=None):
+        self._server_homedir = '/dev/noone/runs/tests/here'
+        super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
 
 
 def get_test_permutations():

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Development Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,14 +37,6 @@ class TestStores(object):
     def check_content(self, store, fileid, value):
         f = store.get(fileid)
         self.assertEqual(f.read(), value)
-
-    def test_add_str_deprecated(self):
-        os.mkdir('a')
-        store = self.get_store('a')
-        self.callDeprecated(['Passing a string to Store.add'
-                             ' was deprecated in version 0.11.'],
-                            store.add, 'foo', '1')
-        self.assertEqual('foo', store.get('1').read())
 
     def fill_store(self, store):
         store.add(StringIO('hello'), 'a')
@@ -406,39 +398,50 @@ class TestTransportStore(TestCase):
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
-        my_store = store.TransportStore(MemoryTransport(), escaped=True)
+        my_store = store.TransportStore(MemoryTransport(), prefixed=True,
+            escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEquals(my_store._escape_file_id('C:<>'), '%43%3a%3c%3e')
+        self.assertEquals(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):
 
+    def get_scope(self):
+        return self._transaction
+
     def setUp(self):
         super(TestVersionFileStore, self).setUp()
         self.vfstore = store.versioned.VersionedFileStore(MemoryTransport())
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = None
 
     def test_get_weave_registers_dirty_in_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-
-    def test_get_weave_or_empty_readonly_fails(self):
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.assertRaises(errors.ReadOnlyError,
-                               self.vfstore.get_weave_or_empty,
-                               'id',
-                               transaction)
 
     def test_get_weave_readonly_cant_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = transactions.ReadOnlyTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
 
+    def test___iter__escaped(self):
+        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport(),
+            prefixed=True, escaped=True)
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty(' ', self._transaction)
+        vf.add_lines('a', [], [])
+        del vf
+        self._transaction.finish()
+        self.assertEqual([' '], list(self.vfstore))

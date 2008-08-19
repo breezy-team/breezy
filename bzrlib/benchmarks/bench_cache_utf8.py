@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -12,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 
 """Tests for encoding performance."""
 
@@ -33,6 +35,7 @@ _unicode_revision_id_utf8 = _unicode_revision_id.encode('utf-8')
 
 
 class EncodingBenchmark(Benchmark):
+    """Benchmark the time to encode strings."""
 
     def setUp(self):
         super(EncodingBenchmark, self).setUp()
@@ -104,18 +107,37 @@ class EncodingBenchmark(Benchmark):
 
     def test_encode_1k_by_1k_unicode(self):
         """Test encoding 5 revisions 100k times"""
-        revisions = ['\u062c\u0648\u062c\u0648' +
+        revisions = [u'\u062c\u0648\u062c\u0648' +
                      unicode(osutils.rand_chars(60)) for x in xrange(1000)]
         self.time(self.encode_multi, revisions, 1000)
 
     def test_encode_1k_by_1k_unicode_cached(self):
         """Test encoding 5 revisions 100k times"""
-        revisions = ['\u062c\u0648\u062c\u0648' +
+        revisions = [u'\u062c\u0648\u062c\u0648' +
                      unicode(osutils.rand_chars(60)) for x in xrange(1000)]
         self.time(self.encode_cached_multi, revisions, 1000)
 
+    def test_encode_500K_by_1_ascii(self):
+        revisions = [unicode("test%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_multi, revisions, 1)
+
+    def test_encode_500K_by_1_ascii_cached(self):
+        revisions = [unicode("test%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_cached_multi, revisions, 1)
+
+    def test_encode_500K_by_1_unicode(self):
+        revisions = [u'\u062c\u0648\u062c\u0648' +
+                     unicode("%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_multi, revisions, 1)
+
+    def test_encode_500K_by_1_unicode_cached(self):
+        revisions = [u'\u062c\u0648\u062c\u0648' +
+                     unicode("%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_cached_multi, revisions, 1)
+
 
 class DecodingBenchmarks(Benchmark):
+    """Benchmark the time to decode strings."""
 
     def setUp(self):
         super(DecodingBenchmarks, self).setUp()
@@ -171,14 +193,34 @@ class DecodingBenchmarks(Benchmark):
 
     def test_decode_1k_by_1k_unicode(self):
         """Test decoding 5 revisions 100k times"""
-        revisions = [('\u062c\u0648\u062c\u0648' +
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
                       unicode(osutils.rand_chars(60))).encode('utf8')
                      for x in xrange(1000)]
         self.time(self.decode_multi, revisions, 1000)
 
     def test_decode_1k_by_1k_unicode_cached(self):
         """Test decoding 5 revisions 100k times"""
-        revisions = [('\u062c\u0648\u062c\u0648' +
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
                       unicode(osutils.rand_chars(60))).encode('utf8')
                      for x in xrange(1000)]
         self.time(self.decode_cached_multi, revisions, 1000)
+
+    def test_decode_500K_by_1_ascii(self):
+        revisions = [("test%07d" % x) for x in xrange(500000)]
+        self.time(self.decode_multi, revisions, 1)
+
+    def test_decode_500K_by_1_ascii_cached(self):
+        revisions = [("test%07d" % x) for x in xrange(500000)]
+        self.time(self.decode_cached_multi, revisions, 1)
+
+    def test_decode_500K_by_1_unicode(self):
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
+                      unicode("%07d" % x)).encode('utf-8')
+                     for x in xrange(500000)]
+        self.time(self.decode_multi, revisions, 1)
+
+    def test_decode_500K_by_1_unicode_cached(self):
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
+                      unicode("%07d" % x)).encode('utf-8')
+                     for x in xrange(500000)]
+        self.time(self.decode_cached_multi, revisions, 1)

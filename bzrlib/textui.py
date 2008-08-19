@@ -1,6 +1,6 @@
 # Bazaar -- distributed version control
 #
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,11 +25,13 @@ def show_status(state, kind, name, to_file=None):
         kind_ch = '/'
     elif kind == 'symlink':
         kind_ch = '->'
-    else:
-        assert kind == 'file', ("can't handle file of type %r" % kind)
+    elif kind == 'file':
         kind_ch = ''
+    else:
+        raise ValueError(kind)
 
-    assert len(state) == 1
+    if len(state) != 1:
+        raise ValueError(state)
         
     if to_file is None:
         to_file = sys.stdout

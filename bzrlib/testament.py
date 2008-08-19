@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ class Testament(object):
 
     def __init__(self, rev, inventory):
         """Create a new testament for rev using inventory."""
-        self.revision_id = str(rev.revision_id)
+        self.revision_id = rev.revision_id
         self.committer = rev.committer
         self.timezone = rev.timezone or 0
         self.timestamp = rev.timestamp
@@ -106,8 +106,10 @@ class Testament(object):
         self.parent_ids = rev.parent_ids[:]
         self.inventory = inventory
         self.revprops = copy(rev.properties)
-        assert not contains_whitespace(self.revision_id)
-        assert not contains_linebreaks(self.committer)
+        if contains_whitespace(self.revision_id):
+            raise ValueError(self.revision_id)
+        if contains_linebreaks(self.committer):
+            raise ValueError(self.committer)
 
     def as_text_lines(self):
         """Yield text form as a sequence of lines.
@@ -125,45 +127,48 @@ class Testament(object):
         # inventory length contains the root, which is not shown here
         a('parents:\n')
         for parent_id in sorted(self.parent_ids):
-            assert not contains_whitespace(parent_id)
+            if contains_whitespace(parent_id):
+                raise ValueError(parent_id)
             a('  %s\n' % parent_id)
         a('message:\n')
         for l in self.message.splitlines():
             a('  %s\n' % l)
         a('inventory:\n')
-        entries = self.inventory.iter_entries()
-        entries.next()
-        for path, ie in entries:
+        for path, ie in self._get_entries():
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
-        if __debug__:
-            for l in r:
-                assert isinstance(l, basestring), \
-                    '%r of type %s is not a plain string' % (l, type(l))
         return [line.encode('utf-8') for line in r]
 
+    def _get_entries(self):
+        entries = self.inventory.iter_entries()
+        entries.next()
+        return entries
+
     def _escape_path(self, path):
-        assert not contains_linebreaks(path)
+        if contains_linebreaks(path):
+            raise ValueError(path)
         return unicode(path.replace('\\', '/').replace(' ', '\ '))
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
-        assert not contains_whitespace(ie.file_id)
-
+        if contains_whitespace(ie.file_id):
+            raise ValueError(ie.file_id)
         content = ''
         content_spacer=''
         if ie.kind == 'file':
             # TODO: avoid switching on kind
-            assert ie.text_sha1
+            if not ie.text_sha1:
+                raise AssertionError()
             content = ie.text_sha1
             content_spacer = ' '
         elif ie.kind == 'symlink':
-            assert ie.symlink_target
+            if not ie.symlink_target:
+                raise AssertionError()
             content = self._escape_path(ie.symlink_target)
             content_spacer = ' '
 
         l = u'  %s %s %s%s%s\n' % (ie.kind, self._escape_path(path),
-                                   unicode(ie.file_id),
+                                   ie.file_id.decode('utf8'),
                                    content_spacer, content)
         return l
 
@@ -183,8 +188,8 @@ class Testament(object):
             return []
         r = ['properties:\n']
         for name, value in sorted(self.revprops.items()):
-            assert isinstance(name, str)
-            assert not contains_whitespace(name)
+            if contains_whitespace(name):
+                raise ValueError(name)
             r.append('  %s:\n' % name)
             for line in value.splitlines():
                 r.append(u'    %s\n' % line)
@@ -197,7 +202,7 @@ class Testament(object):
 
 
 class StrictTestament(Testament):
-    """This testament format is for use as a checksum in changesets"""
+    """This testament format is for use as a checksum in bundle format 0.8"""
 
     long_header = 'bazaar-ng testament version 2.1\n'
     short_header = 'bazaar-ng testament short form 2.1\n'
@@ -206,3 +211,22 @@ class StrictTestament(Testament):
         l += ' ' + ie.revision
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
+
+
+class StrictTestament3(StrictTestament):
+    """This testament format is for use as a checksum in bundle format 0.9+
+    
+    It differs from StrictTestament by including data about the tree root.
+    """
+
+    long_header = 'bazaar testament version 3 strict\n'
+    short_header = 'bazaar testament short form 3 strict\n'
+    def _get_entries(self):
+        return self.inventory.iter_entries()
+
+    def _escape_path(self, path):
+        if contains_linebreaks(path):
+            raise ValueError(path)
+        if path == '':
+            path = '.'
+        return unicode(path.replace('\\', '/').replace(' ', '\ '))

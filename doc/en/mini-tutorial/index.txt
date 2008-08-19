@@ -1,0 +1,279 @@
+======================
+Bazaar in five minutes
+======================
+
+.. contents::
+
+Introduction
+============
+
+Bazaar is a distributed version control system that makes it easier for
+people to work together on software projects. 
+
+Over the next five minutes, you'll learn how to put your files under
+version control, how to record changes to them, examine your work, publish
+it and send your work for merger into a project's trunk.
+
+If you'd prefer a more detailed introduction, take a look at 
+`Learning More`_.
+
+
+Installation
+============
+
+This guide doesn't describe how to install Bazaar but it's usually very
+easy. You can find installation instructions at:
+
+- **GNU/Linux:** Bazaar is probably in your GNU/Linux distribution already.
+- **Windows:** `installation instructions for Windows`_.
+- **Mac OS X:** `installation instructions for Mac OS X`_.
+
+For other platforms and to install from source code, see the Download_
+and Installation_ pages.
+
+.. _installation instructions for Windows: http://bazaar-vcs.org/WindowsDownloads
+.. _installation instructions for Mac OS X: http://bazaar-vcs.org/MacOSXBundle
+.. _Download: http://bazaar-vcs.org/Download
+.. _Installation: http://bazaar-vcs.org/InstallationFaq
+
+
+Introducing yourself
+====================
+
+Before you start working, it is good to tell Bazaar who you are. That
+way your work is properly identified in revision logs.
+
+Using your name and email address, instead of John Doe's, type::
+
+  $ bzr whoami "John Doe <john.doe@gmail.com>"
+  
+Bazaar will now create or modify a configuration file, including your
+name and email address.
+
+Now, check that your name and email address are correctly registered::
+
+  $ bzr whoami
+  John Doe <john.doe@gmail.com>
+
+
+Putting files under version control
+===================================
+
+Let's create a directory and some files to use with Bazaar::
+
+ $ mkdir myproject
+ $ cd myproject
+ $ mkdir subdirectory
+ $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
+ 
+**Note for Windows users:** use Windows Explorer to create your
+directories, then right-click in those directories and select 
+``New file`` to create your files.
+
+Now get Bazaar to initalize itself in your project directory::
+
+  $ bzr init
+  
+If it looks like nothing happened, don't worry. Bazaar has created a
+branch_ where it will store your files and their revision histories.
+
+.. _branch: http://bazaar-vcs.org/Branch
+
+The next step is to tell Bazaar which files you want to track. Running
+``bzr add`` will recursively add everything in the project::
+
+ $ bzr add
+ added subdirectory
+ added test1.txt
+ added test2.txt
+ added test3.txt
+ added subdirectory/test4.txt
+
+Next, take a snapshot of your files by committing them to your branch. Add 
+a message to explain why you made the commit::
+
+  $ bzr commit -m "Initial import"
+  
+As Bazaar is a distributed version control system, it doesn't need to 
+connect to a central server to make the commit. Instead, Bazaar stores your 
+branch and all its commits inside the directory you're working with; look
+for the ``.bzr`` sub-directory.
+
+
+Making changes to your files
+============================
+
+Let's change a file and commit that change to your branch.
+
+Edit ``test1.txt`` in your favourite editor, then check what have you done::
+
+ $ bzr diff
+ === modified file 'test1.txt'
+ --- test1.txt   2007-10-08 17:56:14 +0000
+ +++ test1.txt   2007-10-08 17:46:22 +0000
+ @@ -0,0 +1,1 @@
+ +test test test
+
+Commit your work to the Bazaar branch::
+
+  $ bzr commit -m "Added first line of text"
+  Committed revision 2.
+
+
+Viewing the revision log
+========================
+
+You can see the history of your branch by browsing its log::
+
+  $ bzr log
+  ------------------------------------------------------------
+  revno: 2
+  committer: John Doe <john.doe@gmail.com>
+  branch nick: myproject
+  timestamp: Mon 2007-10-08 17:56:14 +0000
+  message:
+    Added first line of text
+  ------------------------------------------------------------
+  revno: 1
+  committer: John Doe <john.doe@gmail.com>
+  branch nick: myproject
+  timestamp: Mon 2006-10-08 17:46:22 +0000
+  message:
+    Initial import
+
+
+Publishing your branch with sftp
+================================
+
+There are a couple of ways to publish your branch. If you already have
+an SFTP server or are comfortable setting one up, you can publish your
+branch to it.
+
+Otherwise, skip to the next section to publish with Launchpad_, a free
+hosting service for Bazaar.
+
+.. _Launchpad: https://launchpad.net/
+
+Let's assume you want to publish your branch at ``www.example.com/myproject``::
+
+ $ bzr push --create-prefix sftp://your.name@example.com/~/public_html/myproject
+ 2 revision(s) pushed.
+ 
+Bazaar will create a ``myproject`` directory on the remote server and
+push your branch to it.
+ 
+Now anyone can create their own copy of your branch by typing::
+
+ $ bzr branch http://www.example.com/myproject
+ 
+**Note:** to use sftp, you may need to install ``paramiko`` and
+``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
+
+
+Publishing your branch with Launchpad
+=====================================
+
+Launchpad is a suite of development and hosting tools for free 
+software projects. You can use it to publish your branch.
+
+If you don't have a Launchpad account, follow the `account signup guide`_
+and `register an SSH key`_ in your new Launchpad account.
+
+.. _account signup guide: https://help.launchpad.net/CreatingYourLaunchpadAccount
+.. _register an SSH key: https://launchpad.net/people/+me/+editsshkeys
+
+Replacing ``john.doe`` with your own Launchpad username, type::
+
+ $ bzr push bzr+ssh://john.doe@bazaar.launchpad.net/~john.doe/+junk/myproject
+
+**Note:** ``+junk`` means that this branch isn't associated with any particular
+project in Launchpad.
+
+Now, anyone can create their own copy of your branch by typing::
+
+ $ bzr branch http://bazaar.launchpad.net/~john.doe/+junk/myproject
+ 
+You can also see information about your branch, including its revision
+history, at https://code.launchpad.net/people/+me/+junk/myproject
+
+
+Creating your own copy of another branch
+========================================
+
+To work with someone else's code, you can make your own copy of their 
+branch. Let's take a real-world example, Bazaar's GTK interface::
+
+  $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
+  Branched 292 revision(s).                                                        
+
+Bazaar will download all the files and complete revision history from the
+bzr-gtk project's trunk branch and create a copy called bzr-gtk.john.
+
+Now, you have your own copy of the branch and can commit changes with 
+or without a net connection. You can share your branch at any time by 
+publishing it and, if the  bzr-gtk team want to use your work, Bazaar 
+makes it easy for them to merge your branch back into their trunk branch.
+
+
+Updating your branch from the main branch
+=========================================
+
+While you commit changes to your branch, it's likely that other people will
+also continue to commit code to the parent branch.
+
+To make sure your branch stays up to date, you should merge changes from
+the parent into your personal branch::
+
+  $ bzr merge
+  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+  All changes applied successfully.
+            
+Check what has changed::
+
+  $ bzr diff
+ 
+If you're happy with the changes, you can commit them to your personal
+branch::
+
+  $ bzr commit -m "Merge from main branch"
+  Committed revision 295.
+
+
+Merging your work into the parent branch
+========================================
+
+After you've worked on your personal branch of bzr-gtk, you may want to
+send your changes back upstream to the project. The easiest way is to
+use a merge directive.
+
+A merge directive is a machine-readable request to perform a 
+particular merge.  It usually contains a patch preview of the merge 
+and either contains the necessary revisions, or provides a branch 
+where they can be found.
+
+Replacing ``mycode.patch``, create your merge directive::
+
+ $ bzr send -o mycode.patch
+ Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+ 
+You can now email the merge directive to the bzr-gtk project who, if
+they choose, can use it merge your work back into the parent branch.
+ 
+ 
+Learning more
+=============
+
+You can find out more about Bazaar in the
+`Bazaar User Guide <../user-guide/index.html>`_.
+
+To learn about Bazaar on the command-line::
+
+  $ bzr help
+
+To learn about Bazaar commands::
+
+  $ bzr help commands
+
+To learn about the ''foo'' topic or command::
+
+  $ bzr help foo

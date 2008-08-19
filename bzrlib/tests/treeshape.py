@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,7 +65,8 @@ def capture_tree_contents(top):
         filenames.sort()
         for fn in filenames:
             fullpath = pathjoin(dirpath, fn)
-            assert not (fullpath[-1] in '@/')
+            if (fullpath[-1] in '@/'):
+                raise AssertionError(fullpath)
             info = os.lstat(fullpath)
             if stat.S_ISLNK(info.st_mode):
                 yield (fullpath + '@', os.readlink(fullpath))
