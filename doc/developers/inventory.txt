@@ -8,7 +8,9 @@ Overview
 ========
 
 Inventories provide an abstraction for talking about the shape of a tree.
-Generally only tree object implementors should be concerned about inventories.
+Generally only tree object implementors should be concerned about entire
+inventory objects and their implementation. Other common exceptions are
+full-tree operations such as 'checkout', 'export' and 'import'.
 
 In memory inventories
 =====================
@@ -39,9 +41,141 @@ xml
 All the xml serialized forms write to and read from a single byte string, whose
 hash is then the inventory validator for the commit object.
 
-journalled
-----------
 
-The in development journalled inventory serializer generates a single byte
-string during serialization, but may require many byte strings to deserialize,
-and these are discovered recursively.
+Serialization scaling and future designs
+========================================
+
+Overall efficiency and scaling is constrained by the bottom level structure
+that an inventory is stored as. We have a number of goals we want to achieve:
+
+ 1. Allow commit to write less than the full tree's data in to the repository
+    in the general case. 
+ 2. Allow the data that is written to be calculated without examining every
+    versioned path in the tree.
+ 3. Generate the exact same representation for a given inventory regardless of
+    the amount of history available.
+ 4. Allow in memory deltas to be generated directly from the serialised form
+    without upcasting to a full in-memory representation or examining every
+    path in the tree. Ideally the work performed will be proportional to the
+    amount of changes between the trees being compared.
+ 5. Allow fetch to determine the file texts that need to be pulled to ensure
+    that the entire tree can be reconstructed without having to probe every
+    path in the tree.
+ 6. Allow bzr map paths to file ids without reading the entire serialised
+    form. This is something that is used by commands such as merge PATH and
+    diff -r X PATH.
+ 7. Let bzr map file ids to paths without reading the entire serialised form.
+    This is used by commands that are presenting output to the user such as
+    loggerhed, bzr-search, log FILENAME.
+ 8. We want a strong validator for inventories which is cheap to generate.
+    Specifically we should be able to create the generator for a new commit
+    without processing all the data of the basis commit.
+ 9. Testaments generation is currently size(tree), we would like to create a
+    new testament standard which requires less work so that signed commits
+    are not significantly slower than regular commits.
+
+
+We have current performance and memory bugs in log -v, merge, commit, diff -r,
+loggerhead and status -r which can be addresessed by an inventory system
+meeting these goals.
+
+Current situation
+-----------------
+
+The xml based implementation we use today layers the inventory as a bytestring
+which is stored under a single key; the bytestring is then compressed as a 
+delta against the bytestring of its left hand parent by the knit code.
+
+Gap analysis:
+
+ 1. Succeeds
+ 2. Fails - generating a new xml representation needs full tree data.
+ 3. Succeeds - the inventory layer accesses the bytestring, which is
+    deterministic
+ 4. Fails - we have to reconstruct both inventories as trees and then delta
+    the resulting in memory objects.
+ 5. Partial success - the revision field in the inventory can be scanned for
+    in both text-delta and full-bytestring form; other revision values than
+    those revisions which are being pulled are by definition absent.
+ 6. Partially succeeds - with appropriate logic a path<->id map can be generated
+    just-in-time, but it is complex and still requires reconstructing the
+    entire byte-string.
+ 7. As for 6.
+ 8. Fails - we have to hash the entire tree in serialised form to generate
+    validators.
+ 9. Fails.
+
+Long term work
+--------------
+
+Some things are likely harder to fix incrementally than others. In particular,
+goal 3 (constant canonical form) is arguably only achieved if we remove all
+derived data such as the last-modified revision from the inventory itself. That
+said, the last-modified appears to be in a higher level than raw serialization.
+So in the medium term we will not alter the contents of inventories, only the
+way that the current contents are mapped to and from disk.
+
+
+Layering
+--------
+
+We desire clear and clean layers. Each layer should be as simple as we can make
+it to aid in debugging and performance tuning. So where we can choose to either
+write a complex layer and something simple on top of it, or two layers with
+neither being as complex - then we should consider the latter choice better in
+the absence of compelling reasons not to.
+
+Some key layers we have today and can look at using or tweaking are:
+
+ * Tree objects - the abstract interface bzrlib code works in
+ * VersionedFiles - the optionally delta compressing key->bytes storage
+   interface.
+ * Inventory - the abstract interface that many tree operations are written in.
+
+These layers are probably sufficient with minor tweaking. We may want to add
+additional modules/implementations of one or more layers, but that doesn't
+really require new layers to be exposed.
+
+Design elements to achieve the goals in a future inventory implementation
+-------------------------------------------------------------------------
+
+ * Split up the logical document into smaller serialised fragements. For
+   instance hash buckets or nodes in a tree of some sort. By serialising in 
+   smaller units, we can increase the number of smaller units rather than 
+   their size as the tree grows; as long as two similar trees have similar
+   serialised forms, the amount of different content should be quite high.
+
+ * Use fragment identifiers that are independent of revision id, so that
+   serialisation of two related trees generates overlap in the keyspace
+   for fragments without requiring explicit delta logic. Content Hash Keys
+   (e.g. ('sha1:ABCDEF0123456789...',) are useful here because of the ability
+   to assign them without reference to history.)
+
+ * Store the fragments in our existing VersionedFiles store. Adding an index
+   for them. Have the serialised form be uncompressed utf8, so that delta logic
+   in the VersionedFiles layer can be used. We may need to provide some sort
+   of hinting mechanism to get good compression - but the trivially available
+   zlib compression of knits-with-no-deltas is probably a good start.
+
+ * Item_keys_introduced_by is innately a history-using function; we can
+   reproduce the text-key finding logic by doing a tree diff between any tree
+   and and older tree - that will limit the amount of data we need to process
+   to something proportional to the difference and the size of each fragment.
+   When checking many versions we can track which fragments we have examined
+   and only look at new unique ones as each version is examined in turn.
+
+ * Working tree to arbitrary history revision deltas/comparisons can be scaled
+   up by doing a two-step (fixed at two!) delta combining - delta(tree, basis)
+   and then combine that with delta(basis, arbitrary_revision) using the 
+   repositories ability to get a delta cheaply.
+
+ * The key primitives we need seem to be:
+   * canonical_form(inventory) -> fragments
+   * delta(inventory, inventory) -> inventory_delta
+   * apply(inventory_delta, canonical_form) -> fragments
+
+ * Having very many small fragments is likely to cause a high latency
+   multiplier unless we are careful.
+
+ * Possible designs to investigate - a hash bucket approach, radix trees,
+   B+ trees, directory trees (with splits inside a directory?).
