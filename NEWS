@@ -65,6 +65,16 @@ IN DEVELOPMENT
       (Robert Collins, Aaron Bentley)
 
 
+bzr 1.6rc4 2008-08-18
+---------------------
+
+  BUG FIXES: 
+
+    * Fix a regression in knit => pack fetching.  We had a logic
+      inversion, causing the fetch to insert fulltexts in random order,
+      rather than preserving deltas.  (John Arbash Meinel, #256757)
+
+
 bzr 1.6rc3 2008-08-14
 ---------------------
 
