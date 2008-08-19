@@ -59,7 +59,7 @@ cdef extern from "Python.h":
     char *PyString_AsString(object p)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
     object PyString_FromString(char *)
-    object PyString_FromStringAndSize(char *, int)
+    object PyString_FromStringAndSize(char *, Py_ssize_t)
     int PyString_Size(object p)
     int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
     int PyString_CheckExact(object p)
@@ -109,6 +109,13 @@ def _py_memrchr(s, c):
     if found == NULL:
         return None
     return <char*>found - <char*>_s
+
+cdef object safe_string_from_size(char *s, Py_ssize_t size):
+    if size < 0:
+        raise AssertionError(
+            'tried to create a string with an invalid size: %d @0x%x'
+            % (size, <int>s))
+    return PyString_FromStringAndSize(s, size)
 
 
 cdef int _is_aligned(void *ptr):
@@ -485,11 +492,23 @@ cdef class Reader:
         self.end_cstr = self.text_cstr + self.text_size
         self.cur_cstr = self.text_cstr
 
-    cdef char *get_next(self, int *size):
+    cdef char *get_next(self, int *size) except NULL:
         """Return a pointer to the start of the next field."""
         cdef char *next
+        cdef Py_ssize_t extra_len
+
+        if self.cur_cstr == NULL:
+            raise AssertionError('get_next() called when cur_str is NULL')
+        elif self.cur_cstr >= self.end_cstr:
+            raise AssertionError('get_next() called when there are no chars'
+                                 ' left')
         next = self.cur_cstr
-        self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr-next)
+        self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr - next)
+        if self.cur_cstr == NULL:
+            extra_len = self.end_cstr - next
+            raise AssertionError('failed to find trailing NULL (\\0).'
+                ' Trailing garbage: %r'
+                % safe_string_from_size(next, extra_len))
         size[0] = self.cur_cstr - next
         self.cur_cstr = self.cur_cstr + 1
         return next
@@ -499,7 +518,7 @@ cdef class Reader:
         cdef int size
         cdef char *next
         next = self.get_next(&size)
-        return PyString_FromStringAndSize(next, size)
+        return safe_string_from_size(next, size)
 
     cdef int _init(self) except -1:
         """Get the pointer ready.
@@ -570,7 +589,7 @@ cdef class Reader:
                        # <object>
                        PyString_AS_STRING_void(p_current_dirname[0]),
                        cur_size+1) != 0):
-            dirname = PyString_FromStringAndSize(dirname_cstr, cur_size)
+            dirname = safe_string_from_size(dirname_cstr, cur_size)
             p_current_dirname[0] = <void*>dirname
             new_block[0] = 1
         else:
@@ -623,7 +642,7 @@ cdef class Reader:
         if cur_size != 1 or trailing[0] != c'\n':
             raise AssertionError(
                 'Bad parse, we expected to end on \\n, not: %d %s: %s'
-                % (cur_size, PyString_FromStringAndSize(trailing, cur_size),
+                % (cur_size, safe_string_from_size(trailing, cur_size),
                    ret))
         return ret
 

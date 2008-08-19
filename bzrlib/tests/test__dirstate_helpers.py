@@ -691,6 +691,19 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
+    def test_trailing_garbage(self):
+        tree, state, expected = self.create_basic_dirstate()
+        # We can modify the file as long as it hasn't been read yet.
+        f = open('dirstate', 'ab')
+        try:
+            # Add bogus trailing garbage
+            f.write('bogus\n')
+        finally:
+            f.close()
+        e = self.assertRaises(AssertionError, state._read_dirblocks_if_needed)
+        # Make sure we mention the bogus characters in the error
+        self.assertContainsRe(str(e), 'bogus')
+
 
 class TestCompiledReadDirblocks(TestReadDirblocks):
     """Test the pyrex implementation of _read_dirblocks"""
