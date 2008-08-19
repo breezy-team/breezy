@@ -347,8 +347,10 @@ class TestPush(ExternalBase):
         self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='development1')
         out, err = self.run_bzr('push -d from to')
-        self.assertContainsRe(err,
-                              'Using default stacking branch stack_on at .*')
+        # XXX: Determining stacking from a containing bzrdir has been
+        #      explicitly disabled.
+        self.assertNotContainsRe(err,
+                                 'Using default stacking branch stack_on at .*')
 
 
 class RedirectingMemoryTransport(MemoryTransport):
