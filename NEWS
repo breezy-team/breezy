@@ -12,13 +12,25 @@ IN DEVELOPMENT
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
+    * ``bzr rm`` will now scan for files that are missing and remove just
+      them automatically, much as ``bzr add`` scans for new files that
+      are not ignored and adds them automatically. (Robert Collins)
+
   IMPROVEMENTS:
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
       ``bzr info`` if it completed successfully.
       (Marius Kruger)
 
+    * ``bzr uncommit`` logs the old tip revision id, and displays how to
+      restore the branch to that tip using ``bzr pull``.  This allows you
+      to recover if you realize you uncommitted the wrong thing.
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
+      users. (Robert Collins, #205416)
 
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees

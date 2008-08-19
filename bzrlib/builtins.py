@@ -1074,17 +1074,14 @@ class cmd_info(Command):
 class cmd_remove(Command):
     """Remove files or directories.
 
-    This makes bzr stop tracking changes to the specified files and
-    delete them if they can easily be recovered using revert.
-
-    You can specify one or more files, and/or --new.  If you specify --new,
-    only 'added' files will be removed.  If you specify both, then new files
-    in the specified directories will be removed.  If the directories are
-    also new, they will also be removed.
+    This makes bzr stop tracking changes to the specified files. bzr will delete
+    them if they can easily be recovered using revert. If no options or
+    parameters are given bzr will scan for files that are being tracked by bzr
+    but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
-        Option('new', help='Remove newly-added files.'),
+        Option('new', help='Only remove files that have never been committed.'),
         RegistryOption.from_kwargs('file-deletion-strategy',
             'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
@@ -1093,7 +1090,7 @@ class cmd_remove(Command):
             keep="Don't delete any files.",
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
-    aliases = ['rm']
+    aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
@@ -1102,19 +1099,32 @@ class cmd_remove(Command):
 
         if file_list is not None:
             file_list = [f for f in file_list]
-        elif not new:
-            raise errors.BzrCommandError('Specify one or more files to'
-            ' remove, or use --new.')
 
-        if new:
-            added = tree.changes_from(tree.basis_tree(),
-                specific_files=file_list).added
-            file_list = sorted([f[0] for f in added], reverse=True)
-            if len(file_list) == 0:
-                raise errors.BzrCommandError('No matching files.')
-        tree.remove(file_list, verbose=verbose, to_file=self.outf,
-            keep_files=file_deletion_strategy=='keep',
-            force=file_deletion_strategy=='force')
+        tree.lock_write()
+        try:
+            # Heuristics should probably all move into tree.remove_smart or
+            # some such?
+            if new:
+                added = tree.changes_from(tree.basis_tree(),
+                    specific_files=file_list).added
+                file_list = sorted([f[0] for f in added], reverse=True)
+                if len(file_list) == 0:
+                    raise errors.BzrCommandError('No matching files.')
+            elif file_list is None:
+                # missing files show up in iter_changes(basis) as
+                # versioned-with-no-kind.
+                missing = []
+                for change in tree.iter_changes(tree.basis_tree()):
+                    # Find paths in the working tree that have no kind:
+                    if change[1][1] is not None and change[6][1] is None:
+                        missing.append(change[1][1])
+                file_list = sorted(missing, reverse=True)
+                file_deletion_strategy = 'keep'
+            tree.remove(file_list, verbose=verbose, to_file=self.outf,
+                keep_files=file_deletion_strategy=='keep',
+                force=file_deletion_strategy=='force')
+        finally:
+            tree.unlock()
 
 
 class cmd_file_id(Command):
@@ -3777,8 +3787,12 @@ class cmd_uncommit(Command):
                     print 'Canceled'
                     return 0
 
+        mutter('Uncommitting from {%s} to {%s}',
+               last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
+        note('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s', last_rev_id)
 
 
 class cmd_break_lock(Command):
