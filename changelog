@@ -1,3 +1,10 @@
+bzr (1.6~rc3-1) experimental; urgency=low
+
+  * New upstream release.
+  * Update watch file. bazaar now uses launchpad to host its sources.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 19 Aug 2008 19:44:28 +0200
+
 bzr (1.6~rc1-2) experimental; urgency=low
 
   * Bump standards version.
