@@ -1,0 +1,58 @@
+=================================
+Главный каталог документов Базара
+=================================
+
+Последняя версия этих документов доступа со страницы документации 
+на сайте Базара, <http://doc.bazaar-vcs.org/>. Еще больше информации 
+можно получить по адресу <http://bazaar-vcs.org/Documentation>.
+
+Документация по ядру
+====================
+
+* `Руководство пользователя <ru/user-guide/index.html>`_
+
+* `Справочник пользователя <ru/user-reference/bzr_man.html>`_
+
+* `Карточка быстрого старта <ru/quick-reference/quick-start-summary.svg>`_
+  (`PDF <ru/quick-reference/quick-start-summary.pdf>`_,
+  `PNG <ru/quick-reference/quick-start-summary.png>`_)
+
+* `Список изменений <ru/release-notes/NEWS.html>`_
+
+* `Каталог информации для разработчиков <developers/index.html>`_ |--| 
+  для разработчиков Базара и дополнений
+
+Учебники
+========
+
+* `Базар за пять минут <ru/mini-tutorial/index.html>`_
+
+* `Большой учебник <ru/tutorials/tutorial.html>`_
+
+* `Использование Базара с Launchpad <ru/tutorials/using_bazaar_with_launchpad.html>`_
+
+* `Централизированный порядок работ <ru/tutorials/centralized_workflow.html>`_
+
+Ссылки в сети
+=============
+
+* `Руководства по переходу <http://bazaar-vcs.org/BzrSwitching>`_
+  |--| для пользователей переходящих с других систем контроля версий
+
+* `Руководство по миграции <http://bazaar-vcs.org/BzrMigration>`_
+  |--| для команд переносящих историю с других систем контроля версий
+
+* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `Часто задаваемые вопросы <http://bazaar-vcs.org/FAQ>`_
+
+Другие языки
+============
+
+* `Документация на английском <index.html>`_
+* `Документация на испанском <index.es.html>`_
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

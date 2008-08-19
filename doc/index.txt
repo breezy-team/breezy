@@ -53,6 +53,7 @@ Other Languages
 ===============
 
 * `Spanish Documentation <index.es.html>`_
+* `Russian Documentation <index.ru.html>`_
 
 .. |--| unicode:: U+2014
 
