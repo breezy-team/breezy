@@ -129,7 +129,7 @@ Packaging Bazaar
 #. Make a new ``debian/changelog`` entry for the new release,
    either by using ``dch`` or just editing the file::
 
-     dch -v '1.6~beta3-1~bazaar1~hardy1' -D hardy
+      dch -v '1.6~beta3-1~bazaar1~hardy1' -D hardy
 
    dch will default to the distro you're working in and this isn't checked
    against the version number (which is just our conversion), so make sure 
