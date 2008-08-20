@@ -31,9 +31,20 @@ class ChunkWriter(object):
     The algorithm for packing is open to improvement! Current it is:
      - write the bytes given
      - if the total seen bytes so far exceeds the chunk size, flush.
+
+    :cvar _max_repack: To fit the maximum number of entries into a node, we
+        will sometimes start over and compress the whole list to get tighter
+        packing. We get diminishing returns after a while, so this limits the
+        number of times we will try.
+    :cvar _default_min_compression_size: The expected minimum compression.
+        While packing nodes into the page, we won't Z_SYNC_FLUSH until we have
+        received this much input data. This saves time, because we don't bloat
+        the result with SYNC entries (and then need to repack), but if it is
+        set too high we will accept data that will never fit.
     """
 
     _max_repack = 2
+    _default_min_compression_size = 1.8
 
     def __init__(self, chunk_size, reserved=0):
         """Create a ChunkWriter to write chunk_size chunks.
@@ -52,6 +63,7 @@ class ChunkWriter(object):
         self.num_repack = 0
         self.unused_bytes = None
         self.reserved_size = reserved
+        self.min_compress_size = self._default_min_compression_size
 
     def finish(self):
         """Finish the chunk.
@@ -111,7 +123,7 @@ class ChunkWriter(object):
         # Check quickly to see if this is likely to put us outside of our
         # budget:
         next_seen_size = self.seen_bytes + len(bytes)
-        if (next_seen_size < 1.8 * capacity):
+        if (next_seen_size < self.min_compress_size * capacity):
             # No need, we assume this will "just fit"
             out = self.compressor.compress(bytes)
             self.bytes_in.append(bytes)
@@ -129,14 +141,16 @@ class ChunkWriter(object):
             out = self.compressor.flush(Z_SYNC_FLUSH)
             if out:
                 self.bytes_list.append(out)
-            total_len = sum(len(b) for b in self.bytes_list)
+            # TODO: We may want to cache total_len, as the 'sum' call seems to
+            #       be showing up a bit on lsprof output
+            total_len = sum(map(len, self.bytes_list))
             # Give us some extra room for a final Z_FINISH call.
             if total_len + 10 > capacity:
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
                 bytes_out, compressor = self._recompress_all_bytes_in(bytes)
-                this_len = sum(len(b) for b in bytes_out)
+                this_len = sum(map(len, bytes_out))
                 if this_len + 10 > capacity:
                     # No way we can add anymore, we need to re-pack because our
                     # compressor is now out of sync
