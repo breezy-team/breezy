@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Wrapper for readdir which grabs file type from d_type."""
+"""Wrapper for readdir which returns files ordered by inode."""
 
 
 import os
@@ -46,6 +46,7 @@ cdef extern from 'dirent.h':
         # this will fail to compile if d_type is not defined.
         # if this module fails to compile, use the .py version.
         unsigned char d_type
+        int d_ino
     ctypedef struct DIR
     # should be DIR *, pyrex barfs.
     DIR * opendir(char * name)
@@ -71,7 +72,7 @@ def read_dir(path):
     """Like os.listdir, this reads a directories contents.
 
     :param path: the directory to list.
-    :return: a list of (basename, kind) tuples.
+    :return: a list of (sort_key, basename) tuples.
     """
     cdef DIR *the_dir
     # currently this needs a fixup - the C code says 'dirent' but should say
@@ -106,24 +107,7 @@ def read_dir(path):
                 (name[1] == 0) or 
                 (name[1] == dot and name [2] == 0))
                 ):
-                if entry.d_type == DT_UNKNOWN:
-                    type = _unknown
-                elif entry.d_type == DT_REG:
-                    type = _file
-                elif entry.d_type == DT_DIR:
-                    type = _directory
-                elif entry.d_type == DT_FIFO:
-                    type = _fifo
-                elif entry.d_type == DT_SOCK:
-                    type = _socket
-                elif entry.d_type == DT_CHR:
-                    type = _chardev
-                elif entry.d_type == DT_BLK:
-                    type = _block
-                else:
-                    type = _unknown
-                # result.append((entry.d_name, type))
-                result.append((entry.d_name, 'unknown'))
+                result.append((entry.d_ino, entry.d_name))
     finally:
         if -1 == closedir(the_dir):
             raise OSError(errno, strerror(errno))

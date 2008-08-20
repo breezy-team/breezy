@@ -55,7 +55,6 @@ from bzrlib import (
 
 
 import bzrlib
-from bzrlib.readdir import read_dir
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -1278,16 +1277,13 @@ def _walkdirs_fs_utf8(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name, kind in sorted(_listdir(top)):
+        # read_dir supplies in should-stat order.
+        for _, name in sorted(_listdir(top)):
             abspath = top_slash + name
-            if kind == 'unknown':
-                statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            else:
-                statvalue = None
-                statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1532,3 +1528,9 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+try:
+    from bzrlib._readdir_pyx import read_dir
+except ImportError:
+    from bzrlib._readdir_py import read_dir

@@ -27,6 +27,6 @@ def read_dir(path):
     a file kind in the second element of the returned tuples.
 
     :param path: the directory to list.
-    :return: a list of (basename, None) tuples.
+    :return: a list of (None, basename) tuples.
     """
-    return [(name, 'unknown') for name in os.listdir(path)]
+    return [(None, name) for name in os.listdir(path)]

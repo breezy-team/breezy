@@ -28,7 +28,6 @@ import bzrlib
 from bzrlib import (
     errors,
     osutils,
-    readdir,
     tests,
     win32utils,
     )
@@ -40,17 +39,36 @@ from bzrlib.osutils import (
         pumpfile,
         )
 from bzrlib.tests import (
+        adapt_tests,
         probe_unicode_in_user_encoding,
+        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
+        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (
     FakeReadFile,
     )
 from bzrlib.tests.test__walkdirs_win32 import WalkdirsWin32Feature
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize readdir tests."""
+    to_adapt, result = split_suite_by_re(standard_tests, "readdir")
+    adapter = TestScenarioApplier()
+    from bzrlib import _readdir_py
+    adapter.scenarios = [('python', {'read_dir':_readdir_py.read_dir})]
+    try:
+        from bzrlib import _readdir_pyx
+        adapter.scenarios.append(
+            (('pyrex', {'read_dir':_readdir_pyx.read_dir})))
+    except ImportError:
+        pass
+    adapt_tests(to_adapt, adapter, result)
+    return result
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -734,13 +752,18 @@ class TestWalkDirs(TestCaseInTempDir):
         self.build_tree(tree)
         expected_names = ['.bzr', '0file', '1dir', '2file']
         # read_dir either returns None, or a value
-        read_result = readdir.read_dir('.')
-        if read_result[0][1] is None:
-            expected_kind = ['unknown', 'unknown', 'unknown', 'unknown']
+        read_result = self.read_dir('.')
+        if read_result[0][0] is None:
+            # No innate sort:
+            expected_keys = [None, None, None, None]
+            expected = zip(expected_keys, expected_names)
+            expected.sort()
+            self.assertEqual(expected, sorted(read_result))
         else:
-            expected_kind = ['directory', 'file', 'directory', 'file']
-        expected = zip(expected_names, expected_kind)
-        self.assertEqual(expected, sorted(read_result))
+            # Check that the names we need are present in the second
+            # column
+            names = sorted([result[1] for result in read_result])
+            self.assertEqual(expected_names, names)
         
     def test_walkdirs(self):
         tree = [
