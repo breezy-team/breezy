@@ -208,14 +208,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     yield self, key, value
 
     def _iter_smallest(self, iterators_to_combine):
+        if len(iterators_to_combine) == 1:
+            for value in iterators_to_combine[0]:
+                yield value
+            return
         current_values = []
         for iterator in iterators_to_combine:
             try:
                 current_values.append(iterator.next())
             except StopIteration:
                 current_values.append(None)
-        def getter(item):
-            return item[1][1]
         last = None
         while True:
             # Decorate candidates with the value to allow 2.4's min to be used.
@@ -397,6 +399,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
         for backing in self._backing_indices:
             if backing is not None:
                 iterators.append(backing.iter_all_entries())
+        if len(iterators) == 1:
+            return iterators[0]
         return self._iter_smallest(iterators)
 
     def iter_entries(self, keys):
