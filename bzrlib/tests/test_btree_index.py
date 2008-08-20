@@ -17,7 +17,6 @@
 """Tests for btree indices."""
 
 import pprint
-import time
 import zlib
 
 from bzrlib import (
@@ -282,21 +281,15 @@ class TestBTreeBuilder(BTreeTestCase):
         # having to flush anything out to disk.
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
                                            spill_at=100001)
-        # 100K nodes is enough to create a two internal nodes on the second level
-        tstart = time.time()
+        # 100K nodes is *just* enough to create a two internal nodes on the
+        # second level
         nodes = self.make_nodes(50000, 2, 2)
-        delta_make = time.time() - tstart
 
-        tstart = time.time()
         for node in nodes:
             builder.add_node(*node)
-        delta = time.time() - tstart
         transport = get_transport('trace+' + self.get_url(''))
-        tstart = time.time()
-        size = transport.put_file('index', builder.finish())
-        delta_flush = time.time() - tstart
+        size = transport.put_file('index', self.time(builder.finish))
         del builder
-        # print "\n  Spent %.3fs creating and %.3fs adding nodes and %.3fs flushing" % (delta_make, delta, delta_flush)
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
         # Seed the metadata, we're using internal calls now.
         index.key_count()
