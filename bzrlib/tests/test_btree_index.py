@@ -120,7 +120,7 @@ class TestBTreeBuilder(BTreeTestCase):
         content = temp_file.read()
         del temp_file
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=0\nkey_elements=1\nlen=0\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=0\n"
             "row_lengths=\n",
             content)
 
@@ -131,7 +131,7 @@ class TestBTreeBuilder(BTreeTestCase):
         content = temp_file.read()
         del temp_file
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=1\nkey_elements=2\nlen=0\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=1\nkey_elements=2\nlen=0\n"
             "row_lengths=\n",
             content)
 
@@ -146,7 +146,7 @@ class TestBTreeBuilder(BTreeTestCase):
         del temp_file
         self.assertEqual(158, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=0\nkey_elements=1\nlen=5\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=5\n"
             "row_lengths=1\n",
             content[:73])
         node_content = content[73:]
@@ -170,7 +170,7 @@ class TestBTreeBuilder(BTreeTestCase):
         del temp_file
         self.assertEqual(264, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=2\nkey_elements=2\nlen=10\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=10\n"
             "row_lengths=1\n",
             content[:74])
         node_content = content[74:]
@@ -202,7 +202,7 @@ class TestBTreeBuilder(BTreeTestCase):
         del temp_file
         self.assertEqual(10646, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
             "row_lengths=1,2\n",
             content[:77])
         root = content[77:4096]
@@ -237,7 +237,7 @@ class TestBTreeBuilder(BTreeTestCase):
         del temp_file
         self.assertEqual(181, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=0\nkey_elements=1\nlen=10\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=10\n"
             "row_lengths=1\n",
             content[:74])
         # Check thelast page is well formed
@@ -259,7 +259,7 @@ class TestBTreeBuilder(BTreeTestCase):
         del temp_file
         self.assertEqual(10646, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
             "row_lengths=1,2\n",
             content[:77])
         # Check thelast page is well formed
@@ -315,7 +315,7 @@ class TestBTreeBuilder(BTreeTestCase):
         del temp_file
         self.assertEqual(10574, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 1\nnode_ref_lists=2\nkey_elements=2\nlen=400\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=400\n"
             "row_lengths=1,2\n",
             content[:77])
         root = content[77:4096]

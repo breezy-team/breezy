@@ -41,7 +41,7 @@ from bzrlib.osutils import basename, dirname
 from bzrlib.transport import get_transport
 
 
-_BTSIGNATURE = "B+Tree Graph Index 1\n"
+_BTSIGNATURE = "B+Tree Graph Index 2\n"
 _OPTION_ROW_LENGTHS = "row_lengths="
 _LEAF_FLAG = "type=leaf\n"
 _INTERNAL_FLAG = "type=internal\n"
