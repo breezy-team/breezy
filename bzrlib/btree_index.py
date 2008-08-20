@@ -237,6 +237,66 @@ class BTreeBuilder(index.GraphIndexBuilder):
             except StopIteration:
                 current_values[pos] = None
 
+    def _add_key(self, string_key, key_line, rows):
+        """Add a key to the current chunk.
+
+        :param string_key: The key to add.
+        :param key_line: The fully serialised key and value.
+        """
+        if rows[-1].writer is None:
+            # opening a new leaf chunk;
+            for pos, internal_row in enumerate(rows[:-1]):
+                # flesh out any internal nodes that are needed to
+                # preserve the high of the tree
+                if internal_row.writer is None:
+                    length = _PAGE_SIZE
+                    if internal_row.nodes == 0:
+                        length -= _RESERVED_HEADER_BYTES # padded
+                    internal_row.writer = chunk_writer.ChunkWriter(
+                        length, 0)
+                    internal_row.writer.write(_INTERNAL_FLAG)
+                    internal_row.writer.write(_INTERNAL_OFFSET +
+                        str(rows[pos + 1].nodes) + "\n")
+            # add a new leaf
+            length = _PAGE_SIZE
+            if rows[-1].nodes == 0:
+                length -= _RESERVED_HEADER_BYTES # padded
+            rows[-1].writer = chunk_writer.ChunkWriter(length)
+            rows[-1].writer.write(_LEAF_FLAG)
+        if rows[-1].writer.write(key_line):
+            # this key did not fit in the node:
+            rows[-1].finish_node()
+            next_key_line = string_key + "\n"
+            new_row = True
+            for row in reversed(rows[:-1]):
+                # Mark the start of the next node in the node above. If it
+                # doesn't fit then propogate upwards until we find one that
+                # it does fit into.
+                if row.writer.write(next_key_line):
+                    row.finish_node()
+                else:
+                    # We've found a node that can handle the pointer.
+                    new_row = False
+                    break
+            # If we reached the current root without being able to mark the
+            # division point, then we need a new root:
+            if new_row:
+                # We need a new row
+                if 'index' in debug.debug_flags:
+                    trace.mutter('Inserting new global row.')
+                new_row = _InternalBuilderRow()
+                reserved_bytes = 0
+                rows.insert(0, new_row)
+                # This will be padded, hence the -100
+                new_row.writer = chunk_writer.ChunkWriter(
+                    _PAGE_SIZE - _RESERVED_HEADER_BYTES,
+                    reserved_bytes)
+                new_row.writer.write(_INTERNAL_FLAG)
+                new_row.writer.write(_INTERNAL_OFFSET +
+                    str(rows[1].nodes - 1) + "\n")
+                new_row.writer.write(next_key_line)
+            self._add_key(string_key, key_line, rows)
+
     def _write_nodes(self, node_iterator):
         """Write node_iterator out as a B+Tree.
 
@@ -255,65 +315,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
         # A stack with the number of nodes of each size. 0 is the root node
         # and must always be 1 (if there are any nodes in the tree).
         self.row_lengths = []
-        def add_key(string_key, key_line):
-            """Add a key to the current chunk.
-
-            :param string_key: The key to add.
-            :param key_line: The fully serialised key and value.
-            """
-            if rows[-1].writer is None:
-                # opening a new leaf chunk;
-                for pos, internal_row in enumerate(rows[:-1]):
-                    # flesh out any internal nodes that are needed to
-                    # preserve the high of the tree
-                    if internal_row.writer is None:
-                        length = _PAGE_SIZE
-                        if internal_row.nodes == 0:
-                            length -= _RESERVED_HEADER_BYTES # padded
-                        internal_row.writer = chunk_writer.ChunkWriter(
-                            length, 0)
-                        internal_row.writer.write(_INTERNAL_FLAG)
-                        internal_row.writer.write(_INTERNAL_OFFSET +
-                            str(rows[pos + 1].nodes) + "\n")
-                # add a new leaf
-                length = _PAGE_SIZE
-                if rows[-1].nodes == 0:
-                    length -= _RESERVED_HEADER_BYTES # padded
-                rows[-1].writer = chunk_writer.ChunkWriter(length)
-                rows[-1].writer.write(_LEAF_FLAG)
-            if rows[-1].writer.write(line):
-                # this key did not fit in the node:
-                rows[-1].finish_node()
-                key_line = string_key + "\n"
-                new_row = True
-                for row in reversed(rows[:-1]):
-                    # Mark the start of the next node in the node above. If it
-                    # doesn't fit then propogate upwards until we find one that
-                    # it does fit into.
-                    if row.writer.write(key_line):
-                        row.finish_node()
-                    else:
-                        # We've found a node that can handle the pointer.
-                        new_row = False
-                        break
-                # If we reached the current root without being able to mark the
-                # division point, then we need a new root:
-                if new_row:
-                    # We need a new row
-                    if 'index' in debug.debug_flags:
-                        trace.mutter('Inserting new global row.')
-                    new_row = _InternalBuilderRow()
-                    reserved_bytes = 0
-                    rows.insert(0, new_row)
-                    # This will be padded, hence the -100
-                    new_row.writer = chunk_writer.ChunkWriter(
-                        _PAGE_SIZE - _RESERVED_HEADER_BYTES,
-                        reserved_bytes)
-                    new_row.writer.write(_INTERNAL_FLAG)
-                    new_row.writer.write(_INTERNAL_OFFSET +
-                        str(rows[1].nodes - 1) + "\n")
-                    new_row.writer.write(key_line)
-                add_key(string_key, key_line)
         # Loop over all nodes adding them to the bottom row
         # (rows[-1]). When we finish a chunk in a row,
         # propogate the key that didn't fit (comes after the chunk) to the
@@ -333,7 +334,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             string_key = '\x00'.join(node[1])
             line = ("%s\x00%s\x00%s\n" % (string_key,
                 '\t'.join(flattened_references), node[2]))
-            add_key(string_key, line)
+            self._add_key(string_key, line, rows)
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
