@@ -1,6 +1,4 @@
-# Bazaar-NG -- distributed version control
-#
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +24,8 @@ import sys
 # the opaque C library DIR type.
 cdef extern from 'errno.h':
     int ENOENT
+    int ENOTDIR
+    int EAGAIN
     int errno
     char *strerror(int errno)
 
@@ -48,8 +48,8 @@ cdef extern from 'dirent.h':
         unsigned char d_type
     ctypedef struct DIR
     # should be DIR *, pyrex barfs.
-    DIR * opendir(char * name) except NULL
-    int closedir(DIR * dir) except -1
+    DIR * opendir(char * name)
+    int closedir(DIR * dir)
     dirent *readdir(DIR *dir)
 
 _directory = 'directory'
@@ -77,12 +77,30 @@ def read_dir(path):
     # currently this needs a fixup - the C code says 'dirent' but should say
     # 'struct dirent'
     cdef dirent * entry
-    cdef char *name 
+    cdef dirent sentinel
+    cdef char *name
     the_dir = opendir(path)
+    if NULL == the_dir:
+        raise OSError(errno, strerror(errno))
     result = []
     try:
-        entry = readdir(the_dir)
+        entry = &sentinel
         while entry != NULL:
+            entry = readdir(the_dir)
+            if entry == NULL:
+                if errno == EAGAIN:
+                    # try again
+                    continue
+                elif errno != ENOTDIR and errno != ENOENT and errno != 0:
+                    # We see ENOTDIR at the end of a normal directory.
+                    # As ENOTDIR for read_dir(file) is triggered on opendir,
+                    # we consider ENOTDIR to be 'no error'.
+                    # ENOENT is listed as 'invalid position in the dir stream' for
+                    # readdir. We swallow this for now and just keep reading.
+                    raise OSError(errno, strerror(errno))
+                else:
+                    # done
+                    continue
             name = entry.d_name
             if not (name[0] == dot and (
                 (name[1] == 0) or 
@@ -104,12 +122,12 @@ def read_dir(path):
                     type = _block
                 else:
                     type = _unknown
-                result.append((entry.d_name, type))
-            entry = readdir(the_dir)
-        if entry == NULL and errno != ENOENT and errno != 0:
-	    # ENOENT is listed as 'invalid position in the dir stream' for
-	    # readdir. We swallow this for now.
-            raise OSError(errno, strerror(errno))
+                # result.append((entry.d_name, type))
+                result.append((entry.d_name, 'unknown'))
     finally:
-        closedir(the_dir)
+        if -1 == closedir(the_dir):
+            raise OSError(errno, strerror(errno))
     return result
+
+
+# vim: tw=79 ai expandtab sw=4 sts=4

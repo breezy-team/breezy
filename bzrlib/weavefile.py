@@ -1,19 +1,19 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+#
 # Author: Martin Pool <mbp@canonical.com>
 
 
@@ -45,7 +45,7 @@ FORMAT_1 = '# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
-    if format == None or format == 1:
+    if format is None or format == 1:
         return write_weave_v5(weave, f)
     else:
         raise ValueError("unknown weave format %r" % format)
@@ -53,42 +53,38 @@ def write_weave(weave, f, format=None):
 
 def write_weave_v5(weave, f):
     """Write weave to file f."""
-    print >>f, FORMAT_1,
+    f.write(FORMAT_1)
 
     for version, included in enumerate(weave._parents):
         if included:
             # mininc = weave.minimal_parents(version)
             mininc = included
-            print >>f, 'i',
-            for i in mininc:
-                print >>f, i,
-            print >>f
+            f.write('i ')
+            f.write(' '.join(str(i) for i in mininc))
+            f.write('\n')
         else:
-            print >>f, 'i'
-        print >>f, '1', weave._sha1s[version]
-        print >>f, 'n', weave._names[version]
-        print >>f
+            f.write('i\n')
+        f.write('1 ' + weave._sha1s[version] + '\n')
+        f.write('n ' + weave._names[version] + '\n')
+        f.write('\n')
 
-    print >>f, 'w'
+    f.write('w\n')
 
     for l in weave._weave:
         if isinstance(l, tuple):
-            assert l[0] in '{}[]'
             if l[0] == '}':
-                print >>f, '}'
+                f.write('}\n')
             else:
-                print >>f, '%s %d' % l
+                f.write('%s %d\n' % l)
         else: # text line
             if not l:
-                print >>f, ', '
+                f.write(', \n')
             elif l[-1] == '\n':
-                assert l.find('\n', 0, -1) == -1
-                print >>f, '.', l,
+                f.write('. ' + l)
             else:
-                assert l.find('\n') == -1
-                print >>f, ',', l
+                f.write(', ' + l + '\n')
 
-    print >>f, 'W'
+    f.write('W\n')
 
 
 
@@ -124,7 +120,11 @@ def _read_weave_v5(f, w):
 
     lines = iter(f.readlines())
     
-    l = lines.next()
+    try:
+        l = lines.next()
+    except StopIteration:
+        raise WeaveFormatError('invalid weave file: no header')
+
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
 
@@ -137,21 +137,13 @@ def _read_weave_v5(f, w):
                 w._parents.append(map(int, l[2:].split(' ')))
             else:
                 w._parents.append([])
-
             l = lines.next()[:-1]
-            assert '1 ' == l[0:2]
             w._sha1s.append(l[2:])
-                
             l = lines.next()
-            assert 'n ' == l[0:2]
             name = l[2:-1]
-            assert name not in w._name_map
             w._names.append(name)
             w._name_map[name] = ver
-                
             l = lines.next()
-            assert l == '\n'
-
             ver += 1
         elif l == 'w\n':
             break
@@ -170,9 +162,5 @@ def _read_weave_v5(f, w):
         elif l == '}\n':
             w._weave.append(('}', None))
         else:
-            assert l[0] in '{[]', l
-            assert l[1] == ' ', l
             w._weave.append((intern(l[0]), int(l[2:])))
-
     return w
-    

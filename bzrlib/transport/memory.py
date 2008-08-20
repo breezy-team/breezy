@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,16 +20,29 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-from copy import copy
 import os
 import errno
 import re
-from stat import *
+from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
+import warnings
 
-from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
+from bzrlib.errors import (
+    FileExists,
+    LockError,
+    InProcessTransport,
+    NoSuchFile,
+    TransportError,
+    )
 from bzrlib.trace import mutter
-from bzrlib.transport import (Transport, register_transport, Server)
+from bzrlib.transport import (
+    AppendBasedFileStream,
+    _file_streams,
+    LateReadError,
+    register_transport,
+    Server,
+    Transport,
+    )
 import bzrlib.urlutils as urlutils
 
 
@@ -58,7 +71,9 @@ class MemoryTransport(Transport):
         if url[-1] != '/':
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
-        self._cwd = url[url.find(':') + 3:]
+        split = url.find(':') + 3
+        self._scheme = url[:split]
+        self._cwd = url[split:]
         # dictionaries from absolute path to file mode
         self._dirs = {'/':None}
         self._files = {}
@@ -66,20 +81,10 @@ class MemoryTransport(Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        if offset is None or offset == '':
-            return copy(self)
-        segments = offset.split('/')
-        cwdsegments = self._cwd.split('/')[:-1]
-        while len(segments):
-            segment = segments.pop(0)
-            if segment == '.':
-                continue
-            if segment == '..':
-                if len(cwdsegments) > 1:
-                    cwdsegments.pop()
-                continue
-            cwdsegments.append(segment)
-        url = self.base[:self.base.find(':') + 3] + '/'.join(cwdsegments) + '/'
+        path = self._combine_paths(self._cwd, offset)
+        if len(path) == 0 or path[-1] != '/':
+            path += '/'
+        url = self._scheme + path
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
@@ -97,8 +102,8 @@ class MemoryTransport(Transport):
         else:
             return temp_t.base[:-1]
 
-    def append(self, relpath, f, mode=None):
-        """See Transport.append()."""
+    def append_file(self, relpath, f, mode=None):
+        """See Transport.append_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
@@ -116,7 +121,7 @@ class MemoryTransport(Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return _abspath in self._files or _abspath in self._dirs
+        return (_abspath in self._files) or (_abspath in self._dirs)
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -125,18 +130,35 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         del self._files[_abspath]
 
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # MemoryTransport's are only accessible in-process
+        # so we raise here
+        raise InProcessTransport(self)
+
     def get(self, relpath):
         """See Transport.get()."""
         _abspath = self._abspath(relpath)
         if not _abspath in self._files:
-            raise NoSuchFile(relpath)
+            if _abspath in self._dirs:
+                return LateReadError(relpath)
+            else:
+                raise NoSuchFile(relpath)
         return StringIO(self._files[_abspath][0])
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        self._files[_abspath] = (f.read(), mode)
+        bytes = f.read()
+        if type(bytes) is not str:
+            # Although not strictly correct, we raise UnicodeEncodeError to be
+            # compatible with other transports.
+            raise UnicodeEncodeError(
+                'undefined', bytes, 0, 1,
+                'put_file must be given a file of bytes, not unicode.')
+        self._files[_abspath] = (bytes, mode)
+        return len(bytes)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -146,6 +168,13 @@ class MemoryTransport(Transport):
             raise FileExists(relpath)
         self._dirs[_abspath]=mode
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
+
     def listable(self):
         """See Transport.listable."""
         return True
@@ -153,7 +182,7 @@ class MemoryTransport(Transport):
     def iter_files_recursive(self):
         for file in self._files:
             if file.startswith(self._cwd):
-                yield file[len(self._cwd):]
+                yield urlutils.escape(file[len(self._cwd):])
     
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
@@ -161,18 +190,17 @@ class MemoryTransport(Transport):
         if _abspath != '/' and _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         result = []
-        for path in self._files:
-            if (path.startswith(_abspath) and 
-                path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath)):
-                result.append(path[len(_abspath) + 1:])
-        for path in self._dirs:
-            if (path.startswith(_abspath) and 
-                path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath) and
-                path[len(_abspath)] == '/'):
-                result.append(path[len(_abspath) + 1:])
-        return result
+
+        if not _abspath.endswith('/'):
+            _abspath += '/'
+
+        for path_group in self._files, self._dirs:
+            for path in path_group:
+                if path.startswith(_abspath):
+                    trailing = path[len(_abspath):]
+                    if trailing and '/' not in trailing:
+                        result.append(trailing)
+        return map(urlutils.escape, result)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory; fail if the destination exists"""
@@ -201,11 +229,11 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
         for path in self._files:
-            if path.startswith(_abspath):
+            if path.startswith(_abspath + '/'):
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath),
                                       relpath)
         for path in self._dirs:
-            if path.startswith(_abspath) and path != _abspath:
+            if path.startswith(_abspath + '/') and path != _abspath:
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
         if not _abspath in self._dirs:
             raise NoSuchFile(relpath)
@@ -233,24 +261,28 @@ class MemoryTransport(Transport):
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
         relpath = urlutils.unescape(relpath)
-        if relpath.find('..') != -1:
-            raise AssertionError('relpath contains ..')
-        if relpath == '.':
-            if (self._cwd == '/'):
-                return self._cwd
-            return self._cwd[:-1]
-        if relpath.endswith('/'):
-            relpath = relpath[:-1]
-        if relpath.startswith('./'):
-            relpath = relpath[2:]
-        return self._cwd + relpath
+        if relpath[:1] == '/':
+            return relpath
+        cwd_parts = self._cwd.split('/')
+        rel_parts = relpath.split('/')
+        r = []
+        for i in cwd_parts + rel_parts:
+            if i == '..':
+                if not r:
+                    raise ValueError("illegal relpath %r under %r"
+                        % (relpath, self._cwd))
+                r = r[:-1]
+            elif i == '.' or i == '':
+                pass
+            else:
+                r.append(i)
+        return '/' + '/'.join(r)
 
 
 class _MemoryLock(object):
     """This makes a lock."""
 
     def __init__(self, path, transport):
-        assert isinstance(transport, MemoryTransport)
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
@@ -260,7 +292,7 @@ class _MemoryLock(object):
     def __del__(self):
         # Should this warn, or actually try to cleanup?
         if self.transport:
-            warn("MemoryLock %r not explicitly unlocked" % (self.path,))
+            warnings.warn("MemoryLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):

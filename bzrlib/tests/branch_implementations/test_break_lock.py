@@ -1,15 +1,15 @@
-# (C) 2006 Canonical Ltd
-
+# Copyright (C) 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,7 +20,7 @@ from cStringIO import StringIO
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestNotApplicable
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -51,6 +51,9 @@ class TestBreakLock(TestCaseWithBranch):
         # break lock on the branch should try on the repository even
         # if the branch isn't locked
         self.branch.repository.lock_write()
+        other_instance = self.branch.repository.bzrdir.open_repository()
+        if not other_instance.get_physical_lock_status():
+            raise TestNotApplicable("Repository does not lock persistently.")
         bzrlib.ui.ui_factory.stdin = StringIO("y\n")
         try:
             self.unused_branch.break_lock()

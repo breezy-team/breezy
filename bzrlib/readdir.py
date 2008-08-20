@@ -1,6 +1,4 @@
-# Bazaar-NG -- distributed version control
-#
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Wrapper for readdir which grabs file type from d_type."""
+"""Python implementation of readdir interface."""
 
 
 import os

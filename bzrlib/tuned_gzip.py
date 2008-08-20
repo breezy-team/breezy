@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Written by Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,6 +17,8 @@
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
+from cStringIO import StringIO
+
 # make GzipFile faster:
 import gzip
 from gzip import U32, LOWU32, FEXTRA, FCOMMENT, FNAME, FHCRC
@@ -27,7 +29,37 @@ import zlib
 # we want a \n preserved, break on \n only splitlines.
 import bzrlib
 
-__all__ = ["GzipFile"]
+__all__ = ["GzipFile", "bytes_to_gzip"]
+
+
+def bytes_to_gzip(bytes, factory=zlib.compressobj,
+    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
+    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
+    crc32=zlib.crc32):
+    """Create a gzip file containing bytes and return its content."""
+    result = [
+        '\037\213'  # self.fileobj.write('\037\213')  # magic header
+        '\010'      # self.fileobj.write('\010')      # compression method
+                    # fname = self.filename[:-3]
+                    # flags = 0
+                    # if fname:
+                    #     flags = FNAME
+        '\x00'      # self.fileobj.write(chr(flags))
+        '\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
+        '\002'      # self.fileobj.write('\002')
+        '\377'      # self.fileobj.write('\377')
+                    # if fname:
+        ''          #     self.fileobj.write(fname + '\000')
+        ]
+    # using a compressobj avoids a small header and trailer that the compress()
+    # utility function adds.
+    compress = factory(level, method, width, mem, 0)
+    result.append(compress.compress(bytes))
+    result.append(compress.flush())
+    result.append(struct.pack("<L", LOWU32(crc32(bytes))))
+    # size may exceed 2GB, or even 4GB
+    result.append(struct.pack("<L", LOWU32(len(bytes))))
+    return ''.join(result)
 
 
 class GzipFile(gzip.GzipFile):
@@ -63,6 +95,30 @@ class GzipFile(gzip.GzipFile):
         self.extrasize += len_data
         self.size += len_data
 
+    def _write_gzip_header(self):
+        """A tuned version of gzip._write_gzip_header
+
+        We have some extra constrains that plain Gzip does not.
+        1) We want to write the whole blob at once. rather than multiple 
+           calls to fileobj.write().
+        2) We never have a filename
+        3) We don't care about the time
+        """
+        self.fileobj.write(
+           '\037\213'   # self.fileobj.write('\037\213')  # magic header
+            '\010'      # self.fileobj.write('\010')      # compression method
+                        # fname = self.filename[:-3]
+                        # flags = 0
+                        # if fname:
+                        #     flags = FNAME
+            '\x00'      # self.fileobj.write(chr(flags))
+            '\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
+            '\002'      # self.fileobj.write('\002')
+            '\377'      # self.fileobj.write('\377')
+                        # if fname:
+            ''          #     self.fileobj.write(fname + '\000')
+            )
+
     def _read(self, size=1024):
         # various optimisations:
         # reduces lsprof count from 2500 to 
@@ -93,7 +149,8 @@ class GzipFile(gzip.GzipFile):
 
         if buf == "":
             self._add_read_data(self.decompress.flush())
-            assert len(self.decompress.unused_data) >= 8, "what does flush do?"
+            if len(self.decompress.unused_data) < 8:
+                raise AssertionError("what does flush do?")
             self._gzip_tail = self.decompress.unused_data[0:8]
             self._read_eof()
             # tell the driving read() call we have stuffed all the data
@@ -119,7 +176,8 @@ class GzipFile(gzip.GzipFile):
                 self._gzip_tail = self.decompress.unused_data[0:8]
             elif seek_length < 0:
                 # we haven't read enough to check the checksum.
-                assert -8 < seek_length, "too great a seek."
+                if not (-8 < seek_length):
+                    raise AssertionError("too great a seek")
                 buf = self.fileobj.read(-seek_length)
                 self._gzip_tail = self.decompress.unused_data + buf
             else:
@@ -139,12 +197,13 @@ class GzipFile(gzip.GzipFile):
         4168 in 200
         """
         # We've read to the end of the file, so we should have 8 bytes of 
-        # unused data in the decompressor. If we dont, there is a corrupt file.
+        # unused data in the decompressor. If we don't, there is a corrupt file.
         # We use these 8 bytes to calculate the CRC and the recorded file size.
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size
         # stored is the true file size mod 2**32.
-        assert len(self._gzip_tail) == 8, "gzip trailer is incorrect length."
+        if not (len(self._gzip_tail) == 8):
+            raise AssertionError("gzip trailer is incorrect length.")
         crc32, isize = struct.unpack("<LL", self._gzip_tail)
         # note that isize is unsigned - it can exceed 2GB
         if crc32 != U32(self.crc):
@@ -255,10 +314,16 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
-        if sizehint <= 0:
-            sizehint = -1
-        content = self.read(sizehint)
-        return bzrlib.osutils.split_lines(content)
+        
+        # python's gzip routine uses sizehint. This is a more efficient way
+        # than python uses to honor it. But it is even more efficient to
+        # just read the entire thing and use cStringIO to split into lines.
+        # if sizehint <= 0:
+        #     sizehint = -1
+        # content = self.read(sizehint)
+        # return bzrlib.osutils.split_lines(content)
+        content = StringIO(self.read(-1))
+        return content.readlines()
 
     def _unread(self, buf, len_buf=None):
         """tuned to remove unneeded len calls.

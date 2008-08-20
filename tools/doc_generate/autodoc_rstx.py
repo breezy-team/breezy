@@ -1,4 +1,4 @@
-# Copyright 2006 Canonical Ltd.
+# Copyright 2006-2007 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,15 +9,15 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Generate ReStructuredText source for manual.
-Based on manpage generator autodoc_man.py
+"""Generate ReStructuredText source for the User Reference Manual.
+Loosely based on the manpage generator autodoc_man.py.
 
-Written by Alexander Belchenko
+Written by the Bazaar community.
 """
 
 import os
@@ -27,7 +27,9 @@ import time
 
 import bzrlib
 import bzrlib.help
+import bzrlib.help_topics
 import bzrlib.commands
+import bzrlib.osutils
 
 
 def get_filename(options):
@@ -45,167 +47,156 @@ def infogen(options, outfile):
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
              "version": bzrlib.__version__,
              }
+    nominated_filename = getattr(options, 'filename', None)
+    if nominated_filename is None:
+        topic_dir = None
+    else:
+        topic_dir = bzrlib.osutils.dirname(nominated_filename)
     outfile.write(rstx_preamble % params)
     outfile.write(rstx_head % params)
-    outfile.write(getcommand_list(params))
-    outfile.write(getcommand_help(params))
+    outfile.write(_get_body(params, topic_dir))
     outfile.write(rstx_foot % params)
 
 
-def command_name_list():
-    """Builds a list of command names from bzrlib"""
-    command_names = bzrlib.commands.builtin_command_names()
-    command_names.sort()
-    return command_names
+def _get_body(params, topic_dir):
+    """Build the manual content."""
+    from bzrlib.help_topics import SECT_CONCEPT, SECT_LIST, SECT_PLUGIN
+    registry = bzrlib.help_topics.topic_registry
+    result = []
+    result.append(_get_section(registry, SECT_CONCEPT, "Concepts",
+        output_dir=topic_dir))
+    result.append(_get_section(registry, SECT_LIST, "Lists",
+        output_dir=topic_dir))
+    result.append(_get_commands_section(registry))
+    #result.append(_get_section(registry, SECT_PLUGIN, "Standard Plug-ins"))
+    return "\n".join(result)
 
 
-def getcommand_list (params):
-    """Builds summary help for command names in RSTX format"""
-    bzrcmd = params["bzrcmd"]
-    output = """
-Command overview
-================
-"""
-    for cmd_name in command_name_list():
+def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
+        output_dir=None):
+    """Build the manual part from topics matching that section.
+    
+    If output_dir is not None, topics are dumped into text files there
+    during processing, as well as being included in the return result.
+    """
+    topics = sorted(registry.get_topics_for_section(section))
+    lines = [title, hdg_level1 * len(title), ""]
+
+    # docutils treats section heading as implicit link target.
+    # But in some cases topic and heading are different, e.g.:
+    #
+    # `bugs' vs. `Bug Trackers'
+    # `working-tree' vs. `Working Trees'
+    #
+    # So for building proper cross-reference between topic names
+    # and corresponding sections in document, we need provide
+    # simple glue in the form:
+    #
+    # .. _topic: `heading`_
+    links_glue = []
+
+    for topic in topics:
+        help = registry.get_detail(topic)
+        heading,text = help.split("\n", 1)
+        lines.append(heading)
+        if not text.startswith(hdg_level2):
+            lines.append(hdg_level2 * len(heading))
+        lines.append(text)
+        lines.append('')
+        # check that topic match heading
+        if topic != heading.lower():
+            links_glue.append((topic, heading))
+        # dump the text if requested
+        if output_dir is not None:
+            out_file = bzrlib.osutils.pathjoin(output_dir, topic + ".txt")
+            _dump_text(out_file, help)
+
+    # provide links glue for topics that don't match headings
+    lines.extend([".. _%s: `%s`_" % i for i in links_glue])
+    lines.append('')
+
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def _dump_text(filename, text):
+    """Dump text to filename."""
+    f =  open(filename, "w")
+    f.writelines(text)
+    f.close()
+
+
+def _get_commands_section(registry, title="Commands", hdg_level1="#",
+                          hdg_level2="="):
+    """Build the commands reference section of the manual."""
+    lines = [title, hdg_level1 * len(title), ""]
+    cmds = sorted(bzrlib.commands.builtin_command_names())
+    for cmd_name in cmds:
         cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
         if cmd_object.hidden:
             continue
-        cmd_help = cmd_object.help()
-        if cmd_help:
-            firstline = cmd_help.split('\n', 1)[0]
-            usage = bzrlib.help.command_usage(cmd_object)
-            tmp = '**%s**\n\t%s\n\n' % (usage, firstline)
-            output = output + tmp
-        else:
-            raise RuntimeError, "Command '%s' has no help text" % (cmd_name)
-    return output
-
-
-def getcommand_help(params):
-    """Shows individual options for a bzr command"""
-    output="""
-Command reference
-=================
-"""
-    for cmd_name in command_name_list():
-        cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
-        if cmd_object.hidden:
-            continue
-        output = output + format_command(params, cmd_object, cmd_name)
-    return output
-
-
-def format_command (params, cmd, name):
-    """Provides long help for each public command"""
-    usage = bzrlib.help.command_usage(cmd)
-    subsection_header = """
-%s
-%s
-::
-""" % (usage, '-'*len(usage))
-
-    docsplit = cmd.__doc__.split('\n')
-    doc = '\n'.join([' '*4 + docsplit[0]] + docsplit[1:])
-        
-    option_str = ""
-    options = cmd.options()
-    if options:
-        option_str = "\n    Options:\n"
-        for option_name, option in sorted(options.items()):
-            l = '        --' + option_name
-            if option.type is not None:
-                l += ' ' + option.argname.upper()
-            short_name = option.short_name()
-            if short_name:
-                assert len(short_name) == 1
-                l += ', -' + short_name
-            l += (30 - len(l)) * ' ' + option.help
-            # TODO: Split help over multiple lines with
-            # correct indenting and wrapping.
-            wrapped = textwrap.fill(l, initial_indent='',
-                                    subsequent_indent=30*' ')
-            option_str = option_str + wrapped + '\n'       
-    return subsection_header + option_str + "\n" + doc + "\n"
+        heading = cmd_name
+        text = cmd_object.get_help_text(plain=False, see_also_as_links=True)
+        lines.append(heading)
+        lines.append(hdg_level2 * len(heading))
+        lines.append(text)
+        lines.append('')
+    return "\n" + "\n".join(lines) + "\n"
 
 
 ##
 # TEMPLATES
 
-rstx_preamble = """.. Large parts of this file are autogenerated from the output of
+rstx_preamble = """.. This file is autogenerated from the output of
+..     %(bzrcmd)s help topics
 ..     %(bzrcmd)s help commands
 ..     %(bzrcmd)s help <cmd>
 ..
 .. Generation time: %(timestamp)s
 
-=============================================
-Man page for %(bzrcmd)s (bazaar-ng)
-=============================================
-
-:Date: %(datestamp)s
-
-`Index <#id1>`_
-
------
-
 """
 
 
 rstx_head = """\
-Name
-====
-%(bzrcmd)s - bazaar-ng next-generation distributed version control
+#####################
+Bazaar User Reference
+#####################
 
-Synopsis
-========
-**%(bzrcmd)s** *command* [ *command_options* ]
+:Version:   %(version)s
+:Generated: %(datestamp)s
 
-**%(bzrcmd)s help**
+.. contents:: :depth: 2
 
-**%(bzrcmd)s help** *command*
+-----
 
+About This Manual
+#################
 
-Description
-===========
-bazaar-ng (or **%(bzrcmd)s**) is a project of Canonical to develop
-an open source distributed version control system that is powerful,
-friendly, and scalable. Version control means a system
-that keeps track of previous revisions of software source code
-or similar information and helps people work on it in teams.
+This manual is generated from Bazaar's online help. To use
+the online help system, try the following commands.
+
+    Introduction including a list of commonly used commands::
+
+        bzr help
+
+    List of topics and a summary of each::
+
+        bzr help topics
+
+    List of commands and a summary of each::
+
+        bzr help commands
+
+    More information about a particular topic or command::
+
+        bzr help topic-or-command-name
+
+The following web sites provide further information on Bazaar:
+
+:Home page:                     http://www.bazaar-vcs.org/
+:Official docs:                 http://doc.bazaar-vcs.org/
+:Launchpad:                     https://launchpad.net/bzr/
 """
 
 
 rstx_foot = """
-Environment
-===========
-**BZRPATH**
-                Path where **%(bzrcmd)s** is to look for external command.
-
-**BZREMAIL**
-                E-Mail address of the user. Overrides default user config.
-
-**EMAIL**
-                E-Mail address of the user. Overriddes default user config.
-
-Files
-=====
-
-**On Linux**:  ``~/.bazaar/bazaar.conf/``
-
-**On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
-
-Contains the default user config. Only one section, ``[DEFAULT]`` is allowed.
-A typical default config file may be similiar to::
-
-    [DEFAULT]
-    email=John Doe <jdoe@isp.com>
-
-
-See also
-========
-http://www.bazaar-vcs.org/
-
---------------------
-
-.. Contents::
-	**Index**
 """

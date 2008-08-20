@@ -1,0 +1,36 @@
+Rules
+=====
+
+Introduction
+------------
+
+Rules are defined in ini file format where the sections are file glob
+patterns and the contents of each section are the preferences for files
+matching that pattern. For example::
+
+    [name *.bat]
+    eol = dos
+
+    [name *.html]
+    keywords = escape
+
+Preferences like these are useful for commands and plugins wishing to
+provide custom behaviour for selected files in selected branches.
+
+
+Files
+-----
+
+Default rules for all branches are defined in the optional file
+``BZR_HOME/rules``. 
+
+Rule Patterns
+-------------
+
+Patterns are ordered and searching stops as soon as one matches.
+As a consequence, more explicit patterns should be placed towards
+the top of the file. Rule patterns use exactly the same conventions
+as ignore patterns. See ``bzr help patterns`` for details.
+
+Note: Patterns containing square brackets should be surrounded in
+quotes to ensure they are corrected parsed.

@@ -1,23 +1,24 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley
+# Copyright (C) 2004 - 2008 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import unittest
 import os.path
+
+from bzrlib.tests import TestCase
 
 from bzrlib.iterablefile import IterableFile
 from bzrlib.patches import (MalformedLine, 
@@ -31,10 +32,12 @@ from bzrlib.patches import (MalformedLine,
                             hunk_from_header, 
                             iter_patched, 
                             parse_line,
-                            parse_patch)
+                            parse_patch,
+                            parse_patches)
 
 
-class PatchesTester(unittest.TestCase):
+class PatchesTester(TestCase):
+
     def datafile(self, filename):
         data_path = os.path.join(os.path.dirname(__file__), 
                                  "test_patches_data", filename)
@@ -44,8 +47,8 @@ class PatchesTester(unittest.TestCase):
         """Parse a valid patch header"""
         lines = "--- orig/commands.py\n+++ mod/dommands.py\n".split('\n')
         (orig, mod) = get_patch_names(lines.__iter__())
-        assert(orig == "orig/commands.py")
-        assert(mod == "mod/dommands.py")
+        self.assertEqual(orig, "orig/commands.py")
+        self.assertEqual(mod, "mod/dommands.py")
 
     def testInvalidPatchHeader(self):
         """Parse an invalid patch header"""
@@ -57,21 +60,28 @@ class PatchesTester(unittest.TestCase):
         """Parse a valid hunk header"""
         header = "@@ -34,11 +50,6 @@\n"
         hunk = hunk_from_header(header);
-        assert (hunk.orig_pos == 34)
-        assert (hunk.orig_range == 11)
-        assert (hunk.mod_pos == 50)
-        assert (hunk.mod_range == 6)
-        assert (str(hunk) == header)
+        self.assertEqual(hunk.orig_pos, 34)
+        self.assertEqual(hunk.orig_range, 11)
+        self.assertEqual(hunk.mod_pos, 50)
+        self.assertEqual(hunk.mod_range, 6)
+        self.assertEqual(str(hunk), header)
 
     def testValidHunkHeader2(self):
         """Parse a tricky, valid hunk header"""
         header = "@@ -1 +0,0 @@\n"
         hunk = hunk_from_header(header);
-        assert (hunk.orig_pos == 1)
-        assert (hunk.orig_range == 1)
-        assert (hunk.mod_pos == 0)
-        assert (hunk.mod_range == 0)
-        assert (str(hunk) == header)
+        self.assertEqual(hunk.orig_pos, 1)
+        self.assertEqual(hunk.orig_range, 1)
+        self.assertEqual(hunk.mod_pos, 0)
+        self.assertEqual(hunk.mod_range, 0)
+        self.assertEqual(str(hunk), header)
+
+    def testPDiff(self):
+        """Parse a hunk header produced by diff -p"""
+        header = "@@ -407,7 +292,7 @@ bzr 0.18rc1  2007-07-10\n"
+        hunk = hunk_from_header(header)
+        self.assertEqual('bzr 0.18rc1  2007-07-10', hunk.tail)
+        self.assertEqual(header, str(hunk))
 
     def makeMalformed(self, header):
         self.assertRaises(MalformedHunkHeader, hunk_from_header, header)
@@ -90,8 +100,8 @@ class PatchesTester(unittest.TestCase):
 
     def lineThing(self,text, type):
         line = parse_line(text)
-        assert(isinstance(line, type))
-        assert(str(line)==text)
+        self.assertIsInstance(line, type)
+        self.assertEqual(str(line), text)
 
     def makeMalformedLine(self, text):
         self.assertRaises(MalformedLine, parse_line, text)
@@ -143,7 +153,7 @@ class PatchesTester(unittest.TestCase):
             if mod_pos is None:
                 removals.append(orig[i])
                 continue
-            assert(mod[mod_pos]==orig[i])
+            self.assertEqual(mod[mod_pos], orig[i])
         rem_iter = removals.__iter__()
         for hunk in patch.hunks:
             for line in hunk.lines:
@@ -152,7 +162,7 @@ class PatchesTester(unittest.TestCase):
                     if line.contents != next:
                         sys.stdout.write(" orig:%spatch:%s" % (next,
                                          line.contents))
-                    assert(line.contents == next)
+                    self.assertEqual(line.contents, next)
         self.assertRaises(StopIteration, rem_iter.next)
 
     def testPatching(self):
@@ -180,13 +190,40 @@ class PatchesTester(unittest.TestCase):
     def testFirstLineRenumber(self):
         """Make sure we handle lines at the beginning of the hunk"""
         patch = parse_patch(self.datafile("insert_top.patch"))
-        assert (patch.pos_in_mod(0)==1)
+        self.assertEqual(patch.pos_in_mod(0), 1)
 
-def test():
-    patchesTestSuite = unittest.makeSuite(PatchesTester,'test')
-    runner = unittest.TextTestRunner(verbosity=0)
-    return runner.run(patchesTestSuite)
-
-
-if __name__ == "__main__":
-    test()
+    def testParsePatches(self):
+        """Make sure file names can be extracted from tricky unified diffs"""
+        patchtext = \
+"""--- orig-7
++++ mod-7
+@@ -1,10 +1,10 @@
+ -- a
+--- b
++++ c
+ xx d
+ xx e
+ ++ f
+-++ g
++-- h
+ xx i
+ xx j
+ -- k
+--- l
++++ m
+--- orig-8
++++ mod-8
+@@ -1 +1 @@
+--- A
++++ B
+@@ -1 +1 @@
+--- C
++++ D
+"""
+        filenames = [('orig-7', 'mod-7'),
+                     ('orig-8', 'mod-8')]
+        patches = parse_patches(patchtext.splitlines(True))
+        patch_files = []
+        for patch in patches:
+            patch_files.append((patch.oldname, patch.newname))
+        self.assertEqual(patch_files, filenames)

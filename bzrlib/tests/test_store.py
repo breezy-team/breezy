@@ -1,15 +1,15 @@
-# Copyright (C) 2005 by Canonical Development Ltd
-
+# Copyright (C) 2005, 2007 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -48,7 +48,7 @@ class TestStores(object):
         """Test copying"""
         os.mkdir('a')
         store_a = self.get_store('a')
-        store_a.add('foo', '1')
+        store_a.add(StringIO('foo'), '1')
         os.mkdir('b')
         store_b = self.get_store('b')
         store_b.copy_all_ids(store_a)
@@ -398,39 +398,50 @@ class TestTransportStore(TestCase):
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
-        my_store = store.TransportStore(MemoryTransport(), escaped=True)
+        my_store = store.TransportStore(MemoryTransport(), prefixed=True,
+            escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEquals(my_store._escape_file_id('C:<>'), '%43%3a%3c%3e')
+        self.assertEquals(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):
 
+    def get_scope(self):
+        return self._transaction
+
     def setUp(self):
         super(TestVersionFileStore, self).setUp()
         self.vfstore = store.versioned.VersionedFileStore(MemoryTransport())
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = None
 
     def test_get_weave_registers_dirty_in_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-
-    def test_get_weave_or_empty_readonly_fails(self):
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.assertRaises(errors.ReadOnlyError,
-                               self.vfstore.get_weave_or_empty,
-                               'id',
-                               transaction)
 
     def test_get_weave_readonly_cant_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = transactions.ReadOnlyTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
 
+    def test___iter__escaped(self):
+        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport(),
+            prefixed=True, escaped=True)
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty(' ', self._transaction)
+        vf.add_lines('a', [], [])
+        del vf
+        self._transaction.finish()
+        self.assertEqual([' '], list(self.vfstore))

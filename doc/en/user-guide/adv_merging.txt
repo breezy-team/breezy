@@ -1,0 +1,113 @@
+Pseudo merging
+==============
+
+Cherrypicking
+-------------
+
+At times, it can be useful to selectively merge some of the changes
+in a branch, but not all of them. This is commonly referred to as
+*cherrypicking*. Here are some examples of where cherrypicking is
+useful:
+
+* selectively taking fixes from the main development branch into
+  a release branch
+
+* selectively taking improvements out of an experimental branch into
+  a feature branch.
+
+To merge only the changes made by revision X in branch ``foo``,
+the command is::
+
+  bzr merge -c X foo
+
+To merge only the changes up to revision X in branch ``foo``,
+the command is::
+
+  bzr merge -r X foo
+
+To merge only the changes since revision X in branch ``foo``,
+the command is::
+
+  bzr merge -r X.. foo
+
+To merge only the changes from revision X to revision Y in branch ``foo``,
+the command is::
+
+  bzr merge -r X..Y foo
+
+Like a normal merge, you must explicitly commit a cherrypick. You may wish
+to see the changes made using ``bzr diff``, and run your test suite if any,
+before doing this.
+
+Unlike a normal merge, Bazaar does not currently track cherrypicks.
+In particular, the changes look like a normal commit and the (internal)
+revision history of the changes from the other branch is lost.
+In many cases where they are useful (see above), this is not a major
+problem because there are good reasons why a full merge should never
+be done at a later time. In other cases, additional conflicts will need
+to be resolved when the changes are merged again.
+
+
+Reverse cherrypicking
+---------------------
+
+Cherrypicking can be used to reverse a set of changes made by giving an
+upper bound in the revision range which is *below* the lower bound.
+For example, to back-out changes made in revision 10, the command is::
+
+  bzr merge -r 10..9
+
+If you want to take most changes, but not all, from somewhere else, you
+may wish to do a normal merge followed by a few reverse cherrypicks.
+
+
+Merging uncommitted changes
+---------------------------
+
+If you have several branches and you accidently start making changes in the
+wrong one, here are the steps to take to correct this. Assuming you began
+working in branch ``foo`` when you meant to work in branch ``bar``:
+
+1. Change into branch ``bar``.
+2. Run ``bzr merge --uncommitted foo``
+3. Check the changes came across (``bzr diff``)
+4. Change into branch ``foo``
+5. Run ``bzr revert``.
+
+.. TODO Selective file merging?
+
+
+Rebasing
+--------
+
+Another option to normal merging is *rebasing*, i.e. making it look like
+the current branch originated from a different point than it did.
+Rebasing is supported in Bazaar by the ``rebase`` command provided by
+the ``rebase`` plugin.
+
+The ``rebase`` command takes the location of another branch on which
+the branch in the current working directory will be rebased. If a branch
+is not specified then the parent branch is used, and this is usually the
+desired result.
+
+The first step identifies the revisions that are in the current branch
+that are not in the parent branch. The current branch is then set to be
+at the same revision as the target branch, and each revision is replayed
+on top of the branch. At the end of the process it will appear as though
+your current branch was branched off the current last revision of the target.
+
+Each revision that is replayed may cause conflicts in the tree. If this
+happens the command will stop and allow you to fix them up. Resolve the
+commits as you would for a ``merge``, and then run ``bzr resolve`` to
+marked them as resolved. Once you have resolved all the conflicts, you
+should run ``bzr rebase-continue`` to continue the rebase operation.
+If conflicts are encountered and you decide not to continue,
+you can run ``bzr rebase-abort``. You can also use ``rebase-todo`` to
+show the list of commits still to be replayed.
+
+Note: Some users coming from central VCS tools with poor merge tracking
+like rebasing because it's similar to how they are use to working in older
+tools, or because "perfectly clean" history seems important. Before rebasing
+in Bazaar, think about whether a normal merge is a better choice. In
+particular, rebasing a private branch before sharing it is OK but
+rebasing after sharing a branch with someone else is **strongly** discouraged.

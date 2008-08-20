@@ -1,0 +1,60 @@
+============================
+Bazaar Main Document Catalog
+============================
+
+The latest version of these documents are available from Bazaar's
+documentation site, <http://doc.bazaar-vcs.org/>, and more documentation
+may be linked from <http://bazaar-vcs.org/Documentation>.
+
+Core Documentation
+==================
+
+* `User Guide <en/user-guide/index.html>`_ 
+
+* `User Reference <en/user-reference/bzr_man.html>`_ 
+
+* `Quick Start Card <en/quick-reference/quick-start-summary.svg>`_
+  (`PDF <en/quick-reference/quick-start-summary.pdf>`_,
+  `PNG <en/quick-reference/quick-start-summary.png>`_)
+
+* `Release Notes <en/release-notes/NEWS.html>`_
+
+* `Developer Document Catalog <developers/index.html>`_ |--| for developers
+  of Bazaar and plugins
+
+
+Tutorials
+=========
+
+* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
+
+* `A longer tutorial <en/tutorials/tutorial.html>`_ 
+
+* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_ 
+
+* `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
+
+
+Web links
+=========
+
+* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_ 
+  |--| for users moving from another VCS tool
+
+* `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
+  |--| for teams migrating history from another VCS tool
+
+* `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
+
+
+Other Languages
+===============
+
+* `Spanish Documentation <index.es.html>`_
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

@@ -1,16 +1,16 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -33,7 +33,8 @@ permissions should be inherited individually, rather than all be the same.
 import os
 import sys
 import stat
-from StringIO import StringIO
+from cStringIO import StringIO
+import urllib
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -46,7 +47,6 @@ from bzrlib.workingtree import WorkingTree
 
 def chmod_r(base, file_mode, dir_mode):
     """Recursively chmod from a base directory"""
-    assert os.path.isdir(base)
     os.chmod(base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
@@ -66,16 +66,16 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     :param dir_mode: The mode for all directories
     :param include_base: If false, only check the subdirectories
     """
-    assert os.path.isdir(base)
     t = get_transport(".")
     if include_base:
         test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
-            p = os.path.join(root, d)
+            p = '/'.join([urllib.quote(x) for x in root.split('/\\') + [d]])
             test.assertTransportMode(t, p, dir_mode)
         for f in files:
             p = os.path.join(root, f)
+            p = '/'.join([urllib.quote(x) for x in root.split('/\\') + [f]])
             test.assertTransportMode(t, p, file_mode)
 
 
@@ -88,7 +88,8 @@ class TestPermissions(TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         b = t.branch
         open('a', 'wb').write('foo\n')
-        t.add('a')
+        # ensure check_mode_r works with capital-letter file-ids like TREE_ROOT
+        t.add('a', 'CAPS-ID')
         t.commit('foo')
 
         chmod_r('.bzr', 0644, 0755)
@@ -103,6 +104,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0755, b.control_files._dir_mode)
         self.assertEqualMode(0644, b.control_files._file_mode)
+        self.assertEqualMode(0755, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b.bzrdir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
         open('a', 'wb').write('foo2\n')
@@ -123,6 +126,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
+        self.assertEqualMode(0775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
         open('a', 'wb').write('foo3\n')
         t.commit('foo3')
@@ -141,6 +146,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(02775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
+        self.assertEqualMode(02775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
         open('a', 'wb').write('foo4\n')
         t.commit('foo4')
@@ -150,43 +157,6 @@ class TestPermissions(TestCaseWithTransport):
         t.add('d')
         t.commit('new d')
         check_mode_r(self, '.bzr', 0664, 02775)
-
-    def test_disable_set_mode(self):
-        # TODO: jam 20051215 Ultimately, this test should probably test that
-        #                    extra chmod calls aren't being made
-        try:
-            transport = get_transport(self.get_url())
-            transport.put('my-lock', StringIO(''))
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-        finally:
-            LockableFiles._set_dir_mode = True
-            LockableFiles._set_file_mode = True
 
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
@@ -216,6 +186,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_local = t.branch
         self.assertEqualMode(0755, b_local.control_files._dir_mode)
         self.assertEqualMode(0644, b_local.control_files._file_mode)
+        self.assertEqualMode(0755, b_local.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b_local.bzrdir._get_file_mode())
 
         os.mkdir('sftp')
         sftp_url = self.get_url('sftp')
@@ -229,6 +201,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0755, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0644, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0755, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b_sftp.bzrdir._get_file_mode())
 
         open('local/a', 'wb').write('foo2\n')
         t_local.commit('foo2')
@@ -250,6 +224,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0775, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0664, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0775, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b_sftp.bzrdir._get_file_mode())
 
         open('local/a', 'wb').write('foo3\n')
         t_local.commit('foo3')
@@ -276,10 +252,10 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             self.assertTransportMode(t, 'a', 0666 &~umask)
 
             # but Transport overrides umask
-            t.put('b', 'txt', mode=0666)
+            t.put_bytes('b', 'txt', mode=0666)
             self.assertTransportMode(t, 'b', 0666)
 
-            t._sftp.mkdir('c', mode=0777)
+            t._get_sftp().mkdir('c', mode=0777)
             self.assertTransportMode(t, 'c', 0777 &~umask)
 
             t.mkdir('d', mode=0777)

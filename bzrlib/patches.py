@@ -1,19 +1,20 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley
+# Copyright (C) 2004 - 2006 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+import re
 
 
 class PatchSyntax(Exception):
@@ -94,23 +95,24 @@ def parse_range(textrange):
 
  
 def hunk_from_header(line):
-    if not line.startswith("@@") or not line.endswith("@@\n") \
-        or not len(line) > 4:
-        raise MalformedHunkHeader("Does not start and end with @@.", line)
+    matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
+    if matches is None:
+        raise MalformedHunkHeader("Does not match format.", line)
     try:
-        (orig, mod) = line[3:-4].split(" ")
-    except Exception, e:
+        (orig, mod) = matches.group(1).split(" ")
+    except (ValueError, IndexError), e:
         raise MalformedHunkHeader(str(e), line)
     if not orig.startswith('-') or not mod.startswith('+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
         (orig_pos, orig_range) = parse_range(orig[1:])
         (mod_pos, mod_range) = parse_range(mod[1:])
-    except Exception, e:
+    except (ValueError, IndexError), e:
         raise MalformedHunkHeader(str(e), line)
     if mod_range < 0 or orig_range < 0:
         raise MalformedHunkHeader("Hunk range is negative", line)
-    return Hunk(orig_pos, orig_range, mod_pos, mod_range)
+    tail = matches.group(3)
+    return Hunk(orig_pos, orig_range, mod_pos, mod_range, tail)
 
 
 class HunkLine:
@@ -170,18 +172,24 @@ __pychecker__=""
 
 
 class Hunk:
-    def __init__(self, orig_pos, orig_range, mod_pos, mod_range):
+    def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None):
         self.orig_pos = orig_pos
         self.orig_range = orig_range
         self.mod_pos = mod_pos
         self.mod_range = mod_range
+        self.tail = tail
         self.lines = []
 
     def get_header(self):
-        return "@@ -%s +%s @@\n" % (self.range_str(self.orig_pos, 
-                                                   self.orig_range),
-                                    self.range_str(self.mod_pos, 
-                                                   self.mod_range))
+        if self.tail is None:
+            tail_str = ''
+        else:
+            tail_str = ' ' + self.tail
+        return "@@ -%s +%s @@%s\n" % (self.range_str(self.orig_pos,
+                                                     self.orig_range),
+                                      self.range_str(self.mod_pos,
+                                                     self.mod_range),
+                                      tail_str)
 
     def range_str(self, pos, range):
         """Return a file range, special-casing for 1-line files.
@@ -212,7 +220,6 @@ class Hunk:
             return self.shift_to_mod_lines(pos)
 
     def shift_to_mod_lines(self, pos):
-        assert (pos >= self.orig_pos-1 and pos <= self.orig_pos+self.orig_range)
         position = self.orig_pos-1
         shift = 0
         for line in self.lines:
@@ -316,13 +323,22 @@ def parse_patch(iter_lines):
 
 def iter_file_patch(iter_lines):
     saved_lines = []
+    orig_range = 0
     for line in iter_lines:
         if line.startswith('=== ') or line.startswith('*** '):
             continue
+        if line.startswith('#'):
+            continue
+        elif orig_range > 0:
+            if line.startswith('-') or line.startswith(' '):
+                orig_range -= 1
         elif line.startswith('--- '):
             if len(saved_lines) > 0:
                 yield saved_lines
             saved_lines = []
+        elif line.startswith('@@'):
+            hunk = hunk_from_header(line)
+            orig_range = hunk.orig_range
         saved_lines.append(line)
     if len(saved_lines) > 0:
         yield saved_lines
@@ -338,7 +354,8 @@ def iter_lines_handle_nl(iter_lines):
     last_line = None
     for line in iter_lines:
         if line == NO_NL:
-            assert last_line.endswith('\n')
+            if not last_line.endswith('\n'):
+                raise AssertionError()
             last_line = last_line[:-1]
             line = None
         if last_line is not None:
@@ -354,7 +371,7 @@ def parse_patches(iter_lines):
 
 
 def difference_index(atext, btext):
-    """Find the indext of the first character that differs betweeen two texts
+    """Find the indext of the first character that differs between two texts
 
     :param atext: The first text
     :type atext: str
@@ -398,7 +415,8 @@ def iter_patched(orig_lines, patch_lines):
                 if isinstance(hunk_line, ContextLine):
                     yield orig_line
                 else:
-                    assert isinstance(hunk_line, RemoveLine)
+                    if not isinstance(hunk_line, RemoveLine):
+                        raise AssertionError(hunk_line)
                 line_no += 1
     if orig_lines is not None:
         for line in orig_lines:

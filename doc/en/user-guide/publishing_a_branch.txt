@@ -1,0 +1,65 @@
+Publishing a branch
+===================
+
+Setting up a central repository
+-------------------------------
+
+While the centralized workflow can be used by socially nominating
+any branch on any computer as the central one, in practice most
+teams have a dedicated server for hosting central branches.
+
+Just as it's best practice to use a shared repository locally,
+it's advisable to put central branches in a shared repository.
+Note that central shared branches typically only want to
+store history, not working copies of files, so their enclosing
+repository is usually creating using the ``no-trees`` option, e.g.::
+
+  bzr init-repo --no-trees sftp://centralhost/srv/bzr/X-repo/
+
+You can think of this step as similar to setting up a new cvsroot or
+Subversion repository. However, Bazaar gives you more flexibility
+in how branches may be organised in your repository. See
+`Choosing a shared repository layout`_ in the appendices for
+guidelines and examples.
+
+
+Starting a central branch
+-------------------------
+
+There are two ways of populating a central branch with some initial
+content:
+
+ 1. Making a local branch and pushing it to a central location
+ 2. Making an empty central branch then committing content to it.
+
+Here is an example of the first way::
+
+  bzr init-repo X-repo
+  bzr init X-repo/X-trunk
+  cd X-repo/X-trunk
+  cp -ar ~/X .     (copy files in using OS-specific tools)
+  bzr add
+  bzr commit -m "Initial import"
+  (local branch has content - publish it centrally now)
+  bzr push sftp://centralhost/srv/bzr/X-repo/X-trunk
+
+Here is an example of the second way::
+
+  bzr init-repo X-repo
+  cd X-repo
+  bzr init sftp://centralhost/srv/bzr/X-repo/X-trunk
+  bzr checkout sftp://centralhost/srv/bzr/X-repo/X-trunk
+  cd X-trunk
+  cp -ar ~/X .     (copy files in using OS-specific tools)
+  bzr add
+  bzr commit -m "Initial import"
+
+Note that committing inside a working tree created using
+the ``checkout`` command implicitly commits the content to
+the central location as well as locally. Had we used the
+``branch`` command instead of ``checkout`` above, the
+content would have only been committed locally.
+
+Working trees that are tightly bound to a central location
+like this are called *checkouts*. The rest of this chapter
+explains their numerous features in more detail.

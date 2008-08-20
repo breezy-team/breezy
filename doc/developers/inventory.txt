@@ -1,0 +1,47 @@
+===========
+Inventories
+===========
+
+.. contents::
+
+Overview
+========
+
+Inventories provide an abstraction for talking about the shape of a tree.
+Generally only tree object implementors should be concerned about inventories.
+
+In memory inventories
+=====================
+
+In memory inventories are often used in diff and status operations between
+trees. We are working to reduce the number of times this occurs with 'full
+tree' inventory objects, and instead use more custom tailored data structures
+that allow operations on only a small amount of data regardless of the size of
+the tree.
+
+
+Serialization
+=============
+
+There are several variants of serialised tree shape in use by bzr. To date
+these have been mostly xml based, though plugins have offered non-xml versions.
+
+dirstate
+--------
+
+The dirstate file in a working tree includes many different tree shapes - one
+for the working tree and one for each parent tree, interleaved to allow
+efficient diff and status operations.
+
+xml
+---
+
+All the xml serialized forms write to and read from a single byte string, whose
+hash is then the inventory validator for the commit object.
+
+journalled
+----------
+
+The in development journalled inventory serializer generates a single byte
+string during serialization, but may require many byte strings to deserialize,
+and these are discovered recursively.

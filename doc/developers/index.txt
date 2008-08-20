@@ -1,0 +1,84 @@
+=================================
+Bazaar Developer Document Catalog
+=================================
+
+Bazaar user documentation is in the 
+`Main Document Catalog <../index.html>`_.
+
+Overall developer documentation
+===============================
+
+* `Developer Guide <../en/developer-guide/HACKING.html>`_
+
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
+  (external link)
+  |--| automatically generated API reference information
+
+* `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
+  (wiki) |--| a guide for writing Python programs that work with Bazaar.
+
+* `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
+  |--| specific advice on writing Bazaar plugins.
+
+Process
+=======
+
+* `Releasing Bazaar <releasing.html>`_ |--| How to make a release of Bazaar,
+  and how to coordinate the monthly development cycle.
+
+* `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
+
+* `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
+  your changes to Bazaar integrated into a release.
+
+* `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
+  bzr code and visualize the results.
+
+Plans
+=====
+
+* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap 
+  for fixing performance in bzr over the next few releases.
+
+Specifications
+==============
+
+* `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
+
+* `Authentication ring <authentication-ring.html>`_ |--| Configuring
+  authentication.
+
+* `Bundles <bundles.html>`_ |--| All about bzr bundles.
+
+* `Container format <container-format.html>`_ |--| Notes on a container format
+  for streaming and storing Bazaar data.
+
+* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+  for repositories (a layer above the container format).
+
+* `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
+
+* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+
+* `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
+
+* `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
+
+* `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
+
+* `Repositories <repository.html>`_ |--| What repositories do and are used for.
+
+* `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
+  any python application.
+
+Data formats
+============
+
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
+  (new in Bazaar 0.92).
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

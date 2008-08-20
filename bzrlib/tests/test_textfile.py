@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ from StringIO import StringIO
 
 from bzrlib.errors import BinaryFile
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.textfile import *
+from bzrlib.textfile import text_file, check_text_lines, check_text_path
 
 
 class TextFile(TestCase):

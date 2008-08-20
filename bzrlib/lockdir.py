@@ -1,15 +1,15 @@
-# Copyright (C) 2006 Canonical Ltd
-
+# Copyright (C) 2006, 2007 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -88,17 +88,29 @@ Example usage:
 >>> t = MemoryTransport()
 >>> l = LockDir(t, 'sample-lock')
 >>> l.create()
->>> l.wait_lock()
+>>> token = l.wait_lock()
 >>> # do something here
 >>> l.unlock()
 
 """
 
+
+# TODO: We sometimes have the problem that our attempt to rename '1234' to
+# 'held' fails because the transport server moves into an existing directory,
+# rather than failing the rename.  If we made the info file name the same as
+# the locked directory name we would avoid this problem because moving into
+# the held directory would implicitly clash.  However this would not mesh with
+# the existing locking code and needs a new format of the containing object.
+# -- robertc, mbp 20070628
+
 import os
 import time
-from warnings import warn
-from StringIO import StringIO
+from cStringIO import StringIO
 
+from bzrlib import (
+    debug,
+    errors,
+    )
 import bzrlib.config
 from bzrlib.errors import (
         DirectoryNotEmpty,
@@ -106,17 +118,20 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
-        LockError,
+        LockFailed,
         LockNotHeld,
         NoSuchFile,
         PathError,
         ResourceBusy,
+        TransportError,
         UnlockableTransport,
         )
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars
-from bzrlib.rio import RioWriter, read_stanza, Stanza
+from bzrlib.osutils import rand_chars, format_delta
+from bzrlib.rio import read_stanza, Stanza
+import bzrlib.ui
+
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -132,8 +147,10 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
+
 _DEFAULT_TIMEOUT_SECONDS = 300
-_DEFAULT_POLL_SECONDS = 0.5
+_DEFAULT_POLL_SECONDS = 1.0
+
 
 class LockDir(object):
     """Write-lock guarding access to data."""
@@ -150,17 +167,17 @@ class LockDir(object):
         :param path: Path to the lock within the base directory of the 
             transport.
         """
-        assert isinstance(transport, Transport), \
-            ("not a transport: %r" % transport)
         self.transport = transport
         self.path = path
         self._lock_held = False
+        self._locked_via_token = False
         self._fake_read_lock = False
         self._held_dir = path + '/held'
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
-        self.nonce = rand_chars(20)
+
+        self._report_function = note
 
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
@@ -175,37 +192,97 @@ class LockDir(object):
         This is typically only called when the object/directory containing the 
         directory is first created.  The lock is not held when it's created.
         """
-        if self.transport.is_readonly():
-            raise UnlockableTransport(self.transport)
-        self.transport.mkdir(self.path, mode=mode)
-
-    def attempt_lock(self):
-        """Take the lock; fail if it's already held.
-        
-        If you wish to block until the lock can be obtained, call wait_lock()
-        instead.
-        """
-        if self._fake_read_lock:
-            raise LockContention(self)
-        if self.transport.is_readonly():
-            raise UnlockableTransport(self.transport)
+        self._trace("create lock directory")
         try:
-            tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
-            self.transport.mkdir(tmpname)
-            sio = StringIO()
-            self._prepare_info(sio)
-            sio.seek(0)
-            # append will create a new file; we use append rather than put
-            # because we don't want to write to a temporary file and rename
-            # into place, because that's going to happen to the whole
-            # directory
-            self.transport.append(tmpname + self.__INFO_NAME, sio)
+            self.transport.mkdir(self.path, mode=mode)
+        except (TransportError, PathError), e:
+            raise LockFailed(self, e)
+
+
+    def _attempt_lock(self):
+        """Make the pending directory and attempt to rename into place.
+        
+        If the rename succeeds, we read back the info file to check that we
+        really got the lock.
+
+        If we fail to acquire the lock, this method is responsible for
+        cleaning up the pending directory if possible.  (But it doesn't do
+        that yet.)
+
+        :returns: The nonce of the lock, if it was successfully acquired.
+
+        :raises LockContention: If the lock is held by someone else.  The exception
+            contains the info of the current holder of the lock.
+        """
+        self._trace("lock_write...")
+        start_time = time.time()
+        try:
+            tmpname = self._create_pending_dir()
+        except (errors.TransportError, PathError), e:
+            self._trace("... failed to create pending dir, %s", e)
+            raise LockFailed(self, e)
+        try:
             self.transport.rename(tmpname, self._held_dir)
-            self._lock_held = True
-            self.confirm()
-        except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
-            mutter("contention on %r: %s", self, e)
+        except (errors.TransportError, PathError, DirectoryNotEmpty,
+                FileExists, ResourceBusy), e:
+            self._trace("... contention, %s", e)
+            self._remove_pending_dir(tmpname)
             raise LockContention(self)
+        except Exception, e:
+            self._trace("... lock failed, %s", e)
+            self._remove_pending_dir(tmpname)
+            raise
+        # We must check we really got the lock, because Launchpad's sftp
+        # server at one time had a bug were the rename would successfully
+        # move the new directory into the existing directory, which was
+        # incorrect.  It's possible some other servers or filesystems will
+        # have a similar bug allowing someone to think they got the lock
+        # when it's already held.
+        info = self.peek()
+        self._trace("after locking, info=%r", info)
+        if info['nonce'] != self.nonce:
+            self._trace("rename succeeded, "
+                "but lock is still held by someone else")
+            raise LockContention(self)
+        self._lock_held = True
+        self._trace("... lock succeeded after %dms",
+                (time.time() - start_time) * 1000)
+        return self.nonce
+
+    def _remove_pending_dir(self, tmpname):
+        """Remove the pending directory
+
+        This is called if we failed to rename into place, so that the pending 
+        dirs don't clutter up the lockdir.
+        """
+        self._trace("remove %s", tmpname)
+        try:
+            self.transport.delete(tmpname + self.__INFO_NAME)
+            self.transport.rmdir(tmpname)
+        except PathError, e:
+            note("error removing pending lock: %s", e)
+
+    def _create_pending_dir(self):
+        tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
+        try:
+            self.transport.mkdir(tmpname)
+        except NoSuchFile:
+            # This may raise a FileExists exception
+            # which is okay, it will be caught later and determined
+            # to be a LockContention.
+            self._trace("lock directory does not exist, creating it")
+            self.create(mode=self._dir_modebits)
+            # After creating the lock directory, try again
+            self.transport.mkdir(tmpname)
+        self.nonce = rand_chars(20)
+        info_bytes = self._prepare_info()
+        # We use put_file_non_atomic because we just created a new unique
+        # directory so we don't have to worry about files existing there.
+        # We'll rename the whole directory into place to get atomic
+        # properties
+        self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
+                                            info_bytes)
+        return tmpname
 
     def unlock(self):
         """Release a held lock
@@ -215,15 +292,35 @@ class LockDir(object):
             return
         if not self._lock_held:
             raise LockNotHeld(self)
-        # rename before deleting, because we can't atomically remove the whole
-        # tree
-        tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
-        # gotta own it to unlock
-        self.confirm()
-        self.transport.rename(self._held_dir, tmpname)
-        self._lock_held = False
-        self.transport.delete(tmpname + self.__INFO_NAME)
-        self.transport.rmdir(tmpname)
+        if self._locked_via_token:
+            self._locked_via_token = False
+            self._lock_held = False
+        else:
+            # rename before deleting, because we can't atomically remove the
+            # whole tree
+            start_time = time.time()
+            self._trace("unlocking")
+            tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+            # gotta own it to unlock
+            self.confirm()
+            self.transport.rename(self._held_dir, tmpname)
+            self._lock_held = False
+            self.transport.delete(tmpname + self.__INFO_NAME)
+            try:
+                self.transport.rmdir(tmpname)
+            except DirectoryNotEmpty, e:
+                # There might have been junk left over by a rename that moved
+                # another locker within the 'held' directory.  do a slower
+                # deletion where we list the directory and remove everything
+                # within it.
+                #
+                # Maybe this should be broader to allow for ftp servers with
+                # non-specific error messages?
+                self._trace("doing recursive deletion of non-empty directory "
+                        "%s", tmpname)
+                self.transport.delete_tree(tmpname)
+            self._trace("... unlock succeeded after %dms",
+                    (time.time() - start_time) * 1000)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -235,12 +332,8 @@ class LockDir(object):
         self._check_not_locked()
         holder_info = self.peek()
         if holder_info is not None:
-            if bzrlib.ui.ui_factory.get_boolean(
-                "Break lock %s held by %s@%s [process #%s]" % (
-                    self.transport,
-                    holder_info["user"],
-                    holder_info["hostname"],
-                    holder_info["pid"])):
+            lock_info = '\n'.join(self._format_lock_info(holder_info))
+            if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
                 self.force_break(holder_info)
         
     def force_break(self, dead_holder_info):
@@ -321,31 +414,46 @@ class LockDir(object):
         """
         try:
             info = self._read_info_file(self._held_info_path)
-            assert isinstance(info, dict), \
-                    "bad parse result %r" % info
+            self._trace("peek -> held")
             return info
         except NoSuchFile, e:
-            return None
+            self._trace("peek -> not held")
 
-    def _prepare_info(self, outf):
+    def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
         import socket
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
+        try:
+            user = config.user_email()
+        except errors.NoEmailInUsername:
+            user = config.username()
         s = Stanza(hostname=socket.gethostname(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
-                   user=config.user_email(),
+                   user=user,
                    )
-        RioWriter(outf).write_stanza(s)
+        return s.to_string()
 
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines()).as_dict()
 
-    def wait_lock(self, timeout=_DEFAULT_TIMEOUT_SECONDS,
-                  poll=_DEFAULT_POLL_SECONDS):
+    def attempt_lock(self):
+        """Take the lock; fail if it's already held.
+        
+        If you wish to block until the lock can be obtained, call wait_lock()
+        instead.
+
+        :return: The lock token.
+        :raises LockContention: if the lock is held by someone else.
+        """
+        if self._fake_read_lock:
+            raise LockContention(self)
+        return self._attempt_lock()
+
+    def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
 
         If the lock can be acquired within the bounded time, it
@@ -353,27 +461,110 @@ class LockDir(object):
         is raised.  Either way, this function should return within
         approximately `timeout` seconds.  (It may be a bit more if
         a transport operation takes a long time to complete.)
+
+        :param timeout: Approximate maximum amount of time to wait for the
+        lock, in seconds.
+         
+        :param poll: Delay in seconds between retrying the lock.
+
+        :param max_attempts: Maximum number of times to try to lock.
+
+        :return: The lock token.
         """
-        # XXX: the transport interface doesn't let us guard 
-        # against operations there taking a long time.
+        if timeout is None:
+            timeout = _DEFAULT_TIMEOUT_SECONDS
+        if poll is None:
+            poll = _DEFAULT_POLL_SECONDS
+        # XXX: the transport interface doesn't let us guard against operations
+        # there taking a long time, so the total elapsed time or poll interval
+        # may be more than was requested.
         deadline = time.time() + timeout
+        deadline_str = None
+        last_info = None
+        attempt_count = 0
         while True:
+            attempt_count += 1
             try:
-                self.attempt_lock()
-                return
+                return self.attempt_lock()
             except LockContention:
+                # possibly report the blockage, then try again
                 pass
+            # TODO: In a few cases, we find out that there's contention by
+            # reading the held info and observing that it's not ours.  In
+            # those cases it's a bit redundant to read it again.  However,
+            # the normal case (??) is that the rename fails and so we
+            # don't know who holds the lock.  For simplicity we peek
+            # always.
+            new_info = self.peek()
+            if new_info is not None and new_info != last_info:
+                if last_info is None:
+                    start = 'Unable to obtain'
+                else:
+                    start = 'Lock owner changed for'
+                last_info = new_info
+                formatted_info = self._format_lock_info(new_info)
+                if deadline_str is None:
+                    deadline_str = time.strftime('%H:%M:%S',
+                                                 time.localtime(deadline))
+                lock_url = self.transport.abspath(self.path)
+                self._report_function('%s %s\n'
+                                      '%s\n' # held by
+                                      '%s\n' # locked ... ago
+                                      'Will continue to try until %s, unless '
+                                      'you press Ctrl-C\n'
+                                      'If you\'re sure that it\'s not being '
+                                      'modified, use bzr break-lock %s',
+                                      start,
+                                      formatted_info[0],
+                                      formatted_info[1],
+                                      formatted_info[2],
+                                      deadline_str,
+                                      lock_url)
+
+            if (max_attempts is not None) and (attempt_count >= max_attempts):
+                self._trace("exceeded %d attempts")
+                raise LockContention(self)
             if time.time() + poll < deadline:
+                self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
+                self._trace("timeout after waiting %ss", timeout)
                 raise LockContention(self)
+    
+    def leave_in_place(self):
+        self._locked_via_token = True
 
-    def lock_write(self):
-        """Wait for and acquire the lock."""
-        self.attempt_lock()
+    def dont_leave_in_place(self):
+        self._locked_via_token = False
+
+    def lock_write(self, token=None):
+        """Wait for and acquire the lock.
+        
+        :param token: if this is already locked, then lock_write will fail
+            unless the token matches the existing lock.
+        :returns: a token if this instance supports tokens, otherwise None.
+        :raises TokenLockingNotSupported: when a token is given but this
+            instance doesn't support using token locks.
+        :raises MismatchedToken: if the specified token doesn't match the token
+            of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+         
+        XXX: docstring duplicated from LockableFiles.lock_write.
+        """
+        if token is not None:
+            self.validate_token(token)
+            self.nonce = token
+            self._lock_held = True
+            self._locked_via_token = True
+            return token
+        else:
+            return self.wait_lock()
 
     def lock_read(self):
-        """Compatability-mode shared lock.
+        """Compatibility-mode shared lock.
 
         LockDir doesn't support shared read-only locks, so this 
         just pretends that the lock is taken but really does nothing.
@@ -387,16 +578,30 @@ class LockDir(object):
             raise LockContention(self)
         self._fake_read_lock = True
 
-    def wait(self, timeout=20, poll=0.5):
-        """Wait a certain period for a lock to be released."""
-        # XXX: the transport interface doesn't let us guard 
-        # against operations there taking a long time.
-        deadline = time.time() + timeout
-        while True:
-            if self.peek():
-                return
-            if time.time() + poll < deadline:
-                time.sleep(poll)
-            else:
-                raise LockContention(self)
+    def _format_lock_info(self, info):
+        """Turn the contents of peek() into something for the user"""
+        lock_url = self.transport.abspath(self.path)
+        delta = time.time() - int(info['start_time'])
+        return [
+            'lock %s' % (lock_url,),
+            'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
+            'locked %s' % (format_delta(delta),),
+            ]
 
+    def validate_token(self, token):
+        if token is not None:
+            info = self.peek()
+            if info is None:
+                # Lock isn't held
+                lock_token = None
+            else:
+                lock_token = info.get('nonce')
+            if token != lock_token:
+                raise errors.TokenMismatch(token, lock_token)
+            else:
+                self._trace("revalidated by token %r", token)
+
+    def _trace(self, format, *args):
+        if 'lock' not in debug.debug_flags:
+            return
+        mutter(str(self) + ": " + (format % args))

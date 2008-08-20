@@ -1,15 +1,15 @@
-# Copyright (C) 2006 by Canonical Ltd
-
+# Copyright (C) 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -23,39 +23,23 @@ of interest in debugging or data recovery.
 import sys
 
 from bzrlib.commands import Command
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import warning
 
-class cmd_weave_list(Command):
-    """List the revision ids present in a weave, in alphabetical order"""
+class cmd_versionedfile_list(Command):
+    """List the revision ids present in a versionedfile, alphabetically"""
 
     hidden = True
-    takes_args = ['weave_filename']
+    takes_args = ['filename']
+    aliases = ['weave-list']
 
-    def run(self, weave_filename):
+    def run(self, filename):
         from bzrlib.weavefile import read_weave
-        weave = read_weave(file(weave_filename, 'rb'))
-        names = weave.versions()
+        from bzrlib.transport import get_transport
+        from bzrlib import osutils
+        vf = read_weave(file(filename, 'rb'))
+        names = vf.versions()
         names.sort()
         print '\n'.join(names)
-
-
-class cmd_weave_join(Command):
-    """Join the contents of two weave files.
-
-    The resulting weave is sent to stdout.
-
-    This command is only intended for bzr developer use.
-    """
-
-    hidden = True
-    takes_args = ['weave1', 'weave2']
-
-    def run(self, weave1, weave2):
-        from bzrlib.weavefile import read_weave, write_weave
-        w1 = read_weave(file(weave1, 'rb'))
-        w2 = read_weave(file(weave2, 'rb'))
-        w1.join(w2)
-        write_weave(w1, sys.stdout)
 
 
 class cmd_weave_plan_merge(Command):
@@ -64,7 +48,7 @@ class cmd_weave_plan_merge(Command):
     takes_args = ['weave_file', 'revision_a', 'revision_b']
 
     def run(self, weave_file, revision_a, revision_b):
-        from bzrlib.weavefile import read_weave, write_weave
+        from bzrlib.weavefile import read_weave
         w = read_weave(file(weave_file, 'rb'))
         for state, line in w.plan_merge(revision_a, revision_b):
             # make sure to print every line with a newline, even if it doesn't
@@ -84,7 +68,7 @@ class cmd_weave_merge_text(Command):
     takes_args = ['weave_file', 'revision_a', 'revision_b']
 
     def run(self, weave_file, revision_a, revision_b):
-        from bzrlib.weavefile import read_weave, write_weave
+        from bzrlib.weavefile import read_weave
         w = read_weave(file(weave_file, 'rb'))
         p = w.plan_merge(revision_a, revision_b)
         sys.stdout.writelines(w.weave_merge(p))

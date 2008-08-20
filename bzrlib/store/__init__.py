@@ -1,15 +1,15 @@
-# Copyright (C) 2005, 2006 by Canonical Development Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,7 +18,7 @@
 # compressed or not.
 
 """
-Stores are the main data-storage mechanism for Bazaar-NG.
+Stores are the main data-storage mechanism for Bazaar.
 
 A store is a simple write-once container indexed by a universally
 unique ID.
@@ -30,13 +30,20 @@ import urllib
 from zlib import adler32
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    osutils,
+    symbol_versioning,
+    urlutils,
+    versionedfile,
+    )
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 
 ######################################################################
 # stores
@@ -67,10 +74,6 @@ class Store(object):
         """DEPRECATED. Please use .get(fileid) instead."""
         raise NotImplementedError
 
-    #def __contains__(self, fileid):
-    #    """Deprecated, please use has_id"""
-    #    raise NotImplementedError
-
     def __iter__(self):
         raise NotImplementedError
 
@@ -87,7 +90,7 @@ class Store(object):
 
     def listable(self):
         """Return True if this store is able to be listed."""
-        return hasattr(self, "__iter__")
+        return (getattr(self, "__iter__", None) is not None)
 
     def copy_all_ids(self, store_from, pb=None):
         """Copy all the file ids from store_from into self."""
@@ -121,7 +124,6 @@ class Store(object):
             pb.update('preparing to copy')
         failed = set()
         count = 0
-        ids = list(ids) # get the list for showing a length.
         for fileid in ids:
             count += 1
             if self.has_id(fileid):
@@ -140,7 +142,6 @@ class Store(object):
                     failed.add(fileid)
                 else:
                     raise
-        assert count == len(ids)
         if pb:
             pb.clear()
         return count, failed
@@ -164,10 +165,9 @@ class TransportStore(Store):
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.
 
-        f -- A file-like object, or string
+        f -- A file-like object
         """
         mutter("add store entry %r", fileid)
-        
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
             raise BzrError("store %r already contains id %r" 
@@ -178,7 +178,6 @@ class TransportStore(Store):
         # doesn't exist), then create the dir, and try again
         self._add(names[0], f)
 
-
     def _add(self, relpath, f):
         """Actually add the file to the given location.
         This should be overridden by children.
@@ -186,8 +185,9 @@ class TransportStore(Store):
         raise NotImplementedError('children need to implement this function.')
 
     def _check_fileid(self, fileid):
-        if not isinstance(fileid, basestring):
-            raise TypeError('Fileids should be a string type: %s %r' % (type(fileid), fileid))
+        if type(fileid) != str:
+            raise TypeError('Fileids should be bytestrings: %s %r' % (
+                type(fileid), fileid))
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
@@ -241,7 +241,6 @@ class TransportStore(Store):
     def __init__(self, a_transport, prefixed=False, compressed=False,
                  dir_mode=None, file_mode=None,
                  escaped=False):
-        assert isinstance(a_transport, Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed
@@ -254,20 +253,22 @@ class TransportStore(Store):
         # will just use the filesystem defaults
         self._dir_mode = dir_mode
         self._file_mode = file_mode
-
-    def _unescape(self, file_id):
-        """If filename escaping is enabled for this store, unescape and return the filename."""
-        if self._escaped:
-            return urllib.unquote(file_id)
+        # Create a key mapper to use
+        if escaped and prefixed:
+            self._mapper = versionedfile.HashEscapedPrefixMapper()
+        elif not escaped and prefixed:
+            self._mapper = versionedfile.HashPrefixMapper()
+        elif self._escaped:
+            raise ValueError(
+                "%r: escaped unprefixed stores are not permitted."
+                % (self,))
         else:
-            return file_id
+            self._mapper = versionedfile.PrefixMapper()
 
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
         for quoted_relpath in self._transport.iter_files_recursive():
-            # transport iterator always returns quoted paths, regardless of
-            # escaping
-            yield urllib.unquote(quoted_relpath)
+            yield quoted_relpath
 
     def __iter__(self):
         for relpath in self._iter_files_recursive():
@@ -281,7 +282,7 @@ class TransportStore(Store):
                     if name.endswith('.' + suffix):
                         skip = True
             if not skip:
-                yield self._unescape(name)
+                yield self._mapper.unmap(name)[0]
 
     def __len__(self):
         return len(list(self.__iter__()))
@@ -295,40 +296,9 @@ class TransportStore(Store):
                 self._check_fileid(suffix)
         else:
             suffixes = []
-        fileid = self._escape_file_id(fileid)
-        if self._prefixed:
-            # hash_prefix adds the '/' separator
-            prefix = self.hash_prefix(fileid, escaped=True)
-        else:
-            prefix = ''
-        path = prefix + fileid
-        full_path = u'.'.join([path] + suffixes)
-        return urlutils.escape(full_path)
-
-    def _escape_file_id(self, file_id):
-        """Turn a file id into a filesystem safe string.
-
-        This is similar to a plain urllib.quote, except
-        it uses specific safe characters, so that it doesn't
-        have to translate a lot of valid file ids.
-        """
-        if not self._escaped:
-            return file_id
-        if isinstance(file_id, unicode):
-            file_id = file_id.encode('utf-8')
-        # @ does not get escaped. This is because it is a valid
-        # filesystem character we use all the time, and it looks
-        # a lot better than seeing %40 all the time.
-        safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
-        r = [((c in safe) and c or ('%%%02x' % ord(c)))
-             for c in file_id]
-        return ''.join(r)
-
-    def hash_prefix(self, fileid, escaped=False):
-        # fileid should be unescaped
-        if not escaped and self._escaped:
-            fileid = self._escape_file_id(fileid)
-        return "%02x/" % (adler32(fileid) & 0xff)
+        path = self._mapper.map((fileid,))
+        full_path = '.'.join([path] + suffixes)
+        return full_path
 
     def __repr__(self):
         if self._transport is None:
@@ -361,9 +331,3 @@ class TransportStore(Store):
             total += self._transport.stat(relpath).st_size
                 
         return count, total
-
-
-@deprecated_function(zero_eight)
-def copy_all(store_from, store_to, pb=None):
-    """Copy all ids from one store to another."""
-    store_to.copy_all_ids(store_from, pb)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,35 +19,43 @@
 There are separate implementation modules for each http client implementation.
 """
 
-import errno
-import os
-from collections import deque
 from cStringIO import StringIO
+import mimetools
 import re
 import urlparse
 import urllib
-from warnings import warn
+import sys
 
-from bzrlib.transport import Transport, register_transport, Server
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError, InvalidURL)
-from bzrlib.branch import Branch
+from bzrlib import (
+    errors,
+    ui,
+    urlutils,
+    )
+from bzrlib.smart import medium
+from bzrlib.symbol_versioning import (
+        deprecated_method,
+        )
 from bzrlib.trace import mutter
-# TODO: load these only when running http tests
-import BaseHTTPServer, SimpleHTTPServer, socket, time
-import threading
-from bzrlib.ui import ui_factory
+from bzrlib.transport import (
+    ConnectedTransport,
+    _CoalescedOffset,
+    Transport,
+    )
 
-
+# TODO: This is not used anymore by HttpTransport_urllib
+# (extracting the auth info and prompting the user for a password
+# have been split), only the tests still use it. It should be
+# deleted and the tests rewritten ASAP to stay in sync.
 def extract_auth(url, password_manager):
     """Extract auth parameters from am HTTP/HTTPS url and add them to the given
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert re.match(r'^(https?)(\+\w+)?://', url), \
-            'invalid absolute url %r' % url
+    if not re.match(r'^(https?)(\+\w+)?://', url):
+        raise ValueError(
+            'invalid absolute url %r' % (url,))
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-    
+
     if '@' in netloc:
         auth, netloc = netloc.split('@', 1)
         if ':' in auth:
@@ -62,14 +70,15 @@ def extract_auth(url, password_manager):
         if password is not None:
             password = urllib.unquote(password)
         else:
-            password = ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
-                                               user=username, host=host)
+            password = ui.ui_factory.get_password(
+                prompt='HTTP %(user)s@%(host)s password',
+                user=username, host=host)
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
 
 
-class HttpTransportBase(Transport):
+class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -78,89 +87,32 @@ class HttpTransportBase(Transport):
     implementation.
     """
 
-    # _proto: "http" or "https"
-    # _qualified_proto: may have "+pycurl", etc
+    # _unqualified_scheme: "http" or "https"
+    # _scheme: may have "+pycurl", etc
 
-    def __init__(self, base):
+    def __init__(self, base, _from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
-        self._proto = proto_match.group(1)
+        self._unqualified_scheme = proto_match.group(1)
         impl_name = proto_match.group(2)
         if impl_name:
             impl_name = impl_name[1:]
         self._impl_name = impl_name
-        if base[-1] != '/':
-            base = base + '/'
-        super(HttpTransportBase, self).__init__(base)
-        # In the future we might actually connect to the remote host
-        # rather than using get_url
-        # self._connection = None
-        (apparent_proto, self._host,
-            self._path, self._parameters,
-            self._query, self._fragment) = urlparse.urlparse(self.base)
-        self._qualified_proto = apparent_proto
-
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-
-        This can be supplied with a string or a list.
-
-        The URL returned always has the protocol scheme originally used to 
-        construct the transport, even if that includes an explicit
-        implementation qualifier.
-        """
-        assert isinstance(relpath, basestring)
-        if isinstance(relpath, unicode):
-            raise InvalidURL(relpath, 'paths must not be unicode.')
-        if isinstance(relpath, basestring):
-            relpath_parts = relpath.split('/')
+        super(HttpTransportBase, self).__init__(base,
+                                                _from_transport=_from_transport)
+        # range hint is handled dynamically throughout the life
+        # of the transport object. We start by trying multi-range
+        # requests and if the server returns bogus results, we
+        # retry with single range requests and, finally, we
+        # forget about range if the server really can't
+        # understand. Once acquired, this piece of info is
+        # propagated to clones.
+        if _from_transport is not None:
+            self._range_hint = _from_transport._range_hint
         else:
-            # TODO: Don't call this with an array - no magic interfaces
-            relpath_parts = relpath[:]
-        if len(relpath_parts) > 1:
-            if relpath_parts[0] == '':
-                raise ValueError("path %r within branch %r seems to be absolute"
-                                 % (relpath, self._path))
-            if relpath_parts[-1] == '':
-                raise ValueError("path %r within branch %r seems to be a directory"
-                                 % (relpath, self._path))
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
-        for p in relpath_parts:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.' or p == '':
-                continue # No-op
-            else:
-                basepath.append(p)
-        # Possibly, we could use urlparse.urljoin() here, but
-        # I'm concerned about when it chooses to strip the last
-        # portion of the path, and when it doesn't.
-        path = '/'.join(basepath)
-        if path == '':
-            path = '/'
-        result = urlparse.urlunparse((self._qualified_proto,
-                                    self._host, path, '', '', ''))
-        return result
-
-    def _real_abspath(self, relpath):
-        """Produce absolute path, adjusting protocol if needed"""
-        abspath = self.abspath(relpath)
-        qp = self._qualified_proto
-        rp = self._proto
-        if self._qualified_proto != self._proto:
-            abspath = rp + abspath[len(qp):]
-        if not isinstance(abspath, str):
-            # escaping must be done at a higher level
-            abspath = abspath.encode('ascii')
-        return abspath
+            self._range_hint = 'multi'
 
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
@@ -171,106 +123,264 @@ class HttpTransportBase(Transport):
         :param relpath: The relative path to the file
         """
         code, response_file = self._get(relpath, None)
-        return response_file
+        # FIXME: some callers want an iterable... One step forward, three steps
+        # backwards :-/ And not only an iterable, but an iterable that can be
+        # seeked backwards, so we will never be able to do that.  One such
+        # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
+        # time of this writing it's even the only known client -- vila20071203
+        return StringIO(response_file.read())
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
-        :param byte_range: None to get the whole file;
-            or [(start,end)] to fetch parts of a file.
+        :param ranges: None to get the whole file;
+            or  a list of _CoalescedOffset to fetch parts of a file.
+        :param tail_amount: The amount to get from the end of the file.
 
         :returns: (http_code, result_file)
-
-        Note that the current http implementations can only fetch one range at
-        a time through this call.
         """
         raise NotImplementedError(self._get)
 
-    def readv(self, relpath, offsets):
+    def _remote_path(self, relpath):
+        """See ConnectedTransport._remote_path.
+
+        user and passwords are not embedded in the path provided to the server.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        return self._unsplit_url(self._unqualified_scheme,
+                                 None, None, self._host, self._port, path)
+
+    def _create_auth(self):
+        """Returns a dict returning the credentials provided at build time."""
+        auth = dict(host=self._host, port=self._port,
+                    user=self._user, password=self._password,
+                    protocol=self._unqualified_scheme,
+                    path=self._path)
+        return auth
+
+    def get_request(self):
+        return SmartClientHTTPMediumRequest(self)
+
+    def get_smart_medium(self):
+        """See Transport.get_smart_medium.
+
+        HttpTransportBase directly implements the minimal interface of
+        SmartMediumClient, so this returns self.
+        """
+        return self
+
+    def _degrade_range_hint(self, relpath, ranges, exc_info):
+        if self._range_hint == 'multi':
+            self._range_hint = 'single'
+            mutter('Retry "%s" with single range request' % relpath)
+        elif self._range_hint == 'single':
+            self._range_hint = None
+            mutter('Retry "%s" without ranges' % relpath)
+        else:
+            # We tried all the tricks, but nothing worked. We re-raise the
+            # original exception; the 'mutter' calls above will indicate that
+            # further tries were unsuccessful
+            raise exc_info[0], exc_info[1], exc_info[2]
+
+    # _coalesce_offsets is a helper for readv, it try to combine ranges without
+    # degrading readv performances. _bytes_to_read_before_seek is the value
+    # used for the limit parameter and has been tuned for other transports. For
+    # HTTP, the name is inappropriate but the parameter is still useful and
+    # helps reduce the number of chunks in the response. The overhead for a
+    # chunk (headers, length, footer around the data itself is variable but
+    # around 50 bytes. We use 128 to reduce the range specifiers that appear in
+    # the header, some servers (notably Apache) enforce a maximum length for a
+    # header and issue a '400: Bad request' error when too much ranges are
+    # specified.
+    _bytes_to_read_before_seek = 128
+    # No limit on the offset number that get combined into one, we are trying
+    # to avoid downloading the whole file.
+    _max_readv_combine = 0
+    # By default Apache has a limit of ~400 ranges before replying with a 400
+    # Bad Request. So we go underneath that amount to be safe.
+    _max_get_ranges = 200
+    # We impose no limit on the range size. But see _pycurl.py for a different
+    # use.
+    _get_max_size = 0
+
+    def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        # Ideally we would pass one big request asking for all the ranges in
-        # one go; however then the server will give a multipart mime response
-        # back, and we can't parse them yet.  So instead we just get one range
-        # per region, and try to coallesce the regions as much as possible.
-        #
-        # The read-coallescing code is not quite regular enough to have a
-        # single driver routine and
-        # helper method in Transport.
-        def do_combined_read(combined_offsets):
-            # read one coalesced block
-            total_size = 0
-            for offset, size in combined_offsets:
-                total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
-            offset = combined_offsets[0][0]
-            byte_range = (offset, offset + total_size - 1)
-            code, result_file = self._get(relpath, [byte_range])
-            if code == 206:
-                for off, size in combined_offsets:
-                    result_bytes = result_file.read(size)
-                    assert len(result_bytes) == size
-                    yield off, result_bytes
-            elif code == 200:
-                data = result_file.read(offset + total_size)[offset:offset + total_size]
-                pos = 0
-                for offset, size in combined_offsets:
-                    yield offset, data[pos:pos + size]
-                    pos += size
-                del data
-        if not len(offsets):
-            return
-        pending_offsets = deque(offsets)
-        combined_offsets = []
-        while len(pending_offsets):
-            offset, size = pending_offsets.popleft()
-            if not combined_offsets:
-                combined_offsets = [[offset, size]]
-            else:
-                if (len (combined_offsets) < 500 and
-                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
-                    # combatible offset:
-                    combined_offsets.append([offset, size])
-                else:
-                    # incompatible, or over the threshold issue a read and yield
-                    pending_offsets.appendleft((offset, size))
-                    for result in do_combined_read(combined_offsets):
-                        yield result
-                    combined_offsets = []
-        # whatever is left is a single coalesced request
-        if len(combined_offsets):
-            for result in do_combined_read(combined_offsets):
-                yield result
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+        # offsets may be a generator, we will iterate it several times, so
+        # build a list
+        offsets = list(offsets)
+
+        try_again = True
+        retried_offset = None
+        while try_again:
+            try_again = False
+
+            # Coalesce the offsets to minimize the GET requests issued
+            sorted_offsets = sorted(offsets)
+            coalesced = self._coalesce_offsets(
+                sorted_offsets, limit=self._max_readv_combine,
+                fudge_factor=self._bytes_to_read_before_seek,
+                max_size=self._get_max_size)
+
+            # Turn it into a list, we will iterate it several times
+            coalesced = list(coalesced)
+            mutter('http readv of %s  offsets => %s collapsed %s',
+                    relpath, len(offsets), len(coalesced))
+
+            # Cache the data read, but only until it's been used
+            data_map = {}
+            # We will iterate on the data received from the GET requests and
+            # serve the corresponding offsets respecting the initial order. We
+            # need an offset iterator for that.
+            iter_offsets = iter(offsets)
+            cur_offset_and_size = iter_offsets.next()
+
+            try:
+                for cur_coal, rfile in self._coalesce_readv(relpath, coalesced):
+                    # Split the received chunk
+                    for offset, size in cur_coal.ranges:
+                        start = cur_coal.start + offset
+                        rfile.seek(start, 0)
+                        data = rfile.read(size)
+                        data_len = len(data)
+                        if data_len != size:
+                            raise errors.ShortReadvError(relpath, start, size,
+                                                         actual=data_len)
+                        if (start, size) == cur_offset_and_size:
+                            # The offset requested are sorted as the coalesced
+                            # ones, no need to cache. Win !
+                            yield cur_offset_and_size[0], data
+                            cur_offset_and_size = iter_offsets.next()
+                        else:
+                            # Different sorting. We need to cache.
+                            data_map[(start, size)] = data
+
+                    # Yield everything we can
+                    while cur_offset_and_size in data_map:
+                        # Clean the cached data since we use it
+                        # XXX: will break if offsets contains duplicates --
+                        # vila20071129
+                        this_data = data_map.pop(cur_offset_and_size)
+                        yield cur_offset_and_size[0], this_data
+                        cur_offset_and_size = iter_offsets.next()
+
+            except (errors.ShortReadvError, errors.InvalidRange,
+                    errors.InvalidHttpRange), e:
+                mutter('Exception %r: %s during http._readv',e, e)
+                if (not isinstance(e, errors.ShortReadvError)
+                    or retried_offset == cur_offset_and_size):
+                    # We don't degrade the range hint for ShortReadvError since
+                    # they do not indicate a problem with the server ability to
+                    # handle ranges. Except when we fail to get back a required
+                    # offset twice in a row. In that case, falling back to
+                    # single range or whole file should help or end up in a
+                    # fatal exception.
+                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+                # Some offsets may have been already processed, so we retry
+                # only the unsuccessful ones.
+                offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                retried_offset = cur_offset_and_size
+                try_again = True
+
+    def _coalesce_readv(self, relpath, coalesced):
+        """Issue several GET requests to satisfy the coalesced offsets"""
+
+        def get_and_yield(relpath, coalesced):
+            if coalesced:
+                # Note that the _get below may raise
+                # errors.InvalidHttpRange. It's the caller's responsibility to
+                # decide how to retry since it may provide different coalesced
+                # offsets.
+                code, rfile = self._get(relpath, coalesced)
+                for coal in coalesced:
+                    yield coal, rfile
+
+        if self._range_hint is None:
+            # Download whole file
+            for c, rfile in get_and_yield(relpath, coalesced):
+                yield c, rfile
+        else:
+            total = len(coalesced)
+            if self._range_hint == 'multi':
+                max_ranges = self._max_get_ranges
+            elif self._range_hint == 'single':
+                max_ranges = total
+            else:
+                raise AssertionError("Unknown _range_hint %r"
+                                     % (self._range_hint,))
+            # TODO: Some web servers may ignore the range requests and return
+            # the whole file, we may want to detect that and avoid further
+            # requests.
+            # Hint: test_readv_multiple_get_requests will fail once we do that
+            cumul = 0
+            ranges = []
+            for coal in coalesced:
+                if ((self._get_max_size > 0
+                     and cumul + coal.length > self._get_max_size)
+                    or len(ranges) >= max_ranges):
+                    # Get that much and yield
+                    for c, rfile in get_and_yield(relpath, ranges):
+                        yield c, rfile
+                    # Restart with the current offset
+                    ranges = [coal]
+                    cumul = coal.length
+                else:
+                    ranges.append(coal)
+                    cumul += coal.length
+            # Get the rest and yield
+            for c, rfile in get_and_yield(relpath, ranges):
+                yield c, rfile
+
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For HTTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
+
+    def _post(self, body_bytes):
+        """POST body_bytes to .bzr/smart on this transport.
+        
+        :returns: (response code, response body file-like object).
+        """
+        # TODO: Requiring all the body_bytes to be available at the beginning of
+        # the POST may require large client buffers.  It would be nice to have
+        # an interface that allows streaming via POST when possible (and
+        # degrades to a local buffer when not).
+        raise NotImplementedError(self._post)
+
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         """
-        raise TransportNotPossible('http PUT not supported')
+        raise errors.TransportNotPossible('http PUT not supported')
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        raise TransportNotPossible('http does not support mkdir()')
+        raise errors.TransportNotPossible('http does not support mkdir()')
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
-        raise TransportNotPossible('http does not support rmdir()')
+        raise errors.TransportNotPossible('http does not support rmdir()')
 
-    def append(self, relpath, f):
+    def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
-        raise TransportNotPossible('http does not support append()')
+        raise errors.TransportNotPossible('http does not support append()')
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support copy()')
+        raise errors.TransportNotPossible('http does not support copy()')
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -284,18 +394,24 @@ class HttpTransportBase(Transport):
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
         if isinstance(other, HttpTransportBase):
-            raise TransportNotPossible('http cannot be the target of copy_to()')
+            raise errors.TransportNotPossible(
+                'http cannot be the target of copy_to()')
         else:
             return super(HttpTransportBase, self).\
                     copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support move()')
+        raise errors.TransportNotPossible('http does not support move()')
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        raise TransportNotPossible('http does not support delete()')
+        raise errors.TransportNotPossible('http does not support delete()')
+
+    def external_url(self):
+        """See bzrlib.transport.Transport.external_url."""
+        # HTTP URL's are externally usable.
+        return self.base
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -308,7 +424,7 @@ class HttpTransportBase(Transport):
     def stat(self, relpath):
         """Return the stat information for a file.
         """
-        raise TransportNotPossible('http does not support stat()')
+        raise errors.TransportNotPossible('http does not support stat()')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -329,153 +445,124 @@ class HttpTransportBase(Transport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        raise TransportNotPossible('http does not support lock_write()')
+        raise errors.TransportNotPossible('http does not support lock_write()')
 
     def clone(self, offset=None):
         """Return a new HttpTransportBase with root at self.base + offset
-        For now HttpTransportBase does not actually connect, so just return
-        a new HttpTransportBase object.
+
+        We leave the daughter classes take advantage of the hint
+        that it's a cloning not a raw creation.
         """
         if offset is None:
-            return self.__class__(self.base)
+            return self.__class__(self.base, self)
         else:
-            return self.__class__(self.abspath(offset))
+            return self.__class__(self.abspath(offset), self)
 
-#---------------- test server facilities ----------------
-# TODO: load these only when running tests
+    def _attempted_range_header(self, offsets, tail_amount):
+        """Prepare a HTTP Range header at a level the server should accept.
 
-
-class WebserverNotAvailable(Exception):
-    pass
-
-
-class BadWebserverPath(ValueError):
-    def __str__(self):
-        return 'path %s is not in %s' % self.args
-
-
-class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-
-    def log_message(self, format, *args):
-        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
-                                  self.address_string(),
-                                  self.log_date_time_string(),
-                                  format % args,
-                                  self.headers.get('referer', '-'),
-                                  self.headers.get('user-agent', '-'))
-
-    def handle_one_request(self):
-        """Handle a single HTTP request.
-
-        You normally don't need to override this method; see the class
-        __doc__ string for information on how to handle specific HTTP
-        commands such as GET and POST.
-
+        :return: the range header representing offsets/tail_amount or None if
+            no header can be built.
         """
-        for i in xrange(1,11): # Don't try more than 10 times
-            try:
-                self.raw_requestline = self.rfile.readline()
-            except socket.error, e:
-                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    # omitted for now because some tests look at the log of
-                    # the server and expect to see no errors.  see recent
-                    # email thread. -- mbp 20051021. 
-                    ## self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
-                    time.sleep(0.01)
-                    continue
-                raise
+
+        if self._range_hint == 'multi':
+            # Generate the header describing all offsets
+            return self._range_header(offsets, tail_amount)
+        elif self._range_hint == 'single':
+            # Combine all the requested ranges into a single
+            # encompassing one
+            if len(offsets) > 0:
+                if tail_amount not in (0, None):
+                    # Nothing we can do here to combine ranges with tail_amount
+                    # in a single range, just returns None. The whole file
+                    # should be downloaded.
+                    return None
+                else:
+                    start = offsets[0].start
+                    last = offsets[-1]
+                    end = last.start + last.length - 1
+                    whole = self._coalesce_offsets([(start, end - start + 1)],
+                                                   limit=0, fudge_factor=0)
+                    return self._range_header(list(whole), 0)
             else:
-                break
-        if not self.raw_requestline:
-            self.close_connection = 1
-            return
-        if not self.parse_request(): # An error code has been sent, just exit
-            return
-        mname = 'do_' + self.command
-        if not hasattr(self, mname):
-            self.send_error(501, "Unsupported method (%r)" % self.command)
-            return
-        method = getattr(self, mname)
-        method()
-
-
-class TestingHTTPServer(BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, test_case):
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                                RequestHandlerClass)
-        self.test_case = test_case
-
-class HttpServer(Server):
-    """A test server for http transports."""
-
-    # used to form the url that connects to this server
-    _url_protocol = 'http'
-
-    def _http_start(self):
-        httpd = None
-        httpd = TestingHTTPServer(('localhost', 0),
-                                  TestingHTTPRequestHandler,
-                                  self)
-        host, port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
-        self._http_starting.release()
-        httpd.socket.settimeout(0.1)
-
-        while self._http_running:
-            try:
-                httpd.handle_request()
-            except socket.timeout:
-                pass
-
-    def _get_remote_url(self, path):
-        path_parts = path.split(os.path.sep)
-        if os.path.isabs(path):
-            if path_parts[:len(self._local_path_parts)] != \
-                   self._local_path_parts:
-                raise BadWebserverPath(path, self.test_dir)
-            remote_path = '/'.join(path_parts[len(self._local_path_parts):])
+                # Only tail_amount, requested, leave range_header
+                # do its work
+                return self._range_header(offsets, tail_amount)
         else:
-            remote_path = '/'.join(path_parts)
+            return None
 
-        self._http_starting.acquire()
-        self._http_starting.release()
-        return self._http_base_url + remote_path
+    @staticmethod
+    def _range_header(ranges, tail_amount):
+        """Turn a list of bytes ranges into a HTTP Range header value.
 
-    def log(self, format, *args):
-        """Capture Server log output."""
-        self.logs.append(format % args)
+        :param ranges: A list of _CoalescedOffset
+        :param tail_amount: The amount to get from the end of the file.
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
-        self._home_dir = os.getcwdu()
-        self._local_path_parts = self._home_dir.split(os.path.sep)
-        self._http_starting = threading.Lock()
-        self._http_starting.acquire()
-        self._http_running = True
-        self._http_base_url = None
-        self._http_thread = threading.Thread(target=self._http_start)
-        self._http_thread.setDaemon(True)
-        self._http_thread.start()
-        self._http_proxy = os.environ.get("http_proxy")
-        if self._http_proxy is not None:
-            del os.environ["http_proxy"]
-        self.logs = []
+        :return: HTTP range header string.
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._http_running = False
-        self._http_thread.join()
-        if self._http_proxy is not None:
-            import os
-            os.environ["http_proxy"] = self._http_proxy
+        At least a non-empty ranges *or* a tail_amount must be
+        provided.
+        """
+        strings = []
+        for offset in ranges:
+            strings.append('%d-%d' % (offset.start,
+                                      offset.start + offset.length - 1))
 
-    def get_url(self):
-        """See bzrlib.transport.Server.get_url."""
-        return self._get_remote_url(self._home_dir)
-        
-    def get_bogus_url(self):
-        """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, wierd dns,
-        # etc
-        return 'http://127.0.0.1:1/'
+        if tail_amount:
+            strings.append('-%d' % tail_amount)
 
+        return ','.join(strings)
+
+    def send_http_smart_request(self, bytes):
+        try:
+            code, body_filelike = self._post(bytes)
+            if code != 200:
+                raise InvalidHttpResponse(
+                    self._remote_path('.bzr/smart'),
+                    'Expected 200 response code, got %r' % (code,))
+        except errors.InvalidHttpResponse, e:
+            raise errors.SmartProtocolError(str(e))
+        return body_filelike
+
+    def should_probe(self):
+        return True
+
+    def remote_path_from_transport(self, transport):
+        # Strip the optional 'bzr+' prefix from transport so it will have the
+        # same scheme as self.
+        transport_base = transport.base
+        if transport_base.startswith('bzr+'):
+            transport_base = transport_base[4:]
+        rel_url = urlutils.relative_url(self.base, transport_base)
+        return urllib.unquote(rel_url)
+
+
+class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
+    """A SmartClientMediumRequest that works with an HTTP medium."""
+
+    def __init__(self, client_medium):
+        medium.SmartClientMediumRequest.__init__(self, client_medium)
+        self._buffer = ''
+
+    def _accept_bytes(self, bytes):
+        self._buffer += bytes
+
+    def _finished_writing(self):
+        data = self._medium.send_http_smart_request(self._buffer)
+        self._response_body = data
+
+    def _read_bytes(self, count):
+        """See SmartClientMediumRequest._read_bytes."""
+        return self._response_body.read(count)
+
+    def _read_line(self):
+        line, excess = medium._get_line(self._response_body.read)
+        if excess != '':
+            raise AssertionError(
+                '_get_line returned excess bytes, but this mediumrequest '
+                'cannot handle excess. (%r)' % (excess,))
+        return line
+
+    def _finished_reading(self):
+        """See SmartClientMediumRequest._finished_reading."""
+        pass
