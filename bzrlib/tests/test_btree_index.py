@@ -16,6 +16,7 @@
 
 """Tests for btree indices."""
 
+import time
 import pprint
 import zlib
 
@@ -275,14 +276,25 @@ class TestBTreeBuilder(BTreeTestCase):
         # pointer to the second node that the internal node is for, _not_
         # the first, otherwise the first node overlaps with the last node of
         # the prior internal node on that row.
-        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
+        # We will be adding 200,000 nodes, so spill at 200,001 to prevent
+        # having to flush anything out to disk.
+        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
+            spill_at=200001)
         # 200K nodes is enough to create a two internal nodes on the second level
+        tstart = time.time()
         nodes = self.make_nodes(100000, 2, 2)
+        delta_make = time.time() - tstart
+
+        tstart = time.time()
         for node in nodes:
             builder.add_node(*node)
+        delta = time.time() - tstart
         transport = get_transport('trace+' + self.get_url(''))
+        tstart = time.time()
         size = transport.put_file('index', builder.finish())
+        delta_flush = time.time() - tstart
         del builder
+        # print "\n  Spent %.3fs creating and %.3fs adding nodes and %.3fs flushing" % (delta_make, delta, delta_flush)
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
         # Seed the metadata, we're using internal calls now.
         index.key_count()
@@ -678,7 +690,8 @@ class TestBTreeIndex(BTreeTestCase):
     def test_iter_all_entries_reads(self):
         # iterating all entries reads the header, then does a linear
         # read.
-        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
+        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
+                                           spill_at=200001)
         # 200k nodes is enough to create a three-level index.
         nodes = self.make_nodes(100000, 2, 2)
         for node in nodes:

@@ -73,7 +73,7 @@ class ChunkWriter(object):
         """
         self.bytes_in = None # Free the data cached so far, we don't need it
         self.bytes_list.append(self.compressor.flush(Z_FINISH))
-        total_len = sum(len(b) for b in self.bytes_list)
+        total_len = sum(map(len, self.bytes_list))
         if total_len > self.chunk_size:
             raise AssertionError('Somehow we ended up with too much'
                                  ' compressed data, %d > %d'
@@ -86,17 +86,19 @@ class ChunkWriter(object):
     def _recompress_all_bytes_in(self, extra_bytes=None):
         compressor = zlib.compressobj()
         bytes_out = []
+        append = bytes_out.append
+        compress = compressor.compress
         for accepted_bytes in self.bytes_in:
-            out = compressor.compress(accepted_bytes)
+            out = compress(accepted_bytes)
             if out:
-                bytes_out.append(out)
+                append(out)
         if extra_bytes:
-            out = compressor.compress(extra_bytes)
+            out = compress(extra_bytes)
             if out:
-                bytes_out.append(out)
+                append(out)
             out = compressor.flush(Z_SYNC_FLUSH)
             if out:
-                bytes_out.append(out)
+                append(out)
         return bytes_out, compressor
 
     def write(self, bytes):
