@@ -65,6 +65,18 @@ IN DEVELOPMENT
       (Robert Collins, Aaron Bentley)
 
 
+bzr 1.6rc5 2008-08-19
+---------------------
+
+  BUG FIXES: 
+
+    * Disable automatic detection of stacking based on a containing
+      directory of the target. It interacted badly with push, and needs a
+      bit more work to get the edges polished before it should happen
+      automatically. (John Arbash Meinel, #259275)
+      (This change was reverted when merged to bzr.dev)
+  
+
 bzr 1.6rc4 2008-08-18
 ---------------------
 
