@@ -239,23 +239,22 @@ class BTreeBuilder(index.GraphIndexBuilder):
             except StopIteration:
                 current_values[pos] = None
 
-    def _add_key(self, string_key, key_line, rows):
+    def _add_key(self, string_key, line, rows):
         """Add a key to the current chunk.
 
         :param string_key: The key to add.
-        :param key_line: The fully serialised key and value.
+        :param line: The fully serialised key and value.
         """
         if rows[-1].writer is None:
             # opening a new leaf chunk;
             for pos, internal_row in enumerate(rows[:-1]):
                 # flesh out any internal nodes that are needed to
-                # preserve the high of the tree
+                # preserve the height of the tree
                 if internal_row.writer is None:
                     length = _PAGE_SIZE
                     if internal_row.nodes == 0:
                         length -= _RESERVED_HEADER_BYTES # padded
-                    internal_row.writer = chunk_writer.ChunkWriter(
-                        length, 0)
+                    internal_row.writer = chunk_writer.ChunkWriter(length, 0)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET +
                         str(rows[pos + 1].nodes) + "\n")
@@ -265,16 +264,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 length -= _RESERVED_HEADER_BYTES # padded
             rows[-1].writer = chunk_writer.ChunkWriter(length)
             rows[-1].writer.write(_LEAF_FLAG)
-        if rows[-1].writer.write(key_line):
+        if rows[-1].writer.write(line):
             # this key did not fit in the node:
             rows[-1].finish_node()
-            next_key_line = string_key + "\n"
+            key_line = string_key + "\n"
             new_row = True
             for row in reversed(rows[:-1]):
                 # Mark the start of the next node in the node above. If it
                 # doesn't fit then propogate upwards until we find one that
                 # it does fit into.
-                if row.writer.write(next_key_line):
+                if row.writer.write(key_line):
                     row.finish_node()
                 else:
                     # We've found a node that can handle the pointer.
@@ -296,8 +295,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 new_row.writer.write(_INTERNAL_FLAG)
                 new_row.writer.write(_INTERNAL_OFFSET +
                     str(rows[1].nodes - 1) + "\n")
-                new_row.writer.write(next_key_line)
-            self._add_key(string_key, key_line, rows)
+                new_row.writer.write(key_line)
+            self._add_key(string_key, line, rows)
 
     def _write_nodes(self, node_iterator):
         """Write node_iterator out as a B+Tree.
@@ -326,6 +325,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
             key_count += 1
+            # TODO: Flattening the node into a string key and a line should
+            #       probably be put into a pyrex function. We can do a quick
+            #       iter over all the entries to determine the final length,
+            #       and then do a single malloc() rather than lots of
+            #       intermediate mallocs as we build everything up.
+            #       ATM 3 / 13s are spent flattening nodes (10s is compressing)
             if self.reference_lists:
                 flattened_references = ['\r'.join(['\x00'.join(reference)
                                                    for reference in ref_list])
