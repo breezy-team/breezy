@@ -38,13 +38,14 @@ class ChunkWriter(object):
         number of times we will try.
         In testing, some values for 100k nodes::
 
-            _max_repack     time        final node count
-             1               8.0s       704
-             2               9.2s       491
-             3              10.6s       430
-             4              12.5s       406
-             5              13.9s       395
-            20              17.7s       390
+                            w/o copy            w/ copy             w/ copy & save
+            _max_repack     time    node count  time    node count  t       nc
+             1               8.0s   704          8.8s   494         14.2    390 #
+             2               9.2s   491          9.6s   432 #       12.9    390
+             3              10.6s   430 #       10.8s   408         12.0    390
+             4              12.5s   406                             12.8    390
+             5              13.9s   395
+            20              17.7s   390         17.8s   390
     :cvar _default_min_compression_size: The expected minimum compression.
         While packing nodes into the page, we won't Z_SYNC_FLUSH until we have
         received this much input data. This saves time, because we don't bloat
@@ -169,8 +170,36 @@ class ChunkWriter(object):
             self.seen_bytes = next_seen_size
         else:
             if not reserved and self.num_repack >= self._max_repack:
-                # We have packed too many times already.
+            # if (not reserved
+            #     and (self.num_repack > self._max_repack
+            #          or (self._max_repack == self._max_repack
+            #              and not self.compressor_has_copy))):
+            #     # We have packed too many times already.
                 return True
+            if not reserved and self.num_repack == self._max_repack:
+                assert self.compressor_has_copy
+                # We are trying to sneak in a few more keys before we run out
+                # of room, so copy the compressor. If we bust, we stop right
+                # now
+                copy = self.compressor.copy()
+                out = self.compressor.compress(bytes)
+                out += self.compressor.flush(Z_SYNC_FLUSH)
+                total_len = sum(map(len, self.bytes_list)) + len(out)
+                if total_len + 10 > capacity:
+                    self.compressor = copy
+                    # Don't try any more
+                    self.num_repack += 1
+                    return True
+                # It is tempting to use the copied compressor here, because it
+                # is more tightly packed. It gets us to the maximum packing
+                # value. However, it adds about the same overhead as setting
+                # _max_repack to a higher value
+                # self.compressor = copy
+                # out = self.compressor.compress(bytes)
+                self.bytes_in.append(bytes)
+                if out:
+                    self.bytes_list.append(out)
+                return False
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
             out = self.compressor.compress(bytes)
             if out:

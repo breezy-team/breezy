@@ -293,6 +293,7 @@ class TestBTreeBuilder(BTreeTestCase):
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
         # Seed the metadata, we're using internal calls now.
         index.key_count()
+        print '\n',index._row_lengths
         self.assertEqual(3, len(index._row_lengths),
             "Not enough rows: %r" % index._row_lengths)
         self.assertEqual(4, len(index._row_offsets))
