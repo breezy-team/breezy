@@ -326,13 +326,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
             key_count += 1
-            flattened_references = []
             if self.reference_lists:
-                for ref_list in node[3]:
-                    ref_keys = []
-                    for reference in ref_list:
-                        ref_keys.append('\x00'.join(reference))
-                    flattened_references.append('\r'.join(ref_keys))
+                flattened_references = ['\r'.join(['\x00'.join(reference)
+                                                   for reference in ref_list])
+                                        for ref_list in node[3]]
+            else:
+                flattened_references = []
             string_key = '\x00'.join(node[1])
             line = ("%s\x00%s\x00%s\n" % (string_key,
                 '\t'.join(flattened_references), node[2]))
