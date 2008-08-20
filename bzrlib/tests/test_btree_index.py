@@ -16,8 +16,8 @@
 
 """Tests for btree indices."""
 
-import time
 import pprint
+import time
 import zlib
 
 from bzrlib import (
@@ -85,7 +85,9 @@ class BTreeTestCase(TestCaseWithTransport):
                 prefix = (str(prefix_pos) * 40,)
             else:
                 prefix = ()
-            for pos in range(count):
+            for pos in xrange(count):
+                # TODO: This creates odd keys. When count == 100,000, it
+                #       creates a 240 byte key
                 key = prefix + (str(pos) * 40,)
                 value = "value:%s" % pos
                 if reference_lists:
@@ -95,7 +97,7 @@ class BTreeTestCase(TestCaseWithTransport):
                         # as many keys in each list as its index + the key depth
                         # mod 2 - this generates both 0 length lists and
                         # ones slightly longer than the number of lists.
-                        # It alsu ensures we have non homogeneous lists.
+                        # It also ensures we have non homogeneous lists.
                         refs.append([])
                         for ref_pos in range(list_pos + pos % 2):
                             if pos % 2:
@@ -276,13 +278,13 @@ class TestBTreeBuilder(BTreeTestCase):
         # pointer to the second node that the internal node is for, _not_
         # the first, otherwise the first node overlaps with the last node of
         # the prior internal node on that row.
-        # We will be adding 200,000 nodes, so spill at 200,001 to prevent
+        # We will be adding 100,000 nodes, so spill at 100,001 to prevent
         # having to flush anything out to disk.
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
-            spill_at=200001)
-        # 200K nodes is enough to create a two internal nodes on the second level
+                                           spill_at=100001)
+        # 100K nodes is enough to create a two internal nodes on the second level
         tstart = time.time()
-        nodes = self.make_nodes(100000, 2, 2)
+        nodes = self.make_nodes(50000, 2, 2)
         delta_make = time.time() - tstart
 
         tstart = time.time()
@@ -691,14 +693,15 @@ class TestBTreeIndex(BTreeTestCase):
         # iterating all entries reads the header, then does a linear
         # read.
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
-                                           spill_at=200001)
-        # 200k nodes is enough to create a three-level index.
-        nodes = self.make_nodes(100000, 2, 2)
+                                           spill_at=100001)
+        # 100k nodes is enough to create a three-level index, which shows that
+        # we skip the internal nodes and just read the leaf nodes.
+        nodes = self.make_nodes(50000, 2, 2)
         for node in nodes:
             builder.add_node(*node)
         transport = get_transport('trace+' + self.get_url(''))
         size = transport.put_file('index', builder.finish())
-        self.assertEqual(4058469, size, 'number of expected bytes in the'
+        self.assertEqual(2026722, size, 'number of expected bytes in the'
                                         ' output changed')
         del builder
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
@@ -712,7 +715,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(3, len(index._row_lengths),
             "Not enough rows: %r" % index._row_lengths)
         # Should be as long as the nodes we supplied
-        self.assertEqual(200000, len(found_nodes))
+        self.assertEqual(100000, len(found_nodes))
         # Should have the same content
         self.assertEqual(set(nodes), set(bare_nodes))
         # Should have done linear scan IO up the index, ignoring
@@ -720,13 +723,14 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read
         total_pages = sum(index._row_lengths)
         self.assertEqual(total_pages, index._row_offsets[-1])
-        self.assertEqual(4058469, size)
+        self.assertEqual(2026722, size)
         # The start of the leaves
         first_byte = index._row_offsets[-2] * btree_index._PAGE_SIZE
         readv_request = []
         for offset in range(first_byte, size, 4096):
             readv_request.append((offset, 4096))
-        readv_request[-1] = (readv_request[-1][0], 3429)
+        # The last page is truncated
+        readv_request[-1] = (readv_request[-1][0], 3298)
         expected = [('readv', 'index', [(0, 4096)], False, None),
              ('readv',  'index', readv_request, False, None)]
         if expected != transport._activity:
