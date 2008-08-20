@@ -36,11 +36,21 @@ class ChunkWriter(object):
         will sometimes start over and compress the whole list to get tighter
         packing. We get diminishing returns after a while, so this limits the
         number of times we will try.
+        In testing, some values for 100k nodes::
+
+            _max_repack     time        final node count
+             1               8.0s       704
+             2               9.2s       491
+             3              10.6s       430
+             4              12.5s       406
+             5              13.9s       395
+            20              17.7s       390
     :cvar _default_min_compression_size: The expected minimum compression.
         While packing nodes into the page, we won't Z_SYNC_FLUSH until we have
         received this much input data. This saves time, because we don't bloat
         the result with SYNC entries (and then need to repack), but if it is
-        set too high we will accept data that will never fit.
+        set too high we will accept data that will never fit and trigger a
+        fault later.
     """
 
     _max_repack = 2
@@ -65,6 +75,8 @@ class ChunkWriter(object):
         self.reserved_size = reserved
         self.min_compress_size = self._default_min_compression_size
         self.num_zsync = 0
+        self.compressor_has_copy = (getattr(self.compressor, 'copy', None)
+                                    is not None)
 
     def finish(self):
         """Finish the chunk.
@@ -85,6 +97,22 @@ class ChunkWriter(object):
         return self.bytes_list, self.unused_bytes, nulls_needed
 
     def _recompress_all_bytes_in(self, extra_bytes=None):
+        """Recompress the current bytes_in, and optionally more.
+
+        :param extra_bytes: Optional, if supplied we will try to add it with
+            Z_SYNC_FLUSH
+        :return: (bytes_out, compressor, alt_compressed)
+            bytes_out   is the compressed bytes returned from the compressor
+            compressor  An object with everything packed in so far, and
+                        Z_SYNC_FLUSH called.
+            alt_compressed  If the compressor supports copy(), then this is a
+                            snapshot just before extra_bytes is added.
+                            It is (bytes_out, compressor) as well.
+                            The idea is if you find you cannot fit the new
+                            bytes, you don't have to start over.
+                            And if you *can* you don't have to Z_SYNC_FLUSH
+                            yet.
+        """
         compressor = zlib.compressobj()
         bytes_out = []
         append = bytes_out.append
@@ -93,14 +121,17 @@ class ChunkWriter(object):
             out = compress(accepted_bytes)
             if out:
                 append(out)
+        alt_compressed = None
         if extra_bytes:
+            if self.compressor_has_copy:
+                alt_compressed = (list(bytes_out), compressor.copy())
             out = compress(extra_bytes)
             if out:
                 append(out)
             out = compressor.flush(Z_SYNC_FLUSH)
             if out:
                 append(out)
-        return bytes_out, compressor
+        return bytes_out, compressor, alt_compressed
 
     def write(self, bytes):
         """Write some bytes to the chunk.
@@ -156,25 +187,39 @@ class ChunkWriter(object):
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
-                bytes_out, compressor = self._recompress_all_bytes_in(bytes)
-                this_len = sum(map(len, bytes_out))
-                if this_len + 10 > capacity:
+                if False and self.num_repack >= self._max_repack:
+                    this_len = None
+                    alt_compressed = None
+                else:
+                    (bytes_out, compressor,
+                     alt_compressed) = self._recompress_all_bytes_in(bytes)
+                    this_len = sum(map(len, bytes_out))
+                if this_len is None or this_len + 10 > capacity:
                     # No way we can add anymore, we need to re-pack because our
                     # compressor is now out of sync
-                    bytes_out, compressor = self._recompress_all_bytes_in()
+                    if alt_compressed is None:
+                        bytes_out, compressor, _ = self._recompress_all_bytes_in()
+                    else:
+                        bytes_out, compressor = alt_compressed
                     self.compressor = compressor
                     self.bytes_list = bytes_out
                     self.unused_bytes = bytes
-                    self.num_zsync = 0
                     return True
                 else:
                     # This fits when we pack it tighter, so use the new packing
+                    if alt_compressed is not None:
+                        # We know it will fit, so put it into another
+                        # compressor without Z_SYNC_FLUSH
+                        bytes_out, compressor = alt_compressed
+                        compressor.compress(bytes)
+                        self.num_zsync = 0
+                    else:
+                        # There is one Z_SYNC_FLUSH call in
+                        # _recompress_all_bytes_in
+                        self.num_zsync = 1
                     self.compressor = compressor
                     self.bytes_in.append(bytes)
                     self.bytes_list = bytes_out
-                    # There is one Z_SYNC_FLUSH call in
-                    # _recompress_all_bytes_in
-                    self.num_zsync = 1
             else:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)
