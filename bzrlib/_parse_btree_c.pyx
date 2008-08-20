@@ -16,38 +16,24 @@
 
 """Pyrex extensions to btree node parsing."""
 
-import sys
-
 cdef extern from "stdlib.h":
     ctypedef unsigned size_t
-    long int strtol(char *nptr, char **endptr, int base)
-
 
 cdef extern from "Python.h":
-    int PyDict_CheckExact(object)
-    void *PyDict_GetItem_void "PyDict_GetItem" (object p, object key)
-    int PyDict_SetItem(object p, object key, object val) except -1
-
     int PyList_Append(object lst, object item) except -1
-    object PyList_GET_ITEM(object lst, int index)
-    int PyList_CheckExact(object)
-
-    void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
 
     char *PyString_AsString(object p)
-    object PyString_FromStringAndSize(char *, int)
-    object PyString_FromString(char *)
-    int PyString_Size(object p)
-
-    void Py_INCREF(object)
-
+    object PyString_FromStringAndSize(char *, Py_ssize_t)
+    Py_ssize_t PyString_Size(object p)
 
 cdef extern from "string.h":
     void *memchr(void *s, int c, size_t n)
+    # GNU extension
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
 
 
+# TODO: Find some way to import this from _dirstate_helpers
 cdef void* _my_memrchr(void *s, int c, size_t n):
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     # It is not present in any win32 standard library
@@ -62,34 +48,59 @@ cdef void* _my_memrchr(void *s, int c, size_t n):
         pos = pos - 1
     return NULL
 
+# TODO: Import this from _dirstate_helpers when it is merged
+cdef object safe_string_from_size(char *s, Py_ssize_t size):
+    if size < 0:
+        raise AssertionError(
+            'tried to create a string with an invalid size: %d @0x%x'
+            % (size, <int>s))
+    return PyString_FromStringAndSize(s, size)
+
 
 cdef class BTreeLeafParser:
+    """Parse the leaf nodes of a BTree index.
+
+    :ivar bytes: The PyString object containing the uncompressed text for the
+        node.
+    :ivar key_length: An integer describing how many pieces the keys have for
+        this index.
+    :ivar ref_list_length: An integer describing how many references this index
+        contains.
+    :ivar keys: A PyList of keys found in this node.
+
+    :ivar _cur_str: A pointer to the start of the next line to parse
+    :ivar _end_str: A pointer to the end of bytes
+    :ivar _start: Pointer to the location within the current line while
+        parsing.
+    :ivar _header_found: True when we have parsed the header for this node
+    """
 
     cdef object bytes
     cdef int key_length
     cdef int ref_list_length
     cdef object keys
 
-    cdef char * cur_str
-    cdef char * end_str
+    cdef char * _cur_str
+    cdef char * _end_str
     # The current start point for parsing
-    cdef char * start
+    cdef char * _start
 
-    cdef int header_found
+    cdef int _header_found
 
     def __init__(self, bytes, key_length, ref_list_length):
         self.bytes = bytes
         self.key_length = key_length
         self.ref_list_length = ref_list_length
         self.keys = []
-        self.cur_str = NULL
-        self.end_str = NULL
-        self.header_found = 0
+        self._cur_str = NULL
+        self._end_str = NULL
+        self._header_found = 0
 
     cdef extract_key(self, char * last):
         """Extract a key.
 
-        :param last: points at the byte after the last byte permitted for the key.
+        :param last: points at the byte after the last byte permitted for the
+            key.
         """
         cdef char *temp_ptr
         cdef int loop_counter
@@ -99,7 +110,7 @@ cdef class BTreeLeafParser:
         while loop_counter < self.key_length:
             loop_counter = loop_counter + 1
             # grab a key segment
-            temp_ptr = <char*>memchr(self.start, c'\0', last - self.start)
+            temp_ptr = <char*>memchr(self._start, c'\0', last - self._start)
             if temp_ptr == NULL:
                 if loop_counter == self.key_length:
                     # capture to last
@@ -107,12 +118,14 @@ cdef class BTreeLeafParser:
                 else:
                     # Invalid line
                     failure_string = ("invalid key, wanted segment from " +
-                        repr(PyString_FromStringAndSize(self.start, last-self.start)))
+                        repr(safe_string_from_size(self._start,
+                                                   last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            key_element = PyString_FromStringAndSize(self.start, temp_ptr - self.start)
+            key_element = safe_string_from_size(self._start,
+                                                temp_ptr - self._start)
             # advance our pointer
-            self.start = temp_ptr + 1
+            self._start = temp_ptr + 1
             PyList_Append(key_segments, key_element)
         return tuple(key_segments)
 
@@ -124,42 +137,44 @@ cdef class BTreeLeafParser:
         cdef char *next_start
         cdef int loop_counter
 
-        self.start = self.cur_str
+        self._start = self._cur_str
         # Find the next newline
-        last = <char*>memchr(self.start, c'\n', self.end_str - self.start)
+        last = <char*>memchr(self._start, c'\n', self._end_str - self._start)
         if last == NULL:
             # Process until the end of the file
-            last = self.end_str
-            self.cur_str = self.end_str
+            last = self._end_str
+            self._cur_str = self._end_str
         else:
             # And the next string is right after it
-            self.cur_str = last + 1
+            self._cur_str = last + 1
             # The last character is right before the '\n'
             last = last
 
-        if last == self.start:
+        if last == self._start:
             # parsed it all.
             return 0
-        if last < self.start:
+        if last < self._start:
             # Unexpected error condition - fail
             return -1
-        if 0 == self.header_found:
-            if strncmp("type=leaf", self.start, last-self.start) == 0:
-                self.header_found = 1
+        if 0 == self._header_found:
+            # The first line in a leaf node is the header "type=leaf\n"
+            if strncmp("type=leaf", self._start, last - self._start) == 0:
+                self._header_found = 1
                 return 0
             else:
-                print "failed strncmp", repr(PyString_FromStringAndSize(self.start, last-self.start))
+                raise AssertionError('Node did not start with "type=leaf": %r'
+                    % (safe_string_from_size(self._start, last - self._start)))
                 return -1
 
         key = self.extract_key(last)
         # find the value area
-        temp_ptr = <char*>_my_memrchr(self.start, c'\0', last - self.start)
+        temp_ptr = <char*>_my_memrchr(self._start, c'\0', last - self._start)
         if temp_ptr == NULL:
             # Invalid line
             return -1
         else:
             # capture the value string
-            value = PyString_FromStringAndSize(temp_ptr + 1, last - temp_ptr - 1)
+            value = safe_string_from_size(temp_ptr + 1, last - temp_ptr - 1)
             # shrink the references end point
             last = temp_ptr
         if self.ref_list_length:
@@ -169,10 +184,10 @@ cdef class BTreeLeafParser:
                 ref_list = []
                 # extract a reference list
                 loop_counter = loop_counter + 1
-                if last < self.start:
+                if last < self._start:
                     return -1
                 # find the next reference list end point:
-                temp_ptr = <char*>memchr(self.start, c'\t', last - self.start)
+                temp_ptr = <char*>memchr(self._start, c'\t', last - self._start)
                 if temp_ptr == NULL:
                     # Only valid for the last list
                     if loop_counter != self.ref_list_length:
@@ -188,20 +203,21 @@ cdef class BTreeLeafParser:
                     ref_ptr = temp_ptr
                     next_start = temp_ptr + 1
                 # Now, there may be multiple keys in the ref list.
-                while self.start < ref_ptr:
+                while self._start < ref_ptr:
                     # loop finding keys and extracting them
-                    temp_ptr = <char*>memchr(self.start, c'\r', ref_ptr - self.start)
+                    temp_ptr = <char*>memchr(self._start, c'\r',
+                                             ref_ptr - self._start)
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
                 PyList_Append(ref_lists, tuple(ref_list))
                 # prepare for the next reference list
-                self.start = next_start
+                self._start = next_start
             ref_lists = tuple(ref_lists)
             node_value = (value, ref_lists)
         else:
-            if last != self.start:
+            if last != self._start:
                 # unexpected reference data present
                 return -1
             node_value = (value, ())
@@ -211,10 +227,10 @@ cdef class BTreeLeafParser:
     def parse(self):
         cdef int byte_count
         byte_count = PyString_Size(self.bytes)
-        self.cur_str = PyString_AsString(self.bytes)
+        self._cur_str = PyString_AsString(self.bytes)
         # This points to the last character in the string
-        self.end_str = self.cur_str + byte_count
-        while self.cur_str < self.end_str:
+        self._end_str = self._cur_str + byte_count
+        while self._cur_str < self._end_str:
             self.process_line()
         return self.keys
 
