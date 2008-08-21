@@ -220,8 +220,8 @@ def _show_log(branch,
 
     # now we just print all the revisions
     log_count = 0
-    revision_iterator = make_log_rev_iterator(branch,
-        view_revisions, generate_delta, search)
+    revision_iterator = make_log_rev_iterator(branch, view_revisions,
+        generate_delta, search)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -295,35 +295,43 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
         delta).
     """
+    # Convert view_revisions into (view, None, None) groups to fit with
+    # the standard interface here.
+    if type(view_revisions) == list:
+        nones = [None] * len(view_revisions)
+        log_rev_iterator = iter([zip(view_revisions, nones, nones)])
+    else:
+        def _convert():
+            for view in view_revisions:
+                yield (view, None, None)
+        log_rev_iterator = iter([_convert()])
     # core log logic
-    log_rev_iterator = _iter_revisions(branch, view_revisions, generate_delta,
-        search)
+    log_rev_iterator = make_batch_filter(branch, generate_delta, search,
+        log_rev_iterator)
     # read revision objects
-    log_rev_iterator = make_revision_objects(branch, view_revisions, generate_delta,
-        search, log_rev_iterator)
+    log_rev_iterator = make_revision_objects(branch, generate_delta, search,
+        log_rev_iterator)
     # filter on log messages
-    log_rev_iterator = make_search_filter(branch, view_revisions, generate_delta,
-        search, log_rev_iterator)
+    log_rev_iterator = make_search_filter(branch, generate_delta, search,
+        log_rev_iterator)
     # generate deltas for things we will show
-    log_rev_iterator = make_delta_filter(branch, view_revisions, generate_delta,
-        search, log_rev_iterator)
+    log_rev_iterator = make_delta_filter(branch, generate_delta, search,
+        log_rev_iterator)
     return log_rev_iterator
 
 
-def make_search_filter(branch, view_revisions, generate_delta, search,
-    log_rev_iterator):
+def make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """Create a filtered iterator of log_rev_iterator matching on a regex.
 
     :param branch: The branch being logged.
-    :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     if search is None:
@@ -342,17 +350,15 @@ def _filter_message_re(searchRE, log_rev_iterator):
         yield new_revs
 
 
-def make_delta_filter(branch, view_revisions, generate_delta, search,
-    log_rev_iterator):
+def make_delta_filter(branch, generate_delta, search, log_rev_iterator):
     """Add revision deltas to a log iterator if needed.
 
     :param branch: The branch being logged.
-    :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     if not generate_delta:
@@ -368,23 +374,18 @@ def _generate_deltas(repository, log_rev_iterator):
         yield revs
 
 
-def make_revision_objects(branch, view_revisions, generate_delta, search,
-    log_rev_iterator):
+def make_revision_objects(branch, generate_delta, search, log_rev_iterator):
     """Extract revision objects from the repository
 
     :param branch: The branch being logged.
-    :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    return _extract_revisions(branch.repository, log_rev_iterator)
-
-
-def _extract_revisions(repository, log_rev_iterator):
+    repository = branch.repository
     for revs in log_rev_iterator:
         # r = revision_id, n = revno, d = merge depth
         revision_ids = [view[0] for view, _, _ in revs]
@@ -394,25 +395,26 @@ def _extract_revisions(repository, log_rev_iterator):
         yield revs
 
 
-def _iter_revisions(branch, view_revisions, generate_delta, search):
-    """Create an iterator over the revisions to log.
+def make_batch_filter(branch, generate_delta, search, log_rev_iterator):
+    """Group up a single large batch into smaller ones.
 
     :param branch: The branch being logged.
-    :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
     :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
     """
     repository = branch.repository
     num = 9
-    view_revisions = iter(view_revisions)
-    while True:
-        cur_view_revisions = [d for x, d in zip(range(num), view_revisions)]
-        if len(cur_view_revisions) == 0:
-            return
-        nones = [None] * num
-        yield zip(cur_view_revisions, nones, nones)
-        num = min(int(num * 1.5), 200)
+    for batch in log_rev_iterator:
+        batch = iter(batch)
+        while True:
+            step = [detail for _, detail in zip(range(num), batch)]
+            if len(step) == 0:
+                break
+            yield step
+            num = min(int(num * 1.5), 200)
 
 
 def _get_mainline_revs(branch, start_revision, end_revision):
