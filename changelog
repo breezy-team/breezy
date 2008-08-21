@@ -2,6 +2,7 @@ bzr (1.6~rc5-1) experimental; urgency=low
 
   * New upstream release.
   * Update watch file. bazaar now uses launchpad to host its sources.
+  * Remove patch for inventory root revision copy, applied upstream.
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue, 19 Aug 2008 19:44:28 +0200
 
