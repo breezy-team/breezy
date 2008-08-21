@@ -155,7 +155,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         else:
             self.base_revid = parents[0]
 
-        self.base_revno = self.branch.revision_id_to_revno(self.base_revid)
+        graph = self.repository.get_graph()
+        self.base_revno = graph.find_distance_to_null(self.base_revid, [])
         if self.base_revid == NULL_REVISION:
             self.base_revnum = -1
             self.base_path = None
