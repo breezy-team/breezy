@@ -17,7 +17,7 @@ upgrade the repository, run:
 
 ::
 
- $ bzr upgrade --rich-root-pack
+ $ bzr upgrade --1.6-rich-root
 
 Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.
 ---------------------------------------------------------------------------
