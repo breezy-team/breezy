@@ -177,7 +177,8 @@ class install_lib_with_dlls(install_lib):
     def _get_dlls(self):
         # return a list of of (FQ-in-name, relative-out-name) tuples.
         ret = []
-        apr_bins = "libaprutil.dll libapriconv.dll libapr.dll".split()
+        apr_bins = """libaprutil.dll libapriconv.dll libapr.dll intl3_svn.dll
+                      libdb44.dll libeay32.dll ssleay32.dll""".split()
         look_dirs = os.environ.get("PATH","").split(os.pathsep)
         look_dirs.insert(0, os.path.join(os.environ["SVN_DEV"], "bin"))
     
