@@ -222,14 +222,15 @@ def _show_log(branch,
     log_count = 0
     revision_iterator = make_log_rev_iterator(branch,
         view_revisions, generate_delta, search)
-    for (rev_id, revno, merge_depth), rev, delta in revision_iterator:
-        lr = LogRevision(rev, revno, merge_depth, delta,
-                         rev_tag_dict.get(rev_id))
-        lf.log_revision(lr)
-        if limit:
-            log_count += 1
-            if log_count >= limit:
-                break
+    for revs in revision_iterator:
+        for (rev_id, revno, merge_depth), rev, delta in revs:
+            lr = LogRevision(rev, revno, merge_depth, delta,
+                             rev_tag_dict.get(rev_id))
+            lf.log_revision(lr)
+            if limit:
+                log_count += 1
+                if log_count >= limit:
+                    break
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
@@ -294,10 +295,12 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
-    :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
     """
     # core log logic
-    log_rev_iterator = _iter_revisions(branch.repository, view_revisions, generate_delta)
+    log_rev_iterator = _iter_revisions(branch, view_revisions, generate_delta,
+        search)
     # filter on log messages
     log_rev_iterator = make_search_filter(branch, view_revisions, generate_delta,
         search, log_rev_iterator)
@@ -313,8 +316,9 @@ def make_search_filter(branch, view_revisions, generate_delta, search,
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
-        could be displayed.
-    :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
     """
     if search is None:
         return log_rev_iterator
@@ -324,12 +328,22 @@ def make_search_filter(branch, view_revisions, generate_delta, search,
 
 
 def _filter_message_re(searchRE, log_rev_iterator):
-    for (rev_id, revno, merge_depth), rev, delta in log_rev_iterator:
-        if searchRE.search(rev.message):
-            yield (rev_id, revno, merge_depth), rev, delta
+    for revs in log_rev_iterator:
+        for (rev_id, revno, merge_depth), rev, delta in revs:
+            if searchRE.search(rev.message):
+                yield (rev_id, revno, merge_depth), rev, delta
 
 
-def _iter_revisions(repository, view_revisions, generate_delta):
+def _iter_revisions(branch, view_revisions, generate_delta, search):
+    """Create an iterator over the revisions to log.
+
+    :param branch: The branch being logged.
+    :param view_revisions: The revisions being viewed.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
+    """
+    repository = branch.repository
     num = 9
     view_revisions = iter(view_revisions)
     while True:
@@ -342,10 +356,9 @@ def _iter_revisions(repository, view_revisions, generate_delta):
         revisions = repository.get_revisions(revision_ids)
         if generate_delta:
             deltas = repository.get_deltas_for_revisions(revisions)
-            cur_deltas = dict(izip((r.revision_id for r in revisions),
-                                   deltas))
-        for view_data, revision in izip(cur_view_revisions, revisions):
-            yield view_data, revision, cur_deltas.get(revision.revision_id)
+        else:
+            deltas = [None] * num
+        yield zip(cur_view_revisions, revisions, deltas)
         num = min(int(num * 1.5), 200)
 
 
