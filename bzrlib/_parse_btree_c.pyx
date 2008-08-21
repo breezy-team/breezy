@@ -264,7 +264,7 @@ def _flatten_node(node, reference_lists):
     cdef Py_ssize_t next_len
     cdef int first_ref_list
     cdef int first_reference
-    cdef int first_key
+    cdef int first_bit
 
     # I don't expect that we can do faster than string.join()
     string_key = '\x00'.join(node[1])
@@ -330,10 +330,15 @@ def _flatten_node(node, reference_lists):
                     out[0] = c'\r'
                     out = out + 1
                 first_reference = 0
-                flat_reference = '\x00'.join(reference)
-                next_len = PyString_Size(flat_reference)
-                memcpy(out, PyString_AsString(flat_reference), next_len)
-                out = out + next_len
+                first_bit = 1
+                for bit in reference:
+                    if first_bit == 0:
+                        out[0] = c'\x00'
+                        out = out + 1
+                    first_bit = 0
+                    next_len = PyString_Size(bit)
+                    memcpy(out, PyString_AsString(bit), next_len)
+                    out = out + next_len
     out[0] = c'\0'
     out = out  + 1
     memcpy(out, value, value_len)
