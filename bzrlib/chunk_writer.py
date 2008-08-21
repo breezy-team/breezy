@@ -85,9 +85,6 @@ class ChunkWriter(object):
         self.unused_bytes = None
         self.reserved_size = reserved
         self.min_compress_size = self._default_min_compression_size
-        self.num_zsync = 0
-        self.compressor_has_copy = (getattr(self.compressor, 'copy', None)
-                                    is not None)
 
     def finish(self):
         """Finish the chunk.
@@ -132,17 +129,14 @@ class ChunkWriter(object):
             out = compress(accepted_bytes)
             if out:
                 append(out)
-        alt_compressed = None
         if extra_bytes:
-            if self.compressor_has_copy:
-                alt_compressed = (list(bytes_out), compressor.copy())
             out = compress(extra_bytes)
             if out:
                 append(out)
             out = compressor.flush(Z_SYNC_FLUSH)
             if out:
                 append(out)
-        return bytes_out, compressor, alt_compressed
+        return bytes_out, compressor
 
     def write(self, bytes):
         """Write some bytes to the chunk.
@@ -180,82 +174,35 @@ class ChunkWriter(object):
             self.seen_bytes = next_seen_size
         else:
             if not reserved and self.num_repack >= self._max_repack:
-            # if (not reserved
-            #     and (self.num_repack > self._max_repack
-            #          or (self._max_repack == self._max_repack
-            #              and not self.compressor_has_copy))):
-            #     # We have packed too many times already.
+                # We already know we don't want to try to fit more
                 return True
-            if not reserved and self.num_repack == self._max_repack:
-                assert self.compressor_has_copy
-                # We are trying to sneak in a few more keys before we run out
-                # of room, so copy the compressor. If we bust, we stop right
-                # now
-                copy = self.compressor.copy()
-                out = self.compressor.compress(bytes)
-                out += self.compressor.flush(Z_SYNC_FLUSH)
-                total_len = sum(map(len, self.bytes_list)) + len(out)
-                if total_len + 10 > capacity:
-                    self.compressor = copy
-                    # Don't try any more
-                    self.num_repack += 1
-                    return True
-                # It is tempting to use the copied compressor here, because it
-                # is more tightly packed. It gets us to the maximum packing
-                # value. However, it adds about the same overhead as setting
-                # _max_repack to a higher value
-                # self.compressor = copy
-                # out = self.compressor.compress(bytes)
-                self.bytes_in.append(bytes)
-                if out:
-                    self.bytes_list.append(out)
-                return False
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
             out = self.compressor.compress(bytes)
+            out += self.compressor.flush(Z_SYNC_FLUSH)
             if out:
                 self.bytes_list.append(out)
-            out = self.compressor.flush(Z_SYNC_FLUSH)
-            if out:
-                self.bytes_list.append(out)
-            self.num_zsync += 1
-            # TODO: We may want to cache total_len, as the 'sum' call seems to
-            #       be showing up a bit on lsprof output
             total_len = sum(map(len, self.bytes_list))
-            # Give us some extra room for a final Z_FINISH call.
+            # total_len + 10 is to give some room for Z_FINISH
             if total_len + 10 > capacity:
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
-                if False and self.num_repack >= self._max_repack:
-                    this_len = None
-                    alt_compressed = None
-                else:
-                    (bytes_out, compressor,
-                     alt_compressed) = self._recompress_all_bytes_in(bytes)
-                    this_len = sum(map(len, bytes_out))
+                bytes_out, compressor = self._recompress_all_bytes_in(bytes)
+                this_len = sum(map(len, bytes_out))
                 if this_len is None or this_len + 10 > capacity:
                     # No way we can add anymore, we need to re-pack because our
-                    # compressor is now out of sync
-                    if alt_compressed is None:
-                        bytes_out, compressor, _ = self._recompress_all_bytes_in()
-                    else:
-                        bytes_out, compressor = alt_compressed
+                    # compressor is now out of sync.
+                    # This seems to be rarely triggered over
+                    #   num_repack > _max_repack
+                    bytes_out, compressor = self._recompress_all_bytes_in()
                     self.compressor = compressor
                     self.bytes_list = bytes_out
                     self.unused_bytes = bytes
                     return True
                 else:
                     # This fits when we pack it tighter, so use the new packing
-                    if alt_compressed is not None:
-                        # We know it will fit, so put it into another
-                        # compressor without Z_SYNC_FLUSH
-                        bytes_out, compressor = alt_compressed
-                        compressor.compress(bytes)
-                        self.num_zsync = 0
-                    else:
-                        # There is one Z_SYNC_FLUSH call in
-                        # _recompress_all_bytes_in
-                        self.num_zsync = 1
+                    # There is one Z_SYNC_FLUSH call in
+                    # _recompress_all_bytes_in
                     self.compressor = compressor
                     self.bytes_in.append(bytes)
                     self.bytes_list = bytes_out
