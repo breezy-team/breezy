@@ -29,12 +29,13 @@ class CommandException(Exception):
     """Encapsulate exit status of apr-config execution"""
     def __init__(self, msg, cmd, arg, status, val):
         self.message = msg % (cmd, val)
-        super(CommandException, self).__init__(self.message)
+        Exception.__init__(self, self.message)
         self.cmd = cmd
         self.arg = arg
         self.status = status
     def not_found(self):
         return os.WIFEXITED(self.status) and os.WEXITSTATUS(self.status) == 127
+
 
 def run_cmd(cmd, arg):
     """Run specified command with given arguments, handling status"""
@@ -56,6 +57,7 @@ def run_cmd(cmd, arg):
     raise CommandException("%s terminated abnormally (%d)",
                            cmd, arg, status, status)
 
+
 def apr_config(arg):
     apr_config_cmd = os.getenv("APR_CONFIG")
     if apr_config_cmd is None:
@@ -76,6 +78,7 @@ def apr_config(arg):
         res = run_cmd(apr_config_cmd, arg)
     return res
 
+
 def apr_build_data():
     """Determine the APR header file location."""
     includedir = apr_config("--includedir")
@@ -83,6 +86,7 @@ def apr_build_data():
         raise Exception("APR development headers not found")
     ldflags = filter(lambda x: x != "", apr_config("--link-ld").split(" "))
     return (includedir, ldflags)
+
 
 def svn_build_data():
     """Determine the Subversion header file location."""
@@ -171,6 +175,7 @@ def SvnExtension(name, *args, **kwargs):
         # APR needs WIN32 defined.
         kwargs["define_macros"] = [("WIN32", None)]
     return Extension("bzrlib.plugins.svn.%s" % name, *args, **kwargs)
+
 
 # On Windows, we install the apr binaries too.
 class install_lib_with_dlls(install_lib):
