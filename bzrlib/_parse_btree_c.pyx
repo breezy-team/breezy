@@ -263,7 +263,7 @@ def _flatten_node(node, reference_lists):
     cdef Py_ssize_t ref_len
     cdef Py_ssize_t next_len
     cdef int first_ref_list
-    cdef int first_ref
+    cdef int first_reference
     cdef int first_key
 
     # I don't expect that we can do faster than string.join()
@@ -324,15 +324,18 @@ def _flatten_node(node, reference_lists):
                 out[0] = c'\t'
                 out = out + 1
             first_ref_list = 0
-            ref_keys = []
+            first_reference = 1
             for reference in ref_list:
-                ref_keys.append('\x00'.join(reference))
-            flat_ref_list = '\r'.join(ref_keys)
-            next_len = PyString_Size(flat_ref_list)
-            memcpy(out, PyString_AsString(flat_ref_list), next_len)
-            out = out + next_len
+                if first_reference == 0:
+                    out[0] = c'\r'
+                    out = out + 1
+                first_reference = 0
+                flat_reference = '\x00'.join(reference)
+                next_len = PyString_Size(flat_reference)
+                memcpy(out, PyString_AsString(flat_reference), next_len)
+                out = out + next_len
     out[0] = c'\0'
-    out = out + 1
+    out = out  + 1
     memcpy(out, value, value_len)
     out = out + value_len
     out[0] = c'\n'
