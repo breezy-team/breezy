@@ -27,6 +27,7 @@ import bzrlib
 import bzrlib.config as config
 from bzrlib import osutils
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
+from bzrlib.hooks import Hooks
 from bzrlib.trace import warning, mutter
 
 
@@ -267,3 +268,42 @@ def make_commit_message_template_encoded(working_tree, specific_files,
         template = template + '\n' + stream.getvalue()
 
     return template
+
+
+class MessageEditorHooks(Hooks):
+    """A dictionary mapping hook name to a list of callables for message editor
+    hooks.
+
+    e.g. ['commit_message_template'] is the list of items to be called to 
+    generate a commit message template
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially.
+        """
+        Hooks.__init__(self)
+        # Introduced in 1.7:
+        # Invoked to generate the commit message template shown in the editor
+        # The api signature is:
+        # (commit, message), and the function should return the new message
+        # There is currently no way to modify the order in which 
+        # template hooks are invoked
+        self['commit_message_template'] = []
+
+
+hooks = MessageEditorHooks()
+
+
+def generate_commit_message_template(commit, start_message=None):
+    """Generate a commit message template.
+
+    :param commit: Commit object for the active commit.
+    :param start_message: Message to start with.
+    :return: A start commit message or None for an empty start commit message.
+    """
+    start_message = None
+    for hook in hooks['commit_message_template']:
+        start_message = hook(start_message)
+    return start_message

@@ -2261,6 +2261,7 @@ class cmd_commit(Command):
         )
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
+            generate_commit_message_template,
             make_commit_message_template_encoded
         )
 
@@ -2295,7 +2296,9 @@ class cmd_commit(Command):
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=bzrlib.user_encoding)
-                my_message = edit_commit_message_encoded(t)
+                start_message = generate_commit_message_template(commit_obj)
+                my_message = edit_commit_message_encoded(t, 
+                    start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
