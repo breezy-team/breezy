@@ -36,16 +36,26 @@ class ChunkWriter(object):
         will sometimes start over and compress the whole list to get tighter
         packing. We get diminishing returns after a while, so this limits the
         number of times we will try.
-        In testing, some values for 100k nodes::
+        In testing, some values for bzr.dev::
 
-                            w/o copy            w/ copy             w/ copy & save
-            _max_repack     time    node count  time    node count  t       nc
-             1               8.0s   704          8.8s   494         14.2    390 #
-             2               9.2s   491          9.6s   432 #       12.9    390
-             3              10.6s   430 #       10.8s   408         12.0    390
-             4              12.5s   406                             12.8    390
-             5              13.9s   395
-            20              17.7s   390         17.8s   390
+                    w/o copy    w/ copy     w/ copy ins w/ copy & save
+            repack  time  MB    time  MB    time  MB    time  MB
+             1       8.8  5.1    8.9  5.1    9.6  4.4   12.5  4.1
+             2       9.6  4.4   10.1  4.3   10.4  4.2   11.1  4.1
+             3      10.6  4.2   11.1  4.1   11.2  4.1   11.3  4.1
+             4      12.0  4.1
+             5      12.6  4.1
+            20      12.9  4.1   12.2  4.1   12.3  4.1
+
+        In testing, some values for mysql-unpacked::
+
+                    w/o copy    w/ copy     w/ copy ins w/ copy & save
+            repack  time  MB    time  MB    time  MB    time  MB
+             1      56.6  16.9              60.7  14.2
+             2      59.3  14.1              62.6  13.5  64.3  13.4
+             3      64.4  13.5
+            20      73.4  13.4
+
     :cvar _default_min_compression_size: The expected minimum compression.
         While packing nodes into the page, we won't Z_SYNC_FLUSH until we have
         received this much input data. This saves time, because we don't bloat
