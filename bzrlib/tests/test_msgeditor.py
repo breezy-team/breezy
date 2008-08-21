@@ -22,6 +22,7 @@ import sys
 
 import bzrlib
 from bzrlib import (
+    commit,
     errors,
     msgeditor,
     osutils,
@@ -292,3 +293,18 @@ if len(sys.argv) == 2:
                               msgeditor.edit_commit_message, '')
         finally:
             osutils.set_or_unset_env('LANG', old_env)
+
+    def test_generate_commit_message_template_no_hooks(self):
+        commit_obj = commit.Commit()
+        self.assertIs(None, 
+            msgeditor.generate_commit_message_template(commit_obj))
+
+    def test_generate_commit_message_template_hook(self):
+        def restoreDefaults():
+            msgeditor.hooks['commit_message_template'] = []
+        self.addCleanup(restoreDefaults)
+        msgeditor.hooks.install_named_hook("commit_message_template",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        commit_obj = commit.Commit()
+        self.assertEquals("save me some typing\n", 
+            msgeditor.generate_commit_message_template(commit_obj))
