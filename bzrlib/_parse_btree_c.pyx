@@ -266,6 +266,7 @@ def _flatten_node(node, reference_lists):
         string_key  The serialized key for referencing this node
         flattened   A string with the serialized form for the contents
     """
+    cdef int have_reference_lists
     cdef Py_ssize_t flat_len
     cdef Py_ssize_t key_len
     cdef Py_ssize_t node_len
@@ -285,7 +286,8 @@ def _flatten_node(node, reference_lists):
         raise TypeError('We expected a tuple() for node not: %s'
             % type(node))
     node_len = PyTuple_GET_SIZE(node)
-    if reference_lists:
+    have_reference_lists = reference_lists
+    if have_reference_lists:
         if node_len != 4:
             raise ValueError('With ref_lists, we expected 4 entries not: %s'
                 % len(node))
@@ -308,9 +310,9 @@ def _flatten_node(node, reference_lists):
     # ref := BYTES (NULL BYTES)*
     # value := BYTES
     refs_len = 0
-    if reference_lists:
+    if have_reference_lists:
         # Figure out how many bytes it will take to store the references
-        ref_lists = node[3]
+        ref_lists = <object>PyTuple_GET_ITEM_ptr_object(node, 3)
         next_len = len(ref_lists) # TODO: use a Py function
         if next_len > 0:
             # If there are no nodes, we don't need to do any work
@@ -335,7 +337,7 @@ def _flatten_node(node, reference_lists):
                             refs_len = refs_len + (next_len - 1)
                             for i from 0 <= i < next_len:
                                 ref_bit = PyTuple_GET_ITEM_ptr_object(reference, i)
-                                if not PyString_CheckExact(<object>ref_bit):
+                                if not PyString_CheckExact_ptr(ref_bit):
                                     raise TypeError('We expect reference bits'
                                         ' to be strings not: %s'
                                         % type(<object>ref_bit))
@@ -344,7 +346,7 @@ def _flatten_node(node, reference_lists):
     # So we have the (key NULL refs NULL value LF)
     key_len = PyString_Size(string_key)
     val = PyTuple_GET_ITEM_ptr_object(node, 2)
-    if not PyString_CheckExact(<object>val):
+    if not PyString_CheckExact_ptr(val):
         raise TypeError('Expected a plain str for value not: %s'
                         % type(<object>val))
     value = PyString_AS_STRING_ptr(val)
