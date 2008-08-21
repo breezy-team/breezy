@@ -661,11 +661,11 @@ class InterFromSvnRepository(InterRepository):
         if revision_id in checked:
             return []
         extra = set()
-        needed = []
-        revs = []
-        meta_map = {}
-        lhs_parent = {}
         def check_revid(revision_id):
+            revs = []
+            meta_map = {}
+            needed = []
+            lhs_parent = {}
             try:
                 (branch_path, revnum, mapping) = \
                     self.source.lookup_revision_id(revision_id)
@@ -689,15 +689,14 @@ class InterFromSvnRepository(InterRepository):
                 elif not find_ghosts:
                     break
                 checked.add(revid)
+            return [(revid, lhs_parent[revid], meta_map[revid]) 
+                      for revid in reversed(revs)]
 
-        check_revid(revision_id)
+        needed = check_revid(revision_id)
 
         for revid in extra:
-            if revid not in revs:
-                check_revid(revid)
-
-        needed = [(revid, lhs_parent[revid], meta_map[revid]) 
-                  for revid in reversed(revs)]
+            if revid not in checked:
+                needed += check_revid(revid)
 
         return needed
 
@@ -735,13 +734,12 @@ class InterFromSvnRepository(InterRepository):
                 pb.update('copying revision', num, len(revids))
 
                 assert parent_revid is not None and parent_revid != revid
-                if "validate" in debug.debug_flags:
-                    assert self.target.has_revision(parent_revid)
-                    assert not self.target.has_revision(parent_revid)
 
                 if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
                 elif prev_revid != parent_revid:
+                    if "validate" in debug.debug_flags:
+                        assert self.target.has_revision(parent_revid)
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:
                     parent_inv = prev_inv
