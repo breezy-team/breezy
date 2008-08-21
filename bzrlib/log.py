@@ -308,18 +308,9 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
             for view in view_revisions:
                 yield (view, None, None)
         log_rev_iterator = iter([_convert()])
-    # core log logic
-    log_rev_iterator = make_batch_filter(branch, generate_delta, search,
-        log_rev_iterator)
-    # read revision objects
-    log_rev_iterator = make_revision_objects(branch, generate_delta, search,
-        log_rev_iterator)
-    # filter on log messages
-    log_rev_iterator = make_search_filter(branch, generate_delta, search,
-        log_rev_iterator)
-    # generate deltas for things we will show
-    log_rev_iterator = make_delta_filter(branch, generate_delta, search,
-        log_rev_iterator)
+    for adapter in log_adapters:
+        log_rev_iterator = adapter(branch, generate_delta, search,
+            log_rev_iterator)
     return log_rev_iterator
 
 
@@ -996,3 +987,20 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
 
 
 properties_handler_registry = registry.Registry()
+
+# adapters which revision ids to log are filtered. When log is called, the
+# log_rev_iterator is adapted through each of these factory methods.
+# Plugins are welcome to mutate this list in any way they like - as long
+# as the overall behaviour is preserved. At this point there is no extensible
+# mechanism for getting parameters to each factory method, and until there is
+# this won't be considered a stable api.
+log_adapters = [
+    # core log logic
+    make_batch_filter,
+    # read revision objects
+    make_revision_objects,
+    # filter on log messages
+    make_search_filter,
+    # generate deltas for things we will show
+    make_delta_filter
+    ]

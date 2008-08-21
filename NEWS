@@ -60,6 +60,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
+      This allows dynamic log output filtering by plugins.
+      (Robert Collins)
+
     * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
