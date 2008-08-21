@@ -32,6 +32,13 @@ IN DEVELOPMENT
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
       users. (Robert Collins, #205416)
 
+    * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
+      for the containing ``.bzr/`` directory (it does not implement
+      permissions). This would cause us to set all subdirectories to
+      ``0700`` and files to ``0600`` rather than leaving them unmodified.
+      Now we ignore ``0000`` as the permissions and assume they are
+      invalid. (John Arbash Meinel, #259855)
+    
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
