@@ -6,6 +6,10 @@ bzr-svn-0.4.11	UNRELEASED
 
    * Change default format to 1.6-rich-root.
 
+  BUG FIXES
+
+   * Parse http redirect errors in some non-English locales better.
+
 bzr-svn 0.4.11~rc1	2008-08-08
 
   CHANGES
