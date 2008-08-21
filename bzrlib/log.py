@@ -210,11 +210,6 @@ def _show_log(branch,
                                               specific_fileid,
                                               generate_merge_revisions,
                                               allow_single_merge_revision)
-    if search is not None:
-        searchRE = re.compile(search, re.IGNORECASE)
-    else:
-        searchRE = None
-
     rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags:
@@ -225,12 +220,9 @@ def _show_log(branch,
 
     # now we just print all the revisions
     log_count = 0
-    for (rev_id, revno, merge_depth), rev, delta in _iter_revisions(
-        branch.repository, view_revisions, generate_delta):
-        if searchRE:
-            if not searchRE.search(rev.message):
-                continue
-
+    revision_iterator = make_log_rev_iterator(branch,
+        view_revisions, generate_delta, search)
+    for (rev_id, revno, merge_depth), rev, delta in revision_iterator:
         lr = LogRevision(rev, revno, merge_depth, delta,
                          rev_tag_dict.get(rev_id))
         lf.log_revision(lr)
@@ -293,6 +285,48 @@ def _linear_view_revisions(branch):
     revision_ids = repo.iter_reverse_revision_history(start_revision_id)
     for num, revision_id in enumerate(revision_ids):
         yield revision_id, str(start_revno - num), 0
+
+
+def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
+    """Create a revision iterator for log.
+
+    :param branch: The branch being logged.
+    :param view_revisions: The revisions being viewed.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
+    """
+    # core log logic
+    log_rev_iterator = _iter_revisions(branch.repository, view_revisions, generate_delta)
+    # filter on log messages
+    log_rev_iterator = make_search_filter(branch, view_revisions, generate_delta,
+        search, log_rev_iterator)
+    return log_rev_iterator
+
+
+def make_search_filter(branch, view_revisions, generate_delta, search,
+    log_rev_iterator):
+    """Create a filtered iterator of log_rev_iterator matching on a regex.
+
+    :param branch: The branch being logged.
+    :param view_revisions: The revisions being viewed.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed.
+    :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
+    """
+    if search is None:
+        return log_rev_iterator
+    # Compile the search now to get early errors.
+    searchRE = re.compile(search, re.IGNORECASE)
+    return _filter_message_re(searchRE, log_rev_iterator)
+
+
+def _filter_message_re(searchRE, log_rev_iterator):
+    for (rev_id, revno, merge_depth), rev, delta in log_rev_iterator:
+        if searchRE.search(rev.message):
+            yield (rev_id, revno, merge_depth), rev, delta
 
 
 def _iter_revisions(repository, view_revisions, generate_delta):
