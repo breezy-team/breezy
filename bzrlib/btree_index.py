@@ -331,15 +331,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             #       and then do a single malloc() rather than lots of
             #       intermediate mallocs as we build everything up.
             #       ATM 3 / 13s are spent flattening nodes (10s is compressing)
-            if self.reference_lists:
-                flattened_references = ['\r'.join(['\x00'.join(reference)
-                                                   for reference in ref_list])
-                                        for ref_list in node[3]]
-            else:
-                flattened_references = []
-            string_key = '\x00'.join(node[1])
-            line = ("%s\x00%s\x00%s\n" % (string_key,
-                '\t'.join(flattened_references), node[2]))
+            string_key, line = _parse_btree._flatten_node(node,
+                                                          self.reference_lists)
             self._add_key(string_key, line, rows)
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)

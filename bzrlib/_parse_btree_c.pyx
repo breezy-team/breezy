@@ -267,7 +267,7 @@ def _flatten_node(node, reference_lists):
     cdef int first_bit
 
     # I don't expect that we can do faster than string.join()
-    string_key = '\x00'.join(node[1])
+    string_key = '\0'.join(node[1])
 
     # TODO: instead of using string joins, precompute the final string length,
     #       and then malloc a single string and copy everything in.
@@ -284,13 +284,14 @@ def _flatten_node(node, reference_lists):
     ref_len = 0
     if reference_lists:
         # Figure out how many bytes it will take to store the references
-        next_len = len(node[3]) # TODO: use a Py function
+        ref_lists = node[3]
+        next_len = len(ref_lists) # TODO: use a Py function
         if next_len > 0:
             # If there are no nodes, we don't need to do any work
             # Otherwise we will need (len - 1) '\t' characters to separate
             # the reference lists
             ref_len = ref_len + (next_len - 1)
-            for ref_list in node[3]:
+            for ref_list in ref_lists:
                 next_len = len(ref_list)
                 if next_len > 0:
                     # We will need (len - 1) '\r' characters to separate the
@@ -303,7 +304,7 @@ def _flatten_node(node, reference_lists):
                             # separate the reference key
                             ref_len = ref_len + (next_len - 1)
                             for ref in reference:
-                                ref_len = ref_len + len(ref)
+                                ref_len = ref_len + PyString_Size(ref)
 
     # So we have the (key NULL refs NULL value LF)
     key_len = PyString_Size(string_key)
@@ -319,7 +320,7 @@ def _flatten_node(node, reference_lists):
     out = out + 1
     if ref_len > 0:
         first_ref_list = 1
-        for ref_list in node[3]:
+        for ref_list in ref_lists:
             if first_ref_list == 0:
                 out[0] = c'\t'
                 out = out + 1
