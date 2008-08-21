@@ -301,6 +301,9 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     # core log logic
     log_rev_iterator = _iter_revisions(branch, view_revisions, generate_delta,
         search)
+    # read revision objects
+    log_rev_iterator = make_revision_objects(branch, view_revisions, generate_delta,
+        search, log_rev_iterator)
     # filter on log messages
     log_rev_iterator = make_search_filter(branch, view_revisions, generate_delta,
         search, log_rev_iterator)
@@ -365,6 +368,32 @@ def _generate_deltas(repository, log_rev_iterator):
         yield revs
 
 
+def make_revision_objects(branch, view_revisions, generate_delta, search,
+    log_rev_iterator):
+    """Extract revision objects from the repository
+
+    :param branch: The branch being logged.
+    :param view_revisions: The revisions being viewed.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    return _extract_revisions(branch.repository, log_rev_iterator)
+
+
+def _extract_revisions(repository, log_rev_iterator):
+    for revs in log_rev_iterator:
+        # r = revision_id, n = revno, d = merge depth
+        revision_ids = [view[0] for view, _, _ in revs]
+        revisions = repository.get_revisions(revision_ids)
+        revs = [(rev[0], revision, rev[2]) for rev, revision in
+            izip(revs, revisions)]
+        yield revs
+
+
 def _iter_revisions(branch, view_revisions, generate_delta, search):
     """Create an iterator over the revisions to log.
 
@@ -380,11 +409,9 @@ def _iter_revisions(branch, view_revisions, generate_delta, search):
     while True:
         cur_view_revisions = [d for x, d in zip(range(num), view_revisions)]
         if len(cur_view_revisions) == 0:
-            break
-        # r = revision, n = revno, d = merge depth
-        revision_ids = [r for (r, n, d) in cur_view_revisions]
-        revisions = repository.get_revisions(revision_ids)
-        yield zip(cur_view_revisions, revisions, [None] * num)
+            return
+        nones = [None] * num
+        yield zip(cur_view_revisions, nones, nones)
         num = min(int(num * 1.5), 200)
 
 
