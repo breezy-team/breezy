@@ -79,6 +79,7 @@ class ChunkWriter(object):
         self.compressor = zlib.compressobj()
         self.bytes_in = []
         self.bytes_list = []
+        self.bytes_out_len = 0
         self.compressed = None
         self.seen_bytes = 0
         self.num_repack = 0
@@ -93,13 +94,14 @@ class ChunkWriter(object):
         bytes that did not fit in the chunk.
         """
         self.bytes_in = None # Free the data cached so far, we don't need it
-        self.bytes_list.append(self.compressor.flush(Z_FINISH))
-        total_len = sum(map(len, self.bytes_list))
-        if total_len > self.chunk_size:
+        out = self.compressor.flush(Z_FINISH)
+        self.bytes_list.append(out)
+        self.bytes_out_len += len(out)
+        if self.bytes_out_len > self.chunk_size:
             raise AssertionError('Somehow we ended up with too much'
                                  ' compressed data, %d > %d'
-                                 % (total_len, self.chunk_size))
-        nulls_needed = self.chunk_size - total_len % self.chunk_size
+                                 % (self.bytes_out_len, self.chunk_size))
+        nulls_needed = self.chunk_size - self.bytes_out_len % self.chunk_size
         if nulls_needed:
             self.bytes_list.append("\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
@@ -123,20 +125,21 @@ class ChunkWriter(object):
         """
         compressor = zlib.compressobj()
         bytes_out = []
+        bytes_out_len = 0
         append = bytes_out.append
         compress = compressor.compress
         for accepted_bytes in self.bytes_in:
             out = compress(accepted_bytes)
             if out:
                 append(out)
+                bytes_out_len += len(out)
         if extra_bytes:
             out = compress(extra_bytes)
+            out += compressor.flush(Z_SYNC_FLUSH)
             if out:
                 append(out)
-            out = compressor.flush(Z_SYNC_FLUSH)
-            if out:
-                append(out)
-        return bytes_out, compressor
+                bytes_out_len += len(out)
+        return bytes_out, bytes_out_len, compressor
 
     def write(self, bytes):
         """Write some bytes to the chunk.
@@ -170,6 +173,7 @@ class ChunkWriter(object):
             out = self.compressor.compress(bytes)
             if out:
                 self.bytes_list.append(out)
+                self.bytes_out_len += len(out)
             self.bytes_in.append(bytes)
             self.seen_bytes = next_seen_size
         else:
@@ -181,22 +185,23 @@ class ChunkWriter(object):
             out += self.compressor.flush(Z_SYNC_FLUSH)
             if out:
                 self.bytes_list.append(out)
-            total_len = sum(map(len, self.bytes_list))
-            # total_len + 10 is to give some room for Z_FINISH
-            if total_len + 10 > capacity:
+                self.bytes_out_len += len(out)
+            if self.bytes_out_len + 10 > capacity:
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
-                bytes_out, compressor = self._recompress_all_bytes_in(bytes)
-                this_len = sum(map(len, bytes_out))
-                if this_len is None or this_len + 10 > capacity:
+                (bytes_out, this_len,
+                 compressor) = self._recompress_all_bytes_in(bytes)
+                if this_len + 10 > capacity:
                     # No way we can add anymore, we need to re-pack because our
                     # compressor is now out of sync.
                     # This seems to be rarely triggered over
                     #   num_repack > _max_repack
-                    bytes_out, compressor = self._recompress_all_bytes_in()
+                    (bytes_out, this_len,
+                     compressor) = self._recompress_all_bytes_in()
                     self.compressor = compressor
                     self.bytes_list = bytes_out
+                    self.bytes_out_len = this_len
                     self.unused_bytes = bytes
                     return True
                 else:
@@ -206,6 +211,7 @@ class ChunkWriter(object):
                     self.compressor = compressor
                     self.bytes_in.append(bytes)
                     self.bytes_list = bytes_out
+                    self.bytes_out_len = this_len
             else:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)

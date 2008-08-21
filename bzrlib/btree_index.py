@@ -372,7 +372,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
                 if type(row) != _LeafBuilderRow:
-                    import pdb;pdb.set_trace()
                     raise AssertionError("Not enough data copied")
         result.flush()
         size = result.tell()
