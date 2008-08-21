@@ -1,0 +1,47 @@
+Managing PPA Packages for Bazaar
+================================
+
+$ mkdir ~/projects/bzr/ppa
+$ cd ~/projects/bzr/ppa
+$ bzr branch lp:~luks/bzr/packaging-tools tools
+$ export UBUNTU_RELEASES="dapper feisty gutsy hardy"
+
+Configure ~/.dput.cf
+
+    [bzr-beta-ppa]
+    fqdn = ppa.launchpad.net
+    method = ftp
+    incoming = ~bzr-beta-ppa/ubuntu
+    login = anonymous
+    allow_unsigned_uploads = 0
+
+    [bzr-ppa]
+    fqdn = ppa.launchpad.net
+    method = ftp
+    incoming = ~bzr/ubuntu
+    login = anonymous
+    allow_unsigned_uploads = 0
+
+Configure ~/.bazaar/builddeb.conf
+
+   [BUILDDEB]
+   builder = dpkg-buildpackage -rfakeroot
+   source-builder= dpkg-buildpackage -rfakeroot -S -sa
+
+1a. Get packaging branches:
+  $ for name in $UBUNTU_RELEASES; do bzr branch lp:~luks/bzr/packaging-$name; done
+
+1b. Update packaging branches:
+  $ for name in $UBUNTU_RELEASES; do (cd packaging-$name && bzr pull) done
+
+2. Update package changelogs:
+  $ ./tools/update-changelogs.sh 1.6~rc5-1~bazaar2
+
+3. Build packages:
+  $ ./tools/build-packages.sh
+
+4. Push updated branches to Launchpad:
+  $ for name in $UBUNTU_RELEASES; do (cd packaging-$name && bzr push) done
+
+4. Upload to PPA:
+  $ dput ppa build-area/bzr_1.6~rc5-1~bazaar2*_source.changes
