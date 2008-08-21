@@ -81,7 +81,7 @@ class TestWriter(TestCaseWithTransport):
         for line in lines:
             if writer.write(line):
                 break
-        self.assertFalse(writer.write_reserved("A"*256))
+        self.assertFalse(writer.write("A"*256, reserved=True))
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
         # the first 44 lines should have been added

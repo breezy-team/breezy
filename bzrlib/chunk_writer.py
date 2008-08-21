@@ -136,28 +136,15 @@ class ChunkWriter(object):
             out += compressor.flush(Z_SYNC_FLUSH)
             if out:
                 append(out)
-        return bytes_out, compressor
+        bytes_out_len = sum(map(len, bytes_out))
+        return bytes_out, bytes_out_len, compressor
 
-    def write(self, bytes):
+    def write(self, bytes, reserved=False):
         """Write some bytes to the chunk.
 
         If the bytes fit, False is returned. Otherwise True is returned
         and the bytes have not been added to the chunk.
         """
-        # TODO: lsprof claims that we spend 0.4/10s in calls to write just to
-        #       thunk over to _write. We don't seem to need write_reserved
-        #       unless we have blooms, so this *might* be worth removing
-        return self._write(bytes, False)
-
-    def write_reserved(self, bytes):
-        """Write some bytes to the chunk bypassing the reserved check.
-
-        If the bytes fit, False is returned. Otherwise True is returned
-        and the bytes have not been added to the chunk.
-        """
-        return self._write(bytes, True)
-
-    def _write(self, bytes, reserved):
         if reserved:
             capacity = self.chunk_size
         else:
@@ -165,21 +152,22 @@ class ChunkWriter(object):
         # Check quickly to see if this is likely to put us outside of our
         # budget:
         next_seen_size = self.seen_bytes + len(bytes)
+        comp = self.compressor
         if (next_seen_size < self.min_compress_size * capacity):
             # No need, we assume this will "just fit"
-            out = self.compressor.compress(bytes)
+            out = comp.compress(bytes)
             if out:
                 self.bytes_list.append(out)
                 self.bytes_out_len += len(out)
             self.bytes_in.append(bytes)
             self.seen_bytes = next_seen_size
         else:
-            if not reserved and self.num_repack >= self._max_repack:
+            if self.num_repack >= self._max_repack and not reserved:
                 # We already know we don't want to try to fit more
                 return True
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
-            out = self.compressor.compress(bytes)
-            out += self.compressor.flush(Z_SYNC_FLUSH)
+            out = comp.compress(bytes)
+            out += comp.flush(Z_SYNC_FLUSH)
             if out:
                 self.bytes_list.append(out)
                 self.bytes_out_len += len(out)
@@ -187,17 +175,16 @@ class ChunkWriter(object):
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
-                bytes_out, compressor = self._recompress_all_bytes_in(bytes)
-                this_len = sum(map(len, bytes_out))
+                bytes_out, this_len, compressor = self._recompress_all_bytes_in(bytes)
                 if this_len + 10 > capacity:
                     # No way we can add anymore, we need to re-pack because our
                     # compressor is now out of sync.
                     # This seems to be rarely triggered over
                     #   num_repack > _max_repack
-                    bytes_out, compressor = self._recompress_all_bytes_in()
+                    bytes_out, this_len, compressor = self._recompress_all_bytes_in()
                     self.compressor = compressor
                     self.bytes_list = bytes_out
-                    self.bytes_out_len = sum(map(len, bytes_out))
+                    self.bytes_out_len = this_len
                     self.unused_bytes = bytes
                     return True
                 else:
