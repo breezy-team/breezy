@@ -16,7 +16,7 @@
 """Fetching revisions from Subversion repositories in batches."""
 
 import bzrlib
-from bzrlib import delta, osutils, ui, urlutils
+from bzrlib import debug, delta, osutils, ui, urlutils
 from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision, NULL_REVISION
@@ -667,13 +667,15 @@ class InterFromSvnRepository(InterRepository):
         lhs_parent = {}
         def check_revid(revision_id):
             try:
-                (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
+                (branch_path, revnum, mapping) = \
+                    self.source.lookup_revision_id(revision_id)
             except NoSuchRevision:
                 return # Ghost
-            for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, 
-                                                                   to_revnum=0, mapping=mapping):
+            for revmeta in self.source.iter_reverse_branch_changes(
+                branch_path, revnum, to_revnum=0, mapping=mapping):
                 if pb:
-                    pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
+                    pb.update("determining revisions to fetch", 
+                              revnum-revmeta.revnum, revnum)
                 revid = revmeta.get_revision_id(mapping)
                 parent_ids = revmeta.get_parent_ids(mapping)
                 lhs_parent[revid] = parent_ids[0]
@@ -694,7 +696,8 @@ class InterFromSvnRepository(InterRepository):
             if revid not in revs:
                 check_revid(revid)
 
-        needed = [(revid, lhs_parent[revid], meta_map[revid]) for revid in reversed(revs)]
+        needed = [(revid, lhs_parent[revid], meta_map[revid]) 
+                  for revid in reversed(revs)]
 
         return needed
 
@@ -732,6 +735,9 @@ class InterFromSvnRepository(InterRepository):
                 pb.update('copying revision', num, len(revids))
 
                 assert parent_revid is not None and parent_revid != revid
+                if "validate" in debug.debug_flags:
+                    assert self.target.has_revision(parent_revid)
+                    assert not self.target.has_revision(parent_revid)
 
                 if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
