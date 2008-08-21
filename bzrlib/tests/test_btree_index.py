@@ -913,6 +913,16 @@ class TestBTreeNodes(BTreeTestCase):
             ('11', '44'): ('value:4', ((), (('11', 'ref00'),)))
             }, node.keys)
 
+    def assertFlattened(self, expected, key, value, refs, reference_lists):
+        flat_key, flat_line = self.parse_btree._flatten_node(
+            (None, key, value, refs), reference_lists)
+        self.assertEqual('\x00'.join(key), flat_key)
+        self.assertEqual(expected, flat_line)
+
+    def test_flatten_node_to_line_no_references(self):
+        self.assertFlattened('key\x00\x00value\n',
+                             ('key',), 'value', [], False)
+
 
 class TestCompiledBtree(tests.TestCase):
 

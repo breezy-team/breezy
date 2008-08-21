@@ -238,3 +238,28 @@ cdef class BTreeLeafParser:
 def _parse_leaf_lines(bytes, key_length, ref_list_length):
     parser = BTreeLeafParser(bytes, key_length, ref_list_length)
     return parser.parse()
+
+
+def _flatten_node(node, reference_lists):
+    """Convert a node into the serialized form.
+
+    :param node: A tuple representing a node:
+        (index, key_tuple, value, references)
+    :param reference_lists: Does this index have reference lists?
+    :return: (string_key, flattened)
+        string_key  The serialized key for referencing this node
+        flattened   A string with the serialized form for the contents
+    """
+    # TODO: instead of using string joins, precompute the final string length,
+    #       and then malloc a single string and copy everything in.
+    flattened_references = []
+    if reference_lists:
+        for ref_list in node[3]:
+            ref_keys = []
+            for reference in ref_list:
+                ref_keys.append('\x00'.join(reference))
+            flattened_references.append('\r'.join(ref_keys))
+    string_key = '\x00'.join(node[1])
+    line = ("%s\x00%s\x00%s\n" % (string_key,
+        '\t'.join(flattened_references), node[2]))
+    return string_key, line
