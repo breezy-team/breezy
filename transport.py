@@ -219,6 +219,9 @@ class SvnRaTransport(Transport):
         """See Transport.stat()."""
         raise TransportNotPossible('stat not supported on Subversion')
 
+    def put_file(self, name, file):
+        raise TransportNotPossible("put file not supported on Subversion")
+
     def get_uuid(self):
         if self._uuid is None:
             conn = self.get_connection()
