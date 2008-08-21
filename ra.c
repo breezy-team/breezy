@@ -1136,6 +1136,7 @@ static PyObject *ra_replay(PyObject *self, PyObject *args)
 	Py_RETURN_NONE;
 }
 
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
 static svn_error_t *py_revstart_cb(svn_revnum_t revision, void *replay_baton,
    const svn_delta_editor_t **editor, void **edit_baton, apr_hash_t *rev_props, apr_pool_t *pool)
 {
@@ -1174,6 +1175,7 @@ static svn_error_t *py_revfinish_cb(svn_revnum_t revision, void *replay_baton,
 	PyGILState_Release(state);
 	return NULL;
 }
+#endif
 
 static PyObject *ra_replay_range(PyObject *self, PyObject *args)
 {
