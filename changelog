@@ -1,4 +1,4 @@
-bzr (1.6~rc3-1) experimental; urgency=low
+bzr (1.6~rc5-1) experimental; urgency=low
 
   * New upstream release.
   * Update watch file. bazaar now uses launchpad to host its sources.
