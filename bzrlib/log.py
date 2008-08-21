@@ -304,6 +304,9 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     # filter on log messages
     log_rev_iterator = make_search_filter(branch, view_revisions, generate_delta,
         search, log_rev_iterator)
+    # generate deltas for things we will show
+    log_rev_iterator = make_delta_filter(branch, view_revisions, generate_delta,
+        search, log_rev_iterator)
     return log_rev_iterator
 
 
@@ -329,9 +332,37 @@ def make_search_filter(branch, view_revisions, generate_delta, search,
 
 def _filter_message_re(searchRE, log_rev_iterator):
     for revs in log_rev_iterator:
+        new_revs = []
         for (rev_id, revno, merge_depth), rev, delta in revs:
             if searchRE.search(rev.message):
-                yield (rev_id, revno, merge_depth), rev, delta
+                new_revs.append(((rev_id, revno, merge_depth), rev, delta))
+        yield new_revs
+
+
+def make_delta_filter(branch, view_revisions, generate_delta, search,
+    log_rev_iterator):
+    """Add revision deltas to a log iterator if needed.
+
+    :param branch: The branch being logged.
+    :param view_revisions: The revisions being viewed.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    if not generate_delta:
+        return log_rev_iterator
+    return _generate_deltas(branch.repository, log_rev_iterator)
+
+
+def _generate_deltas(repository, log_rev_iterator):
+    for revs in log_rev_iterator:
+        revisions = [rev[1] for rev in revs]
+        deltas = repository.get_deltas_for_revisions(revisions)
+        revs = [(rev[0], rev[1], delta) for rev, delta in izip(revs, deltas)]
+        yield revs
 
 
 def _iter_revisions(branch, view_revisions, generate_delta, search):
@@ -350,15 +381,10 @@ def _iter_revisions(branch, view_revisions, generate_delta, search):
         cur_view_revisions = [d for x, d in zip(range(num), view_revisions)]
         if len(cur_view_revisions) == 0:
             break
-        cur_deltas = {}
         # r = revision, n = revno, d = merge depth
         revision_ids = [r for (r, n, d) in cur_view_revisions]
         revisions = repository.get_revisions(revision_ids)
-        if generate_delta:
-            deltas = repository.get_deltas_for_revisions(revisions)
-        else:
-            deltas = [None] * num
-        yield zip(cur_view_revisions, revisions, deltas)
+        yield zip(cur_view_revisions, revisions, [None] * num)
         num = min(int(num * 1.5), 200)
 
 
