@@ -259,7 +259,9 @@ def _flatten_node(node, reference_lists):
     cdef Py_ssize_t key_len
     cdef char * value
     cdef Py_ssize_t value_len
-    cdef char * s
+    cdef char * out
+    cdef Py_ssize_t ref_len
+    cdef Py_ssize_t next_len
 
     # I don't expect that we can do faster than string.join()
     string_key = '\x00'.join(node[1])
@@ -276,28 +278,55 @@ def _flatten_node(node, reference_lists):
     # ref_list := ref (CR ref)*
     # ref := BYTES (NULL BYTES)*
     # value := BYTES
-    if not reference_lists:
-        # Simple case, we only have the key and the value
-        # So we have the (key NULL NULL value LF)
-        key_len = PyString_Size(string_key)
-        value = PyString_AsString(node[2])
-        value_len = PyString_Size(node[2])
-        flat_len = (key_len + 1 + 1 + value_len + 1)
-        line = PyString_FromStringAndSize(NULL, flat_len)
-        # Get a pointer to the new buffer
-        s = PyString_AsString(line)
-        memcpy(s, PyString_AsString(string_key), key_len)
-        s[key_len] = c'\0'
-        s[key_len + 1] = c'\0'
-        memcpy(s + key_len + 2, value, value_len)
-        s[key_len + 2 + value_len] = c'\n'
-    else:
+    ref_len = 0
+    if reference_lists:
+        # Figure out how many bytes it will take to store the references
+        next_len = len(node[3]) # TODO: use a Py function
+        if next_len > 0:
+            # If there are no nodes, we don't need to do any work
+            # Otherwise we will need (len - 1) '\t' characters to separate
+            # the reference lists
+            ref_len = ref_len + (next_len - 1)
+            for ref_list in node[3]:
+                next_len = len(ref_list)
+                if next_len > 0:
+                    # We will need (len - 1) '\r' characters to separate the
+                    # references
+                    ref_len = ref_len + (next_len - 1)
+                    for reference in ref_list:
+                        next_len = len(reference)
+                        if next_len > 0:
+                            # We will need (len - 1) '\x00' characters to
+                            # separate the reference key
+                            ref_len = ref_len + (next_len - 1)
+                            for ref in reference:
+                                ref_len = ref_len + len(ref)
         flattened_references = []
         for ref_list in node[3]:
             ref_keys = []
             for reference in ref_list:
                 ref_keys.append('\x00'.join(reference))
             flattened_references.append('\r'.join(ref_keys))
-        line = ("%s\x00%s\x00%s\n" % (string_key,
-            '\t'.join(flattened_references), node[2]))
+        refs = '\t'.join(flattened_references)
+
+    # So we have the (key NULL refs NULL value LF)
+    key_len = PyString_Size(string_key)
+    value = PyString_AsString(node[2])
+    value_len = PyString_Size(node[2])
+    flat_len = (key_len + 1 + ref_len + 1 + value_len + 1)
+    line = PyString_FromStringAndSize(NULL, flat_len)
+    # Get a pointer to the new buffer
+    out = PyString_AsString(line)
+    memcpy(out, PyString_AsString(string_key), key_len)
+    out = out + key_len
+    out[0] = c'\0'
+    out = out + 1
+    if ref_len > 0:
+        memcpy(out, PyString_AsString(refs), ref_len)
+        out = out + ref_len
+    out[0] = c'\0'
+    out = out + 1
+    memcpy(out, value, value_len)
+    out = out + value_len
+    out[0] = c'\n'
     return string_key, line
