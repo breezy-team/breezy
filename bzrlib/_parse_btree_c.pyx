@@ -24,9 +24,12 @@ cdef extern from "Python.h":
 
     char *PyString_AsString(object p)
     object PyString_FromStringAndSize(char *, Py_ssize_t)
+    int PyString_CheckExact(object s)
     Py_ssize_t PyString_Size(object p)
+    int PyTuple_CheckExact(object t)
 
 cdef extern from "string.h":
+    void *memcpy(void *dest, void *src, size_t n)
     void *memchr(void *s, int c, size_t n)
     # GNU extension
     # void *memrchr(void *s, int c, size_t n)
@@ -225,7 +228,9 @@ cdef class BTreeLeafParser:
         return 0
 
     def parse(self):
-        cdef int byte_count
+        cdef Py_ssize_t byte_count
+        if not PyString_CheckExact(self.bytes):
+            raise AssertionError('self.bytes is not a string.')
         byte_count = PyString_Size(self.bytes)
         self._cur_str = PyString_AsString(self.bytes)
         # This points to the last character in the string
@@ -250,16 +255,49 @@ def _flatten_node(node, reference_lists):
         string_key  The serialized key for referencing this node
         flattened   A string with the serialized form for the contents
     """
+    cdef Py_ssize_t flat_len
+    cdef Py_ssize_t key_len
+    cdef char * value
+    cdef Py_ssize_t value_len
+    cdef char * s
+
+    # I don't expect that we can do faster than string.join()
+    string_key = '\x00'.join(node[1])
+
     # TODO: instead of using string joins, precompute the final string length,
     #       and then malloc a single string and copy everything in.
-    flattened_references = []
-    if reference_lists:
+
+    # TODO: We probably want to use PySequenceFast, because we have lists and
+    #       tuples, but we aren't sure which we will get.
+
+    # line := string_key NULL flat_refs NULL value LF
+    # string_key := BYTES (NULL BYTES)*
+    # flat_refs := ref_list (TAB ref_list)*
+    # ref_list := ref (CR ref)*
+    # ref := BYTES (NULL BYTES)*
+    # value := BYTES
+    if not reference_lists:
+        # Simple case, we only have the key and the value
+        # So we have the (key NULL NULL value LF)
+        key_len = PyString_Size(string_key)
+        value = PyString_AsString(node[2])
+        value_len = PyString_Size(node[2])
+        flat_len = (key_len + 1 + 1 + value_len + 1)
+        line = PyString_FromStringAndSize(NULL, flat_len)
+        # Get a pointer to the new buffer
+        s = PyString_AsString(line)
+        memcpy(s, PyString_AsString(string_key), key_len)
+        s[key_len] = c'\0'
+        s[key_len + 1] = c'\0'
+        memcpy(s + key_len + 2, value, value_len)
+        s[key_len + 2 + value_len] = c'\n'
+    else:
+        flattened_references = []
         for ref_list in node[3]:
             ref_keys = []
             for reference in ref_list:
                 ref_keys.append('\x00'.join(reference))
             flattened_references.append('\r'.join(ref_keys))
-    string_key = '\x00'.join(node[1])
-    line = ("%s\x00%s\x00%s\n" % (string_key,
-        '\t'.join(flattened_references), node[2]))
+        line = ("%s\x00%s\x00%s\n" % (string_key,
+            '\t'.join(flattened_references), node[2]))
     return string_key, line

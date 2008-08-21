@@ -913,15 +913,35 @@ class TestBTreeNodes(BTreeTestCase):
             ('11', '44'): ('value:4', ((), (('11', 'ref00'),)))
             }, node.keys)
 
-    def assertFlattened(self, expected, key, value, refs, reference_lists):
+    def assertFlattened(self, expected, key, value, refs):
         flat_key, flat_line = self.parse_btree._flatten_node(
-            (None, key, value, refs), reference_lists)
+            (None, key, value, refs), bool(refs))
         self.assertEqual('\x00'.join(key), flat_key)
         self.assertEqual(expected, flat_line)
 
-    def test_flatten_node_to_line_no_references(self):
-        self.assertFlattened('key\x00\x00value\n',
-                             ('key',), 'value', [], False)
+    def test__flatten_node(self):
+        self.assertFlattened('key\0\0value\n', ('key',), 'value', [])
+        self.assertFlattened('key\0tuple\0\0value str\n',
+                             ('key', 'tuple'), 'value str', [])
+        self.assertFlattened('key\0tuple\0triple\0\0value str\n',
+                             ('key', 'tuple', 'triple'), 'value str', [])
+        self.assertFlattened('k\0t\0s\0ref\0value str\n',
+                             ('k', 't', 's'), 'value str', [[('ref',)]])
+        self.assertFlattened('key\0tuple\0ref\0key\0value str\n',
+                             ('key', 'tuple'), 'value str', [[('ref', 'key')]])
+        self.assertFlattened("00\x0000\x00\t00\x00ref00\x00value:0\n",
+            ('00', '00'), 'value:0', ((), (('00', 'ref00'),)))
+        self.assertFlattened(
+            "00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n",
+            ('00', '11'), 'value:1',
+                ((('00', 'ref00'),), (('00', 'ref00'), ('01', 'ref01'))))
+        self.assertFlattened(
+            "11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n",
+            ('11', '33'), 'value:3',
+                ((('11', 'ref22'),), (('11', 'ref22'), ('11', 'ref22'))))
+        self.assertFlattened(
+            "11\x0044\x00\t11\x00ref00\x00value:4\n",
+            ('11', '44'), 'value:4', ((), (('11', 'ref00'),)))
 
 
 class TestCompiledBtree(tests.TestCase):
