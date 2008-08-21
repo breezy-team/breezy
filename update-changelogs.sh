@@ -8,5 +8,9 @@ VERSION=$1
 
 for NAME in $UBUNTU_RELEASES; do
     PPAVERSION="$VERSION~${NAME}1"
-    (cd "packaging-$NAME" && dch -v $PPAVERSION -D $NAME -c changelog 'New upstream release.')
+    (
+	cd "packaging-$NAME" &&
+	dch -v $PPAVERSION -D $NAME -c changelog 'New upstream release.' &&
+	bzr ci -m "New upstream release: $PPAVERSION"
+    )
 done
