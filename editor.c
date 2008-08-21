@@ -355,7 +355,7 @@ static PyObject *py_dir_editor_open_directory(PyObject *self, PyObject *args)
 static PyObject *py_dir_editor_change_prop(PyObject *self, PyObject *args)
 {
 	char *name;
-	svn_string_t c_value, *p_c_value;
+	svn_string_t c_value;
 	EditorObject *editor = (EditorObject *)self;
 	int vallen;
 
