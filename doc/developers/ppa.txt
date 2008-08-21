@@ -88,14 +88,14 @@ Packaging Bazaar
 
 #. Decide on the final version number.  It should be of this form::
 
-     bzr-1.6~beta3-1~bazaar1
+     bzr-1.6~beta3-1~bazaar1~hardy1
 
    There are three hyphen-separated parts: the *package name*, the *upstream
    version*, and the *packaging version*.
 
    **Caution:** Upstream betas or release candidates must insert a tilde
    to make them sort before the final release, like this:
-   ``bzr-1.6~beta3-1~bazaar1``.
+   ``bzr-1.6~beta3-1~bazaar1~hardy1``.
 
 #. Create a directory per release::
 
