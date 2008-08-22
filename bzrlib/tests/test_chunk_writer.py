@@ -58,8 +58,11 @@ class TestWriter(TestCaseWithTransport):
             # Create a line with this group
             lines.append(''.join(map(str, numbers)) + '\n')
         writer = chunk_writer.ChunkWriter(4096)
-        for line in lines:
+        for idx, line in enumerate(lines):
+            if idx >= 45:
+                import pdb; pdb.set_trace()
             if writer.write(line):
+                self.assertEqual(47, idx)
                 break
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
