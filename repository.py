@@ -786,7 +786,7 @@ class SvnRepository(Repository):
         try:
             for project, bp, nick in layout.get_branches(self.get_latest_revnum(), pb=pb):
                 try:
-                    branches.append(SvnBranch(self, bp))
+                    branches.append(SvnBranch(self, bp, _skip_check=True))
                 except NotBranchError: # Skip non-directories
                     pass
         finally:
@@ -911,14 +911,13 @@ class SvnRepository(Repository):
     def find_fileprop_branches(self, layout, from_revnum, to_revnum, 
                                project=None):
         reuse_policy = self.get_config().get_reuse_revisions()
-        if reuse_policy == "removed-branches":
-            for (branch, revno, _) in self.find_branchpaths(layout, 
+        if reuse_policy in ("other-branches", "none") or from_revnum == 0:
+            for (project, branch, nick) in layout.get_branches(to_revnum, project):
+                yield (branch, to_revnum)
+        elif reuse_policy in ("other-branches", "removed-branches", "none"):
+            for (branch, revno, exists) in self.find_branchpaths(layout, 
                 from_revnum, to_revnum, project):
                 yield (branch, revno)
-        elif reuse_policy in ("other-branches", "none"):
-            revnum = self.get_latest_revnum()
-            for (project, branch, nick) in layout.get_branches(revnum, project):
-                yield (branch, revnum)
         else:
             assert False
 

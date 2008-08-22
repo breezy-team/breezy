@@ -140,7 +140,7 @@ class SubversionTags(BasicTags):
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self, repository, branch_path):
+    def __init__(self, repository, branch_path, _skip_check=False):
         """Instantiate a new SvnBranch.
 
         :param repos: SvnRepository this branch is part of.
@@ -162,15 +162,16 @@ class SvnBranch(Branch):
         self.base = urlutils.join(self.repository.base, self._branch_path).rstrip("/")
         self._revmeta_cache = None
         assert isinstance(self._branch_path, str)
-        try:
-            revnum = self.get_revnum()
-            if self.repository.transport.check_path(self._branch_path, 
-                revnum) != core.NODE_DIR:
-                raise NotBranchError(self.base)
-        except SubversionException, (_, num):
-            if num == ERR_FS_NO_SUCH_REVISION:
-                raise NotBranchError(self.base)
-            raise
+        if not _skip_check:
+            try:
+                revnum = self.get_revnum()
+                if self.repository.transport.check_path(self._branch_path, 
+                    revnum) != core.NODE_DIR:
+                    raise NotBranchError(self.base)
+            except SubversionException, (_, num):
+                if num == ERR_FS_NO_SUCH_REVISION:
+                    raise NotBranchError(self.base)
+                raise
         (type, self.project, _, ip) = self.layout.parse(branch_path)
         # FIXME: Don't allow tag here
         if type not in ('branch', 'tag') or ip != '':

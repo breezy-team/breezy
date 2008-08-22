@@ -25,6 +25,7 @@ from bzrlib.plugins.svn.mapping3.scheme import (BranchingScheme, guess_scheme_fr
                              guess_scheme_from_history, ListBranchingScheme, 
                              parse_list_scheme_text, NoBranchingScheme,
                              TrunkBranchingScheme, ListBranchingScheme)
+from bzrlib.plugins.svn.ra import DIRENT_KIND
 import sha
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
@@ -94,12 +95,12 @@ class SchemeDerivedLayout(RepositoryLayout):
         def find_children(path):
             try:
                 assert not path.startswith("/")
-                dirents = self.repository.transport.get_dir(path, revnum)[0]
+                dirents = self.repository.transport.get_dir(path, revnum, DIRENT_KIND)[0]
             except SubversionException, (msg, num):
                 if num in (ERR_FS_NOT_DIRECTORY, ERR_FS_NOT_FOUND, ERR_RA_DAV_PATH_NOT_FOUND):
                     return None
                 raise
-            return dirents.keys()
+            return [d for d in dirents if dirents[d]['kind'] == NODE_DIR]
 
         for idx, pattern in enumerate(self.scheme.branch_list):
             if pb is not None:
