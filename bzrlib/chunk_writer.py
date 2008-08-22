@@ -177,7 +177,11 @@ class ChunkWriter(object):
             if out:
                 self.bytes_list.append(out)
                 self.bytes_out_len += len(out)
-            if self.bytes_out_len + 10 <= capacity:
+
+            # We are a bit extra conservative, because it seems that you *can*
+            # get better compression with Z_SYNC_FLUSH than a full compress. It
+            # is probably very rare, but we were able to trigger it.
+            if self.bytes_out_len + 100 <= capacity:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)
                 self.seen_bytes += len(bytes)
