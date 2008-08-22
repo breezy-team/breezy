@@ -809,10 +809,10 @@ class SvnRepository(Repository):
 
         tags = {}
         pb = ui.ui_factory.nested_progress_bar()
-        pb.update("finding tags")
         try:
-            for project, bp, nick in layout.get_tags(to_revnum, project=project, pb=pb):
-                pb.tick()
+            tag_paths = list(layout.get_tags(to_revnum, project=project, pb=pb))
+            for i, (project, bp, nick) in enumerate(tag_paths):
+                pb.update("finding tags", i, len(tag_paths))
                 npb = ui.ui_factory.nested_progress_bar()
                 try:
                     it = self.iter_changes(bp, from_revnum=to_revnum, 
