@@ -174,6 +174,14 @@ class ChunkWriter(object):
         else:
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
             _stats[8] += 1 # len(bytes)
+            # Note: It is tempting to do this as a look-ahead pass, and to
+            # 'copy()' the compressor before flushing. However, it seems that
+            # 'flush()' is when the compressor actually does most work
+            # (consider it the real compression pass over the data-so-far).
+            # Which means that it is the same thing as increasing repack,
+            # similar cost, same benefit. And this way we still have the
+            # 'repack' knob that can be adjusted, and not depend on a
+            # platform-specific 'copy()' function.
             out = comp.compress(bytes)
             out += comp.flush(Z_SYNC_FLUSH)
             self.unflushed_in_bytes = 0
