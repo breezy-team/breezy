@@ -20,6 +20,7 @@
 import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
+_stats = [0, 0, 0]
 
 class ChunkWriter(object):
     """ChunkWriter allows writing of compressed data with a fixed size.
@@ -38,23 +39,21 @@ class ChunkWriter(object):
         number of times we will try.
         In testing, some values for bzr.dev::
 
-                    w/o copy    w/ copy     w/ copy ins w/ copy & save
-            repack  time  MB    time  MB    time  MB    time  MB
-             1       8.8  5.1    8.9  5.1    9.6  4.4   12.5  4.1
-             2       9.6  4.4   10.1  4.3   10.4  4.2   11.1  4.1
-             3      10.6  4.2   11.1  4.1   11.2  4.1   11.3  4.1
-             4      12.0  4.1
-             5      12.6  4.1
-            20      12.9  4.1   12.2  4.1   12.3  4.1
+            repack  time  MB    hit_max_repack  buffer_full
+             1       7.9  5.1   1268            0
+             2       8.8  4.4   1069            0
+             3       9.7  4.2   1022            46
+             4      11.1  4.1   974             619
+            20      11.9  4.1   0               1012
 
         In testing, some values for mysql-unpacked::
 
-                    w/o copy    w/ copy     w/ copy ins w/ copy & save
-            repack  time  MB    time  MB    time  MB    time  MB
-             1      56.6  16.9              60.7  14.2
-             2      59.3  14.1              62.6  13.5  64.3  13.4
-             3      64.4  13.5
-            20      73.4  13.4
+            repack  time  MB    hit_max_repack  buffer_full
+             1      52.4  16.9  4295            0
+             2      55.8  14.1  3561            0
+             3      60.3  13.5  3407            197
+             4      66.7  13.4  3203            2154
+            20      69.3  13.4  0               3380
 
     :cvar _default_min_compression_size: The expected minimum compression.
         While packing nodes into the page, we won't Z_SYNC_FLUSH until we have
@@ -162,8 +161,8 @@ class ChunkWriter(object):
             self.bytes_in.append(bytes)
             self.seen_bytes = next_seen_size
         else:
-            if self.num_repack >= self._max_repack and not reserved:
-                # We already know we don't want to try to fit more
+            if self.num_repack > self._max_repack and not reserved:
+                self.unused_bytes = bytes
                 return True
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
             out = comp.compress(bytes)
@@ -171,17 +170,27 @@ class ChunkWriter(object):
             if out:
                 self.bytes_list.append(out)
                 self.bytes_out_len += len(out)
-            if self.bytes_out_len + 10 > capacity:
+            if self.bytes_out_len + 10 <= capacity:
+                # It fit, so mark it added
+                self.bytes_in.append(bytes)
+                self.seen_bytes = next_seen_size
+            else:
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
-                bytes_out, this_len, compressor = self._recompress_all_bytes_in(bytes)
+                (bytes_out, this_len,
+                 compressor) = self._recompress_all_bytes_in(bytes)
+                if self.num_repack >= self._max_repack:
+                    # When we get *to* _max_repack, bump over so that the
+                    # earlier > _max_repack will be triggered.
+                    self.num_repack += 1
+                    _stats[0] += 1
                 if this_len + 10 > capacity:
-                    # No way we can add anymore, we need to re-pack because our
-                    # compressor is now out of sync.
-                    # This seems to be rarely triggered over
-                    #   num_repack > _max_repack
-                    bytes_out, this_len, compressor = self._recompress_all_bytes_in()
+                    # In real-world testing, this only happens when _max_repack
+                    # is set >2, and even then rarely (46 out of 1022)
+                    (bytes_out, this_len,
+                     compressor) = self._recompress_all_bytes_in()
+                    _stats[1] += 1
                     self.compressor = compressor
                     self.bytes_list = bytes_out
                     self.bytes_out_len = this_len
@@ -191,13 +200,10 @@ class ChunkWriter(object):
                     # This fits when we pack it tighter, so use the new packing
                     # There is one Z_SYNC_FLUSH call in
                     # _recompress_all_bytes_in
+                    _stats[2] += 1
                     self.compressor = compressor
                     self.bytes_in.append(bytes)
                     self.bytes_list = bytes_out
                     self.bytes_out_len = this_len
-            else:
-                # It fit, so mark it added
-                self.bytes_in.append(bytes)
-                self.seen_bytes = next_seen_size
         return False
 
