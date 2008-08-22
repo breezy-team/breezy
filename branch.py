@@ -23,7 +23,6 @@ from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision,
                            UnrelatedBranches)
 from bzrlib.inventory import (Inventory)
 from bzrlib.revision import is_null, ensure_null, NULL_REVISION
-from bzrlib.tag import BasicTags
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -36,6 +35,7 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import NotSvnBranchPath, ERR_FS_NO_SUCH_REVISION
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.repository import SvnRepository
+from bzrlib.plugins.svn.tags import SubversionTags
 from bzrlib.plugins.svn.transport import bzr_to_svn_url
 
 import os
@@ -53,129 +53,6 @@ class FakeControlFiles(object):
 
     def break_lock(self):
         pass
-
-
-class SubversionTags(BasicTags):
-    def __init__(self, branch):
-        self.branch = branch
-        self.repository = branch.repository
-
-    def set_tag(self, tag_name, tag_target):
-        path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
-        parent = urlutils.dirname(path)
-        try:
-            (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
-        except NoSuchRevision:
-            mutter("not setting tag %s; unknown revision %s", tag_name, tag_target)
-            return
-        if from_bp == path:
-            return
-        conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
-        deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
-        try:
-            ci = conn.get_commit_editor({"svn:log": "Add tag %s" % tag_name})
-            try:
-                root = ci.open_root()
-                if deletefirst:
-                    root.delete_entry(urlutils.basename(path))
-                root.add_directory(urlutils.basename(path), urlutils.join(self.repository.base, from_bp), from_revnum)
-                root.close()
-            except:
-                ci.abort()
-                raise
-            ci.close()
-        finally:
-            self.repository.transport.add_connection(conn)
-
-    def lookup_tag(self, tag_name):
-        try:
-            return self.get_tag_dict()[tag_name]
-        except KeyError:
-            raise NoSuchTag(tag_name)
-
-    def get_tag_dict(self, _from_revnum=0):
-        return self.repository.find_tags(project=self.branch.project, 
-                                         layout=self.branch.layout,
-                                         from_revnum=_from_revnum)
-
-    def get_reverse_tag_dict(self):
-        """Returns a dict with revisions as keys
-           and a list of tags for that revision as value"""
-        d = self.get_tag_dict()
-        rev = {}
-        for key in d:
-            try:
-                rev[d[key]].append(key)
-            except KeyError:
-                rev[d[key]] = [key]
-        return rev
-
-    def delete_tag(self, tag_name):
-        path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
-        parent = urlutils.dirname(path)
-        conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
-        if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
-            raise NoSuchTag(tag_name)
-        try:
-            ci = conn.get_commit_editor({"svn:log": "Remove tag %s" % tag_name})
-            try:
-                root = ci.open_root()
-                root.delete_entry(urlutils.basename(path))
-                root.close()
-            except:
-                ci.abort()
-                raise
-            ci.close()
-        finally:
-            self.repository.transport.add_connection(conn)
-
-    def _set_tag_dict(self, dest_dict):
-        cur_dict = self.get_tag_dict()
-        for k,v in dest_dict.iteritems():
-            if cur_dict.get(k) != v:
-                self.set_tag(k, v)
-        for k in cur_dict:
-            if k not in dest_dict:
-                self.delete_tag(k)
-
-    def merge_to(self, to_tags, overwrite=False, _from_revnum=None):
-        """Copy tags between repositories if necessary and possible.
-        
-        This method has common command-line behaviour about handling 
-        error cases.
-
-        All new definitions are copied across, except that tags that already
-        exist keep their existing definitions.
-
-        :param to_tags: Branch to receive these tags
-        :param overwrite: Overwrite conflicting tags in the target branch
-        :param _from_revnum: Revision number since which to check tags.
-
-        :returns: A list of tags that conflicted, each of which is 
-            (tagname, source_target, dest_target), or None if no copying was
-            done.
-        """
-        if self.branch == to_tags.branch:
-            return
-        if not self.supports_tags():
-            # obviously nothing to copy
-            return
-        source_dict = self.get_tag_dict(_from_revnum=_from_revnum)
-        if not source_dict:
-            # no tags in the source, and we don't want to clobber anything
-            # that's in the destination
-            return
-        to_tags.branch.lock_write()
-        try:
-            dest_dict = to_tags.get_tag_dict()
-            result, conflicts = self._reconcile_tags(source_dict, dest_dict,
-                                                     overwrite)
-            if result != dest_dict:
-                to_tags._set_tag_dict(result)
-        finally:
-            to_tags.branch.unlock()
-        return conflicts
-
 
 
 class SvnBranch(Branch):
