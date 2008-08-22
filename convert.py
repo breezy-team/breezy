@@ -179,7 +179,7 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
         for (bp, revnum, exists) in changed_branches:
             if not exists and not keep:
                 removed_branches.append((bp, revnum))
-            elif exists:
+            elif exists and layout.is_branch(bp):
                 try:
                     existing_branches.append(SvnBranch(source_repos, bp))
                 except NotBranchError: # Skip non-directories

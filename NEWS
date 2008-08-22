@@ -12,6 +12,9 @@ bzr-svn-0.4.11	UNRELEASED
 
    * Parse http redirect errors in some non-English locales better.
 
+   * Avoid importing tags as branches in svn-import, now that tags are 
+     converted to native Bazaar tags.
+
   FEATURES
 
    * svn-import will now remove branches removed in Subversion. 
