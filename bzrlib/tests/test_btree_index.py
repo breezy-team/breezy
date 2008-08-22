@@ -113,6 +113,14 @@ class BTreeTestCase(TestCaseWithTransport):
                 keys.append((key, value, refs))
         return keys
 
+    def shrink_page_size(self):
+        """Shrink the default page size so that less fits in a page."""
+        old_page_size = btree_index._PAGE_SIZE
+        def cleanup():
+            btree_index._PAGE_SIZE = old_page_size
+        self.addCleanup(cleanup)
+        btree_index._PAGE_SIZE = 2048
+
 
 class TestBTreeBuilder(BTreeTestCase):
 
@@ -277,13 +285,11 @@ class TestBTreeBuilder(BTreeTestCase):
         # pointer to the second node that the internal node is for, _not_
         # the first, otherwise the first node overlaps with the last node of
         # the prior internal node on that row.
-        # We will be adding 140,000 nodes, so spill at 200,001 to prevent
-        # having to flush anything out to disk.
-        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
-                                           spill_at=200001)
-        # 140K nodes is *just* enough to create a two internal nodes on the
-        # second level
-        nodes = self.make_nodes(70000, 2, 2)
+        self.shrink_page_size()
+        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
+        # 40K nodes is enough to create a two internal nodes on the second
+        # level, with a 2K page size
+        nodes = self.make_nodes(20000, 2, 2)
 
         for node in nodes:
             builder.add_node(*node)
@@ -683,17 +689,19 @@ class TestBTreeIndex(BTreeTestCase):
     def test_iter_all_entries_reads(self):
         # iterating all entries reads the header, then does a linear
         # read.
+        self.shrink_page_size()
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
                                            spill_at=200001)
-        # 140k nodes is enough to create a three-level index, which shows that
-        # we skip the internal nodes and just read the leaf nodes.
-        nodes = self.make_nodes(70000, 2, 2)
+        # 40k nodes is enough to create a two internal nodes on the second
+        # level, with a 2K page size
+        nodes = self.make_nodes(20000, 2, 2)
         for node in nodes:
             builder.add_node(*node)
         transport = get_transport('trace+' + self.get_url(''))
         size = transport.put_file('index', builder.finish())
-        self.assertEqual(2624681, size, 'number of expected bytes in the'
-                                        ' output changed')
+        self.assertEqual(780162, size, 'number of expected bytes in the'
+                                       ' output changed')
+        page_size = btree_index._PAGE_SIZE
         del builder
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
         del transport._activity[:]
@@ -706,7 +714,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(3, len(index._row_lengths),
             "Not enough rows: %r" % index._row_lengths)
         # Should be as long as the nodes we supplied
-        self.assertEqual(140000, len(found_nodes))
+        self.assertEqual(40000, len(found_nodes))
         # Should have the same content
         self.assertEqual(set(nodes), set(bare_nodes))
         # Should have done linear scan IO up the index, ignoring
@@ -714,15 +722,15 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read
         total_pages = sum(index._row_lengths)
         self.assertEqual(total_pages, index._row_offsets[-1])
-        self.assertEqual(2624681, size)
+        self.assertEqual(780162, size)
         # The start of the leaves
-        first_byte = index._row_offsets[-2] * btree_index._PAGE_SIZE
+        first_byte = index._row_offsets[-2] * page_size
         readv_request = []
-        for offset in range(first_byte, size, 4096):
-            readv_request.append((offset, 4096))
+        for offset in range(first_byte, size, page_size):
+            readv_request.append((offset, page_size))
         # The last page is truncated
-        readv_request[-1] = (readv_request[-1][0], 2624681 % 4096)
-        expected = [('readv', 'index', [(0, 4096)], False, None),
+        readv_request[-1] = (readv_request[-1][0], 780162 % page_size)
+        expected = [('readv', 'index', [(0, page_size)], False, None),
              ('readv',  'index', readv_request, False, None)]
         if expected != transport._activity:
             self.assertEqualDiff(pprint.pformat(expected),
