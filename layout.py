@@ -52,23 +52,25 @@ class RepositoryLayout(object):
         """
         raise NotImplementedError
 
-    def is_branch(self, path):
+    def is_branch(self, path, project=None):
         """Check whether a specified path points at a branch."""
         try:
-            (type, _, bp, rp) = self.parse(path)
+            (type, proj, bp, rp) = self.parse(path)
         except NotBranchError:
             return False
-        if type == "branch" and rp == "":
+        if (type == "branch" and rp == "" and 
+            (project is None or proj == project)):
             return True
         return False
 
-    def is_tag(self, path):
+    def is_tag(self, path, project=None):
         """Check whether a specified path points at a tag."""
         try:
-            (type, _, bp, rp) = self.parse(path)
+            (type, proj, bp, rp) = self.parse(path)
         except NotBranchError:
             return False
-        if type == "tag" and rp == "":
+        if (type == "tag" and rp == "" and
+            (project is None or proj == project)):
             return True
         return False
 

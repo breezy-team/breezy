@@ -47,7 +47,7 @@ class RevidMap(object):
 
         return revid
 
-    def get_branch_revnum(self, revid, layout):
+    def get_branch_revnum(self, revid, layout, project=None):
         """Find the (branch, revnum) tuple for a revision id."""
         # Try a simple parse
         try:
@@ -62,14 +62,14 @@ class RevidMap(object):
         except InvalidRevisionId:
             pass
 
-        for entry_revid, branch, revno, mapping in self.discover_revids(layout, 0, self.repos.get_latest_revnum()):
+        for entry_revid, branch, revno, mapping in self.discover_revids(layout, 0, self.repos.get_latest_revnum(), project):
             if revid == entry_revid:
                 (bp, revnum, scheme) = self.bisect_revid_revnum(revid, branch, 0, revno)
                 return (bp, revnum, BzrSvnMappingv3FileProps(scheme))
         raise NoSuchRevision(self, revid)
 
-    def discover_revids(self, layout, from_revnum, to_revnum):
-        for (branch, revno) in self.repos.find_fileprop_branches(layout, from_revnum, to_revnum):
+    def discover_revids(self, layout, from_revnum, to_revnum, project=None):
+        for (branch, revno) in self.repos.find_fileprop_branches(layout, from_revnum, to_revnum, project):
             assert isinstance(branch, str)
             assert isinstance(revno, int)
             # Look at their bzr:revision-id-vX
@@ -144,7 +144,7 @@ class CachingRevidMap(object):
 
         return revid
 
-    def get_branch_revnum(self, revid, layout):
+    def get_branch_revnum(self, revid, layout, project=None):
         # Try a simple parse
         try:
             (uuid, branch_path, revnum, mapping) = parse_revision_id(revid)
@@ -175,14 +175,14 @@ class CachingRevidMap(object):
                 return (branch_path, min_revnum, BzrSvnMappingv3FileProps(get_scheme(scheme)))
         except NoSuchRevision, e:
             last_revnum = self.actual.repos.get_latest_revnum()
-            last_checked = self.cache.last_revnum_checked(repr(layout))
+            last_checked = self.cache.last_revnum_checked(repr((layout, project)))
             if (last_revnum <= last_checked):
                 # All revision ids in this repository for the current 
                 # layout have already been discovered. No need to 
                 # check again.
                 raise e
             found = False
-            for entry_revid, branch, revno, mapping in self.actual.discover_revids(layout, last_checked, last_revnum):
+            for entry_revid, branch, revno, mapping in self.actual.discover_revids(layout, last_checked, last_revnum, project):
                 if entry_revid == revid:
                     found = True
                 if entry_revid not in self.revid_seen:
@@ -191,15 +191,15 @@ class CachingRevidMap(object):
                 
             # We've added all the revision ids for this layout in the repository,
             # so no need to check again unless new revisions got added
-            self.cache.set_last_revnum_checked(repr(layout), last_revnum)
+            self.cache.set_last_revnum_checked(repr((layout, project)), last_revnum)
             if not found:
                 raise e
             (branch_path, min_revnum, max_revnum, scheme) = self.cache.lookup_revid(revid)
             assert min_revnum <= max_revnum
             assert isinstance(branch_path, str)
 
-        (branch_path, revnum, scheme) = self.actual.bisect_revid_revnum(revid, branch_path, min_revnum,
-                                               max_revnum)
+        (branch_path, revnum, scheme) = self.actual.bisect_revid_revnum(revid, 
+            branch_path, min_revnum, max_revnum)
         self.cache.insert_revid(revid, branch_path, revnum, revnum, str(scheme))
         return (branch_path, revnum, BzrSvnMappingv3FileProps(scheme))
 

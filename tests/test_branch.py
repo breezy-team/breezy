@@ -103,6 +103,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.close()
 
         b = Branch.open(repos_url + "/trunk")
+        self.assertEquals("", b.project)
         self.assertEquals(b.repository.generate_revision_id(1, "tags/foo", b.repository.get_mapping()), b.tags.lookup_tag("foo"))
 
     def test_tag_lookup_nonexistant(self):

@@ -605,7 +605,8 @@ class SvnRepository(Repository):
     def add_revision(self, rev_id, rev, inv=None, config=None):
         raise NotImplementedError(self.add_revision)
 
-    def generate_revision_id(self, revnum, path, mapping, revprops=None, changed_fileprops=None):
+    def generate_revision_id(self, revnum, path, mapping, revprops=None, 
+                             changed_fileprops=None):
         """Generate an unambiguous revision id. 
         
         :param revnum: Subversion revision number.
@@ -626,7 +627,8 @@ class SvnRepository(Repository):
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
-    def lookup_revision_id(self, revid, layout=None, ancestry=None):
+    def lookup_revision_id(self, revid, layout=None, ancestry=None, 
+                           project=None):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
@@ -639,7 +641,7 @@ class SvnRepository(Repository):
         # If there is no entry in the map, walk over all branches:
         if layout is None:
             layout = self.get_layout()
-        return self.get_revmap().get_branch_revnum(revid, layout)
+        return self.get_revmap().get_branch_revnum(revid, layout, project)
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""
@@ -833,7 +835,8 @@ class SvnRepository(Repository):
             pb.finished()
         return tags
 
-    def find_branchpaths(self, layout, from_revnum=0, to_revnum=None):
+    def find_branchpaths(self, layout, from_revnum=0, to_revnum=None, 
+                         project=None):
         """Find all branch paths that were changed in the specified revision 
         range.
 
@@ -853,14 +856,16 @@ class SvnRepository(Repository):
             for (paths, i, revprops) in self._log.iter_changes([""], from_revnum, to_revnum):
                 pb.update("finding branches", i, to_revnum)
                 for p in sorted(paths.keys()):
-                    if layout.is_branch(p) or layout.is_tag(p):
+                    if (layout.is_branch(p, project) or 
+                        layout.is_tag(p, project)):
                         if paths[p][0] in ('R', 'D') and p in created_branches:
                             ret.append((p, created_branches[p], False))
                             del created_branches[p]
 
                         if paths[p][0] in ('A', 'R', 'M'): 
                             created_branches[p] = i
-                    elif layout.is_branch_parent(p) or layout.is_tag_parent(p):
+                    elif (layout.is_branch_parent(p, project) or 
+                          layout.is_tag_parent(p, project)):
                         if paths[p][0] in ('R', 'D'):
                             k = created_branches.keys()
                             for c in k:
@@ -874,10 +879,10 @@ class SvnRepository(Repository):
                                 try:
                                     for c in self.transport.get_dir(p, i)[0].keys():
                                         n = p+"/"+c
-                                        if layout.is_branch(n) or layout.is_tag(n):
+                                        if layout.is_branch(n, project) or layout.is_tag(n, project):
                                             created_branches[n] = i
-                                        elif (layout.is_branch_parent(n) or 
-                                              layout.is_tag_parent(n)):
+                                        elif (layout.is_branch_parent(n, project) or 
+                                              layout.is_tag_parent(n, project)):
                                             parents.append(n)
                                 except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
                                     pass
@@ -903,15 +908,16 @@ class SvnRepository(Repository):
         return SvnCommitBuilder(self, branch, parents, config, timestamp, 
                 timezone, committer, revprops, revision_id)
 
-    def find_fileprop_branches(self, layout, from_revnum, to_revnum):
+    def find_fileprop_branches(self, layout, from_revnum, to_revnum, 
+                               project=None):
         reuse_policy = self.get_config().get_reuse_revisions()
         if reuse_policy == "removed-branches":
-            for (branch, revno, _) in self.find_branchpaths(layout, from_revnum, 
-                                                            to_revnum):
+            for (branch, revno, _) in self.find_branchpaths(layout, 
+                from_revnum, to_revnum, project):
                 yield (branch, revno)
         elif reuse_policy in ("other-branches", "none"):
             revnum = self.get_latest_revnum()
-            for (project, branch, nick) in layout.get_branches(revnum):
+            for (project, branch, nick) in layout.get_branches(revnum, project):
                 yield (branch, revnum)
         else:
             assert False

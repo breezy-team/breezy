@@ -347,6 +347,10 @@ class TrunkScheme(TestCase):
         self.assertFalse(scheme.is_branch("/trunk/"))
         self.assertFalse(scheme.is_branch("/foo/trunk"))
         self.assertTrue(scheme.is_branch("/foo/bar/trunk"))
+        self.assertTrue(scheme.is_branch("/foo/bar/trunk", "foo/bar"))
+        self.assertFalse(scheme.is_branch("/foo/bar/trunk", "fool/bar"))
+        self.assertTrue(scheme.is_branch("/foo/bar/branches/bla", "foo/bar"))
+        self.assertFalse(scheme.is_branch("/foo/bar/branches/bla", "fool/bar"))
         self.assertFalse(scheme.is_branch("/branches/trunk"))
         self.assertTrue(scheme.is_branch("/bar/branches/trunk"))
 
