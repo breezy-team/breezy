@@ -148,8 +148,7 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
         source_graph = source_repos.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            i = 0
-            for source_branch in existing_branches:
+            for i, source_branch in enumerate(existing_branches):
                 pb.update("%s:%d" % (source_branch.get_branch_path(), source_branch.get_revnum()), i, len(existing_branches))
                 target_dir = get_dir(source_branch.get_branch_path())
                 if not create_shared_repo:
@@ -174,7 +173,6 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
                     target_branch.pull(source_branch)
                 if working_trees and not target_dir.has_workingtree():
                     target_dir.create_workingtree()
-                i += 1
         finally:
             pb.finished()
     finally:
