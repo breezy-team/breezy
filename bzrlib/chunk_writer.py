@@ -21,8 +21,9 @@ import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
 # [max_repack, buffer_full, repacks_with_space, min_compression,
-#  total_bytes_in, total_bytes_out, avg_comp]
-_stats = [0, 0, 0, 999, 0, 0, 0]
+#  total_bytes_in, total_bytes_out, avg_comp,
+#  bytes_autopack, bytes_sync_packed]
+_stats = [0, 0, 0, 999, 0, 0, 0, 0, 0]
 
 class ChunkWriter(object):
     """ChunkWriter allows writing of compressed data with a fixed size.
@@ -169,8 +170,10 @@ class ChunkWriter(object):
             self.bytes_in.append(bytes)
             self.seen_bytes += len(bytes)
             self.unflushed_in_bytes += len(bytes)
+            _stats[7] += 1 # len(bytes)
         else:
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
+            _stats[8] += 1 # len(bytes)
             out = comp.compress(bytes)
             out += comp.flush(Z_SYNC_FLUSH)
             self.unflushed_in_bytes = 0
@@ -181,7 +184,11 @@ class ChunkWriter(object):
             # We are a bit extra conservative, because it seems that you *can*
             # get better compression with Z_SYNC_FLUSH than a full compress. It
             # is probably very rare, but we were able to trigger it.
-            if self.bytes_out_len + 100 <= capacity:
+            if self.num_repack == 0:
+                safety_margin = 100
+            else:
+                safety_margin = 10
+            if self.bytes_out_len + safety_margin <= capacity:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)
                 self.seen_bytes += len(bytes)
