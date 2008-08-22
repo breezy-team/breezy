@@ -179,3 +179,131 @@ Design elements to achieve the goals in a future inventory implementation
 
  * Possible designs to investigate - a hash bucket approach, radix trees,
    B+ trees, directory trees (with splits inside a directory?).
+
+
+Hash bucket based inventories
+=============================
+
+Overview
+--------
+
+We store two maps - fileid:inventory_entry and path:fileid, in a stable
+hash trie, stored in densly packed fragemnts.. We pack keys into the map
+densely up the tree, with a single canonical form for any given tree. This is
+more stable than simple fixed size buckets, which prevents corner cases where
+the tree size varies right on a bucket size border. (Note that such cases are
+not a fatal flaw - the two forms would both be present in the repository, so
+only a small amount of data would be written at each transition - but a full
+tree reprocess would be needed at each tree operation across the boundary, and
+thats undesirable.)
+
+Goal satisfaction
+-----------------
+
+ 1. Success
+ 2. Success
+ 3. Success
+ 4. Success, though each change will need its parents looked up as well
+    so it will be proportional to the changes + the directories above
+    the changed path.
+ 5. Success - looking at the difference against all parents we can determine
+    new keys without reference to the repository content will be inserted
+    into.
+ 6. This probably needs needs a path->id map, allowing a 2-step lookup.
+ 7. If we allocate buckets by hashing the id, then this is succeed, though,
+    as per 4 it will need recursive lookups.
+ 8. Success
+ 9. Fail - data beyond that currently included in testaments is included
+    in the strong validator.
+
+Issues
+------
+
+ 1. Tuning the fragment size needs doing.
+ 1. Testing.
+ 1. Writing code.
+ 1. Separate root node, or inline into revision?
+ 1. Cannot do 'ls' efficiently in the current design.
+ 1. Cannot detect invalid deltas easily.
+ 1. What about LCA merge of inventories?
+
+Canonical form
+--------------
+
+There are three fragment types for the canonical form:
+
+root_node: (Perhaps this should be inlined into the revision object).
+HASH_INVENTORY_SIGNATURE
+path_map: CHK to root of path to id map
+content_map: CHK to root of id to entry map
+
+map_node: INTERNAL_NODE or LEAF_NODE
+INTERNAL_NODE:
+INTERNAL_NODE_SIGNATURE
+hash_prefix: PREFIX
+HASHPREFIX CHK TYPE SIZE
+HASHPREFIX CHK TYPE SIZE ...
+
+(Where TYPE is I for internal or L for leaf).
+
+leaf_node:
+LEAF_NODE_SIGNATURE
+hash_prefix: PREFIX
+HASH\x00KEY\x00 VALUE
+
+For path maps, VALUE is::
+  fileid
+
+For content maps, VALUE::
+  fileid basename kind last-changed kind-specific-details
+
+
+
+
+The path and content maps are populated simply by serialising every inventory
+entry and inserting them into both the path map and the content map. The maps
+start with just a single leaf node with an empty prefix. When a leaf nodes size
+exceeds the fragment size it is split into N smaller leaf nodes with a longer
+prefix. The prefixes are the smallest that can be used to create smaller leaf
+nodes. Often this will be one octet (say from AB to two nodes with ABC and ABE
+respectively). When an internal node exceeds the size threshold the same
+process is applied. When removing a node from a from a leaf, the size of the
+pther children pointed at by the containing internal node is checked - if the
+collection of other children could be combined within the size threshold then
+they are and the internal node is removed. This is repeated recursively if the
+size of the newly combined node is smaller than the previous internal node. If
+any children of an internal node are leaf nodes, combining is not possible
+unless they are all leaf nodes.
+
+Multiple versions of nodes for the same PREFIX will compress well for the same
+tree.
+
+
+Apply
+-----
+
+Given an inventory delta - a list of (old_path, new_path, InventoryEntry)
+items, with a None in new_path indicating a delete operation, and recursive
+deletes not being permitted - all entries to be deleted must be explicitly
+listed, we can transform a current inventory directly. We can't trivially
+detect an invalid delta though.
+
+To perform an application, naively we can just update both maps. For the path
+map we would remove all entries where the paths in the delta do not match, then
+insert those with a new_path again. For the content map we would just remove
+all the fileids in the delta, then insert those with a new_path that is not
+None.
+
+Delta
+-----
+
+To generate a delta between two inventories, we first generate a list of
+altered fileids, and then recursively look up their parents to generate their
+old and new file paths.
+
+To generate the list of altered file ids, we do an entry by entry comparison of
+the full contents of every leaf node that the two inventories do not have in
+common. To do this, we start at the root node, and follow every CHK pointer
+that is only in one tree. We can then bring in all the value from the leaf
+nodes and do a set difference to get the altered ones, which we would then
+parse.
