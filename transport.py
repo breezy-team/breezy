@@ -29,8 +29,8 @@ from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import get_config
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED, RedirectRequested
-from bzrlib.plugins.svn.ra import DIRENT_KIND, RemoteAccess
+from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED, RedirectRequested, ERR_RA_DAV_PATH_NOT_FOUND
+from bzrlib.plugins.svn.ra import RemoteAccess
 import urlparse
 import urllib
 
@@ -118,6 +118,8 @@ def Connection(url):
             raise NoSvnRepositoryPresent(url=url)
         if num == ERR_BAD_URL:
             raise InvalidURL(url)
+        if num == ERR_RA_DAV_PATH_NOT_FOUND:
+            raise NoSuchFile(url)
         if num == ERR_RA_DAV_RELOCATED:
             # Try to guess the new url
             if "'" in msg:
