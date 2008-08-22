@@ -128,7 +128,8 @@ def Connection(url):
                 new_url = msg[msg.index("»")+2:msg.index("«")]
             else:
                 new_url = None
-            raise RedirectRequested(source=url, target=new_url, is_permanent=True)
+            raise RedirectRequested(source=url, target=new_url, 
+                                    is_permanent=True)
         raise
 
     from bzrlib.plugins.svn import lazy_check_versions

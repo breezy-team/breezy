@@ -31,6 +31,34 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_STREAM_MALFORMED_DATA
 from bzrlib.plugins.svn.format import get_rich_root_format
 
+LATEST_SVN_IMPORT_REVISION_FILENAME = "bzr-svn-import-revision"
+
+def get_latest_svn_import_revision(repo, uuid):
+    """Retrieve the latest revision checked by svn-import.
+    
+    :param repo: A repository object.
+    :param uuid: Subversion repository UUID.
+    """
+    try:
+        text = repo.bzrdir.transport.get_bytes(LATEST_SVN_IMPORT_REVISION_FILENAME)
+    except NoSuchFile:
+        return 0
+    (text_uuid, revnum) = text.strip().split(" ")
+    if text_uuid != uuid:
+        return 0
+    return int(revnum)
+
+
+def put_latest_svn_import_revision(repo, uuid, revnum):
+    """Store the latest revision checked by svn-import.
+
+    :param repo: A repository object.
+    :param uuid: Subversion repository UUID.
+    :param revnum: A revision number.
+    """
+    repo.bzrdir.transport.put_bytes(LATEST_SVN_IMPORT_REVISION_FILENAME, 
+                             "%s %d\n" % (uuid, revnum))
+
 
 def transport_makedirs(transport, location_url):
     """Create missing directories.
@@ -86,7 +114,8 @@ def load_dumpfile(dumpfile, outputdir):
 
 def convert_repository(source_repos, output_url, scheme=None, layout=None,
                        create_shared_repo=True, working_trees=False, all=False,
-                       format=None, filter_branch=None, keep=False):
+                       format=None, filter_branch=None, keep=False, 
+                       incremental=False):
     """Convert a Subversion repository and its' branches to a 
     Bazaar repository.
 
@@ -132,10 +161,16 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
         except NoRepositoryPresent:
             target_repos = get_dir("").create_repository(shared=True)
         target_repos.set_make_working_trees(working_trees)
+    else:
+        target_repos = None
 
     source_repos.lock_read()
     try:
-        from_revnum = 0
+        if incremental and target_repos is not None:
+            from_revnum = get_latest_svn_import_revision(target_repos, 
+                                                         source_repos.uuid)
+        else:
+            from_revnum = 0
         to_revnum = source_repos.get_latest_revnum()
         changed_branches = source_repos.find_fileprop_branches(layout=layout, 
             from_revnum=from_revnum, to_revnum=to_revnum, check_removed=True)
@@ -203,6 +238,9 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
             pb.finished()
     finally:
         source_repos.unlock()
+
+    if target_repos is not None:
+        put_latest_svn_import_revision(target_repos, source_repos.uuid, to_revnum)
         
 
 class SvnConverter(Converter):
