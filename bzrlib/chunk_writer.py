@@ -42,21 +42,22 @@ class ChunkWriter(object):
         number of times we will try.
         In testing, some values for bzr.dev::
 
-            repack  time  MB    hit_max_repack  buffer_full
-             1       7.9  5.1   1268            0
-             2       8.8  4.4   1069            0
-             3       9.7  4.2   1022            46
-             4      11.1  4.1   974             619
-            20      11.9  4.1   0               1012
+            repack  time  MB    hit_max  full
+             1       7.9  5.1   1268     0     7.5  4.6  1140  0
+             2       8.8  4.4   1069     0     8.4  4.2  1036  1
+             3       9.7  4.2   1022     46    9.8  4.1  1012  278
+             4      11.1  4.1   974      619  10.8  4.1  728   945
+            20      11.9  4.1   0        1012 11.1  4.1  0     1012
 
         In testing, some values for mysql-unpacked::
 
-            repack  time  MB    hit_max_repack  buffer_full
-             1      52.4  16.9  4295            0
-             2      55.8  14.1  3561            0
-             3      60.3  13.5  3407            197
-             4      66.7  13.4  3203            2154
-            20      69.3  13.4  0               3380
+                    overall estim            next_bytes estim
+            repack  time  MB    hit_max full
+             1      52.4  16.9  4295    0    51.7  15.4  3913  0
+             2      55.8  14.1  3561    0    54.4  13.6  3454  8
+             3      60.3  13.5  3407    197
+             4      66.7  13.4  3203    2154
+            20      69.3  13.4  0       3380 67.0  13.4  0     3380
     """
 
     _max_repack = 2
