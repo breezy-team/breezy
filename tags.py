@@ -17,7 +17,7 @@ from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision, NoSuchTag
 from bzrlib.tag import BasicTags
 
-from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn import cache, core
 
 class SubversionTags(BasicTags):
     def __init__(self, branch):
@@ -59,8 +59,8 @@ class SubversionTags(BasicTags):
 
     def get_tag_dict(self, _from_revnum=0):
         return self.repository.find_tags(project=self.branch.project, 
-                                         layout=self.branch.layout,
-                                         from_revnum=_from_revnum)
+                              layout=self.branch.layout,
+                              from_revnum=_from_revnum)
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys
