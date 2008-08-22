@@ -6,6 +6,8 @@ bzr-svn-0.4.11	UNRELEASED
 
    * Change default format to 1.6-rich-root.
 
+   * Use rst2html.py rather than rst2html if it is available.
+
   BUG FIXES
 
    * Parse http redirect errors in some non-English locales better.

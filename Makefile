@@ -5,7 +5,7 @@ SETUP ?= $(PYTHON) ./setup.py
 PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
-RST2HTML ?= rst2html
+RST2HTML ?= $(if $(shell which rst2html.py 2>/dev/null), rst2html.py, rst2html)
 TESTS ?= 
 DESTDIR ?=
 
