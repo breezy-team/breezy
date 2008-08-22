@@ -38,9 +38,9 @@ build
 ./api
 doc/**/*.html
 doc/developers/performance.png
+bzrlib/_btree_serializer_c.c
 bzrlib/_dirstate_helpers_c.c
 bzrlib/_knit_load_data_c.c
-bzrlib/_parse_btree_c.c
 bzrlib/_walkdirs_win32.c
 doc/en/release-notes/NEWS.txt
 doc/en/developer-guide/HACKING.txt

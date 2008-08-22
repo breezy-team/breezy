@@ -331,8 +331,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             #       and then do a single malloc() rather than lots of
             #       intermediate mallocs as we build everything up.
             #       ATM 3 / 13s are spent flattening nodes (10s is compressing)
-            string_key, line = _parse_btree._flatten_node(node,
-                                                          self.reference_lists)
+            string_key, line = _btree_serializer._flatten_node(node,
+                                    self.reference_lists)
             self._add_key(string_key, line, rows)
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
@@ -524,7 +524,7 @@ class _LeafNode(object):
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
-        self.keys = dict(_parse_btree._parse_leaf_lines(bytes,
+        self.keys = dict(_btree_serializer._parse_leaf_lines(bytes,
             key_length, ref_list_length))
 
 
@@ -1106,6 +1106,6 @@ class BTreeGraphIndex(object):
 
 
 try:
-    from bzrlib import _parse_btree_c as _parse_btree
+    from bzrlib import _btree_serializer_c as _btree_serializer
 except ImportError:
-    from bzrlib import _parse_btree_py as _parse_btree
+    from bzrlib import _btree_serializer_py as _btree_serializer

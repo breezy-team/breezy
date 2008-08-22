@@ -40,12 +40,12 @@ def load_tests(standard_tests, module, loader):
     node_tests, others = split_suite_by_condition(standard_tests,
         condition_isinstance(TestBTreeNodes))
     applier = TestScenarioApplier()
-    import bzrlib._parse_btree_py as py_module
+    import bzrlib._btree_serializer_py as py_module
     applier.scenarios = [('python', {'parse_btree': py_module})]
     if CompiledBtreeParserFeature.available():
         # Is there a way to do this that gets missing feature failures rather
         # than no indication to the user?
-        import bzrlib._parse_btree_c as c_module
+        import bzrlib._btree_serializer_c as c_module
         applier.scenarios.append(('C', {'parse_btree': c_module}))
     adapt_tests(node_tests, applier, others)
     return others
@@ -54,13 +54,13 @@ def load_tests(standard_tests, module, loader):
 class _CompiledBtreeParserFeature(tests.Feature):
     def _probe(self):
         try:
-            import bzrlib._parse_btree_c
+            import bzrlib._btree_serializer_c
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._parse_btree_c'
+        return 'bzrlib._btree_serializer_c'
 
 CompiledBtreeParserFeature = _CompiledBtreeParserFeature()
 
@@ -265,7 +265,7 @@ class TestBTreeBuilder(BTreeTestCase):
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
             "row_lengths=1,2\n",
             content[:77])
-        # Check thelast page is well formed
+        # Check the last page is well formed
         leaf2 = content[8192:]
         leaf2_bytes = zlib.decompress(leaf2)
         node = btree_index._LeafNode(leaf2_bytes, 1, 0)
@@ -827,13 +827,13 @@ class TestBTreeIndex(BTreeTestCase):
 class TestBTreeNodes(BTreeTestCase):
 
     def restore_parser(self):
-        btree_index._parse_btree = self.saved_parser
+        btree_index._btree_serializer = self.saved_parser
 
     def setUp(self):
         BTreeTestCase.setUp(self)
-        self.saved_parser = btree_index._parse_btree
+        self.saved_parser = btree_index._btree_serializer
         self.addCleanup(self.restore_parser)
-        btree_index._parse_btree = self.parse_btree
+        btree_index._btree_serializer = self.parse_btree
 
     def test_LeafNode_1_0(self):
         node_bytes = ("type=leaf\n"
