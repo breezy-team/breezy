@@ -189,6 +189,21 @@ class TestConversion(TestCaseWithSubversionRepository):
         convert_repository(Repository.open(self.repos_url), "e", 
                            TrunkBranchingScheme(), create_shared_repo=True)
 
+    def test_shared_import_remove_nokeep(self):
+        convert_repository(Repository.open(self.repos_url), "e", 
+                TrunkBranchingScheme(), create_shared_repo=True)
+
+        dc = self.get_commit_editor()
+        dc.delete("trunk")
+        dc.close()
+
+        self.assertTrue(os.path.exists("e/trunk"))
+
+        convert_repository(Repository.open(self.repos_url), "e", 
+                           TrunkBranchingScheme(), create_shared_repo=True)
+
+        self.assertFalse(os.path.exists("e/trunk"))
+
     def test_shared_import_continue_with_wt(self):
         convert_repository(Repository.open(self.repos_url), "e", 
                 TrunkBranchingScheme(), working_trees=True)

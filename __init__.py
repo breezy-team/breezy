@@ -218,6 +218,8 @@ class cmd_svn_import(Command):
                      Option('scheme', type=get_scheme,
                          help='Branching scheme (none, trunk, etc). '
                               'Default: auto.'),
+                     Option('keep', 
+                            help="Don't delete branches removed in Subversion"),
                      Option('prefix', type=str, 
                          help='Only consider branches of which path starts '
                               'with prefix.')
@@ -225,7 +227,7 @@ class cmd_svn_import(Command):
 
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
-            standalone=False, scheme=None, all=False, prefix=None):
+            standalone=False, scheme=None, all=False, prefix=None, keep=False):
         from bzrlib.branch import Branch
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoRepositoryPresent, NotBranchError
@@ -285,7 +287,9 @@ class cmd_svn_import(Command):
                 return True
 
             convert_repository(from_repos, to_location, scheme, None, 
-                               not standalone, trees, all, filter_branch=filter_branch)
+                               not standalone, trees, all, 
+                               filter_branch=filter_branch,
+                               keep=keep)
 
             if tmp_repos is not None:
                 from bzrlib import osutils

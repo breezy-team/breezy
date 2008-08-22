@@ -785,10 +785,7 @@ class SvnRepository(Repository):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for project, bp, nick in layout.get_branches(self.get_latest_revnum(), pb=pb):
-                try:
-                    branches.append(SvnBranch(self, bp, _skip_check=True))
-                except NotBranchError: # Skip non-directories
-                    pass
+                branches.append(SvnBranch(self, bp, _skip_check=True))
         finally:
             pb.finished()
         return branches
@@ -909,15 +906,13 @@ class SvnRepository(Repository):
                 timezone, committer, revprops, revision_id)
 
     def find_fileprop_branches(self, layout, from_revnum, to_revnum, 
-                               project=None):
-        reuse_policy = self.get_config().get_reuse_revisions()
-        if reuse_policy in ("other-branches", "none") or from_revnum == 0:
-            for (project, branch, nick) in layout.get_branches(to_revnum, project):
-                yield (branch, to_revnum)
-        elif reuse_policy in ("other-branches", "removed-branches", "none"):
+                               project=None, check_removed=False):
+        if not check_removed and from_revnum == 0:
+            for (project, branch, nick) in layout.get_branches(to_revnum, 
+                                                               project):
+                yield (branch, to_revnum, True)
+        else:
             for (branch, revno, exists) in self.find_branchpaths(layout, 
                 from_revnum, to_revnum, project):
-                yield (branch, revno)
-        else:
-            assert False
+                yield (branch, revno, exists)
 

@@ -125,13 +125,13 @@ class SchemeDerivedLayout(RepositoryLayout):
     def get_branch_path(self, name, project=""):
         return self.scheme.get_branch_path(name, project)
 
-    def is_branch_parent(self, path):
+    def is_branch_parent(self, path, project=None):
         # Na, na, na...
-        return self.scheme.is_branch_parent(path)
+        return self.scheme.is_branch_parent(path, project)
 
-    def is_tag_parent(self, path):
+    def is_tag_parent(self, path, project=None):
         # Na, na, na...
-        return self.scheme.is_tag_parent(path)
+        return self.scheme.is_tag_parent(path, project)
 
     def push_merged_revisions(self, project=""):
         try:

@@ -12,6 +12,11 @@ bzr-svn-0.4.11	UNRELEASED
 
    * Parse http redirect errors in some non-English locales better.
 
+  FEATURES
+
+   * svn-import will now remove branches removed in Subversion. 
+     (#246243)
+
 bzr-svn 0.4.11~rc1	2008-08-08
 
   CHANGES
