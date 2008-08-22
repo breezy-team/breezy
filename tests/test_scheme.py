@@ -221,12 +221,12 @@ class ListScheme(TestCase):
 
     def test_unprefix_wildcard(self):
         scheme = ListBranchingScheme(["*/trunk"])
-        self.assertEquals(("", "bla/trunk", "foo"), 
+        self.assertEquals(("bla/trunk", "bla/trunk", "foo"), 
                           scheme.unprefix("bla/trunk/foo"))
 
     def test_unprefix_wildcard_multiple(self):
         scheme = ListBranchingScheme(["trunk/*/*"])
-        self.assertEquals(("", "trunk/foo/bar", "bla/blie"), 
+        self.assertEquals(("trunk/foo/bar", "trunk/foo/bar", "bla/blie"), 
                           scheme.unprefix("trunk/foo/bar/bla/blie"))
 
     def test_unprefix_wildcard_nonexistant(self):
@@ -242,25 +242,26 @@ class ListScheme(TestCase):
         self.assertRaises(NotBranchError, self.scheme.unprefix, "blie/bloe/bla")
 
     def test_unprefix_branch_slash(self):
-        self.assertEqual(self.scheme.unprefix("/foo"), ("", "foo", ""))
+        self.assertEqual(self.scheme.unprefix("/foo"), ("foo", "foo", ""))
 
     def test_unprefix_branch(self):
-        self.assertEqual(self.scheme.unprefix("foo"), ("", "foo", ""))
+        self.assertEqual(self.scheme.unprefix("foo"), ("foo", "foo", ""))
 
     def test_unprefix_nested_slash(self):
-        self.assertEqual(self.scheme.unprefix("/foo/foo"), ("", "foo", "foo"))
+        self.assertEqual(self.scheme.unprefix("/foo/foo"), ("foo", "foo", "foo"))
 
     def test_unprefix_nested(self):
-        self.assertEqual(self.scheme.unprefix("foo/bar"), ("", "foo", "bar"))
+        self.assertEqual(self.scheme.unprefix("foo/bar"), ("foo", "foo", "bar"))
 
     def test_unprefix_double_nested(self):
-        self.assertEqual(self.scheme.unprefix("foo/bar/bla"), ("", "foo", "bar/bla"))
+        self.assertEqual(self.scheme.unprefix("foo/bar/bla"), ("foo", "foo", "bar/bla"))
 
     def test_unprefix_double_slash(self):
-        self.assertEqual(self.scheme.unprefix("//foo/"), ("", "foo", ""))
+        self.assertEqual(self.scheme.unprefix("//foo/"), ("foo", "foo", ""))
 
     def test_unprefix_nested_branch(self):
-        self.assertEqual(self.scheme.unprefix("bar/bloe"), ("", "bar/bloe", ""))
+        self.assertEqual(self.scheme.unprefix("bar/bloe"), 
+                         ("bar/bloe", "bar/bloe", ""))
 
     def test_str(self):
         self.assertEqual("list-QlpoOTFBWSZTWSDz6woAAAPRgAAQAACzBJAAIAAiDRo9QgyYjmbjatAeLuSKcKEgQefWFA..", str(self.scheme))
