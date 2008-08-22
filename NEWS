@@ -60,6 +60,12 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.btree_index`` is now available, providing a b-tree index
+      layer. The design is memory conservative (limited memory cache),
+      faster to seek (approx 100 nodes per page, gives 100-way fan out),
+      and stores compressed pages allowing more keys per page.
+      (Robert Collins, John Arbash Meinel)
+
     * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
