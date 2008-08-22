@@ -791,7 +791,7 @@ class SvnRepository(Repository):
         return branches
 
     @needs_read_lock
-    def find_tags(self, project, layout=None, revnum=None):
+    def find_tags(self, project, layout=None, from_revnum=0, to_revnum=None):
         """Find tags underneath this repository for the specified project.
 
         :param layout: Repository layout to use
@@ -802,8 +802,8 @@ class SvnRepository(Repository):
         if layout is None:
             layout = self.get_layout()
 
-        if revnum is None:
-            revnum = self.get_latest_revnum()
+        if to_revnum is None:
+            to_revnum = self.get_latest_revnum()
 
         mapping = self.get_mapping()
 
@@ -811,11 +811,13 @@ class SvnRepository(Repository):
         pb = ui.ui_factory.nested_progress_bar()
         pb.update("finding tags")
         try:
-            for project, bp, nick in layout.get_tags(revnum, project=project, pb=pb):
+            for project, bp, nick in layout.get_tags(to_revnum, project=project, pb=pb):
                 pb.tick()
                 npb = ui.ui_factory.nested_progress_bar()
                 try:
-                    it = self.iter_changes(bp, revnum, to_revnum=0, mapping=mapping, pb=npb, limit=2)
+                    it = self.iter_changes(bp, from_revnum=to_revnum, 
+                                           to_revnum=0, mapping=mapping, 
+                                           pb=npb, limit=2)
                     (bp, paths, rev, _) = it.next()
                     if paths.has_key(bp):
                         del paths[bp]

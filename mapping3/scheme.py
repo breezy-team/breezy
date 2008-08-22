@@ -152,7 +152,7 @@ def prop_name_quote(text):
 class ListBranchingScheme(BranchingScheme):
     """Branching scheme that keeps a list of branch paths, including 
     wildcards."""
-    def __init__(self, branch_list):
+    def __init__(self, branch_list, tag_list=[]):
         """Create new ListBranchingScheme instance.
 
         :param branch_list: List of know branch locations.
@@ -161,6 +161,7 @@ class ListBranchingScheme(BranchingScheme):
         if isinstance(branch_list, str):
             branch_list = bz2.decompress(prop_name_unquote(branch_list.encode("ascii"))).splitlines()
         self.branch_list = [p.strip("/") for p in branch_list]
+        self.tag_list = tag_list
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):
@@ -199,7 +200,8 @@ class ListBranchingScheme(BranchingScheme):
         raise InvalidSvnBranchPath(path, self)
 
     def __eq__(self, other):
-        return self.branch_list == other.branch_list
+        return (self.branch_list == other.branch_list and \
+                self.tag_list == other.tag_list)
 
     def to_lines(self):
         return self.branch_list
@@ -260,8 +262,8 @@ class TrunkBranchingScheme(ListBranchingScheme):
         self.level = level
         ListBranchingScheme.__init__(self,
             ["*/" * level + "trunk",
-             "*/" * level + "branches/*",
-             "*/" * level + "tags/*"])
+             "*/" * level + "branches/*"])
+        self.tag_list = ["*/" * level + "tags/*"]
 
     def get_tag_path(self, name, project=""):
         if project == "":

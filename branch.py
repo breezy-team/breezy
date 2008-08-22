@@ -93,9 +93,10 @@ class SubversionTags(BasicTags):
         except KeyError:
             raise NoSuchTag(tag_name)
 
-    def get_tag_dict(self):
+    def get_tag_dict(self, _from_revnum=0):
         return self.repository.find_tags(project=self.branch.project, 
-                                         layout=self.branch.layout)
+                                         layout=self.branch.layout,
+                                         from_revnum=_from_revnum)
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys
@@ -136,6 +137,45 @@ class SubversionTags(BasicTags):
         for k in cur_dict:
             if k not in dest_dict:
                 self.delete_tag(k)
+
+    def merge_to(self, to_tags, overwrite=False, _from_revnum=None):
+        """Copy tags between repositories if necessary and possible.
+        
+        This method has common command-line behaviour about handling 
+        error cases.
+
+        All new definitions are copied across, except that tags that already
+        exist keep their existing definitions.
+
+        :param to_tags: Branch to receive these tags
+        :param overwrite: Overwrite conflicting tags in the target branch
+        :param _from_revnum: Revision number since which to check tags.
+
+        :returns: A list of tags that conflicted, each of which is 
+            (tagname, source_target, dest_target), or None if no copying was
+            done.
+        """
+        if self.branch == to_tags.branch:
+            return
+        if not self.supports_tags():
+            # obviously nothing to copy
+            return
+        source_dict = self.get_tag_dict(_from_revnum=_from_revnum)
+        if not source_dict:
+            # no tags in the source, and we don't want to clobber anything
+            # that's in the destination
+            return
+        to_tags.branch.lock_write()
+        try:
+            dest_dict = to_tags.get_tag_dict()
+            result, conflicts = self._reconcile_tags(source_dict, dest_dict,
+                                                     overwrite)
+            if result != dest_dict:
+                to_tags._set_tag_dict(result)
+        finally:
+            to_tags.branch.unlock()
+        return conflicts
+
 
 
 class SvnBranch(Branch):
@@ -444,8 +484,10 @@ class SvnBranch(Branch):
         source.lock_read()
         try:
             (result.old_revno, result.old_revid) = self.last_revision_info()
+            old_revnum = self.get_revnum()
             self.update_revisions(source, stop_revision, overwrite)
-            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
+            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite, 
+                                                        _from_revnum=old_revnum)
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
         finally:

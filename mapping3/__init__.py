@@ -89,7 +89,7 @@ class SchemeDerivedLayout(RepositoryLayout):
             type = "branch"
         return (type, proj, bp, rp)
 
-    def _get_root_paths(self, revnum, verify_fn, project=None, pb=None):
+    def _get_root_paths(self, itemlist, revnum, verify_fn, project=None, pb=None):
         def check_path(path):
             return self.repository.transport.check_path(path, revnum) == NODE_DIR
         def find_children(path):
@@ -102,19 +102,19 @@ class SchemeDerivedLayout(RepositoryLayout):
                 raise
             return [d for d in dirents if dirents[d]['kind'] == NODE_DIR]
 
-        for idx, pattern in enumerate(self.scheme.branch_list):
+        for idx, pattern in enumerate(itemlist):
             if pb is not None:
-                pb.update("finding branches", idx, len(self.scheme.branch_list))
+                pb.update("finding branches", idx, len(itemlist))
             for bp in expand_branch_pattern([], pattern.split("/"), check_path,
                     find_children, project):
                 if verify_fn(bp, project):
                     yield "", bp, bp.split("/")[-1]
 
     def get_branches(self, revnum, project=None, pb=None):
-        return self._get_root_paths(revnum, self.scheme.is_branch, project, pb)
+        return self._get_root_paths(self.scheme.branch_list, revnum, self.scheme.is_branch, project, pb)
 
     def get_tags(self, revnum, project=None, pb=None):
-        return self._get_root_paths(revnum, self.scheme.is_tag, project, pb)
+        return self._get_root_paths(self.scheme.tag_list, revnum, self.scheme.is_tag, project, pb)
 
     def get_tag_path(self, name, project=""):
         return self.scheme.get_tag_path(name, project)
