@@ -31,7 +31,7 @@ from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_STREAM_MALFORMED_DATA
 from bzrlib.plugins.svn.format import get_rich_root_format
 
-LATEST_SVN_IMPORT_REVISION_FILENAME = "bzr-svn-import-revision"
+LATEST_IMPORT_REVISION_FILENAME = "svn-import-revision"
 
 def get_latest_svn_import_revision(repo, uuid):
     """Retrieve the latest revision checked by svn-import.
@@ -40,7 +40,7 @@ def get_latest_svn_import_revision(repo, uuid):
     :param uuid: Subversion repository UUID.
     """
     try:
-        text = repo.bzrdir.transport.get_bytes(LATEST_SVN_IMPORT_REVISION_FILENAME)
+        text = repo.bzrdir.transport.get_bytes(LATEST_IMPORT_REVISION_FILENAME)
     except NoSuchFile:
         return 0
     (text_uuid, revnum) = text.strip().split(" ")
@@ -56,7 +56,7 @@ def put_latest_svn_import_revision(repo, uuid, revnum):
     :param uuid: Subversion repository UUID.
     :param revnum: A revision number.
     """
-    repo.bzrdir.transport.put_bytes(LATEST_SVN_IMPORT_REVISION_FILENAME, 
+    repo.bzrdir.transport.put_bytes(LATEST_IMPORT_REVISION_FILENAME, 
                              "%s %d\n" % (uuid, revnum))
 
 
