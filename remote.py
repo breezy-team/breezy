@@ -89,7 +89,7 @@ class SvnRemoteAccess(BzrDir):
 
     def cloning_metadir(self):
         """Produce a metadir suitable for cloning with."""
-        return bzrlib.bzrdir.format_registry.make_bzrdir("1.6-rich-root")
+        return bzrlib.bzrdir.format_registry.make_bzrdir("rich-root-pack")
 
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):

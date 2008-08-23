@@ -4,8 +4,6 @@ bzr-svn-0.4.11	UNRELEASED
 
    * Fix setup.py run with python2.4. (#256804)
 
-   * Change default format to 1.6-rich-root.
-
    * Use rst2html.py rather than rst2html if it is available.
 
   BUG FIXES

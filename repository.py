@@ -910,7 +910,7 @@ class SvnRepository(Repository):
                                project=None, check_removed=False, 
                                find_branches=True, find_tags=True):
         if not check_removed and from_revnum == 0:
-            it = iter()
+            it = iter([])
             if find_branches:
                 it = chain(it, layout.get_branches(to_revnum, project))
             if find_tags:
