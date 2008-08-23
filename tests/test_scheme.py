@@ -682,7 +682,6 @@ class SchemeFromBranchListTests(TestCase):
                               ListBranchingScheme)
 
     def test_trunk(self):
-        self.assertIsInstance(scheme_from_branch_list(["trunk", "branches/*", 
-                                                       "tags/*"]), 
+        self.assertIsInstance(scheme_from_branch_list(["trunk", "branches/*"]), 
                               TrunkBranchingScheme)
 
