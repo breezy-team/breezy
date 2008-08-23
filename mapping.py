@@ -357,7 +357,7 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.import_fileid_map)
 
-    def export_fileid_map(self, fileids, revprops, fileprops):
+    def export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops):
         """Adjust the properties for a file id map.
 
         :param fileids: Dictionary
@@ -374,7 +374,7 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.import_text_parents)
 
-    def export_text_parents(self, text_parents, revprops, fileprops):
+    def export_text_parents(self, can_use_custom_revprops, text_parents, revprops, fileprops):
         """Store a text parent map.
 
         :param text_parents: Text parent map
@@ -383,14 +383,14 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.export_text_parents)
 
-    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, 
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, 
                         revision_id, revno, merges, fileprops):
         """Determines the revision properties and branch root file 
         properties.
         """
         raise NotImplementedError(self.export_revision)
 
-    def export_message(self, log, revprops, fileprops):
+    def export_message(self, can_use_custom_revprops, log, revprops, fileprops):
         raise NotImplementedError(self.export_message)
 
     def get_revision_id(self, branch_path, revprops, fileprops):
@@ -494,7 +494,7 @@ class BzrSvnMappingFileProps(object):
             return {}
         return parse_text_parents_property(metadata)
 
-    def export_text_parents(self, text_parents, svn_revprops, fileprops):
+    def export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops):
         if text_parents != {}:
             fileprops[SVN_PROP_BZR_TEXT_PARENTS] = generate_text_parents_property(text_parents)
         else:
@@ -530,7 +530,7 @@ class BzrSvnMappingFileProps(object):
 
         return svnprops
  
-    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
 
         # Keep track of what Subversion properties to set later on
         fileprops = {}
@@ -567,7 +567,7 @@ class BzrSvnMappingFileProps(object):
             mutter(str(e))
             return (None, None)
 
-    def export_fileid_map(self, fileids, revprops, fileprops):
+    def export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops):
         if fileids != {}:
             file_id_text = generate_fileid_property(fileids)
             fileprops[SVN_PROP_BZR_FILEIDS] = file_id_text
@@ -595,7 +595,7 @@ class BzrSvnMappingRevProps(object):
             return {}
         return parse_text_parents_property(svn_revprops[SVN_REVPROP_BZR_TEXT_PARENTS])
 
-    def export_text_parents(self, text_parents, svn_revprops, fileprops):
+    def export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops):
         svn_revprops[SVN_REVPROP_BZR_TEXT_PARENTS] = generate_text_parents_property(text_parents)
 
     def get_rhs_parents(self, branch_path, svn_revprops, 
@@ -616,10 +616,10 @@ class BzrSvnMappingRevProps(object):
             return (revno, revid)
         return (None, None)
 
-    def export_message(self, message, revprops, fileprops):
+    def export_message(self, can_use_custom_revprops, message, revprops, fileprops):
         revprops[SVN_REVPROP_BZR_LOG] = message.encode("utf-8")
 
-    def export_revision(self, branch_root, timestamp, timezone, committer, 
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, 
                         revprops, revision_id, revno, merges, 
                         fileprops):
         svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
@@ -645,7 +645,7 @@ class BzrSvnMappingRevProps(object):
 
         return (svn_revprops, {})
 
-    def export_fileid_map(self, fileids, revprops, fileprops):
+    def export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops):
         revprops[SVN_REVPROP_BZR_FILEIDS] = generate_fileid_property(fileids)
 
     def get_rhs_ancestors(self, branch_path, revprops, fileprops):

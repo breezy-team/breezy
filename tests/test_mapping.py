@@ -155,7 +155,7 @@ class MappingTestAdapter(object):
         revprops = {}
         fileprops = {}
         fileids = {"": "some-id", "bla/blie": "other-id"}
-        self.mapping.export_fileid_map(fileids, revprops, fileprops)
+        self.mapping.export_fileid_map(True, fileids, revprops, fileprops)
         revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
         self.assertEquals(fileids, 
                 self.mapping.import_fileid_map(revprops, fileprops))
@@ -166,18 +166,18 @@ class MappingTestAdapter(object):
         revprops = {}
         fileprops = {}
         text_parents = {"bla": "bloe", "ll": "12"}
-        self.mapping.export_text_parents(text_parents, revprops, fileprops)
+        self.mapping.export_text_parents(True, text_parents, revprops, fileprops)
         self.assertEquals(text_parents,
             self.mapping.import_text_parents(revprops, fileprops))
 
     def test_message(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
-        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
+        (revprops, fileprops) = self.mapping.export_revision(True, "branchp", 432432432.0, 0, "somebody", 
                                      {"arevprop": "val"}, "arevid", 4, ["merge1"], dict())
         revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
         try:
-            self.mapping.export_message("My Commit message", revprops, fileprops)
+            self.mapping.export_message(True, "My Commit message", revprops, fileprops)
         except NotImplementedError:
             raise TestNotApplicable
         targetrev = Revision(None)
@@ -187,7 +187,7 @@ class MappingTestAdapter(object):
     def test_revision(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
-        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
+        (revprops, fileprops) = self.mapping.export_revision(True, "branchp", 432432432.0, 0, "somebody", 
                                      {"arevprop": "val" }, "arevid", 4, ["merge1"], dict())
         targetrev = Revision(None)
         revprops["svn:date"] = "2008-11-03T09:33:00.716938Z"
@@ -200,7 +200,7 @@ class MappingTestAdapter(object):
     def test_revision_id(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
-        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", {}, "arevid", 4, ["merge1"], dict())
+        (revprops, fileprops) = self.mapping.export_revision(True, "branchp", 432432432.0, 0, "somebody", {}, "arevid", 4, ["merge1"], dict())
         self.assertEquals((4, "arevid"), self.mapping.get_revision_id("branchp", revprops, fileprops))
     
     def test_revision_id_none(self):

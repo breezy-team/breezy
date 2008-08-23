@@ -368,21 +368,21 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         else:
             return self.fileprops.import_fileid_map(svn_revprops, fileprops)
 
-    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, 
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, 
                         revno, merges, fileprops):
-        (_, fileprops) = self.fileprops.export_revision(branch_root, timestamp, timezone, committer, 
+        (_, fileprops) = self.fileprops.export_revision(can_use_custom_revprops, branch_root, timestamp, timezone, committer, 
                                       revprops, revision_id, revno, merges, fileprops)
-        (revprops, _) = self.revprops.export_revision(branch_root, timestamp, timezone, committer, 
+        (revprops, _) = self.revprops.export_revision(can_use_custom_revprops, branch_root, timestamp, timezone, committer, 
                                       revprops, revision_id, revno, merges, fileprops)
         return (revprops, fileprops)
 
-    def export_fileid_map(self, fileids, revprops, fileprops):
-        self.fileprops.export_fileid_map(fileids, revprops, fileprops)
-        self.revprops.export_fileid_map(fileids, revprops, fileprops)
+    def export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops):
+        self.fileprops.export_fileid_map(can_use_custom_revprops, fileids, revprops, fileprops)
+        self.revprops.export_fileid_map(can_use_custom_revprops, fileids, revprops, fileprops)
 
-    def export_text_parents(self, text_parents, revprops, fileprops):
-        self.fileprops.export_text_parents(text_parents, revprops, fileprops)
-        self.revprops.export_text_parents(text_parents, revprops, fileprops)
+    def export_text_parents(self, can_use_custom_revprops, text_parents, revprops, fileprops):
+        self.fileprops.export_text_parents(can_use_custom_revprops, text_parents, revprops, fileprops)
+        self.revprops.export_text_parents(can_use_custom_revprops, text_parents, revprops, fileprops)
 
     def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         self.fileprops.import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)

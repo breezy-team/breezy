@@ -184,7 +184,10 @@ class SvnCommitBuilder(RootCommitBuilder):
             base_branch_props = {}
         else:
             base_branch_props = lazy_dict({}, self.repository.branchprop_list.get_properties, self.base_path, self.base_revnum)
-        (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
+        self.supports_custom_revprops = self.repository.transport.has_capability("commit-revprops")
+        (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.supports_custom_revprops, 
+            self.branch.get_branch_path(), timestamp, timezone, committer, revprops, 
+            revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
             new_svk_merges = update_svk_features(base_branch_props.get(SVN_PROP_SVK_MERGE, ""), merges)
@@ -463,10 +466,13 @@ class SvnCommitBuilder(RootCommitBuilder):
                 text_parents[path] = revid
                 mutter('in %r: overriding text revid for %r -> %r' % (self._new_revision_id, path, revid))
 
-        self.base_mapping.export_text_parents(text_parents, self._svn_revprops, self._svnprops)
-        self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
+        self.base_mapping.export_text_parents(self.supports_custom_revprops, text_parents, 
+                                              self._svn_revprops, self._svnprops)
+        self.base_mapping.export_fileid_map(self.supports_custom_revprops, fileids, 
+                                            self._svn_revprops, self._svnprops)
         if self._config.get_log_strip_trailing_newline():
-            self.base_mapping.export_message(message, self._svn_revprops, self._svnprops)
+            self.base_mapping.export_message(self.supports_custom_revprops, message, 
+                                             self._svn_revprops, self._svnprops)
             message = message.rstrip("\n")
         if not self.push_metadata:
             self._svn_revprops = {}
@@ -479,7 +485,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             for prop in self._svn_revprops:
                 if not properties.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name", prop)
-            if self.repository.transport.has_capability("commit-revprops"):
+            if self.supports_custom_revprops:
                 self.editor = self.repository.transport.get_commit_editor(
                         self._svn_revprops, done, None, False)
                 self._svn_revprops = {}
