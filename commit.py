@@ -426,7 +426,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         bp_parts = bp.split("/")
         repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
-        set_revprops = self._config.get_set_revprops()
 
         # Store file ids
         def _dir_process_file_id(old_inv, new_inv, path, file_id):
@@ -485,8 +484,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                         self._svn_revprops, done, None, False)
                 self._svn_revprops = {}
             else:
-                if set_revprops:
-                    raise
                 # Try without bzr: revprops
                 self.editor = self.repository.transport.get_commit_editor({
                     properties.PROP_REVISION_LOG: self._svn_revprops[properties.PROP_REVISION_LOG]},

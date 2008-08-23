@@ -18,6 +18,7 @@
 """Working tree tests."""
 
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import has_symlinks, supports_executable
