@@ -56,7 +56,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('send -o-')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -68,7 +68,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('bundle')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
