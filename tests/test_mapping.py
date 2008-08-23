@@ -218,12 +218,12 @@ class MappingTestAdapter(object):
                 self.mapping.generate_revision_id("myuuid", 5, "bla")))
 
 
-class Mappingv1Tests(MappingTestAdapter,TestCase):
+class Mappingv1Tests(MappingTestAdapter, TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv1()
 
 
-class Mappingv2Tests(MappingTestAdapter,TestCase):
+class Mappingv2Tests(MappingTestAdapter, TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv2()
 
@@ -232,7 +232,7 @@ def sha1(text):
     return sha.new(text).hexdigest()
 
 
-class Mappingv3FilePropTests(MappingTestAdapter,TestCase):
+class Mappingv3FilePropTests(MappingTestAdapter, TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3FileProps(NoBranchingScheme())
 
@@ -296,17 +296,17 @@ class Mappingv3FilePropTests(MappingTestAdapter,TestCase):
                 self.mapping.generate_file_id("uuid", 2, u"\xe6".encode('utf-8'), u"\xe6\xf8\xe5"))
 
 
-class Mappingv3RevPropTests(MappingTestAdapter,TestCase):
+class Mappingv3RevPropTests(MappingTestAdapter, TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3RevProps(NoBranchingScheme())
 
 
-class Mappingv3HybridTests(MappingTestAdapter,TestCase):
+class Mappingv3HybridTests(MappingTestAdapter, TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3Hybrid(NoBranchingScheme())
 
 
-class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
+class Mappingv4TestAdapter(MappingTestAdapter, TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv4()
 

@@ -106,7 +106,7 @@ def parse_externals_description(base_url, val):
 def parse_mergeinfo_property(text):
     ret = {}
     for l in text.splitlines():
-        (path, ranges) = l.rsplit(":",1)
+        (path, ranges) = l.rsplit(":", 1)
         assert path.startswith("/")
         ret[path] = []
         for range in ranges.split(","):

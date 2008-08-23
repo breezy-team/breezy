@@ -80,7 +80,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         dc.close()
 
     def get_commit_editor(self):
-        return super(TestConversion,self).get_commit_editor(self.repos_url)
+        return super(TestConversion, self).get_commit_editor(self.repos_url)
 
     def test_sets_parent_urls(self):
         convert_repository(Repository.open(self.repos_url), "e", 

@@ -70,7 +70,7 @@ class ReposConfigTests(TestCaseInTempDir):
         c.set_user_option("override-svn-revprops", "False")
         self.assertEquals([], c.get_override_svn_revprops())
         c.set_user_option("override-svn-revprops", ["svn:author", "svn:date"])
-        self.assertEquals(["svn:author","svn:date"], c.get_override_svn_revprops())
+        self.assertEquals(["svn:author", "svn:date"], c.get_override_svn_revprops())
         c.set_user_option("override-svn-revprops", ["svn:author"])
         self.assertEquals(["svn:author"], c.get_override_svn_revprops())
 

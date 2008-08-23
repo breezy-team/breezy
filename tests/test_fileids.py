@@ -196,7 +196,7 @@ class TestFileMapping(TestCase):
                     return renames[r][x]
                 return self.mapping.generate_file_id("uuid", revnum, branchpath, x)
             revmap = simple_apply_changes(new_file_id, mappings[r], find_children)
-            map.update(dict([(x, (revmap[x],r)) for x in revmap]))
+            map.update(dict([(x, (revmap[x], r)) for x in revmap]))
         return map
 
     def test_simple(self):

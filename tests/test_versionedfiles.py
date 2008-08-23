@@ -37,12 +37,12 @@ class BasicSvnTextsTests:
                           [])
 
 
-class SvnTextsTests(TestCase,BasicSvnTextsTests):
+class SvnTextsTests(TestCase, BasicSvnTextsTests):
     def setUp(self):
         self.texts = SvnTexts(self)
 
 
-class VirtualRevisionTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualRevisionTextsTests(TestCase, BasicSvnTextsTests):
     def _make_parents_provider(self):
         return self
 
@@ -53,7 +53,7 @@ class VirtualRevisionTextsTests(TestCase,BasicSvnTextsTests):
         raise NotImplementedError
 
 
-class VirtualInventoryTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualInventoryTextsTests(TestCase, BasicSvnTextsTests):
     def _make_parents_provider(self):
         return self
 
@@ -70,7 +70,7 @@ class VirtualInventoryTextsTests(TestCase,BasicSvnTextsTests):
         self.assertEquals({("A",): osutils.sha_strings(["FOO"])}, self.texts.get_sha1s([("A",)]))
 
 
-class VirtualSignatureTextsTests(TestCase,BasicSvnTextsTests):
+class VirtualSignatureTextsTests(TestCase, BasicSvnTextsTests):
     def _make_parents_provider(self):
         return self
 

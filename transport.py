@@ -308,7 +308,7 @@ class SvnRaTransport(Transport):
         else:
             newpaths = [self._request_path(path) for path in paths]
         
-        fetcher = logfetcher(self, paths=newpaths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions,revprops=revprops)
+        fetcher = logfetcher(self, paths=newpaths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions, revprops=revprops)
         fetcher.start()
         return iter(fetcher.next, None)
 
@@ -458,7 +458,7 @@ class SvnRaTransport(Transport):
 
     def get_locations(self, path, peg_revnum, revnums):
         conn = self.get_connection()
-        self.mutter('svn get_locations -r%d %s (%r)' % (peg_revnum,path,revnums))
+        self.mutter('svn get_locations -r%d %s (%r)' % (peg_revnum, path, revnums))
         try:
             return conn.get_locations(path, peg_revnum, revnums)
         finally:

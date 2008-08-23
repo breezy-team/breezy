@@ -95,7 +95,7 @@ class SubversionTags(BasicTags):
 
     def _set_tag_dict(self, dest_dict):
         cur_dict = self.get_tag_dict()
-        for k,v in dest_dict.iteritems():
+        for k, v in dest_dict.iteritems():
             if cur_dict.get(k) != v:
                 self.set_tag(k, v)
         for k in cur_dict:

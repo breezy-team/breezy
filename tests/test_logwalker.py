@@ -378,7 +378,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         for (paths, rev, revprops) in walker.iter_changes([""], 1):
             self.assertTrue(rev == 0 or paths.has_key("foo"))
-            self.assertTrue(rev in (0,1))
+            self.assertTrue(rev in (0, 1))
 
     def test_follow_history_nohist(self):
         repos_url = self.make_repository("a")
@@ -397,7 +397,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         for (paths, rev, revprops) in walker.iter_changes([""], 1):
             self.assertTrue(rev == 0 or paths.has_key("foo"))
-            self.assertTrue(rev in (0,1))
+            self.assertTrue(rev in (0, 1))
 
         iter = walker.iter_changes([""], 2)
         self.assertRaises(NoSuchRevision, list, iter)

@@ -44,7 +44,7 @@ class SvnTexts(VersionedFiles):
             map = self.repository.get_fileid_map(revnum, branch, mapping)
             # Unfortunately, the map is the other way around
             lines = None
-            for k,(v,ck) in map.items():
+            for k, (v, ck) in map.items():
                 if v == fileid:
                     try:
                         stream = StringIO()
@@ -58,7 +58,7 @@ class SvnTexts(VersionedFiles):
                     break
             if lines is None:
                 raise Exception("Inconsistent key specified: (%r,%r)" % (fileid, revid))
-            yield FulltextContentFactory((fileid,revid), None, 
+            yield FulltextContentFactory((fileid, revid), None, 
                         sha1=osutils.sha_strings(lines),
                         text=''.join(lines))
 

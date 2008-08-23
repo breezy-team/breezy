@@ -211,7 +211,7 @@ class LogCache(CacheTable):
         """
         result = self.cachedb.execute("select name, value from revprop where rev = ?", (revnum,))
         revprops = {}
-        for k,v in result:
+        for k, v in result:
             revprops[k.encode("utf-8")] = v.encode("utf-8")
         return revprops
 
@@ -227,7 +227,7 @@ class LogCache(CacheTable):
     def insert_revprops(self, revision, revprops):
         if revprops is None:
             return
-        for k,v in revprops.items():
+        for k, v in revprops.items():
             self.insert_revprop(revision, k, v)
 
     def has_all_revprops(self, revnum):
@@ -477,7 +477,7 @@ class CachingLogWalker(CacheTable):
 def struct_revpaths_to_tuples(changed_paths):
     assert isinstance(changed_paths, dict)
     revpaths = {}
-    for k,(action, copyfrom_path, copyfrom_rev) in changed_paths.items():
+    for k, (action, copyfrom_path, copyfrom_rev) in changed_paths.items():
         if copyfrom_path is None:
             copyfrom_path = None
         else:
@@ -602,7 +602,7 @@ class LogWalker(object):
                     if num == ERR_FS_NOT_DIRECTORY:
                         continue
                     raise
-                for k,v in dirents.items():
+                for k, v in dirents.items():
                     childp = urlutils.join(nextp, k)
                     if v['kind'] == core.NODE_DIR:
                         unchecked_dirs.add(childp)
