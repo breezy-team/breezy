@@ -22,8 +22,8 @@ from zlib import Z_FINISH, Z_SYNC_FLUSH
 
 # [max_repack, buffer_full, repacks_with_space, min_compression,
 #  total_bytes_in, total_bytes_out, avg_comp,
-#  bytes_autopack, bytes_sync_packed]
-_stats = [0, 0, 0, 999, 0, 0, 0, 0, 0]
+#  bytes_autopack, bytes_sync_packed, num_full_by_zsync]
+_stats = [0, 0, 0, 999, 0, 0, 0, 0, 0, 0]
 
 class ChunkWriter(object):
     """ChunkWriter allows writing of compressed data with a fixed size.
@@ -49,6 +49,21 @@ class ChunkWriter(object):
              4      11.1  4.1   974      619  10.8  4.1  728   945
             20      11.9  4.1   0        1012 11.1  4.1  0     1012
 
+            repack = 0
+            zsync   time  MB    repacked    max_zsync
+             0       6.7  24.7  0           6270
+             1       6.5  13.2  0           3342
+             2       6.6   9.6  0           2414
+             5       6.5   6.2  0           1549
+             6       6.5   5.8  1           1435
+             7       6.6   5.5  19          1337
+             8       6.7   5.3  81          1220
+            10       6.8   5.0  260         967
+            11       6.8   4.9  366         839
+            12       6.9   4.8  454         731
+            15       7.2   4.7  704         450
+            20       7.7   4.6  1133        7
+
         In testing, some values for mysql-unpacked::
 
                     overall estim            next_bytes estim
@@ -60,7 +75,8 @@ class ChunkWriter(object):
             20      69.3  13.4  0       3380 67.0  13.4  0     3380
     """
 
-    _max_repack = 2
+    _max_repack = 0
+    _max_zsync = 6
 
     def __init__(self, chunk_size, reserved=0):
         """Create a ChunkWriter to write chunk_size chunks.
@@ -80,6 +96,7 @@ class ChunkWriter(object):
         # bytes that have been seen, but not included in a flush to out yet
         self.unflushed_in_bytes = 0
         self.num_repack = 0
+        self.num_zsync = 0
         self.done = False # We will accept no more bytes
         self.unused_bytes = None
         self.reserved_size = reserved
@@ -101,6 +118,9 @@ class ChunkWriter(object):
         _stats[4] += self.seen_bytes
         _stats[5] += self.bytes_out_len
         _stats[6] = float(_stats[4]) / _stats[5]
+
+        if self._max_repack == 0 and self.num_repack == 1:
+            _stats[9] += 1
 
         if self.bytes_out_len > self.chunk_size:
             raise AssertionError('Somehow we ended up with too much'
@@ -182,6 +202,10 @@ class ChunkWriter(object):
             # similar cost, same benefit. And this way we still have the
             # 'repack' knob that can be adjusted, and not depend on a
             # platform-specific 'copy()' function.
+            self.num_zsync += 1
+            if self._max_repack == 0 and self.num_zsync > self._max_zsync:
+                self.num_repack += 1
+                return True
             out = comp.compress(bytes)
             out += comp.flush(Z_SYNC_FLUSH)
             self.unflushed_in_bytes = 0
