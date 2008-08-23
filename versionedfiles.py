@@ -85,6 +85,9 @@ class VirtualRevisionTexts(VirtualVersionedFiles):
     def get_lines(self, key):
         return osutils.split_lines(self.repository.get_revision_xml(key))
 
+    def keys(self):
+        return [(revid,) for revid in self.repository.all_revision_ids()]
+
     # TODO: annotate, iter_lines_added_or_present_in_keys, keys
 
 
