@@ -906,14 +906,31 @@ class SvnRepository(Repository):
         return SvnCommitBuilder(self, branch, parents, config, timestamp, 
                 timezone, committer, revprops, revision_id)
 
-    def find_fileprop_branches(self, layout, from_revnum, to_revnum, 
-                               project=None, check_removed=False):
+    def find_fileprop_path(self, layout, from_revnum, to_revnum, 
+                               project=None, check_removed=False, 
+                               find_branches=True, find_tags=True):
         if not check_removed and from_revnum == 0:
-            for (project, branch, nick) in chain(layout.get_branches(to_revnum, project), layout.get_tags(to_revnum, project)):
+            it = iter()
+            if find_branches:
+                it = chain(it, layout.get_branches(to_revnum, project))
+            if find_tags:
+                it = chain(it, layout.get_tags(to_revnum, project))
+            for (project, branch, nick) in it:
                 yield (branch, to_revnum, True)
         else:
+            if find_branches and find_tags:
+                check_path_fn = layout.is_branch_or_tag
+                check_parent_path_fn = layout.is_branch_or_tag_parent
+            elif find_branches:
+                check_path_fn = layout.is_branch
+                check_parent_path_fn = layout.is_branch_parent
+            elif find_tags:
+                check_path_fn = layout.is_tag
+                check_parent_path_fn = layout.is_tag_parent
+            else:
+                assert False
             for (branch, revno, exists) in self.find_branchpaths(
-                layout.is_branch_or_tag, layout.is_branch_or_tag_parent,
+                check_path_fn, check_parent_path_fn,
                 from_revnum, to_revnum, project):
                 yield (branch, revno, exists)
 

@@ -72,7 +72,7 @@ class RevidMap(object):
         reuse_policy = self.repos.get_config().get_reuse_revisions()
         assert reuse_policy in ("other-branches", "removed-branches", "none") 
         check_removed = (reuse_policy == "removed-branches")
-        for (branch, revno, exists) in self.repos.find_fileprop_branches(layout, from_revnum, to_revnum, project, check_removed=check_removed):
+        for (branch, revno, exists) in self.repos.find_fileprop_branches(layout, from_revnum, to_revnum, project, check_removed=check_removed, find_branches=True, find_tags=True):
             assert isinstance(branch, str)
             assert isinstance(revno, int)
             # Look at their bzr:revision-id-vX

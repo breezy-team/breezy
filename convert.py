@@ -172,8 +172,9 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
         else:
             from_revnum = 0
         to_revnum = source_repos.get_latest_revnum()
-        changed_branches = source_repos.find_fileprop_branches(layout=layout, 
-            from_revnum=from_revnum, to_revnum=to_revnum, check_removed=True)
+        changed_branches = source_repos.find_fileprop_paths(layout=layout, 
+            from_revnum=from_revnum, to_revnum=to_revnum, check_removed=True,
+            find_branches=True, find_tags=False)
         existing_branches = []
         removed_branches = []
         for (bp, revnum, exists) in changed_branches:
