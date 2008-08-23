@@ -21,14 +21,14 @@ import git
 from bzrlib import (
     errors,
     inventory,
-    repository,
     revision,
     )
+from bzrlib.repository import Repository
 
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git import (
-    git_dir,
-    git_repository,
+    dir,
+    repository,
     ids,
     )
 
@@ -41,13 +41,13 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     def test_open_existing(self):
         tests.run_git('init')
 
-        repo = repository.Repository.open('.')
-        self.assertIsInstance(repo, git_repository.GitRepository)
+        repo = Repository.open('.')
+        self.assertIsInstance(repo, repository.GitRepository)
 
     def test_has_git_repo(self):
         tests.run_git('init')
 
-        repo = repository.Repository.open('.')
+        repo = Repository.open('.')
         self.assertIsInstance(repo._git, git.repo.Repo)
 
     def test_get_revision(self):
@@ -63,7 +63,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
         # Get the corresponding Revision object.
         revid = ids.convert_revision_id_git_to_bzr(commit_id)
-        repo = repository.Repository.open('.')
+        repo = Repository.open('.')
         rev = repo.get_revision(revid)
         self.assertIsInstance(rev, revision.Revision)
 
@@ -83,7 +83,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     def test_revision_tree(self):
         commit_id = self.simple_commit()
         revid = ids.convert_revision_id_git_to_bzr(commit_id)
-        repo = repository.Repository.open('.')
+        repo = Repository.open('.')
         tree = repo.revision_tree(revid)
         self.assertEquals(tree.get_revision_id(), revid)
         self.assertEquals("text\n", tree.get_file_text(tree.path2id("data")))
@@ -96,7 +96,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
         # Get the corresponding Inventory object.
         revid = ids.convert_revision_id_git_to_bzr(commit_id)
-        repo = repository.Repository.open('.')
+        repo = Repository.open('.')
         inv = repo.get_inventory(revid)
         self.assertIsInstance(inv, inventory.Inventory)
         printed_inv = '\n'.join(
@@ -126,7 +126,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         git.repo.Repo.create(self.test_dir)
-        self.git_repo = repository.Repository.open(self.test_dir)
+        self.git_repo = Repository.open(self.test_dir)
 
     def test_supports_rich_root(self):
         # GitRepository.supports_rich_root is False, at least for now.
@@ -172,7 +172,7 @@ class GitRepositoryFormat(tests.TestCase):
 
     def setUp(self):
         super(GitRepositoryFormat, self).setUp()
-        self.format = git_repository.GitFormat()
+        self.format = repository.GitFormat()
 
     def test_get_format_description(self):
         self.assertEquals("Git Repository", self.format.get_format_description())

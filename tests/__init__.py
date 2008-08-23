@@ -228,9 +228,9 @@ def test_suite():
 
     testmod_names = [
         'test_builder',
-        'test_git_branch',
-        'test_git_dir',
-        'test_git_repository',
+        'test_branch',
+        'test_dir',
+        'test_repository',
         'test_ids',
         'test_blackbox',
         'test_versionedfiles',

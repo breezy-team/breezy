@@ -18,11 +18,12 @@
 
 import git
 
-from bzrlib import branch, revision
+from bzrlib import revision
+from bzrlib.branch import Branch
 
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git import (
-    git_branch,
+    branch,
     ids,
     )
 
@@ -34,13 +35,13 @@ class TestGitBranch(tests.TestCaseInTempDir):
     def test_open_existing(self):
         tests.run_git('init')
 
-        thebranch = branch.Branch.open('.')
-        self.assertIsInstance(thebranch, git_branch.GitBranch)
+        thebranch = Branch.open('.')
+        self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_last_revision_is_null(self):
         tests.run_git('init')
 
-        thebranch = branch.Branch.open('.')
+        thebranch = Branch.open('.')
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
         self.assertEqual((0, revision.NULL_REVISION),
                          thebranch.last_revision_info())
@@ -55,7 +56,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.simple_commit_a()
         head = tests.run_git('rev-parse', 'HEAD').strip()
 
-        thebranch = branch.Branch.open('.')
+        thebranch = Branch.open('.')
         self.assertEqual(ids.convert_revision_id_git_to_bzr(head),
                          thebranch.last_revision())
 
@@ -67,7 +68,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         tests.run_git('commit', '-m', 'b')
         revb = tests.run_git('rev-parse', 'HEAD').strip()
 
-        thebranch = branch.Branch.open('.')
+        thebranch = Branch.open('.')
         self.assertEqual([ids.convert_revision_id_git_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
 
@@ -79,7 +80,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         
         newid = open('.git/refs/tags/foo').read().rstrip()
 
-        thebranch = branch.Branch.open('.')
+        thebranch = Branch.open('.')
         self.assertEquals({"foo": ids.convert_revision_id_git_to_bzr(newid)},
                           thebranch.tags.get_tag_dict())
         
@@ -89,7 +90,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         git.repo.Repo.create(self.test_dir)
-        self.git_branch = branch.Branch.open(self.test_dir)
+        self.git_branch = Branch.open(self.test_dir)
 
     def test_get_parent(self):
         self.assertIs(None, self.git_branch.get_parent())
@@ -105,7 +106,7 @@ class TestGitBranchFormat(tests.TestCase):
 
     def setUp(self):
         super(TestGitBranchFormat, self).setUp()
-        self.format = git_branch.GitBranchFormat()
+        self.format = branch.GitBranchFormat()
 
     def test_get_format_description(self):
         self.assertEquals("Git Branch", self.format.get_format_description())

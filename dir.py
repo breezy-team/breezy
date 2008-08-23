@@ -28,9 +28,9 @@ from bzrlib import (
 lazy_import(globals(), """
 from bzrlib.plugins.git import (
     errors,
-    git_branch,
-    git_repository,
-    git_workingtree,
+    branch,
+    repository,
+    workingtree,
     )
 """)
 
@@ -64,7 +64,7 @@ class GitLockableFiles(lockable_files.LockableFiles):
 class GitDir(bzrdir.BzrDir):
     """An adapter to the '.git' dir used by git."""
 
-    _gitrepository_class = git_repository.GitRepository
+    _gitrepository_class = repository.GitRepository
 
     def __init__(self, transport, lockfiles, gitrepo, format):
         self._format = format
@@ -96,7 +96,7 @@ class GitDir(bzrdir.BzrDir):
             head = None
         else:
             head = repo._git.heads[0].commit.id
-        return git_branch.GitBranch(self, repo, head, 
+        return branch.GitBranch(self, repo, head, 
                                     self.root_transport.base, self._lockfiles)
 
     def open_repository(self, shared=False):
@@ -108,7 +108,7 @@ class GitDir(bzrdir.BzrDir):
             loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
             raise errors.bzr_errors.NoWorkingTree(loc)
         else:
-            return git_workingtree.GitWorkingTree(self, self.open_repository(), 
+            return workingtree.GitWorkingTree(self, self.open_repository(), 
                                                   self.open_branch())
 
     def cloning_metadir(self):

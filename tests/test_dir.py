@@ -18,8 +18,7 @@
 
 from bzrlib import bzrdir, errors
 
-from bzrlib.plugins.git import tests
-from bzrlib.plugins.git import git_dir, git_workingtree
+from bzrlib.plugins.git import dir, tests, workingtree
 
 
 class TestGitDir(tests.TestCaseInTempDir):
@@ -30,14 +29,14 @@ class TestGitDir(tests.TestCaseInTempDir):
         tests.run_git('init')
 
         gd = bzrdir.BzrDir.open('.')
-        self.assertIsInstance(gd, git_dir.GitDir)
+        self.assertIsInstance(gd, dir.GitDir)
 
     def test_open_workingtree(self):
         tests.run_git('init')
 
         gd = bzrdir.BzrDir.open('.')
         wt = gd.open_workingtree()
-        self.assertIsInstance(wt, git_workingtree.GitWorkingTree)
+        self.assertIsInstance(wt, workingtree.GitWorkingTree)
 
     def test_open_workingtree_bare(self):
         tests.run_git('--bare', 'init')
@@ -52,7 +51,7 @@ class TestGitDirFormat(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestGitDirFormat, self).setUp()
-        self.format = git_dir.GitBzrDirFormat()
+        self.format = dir.GitBzrDirFormat()
 
     def test_get_format_description(self):
         self.assertEquals("Local Git Repository",

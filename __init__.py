@@ -19,7 +19,7 @@
 """A GIT branch and repository format implementation for bzr."""
 
 from bzrlib import bzrdir
-from bzrlib.plugins.git.git_dir import GitBzrDirFormat
+from bzrlib.plugins.git.dir import GitBzrDirFormat
 
 bzrdir.format_registry.register(
     'git', GitBzrDirFormat,

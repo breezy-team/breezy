@@ -1,10 +1,2 @@
-Todo
-====
-
-- revision inventory synthesis, a-la bzr-hg.
-- file content data access.
-- native cloning - so bzr branch fromgit togit works.
-- conversion pulling - so bzr init; bzr pull fromgit works.
-- possibly generate a factored out generic 'git' python module if our native
-  bindings become big enough.
-- TESTS
+- Push into git
+- Tests
