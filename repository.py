@@ -170,7 +170,8 @@ class SvnRepository(Repository):
     def __init__(self, bzrdir, transport, branch_path=None):
         from bzrlib.plugins.svn import lazy_register_optimizers
         lazy_register_optimizers()
-        from fileids import CachingFileIdMap, simple_apply_changes, FileIdMap
+        from bzrlib.plugins.svn.fileids import (CachingFileIdMap, 
+                                                simple_apply_changes, FileIdMap)
         _revision_store = None
 
         assert isinstance(transport, Transport)
@@ -834,8 +835,8 @@ class SvnRepository(Repository):
             pb.finished()
         return tags
 
-    def find_branchpaths(self, layout, from_revnum=0, to_revnum=None, 
-                         project=None):
+    def find_branchpaths(self, layout, check_path, check_parent_path,
+                         from_revnum=0, to_revnum=None, project=None):
         """Find all branch paths that were changed in the specified revision 
         range.
 
@@ -903,7 +904,7 @@ class SvnRepository(Repository):
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
                            revision_id=None):
-        from commit import SvnCommitBuilder
+        from bzrlib.plugins.svn.commit import SvnCommitBuilder
         return SvnCommitBuilder(self, branch, parents, config, timestamp, 
                 timezone, committer, revprops, revision_id)
 
