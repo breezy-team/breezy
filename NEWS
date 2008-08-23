@@ -58,6 +58,9 @@ IN DEVELOPMENT
       the target tree. Previously it returned True unconditionally.
       (Robert Collins)
 
+    * The deprecated ``Branch.abspath`` and unimplemented 
+      ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
+
   TESTING:
 
     * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
