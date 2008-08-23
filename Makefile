@@ -27,7 +27,7 @@ RST2HTML ?= $(if $(shell which rst2html.py 2>/dev/null), rst2html.py, rst2html)
 TESTS ?= 
 DESTDIR ?=
 
-REST_DOCS = README FAQ HTML
+REST_DOCS = README FAQ AUTHORS
 
 all:: build build-inplace $(patsubst %,%.html,$(REST_DOCS))
 
