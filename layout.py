@@ -74,6 +74,12 @@ class RepositoryLayout(object):
             return True
         return False
 
+    def is_branch_or_tag(self, path, project=None):
+        return self.is_branch(path, project) or self.is_tag(path, project)
+
+    def is_branch_or_tag_parent(self, path, project=None):
+        return self.is_branch_parent(path, project) or self.is_tag_parent(path, project)
+
     def get_branches(self, revnum, project="", pb=None):
         """Retrieve a list of paths that refer to branches in a specific revision.
 

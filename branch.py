@@ -361,10 +361,8 @@ class SvnBranch(Branch):
         source.lock_read()
         try:
             (result.old_revno, result.old_revid) = self.last_revision_info()
-            old_revnum = self.get_revnum()
             self.update_revisions(source, stop_revision, overwrite)
-            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite, 
-                                                        _from_revnum=old_revnum)
+            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
         finally:
