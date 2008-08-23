@@ -19,7 +19,6 @@ import bzrlib.gpg
 from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import KnownFailure
-from bzrlib.trace import mutter
 
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from bzrlib.plugins.svn.mapping3.scheme import NoBranchingScheme

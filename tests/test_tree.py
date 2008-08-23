@@ -19,16 +19,13 @@ from bzrlib.inventory import Inventory, TreeReference
 from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestCase, TestSkipped
-from bzrlib.workingtree import WorkingTree
+from bzrlib.tests import TestSkipped
 
 from bzrlib.plugins.svn import errors
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.tree import SvnBasisTree, inventory_add_external
 
-import os
-import sys
 
 class TestBasisTree(TestCaseWithSubversionRepository):
     def test_executable(self):

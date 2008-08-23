@@ -25,7 +25,6 @@ from bzrlib.transport import Transport
 
 import bzrlib.plugins.svn
 from bzrlib.plugins.svn import ra
-from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import get_config
 from bzrlib.plugins.svn.core import SubversionException

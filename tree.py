@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Access to stored Subversion basis trees."""
 
-from bzrlib import osutils, urlutils, ui
+from bzrlib import osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.inventory import Inventory, InventoryDirectory, TreeReference
 from bzrlib.revision import CURRENT_REVISION

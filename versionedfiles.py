@@ -13,9 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib import debug, osutils, urlutils
-from bzrlib.trace import mutter
-from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, AbsentContentFactory, VirtualVersionedFiles
+from bzrlib import osutils, urlutils
+from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, VirtualVersionedFiles
 
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NOT_FILE

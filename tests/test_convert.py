@@ -22,7 +22,6 @@ from bzrlib.errors import NotBranchError, NoSuchFile, IncompatibleRepositories
 from bzrlib.urlutils import local_path_to_url
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.trace import mutter
 
 import os, sys
 

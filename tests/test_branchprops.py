@@ -16,8 +16,6 @@
 
 """Branch property access tests."""
 
-from bzrlib.errors import NoSuchRevision
-
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.branchprops import PathPropertyProvider
 from bzrlib.plugins.svn.logwalker import LogWalker, CachingLogWalker

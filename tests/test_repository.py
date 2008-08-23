@@ -22,14 +22,14 @@ from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.config import GlobalConfig
-from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
+from bzrlib.errors import NoSuchRevision, UninitializableFormat
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
-from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestSkipped
 
-import os, sys
+import os
 
 from bzrlib.plugins.svn import format, ra
 from bzrlib.plugins.svn.mapping import (escape_svn_path, unescape_svn_path, 
@@ -38,7 +38,6 @@ from bzrlib.plugins.svn.mapping3 import (SVN_PROP_BZR_BRANCHING_SCHEME, set_bran
                       set_property_scheme, BzrSvnMappingv3)
 from bzrlib.plugins.svn.mapping3.scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme, SingleBranchingScheme)
-from bzrlib.plugins.svn.transport import SvnRaTransport
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat
 

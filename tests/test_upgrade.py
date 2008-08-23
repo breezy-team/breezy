@@ -17,13 +17,11 @@
 """Mapping upgrade tests."""
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import InvalidRevisionId
 from bzrlib.repository import Repository
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCase, TestSkipped
 
 from bzrlib.plugins.svn.errors import RebaseNotPresent
 from bzrlib.plugins.svn.format import get_rich_root_format
-from bzrlib.plugins.svn.mapping import (BzrSvnMappingv2, BzrSvnMappingv1)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository

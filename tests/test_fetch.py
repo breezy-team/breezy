@@ -30,7 +30,7 @@ from bzrlib.plugins.svn import format, remote
 from bzrlib.plugins.svn.convert import load_dumpfile
 from bzrlib.plugins.svn.errors import InvalidFileName
 from bzrlib.plugins.svn.mapping3 import set_branching_scheme
-from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.transport import SvnRaTransport
 

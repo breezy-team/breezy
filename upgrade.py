@@ -16,8 +16,7 @@
 """Upgrading revisions made with older versions of the mapping."""
 
 from bzrlib.errors import BzrError, InvalidRevisionId
-from bzrlib.trace import info, mutter
-import bzrlib.ui as ui
+from bzrlib.trace import info
 
 import itertools
 from bzrlib.plugins.svn.mapping import parse_revision_id

@@ -18,9 +18,8 @@
 import sha
 
 from bzrlib.errors import InvalidRevisionId
-from bzrlib.tests import TestCase, adapt_tests, TestNotApplicable
+from bzrlib.tests import TestCase, TestNotApplicable
 from bzrlib.revision import Revision
-from bzrlib.trace import mutter
 
 from bzrlib.plugins.svn.errors import InvalidPropertyValue
 from bzrlib.plugins.svn.mapping import (generate_revision_metadata, parse_revision_metadata, 

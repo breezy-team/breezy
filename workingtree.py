@@ -20,15 +20,13 @@ from bzrlib import osutils, urlutils
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent, BzrError, UninitializableFormat,
+                           NoRepositoryPresent, 
                            OutOfDateTree, NoWorkingTree, UnsupportedFormatError)
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
-from bzrlib.lockable_files import TransportLock, LockableFiles
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.revisiontree import RevisionTree
-from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from bzrlib.plugins.svn import core, properties
@@ -36,9 +34,8 @@ from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.branch import SvnBranch
 from bzrlib.plugins.svn.client import Client
 from bzrlib.plugins.svn.commit import _revision_id_to_svk_feature
-from bzrlib.plugins.svn.convert import SvnConverter
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, NoSvnRepositoryPresent, ERR_FS_TXN_OUT_OF_DATE, ERR_ENTRY_EXISTS, ERR_WC_PATH_NOT_FOUND, ERR_WC_NOT_DIRECTORY, NotSvnBranchPath
+from bzrlib.plugins.svn.errors import LocalCommitsUnsupported, ERR_FS_TXN_OUT_OF_DATE, ERR_ENTRY_EXISTS, ERR_WC_PATH_NOT_FOUND, ERR_WC_NOT_DIRECTORY, NotSvnBranchPath
 from bzrlib.plugins.svn.format import get_rich_root_format
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,

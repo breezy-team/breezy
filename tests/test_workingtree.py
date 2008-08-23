@@ -18,7 +18,6 @@
 """Working tree tests."""
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import has_symlinks, supports_executable
@@ -26,12 +25,11 @@ from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.plugins.svn import wc
 from bzrlib.plugins.svn.transport import svn_config
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.workingtree import generate_ignore_list
 
-import os, sys
+import os
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):

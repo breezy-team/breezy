@@ -14,7 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bzrlib import osutils
-from bzrlib.graph import DictParentsProvider
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, VirtualRevisionTexts, 

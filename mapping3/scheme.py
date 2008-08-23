@@ -19,13 +19,10 @@ from bzrlib import ui, urlutils
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 
-from bzrlib.errors import NotBranchError
-
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from bzrlib.plugins.svn.errors import InvalidSvnBranchPath
 from bzrlib.plugins.svn import properties
 import bz2
-import urllib
 
 class BranchingScheme(object):
     """ Divides SVN repository data up into branches. Since there

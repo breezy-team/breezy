@@ -16,23 +16,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import AlreadyBranchError, BzrError, DivergedBranches
-from bzrlib.inventory import Inventory
 from bzrlib.merge import Merger, Merge3Merger
 from bzrlib.osutils import has_symlinks
 from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
-from bzrlib.tests import KnownFailure, TestCaseWithTransport
 from bzrlib.trace import mutter
-from bzrlib.workingtree import WorkingTree
 
 import os
-from time import sleep
 
 from bzrlib.plugins.svn import core, format, ra
-from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
+from bzrlib.plugins.svn.errors import MissingPrefix
 from bzrlib.plugins.svn.commit import push, dpush
 from bzrlib.plugins.svn.mapping import SVN_PROP_BZR_REVISION_ID
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository

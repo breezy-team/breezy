@@ -21,7 +21,6 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, UninitializableFormat
 from bzrlib.tests import TestCase
 
-from bzrlib.plugins.svn.convert import SvnConverter
 from bzrlib.plugins.svn.workingtree import SvnWorkingTreeFormat
 from bzrlib.plugins.svn.format import SvnWorkingTreeDirFormat
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository

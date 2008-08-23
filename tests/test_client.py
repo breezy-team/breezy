@@ -15,7 +15,6 @@
 
 """Subversion client library tests."""
 
-from bzrlib.tests import TestCase
 from bzrlib.plugins.svn import client
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 
