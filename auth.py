@@ -115,7 +115,8 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
     def get_svn_ssl_server_trust_prompt_provider(self):
         """Return a Subversion auth provider for checking 
         whether a SSL server is trusted."""
-        return ra.get_ssl_server_trust_prompt_provider(self.get_svn_ssl_server_trust)
+        return ra.get_ssl_server_trust_prompt_provider(
+            self.get_svn_ssl_server_trust)
 
     def get_svn_auth_providers(self):
         """Return a list of auth providers for this authentication file.

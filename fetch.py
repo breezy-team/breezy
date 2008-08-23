@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Fetching revisions from Subversion repositories in batches."""
 
-import bzrlib
 from bzrlib import debug, delta, osutils, ui, urlutils
 from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
@@ -29,13 +28,9 @@ import md5
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
 from bzrlib.plugins.svn.errors import InvalidFileName
-from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_PREFIX, SVN_REVPROP_BZR_SIGNATURE)
-from bzrlib.plugins.svn.properties import parse_externals_description
 from bzrlib.plugins.svn.repository import SvnRepository, SvnRepositoryFormat
-from bzrlib.plugins.svn.svk import SVN_PROP_SVK_MERGE
 from bzrlib.plugins.svn.transport import _url_escape_uri
-from bzrlib.plugins.svn.tree import inventory_add_external
 
 FETCH_COMMIT_WRITE_SIZE = 500
 
@@ -94,14 +89,6 @@ class DeltaBuildEditor(object):
     def set_target_revision(self, revnum):
         assert self.revmeta.revnum == revnum
 
-    def _get_id_map(self):
-        if self._id_map is not None:
-            return self._id_map
-
-        self._id_map = self.source.transform_fileid_map(self.revmeta, self.mapping)
-
-        return self._id_map
-
     def open_root(self, base_revnum):
         return self._open_root(base_revnum)
 
@@ -110,9 +97,6 @@ class DeltaBuildEditor(object):
 
     def abort(self):
         pass
-
-    def _get_map_id(self, new_path):
-        return self._get_id_map().get(new_path)
 
 
 class DirectoryBuildEditor(object):
@@ -469,6 +453,17 @@ class RevisionBuildEditor(DeltaBuildEditor):
             ie.revision = self.revid
         assert ie.revision is not None
         return DirectoryRevisionBuildEditor(self, "", old_file_id, file_id, file_parents)
+
+    def _get_id_map(self):
+        if self._id_map is not None:
+            return self._id_map
+
+        self._id_map = self.source.transform_fileid_map(self.revmeta, self.mapping)
+
+        return self._id_map
+
+    def _get_map_id(self, new_path):
+        return self._get_id_map().get(new_path)
 
     def _get_old_id(self, parent_id, old_path):
         assert isinstance(old_path, unicode)

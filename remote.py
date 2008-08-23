@@ -17,15 +17,13 @@
 
 import bzrlib
 from bzrlib import urlutils
-from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
-from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
-                           NoWorkingTree, AlreadyBranchError)
+from bzrlib.bzrdir import BzrDirFormat, BzrDir
+from bzrlib.errors import (NotLocalUrl, NoWorkingTree, AlreadyBranchError)
 from bzrlib.trace import warning
-from bzrlib.transport.local import LocalTransport
 
 from bzrlib.plugins.svn import core
 from bzrlib.plugins.svn.errors import NoSvnRepositoryPresent
-from bzrlib.plugins.svn.format import get_rich_root_format, SvnRemoteFormat
+from bzrlib.plugins.svn.format import SvnRemoteFormat
 from bzrlib.plugins.svn.repository import SvnRepository
 from bzrlib.plugins.svn.transport import bzr_to_svn_url, get_svn_ra_transport
 

@@ -19,16 +19,11 @@ from bzrlib import ui, urlutils
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
-                           NoSuchTag, NotBranchError, UnstackableBranchFormat,
-                           UnrelatedBranches)
-from bzrlib.inventory import (Inventory)
-from bzrlib.revision import is_null, ensure_null, NULL_REVISION
-from bzrlib.trace import mutter
+                           NotBranchError, UnstackableBranchFormat)
+from bzrlib.revision import is_null, ensure_null
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import core, wc
-from bzrlib.plugins.svn.auth import create_auth_baton
-from bzrlib.plugins.svn.client import Client, get_config
 from bzrlib.plugins.svn.commit import push, push_ancestors
 from bzrlib.plugins.svn.config import BranchConfig
 from bzrlib.plugins.svn.core import SubversionException
@@ -76,7 +71,8 @@ class SvnBranch(Branch):
         self.mapping = self.repository.get_mapping()
         self.layout = self.repository.get_layout()
         self._branch_path = branch_path.strip("/")
-        self.base = urlutils.join(self.repository.base, self._branch_path).rstrip("/")
+        self.base = urlutils.join(self.repository.base, 
+                        self._branch_path).rstrip("/")
         self._revmeta_cache = None
         assert isinstance(self._branch_path, str)
         if not _skip_check:
@@ -142,7 +138,8 @@ class SvnBranch(Branch):
         if self._lock_mode == 'r' and self._cached_revnum:
             return self._cached_revnum
         latest_revnum = self.repository.get_latest_revnum()
-        self._cached_revnum = self.repository._log.find_latest_change(self.get_branch_path(), latest_revnum)
+        self._cached_revnum = self.repository._log.find_latest_change(
+            self.get_branch_path(), latest_revnum)
         if self._cached_revnum is None:
             raise NotBranchError(self.base)
         return self._cached_revnum
@@ -154,7 +151,8 @@ class SvnBranch(Branch):
         """
         return BranchCheckResult(self)
 
-    def _create_heavyweight_checkout(self, to_location, revision_id=None, hardlink=False):
+    def _create_heavyweight_checkout(self, to_location, revision_id=None, 
+                                     hardlink=False):
         """Create a new heavyweight checkout of this branch.
 
         :param to_location: URL of location to create the new checkout in.
@@ -180,7 +178,7 @@ class SvnBranch(Branch):
         :raises NoSuchRevision: If the revision id was not found.
         """
         (bp, revnum, mapping) = self.repository.lookup_revision_id(revid, 
-                                         ancestry=(self.get_branch_path(), self.get_revnum()))
+            ancestry=(self.get_branch_path(), self.get_revnum()))
         assert bp.strip("/") == self.get_branch_path(revnum).strip("/"), \
                 "Got %r, expected %r" % (bp, self.get_branch_path(revnum))
         return revnum
@@ -221,7 +219,8 @@ class SvnBranch(Branch):
         if lightweight:
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
-            return self._create_heavyweight_checkout(to_location, revision_id, hardlink=hardlink)
+            return self._create_heavyweight_checkout(to_location, revision_id, 
+                                                     hardlink=hardlink)
 
     def generate_revision_id(self, revnum):
         """Generate a new revision id for a revision on this branch."""
@@ -251,7 +250,8 @@ class SvnBranch(Branch):
 
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history()."""
-        if rev_history == [] or not self.repository.has_revision(rev_history[-1]):
+        if (rev_history == [] or 
+            not self.repository.has_revision(rev_history[-1])):
             raise NotImplementedError("set_revision_history can't add ghosts")
         push(self, self.repository, rev_history[-1])
         self._clear_cached_state()
@@ -470,7 +470,7 @@ class SvnBranch(Branch):
         self.repository.unlock()
 
     def _clear_cached_state(self):
-        super(SvnBranch,self)._clear_cached_state()
+        super(SvnBranch, self)._clear_cached_state()
         self._cached_revnum = None
         self._revmeta_cache = None
 
@@ -480,13 +480,6 @@ class SvnBranch(Branch):
 
     def set_parent(self, url):
         """See Branch.set_parent()."""
-
-    def append_revision(self, *revision_ids):
-        """See Branch.append_revision()."""
-        self._clear_cached_state()
-        #raise NotImplementedError(self.append_revision)
-        #FIXME: Make sure the appended revision is already 
-        # part of the revision history
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""

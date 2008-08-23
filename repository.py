@@ -15,9 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion repository access."""
 
-import bzrlib
-from bzrlib import delta, osutils, ui, urlutils, xml7
-from bzrlib.branch import Branch, BranchCheckResult
+from bzrlib import osutils, ui, urlutils, xml7
+from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat)
 from bzrlib.graph import CachingParentsProvider
@@ -27,7 +26,7 @@ from bzrlib.repository import Repository, RepositoryFormat, needs_read_lock
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION, ensure_null
 from bzrlib.transport import Transport, get_transport
-from bzrlib.trace import info, mutter
+from bzrlib.trace import info
 
 from itertools import chain
 import os
@@ -38,12 +37,10 @@ from bzrlib.plugins.svn.cache import create_cache_dir, sqlite3
 from bzrlib.plugins.svn.changes import changes_path, find_prev_location
 from bzrlib.plugins.svn.config import SvnRepositoryConfig
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
-                     parse_revision_metadata, parse_revid_property, 
-                     parse_merge_property, BzrSvnMapping,
-                     get_default_mapping, parse_revision_id, 
+from bzrlib.plugins.svn.mapping import (SVN_REVPROP_BZR_SIGNATURE,
+                     BzrSvnMapping,
+                     get_default_mapping, 
                      parse_svn_dateprop)
-from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from bzrlib.plugins.svn.parents import DiskCachingParentsProvider
 from bzrlib.plugins.svn.revids import CachingRevidMap, RevidMap
 from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
@@ -51,7 +48,6 @@ from bzrlib.plugins.svn.svk import (SVN_PROP_SVK_MERGE, svk_features_merged_sinc
 from bzrlib.plugins.svn.tree import SvnRevisionTree
 from bzrlib.plugins.svn.versionedfiles import (SvnTexts, VirtualRevisionTexts, 
                                                VirtualInventoryTexts, VirtualSignatureTexts)
-import urllib
 
 def full_paths(find_children, paths, bp, from_bp, from_rev):
     for c in find_children(from_bp, from_rev):

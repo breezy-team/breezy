@@ -20,7 +20,7 @@ import os
 from bzrlib import osutils, ui, urlutils
 from bzrlib.bzrdir import BzrDir, Converter
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
-                           NoRepositoryPresent, NoSuchRevision) 
+                           NoRepositoryPresent) 
 from bzrlib.repository import InterRepository
 from bzrlib.revision import ensure_null
 from bzrlib.transport import get_transport
@@ -250,6 +250,7 @@ class SvnConverter(Converter):
         """Create a SvnConverter.
         :param target_format: The format the resulting repository should be.
         """
+        super(SvnConverter, self).__init__()
         self.target_format = target_format
 
     def convert(self, to_convert, pb):

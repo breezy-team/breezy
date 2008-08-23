@@ -19,7 +19,7 @@ from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset,
                            LockError, NotBranchError, PermissionDenied, 
                            DependencyNotPresent, NoRepositoryPresent,
                            TransportError, UnexpectedEndOfContainerError,
-                           RedirectRequested, NoSuchRevision)
+                           NoSuchRevision)
 
 import urllib
 from bzrlib.plugins.svn import core

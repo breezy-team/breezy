@@ -15,11 +15,11 @@
 
 """Maps between Subversion and Bazaar semantics."""
 
-from bzrlib import log, osutils, registry
+from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import core, errors, properties, version_info
+from bzrlib.plugins.svn import errors, properties, version_info
 import calendar
 import time
 import urllib

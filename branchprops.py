@@ -17,7 +17,6 @@
 """Branch property access and caching."""
 
 from bzrlib.errors import NoSuchRevision
-from bzrlib.trace import mutter
 
 from bzrlib.plugins.svn import logwalker
 from bzrlib.plugins.svn.core import SubversionException

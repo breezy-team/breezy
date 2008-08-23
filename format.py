@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion BzrDir formats."""
 
-from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
+from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.errors import UninitializableFormat
 from bzrlib.lazy_import import lazy_import
 from bzrlib.lockable_files import TransportLock

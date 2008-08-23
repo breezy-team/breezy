@@ -17,7 +17,6 @@
 
 from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision
-from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
 from bzrlib.plugins.svn import changes, core

@@ -17,7 +17,7 @@ from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision, NoSuchTag
 from bzrlib.tag import BasicTags
 
-from bzrlib.plugins.svn import cache, core
+from bzrlib.plugins.svn import core
 
 class SubversionTags(BasicTags):
     def __init__(self, branch):

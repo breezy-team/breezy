@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib import debug, errors
+from bzrlib import debug
 from bzrlib.knit import make_file_factory
 from bzrlib.trace import mutter
 from bzrlib.revision import NULL_REVISION

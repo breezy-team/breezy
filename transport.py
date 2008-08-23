@@ -19,18 +19,17 @@
 import bzrlib
 from bzrlib import debug, urlutils
 from bzrlib.errors import (NoSuchFile, TransportNotPossible, 
-                           FileExists, NotLocalUrl, InvalidURL)
+                           FileExists, NotLocalUrl, InvalidURL, RedirectRequested)
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import Transport
 
 import bzrlib.plugins.svn
-from bzrlib.plugins.svn import core, properties, ra
+from bzrlib.plugins.svn import ra
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import get_config
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_FOUND, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED, RedirectRequested, ERR_RA_DAV_PATH_NOT_FOUND
-from bzrlib.plugins.svn.ra import RemoteAccess
+from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED, ERR_RA_DAV_PATH_NOT_FOUND
 import urlparse
 import urllib
 

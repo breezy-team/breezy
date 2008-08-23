@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Committing and pushing to Subversion repositories."""
 
-from bzrlib import debug, osutils, urlutils, ui
+from bzrlib import debug, urlutils, ui
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
                            UnrelatedBranches, AppendRevisionsOnlyViolation,
@@ -30,14 +30,13 @@ from cStringIO import StringIO
 from bzrlib.plugins.svn import core, properties
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.delta import send_stream
-from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, ERR_REPOS_DISABLED_FEATURE
-from bzrlib.plugins.svn.svk import (generate_svk_feature, serialize_svk_features, 
-                 parse_svk_features, SVN_PROP_SVK_MERGE)
+from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE
+from bzrlib.plugins.svn.svk import (
+    generate_svk_feature, serialize_svk_features, 
+    parse_svk_features, SVN_PROP_SVK_MERGE)
 from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
-
-import urllib
 
 
 def _revision_id_to_svk_feature(revid):
@@ -196,7 +195,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             if new_mergeinfo is not None:
                 self._svnprops[properties.PROP_MERGEINFO] = new_mergeinfo
 
-    def mutter(self, text, *args):
+    @staticmethod
+    def mutter(text, *args):
         if 'commit' in debug.debug_flags:
             mutter(text, *args)
 
@@ -427,7 +427,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
         set_revprops = self._config.get_set_revprops()
-        remaining_revprops = self._svn_revprops # Keep track of the revprops that haven't been set yet
 
         # Store file ids
         def _dir_process_file_id(old_inv, new_inv, path, file_id):
@@ -711,7 +710,6 @@ def dpush(target, source, stop_revision=None):
                 target._clear_cached_state()
         finally:
             pb.finished()
-        (new_revno, new_revid) = target.last_revision_info()
         return revid_map
     finally:
         source.unlock()
@@ -786,8 +784,6 @@ def push(target, source_repo, revision_id, push_metadata=True):
     if 'validate' in debug.debug_flags and push_metadata:
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)
-        treedelta = ctree.changes_from(old_tree)
-        assert not treedelta.has_changed(), "treedelta: %r" % treedelta
         assert crev.committer == rev.committer
         assert crev.timezone == rev.timezone
         assert crev.timestamp == rev.timestamp

@@ -275,11 +275,6 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
         self.assertEqual(None, branch.get_parent())
 
-    def test_append_revision(self):
-        repos_url = self.make_repository('a')
-        branch = Branch.open(repos_url)
-        branch.append_revision([])
-
     def test_get_push_location(self):
         repos_url = self.make_repository('a')
         branch = Branch.open(repos_url)
