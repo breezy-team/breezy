@@ -16,16 +16,23 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-NAMESPACE = 'git-experimental'
-_revision_id_prefix = NAMESPACE + '-r:'
+class BzrGitMapping(object):
+    """Class that maps between Git and Bazaar semantics."""
+    experimental = False
+    namespace = None
+
+    def convert_revision_id_git_to_bzr(self, git_rev_id):
+        """Convert a git revision id handle to a Bazaar revision id."""
+        return "%s:%s" % (self.namespace, git_rev_id)
+
+    def convert_revision_id_bzr_to_git(self, bzr_rev_id):
+        """Convert a Bazaar revision id to a git revision id handle."""
+        assert bzr_rev_id.startswith("%s:" % self.namespace)
+        return bzr_rev_id[len(self.namespace)+1:]
 
 
-def convert_revision_id_git_to_bzr(git_rev_id):
-    """Convert a git revision id handle to a Bazaar revision id."""
-    return _revision_id_prefix + git_rev_id
+class BzrGitMappingExperimental(BzrGitMapping):
+    namespace = 'git-experimental'
 
 
-def convert_revision_id_bzr_to_git(bzr_rev_id):
-    """Convert a Bazaar revision id to a git revision id handle."""
-    assert bzr_rev_id.startswith(_revision_id_prefix)
-    return bzr_rev_id[len(_revision_id_prefix):]
+default_mapping = BzrGitMappingExperimental()

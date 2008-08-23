@@ -24,7 +24,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 
-from bzrlib.plugins.git import ids
+from bzrlib.plugins.git.mapping import default_mapping
 
 class GitTagDict(tag.BasicTags):
 
@@ -35,7 +35,7 @@ class GitTagDict(tag.BasicTags):
     def get_tag_dict(self):
         ret = {}
         for tag in self.repository._git.tags:
-            ret[tag.name] = ids.convert_revision_id_git_to_bzr(tag.commit.id)
+            ret[tag.name] = default_mapping.convert_revision_id_git_to_bzr(tag.commit.id)
         return ret
 
     def set_tag(self, name, revid):
@@ -84,7 +84,7 @@ class GitBranch(branch.Branch):
         # perhaps should escape this ?
         if self.head is None:
             return revision.NULL_REVISION
-        return ids.convert_revision_id_git_to_bzr(self.head)
+        return default_mapping.convert_revision_id_git_to_bzr(self.head)
 
     def _make_tags(self):
         return GitTagDict(self)
@@ -109,7 +109,7 @@ class GitBranch(branch.Branch):
             skip += max_count
             for cm in cms:
                 if cm.id == nextid:
-                    ret.append(ids.convert_revision_id_git_to_bzr(cm.id))
+                    ret.append(default_mapping.convert_revision_id_git_to_bzr(cm.id))
                     if cm.parents == []:
                         nextid = None
                     else:

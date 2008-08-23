@@ -35,9 +35,9 @@ from bzrlib import (
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git import (
-    ids,
     versionedfiles
     )
+from bzrlib.plugins.git.mapping import default_mapping
 
 
 class GitRepository(repository.Repository):
@@ -66,7 +66,7 @@ class GitRepository(repository.Repository):
         while cms != []:
             cms = self._git.commits("--all", max_count=max_count, skip=skip)
             skip += max_count
-            ret.update([ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms])
+            ret.update([default_mapping.convert_revision_id_git_to_bzr(cm.id) for cm in cms])
         return ret
 
     def is_shared(self):
@@ -88,9 +88,9 @@ class GitRepository(repository.Repository):
             max_count = 1000
             cms = None
             while cms != []:
-                cms = self._git.commits(ids.convert_revision_id_bzr_to_git(revision_id), max_count=max_count, skip=skip)
+                cms = self._git.commits(default_mapping.convert_revision_id_bzr_to_git(revision_id), max_count=max_count, skip=skip)
                 skip += max_count
-                ret += [ids.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
+                ret += [default_mapping.convert_revision_id_git_to_bzr(cm.id) for cm in cms]
         return [None] + ret
 
     def get_signature_text(self, revision_id):
@@ -105,12 +105,12 @@ class GitRepository(repository.Repository):
             if revid == revision.NULL_REVISION:
                 ret[revid] = ()
             else:
-                commit = self._git.commit(ids.convert_revision_id_bzr_to_git(revid))
-                ret[revid] = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
+                commit = self._git.commit(default_mapping.convert_revision_id_bzr_to_git(revid))
+                ret[revid] = tuple([default_mapping.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         return ret
 
     def get_revision(self, revision_id):
-        git_commit_id = ids.convert_revision_id_bzr_to_git(revision_id)
+        git_commit_id = default_mapping.convert_revision_id_bzr_to_git(revision_id)
         commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
         revision = self._parse_rev(commit)
@@ -133,8 +133,8 @@ class GitRepository(repository.Repository):
 
         :return: a `bzrlib.revision.Revision` object.
         """
-        rev = revision.Revision(ids.convert_revision_id_git_to_bzr(commit.id))
-        rev.parent_ids = tuple([ids.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
+        rev = revision.Revision(default_mapping.convert_revision_id_git_to_bzr(commit.id))
+        rev.parent_ids = tuple([default_mapping.convert_revision_id_git_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
         rev.message = commit.message.decode("utf-8", "replace")
         rev.committer = str(commit.committer)
@@ -175,7 +175,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def __init__(self, repository, revision_id):
         self._repository = repository
         self.revision_id = revision_id
-        git_id = ids.convert_revision_id_bzr_to_git(revision_id)
+        git_id = default_mapping.convert_revision_id_bzr_to_git(revision_id)
         self.tree = repository._git.commit(git_id).tree
         self._inventory = inventory.Inventory(revision_id=revision_id)
         self._inventory.root.revision = revision_id

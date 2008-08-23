@@ -21,11 +21,11 @@ import git
 from bzrlib import revision
 from bzrlib.branch import Branch
 
-from bzrlib.plugins.git import tests
 from bzrlib.plugins.git import (
     branch,
-    ids,
+    tests,
     )
+from bzrlib.plugins.git.mapping import default_mapping
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
@@ -57,7 +57,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         head = tests.run_git('rev-parse', 'HEAD').strip()
 
         thebranch = Branch.open('.')
-        self.assertEqual(ids.convert_revision_id_git_to_bzr(head),
+        self.assertEqual(default_mapping.convert_revision_id_git_to_bzr(head),
                          thebranch.last_revision())
 
     def test_revision_history(self):
@@ -69,7 +69,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         revb = tests.run_git('rev-parse', 'HEAD').strip()
 
         thebranch = Branch.open('.')
-        self.assertEqual([ids.convert_revision_id_git_to_bzr(r) for r in (reva, revb)],
+        self.assertEqual([default_mapping.convert_revision_id_git_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
 
     def test_tags(self):
@@ -81,7 +81,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         newid = open('.git/refs/tags/foo').read().rstrip()
 
         thebranch = Branch.open('.')
-        self.assertEquals({"foo": ids.convert_revision_id_git_to_bzr(newid)},
+        self.assertEquals({"foo": default_mapping.convert_revision_id_git_to_bzr(newid)},
                           thebranch.tags.get_tag_dict())
         
 
