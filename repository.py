@@ -906,7 +906,7 @@ class SvnRepository(Repository):
         return SvnCommitBuilder(self, branch, parents, config, timestamp, 
                 timezone, committer, revprops, revision_id)
 
-    def find_fileprop_path(self, layout, from_revnum, to_revnum, 
+    def find_fileprop_paths(self, layout, from_revnum, to_revnum, 
                                project=None, check_removed=False, 
                                find_branches=True, find_tags=True):
         if not check_removed and from_revnum == 0:
