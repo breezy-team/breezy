@@ -690,8 +690,7 @@ class TestBTreeIndex(BTreeTestCase):
         # iterating all entries reads the header, then does a linear
         # read.
         self.shrink_page_size()
-        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
-                                           spill_at=200001)
+        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
         # 40k nodes is enough to create a two internal nodes on the second
         # level, with a 2K page size
         nodes = self.make_nodes(20000, 2, 2)
