@@ -17,6 +17,7 @@
 
 DEBUGGER ?= 
 BZR ?= $(shell which bzr)
+BZR_OPTIONS ?= 
 PYTHON ?= $(shell which python)
 SETUP ?= $(PYTHON) ./setup.py
 PYDOCTOR ?= pydoctor
@@ -60,7 +61,7 @@ $(TMP_PLUGINS_DIR)/svn: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
 check:: build-inplace $(TMP_PLUGINS_DIR)/svn 
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.svn $(TESTS)
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.svn $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
