@@ -785,7 +785,7 @@ foohosts""")
         foo.add_file("foo/bla").modify()
         sc.close()
 
-        olddir = self.open_checkout_bzrdir("sc")
+        olddir = BzrDir.open("sc")
 
         os.mkdir("dc")
         
@@ -811,7 +811,7 @@ foohosts""")
         sc.close()
 
         self.client_update('sc')
-        olddir = self.open_checkout_bzrdir("sc/branches/abranch")
+        olddir = BzrDir.open("sc/branches/abranch")
 
         os.mkdir("dc")
         
@@ -837,7 +837,7 @@ foohosts""")
         sc.close()
 
         self.client_update('sc')
-        olddir = self.open_checkout_bzrdir("sc/trunk")
+        olddir = BzrDir.open("sc/trunk")
 
         os.mkdir("dc")
         
@@ -860,7 +860,7 @@ foohosts""")
         sc.change_prop("bzr:ancestry:v3-none", "some-ghost\n")
         sc.close()
 
-        olddir = self.open_checkout_bzrdir("sc")
+        olddir = BzrDir.open("sc")
 
         os.mkdir("dc")
         

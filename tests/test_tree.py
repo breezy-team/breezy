@@ -20,6 +20,7 @@ from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestSkipped
+from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import errors
 from bzrlib.plugins.svn.core import SubversionException
@@ -39,7 +40,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
 
         self.client_update("dc")
 
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertTrue(tree.inventory[tree.inventory.path2id("file")].executable)
 
     def test_executable_changed(self):
@@ -51,7 +52,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
 
         self.client_update("dc")
         self.client_set_prop("dc/file", "svn:executable", "*")
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
 
     def test_symlink(self):
@@ -64,7 +65,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         dc.close()
 
         self.client_update("dc")
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertEqual('symlink', 
                          tree.inventory[tree.inventory.path2id("file")].kind)
         self.assertEqual("target",
@@ -80,7 +81,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         dc.close()
 
         self.client_update("dc")
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertEqual('symlink', 
                          tree.inventory[tree.inventory.path2id("file")].kind)
         self.assertEqual("target\nbar\nbla",
@@ -104,7 +105,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
             if num == errors.ERR_WC_BAD_ADM_LOG:
                 raise TestSkipped("Unable to run test with svn 1.4")
             raise
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertEqual('file', 
                          tree.inventory[tree.inventory.path2id("file")].kind)
 
@@ -124,7 +125,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
 
         self.client_update("dc")
 
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertEqual('symlink', 
                          tree.inventory[tree.inventory.path2id("file")].kind)
         self.assertEqual("target",
@@ -142,7 +143,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         dc.close()
 
         self.client_update('dc')
-        tree = SvnBasisTree(self.open_checkout("dc"))
+        tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertRaises(NotImplementedError, tree.annotate_iter, tree.path2id("file"))
 
     def test_executable_link(self):
@@ -164,7 +165,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                 raise TestSkipped("Unable to run test with svn 1.4")
             raise
 
-        wt = self.open_checkout("dc")
+        wt = WorkingTree.open("dc")
         tree = SvnBasisTree(wt)
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
         self.assertFalse(wt.inventory[wt.inventory.path2id("file")].executable)

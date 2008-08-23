@@ -62,27 +62,27 @@ class TestCheckout(TestCaseWithSubversionRepository):
 
     def test_open_repository(self):
         self.make_client("d", "dc")
-        x = self.open_checkout_bzrdir("dc")
+        x = BzrDir.open("dc")
         self.assertRaises(NoRepositoryPresent, x.open_repository)
 
     def test_find_repository(self):
         self.make_client("d", "dc")
-        x = self.open_checkout_bzrdir("dc")
+        x = BzrDir.open("dc")
         self.assertRaises(NoRepositoryPresent, x.find_repository)
 
     def test__find_repository(self):
         self.make_client("d", "dc")
-        x = self.open_checkout_bzrdir("dc")
+        x = BzrDir.open("dc")
         self.assertTrue(hasattr(x._find_repository(), "uuid"))
 
     def test_needs_format_conversion_default(self):
         self.make_client("d", "dc")
-        x = self.open_checkout_bzrdir("dc")
+        x = BzrDir.open("dc")
         self.assertTrue(x.needs_format_conversion())
 
     def test_needs_format_conversion_self(self):
         self.make_client("d", "dc")
-        x = self.open_checkout_bzrdir("dc")
+        x = BzrDir.open("dc")
         self.assertFalse(x.needs_format_conversion(SvnWorkingTreeDirFormat()))
         
     def test_checkout_checkout(self):
@@ -99,5 +99,5 @@ class TestCheckout(TestCaseWithSubversionRepository):
         dc.close()
 
         self.client_update("dc")
-        x = self.open_checkout_bzrdir("dc/trunk")
+        x = BzrDir.open("dc/trunk")
         self.assertEquals(repos_url+"/trunk", x.open_branch().base)

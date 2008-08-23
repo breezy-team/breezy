@@ -35,7 +35,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         dc.add_dir("foo")
         dc.close()
 
-        x = self.open_checkout_bzrdir("dc")
+        x = BzrDir.open("dc")
         self.assertRaises(NotImplementedError, x.clone, "dir")
 
     def test_break_lock(self):

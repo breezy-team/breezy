@@ -24,9 +24,8 @@ from cStringIO import StringIO
 
 from bzrlib import osutils, urlutils
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
-from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import properties, ra, repos
@@ -160,7 +159,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 open(revprop_hook, 'w').write("#!/bin/sh\n")
                 os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
-        return local_path_to_url(abspath)
+        return urlutils.local_path_to_url(abspath)
 
     def make_local_bzrdir(self, repos_path, relpath):
         """Create a repository and checkout."""
@@ -173,14 +172,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
     def make_checkout(self, repos_url, relpath):
         self.client_ctx.checkout(repos_url, relpath, "HEAD") 
-
-    @staticmethod
-    def open_checkout(url):
-        return WorkingTree.open(url)
-
-    @staticmethod
-    def open_checkout_bzrdir(url):
-        return BzrDir.open(url)
 
     def client_set_prop(self, path, name, value):
         if value is None:
