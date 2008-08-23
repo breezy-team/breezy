@@ -29,6 +29,7 @@ from bzrlib.revision import Revision, NULL_REVISION, ensure_null
 from bzrlib.transport import Transport, get_transport
 from bzrlib.trace import info, mutter
 
+from itertools import chain
 import os
 
 from bzrlib.plugins.svn import changes, core, errors, logwalker, properties
@@ -835,8 +836,8 @@ class SvnRepository(Repository):
             pb.finished()
         return tags
 
-    def find_branchpaths(self, layout, check_path, check_parent_path,
-                         from_revnum=0, to_revnum=None, project=None):
+    def find_branchpaths(self, layout, from_revnum=0, to_revnum=None, 
+                         project=None):
         """Find all branch paths that were changed in the specified revision 
         range.
 
@@ -911,8 +912,7 @@ class SvnRepository(Repository):
     def find_fileprop_branches(self, layout, from_revnum, to_revnum, 
                                project=None, check_removed=False):
         if not check_removed and from_revnum == 0:
-            for (project, branch, nick) in layout.get_branches(to_revnum, 
-                                                               project):
+            for (project, branch, nick) in chain(layout.get_branches(to_revnum, project), layout.get_tags(to_revnum, project)):
                 yield (branch, to_revnum, True)
         else:
             for (branch, revno, exists) in self.find_branchpaths(layout, 
