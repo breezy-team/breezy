@@ -1208,7 +1208,8 @@ class TestCase(unittest.TestCase):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
-            'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
+            # bzr now use Win32 API and don't rely on APPDATA, but the
+            # tests do check our impls match APPDATA
             'BZR_EDITOR': None, # test_msgeditor manipulates this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
