@@ -21,7 +21,7 @@ from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
                            NoRepositoryPresent, BzrError, UninitializableFormat,
-                           OutOfDateTree, NoWorkingTree)
+                           OutOfDateTree, NoWorkingTree, UnsupportedFormatError)
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
