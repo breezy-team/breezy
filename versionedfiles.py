@@ -35,6 +35,9 @@ class SvnTexts(VersionedFiles):
         raise NotImplementedError(self.add_mpdiffs)
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
+        # TODO: there may be valid text revisions that only exist as 
+        # ghosts in the repository itself. This function will 
+        # not be able to report them.
         # TODO: Sort keys by file id and issue just one get_file_revs() call 
         # per file-id ?
         for (fileid, revid) in list(keys):

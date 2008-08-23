@@ -37,6 +37,7 @@ from bzrlib.transport import get_transport
 from bzrlib.plugins.git import (
     cache,
     ids,
+    versionedfiles
     )
 
 
@@ -54,8 +55,8 @@ class GitRepository(repository.Repository):
         cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-%s' % ids.NAMESPACE)
         self.texts = None
-        self.signatures = versionedfile.VirtualSignatureTexts(self)
-        self.revisions = versionedfile.VirtualRevisionTexts(self)
+        self.signatures = versionedfiles.VirtualSignatureTexts(self)
+        self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self._format = GitFormat()
         self._fallback_repositories = []
 
