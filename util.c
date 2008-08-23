@@ -223,8 +223,8 @@ svn_error_t *py_svn_log_wrapper(void *baton, apr_hash_t *changed_paths, svn_revn
 		PyDict_SetItemString(revprops, SVN_PROP_REVISION_DATE, 
 							 PyString_FromString(date));
 	}
-	ret = PyObject_CallFunction((PyObject *)baton, "OlOb", py_changed_paths, 
-								 revision, revprops, FALSE);
+	ret = PyObject_CallFunction((PyObject *)baton, "OlO", py_changed_paths, 
+								 revision, revprops);
 	Py_DECREF(py_changed_paths);
 	Py_DECREF(revprops);
 	CB_CHECK_PYRETVAL(ret);

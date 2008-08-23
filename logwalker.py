@@ -437,7 +437,7 @@ class CachingLogWalker(CacheTable):
         else:
             todo_revprops = ["svn:author", "svn:log", "svn:date"]
 
-        def rcvr(orig_paths, revision, revprops, has_children):
+        def rcvr(orig_paths, revision, revprops, has_children=None):
             nested_pb.update('fetching svn revision info', revision, to_revnum)
             if orig_paths is None:
                 orig_paths = {}
