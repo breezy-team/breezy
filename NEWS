@@ -80,6 +80,11 @@ IN DEVELOPMENT
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
 
+    * Mail clients for `bzr send` are now listed in a registry.  This
+      allows plugins to add new clients by registering them with
+      ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
+      clients now use this mechanism.  (Neil Martinsen-Burrell)
+
 
 bzr 1.6rc5 2008-08-19
 ---------------------
