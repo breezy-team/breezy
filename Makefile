@@ -1,3 +1,20 @@
+# Simple Makefile for Bazaar plugin
+# Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
+#   
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#   
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#   
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
 DEBUGGER ?= 
 BZR ?= $(shell which bzr)
 PYTHON ?= $(shell which python)
@@ -9,7 +26,9 @@ RST2HTML ?= $(if $(shell which rst2html.py 2>/dev/null), rst2html.py, rst2html)
 TESTS ?= 
 DESTDIR ?=
 
-all:: build build-inplace README.html FAQ.html AUTHORS.html
+REST_DOCS = README FAQ HTML
+
+all:: build build-inplace $(patsubst %,%.html,$(REST_DOCS))
 
 build::
 	$(SETUP) build
