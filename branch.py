@@ -141,3 +141,11 @@ class GitBranch(branch.Branch):
 
     def supports_tags(self):
         return True
+
+    def sprout(self, to_bzrdir, revision_id=None):
+        """See Branch.sprout()."""
+        result = to_bzrdir.create_branch()
+        self.copy_content_into(result, revision_id=revision_id)
+        result.set_parent(self.bzrdir.root_transport.base)
+        return result
+
