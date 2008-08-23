@@ -22,7 +22,6 @@ from bzrlib.tests import KnownFailure
 from bzrlib.tests.blackbox import ExternalBase
 
 from bzrlib.plugins.git import (
-    ids,
     tests,
     )
 
