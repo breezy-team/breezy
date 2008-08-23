@@ -138,9 +138,8 @@ class ChunkWriter(object):
                 append(out)
         if extra_bytes:
             out = compress(extra_bytes)
-            if out:
-                append(out)
-        append(compressor.flush(Z_SYNC_FLUSH))
+            out += compressor.flush(Z_SYNC_FLUSH)
+            append(out)
         bytes_out_len = sum(map(len, bytes_out))
         return bytes_out, bytes_out_len, compressor
 
