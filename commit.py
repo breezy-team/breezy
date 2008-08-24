@@ -485,7 +485,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             for prop in self._svn_revprops:
                 if not properties.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name", prop)
-            self.editor = self.repository.transport.get_commit_editor(
+            conn = self.repository.transport.get_connection()
+            self.editor = conn.get_commit_editor(
                     self._svn_revprops, done, None, False)
             try:
                 root = self.editor.open_root(self.base_revnum)
@@ -523,9 +524,11 @@ class SvnCommitBuilder(RootCommitBuilder):
                     dir_editor.close()
             except:
                 self.editor.abort()
+                self.repository.transport.add_connection(conn)
                 raise
 
             self.editor.close()
+            self.repository.transport.add_connection(conn)
         finally:
             lock.unlock()
 
