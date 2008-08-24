@@ -208,6 +208,7 @@ class SvnRepository(Repository):
             self.revmap = CachingRevidMap(self.revmap, self.cachedb)
             self._real_parents_provider = DiskCachingParentsProvider(self._real_parents_provider, cachedir_transport)
 
+        self._parents_provider = CachingParentsProvider(self._real_parents_provider)
         self.texts = SvnTexts(self)
         self.revisions = VirtualRevisionTexts(self)
         self.inventories = VirtualInventoryTexts(self)
@@ -238,6 +239,7 @@ class SvnRepository(Repository):
 
     def _clear_cached_state(self):
         self._cached_revnum = None
+        self._parents_provider = CachingParentsProvider(self._real_parents_provider)
 
     def lock_write(self):
         """See Branch.lock_write()."""
@@ -324,7 +326,7 @@ class SvnRepository(Repository):
         return self._default_mapping
 
     def _make_parents_provider(self):
-        return CachingParentsProvider(self._real_parents_provider)
+        return self._parents_provider
 
     def get_deltas_for_revisions(self, revisions):
         for revision in revisions:
