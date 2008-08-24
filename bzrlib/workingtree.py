@@ -2124,7 +2124,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         if self.branch.get_bound_location() is not None:
             self.lock_write()
-            update_branch = (old_tip == self._marker)
+            update_branch = (old_tip is self._marker)
         else:
             self.lock_tree_write()
             update_branch = False
@@ -2132,7 +2132,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if update_branch:
                 old_tip = self.branch.update(possible_transports)
             else:
-                old_tip = None
+                if old_tip is self._marker:
+                    old_tip = None
             return self._update_tree(old_tip, change_reporter, revision)
         finally:
             self.unlock()

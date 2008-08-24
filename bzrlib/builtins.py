@@ -1009,7 +1009,7 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         branch = tree.branch
         possible_transports = []
-        master = tree.branch.get_master_branch(
+        master = branch.get_master_branch(
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
@@ -1027,13 +1027,15 @@ class cmd_update(Command):
                     old_tip = None
                 except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
                     # revision was not there, but is maybe in the master.
-                    old_tip = branch.update()
+                    old_tip = branch.update(possible_transports)
                     rev = revision[0].in_history(branch).rev_id
             else:
-                old_tip = branch.update()
+                if master is None:
+                    old_tip = None
+                else:
+                    old_tip = branch.update(possible_transports)
                 rev = branch.last_revision()
-            last_rev = _mod_revision.ensure_null(tree.last_revision())
-            if last_rev == _mod_revision.ensure_null(branch.last_revision()):
+            if rev == _mod_revision.ensure_null(tree.last_revision()):
                 revno = branch.revision_id_to_revno(rev)
                 note("Tree is up to date at revision %d." % (revno,))
                 return 0
@@ -1049,8 +1051,8 @@ class cmd_update(Command):
                                       "bzr update --revision only works"
                                       " for a revision in the branch history"
                                       % (e.revision))
-            revno = tree.branch.revision_id_to_revno(
-                _mod_revision.ensure_null(tree.last_revision()))
+            revno = branch.revision_id_to_revno(
+                _mod_revision.ensure_null(rev))
             note('Updated to revision %d.' % (revno,))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
