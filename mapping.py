@@ -629,7 +629,7 @@ class BzrSvnMappingRevProps(object):
 
         if revprops is not None:
             for name, value in revprops.items():
-                svn_revprops[SVN_REVPROP_BZR_REVPROP_PREFIX+name] = value
+                svn_revprops[SVN_REVPROP_BZR_REVPROP_PREFIX+name] = value.encode("utf-8")
 
         svn_revprops[SVN_REVPROP_BZR_ROOT] = branch_root
 
