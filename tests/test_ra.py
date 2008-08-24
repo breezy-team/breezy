@@ -128,6 +128,19 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.assertRaises(ra.BusyException, self.ra.get_commit_editor, {"svn:log": "foo"}, mycb)
         editor.abort()
 
+    def test_get_commit_editor_custom_revprops(self):
+        if ra.version()[:2] < (1,5):
+            return
+        def mycb(paths, rev, revprops):
+            pass
+        editor = self.ra.get_commit_editor({"svn:log": "foo", "bar:foo": "bla", "svn:custom:blie": "bloe"}, mycb)
+        root = editor.open_root()
+        root.add_directory("somedir").close()
+        root.close()
+        editor.close()
+
+        self.assertEquals(set(['bar:foo', 'svn:author', 'svn:custom:blie', 'svn:date', 'svn:log']), set(self.ra.rev_proplist(1).keys()))
+
     def test_get_commit_editor(self):
         def mycb(paths, rev, revprops):
             pass

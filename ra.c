@@ -1251,7 +1251,7 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	const svn_delta_editor_t *editor;
 	void *edit_baton;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
-	apr_hash_t *hash_lock_tokens;
+	apr_hash_t *hash_lock_tokens, *hash_revprops;
 	svn_error_t *err;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOb", kwnames, &revprops, &commit_callback, &lock_tokens, &keep_locks))
@@ -1282,10 +1282,21 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		return NULL;
 
 	Py_BEGIN_ALLOW_THREADS
+#if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
+	hash_revprops = prop_dict_to_hash(pool, revprops);
+	if (hash_revprops == NULL)
+		return NULL;
+	err = svn_ra_get_commit_editor3(ra->ra, &editor, 
+		&edit_baton, 
+		hash_revprops, py_commit_callback, 
+		commit_callback, hash_lock_tokens, keep_locks, pool);
+#else
+	/* FIXME: Check that revprops has only one member named SVN_PROP_REVISION_LOG */
 	err = svn_ra_get_commit_editor2(ra->ra, &editor, 
 		&edit_baton, 
 		PyString_AsString(PyDict_GetItemString(revprops, SVN_PROP_REVISION_LOG)), py_commit_callback, 
 		commit_callback, hash_lock_tokens, keep_locks, pool);
+#endif
 	Py_END_ALLOW_THREADS
 	
 	if (!check_error(err)) {

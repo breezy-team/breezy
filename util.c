@@ -151,6 +151,24 @@ PyObject *prop_hash_to_dict(apr_hash_t *props)
 	return py_props;
 }
 
+apr_hash_t *prop_dict_to_hash(apr_pool_t *pool, PyObject *py_props)
+{
+	Py_ssize_t idx = 0;
+	PyObject *k, *v;
+	apr_hash_t *hash_props = apr_hash_make(pool);
+	if (hash_props == NULL)
+		return NULL;
+	while (PyDict_Next(py_props, &idx, &k, &v)) {
+		svn_string_t *val_string = svn_string_ncreate(PyString_AsString(v), 
+													  PyString_Size(v),
+													  pool);
+		apr_hash_set(hash_props, PyString_AsString(k), 
+					 PyString_Size(k), val_string);
+	}
+
+	return hash_props;
+}
+
 static PyObject *pyify_changed_paths(apr_hash_t *changed_paths, apr_pool_t *pool)
 {
 	PyObject *py_changed_paths, *pyval;
