@@ -87,17 +87,22 @@ def update_svk_features(oldvalue, merges):
 
 
 def update_mergeinfo(repository, graph, oldvalue, baserevid, merges):
-    mergeinfo = properties.parse_mergeinfo_property(oldvalue)
-    for merge in merges:
-        for (revid, parents) in graph.iter_ancestry([merge]):
-            if graph.is_ancestor(revid, baserevid):
-                break
-            try:
-                (path, revnum, mapping) = repository.lookup_revision_id(revid)
-            except NoSuchRevision:
-                break
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        mergeinfo = properties.parse_mergeinfo_property(oldvalue)
+        for i, merge in enumerate(merges):
+            pb.update("updating mergeinfo property", i, len(merges))
+            for (revid, parents) in graph.iter_ancestry([merge]):
+                if graph.is_ancestor(revid, baserevid):
+                    break
+                try:
+                    (path, revnum, mapping) = repository.lookup_revision_id(revid)
+                except NoSuchRevision:
+                    break
 
-            properties.mergeinfo_add_revision(mergeinfo, "/" + path, revnum)
+                properties.mergeinfo_add_revision(mergeinfo, "/" + path, revnum)
+    finally:
+        pb.finished()
     newvalue = properties.generate_mergeinfo_property(mergeinfo)
     if newvalue != oldvalue:
         return newvalue
