@@ -551,7 +551,7 @@ class LogWalker(object):
                 if todo_revprops is None:
                     revprops = known_revprops
                 else:
-                    revprops = lazy_dict(known_revprops, self.revprop_list, revnum)
+                    revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
                 yield (revpaths, revnum, revprops)
         except SubversionException, (_, num):
             if num == ERR_FS_NO_SUCH_REVISION:

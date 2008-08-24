@@ -412,24 +412,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         return ret
 
-    def commit(self, message):
-        """Finish the commit.
-
-        """
-        def done(*args):
-            """Callback that is called by the Subversion commit editor 
-            once the commit finishes.
-
-            :param revision_data: Revision metadata
-            """
-            self.revision_metadata = args
-        
-        bp = self.branch.get_branch_path()
-        assert isinstance(bp, str), "%r" % bp
-        bp_parts = bp.split("/")
-        repository_latest_revnum = self.repository.get_latest_revnum()
-        lock = self.repository.transport.lock_write(".")
-
+    def _determine_texts_identity(self):
         # Store file ids
         def _dir_process_file_id(old_inv, new_inv, path, file_id):
             ret = []
@@ -449,6 +432,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                     ret += _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
             return ret
 
+
         fileids = {}
         text_parents = {}
 
@@ -464,7 +448,27 @@ class SvnCommitBuilder(RootCommitBuilder):
             fileids[path] = id
             if revid is not None and revid != self.base_revid and revid != self._new_revision_id:
                 text_parents[path] = revid
-                mutter('in %r: overriding text revid for %r -> %r' % (self._new_revision_id, path, revid))
+        return (fileids, text_parents)
+
+    def commit(self, message):
+        """Finish the commit.
+
+        """
+        def done(*args):
+            """Callback that is called by the Subversion commit editor 
+            once the commit finishes.
+
+            :param revision_data: Revision metadata
+            """
+            self.revision_metadata = args
+        
+        bp = self.branch.get_branch_path()
+        assert isinstance(bp, str), "%r" % bp
+        bp_parts = bp.split("/")
+        repository_latest_revnum = self.repository.get_latest_revnum()
+        lock = self.repository.transport.lock_write(".")
+
+        (fileids, text_parents) = self._determine_texts_identity()
 
         self.base_mapping.export_text_parents(self.supports_custom_revprops, text_parents, 
                                               self._svn_revprops, self._svnprops)
