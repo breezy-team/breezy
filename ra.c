@@ -739,7 +739,8 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 	ret->pool = Pool(NULL);
 	if (ret->pool == NULL)
 		return NULL;
-	ret->url = apr_pstrdup(ret->pool, url);
+
+	ret->url = svn_path_canonicalize(url, ret->pool);
 	if (!check_error(svn_ra_create_callbacks(&callbacks2, ret->pool))) {
 		apr_pool_destroy(ret->pool);
 		PyObject_Del(ret);
