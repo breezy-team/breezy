@@ -661,8 +661,9 @@ class BzrSvnMappingv4(BzrSvnMappingRevProps):
         super(BzrSvnMappingv4, self).import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)
 
     def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops):
-        svn_revprops[SVN_REVPROP_BZR_MAPPING_VERSION] = "4"
-        BzrSvnMappingRevProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops)
+        (revprops, fileprops) = BzrSvnMappingRevProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops)
+        revprops[SVN_REVPROP_BZR_MAPPING_VERSION] = "4"
+        return (revprops, fileprops)
 
     @classmethod
     def parse_revision_id(cls, revid):
