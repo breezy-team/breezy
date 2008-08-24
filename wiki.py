@@ -39,11 +39,10 @@ def write_releaselist(f):
             return [int(x) for x in a.split(".")]
         return cmp(versiontuple(a), versiontuple(b))
 
-    print repr(versions)
     versions.sort(version_sort, reverse=True)
 
     for version in versions:
-        f.write("* %s_\n" % version)
+        f.write("* `%s`_\n" % version)
 
     f.write("\n")
 
