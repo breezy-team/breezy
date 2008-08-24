@@ -155,13 +155,35 @@ apr_hash_t *prop_dict_to_hash(apr_pool_t *pool, PyObject *py_props)
 {
 	Py_ssize_t idx = 0;
 	PyObject *k, *v;
-	apr_hash_t *hash_props = apr_hash_make(pool);
-	if (hash_props == NULL)
+	apr_hash_t *hash_props;
+	svn_string_t *val_string;
+
+	if (!PyDict_Check(py_props)) {
+		PyErr_SetString(PyExc_TypeError, "props should be dictionary");
 		return NULL;
+	}
+
+	hash_props = apr_hash_make(pool);
+	if (hash_props == NULL) {
+		PyErr_NoMemory();
+		return NULL;
+	}
+
 	while (PyDict_Next(py_props, &idx, &k, &v)) {
-		svn_string_t *val_string = svn_string_ncreate(PyString_AsString(v), 
-													  PyString_Size(v),
-													  pool);
+
+		if (!PyString_Check(k)) {
+			PyErr_SetString(PyExc_TypeError, 
+							"property name should be string");
+			return NULL;
+		}
+		if (!PyString_Check(v)) {
+			PyErr_SetString(PyExc_TypeError, 
+							"property value should be string");
+			return NULL;
+		}
+
+		val_string = svn_string_ncreate(PyString_AsString(v), 
+										PyString_Size(v), pool);
 		apr_hash_set(hash_props, PyString_AsString(k), 
 					 PyString_Size(k), val_string);
 	}

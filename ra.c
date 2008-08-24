@@ -1284,11 +1284,11 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	if (ra_check_busy(ra))
 		return NULL;
 
-	Py_BEGIN_ALLOW_THREADS
 #if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
 	hash_revprops = prop_dict_to_hash(pool, revprops);
 	if (hash_revprops == NULL)
 		return NULL;
+	Py_BEGIN_ALLOW_THREADS
 	err = svn_ra_get_commit_editor3(ra->ra, &editor, 
 		&edit_baton, 
 		hash_revprops, py_commit_callback, 
@@ -1311,6 +1311,7 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		return NULL;
 	}
 
+	Py_BEGIN_ALLOW_THREADS
 	err = svn_ra_get_commit_editor2(ra->ra, &editor, 
 		&edit_baton, 
 		PyString_AsString(py_log_msg), py_commit_callback, 
