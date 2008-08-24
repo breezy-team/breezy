@@ -1252,6 +1252,9 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	void *edit_baton;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
 	apr_hash_t *hash_lock_tokens, *hash_revprops;
+#if SVN_VER_MAJOR == 1 && SVN_VER_MINOR < 5
+	PyObject *py_log_msg;
+#endif
 	svn_error_t *err;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOb", kwnames, &revprops, &commit_callback, &lock_tokens, &keep_locks))
@@ -1291,10 +1294,26 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		hash_revprops, py_commit_callback, 
 		commit_callback, hash_lock_tokens, keep_locks, pool);
 #else
-	/* FIXME: Check that revprops has only one member named SVN_PROP_REVISION_LOG */
+	/* Check that revprops has only one member named SVN_PROP_REVISION_LOG */
+	if (PyDict_Size(revprops) != 1) {
+		PyErr_SetString(PyExc_ValueError, "Only svn:log can be set with Subversion 1.4");
+		return NULL;
+	}
+
+	py_log_msg = PyDict_GetItemString(revprops, SVN_PROP_REVISION_LOG);
+	if (py_log_msg == NULL) {
+		PyErr_SetString(PyExc_ValueError, "Only svn:log can be set with Subversion 1.4.");
+		return NULL;
+	}
+
+	if (PyString_Check(py_log_msg)) {
+		PyErr_SetString(PyExc_ValueError, "svn:log property should be set to string.");
+		return NULL;
+	}
+
 	err = svn_ra_get_commit_editor2(ra->ra, &editor, 
 		&edit_baton, 
-		PyString_AsString(PyDict_GetItemString(revprops, SVN_PROP_REVISION_LOG)), py_commit_callback, 
+		PyString_AsString(py_log_msg), py_commit_callback, 
 		commit_callback, hash_lock_tokens, keep_locks, pool);
 #endif
 	Py_END_ALLOW_THREADS
