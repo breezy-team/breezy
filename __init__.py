@@ -376,10 +376,11 @@ class cmd_svn_push(Command):
                  'rather than the one containing the working directory.',
             short_name='d',
             type=unicode,
-            )]
+            ),
+            Option("merged", help="Push merged (right hand side) revisions.")]
 
     def run(self, location=None, revision=None, remember=False, 
-            directory=None):
+            directory=None, merged=None):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError
@@ -413,11 +414,11 @@ class cmd_svn_push(Command):
                 target_branch = bzrdir.open_branch()
                 target_branch.lock_write()
                 try:
-                    target_branch.pull(source_branch, stop_revision=revision_id)
+                    target_branch.pull(source_branch, stop_revision=revision_id, _push_merged=merged)
                 finally:
                     target_branch.unlock()
             except NotBranchError:
-                target_branch = bzrdir.import_branch(source_branch, revision_id)
+                target_branch = bzrdir.import_branch(source_branch, revision_id, _push_merged=merged)
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)

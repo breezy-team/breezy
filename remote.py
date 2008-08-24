@@ -115,7 +115,7 @@ class SvnRemoteAccess(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def import_branch(self, source, stop_revision=None):
+    def import_branch(self, source, stop_revision=None, _push_merged=None):
         """Create a new branch in this repository, possibly 
         with the specified history, optionally importing revisions.
         
@@ -143,7 +143,8 @@ class SvnRemoteAccess(BzrDir):
             branch = self.open_branch()
             branch.lock_write()
             try:
-                branch.pull(source, stop_revision=stop_revision)
+                branch.pull(source, stop_revision=stop_revision, 
+                            _push_merged=_push_merged)
             finally:
                 branch.unlock()
         finally:

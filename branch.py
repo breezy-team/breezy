@@ -352,7 +352,7 @@ class SvnBranch(Branch):
         return self.generate_revision_id(self.get_revnum())
 
     def pull(self, source, overwrite=False, stop_revision=None, 
-             _hook_master=None, run_hooks=True):
+             _hook_master=None, run_hooks=True, _push_merged=None):
         """See Branch.pull()."""
         result = PullResult()
         result.source_branch = source
@@ -361,7 +361,8 @@ class SvnBranch(Branch):
         source.lock_read()
         try:
             (result.old_revno, result.old_revid) = self.last_revision_info()
-            self.update_revisions(source, stop_revision, overwrite)
+            self.update_revisions(source, stop_revision, overwrite, 
+                                  _push_merged=_push_merged)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
@@ -400,7 +401,7 @@ class SvnBranch(Branch):
         destination.set_last_revision_info(revno, revision_id)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False, 
-                         graph=None):
+                         graph=None, _push_merged=False):
         """See Branch.update_revisions()."""
         if stop_revision is None:
             stop_revision = ensure_null(other.last_revision())
@@ -421,10 +422,11 @@ class SvnBranch(Branch):
             todo = self.otherline_missing_revisions(other, stop_revision, overwrite)
         if todo is None:
             raise DivergedBranches(self, other)
-        self._push_missing_revisions(other, todo)
+        if _push_merged is None:
+            _push_merged = self.layout.push_merged_revisions(self.project)
+        self._push_missing_revisions(other, todo, _push_merged)
 
-    def _push_missing_revisions(self, other, todo):
-        push_merged = self.layout.push_merged_revisions(self.project)
+    def _push_missing_revisions(self, other, todo, push_merged=False):
         if push_merged:
             graph = other.repository.get_graph()
         pb = ui.ui_factory.nested_progress_bar()

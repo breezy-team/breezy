@@ -487,40 +487,43 @@ class SvnCommitBuilder(RootCommitBuilder):
                     warning("Setting property %r with invalid characters in name", prop)
             self.editor = self.repository.transport.get_commit_editor(
                     self._svn_revprops, done, None, False)
+            try:
+                root = self.editor.open_root(self.base_revnum)
 
-            root = self.editor.open_root(self.base_revnum)
+                replace_existing = False
+                # See whether the base of the commit matches the lhs parent
+                # if not, we need to replace the existing directory
+                if len(bp_parts) == len(existing_bp_parts):
+                    if self.base_path is None or self.base_path.strip("/") != "/".join(bp_parts).strip("/"):
+                        replace_existing = True
+                    elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum):
+                        replace_existing = True
 
-            replace_existing = False
-            # See whether the base of the commit matches the lhs parent
-            # if not, we need to replace the existing directory
-            if len(bp_parts) == len(existing_bp_parts):
-                if self.base_path is None or self.base_path.strip("/") != "/".join(bp_parts).strip("/"):
-                    replace_existing = True
-                elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum):
-                    replace_existing = True
+                if replace_existing and self.branch._get_append_revisions_only():
+                    raise AppendRevisionsOnlyViolation(self.branch.base)
 
-            if replace_existing and self.branch._get_append_revisions_only():
-                raise AppendRevisionsOnlyViolation(self.branch.base)
+                # TODO: Accept create_prefix argument
+                branch_editors = self.open_branch_editors(root, bp_parts,
+                    existing_bp_parts, self.base_path, self.base_revnum, 
+                    replace_existing)
 
-            # TODO: Accept create_prefix argument
-            branch_editors = self.open_branch_editors(root, bp_parts,
-                existing_bp_parts, self.base_path, self.base_revnum, 
-                replace_existing)
+                self._dir_process("", self.new_inventory.root.file_id, 
+                    branch_editors[-1])
 
-            self._dir_process("", self.new_inventory.root.file_id, 
-                branch_editors[-1])
+                # Set all the revprops
+                if self.push_metadata:
+                    for prop, value in self._svnprops.items():
+                        if not properties.is_valid_property_name(prop):
+                            warning("Setting property %r with invalid characters in name", prop)
+                        assert isinstance(value, str)
+                        branch_editors[-1].change_prop(prop, value)
+                        self.mutter("Setting root file property %r -> %r", prop, value)
 
-            # Set all the revprops
-            if self.push_metadata:
-                for prop, value in self._svnprops.items():
-                    if not properties.is_valid_property_name(prop):
-                        warning("Setting property %r with invalid characters in name", prop)
-                    assert isinstance(value, str)
-                    branch_editors[-1].change_prop(prop, value)
-                    self.mutter("Setting root file property %r -> %r", prop, value)
-
-            for dir_editor in reversed(branch_editors):
-                dir_editor.close()
+                for dir_editor in reversed(branch_editors):
+                    dir_editor.close()
+            except:
+                self.editor.abort()
+                raise
 
             self.editor.close()
         finally:
