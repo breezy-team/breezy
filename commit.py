@@ -485,16 +485,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             for prop in self._svn_revprops:
                 if not properties.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name", prop)
-            if self.supports_custom_revprops:
-                self.editor = self.repository.transport.get_commit_editor(
-                        self._svn_revprops, done, None, False)
-                self._svn_revprops = {}
-            else:
-                # Try without bzr: revprops
-                self.editor = self.repository.transport.get_commit_editor({
-                    properties.PROP_REVISION_LOG: self._svn_revprops[properties.PROP_REVISION_LOG]},
-                    done, None, False)
-                del self._svn_revprops[properties.PROP_REVISION_LOG]
+            self.editor = self.repository.transport.get_commit_editor(
+                    self._svn_revprops, done, None, False)
 
             root = self.editor.open_root(self.base_revnum)
 
@@ -556,12 +548,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             if properties.PROP_REVISION_DATE in override_svn_revprops:
                 new_revprops[properties.PROP_REVISION_DATE] = properties.time_to_cstring(1000000*self._timestamp)
             set_svn_revprops(self.repository.transport, result_revision, new_revprops)
-
-        try:
-            set_svn_revprops(self.repository.transport, result_revision, 
-                         self._svn_revprops) 
-        except RevpropChangeFailed:
-            pass # Ignore for now
 
         return revid
 

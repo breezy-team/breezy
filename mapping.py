@@ -383,8 +383,7 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.export_text_parents)
 
-    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, 
-                        revision_id, revno, merges, fileprops):
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops):
         """Determines the revision properties and branch root file 
         properties.
         """
@@ -619,10 +618,8 @@ class BzrSvnMappingRevProps(object):
     def export_message(self, can_use_custom_revprops, message, revprops, fileprops):
         revprops[SVN_REVPROP_BZR_LOG] = message.encode("utf-8")
 
-    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, 
-                        revprops, revision_id, revno, merges, 
-                        fileprops):
-        svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops):
+        svn_revprops = {}
 
         if timestamp is not None:
             svn_revprops[SVN_REVPROP_BZR_TIMESTAMP] = format_highres_date(timestamp, timezone)
@@ -662,6 +659,10 @@ class BzrSvnMappingv4(BzrSvnMappingRevProps):
 
     def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         super(BzrSvnMappingv4, self).import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)
+
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops):
+        svn_revprops[SVN_REVPROP_BZR_MAPPING_VERSION] = "4"
+        BzrSvnMappingRevProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops)
 
     @classmethod
     def parse_revision_id(cls, revid):

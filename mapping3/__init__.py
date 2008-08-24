@@ -330,11 +330,38 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
 
 
 class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
-    pass
+
+    def __init__(self, scheme, guessed_scheme=None):
+        mapping.BzrSvnMappingFileProps.__init__(self, scheme, guessed_scheme)
+        BzrSvnMappingv3.__init__(self, scheme, guessed_scheme)
+        self.revprop_map = mapping.BzrSvnMappingRevProps()
+
+    def export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops):
+        mapping.BzrSvnMappingFileProps.export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops)
+        if can_use_custom_revprops:
+            self.revprop_map.export_text_parents(can_use_custom_revprops, text_parents, svn_revprops, fileprops)
+
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
+        (_, fileprops) = mapping.BzrSvnMappingFileProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops)
+        if can_use_custom_revprops:
+            (revprops, _) = self.revprop_map.export_revision(can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, None, revno, merges, old_fileprops)
+        return (revprops, fileprops)
+
+    def export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops):
+        mapping.BzrSvnMappingFileProps.export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops)
+        if can_use_custom_revprops:
+            self.revprop_map.export_fileid_map(can_use_custom_revprops, fileids, revprops, fileprops)
+
+    def export_message(self, can_use_custom_revprops, log, revprops, fileprops):
+        mapping.BzrSvnMappingFileProps.export_message(self, can_use_custom_revprops, log, revprops, fileprops)
+        if can_use_custom_revprops:
+            self.revprop_map.export_message(can_use_custom_revprops, log, revprops, fileprops)
 
 
 class BzrSvnMappingv3RevProps(mapping.BzrSvnMappingRevProps, BzrSvnMappingv3):
-    pass
+    def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops):
+        svn_revprops[mapping.SVN_REVPROP_BZR_MAPPING_VERSION] = "3"
+        BzrSvnMappingRevProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops)
 
 
 class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):

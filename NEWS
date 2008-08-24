@@ -21,6 +21,8 @@ bzr-svn-0.4.11	UNRELEASED
 
    * add --incremental option to bzr-svn for incremental imports.
 
+   * set revision properties from v3 mappings when possible.
+
 bzr-svn 0.4.11~rc1	2008-08-08
 
   CHANGES
