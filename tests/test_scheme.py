@@ -453,11 +453,11 @@ class TrunkScheme(TestCase):
 
     def test_get_tag_path_zero(self):
         self.assertEquals("tags/foo", 
-                          TrunkBranchingScheme().get_tag_path("foo"))
+                          TrunkBranchingScheme().get_tag_path(u"foo"))
 
     def test_get_tag_path_nonzero(self):
         self.assertEquals("my/project/tags/foo",
-                          TrunkBranchingScheme(2).get_tag_path("foo", "my/project"))
+                          TrunkBranchingScheme(2).get_tag_path(u"foo", "my/project"))
 
     def test_get_branch_path_zero(self):
         self.assertEquals("branches/foo", 

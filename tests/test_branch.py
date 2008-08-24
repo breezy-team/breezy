@@ -73,7 +73,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.close()
 
         b = Branch.open(repos_url + "/trunk")
-        b.tags.set_tag("mytag", b.repository.generate_revision_id(1, "trunk", b.repository.get_mapping()))
+        b.tags.set_tag(u"mytag", b.repository.generate_revision_id(1, "trunk", b.repository.get_mapping()))
 
         self.assertEquals(core.NODE_DIR, 
                 b.repository.transport.check_path("tags/mytag", 3))
@@ -89,7 +89,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         b = Branch.open(repos_url + "/trunk")
         self.assertEquals(["foo"], b.tags.get_tag_dict().keys())
-        b.tags.delete_tag("foo")
+        b.tags.delete_tag(u"foo")
         b = Branch.open(repos_url + "/trunk")
         self.assertEquals([], b.tags.get_tag_dict().keys())
 
@@ -124,7 +124,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         dc.close()
        
         b = Branch.open(repos_url + "/trunk")
-        self.assertRaises(NoSuchTag, b.tags.delete_tag, "foo")
+        self.assertRaises(NoSuchTag, b.tags.delete_tag, u"foo")
 
     def test_get_branch_path_old(self):
         repos_url = self.make_repository("a")
