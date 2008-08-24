@@ -302,8 +302,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         return (uuid, branch_path, srevnum, cls(scheme))
 
     def is_branch(self, branch_path):
-        return (self.scheme.is_branch(branch_path) or 
-                self.scheme.is_tag(branch_path))
+        return self.scheme.is_branch(branch_path)
 
     def is_tag(self, tag_path):
         return self.scheme.is_tag(tag_path)
