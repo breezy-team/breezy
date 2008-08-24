@@ -191,8 +191,9 @@ class CachingRevidMap(object):
                     self.cache.insert_revid(entry_revid, branch, last_checked, revno, str(mapping.scheme))
                     self.revid_seen.add(entry_revid)
                 
-            # We've added all the revision ids for this layout in the repository,
-            # so no need to check again unless new revisions got added
+            # We've added all the revision ids for this layout in the
+            # repository, so no need to check again unless new revisions got 
+            # added
             self.cache.set_last_revnum_checked(repr((layout, project)), last_revnum)
             if not found:
                 raise e

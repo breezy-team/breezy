@@ -86,8 +86,7 @@ def update_svk_features(oldvalue, merges):
     return None
 
 
-def update_mergeinfo(repository, oldvalue, baserevid, merges):
-    graph = repository.get_graph()
+def update_mergeinfo(repository, graph, oldvalue, baserevid, merges):
     mergeinfo = properties.parse_mergeinfo_property(oldvalue)
     for merge in merges:
         for (revid, parents) in graph.iter_ancestry([merge]):
@@ -194,7 +193,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if new_svk_merges is not None:
                 self._svnprops[SVN_PROP_SVK_MERGE] = new_svk_merges
 
-            new_mergeinfo = update_mergeinfo(self.repository, base_branch_props.get(properties.PROP_MERGEINFO, ""), self.base_revid, merges)
+            new_mergeinfo = update_mergeinfo(self.repository, graph, base_branch_props.get(properties.PROP_MERGEINFO, ""), self.base_revid, merges)
             if new_mergeinfo is not None:
                 self._svnprops[properties.PROP_MERGEINFO] = new_mergeinfo
 

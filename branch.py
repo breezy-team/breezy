@@ -409,10 +409,11 @@ class SvnBranch(Branch):
             self.last_revision() == other.last_revision()):
             return
         if graph is None:
-            graph = self.repository.get_graph()
-        if not other.repository.get_graph().is_ancestor(self.last_revision(), 
+            my_graph = self.repository.get_graph()
+        other_graph = other.repository.get_graph()
+        if not other_graph.is_ancestor(self.last_revision(), 
                                                         stop_revision):
-            if graph.is_ancestor(stop_revision, self.last_revision()):
+            if my_graph.is_ancestor(stop_revision, self.last_revision()):
                 return
             if not overwrite:
                 raise DivergedBranches(self, other)
@@ -424,19 +425,18 @@ class SvnBranch(Branch):
             raise DivergedBranches(self, other)
         if _push_merged is None:
             _push_merged = self.layout.push_merged_revisions(self.project)
-        self._push_missing_revisions(other, todo, _push_merged)
+        self._push_missing_revisions(other, other_graph, todo, _push_merged)
 
-    def _push_missing_revisions(self, other, todo, push_merged=False):
-        if push_merged:
-            graph = other.repository.get_graph()
+    def _push_missing_revisions(self, other, other_graph, todo, 
+                                push_merged=False):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
                 if push_merged:
-                    parent_revids = graph.get_parent_map([revid])[revid]
-                    push_ancestors(self.repository, other.repository, self.layout, self.project, parent_revids, graph)
+                    parent_revids = other_graph.get_parent_map([revid])[revid]
+                    push_ancestors(self.repository, other.repository, self.layout, self.project, parent_revids, other_graph)
                 push(self, other.repository, revid)
                 self._clear_cached_state()
         finally:
