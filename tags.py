@@ -16,16 +16,54 @@
 from bzrlib import urlutils
 from bzrlib.errors import NoSuchRevision, NoSuchTag
 from bzrlib.tag import BasicTags
+from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import core
+from bzrlib.plugins.svn import commit, core, properties
 
 class SubversionTags(BasicTags):
     def __init__(self, branch):
         self.branch = branch
         self.repository = branch.repository
 
+    def _ensure_tag_parent_exists(self, parent):
+        assert isinstance(parent, str)
+        bp_parts = parent.split("/")
+        existing_bp_parts = commit._check_dirs_exist(
+                self.repository.transport, 
+                bp_parts, self.repository.get_latest_revnum())
+        if existing_bp_parts == bp_parts:
+            return
+        conn = self.repository.transport.get_connection()
+        try:
+            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tags base directory."})
+            try:
+                root = ci.open_root()
+                name = None
+                batons = [root]
+                for p in existing_bp_parts:
+                    if name is None:
+                        name = p
+                    else:
+                        name += "/" + p
+                    batons.append(batons[-1].open_directory(name))
+                for p in bp_parts[len(existing_bp_parts):]:
+                    if name is None:
+                        name = p
+                    else:
+                        name += "/" + p
+                    batons.append(batons[-1].add_directory(name))
+                for baton in reversed(batons):
+                    baton.close()
+            except:
+                ci.abort()
+                raise
+            ci.close()
+        finally:
+            self.repository.transport.add_connection(conn)
+
     def set_tag(self, tag_name, tag_target):
         path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
+        assert isinstance(path, str)
         parent = urlutils.dirname(path)
         try:
             (from_bp, from_revnum, mapping) = self.repository.lookup_revision_id(tag_target)
@@ -34,10 +72,11 @@ class SubversionTags(BasicTags):
             return
         if from_bp == path:
             return
+        self._ensure_tag_parent_exists(parent)
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
         deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
         try:
-            ci = conn.get_commit_editor({"svn:log": "Add tag %s" % tag_name})
+            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tag %s" % tag_name})
             try:
                 root = ci.open_root()
                 if deletefirst:
@@ -81,7 +120,7 @@ class SubversionTags(BasicTags):
         if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
             raise NoSuchTag(tag_name)
         try:
-            ci = conn.get_commit_editor({"svn:log": "Remove tag %s" % tag_name})
+            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Remove tag %s" % tag_name})
             try:
                 root = ci.open_root()
                 root.delete_entry(urlutils.basename(path))

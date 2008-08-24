@@ -263,9 +263,10 @@ class TrunkBranchingScheme(ListBranchingScheme):
         self.tag_list = ["*/" * level + "tags/*"]
 
     def get_tag_path(self, name, project=""):
+        assert isinstance(name, unicode)
         if project == "":
-            return urlutils.join("tags", name)
-        return urlutils.join(project, "tags", name)
+            return urlutils.join("tags", name.encode("utf-8"))
+        return urlutils.join(project, "tags", name.encode("utf-8"))
 
     def get_branch_path(self, name, project=""):
         # Only implemented for level 0

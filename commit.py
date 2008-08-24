@@ -502,7 +502,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if replace_existing and self.branch._get_append_revisions_only():
                 raise AppendRevisionsOnlyViolation(self.branch.base)
 
-            # TODO: Accept create_prefix argument (#118787)
+            # TODO: Accept create_prefix argument
             branch_editors = self.open_branch_editors(root, bp_parts,
                 existing_bp_parts, self.base_path, self.base_revnum, 
                 replace_existing)

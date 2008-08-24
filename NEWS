@@ -19,9 +19,11 @@ bzr-svn-0.4.11	UNRELEASED
      (#246243). The --keep option can be specified to keep 
 	 branches removed in Subversion around.
 
-   * add --incremental option to bzr-svn for incremental imports.
+   * Add --incremental option to bzr-svn for incremental imports.
 
-   * set revision properties from v3 mappings when possible.
+   * Set revision properties from v3 mappings when possible.
+
+   * Create tags base directory if it doesn't exist.
 
 bzr-svn 0.4.11~rc1	2008-08-08
 
