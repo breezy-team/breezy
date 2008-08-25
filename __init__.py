@@ -412,6 +412,9 @@ class cmd_merge_upstream(Command):
                               "information from, please use the --package "
                               "option to give the name of the package")
 
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise BzrCommandError("Working tree has uncommitted changes.")
+
     try:
       upstream_branch = Branch.open(location)
     except NotBranchError:
@@ -433,9 +436,6 @@ class cmd_merge_upstream(Command):
                               "are of different formats. Either delete the target "
                               "file, or use it as the argument to import.")
       filename = os.path.join(orig_dir, dest_name)
-
-      if tree.changes_from(tree.basis_tree()).has_changed():
-        raise BzrCommandError("Working tree has uncommitted changes.")
 
       if not os.path.exists(filename):
         raise NoSuchFile(filename)
