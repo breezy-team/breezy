@@ -169,7 +169,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             for reference in reference_list:
                 self._check_key(reference)
             node_refs.append(tuple(reference_list))
-        if key in self._nodes and self._nodes[key][0] == '':
+        if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = (tuple(node_refs), value)
         self._keys.add(key)
