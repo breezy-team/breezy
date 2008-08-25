@@ -95,6 +95,28 @@ class GraphIndexBuilder(object):
             if not element or _whitespace_re.search(element) is not None:
                 raise errors.BadIndexKey(element)
 
+    def _get_nodes_by_key(self):
+        if self._nodes_by_key is None:
+            nodes_by_key = {}
+            if self.reference_lists:
+                for key, (absent, references, value) in self._nodes.iteritems():
+                    if absent:
+                        continue
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value, references
+            else:
+                for key, (absent, references, value) in self._nodes.iteritems():
+                    if absent:
+                        continue
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value
+            self._nodes_by_key = nodes_by_key
+        return self._nodes_by_key
+
     def _update_nodes_by_key(self, key, value, node_refs):
         """Update the _nodes_by_key dict with a new key.
 
@@ -1154,14 +1176,6 @@ class InMemoryGraphIndex(GraphIndexBuilder):
     available - for example via a CombinedGraphIndex.
     """
 
-    def __init__(self, reference_lists=0, key_elements=1):
-        super(InMemoryGraphIndex, self).__init__(
-            reference_lists=reference_lists,
-            key_elements=key_elements)
-        # The tests using InMemoryGraphIndex expect _nodes_by_key to be filled
-        # out
-        self._nodes_by_key = {}
-
     def add_nodes(self, nodes):
         """Add nodes to the index.
 
@@ -1250,6 +1264,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 else:
                     yield self, key, node[2]
             return
+        nodes_by_key = self._get_nodes_by_key()
         for key in keys:
             # sanity check
             if key[0] is None:
@@ -1257,7 +1272,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             if len(key) != self._key_length:
                 raise errors.BadIndexKey(key)
             # find what it refers to:
-            key_dict = self._nodes_by_key
+            key_dict = nodes_by_key
             elements = list(key)
             # find the subdict to return
             try:
