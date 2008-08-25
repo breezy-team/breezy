@@ -86,6 +86,20 @@ IN DEVELOPMENT
       clients now use this mechanism.  (Neil Martinsen-Burrell)
 
 
+bzr 1.6 2008-08-25
+------------------
+
+Finally, the long awaited bzr 1.6 has been released. This release includes
+new features like Stacked Branches, improved weave merge, and an updated
+server protocol (now on v3) which will allow for better cross version
+compatibility. With this release we have deprecated Knit format
+repositories, and recommend that users upgrade them, we will continue to
+support reading and writing them for the forseeable future, but we will
+not be tuning them for performance as pack repositories have proven to be
+better at scaling. This will also be the first release to bundle
+TortoiseBzr in the standalone Windows installer.
+
+
 bzr 1.6rc5 2008-08-19
 ---------------------
 
