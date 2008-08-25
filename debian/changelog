@@ -6,6 +6,7 @@ bzr-builddeb (1.0) UNRELEASED; urgency=low
     meaning there were problems with remote branches.
   * Import apt_pkg only when used, as it is used rarely and importing it
     has an overhead, and also leads to increased memory usage.
+  * Add -d option to merge-upstream.
 
  -- James Westby <james.westby@canonical.com>  Fri, 13 Jun 2008 15:03:53 +0100
 

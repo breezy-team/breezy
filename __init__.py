@@ -371,9 +371,12 @@ class cmd_merge_upstream(Command):
                        type=str)
   version_opt = Option('version', help="The version number of the new "
                        "upstream release. (Required).", type=str)
-  takes_options = [package_opt, version_opt]
+  directory_opt = Option('directory', help='Working tree into which to merge.',
+                         short_name='d', type=unicode)
 
-  def run(self, path, version=None, package=None):
+  takes_options = [package_opt, version_opt, directory_opt]
+
+  def run(self, path, version=None, package=None, directory="."):
 
     from bzrlib.errors import (NoSuchTag,
                                TagAlreadyExists,
@@ -385,7 +388,7 @@ class cmd_merge_upstream(Command):
     if version is None:
       raise BzrCommandError("You must supply the --version argument.")
 
-    tree, _ = WorkingTree.open_containing('.')
+    tree, _ = WorkingTree.open_containing(directory)
 
     config = DebBuildConfig([(local_conf, True), (global_conf, True),
                              (default_conf, False)])
