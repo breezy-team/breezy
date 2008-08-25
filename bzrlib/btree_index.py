@@ -25,6 +25,7 @@ import math
 import sha
 import struct
 import tempfile
+import time
 import zlib
 
 from bzrlib import (
@@ -59,6 +60,7 @@ leaf_node_hits = [0, 0]
 miss_attempts = 0  # Missed this entry while looking up
 bisect_shortcut = [0, 0]
 dupes = [0]
+_add_node_time = [0.0]
 
 
 class _BuilderRow(object):
@@ -85,8 +87,10 @@ class _BuilderRow(object):
             del byte_lines[-1]
             skipped_bytes = padding
         self.spool.writelines(byte_lines)
-        if (self.spool.tell() + skipped_bytes) % _PAGE_SIZE != 0:
-            raise AssertionError("incorrect node length")
+        remainder = (self.spool.tell() + skipped_bytes) % _PAGE_SIZE
+        if remainder != 0:
+            raise AssertionError("incorrect node length: %d, %d"
+                                 % (self.spool.tell(), remainder))
         self.nodes += 1
         self.writer = None
 
@@ -391,7 +395,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
                 if type(row) != _LeafBuilderRow:
-                    raise AssertionError("Not enough data copied")
+                    raise AssertionError("Incorrect amount of data copied"
+                        " expected: %d, got: %d"
+                        % ((row.nodes - 1) * _PAGE_SIZE,
+                           copied_len))
         result.flush()
         size = result.tell()
         result.seek(0)

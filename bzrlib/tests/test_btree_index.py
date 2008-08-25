@@ -487,7 +487,6 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual(sorted(set([(builder,) + node for node in nodes[11:13]])),
             sorted(set(builder.iter_entries([nodes[12][0], nodes[11][0]]))))
         self.assertEqual(13, builder.key_count())
-        import pdb; pdb.set_trace()
         self.assertEqual(sorted(set([(builder,) + node for node in nodes[11:13]])),
             sorted(set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]]))))
         builder.add_node(*nodes[13])

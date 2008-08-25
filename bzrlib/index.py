@@ -95,6 +95,23 @@ class GraphIndexBuilder(object):
             if not element or _whitespace_re.search(element) is not None:
                 raise errors.BadIndexKey(element)
 
+    def _update_nodes_by_key(self, key, value, node_refs):
+        """Update the _nodes_by_key dict with a new key.
+
+        For a key of (foo, bar, baz) create
+        _nodes_by_key[foo][bar][baz] = key_value
+        """
+        if self._nodes_by_key is None:
+            return
+        key_dict = self._nodes_by_key
+        if self.reference_lists:
+            key_value = key, value, node_refs
+        else:
+            key_value = key, value
+        for subkey in key[:-1]:
+            key_dict = key_dict.setdefault(subkey, {})
+        key_dict[key[-1]] = key_value
+
     def add_node(self, key, value, references=()):
         """Add a node to the index.
 
@@ -120,21 +137,11 @@ class GraphIndexBuilder(object):
             node_refs.append(tuple(reference_list))
         if key in self._nodes and self._nodes[key][0] == '':
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = ('', tuple(node_refs), value)
+        node_refs = tuple(node_refs)
+        self._nodes[key] = ('', node_refs, value)
         self._keys.add(key)
         if self._key_length > 1 and self._nodes_by_key is not None:
-            key_dict = self._nodes_by_key
-            if self.reference_lists:
-                key_value = key, value, tuple(node_refs)
-            else:
-                key_value = key, value
-            # possibly should do this on-demand, but it seems likely it is 
-            # always wanted
-            # For a key of (foo, bar, baz) create
-            # _nodes_by_key[foo][bar][baz] = key_value
-            for subkey in key[:-1]:
-                key_dict = key_dict.setdefault(subkey, {})
-            key_dict[key[-1]] = key_value
+            self._update_nodes_by_key(key, value, node_refs)
 
     def finish(self):
         lines = [_SIGNATURE]
@@ -320,14 +327,14 @@ class GraphIndex(object):
                 node_value = value
             self._nodes[key] = node_value
             if self._key_length > 1:
-                subkey = list(reversed(key[:-1]))
+                # TODO: We may want to do this lazily, but if we are calling
+                #       _buffer_all, we are likely to be doing
+                #       iter_entries_prefix
                 key_dict = self._nodes_by_key
                 if self.node_ref_lists:
                     key_value = key, node_value[0], node_value[1]
                 else:
                     key_value = key, node_value
-                # possibly should do this on-demand, but it seems likely it is 
-                # always wanted
                 # For a key of (foo, bar, baz) create
                 # _nodes_by_key[foo][bar][baz] = key_value
                 for subkey in key[:-1]:
@@ -1146,6 +1153,14 @@ class InMemoryGraphIndex(GraphIndexBuilder):
     single write operation, where the accumulated entries need to be immediately
     available - for example via a CombinedGraphIndex.
     """
+
+    def __init__(self, reference_lists=0, key_elements=1):
+        super(InMemoryGraphIndex, self).__init__(
+            reference_lists=reference_lists,
+            key_elements=key_elements)
+        # The tests using InMemoryGraphIndex expect _nodes_by_key to be filled
+        # out
+        self._nodes_by_key = {}
 
     def add_nodes(self, nodes):
         """Add nodes to the index.

@@ -93,6 +93,16 @@ class ChunkWriter(object):
         This returns the final compressed chunk, and either None, or the
         bytes that did not fit in the chunk.
         """
+        # self.bytes_list = self.bytes_in
+        # bytes_out_len = sum(map(len, self.bytes_list))
+        # if bytes_out_len > self.chunk_size:
+        #     raise Assertion("too much data: %d" % bytes_out_len)
+        # self.bytes_in = None
+        # nulls_needed = self.chunk_size - self.seen_bytes
+        # if nulls_needed:
+        #     self.bytes_list.append("\x00" * nulls_needed)
+        # return self.bytes_list, self.unused_bytes, nulls_needed
+
         self.bytes_in = None # Free the data cached so far, we don't need it
         out = self.compressor.flush(Z_FINISH)
         self.bytes_list.append(out)
@@ -101,7 +111,7 @@ class ChunkWriter(object):
             raise AssertionError('Somehow we ended up with too much'
                                  ' compressed data, %d > %d'
                                  % (self.bytes_out_len, self.chunk_size))
-        nulls_needed = self.chunk_size - self.bytes_out_len % self.chunk_size
+        nulls_needed = self.chunk_size - self.bytes_out_len
         if nulls_needed:
             self.bytes_list.append("\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
