@@ -585,10 +585,13 @@ class SvnCommitBuilder(RootCommitBuilder):
                 it is a candidate to commit.
         """
         self.new_inventory.add(ie)
-        assert ie.file_id not in self.old_inv or self.old_inv[ie.file_id].revision is not None
+        assert (ie.file_id not in self.old_inv or 
+                self.old_inv[ie.file_id].revision is not None)
+        version_recorded = (ie.revision is None)
+        # If nothing changed since the lhs parent, return:
         if (ie.file_id in self.old_inv and ie == self.old_inv[ie.file_id] and 
             (ie.kind != 'directory' or ie.children == self.old_inv[ie.file_id].children)):
-            return
+            return self._get_delta(ie, self.old_inv, self.new_inventory.id2path(ie.file_id)), version_recorded
         if ie.kind == 'file':
             self.modified_files[ie.file_id] = tree.get_file_text(ie.file_id)
         elif ie.kind == 'symlink':
@@ -599,6 +602,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         while fid is not None and fid not in self.visit_dirs:
             self.visit_dirs.add(fid)
             fid = self.new_inventory[fid].parent_id
+        return self._get_delta(ie, self.old_inv, self.new_inventory.id2path(ie.file_id)), version_recorded
 
 
 def replay_delta(builder, old_tree, new_tree):
