@@ -447,10 +447,14 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
+        old = dict(builder._get_nodes_by_key()) #Build up the nodes by key dict
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
         self.assertEqual(1, len(builder._keys))
-        self.assertIs(None, builder._nodes_by_key)
+        self.assertIsNot(None, builder._nodes_by_key)
+        self.assertNotEqual({}, builder._nodes_by_key)
+        # We should have a new entry
+        self.assertNotEqual(old, builder._nodes_by_key)
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
