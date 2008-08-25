@@ -457,9 +457,14 @@ class cmd_merge_upstream(Command):
     else:
       version = merge_upstream_branch(tree, upstream_branch, package, version)
 
+    if "~bzr" in str(version) or "+bzr" in str(version):
+      entry_description = "New upstream snapshot."
+    else:
+      entry_description = "New upstream release."
+
     info("The new upstream version has been imported. You should now update "
-         "the changelog (try dch -v %s-1), and then commit. Note that debcommit "
-         "will not do what you want in this case." % str(version))
+         "the changelog (try dch -v %s-1 \"%s\"), and then commit. Note that debcommit "
+         "will not do what you want in this case." % (str(version), entry_description))
 
 
 register_command(cmd_merge_upstream)
