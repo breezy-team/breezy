@@ -394,15 +394,15 @@ class cmd_merge_upstream(Command):
       raise BzrCommandError("Merge upstream in merge mode is not yet "
                             "supported")
     if config.native:
-      raise BzrCommandError("Merge upstream in native mode is not yet "
-                            "supported")
+      raise BzrCommandError("Merge upstream in native mode does not make "
+                            "sense")
     if config.export_upstream and location is None:
       location = config.export_upstream
     if config.split:
       raise BzrCommandError("Split mode is not yet supported")
 
     if location is None:
-      raise BzrCommandError("no location specified to merge")
+      raise BzrCommandError("No location specified to merge")
 
     if package is None:
       try:
