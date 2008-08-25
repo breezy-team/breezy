@@ -48,25 +48,40 @@ from bzrlib.plugins.builddeb.errors import AddChangelogError
 
 TAG_PREFIX = "upstream-"
 
-def upstream_branch_version(revhistory, tags, package, existing_version):
+def upstream_branch_version(revhistory, tags, package, previous_version):
   """Determine the version string of an upstream branch.
 
   :param revhistory: Branch revision history.
   :param tags: Tags object.
   :param package: Name of package.
-  :param existing_version: Upstream version currently in Debian package.
+  :param previous_version: Upstream version currently in Debian package.
   """
-  # FIXME: Check if upstream has a tag set on branch.last_revision()
-  # Yes? Convert to upstream_version and return
+  reverse_tag_dict = tags.get_reverse_tags_dict()
   
-  # FIXME: Parse existing_version
-  # if ~bzr, check if new tags appeared since existing_version's revision
-  # if they didn't, update revno in ~bzr<revno>
+  # Check if upstream has a tag set on branch.last_revision()
+  # Yes? Convert to upstream_version and return
+  if revhistory[-1] in reverse_tag_dict:
+    return upstream_tag_to_version(reverse_tag_dict[revhistory[-1]], 
+                                   package=package)
+  
+  # Parse previous_version
+  # if it contains ~bzr:
+  if "~bzr" in previous_version or "+bzr" in previous_version:
+    # check if new tags appeared since previous_version's revision
+    # if they didn't, update revno in ~bzr<revno>
+    bzr_revno = int(previous_version[previous_version.find("bzr")+3:])
+    for r in reversed(revhistory[bzr_revno:]):
+      if r in reverse_tag_dict:
+        # If there is a newer version tagged in branch, 
+        # convert to upstream version 
+        # return <upstream_version>+bzr<revno>
+        upstream_version = upstream_tag_to_version(reverse_tag_dict[r], 
+                                                   package=package)
+        return "%s+bzr%d" % (upstream_version, len(revhistory))
 
-  # FIXME: Find latest tag in branch, convert to upstream version
-  # return <upstream_version>+bzr<revno>
-
-  # FIXME: When no tags are found, simply return <existing_version>+bzr<revno>
+    return "%s%d" % (previous_version[previous_version.find("bzr")+3:],
+                     len(revhistory))
+  return "%s+bzr%d" % (previous_version, len(revhistory))
 
 
 def merge_upstream_branch(tree, upstream_branch, package, version=None):
@@ -84,9 +99,9 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
                                       upstream_branch.tags(), package, 
                                       FIXME)
   tree.merge_from_branch(upstream_branch)
-  tree.commit('import upstream from branch %s' % upstream_branch.base)
   tree.branch.tags.set_tag(make_upstream_tag(version),
-                           tree.branch.last_revision())
+                           upstream_branch.last_revision())
+  tree.commit('import upstream from branch %s' % upstream_branch.base)
   return version
 
 
@@ -95,10 +110,19 @@ def make_upstream_tag(version):
   return  TAG_PREFIX + "%s" % str(version)
 
 
-def upstream_tag_to_version(tag_name):
+def upstream_tag_to_version(tag_name, package=None):
   """Take a tag name and return the upstream version, or None."""
   if tag_name.startswith(TAG_PREFIX):
     return Version(tag_name[len(TAG_PREFIX):])
+  if (package is not None and (
+        tag_name.startswith("%s-" % package) or
+        tag_name.startswith("%s_" % package))):
+    return Version(tag_name[len(package)+1:])
+  if tag_name[0] == "v" and tag_name[1].isdigit():
+    return Version(tag_name[1:])
+  if all([c.isdigit() or c in (".", "~") for c in tag_name]):
+    return Version(tagname)
+
   return None
 
 
