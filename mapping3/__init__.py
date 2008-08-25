@@ -353,7 +353,9 @@ class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
             self.revprop_map.export_fileid_map(can_use_custom_revprops, fileids, revprops, fileprops)
 
     def export_message(self, can_use_custom_revprops, log, revprops, fileprops):
-        self.revprop_map.export_message(can_use_custom_revprops, log, revprops, fileprops)
+        mapping.BzrSvnMappingFileProps.export_message(self, can_use_custom_revprops, log, revprops, fileprops)
+        if can_use_custom_revprops:
+            self.revprop_map.export_message(can_use_custom_revprops, log, revprops, fileprops)
 
 
 class BzrSvnMappingv3RevProps(mapping.BzrSvnMappingRevProps, BzrSvnMappingv3):

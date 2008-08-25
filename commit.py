@@ -129,7 +129,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def __init__(self, repository, branch, parents, config, timestamp, 
                  timezone, committer, revprops, revision_id, old_inv=None,
-                 push_metadata=True):
+                 push_metadata=True,
+                 graph=None):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
@@ -158,7 +159,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         else:
             self.base_revid = parents[0]
 
-        graph = self.repository.get_graph()
+        if graph is None:
+            graph = self.repository.get_graph()
         self.base_revno = graph.find_distance_to_null(self.base_revid, [])
         if self.base_revid == NULL_REVISION:
             self.base_revnum = -1
@@ -675,7 +677,7 @@ def push_new(target_repository, target_branch_path, source, stop_revision,
                 revnum, self.get_branch_path(revnum), 
                 self.repository.get_mapping())
 
-    push(ImaginaryBranch(target_repository), source, start_revid, push_metadata=push_metadata)
+    push(target_repository.get_graph(), ImaginaryBranch(target_repository), source, start_revid, push_metadata=push_metadata)
 
 
 def dpush(target, source, stop_revision=None):
@@ -706,8 +708,8 @@ def dpush(target, source, stop_revision=None):
             for revid in todo:
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
-                revid_map[revid] = push(target, source.repository, revid, 
-                                        push_metadata=False)
+                revid_map[revid] = push(graph, target, source.repository, 
+                                        revid, push_metadata=False)
                 source.repository.fetch(target.repository, 
                                         revision_id=revid_map[revid])
                 target._clear_cached_state()
@@ -718,8 +720,8 @@ def dpush(target, source, stop_revision=None):
         source.unlock()
 
 
-def push_revision_tree(target, config, source_repo, base_revid, revision_id, 
-                       rev, push_metadata=True):
+def push_revision_tree(graph, target, config, source_repo, base_revid, 
+                       revision_id, rev, push_metadata=True):
     old_tree = source_repo.revision_tree(revision_id)
     base_tree = source_repo.revision_tree(base_revid)
 
@@ -733,7 +735,8 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
                                config, rev.timestamp,
                                rev.timezone, rev.committer, rev.properties, 
                                revision_id, base_tree.inventory, 
-                               push_metadata=push_metadata)
+                               push_metadata=push_metadata,
+                               graph=graph)
                          
     replay_delta(builder, base_tree, old_tree)
     try:
@@ -751,7 +754,7 @@ def push_revision_tree(target, config, source_repo, base_revid, revision_id,
     return revid
 
 
-def push(target, source_repo, revision_id, push_metadata=True):
+def push(graph, target, source_repo, revision_id, push_metadata=True):
     """Push a revision into Subversion.
 
     This will do a new commit in the target branch.
@@ -776,7 +779,7 @@ def push(target, source_repo, revision_id, push_metadata=True):
 
     source_repo.lock_read()
     try:
-        revid = push_revision_tree(target, target.get_config(), 
+        revid = push_revision_tree(graph, target, target.get_config(), 
                                    source_repo, base_revid, revision_id, 
                                    rev, push_metadata=push_metadata)
     finally:
@@ -848,8 +851,8 @@ class InterToSvnRepository(InterRepository):
                     push_ancestors(self.target, self.source, layout, "", rev.parent_ids, graph)
 
                 target_config = target_branch.get_config()
-                push_revision_tree(target_branch, target_config, self.source, 
-                                   parent_revid, revision_id, rev)
+                push_revision_tree(graph, target_branch, target_config, 
+                                   self.source, parent_revid, revision_id, rev)
         finally:
             self.source.unlock()
  

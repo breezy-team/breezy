@@ -253,7 +253,8 @@ class SvnBranch(Branch):
         if (rev_history == [] or 
             not self.repository.has_revision(rev_history[-1])):
             raise NotImplementedError("set_revision_history can't add ghosts")
-        push(self, self.repository, rev_history[-1])
+        push(self.repository.get_graph(), 
+             self, self.repository, rev_history[-1])
         self._clear_cached_state()
 
     def set_last_revision_info(self, revno, revid):
@@ -409,11 +410,11 @@ class SvnBranch(Branch):
             self.last_revision() == other.last_revision()):
             return
         if graph is None:
-            my_graph = self.repository.get_graph()
+            graph = self.repository.get_graph()
         other_graph = other.repository.get_graph()
         if not other_graph.is_ancestor(self.last_revision(), 
                                                         stop_revision):
-            if my_graph.is_ancestor(stop_revision, self.last_revision()):
+            if graph.is_ancestor(stop_revision, self.last_revision()):
                 return
             if not overwrite:
                 raise DivergedBranches(self, other)
@@ -425,9 +426,10 @@ class SvnBranch(Branch):
             raise DivergedBranches(self, other)
         if _push_merged is None:
             _push_merged = self.layout.push_merged_revisions(self.project)
-        self._push_missing_revisions(other, other_graph, todo, _push_merged)
+        self._push_missing_revisions(graph, other, other_graph, todo, 
+                                     _push_merged)
 
-    def _push_missing_revisions(self, other, other_graph, todo, 
+    def _push_missing_revisions(self, my_graph, other, other_graph, todo, 
                                 push_merged=False):
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -437,7 +439,7 @@ class SvnBranch(Branch):
                 if push_merged:
                     parent_revids = other_graph.get_parent_map([revid])[revid]
                     push_ancestors(self.repository, other.repository, self.layout, self.project, parent_revids, other_graph)
-                push(self, other.repository, revid)
+                push(my_graph, self, other.repository, revid)
                 self._clear_cached_state()
         finally:
             pb.finished()

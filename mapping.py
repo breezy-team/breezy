@@ -33,6 +33,7 @@ SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
 SVN_PROP_BZR_TEXT_PARENTS = 'bzr:text-parents'
+SVN_PROP_BZR_LOG = 'bzr:log'
 
 SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
 SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
@@ -483,6 +484,8 @@ class BzrSvnMappingFileProps(object):
 
     def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         parse_svn_revprops(svn_revprops, rev)
+        if SVN_PROP_BZR_LOG in fileprops:
+            rev.message = fileprops[SVN_PROP_BZR_LOG]
         metadata = fileprops.get(SVN_PROP_BZR_REVISION_INFO)
         if metadata is not None:
             parse_revision_metadata(metadata, rev)
@@ -546,6 +549,9 @@ class BzrSvnMappingFileProps(object):
             fileprops[SVN_PROP_BZR_REVISION_ID+str(self.scheme)] = old + "%d %s\n" % (revno, revision_id)
 
         return ({}, fileprops)
+
+    def export_message(self, can_use_custom_revprops, message, revprops, fileprops):
+        fileprops[SVN_PROP_BZR_LOG] = message.encode("utf-8")
 
     def is_bzr_revision(self, revprops, fileprops):
         return fileprops.has_key(SVN_PROP_BZR_REVISION_ID+str(self.scheme))
