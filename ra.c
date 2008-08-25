@@ -1286,8 +1286,11 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 
 #if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
 	hash_revprops = prop_dict_to_hash(pool, revprops);
-	if (hash_revprops == NULL)
+	if (hash_revprops == NULL) {
+		apr_pool_destroy(pool);
+		ra->busy = false;
 		return NULL;
+	}
 	Py_BEGIN_ALLOW_THREADS
 	err = svn_ra_get_commit_editor3(ra->ra, &editor, 
 		&edit_baton, 
@@ -1297,17 +1300,23 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	/* Check that revprops has only one member named SVN_PROP_REVISION_LOG */
 	if (PyDict_Size(revprops) != 1) {
 		PyErr_SetString(PyExc_ValueError, "Only svn:log can be set with Subversion 1.4");
+		apr_pool_destroy(pool);
+		ra->busy = false;
 		return NULL;
 	}
 
 	py_log_msg = PyDict_GetItemString(revprops, SVN_PROP_REVISION_LOG);
 	if (py_log_msg == NULL) {
 		PyErr_SetString(PyExc_ValueError, "Only svn:log can be set with Subversion 1.4.");
+		apr_pool_destroy(pool);
+		ra->busy = false;
 		return NULL;
 	}
 
 	if (PyString_Check(py_log_msg)) {
 		PyErr_SetString(PyExc_ValueError, "svn:log property should be set to string.");
+		apr_pool_destroy(pool);
+		ra->busy = false;
 		return NULL;
 	}
 
