@@ -169,7 +169,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs = []
         for reference_list in references:
             for reference in reference_list:
-                self._check_key(reference)
+                # If reference is in self._nodes, then we have already checked
+                # it
+                if reference not in self._nodes:
+                    self._check_key(reference)
             node_refs.append(tuple(reference_list))
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
@@ -190,7 +193,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             key_dict[key[-1]] = key_value
         if len(self._keys) < self._spill_at:
             return
-        iterators_to_combine = [iter(sorted(self._iter_mem_nodes()))]
+        iterators_to_combine = [self._iter_mem_nodes()]
         pos = -1
         for pos, backing in enumerate(self._backing_indices):
             if backing is None:
@@ -228,12 +231,15 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
     def _iter_mem_nodes(self):
         """Iterate over the nodes held in memory."""
+        nodes = self._nodes
         if self.reference_lists:
-            return ((self, key, value, references)
-                    for key, (references, value) in self._nodes.iteritems())
+            for key in sorted(nodes):
+                references, value = nodes[key]
+                yield self, key, value, references
         else:
-            return ((self, key, value)
-                    for key, (references, value) in self._nodes.iteritems())
+            for key in sorted(nodes):
+                references, value = nodes[key]
+                yield self, key, value
 
     def _iter_smallest(self, iterators_to_combine):
         if len(iterators_to_combine) == 1:
@@ -422,7 +428,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 "iter_all_entries scales with size of history.")
         # Doing serial rather than ordered would be faster; but this shouldn't
         # be getting called routinely anyway.
-        iterators = [iter(sorted(self._iter_mem_nodes()))]
+        iterators = [self._iter_mem_nodes()]
         for backing in self._backing_indices:
             if backing is not None:
                 iterators.append(backing.iter_all_entries())
