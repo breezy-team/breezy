@@ -349,23 +349,19 @@ class TestBTreeBuilder(BTreeTestCase):
         # predictably.
         self.assertEqual(1, len(builder._nodes))
         self.assertEqual(1, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         builder.add_node(*nodes[1])
         self.assertEqual(0, len(builder._nodes))
         self.assertEqual(0, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
         self.assertEqual(1, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
         self.assertEqual(0, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(None, builder._backing_indices[0])
         self.assertEqual(4, builder._backing_indices[1].key_count())
@@ -374,7 +370,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
         self.assertEqual(0, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         self.assertEqual(4, builder._backing_indices[1].key_count())
@@ -438,24 +433,20 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test the parts of the index that take up memory are doing so
         # predictably.
         self.assertEqual(1, len(builder._keys))
-        self.assertEqual(2, len(builder._nodes))
-        self.assertNotEqual({}, builder._nodes_by_key)
+        self.assertEqual(1, len(builder._nodes))
         builder.add_node(*nodes[1])
         self.assertEqual(0, len(builder._keys))
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual({}, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
         builder.add_node(*nodes[2])
-        self.assertEqual(2, len(builder._nodes))
+        self.assertEqual(1, len(builder._nodes))
         self.assertEqual(1, len(builder._keys))
-        self.assertNotEqual({}, builder._nodes_by_key)
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
         self.assertEqual(0, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(None, builder._backing_indices[0])
         self.assertEqual(4, builder._backing_indices[1].key_count())
@@ -464,7 +455,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
         self.assertEqual(0, len(builder._keys))
-        self.assertEqual({}, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         self.assertEqual(4, builder._backing_indices[1].key_count())
@@ -494,11 +484,12 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
             list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
-            set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
+        self.assertEqual(sorted(set([(builder,) + node for node in nodes[11:13]])),
+            sorted(set(builder.iter_entries([nodes[12][0], nodes[11][0]]))))
         self.assertEqual(13, builder.key_count())
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
-            set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
+        import pdb; pdb.set_trace()
+        self.assertEqual(sorted(set([(builder,) + node for node in nodes[11:13]])),
+            sorted(set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]]))))
         builder.add_node(*nodes[13])
         self.assertEqual(3, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())

@@ -142,6 +142,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             key_elements=key_elements)
         self._spill_at = spill_at
         self._backing_indices = []
+        # Indicate it hasn't been built yet
+        self._nodes_by_key = None
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
@@ -157,7 +159,33 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
-        index.GraphIndexBuilder.add_node(self, key, value, references=references)
+        self._check_key(key)
+        if index._newline_null_re.search(value) is not None:
+            raise errors.BadIndexValue(value)
+        if len(references) != self.reference_lists:
+            raise errors.BadIndexValue(references)
+        node_refs = []
+        for reference_list in references:
+            for reference in reference_list:
+                self._check_key(reference)
+            node_refs.append(tuple(reference_list))
+        if key in self._nodes and self._nodes[key][0] == '':
+            raise errors.BadIndexDuplicateKey(key, self)
+        self._nodes[key] = (tuple(node_refs), value)
+        self._keys.add(key)
+        if self._key_length > 1 and self._nodes_by_key is not None:
+            key_dict = self._nodes_by_key
+            if self.reference_lists:
+                key_value = key, value, tuple(node_refs)
+            else:
+                key_value = key, value
+            # possibly should do this on-demand, but it seems likely it is 
+            # always wanted
+            # For a key of (foo, bar, baz) create
+            # _nodes_by_key[foo][bar][baz] = key_value
+            for subkey in key[:-1]:
+                key_dict = key_dict.setdefault(subkey, {})
+            key_dict[key[-1]] = key_value
         if len(self._keys) < self._spill_at:
             return
         iterators_to_combine = [iter(sorted(self._iter_mem_nodes()))]
@@ -182,7 +210,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             self._backing_indices[pos] = None
         self._keys = set()
         self._nodes = {}
-        self._nodes_by_key = {}
+        self._nodes_by_key = None
 
     def add_nodes(self, nodes):
         """Add nodes to the index.
@@ -199,13 +227,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
     def _iter_mem_nodes(self):
         """Iterate over the nodes held in memory."""
         if self.reference_lists:
-            for key, (absent, references, value) in self._nodes.iteritems():
-                if not absent:
-                    yield self, key, value, references
+            return ((self, key, value, references)
+                    for key, (references, value) in self._nodes.iteritems())
         else:
-            for key, (absent, references, value) in self._nodes.iteritems():
-                if not absent:
-                    yield self, key, value
+            return ((self, key, value)
+                    for key, (references, value) in self._nodes.iteritems())
 
     def _iter_smallest(self, iterators_to_combine):
         if len(iterators_to_combine) == 1:
@@ -411,13 +437,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
         if self.reference_lists:
             for key in keys.intersection(self._keys):
                 node = self._nodes[key]
-                if not node[0]:
-                    yield self, key, node[2], node[1]
+                yield self, key, node[1], node[0]
         else:
             for key in keys.intersection(self._keys):
                 node = self._nodes[key]
-                if not node[0]:
-                    yield self, key, node[2]
+                yield self, key, node[1]
         keys.difference_update(self._keys)
         for backing in self._backing_indices:
             if backing is None:
@@ -454,6 +478,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             if backing is None:
                 continue
             for node in backing.iter_entries_prefix(keys):
+                # TODO: We should probably remove yielded keys from the keys
+                #       list
                 yield (self,) + node[1:]
         if self._key_length == 1:
             for key in keys:
@@ -466,12 +492,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     node = self._nodes[key]
                 except KeyError:
                     continue
-                if node[0]:
-                    continue
                 if self.reference_lists:
-                    yield self, key, node[2], node[1]
+                    yield self, key, node[1], node[0]
                 else:
-                    yield self, key, node[2]
+                    yield self, key, node[1]
             return
         for key in keys:
             # sanity check
@@ -480,7 +504,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             if len(key) != self._key_length:
                 raise errors.BadIndexKey(key)
             # find what it refers to:
-            key_dict = self._nodes_by_key
+            key_dict = self._get_nodes_by_key()
             elements = list(key)
             # find the subdict to return
             try:
@@ -505,6 +529,24 @@ class BTreeBuilder(index.GraphIndexBuilder):
                             yield (self, ) + value
             else:
                 yield (self, ) + key_dict
+
+    def _get_nodes_by_key(self):
+        if self._nodes_by_key is None:
+            nodes_by_key = {}
+            if self.reference_lists:
+                for key, (references, value) in self._nodes.iteritems():
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value, references
+            else:
+                for key, (references, value) in self._nodes.iteritems():
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value
+            self._nodes_by_key = nodes_by_key
+        return self._nodes_by_key
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.

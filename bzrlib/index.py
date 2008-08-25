@@ -80,8 +80,9 @@ class GraphIndexBuilder(object):
         """
         self.reference_lists = reference_lists
         self._keys = set()
+        # A dict of {key: (absent, ref_lists, value)}
         self._nodes = {}
-        self._nodes_by_key = {}
+        self._nodes_by_key = None
         self._key_length = key_elements
 
     def _check_key(self, key):
@@ -121,7 +122,7 @@ class GraphIndexBuilder(object):
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = ('', tuple(node_refs), value)
         self._keys.add(key)
-        if self._key_length > 1:
+        if self._key_length > 1 and self._nodes_by_key is not None:
             key_dict = self._nodes_by_key
             if self.reference_lists:
                 key_value = key, value, tuple(node_refs)
