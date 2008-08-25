@@ -110,8 +110,6 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
                 upstream_branch.tags.get_reverse_tag_dict(), package,
                 previous_version)
   tree.merge_from_branch(upstream_branch)
-  tree.branch.tags.set_tag(make_upstream_tag(version),
-                           upstream_branch.last_revision())
   tree.commit('import upstream from branch %s' % upstream_branch.base)
   return version
 
