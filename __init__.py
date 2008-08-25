@@ -374,7 +374,7 @@ class cmd_merge_upstream(Command):
                        "upstream release. (Required).", type=str)
   takes_options = [package_opt, version_opt]
 
-  def run(self, location, version=None, package=None):
+  def run(self, location=None, version=None, package=None):
 
     from bzrlib.errors import (NoSuchTag,
                                TagAlreadyExists,
