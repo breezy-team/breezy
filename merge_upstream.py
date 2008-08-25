@@ -32,7 +32,6 @@ from StringIO import StringIO
 from debian_bundle.changelog import Changelog, Version
 
 from bzrlib.errors import (BzrCommandError,
-                           NoSuchFile,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
@@ -48,6 +47,47 @@ from bzrlib.plugins.builddeb.errors import AddChangelogError
 
 
 TAG_PREFIX = "upstream-"
+
+def upstream_branch_version(revhistory, tags, package, existing_version):
+  """Determine the version string of an upstream branch.
+
+  :param revhistory: Branch revision history.
+  :param tags: Tags object.
+  :param package: Name of package.
+  :param existing_version: Upstream version currently in Debian package.
+  """
+  # FIXME: Check if upstream has a tag set on branch.last_revision()
+  # Yes? Convert to upstream_version and return
+  
+  # FIXME: Parse existing_version
+  # if ~bzr, check if new tags appeared since existing_version's revision
+  # if they didn't, update revno in ~bzr<revno>
+
+  # FIXME: Find latest tag in branch, convert to upstream version
+  # return <upstream_version>+bzr<revno>
+
+  # FIXME: When no tags are found, simply return <existing_version>+bzr<revno>
+
+
+def merge_upstream_branch(tree, upstream_branch, package, version=None):
+  """Merge an upstream release from a branch.
+
+  :param tree: Mutable tree to merge into.
+  :param upstream_branch: Upstream branch object
+  :param package: Package name.
+  :param version: Optional version string. If none is specified, will 
+                  be determined from the branch.
+  :param version: Actual version string that was used
+  """
+  if version is None:
+    version = upstream_branch_version(upstream_branch.revision_history(),
+                                      upstream_branch.tags(), package, 
+                                      FIXME)
+  tree.merge_from_branch(upstream_branch)
+  tree.commit('import upstream from branch %s' % upstream_branch.base)
+  tree.branch.tags.set_tag(make_upstream_tag(version),
+                           tree.branch.last_revision())
+  return version
 
 
 def make_upstream_tag(version):
@@ -114,8 +154,6 @@ def merge_upstream(tree, source, version_number):
     :return: None
     :throws NoSuchTag: if the tag for the last upstream version is not found.
     """
-    if not os.path.exists(source):
-      raise NoSuchFile(source)
     empty_branch = len(tree.branch.revision_history()) == 0
     if not empty_branch:
       try:

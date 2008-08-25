@@ -30,6 +30,7 @@ from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (BzrCommandError,
+                           NoSuchFile,
                            NoWorkingTree,
                            NotBranchError,
                            FileExists,
@@ -379,11 +380,11 @@ class cmd_merge_upstream(Command):
                                TagAlreadyExists,
                                )
     from bzrlib.plugins.builddeb.errors import MissingChangelogError
-    from bzrlib.plugins.builddeb.merge_upstream import merge_upstream
+    from bzrlib.plugins.builddeb.merge_upstream import (
+        merge_upstream,
+        merge_upstream_branch,
+        )
     from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-
-    if version is None:
-      raise BzrCommandError("You must supply the --version argument.")
 
     tree, _ = WorkingTree.open_containing('.')
 
@@ -409,36 +410,51 @@ class cmd_merge_upstream(Command):
                               "information from, please use the --package "
                               "option to give the name of the package")
 
-    orig_dir = config.orig_dir or '../tarballs'
-    orig_dir = os.path.join(tree.basedir, orig_dir)
-
-    dest_name = tarball_name(package, version)
     try:
-      repack_tarball(location, dest_name, target_dir=orig_dir)
-    except FileExists:
-      raise BzrCommandError("The target file %s already exists, and is either "
-                            "different to the new upstream tarball, or they "
-                            "are of different formats. Either delete the target "
-                            "file, or use it as the argument to import.")
-    filename = os.path.join(orig_dir, dest_name)
+      upstream_branch = Branch.open(location)
+    except NotBranchError:
+      upstream_branch = None
+    
+    if upstream_branch is None:
+      if version is None:
+        raise BzrCommandError("You must supply the --version argument.")
 
-    if tree.changes_from(tree.basis_tree()).has_changed():
-      raise BzrCommandError("Working tree has uncommitted changes.")
+      orig_dir = config.orig_dir or '../tarballs'
+      orig_dir = os.path.join(tree.basedir, orig_dir)
 
-    try:
-      merge_upstream(tree, filename, version)
-    # TODO: tidy all of this up, and be more precise in what is wrong and
-    #       what can be done.
-    except NoSuchTag, e:
-      raise BzrCommandError("The tag of the last upstream import can not be "
-                            "found. You should tag the revision that matches "
-                            "the last upstream version. Expected to find %s." % \
-                            e.tag_name)
-    except TagAlreadyExists:
-      raise BzrCommandError("It appears as though this merge has already "
-                            "been performed, as there is already a tag "
-                            "for this upstream version. If that is not the "
-                            "case then delete that tag and try again.")
+      dest_name = tarball_name(package, version)
+      try:
+        repack_tarball(location, dest_name, target_dir=orig_dir)
+      except FileExists:
+        raise BzrCommandError("The target file %s already exists, and is either "
+                              "different to the new upstream tarball, or they "
+                              "are of different formats. Either delete the target "
+                              "file, or use it as the argument to import.")
+      filename = os.path.join(orig_dir, dest_name)
+
+      if tree.changes_from(tree.basis_tree()).has_changed():
+        raise BzrCommandError("Working tree has uncommitted changes.")
+
+      if not os.path.exists(filename):
+        raise NoSuchFile(filename)
+
+      try:
+        merge_upstream(tree, filename, version)
+      # TODO: tidy all of this up, and be more precise in what is wrong and
+      #       what can be done.
+      except NoSuchTag, e:
+        raise BzrCommandError("The tag of the last upstream import can not be "
+                              "found. You should tag the revision that matches "
+                              "the last upstream version. Expected to find %s." % \
+                              e.tag_name)
+      except TagAlreadyExists:
+        raise BzrCommandError("It appears as though this merge has already "
+                              "been performed, as there is already a tag "
+                              "for this upstream version. If that is not the "
+                              "case then delete that tag and try again.")
+    else:
+      version = merge_upstream_branch(tree, upstream_branch, package, version)
+
     info("The new upstream version has been imported. You should now update "
          "the changelog (try dch -v %s), and then commit. Note that debcommit "
          "will not do what you want in this case." % str(version))
