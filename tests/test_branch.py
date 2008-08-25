@@ -370,7 +370,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         branch = Branch.open(repos_url)
 
-        self.assertIs(None, branch.nick)
+        self.assertEquals("a", branch.nick)
 
     def test_get_nick_path(self):
         repos_url = self.make_repository('a')

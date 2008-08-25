@@ -243,7 +243,7 @@ class SvnBranch(Branch):
         """
         bp = self._branch_path.strip("/")
         if self._branch_path == "":
-            return None
+            return self.base.split("/")[-1]
         return bp
 
     nick = property(_get_nick)

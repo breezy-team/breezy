@@ -632,7 +632,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         tree.add(["some strange file"])
         tree.commit("message")
-        self.assertEqual(None, tree.branch.nick)
+        self.assertEqual("a", tree.branch.nick)
 
     def test_out_of_date(self):
         repos_url = self.make_client('a', 'dc')
