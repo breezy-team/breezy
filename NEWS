@@ -22,6 +22,7 @@ bzr-svn-0.4.11	UNRELEASED
    * Add --incremental option to bzr-svn for incremental imports.
 
    * Set revision properties from v3 mappings when possible.
+     (#127736)
 
    * Create tags base directory if it doesn't exist.
 
