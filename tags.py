@@ -76,7 +76,7 @@ class SubversionTags(BasicTags):
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
         deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
         try:
-            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tag %s" % tag_name})
+            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tag %s" % tag_name.encode("utf-8")})
             try:
                 root = ci.open_root()
                 if deletefirst:
@@ -117,10 +117,10 @@ class SubversionTags(BasicTags):
         path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
         parent = urlutils.dirname(path)
         conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
-        if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
-            raise NoSuchTag(tag_name)
         try:
-            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Remove tag %s" % tag_name})
+            if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
+                raise NoSuchTag(tag_name)
+            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Remove tag %s" % tag_name.encode("utf-8")})
             try:
                 root = ci.open_root()
                 root.delete_entry(urlutils.basename(path))
@@ -130,6 +130,7 @@ class SubversionTags(BasicTags):
                 raise
             ci.close()
         finally:
+            assert not conn.busy
             self.repository.transport.add_connection(conn)
 
     def _set_tag_dict(self, dest_dict):
