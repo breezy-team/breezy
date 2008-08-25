@@ -162,6 +162,9 @@ static PyMemberDef entry_members[] = {
 	{ "kind", T_INT, offsetof(EntryObject, entry.kind), READONLY, NULL },
 	{ "revision", T_LONG, offsetof(EntryObject, entry.revision), READONLY, NULL },
 	{ "cmt_rev", T_LONG, offsetof(EntryObject, entry.cmt_rev), READONLY, NULL },
+	{ "checksum", T_STRING, offsetof(EntryObject, entry.checksum), READONLY, NULL },
+	{ "cmt_date", T_LONG, offsetof(EntryObject, entry.cmt_date), READONLY, NULL },
+	{ "cmt_author", T_STRING, offsetof(EntryObject, entry.cmt_author), READONLY, NULL },
 	{ NULL, }
 };
 
