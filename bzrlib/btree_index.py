@@ -25,7 +25,6 @@ import math
 import sha
 import struct
 import tempfile
-import time
 import zlib
 
 from bzrlib import (
@@ -60,7 +59,6 @@ leaf_node_hits = [0, 0]
 miss_attempts = 0  # Missed this entry while looking up
 bisect_shortcut = [0, 0]
 dupes = [0]
-_add_node_time = [0.0]
 
 
 class _BuilderRow(object):
