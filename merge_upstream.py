@@ -54,9 +54,9 @@ def upstream_branch_version(revhistory, tags, package, previous_version):
   :param revhistory: Branch revision history.
   :param tags: Tags object.
   :param package: Name of package.
-  :param previous_version: Upstream version currently in Debian package.
+  :param previous_version: Previous upstream version in debian changelog.
   """
-  reverse_tag_dict = tags.get_reverse_tags_dict()
+  reverse_tag_dict = tags.get_reverse_tag_dict()
   
   # Check if upstream has a tag set on branch.last_revision()
   # Yes? Convert to upstream_version and return
@@ -95,9 +95,14 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
   :param version: Actual version string that was used
   """
   if version is None:
+    cl_id = tree.path2id('debian/changelog')
+    if cl_id is None:
+     raise AddChangelogError('debian/changelog')
+    cl = Changelog(tree.get_file_text(cl_id))
+    previous_version = cl.upstream_version
     version = upstream_branch_version(upstream_branch.revision_history(),
-                                      upstream_branch.tags(), package, 
-                                      FIXME)
+                                      upstream_branch.tags, package,
+                                      previous_version)
   tree.merge_from_branch(upstream_branch)
   tree.branch.tags.set_tag(make_upstream_tag(version),
                            upstream_branch.last_revision())

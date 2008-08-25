@@ -365,7 +365,7 @@ class cmd_merge_upstream(Command):
   will change the name of the source package then you can use this option
   to set the new name.
   """
-  takes_args = ['location']
+  takes_args = ['location?']
   aliases = ['mu']
 
   package_opt = Option('package', help="The name of the source package.",
@@ -396,11 +396,13 @@ class cmd_merge_upstream(Command):
     if config.native:
       raise BzrCommandError("Merge upstream in native mode is not yet "
                             "supported")
-    if config.export_upstream:
-      raise BzrCommandError("Export upstream mode is not yet "
-                            "supported")
+    if config.export_upstream and location is None:
+      location = config.export_upstream
     if config.split:
       raise BzrCommandError("Split mode is not yet supported")
+
+    if location is None:
+      raise BzrCommandError("no location specified to merge")
 
     if package is None:
       try:
@@ -456,7 +458,7 @@ class cmd_merge_upstream(Command):
       version = merge_upstream_branch(tree, upstream_branch, package, version)
 
     info("The new upstream version has been imported. You should now update "
-         "the changelog (try dch -v %s), and then commit. Note that debcommit "
+         "the changelog (try dch -v %s-1), and then commit. Note that debcommit "
          "will not do what you want in this case." % str(version))
 
 
