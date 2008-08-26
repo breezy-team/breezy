@@ -1313,7 +1313,7 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 		return NULL;
 	}
 
-	if (PyString_Check(py_log_msg)) {
+	if (!PyString_Check(py_log_msg)) {
 		PyErr_SetString(PyExc_ValueError, "svn:log property should be set to string.");
 		apr_pool_destroy(pool);
 		ra->busy = false;
