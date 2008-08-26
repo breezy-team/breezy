@@ -219,7 +219,7 @@ class install_lib_with_dlls(install_lib):
 setup(name='bzr-svn',
       description='Support for Subversion branches in Bazaar',
       keywords='plugin bzr svn',
-      version='0.4.11~rc1',
+      version='0.4.11~rc2',
       url='http://bazaar-vcs.org/BzrForeignBranches/Subversion',
       download_url='http://bazaar-vcs.org/BzrSvn',
       license='GPL',
