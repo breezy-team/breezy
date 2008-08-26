@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Project xmlns="http://usefulinc.com/ns/doap#" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+	<name>bzr-svn</name>
+	<shortdesc>Support for Subversion branches in Bazaar</shortdesc>
+	<description>This plugin adds support for branching off and committing to Subversion repositories from Bazaar.</description>
+	<download-page>http://bazaar-vcs.org/BzrForeignBranches/Subversion</download-page>
+	<homepage rdf:resource="http://bazaar-vcs.org/BzrForeignBranches/Subversion" />
+	<maintainer>
+		<foaf:Person>
+			<foaf:name>Jelmer Vernooij</foaf:name>
+			<foaf:mbox_sha1sum>251a170d525dafa87fe37140ff6b06ca38b577b7</foaf:mbox_sha1sum>
+		</foaf:Person>
+	</maintainer>
+	<release><Version><revision>0.4.11~rc1</revision></Version></release>
+</Project>
