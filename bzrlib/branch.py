@@ -679,11 +679,13 @@ class Branch(object):
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a new line of development from the branch, into to_bzrdir.
-        
+
+        to_bzrdir controls the branch format.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
