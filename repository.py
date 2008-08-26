@@ -773,6 +773,22 @@ class SvnRepository(Repository):
         created = set()
         for (paths, revnum, revprops) in self._log.iter_changes(None, from_revnum, to_revnum):
             for p in paths:
+                if layout.is_branch_parent(p):
+                    if paths[p][0] in ('R', 'D'):
+                        deleted.add(p)
+                    elif paths[p][1] is not None:
+                        parents = [p]
+                        while parents:
+                            p = parents.pop()
+                            try:
+                                for c in self.transport.get_dir(p, revnum)[0].keys():
+                                    n = p+"/"+c
+                                    if layout.is_branch(n):
+                                        created.add(n)
+                                    elif layout.is_branch_parent(n):
+                                        parents.append(n)
+                            except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
+                                pass
                 try:
                     (pt, project, bp, rp) = layout.parse(p)
                     if pt == "branch":
@@ -781,8 +797,7 @@ class SvnRepository(Repository):
                         elif paths[p][0] == 'D' and rp == "":
                             deleted.add(bp)
                 except errors.InvalidSvnBranchPath:
-                    if paths[p][0] == 'D':
-                        deleted.add(p)
+                    pass
         return deleted, created
 
     @needs_read_lock
