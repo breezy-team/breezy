@@ -96,12 +96,10 @@ class SubversionTags(BasicTags):
         except KeyError:
             raise NoSuchTag(tag_name)
 
-    def get_tag_dict(self, _from_revnum=0):
-        return self.repository.find_tags_between(project=self.branch.project, 
+    def get_tag_dict(self):
+        return self.repository.find_tags(project=self.branch.project, 
                               layout=self.branch.layout,
-                              mapping=self.branch.mapping,
-                              from_revnum=_from_revnum, 
-                              to_revnum=self.repository.get_latest_revnum())
+                              mapping=self.branch.mapping)
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys

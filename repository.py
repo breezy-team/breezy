@@ -194,6 +194,7 @@ class SvnRepository(Repository):
         self._default_mapping = None
         self._hinted_branch_path = branch_path
         self._real_parents_provider = self
+        self._cached_tags = {}
 
         cache = self.get_config().get_use_cache()
 
@@ -239,6 +240,7 @@ class SvnRepository(Repository):
             self._clear_cached_state()
 
     def _clear_cached_state(self):
+        self._cached_tags = {}
         self._cached_revnum = None
         self._parents_provider = CachingParentsProvider(self._real_parents_provider)
 
@@ -877,7 +879,7 @@ class SvnRepository(Repository):
         return dict([(layout.get_tag_name(p, project), revid) for (p, revid) in tags.items() if revid is not None])
 
     @needs_read_lock
-    def find_tags(self, project, layout=None, from_revnum=0, to_revnum=None):
+    def find_tags(self, project, layout=None, mapping=None, revnum=None):
         """Find tags underneath this repository for the specified project.
 
         :param layout: Repository layout to use
@@ -885,40 +887,19 @@ class SvnRepository(Repository):
         :param project: Name of the project to find tags for. None for all.
         :return: Dictionary mapping tag names to revision ids.
         """
+        if revnum is None:
+            revnum = self.get_latest_revnum()
+
         if layout is None:
             layout = self.get_layout()
 
-        if to_revnum is None:
-            to_revnum = self.get_latest_revnum()
+        if mapping is None:
+            mapping = self.get_mapping()
 
-        mapping = self.get_mapping()
-
-        tags = {}
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            tag_paths = list(layout.get_tags(to_revnum, project=project, pb=pb))
-            for i, (project, bp, nick) in enumerate(tag_paths):
-                pb.update("finding tags", i, len(tag_paths))
-                npb = ui.ui_factory.nested_progress_bar()
-                try:
-                    it = self.iter_changes(bp, from_revnum=to_revnum, 
-                                           to_revnum=0, mapping=mapping, 
-                                           pb=npb, limit=2)
-                    (bp, paths, rev, _) = it.next()
-                    if paths.has_key(bp):
-                        del paths[bp]
-                        if not changes.changes_path(paths, bp, False):
-                            try:
-                                (bp, _, rev, _) = it.next()
-                            except StopIteration:
-                                pass
-                finally:
-                    npb.finished()
-                
-                tags[nick] = self.generate_revision_id(rev, bp, mapping)
-        finally:
-            pb.finished()
-        return tags
+        if not (layout, mapping) in self._cached_tags:
+            self._cached_tags[layout,mapping] = self.find_tags_between(project=project,
+                    layout=layout, mapping=mapping, from_revnum=0, to_revnum=revnum)
+        return self._cached_tags[layout,mapping]
 
     def find_branchpaths(self, check_path, check_parent_path, 
                          from_revnum=0, to_revnum=None, 
