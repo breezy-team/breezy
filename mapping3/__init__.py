@@ -344,8 +344,8 @@ class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
     def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
         (_, fileprops) = mapping.BzrSvnMappingFileProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops)
         if can_use_custom_revprops:
-            (revprops, _) = self.revprop_map.export_revision(can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, None, revno, merges, old_fileprops)
-        return (revprops, fileprops)
+            (svn_revprops, _) = self.revprop_map.export_revision(can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, None, revno, merges, old_fileprops)
+        return (svn_revprops, fileprops)
 
     def export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops):
         mapping.BzrSvnMappingFileProps.export_fileid_map(self, can_use_custom_revprops, fileids, revprops, fileprops)
