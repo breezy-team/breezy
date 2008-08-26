@@ -1039,6 +1039,18 @@ class BzrDir(object):
     def checkout_metadir(self):
         return self.cloning_metadir()
 
+    def _get_metadir(self, require_stacking=False):
+        cloning_format = self.cloning_metadir()
+        if (require_stacking and not
+            cloning_format.get_branch_format().supports_stacking()):
+            # We need to make a stacked branch, but the default format for the
+            # target doesn't support stacking.  So force a branch that *can*
+            # support stacking.
+            from bzrlib.branch import BzrBranchFormat7
+            cloning_format._branch_format = BzrBranchFormat7()
+            mutter("using %r for stacking" % (cloning_format._branch_format,))
+        return cloning_format
+
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False):
@@ -1065,7 +1077,8 @@ class BzrDir(object):
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
-        cloning_format = self.cloning_metadir()
+        cloning_format = self._get_metadir(stacked)
+        # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
         try:
             source_branch = self.open_branch()
@@ -1087,39 +1100,20 @@ class BzrDir(object):
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo = repository_policy.acquire_repository()
         if source_repository is not None:
-            # XXX: Isn't this redundant with the copy_content_into used below
-            # after creating the branch? -- mbp 20080724
+            # Fetch while stacked to prevent unstacked fetch from
+            # Branch.sprout.
             result_repo.fetch(source_repository, revision_id=revision_id)
 
-        # Create/update the result branch
-        format_forced = False
-        if ((stacked 
-             or repository_policy._require_stacking 
-             or repository_policy._stack_on)
-            and not result._format.get_branch_format().supports_stacking()):
-            # We need to make a stacked branch, but the default format for the
-            # target doesn't support stacking.  So force a branch that *can*
-            # support stacking. 
-            from bzrlib.branch import BzrBranchFormat7
-            format = BzrBranchFormat7()
-            result_branch = format.initialize(result)
-            mutter("using %r for stacking" % (format,))
-            format_forced = True
-        elif source_branch is None:
+        if source_branch is None:
             # this is for sprouting a bzrdir without a branch; is that
             # actually useful?
+            # Not especially, but it's part of the contract.
             result_branch = result.create_branch()
         else:
             result_branch = source_branch.sprout(
                 result, revision_id=revision_id)
         mutter("created new branch %r" % (result_branch,))
         repository_policy.configure_branch(result_branch)
-        if source_branch is not None and format_forced:
-            # XXX: this duplicates Branch.sprout(); it probably belongs on an
-            # InterBranch method? -- mbp 20080724
-            source_branch.copy_content_into(result_branch,
-                 revision_id=revision_id)
-            result_branch.set_parent(self.root_transport.base)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (

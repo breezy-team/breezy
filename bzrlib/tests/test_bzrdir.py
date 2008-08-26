@@ -442,9 +442,9 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(parent_bzrdir.root_transport.base,
                          repo_policy._stack_on_pwd)
 
-    def prepare_default_stacking(self):
+    def prepare_default_stacking(self, child_format='development1'):
         parent_bzrdir = self.make_bzrdir('.')
-        child_branch = self.make_branch('child', format='development1')
+        child_branch = self.make_branch('child', format=child_format)
         parent_bzrdir.get_config().set_default_stack_on(child_branch.base)
         new_child_transport = parent_bzrdir.transport.clone('child2')
         return child_branch, new_child_transport
@@ -459,6 +459,28 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         child_branch, new_child_transport = self.prepare_default_stacking()
         new_child = child_branch.bzrdir.sprout(new_child_transport.base)
         self.assertEqual(child_branch.base,
+                         new_child.open_branch().get_stacked_on_url())
+
+    def test_clone_ignores_policy_for_unsupported_formats(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.clone_on_transport(new_child_transport)
+        self.assertRaises(errors.UnstackableBranchFormat,
+                          new_child.open_branch().get_stacked_on_url)
+
+    def test_sprout_ignores_policy_for_unsupported_formats(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base)
+        self.assertRaises(errors.UnstackableBranchFormat,
+                          new_child.open_branch().get_stacked_on_url)
+
+    def test_sprout_upgrades_format_if_stacked_specified(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base,
+                                               stacked=True)
+        self.assertEqual(child_branch.bzrdir.root_transport.base,
                          new_child.open_branch().get_stacked_on_url())
 
     def test_add_fallback_repo_handles_absolute_urls(self):
