@@ -17,7 +17,6 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
-import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1401,7 +1400,7 @@ class TransformPreview(TreeTransformBase):
 
     def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
         tree.lock_read()
-        limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
+        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
         TreeTransformBase.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):

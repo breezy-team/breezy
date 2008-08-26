@@ -130,7 +130,7 @@ class ExternalMailClient(MailClient):
         """
         if basename is None:
             basename = 'attachment'
-        pathname = tempfile.mkdtemp(prefix='bzr-mail-')
+        pathname = osutils.mkdtemp(prefix='bzr-mail-')
         attach_path = osutils.pathjoin(pathname, basename + extension)
         outfile = open(attach_path, 'wb')
         try:

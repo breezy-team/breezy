@@ -1039,7 +1039,6 @@ class RemoteRepository(object):
         # destination
         from bzrlib import osutils
         import tarfile
-        import tempfile
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
@@ -1049,7 +1048,7 @@ class RemoteRepository(object):
         try:
             tar = tarfile.open('repository', fileobj=tar_file,
                 mode='r|bz2')
-            tmpdir = tempfile.mkdtemp()
+            tmpdir = osutils.mkdtemp()
             try:
                 _extract_tar(tar, tmpdir)
                 tmp_bzrdir = BzrDir.open(tmpdir)
