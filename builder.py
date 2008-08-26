@@ -241,17 +241,26 @@ class DebBuild(object):
     tarball = os.path.join(tarballdir,self._tarball_name())
     info("Looking for %s to use as upstream source", tarball)
     if not os.path.exists(tarball):
-      if self._get_upstream_from_archive():
-        return tarball
-      if not self._has_watch():
-        raise DebianError('Could not find upstream tarball at '+tarball)
-      else:
-        if not os.path.exists(tarballdir):
-          os.mkdir(tarballdir)
+      tarballdir = os.path.join('..', 'tarballs')
+      found = False
+      if tarballdir != self._properties.tarball_dir():
+        tarball = os.path.join(tarballdir,self._tarball_name())
+        info("For compatibility looking for %s to use as upstream source",
+                tarball)
+        if os.path.exists(tarball):
+          found = True
+      if not found:
+        if self._get_upstream_from_archive():
+          return tarball
+        if not self._has_watch():
+          raise DebianError('Could not find upstream tarball at '+tarball)
         else:
-          if not os.path.isdir(tarballdir):
-            raise DebianError('%s is not a directory.' % tarballdir)
-        self._get_upstream_from_watch()
+          if not os.path.exists(tarballdir):
+            os.mkdir(tarballdir)
+          else:
+            if not os.path.isdir(tarballdir):
+              raise DebianError('%s is not a directory.' % tarballdir)
+          self._get_upstream_from_watch()
     return tarball
 
   def _tarball_name(self):

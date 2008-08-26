@@ -19,3 +19,8 @@
 - Check whether epochs are handled sanely, especially in import-dsc and
 merge-upstream.
 
+- Need tests for the following things:
+  - default result dir not being used if the builder puts the files
+    somewhere else so that the build doesn't fail.
+  - Falling back to ../tarballs if .. doesn't have what we need.
+
