@@ -317,7 +317,7 @@ class DebBuild(object):
     info("Cleaning build dir: %s", source_dir)
     shutil.rmtree(source_dir)
 
-  def move_result(self, result, allow_missing=False):
+  def move_result(self, result, allow_missing=False, arch=None):
     """Moves the files that resulted from the build to the given dir.
 
     The files are found by reading the changes file.
@@ -326,7 +326,7 @@ class DebBuild(object):
     version = self._properties.full_version()
     try:
         changes = DebianChanges(package, version,
-                self._properties.build_dir())
+                self._properties.build_dir(), arch=arch)
     except MissingChanges:
         if allow_missing:
             return

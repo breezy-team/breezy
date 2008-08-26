@@ -301,10 +301,13 @@ class cmd_builddeb(Command):
       run_hook('post-build', config, wd=properties.source_dir())
       if not dont_purge:
         build.clean()
+      arch = None
+      if source:
+        arch = "source"
       if result is not None:
-        build.move_result(result)
+        build.move_result(result, arch=arch)
       else:
-        build.move_result(default_result_dir, allow_missing=True)
+        build.move_result(default_result_dir, allow_missing=True, arch=arch)
 
 
 register_command(cmd_builddeb)
