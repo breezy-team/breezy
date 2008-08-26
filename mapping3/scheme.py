@@ -489,6 +489,8 @@ def guess_scheme_from_history(changed_paths, last_revnum,
             assert isinstance(revpaths, dict)
             pb.update("analyzing repository layout", last_revnum-revnum, 
                       last_revnum)
+            if revpaths == {}:
+                continue
             for path in find_commit_paths([revpaths]):
                 scheme = guess_scheme_from_path(path)
                 if not potentials.has_key(str(scheme)):
