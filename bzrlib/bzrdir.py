@@ -1205,7 +1205,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch."""
-        return self.open_branch()
+        return self._format.get_branch_format().initialize(self)
 
     def destroy_branch(self):
         """See BzrDir.destroy_branch."""
@@ -1853,6 +1853,10 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
+    def get_branch_format(self):
+        from bzrlib import branch
+        return branch.BzrBranchFormat4()
+
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
         return "All-in-one format 5"
@@ -1915,6 +1919,10 @@ class BzrDirFormat6(BzrDirFormat):
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
         return "All-in-one format 6"
+
+    def get_branch_format(self):
+        from bzrlib import branch
+        return branch.BzrBranchFormat4()
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
