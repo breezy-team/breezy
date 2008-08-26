@@ -89,6 +89,9 @@ class SchemeDerivedLayout(RepositoryLayout):
             type = "branch"
         return (type, proj, bp, rp)
 
+    def get_tag_name(self, path, project=None):
+        return path.split("/")[-1]
+
     def _get_root_paths(self, itemlist, revnum, verify_fn, project=None, pb=None):
         def check_path(path):
             return self.repository.transport.check_path(path, revnum) == NODE_DIR

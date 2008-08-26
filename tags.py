@@ -97,9 +97,11 @@ class SubversionTags(BasicTags):
             raise NoSuchTag(tag_name)
 
     def get_tag_dict(self, _from_revnum=0):
-        return self.repository.find_tags(project=self.branch.project, 
+        return self.repository.find_tags_between(project=self.branch.project, 
                               layout=self.branch.layout,
-                              from_revnum=_from_revnum)
+                              mapping=self.branch.mapping,
+                              from_revnum=_from_revnum, 
+                              to_revnum=self.repository.get_latest_revnum())
 
     def get_reverse_tag_dict(self):
         """Returns a dict with revisions as keys

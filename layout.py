@@ -26,6 +26,13 @@ class RepositoryLayout(object):
         """
         raise NotImplementedError
 
+    def get_tag_name(self, path, project=""):
+        """Determine the tag name from a tag path.
+
+        :param path: Path inside the repository.
+        """
+        raise NotImplementedError
+
     def push_merged_revisions(self, project=""):
         """Determine whether or not right hand side (merged) revisions should be pushed.
 
