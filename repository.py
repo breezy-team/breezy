@@ -837,7 +837,18 @@ class SvnRepository(Repository):
                 for p in sorted(paths):
                     (action, cf, cr) = paths[p]
                     if layout.is_tag_parent(p, project) and cf is not None:
-                        pass # FIXME
+                        parents = [p]
+                        while parents:
+                            p = parents.pop()
+                            try:
+                                for c in self.transport.get_dir(p, revnum)[0].keys():
+                                    n = p+"/"+c
+                                    if layout.is_tag(n, project):
+                                        tags[n] = self.generate_revision_id(revnum, n, mapping, revprops=revprops)
+                                    elif layout.is_tag_parent(n, project):
+                                        parents.append(n)
+                            except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
+                                pass
                     else:
                         try:
                             (pt, proj, bp, rp) = layout.parse(p)
