@@ -313,7 +313,10 @@ class CachingLogWalker(CacheTable):
         while ((not ascending and revnum >= to_revnum) or
                (ascending and revnum <= to_revnum)):
             if pb is not None:
-                pb.update("determining changes", from_revnum-revnum, from_revnum)
+                if ascending:
+                    pb.update("determining changes", revnum, to_revnum)
+                else:
+                    pb.update("determining changes", from_revnum-revnum, from_revnum)
             assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
             revpaths = self._get_revision_paths(revnum)
 
