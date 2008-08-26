@@ -786,7 +786,7 @@ class SvnRepository(Repository):
         return deleted, created
 
     @needs_read_lock
-    def find_branches(self, using=False, layout=None):
+    def find_branches(self, using=False, layout=None, revnum=None):
         """Find branches underneath this repository.
 
         This will include branches inside other branches.
@@ -798,11 +798,13 @@ class SvnRepository(Repository):
         # ignored.
         if layout is None:
             layout = self.get_layout()
+        if revnum is None:
+            revnum = self.get_latest_revnum()
 
         branches = []
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for project, bp, nick in layout.get_branches(self.get_latest_revnum(), pb=pb):
+            for project, bp, nick in layout.get_branches(revnum, pb=pb):
                 branches.append(SvnBranch(self, bp, _skip_check=True))
         finally:
             pb.finished()

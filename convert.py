@@ -172,14 +172,22 @@ def convert_repository(source_repos, output_url, scheme=None, layout=None,
         else:
             from_revnum = 0
         to_revnum = source_repos.get_latest_revnum()
-        removed_branches, changed_branches = source_repos.find_branches_between(layout=layout, 
-            from_revnum=from_revnum, to_revnum=to_revnum)
-        existing_branches = []
-        for bp in changed_branches:
-            try:
-                existing_branches.append(SvnBranch(source_repos, bp))
-            except NotBranchError: # Skip non-directories
-                pass
+        # Searching history for touched and removed branches is more expensive than 
+        # just listing the branches in HEAD, so avoid it if possible.
+        # If there's more than one subdirectory (we always have .bzr), we may 
+        # have to remove existing branches.
+        if from_revnum == 0 or (not keep and len(to_transport.list_dir(".")) > 1):
+            removed_branches, changed_branches = source_repos.find_branches_between(layout=layout, 
+                from_revnum=from_revnum, to_revnum=to_revnum)
+            existing_branches = []
+            for bp in changed_branches:
+                try:
+                    existing_branches.append(SvnBranch(source_repos, bp))
+                except NotBranchError: # Skip non-directories
+                    pass
+        else:
+            existing_branches = source_repos.find_branches(layout=layout, revnum=to_revnum)
+
         if filter_branch is not None:
             existing_branches = filter(filter_branch, existing_branches)
 
