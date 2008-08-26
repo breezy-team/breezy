@@ -42,12 +42,12 @@ class ChunkWriter(object):
         number of times we will try.
         In testing, some values for bzr.dev::
 
-            repack  time  MB    hit_max  full
-             1       7.9  5.1   1268     0     7.5  4.6  1140  0
-             2       8.8  4.4   1069     0     8.4  4.2  1036  1
-             3       9.7  4.2   1022     46    9.8  4.1  1012  278
-             4      11.1  4.1   974      619  10.8  4.1  728   945
-            20      11.9  4.1   0        1012 11.1  4.1  0     1012
+            repack  time  MB   max   full
+             1       7.5  4.6  1140  0
+             2       8.4  4.2  1036  1          6.8
+             3       9.8  4.1  1012  278
+             4      10.8  4.1  728   945
+            20      11.1  4.1  0     1012
 
             repack = 0
             zsync   time  MB    repack  max_z   time w/ add_node
@@ -69,7 +69,7 @@ class ChunkWriter(object):
                     next_bytes estim
             repack  time  MB    hit_max full
              1      51.7  15.4  3913  0
-             2      54.4  13.6  3454  8
+             2      54.4  13.7  3467  0         35.4
             20      67.0  13.4  0     3380      46.7
 
             repack=0
