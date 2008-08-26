@@ -768,6 +768,24 @@ class SvnRepository(Repository):
             raise errors.RevpropChangeFailed(SVN_REVPROP_BZR_SIGNATURE)
 
     @needs_read_lock
+    def find_branches_between(self, layout, from_revnum, to_revnum):
+        deleted = set()
+        created = set()
+        for (paths, revnum, revprops) in self._log.iter_changes(None, from_revnum, to_revnum):
+            for p in paths:
+                try:
+                    (pt, project, bp, rp) = layout.parse(p)
+                    if pt == "branch":
+                        if paths[p][0] != 'D' or rp != "":
+                            created.add(bp)
+                        elif paths[p][0] == 'D' and rp == "":
+                            deleted.add(bp)
+                except errors.InvalidSvnBranchPath:
+                    if paths[p][0] == 'D':
+                        deleted.add(p)
+        return deleted, created
+
+    @needs_read_lock
     def find_branches(self, using=False, layout=None):
         """Find branches underneath this repository.
 
@@ -841,7 +859,9 @@ class SvnRepository(Repository):
         range.
 
         :param revnum: Revision to search for branches.
-        :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
+        :return: iterator that returns tuples with (path, revision number, 
+            still exists). The revision number is the revision in which the 
+            branch last existed.
         """
         if to_revnum is None:
             to_revnum = self.get_latest_revnum()
