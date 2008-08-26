@@ -1719,7 +1719,7 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
-        self._fetch_order = 'unsorted'
+        self._fetch_order = 'unordered'
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated

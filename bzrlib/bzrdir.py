@@ -637,7 +637,7 @@ class BzrDir(object):
 
     def _find_creation_modes(self):
         """Determine the appropriate modes for files and directories.
-        
+
         They're always set to be consistent with the base directory,
         assuming that this transport allows setting modes.
         """
@@ -656,9 +656,14 @@ class BzrDir(object):
             # directories and files are read-write for this user. This is
             # mostly a workaround for filesystems which lie about being able to
             # write to a directory (cygwin & win32)
-            self._dir_mode = (st.st_mode & 07777) | 00700
-            # Remove the sticky and execute bits for files
-            self._file_mode = self._dir_mode & ~07111
+            if (st.st_mode & 07777 == 00000):
+                # FTP allows stat but does not return dir/file modes
+                self._dir_mode = None
+                self._file_mode = None
+            else:
+                self._dir_mode = (st.st_mode & 07777) | 00700
+                # Remove the sticky and execute bits for files
+                self._file_mode = self._dir_mode & ~07111
 
     def _get_file_mode(self):
         """Return Unix mode for newly created files, or None.

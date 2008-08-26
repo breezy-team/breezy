@@ -27,7 +27,10 @@ from bzrlib import (
     msgeditor,
     osutils,
     urlutils,
+    registry
     )
+
+mail_client_registry = registry.Registry()
 
 
 class MailClient(object):
@@ -109,6 +112,8 @@ class Editor(MailClient):
                                         body,
                                         attachment,
                                         attachment_mime_subtype=mime_subtype)
+mail_client_registry.register('editor', Editor,
+                              help=Editor.__doc__)
 
 
 class ExternalMailClient(MailClient):
@@ -222,6 +227,8 @@ class Evolution(ExternalMailClient):
                         sorted(message_options.iteritems())]
         return ['mailto:%s?%s' % (self._encode_safe(to or ''),
             '&'.join(options_list))]
+mail_client_registry.register('evolution', Evolution,
+                              help=Evolution.__doc__)
 
 
 class Mutt(ExternalMailClient):
@@ -240,6 +247,8 @@ class Mutt(ExternalMailClient):
         if to is not None:
             message_options.append(self._encode_safe(to))
         return message_options
+mail_client_registry.register('mutt', Mutt,
+                              help=Mutt.__doc__)
 
 
 class Thunderbird(ExternalMailClient):
@@ -253,7 +262,8 @@ class Thunderbird(ExternalMailClient):
     """
 
     _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove',
-        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin']
+        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin',
+        '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
@@ -268,6 +278,8 @@ class Thunderbird(ExternalMailClient):
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
+mail_client_registry.register('thunderbird', Thunderbird,
+                              help=Thunderbird.__doc__)
 
 
 class KMail(ExternalMailClient):
@@ -286,6 +298,8 @@ class KMail(ExternalMailClient):
         if to is not None:
             message_options.extend([self._encode_safe(to)])
         return message_options
+mail_client_registry.register('kmail', KMail,
+                              help=KMail.__doc__)
 
 
 class XDGEmail(ExternalMailClient):
@@ -304,6 +318,8 @@ class XDGEmail(ExternalMailClient):
             commandline.extend(['--attach',
                 self._encode_path(attach_path, 'attachment')])
         return commandline
+mail_client_registry.register('xdg-email', XDGEmail,
+                              help=XDGEmail.__doc__)
 
 
 class EmacsMail(ExternalMailClient):
@@ -405,6 +421,8 @@ class EmacsMail(ExternalMailClient):
             commandline.append(rmform)
 
         return commandline
+mail_client_registry.register('emacsclient', EmacsMail,
+                              help=EmacsMail.__doc__)
 
 
 class MAPIClient(ExternalMailClient):
@@ -423,6 +441,8 @@ class MAPIClient(ExternalMailClient):
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise errors.MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])
+mail_client_registry.register('mapi', MAPIClient,
+                              help=MAPIClient.__doc__)
 
 
 class DefaultMail(MailClient):
@@ -455,3 +475,6 @@ class DefaultMail(MailClient):
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename)
+mail_client_registry.register('default', DefaultMail,
+                              help=DefaultMail.__doc__)
+mail_client_registry.default_key = 'default'
