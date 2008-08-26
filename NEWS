@@ -1,3 +1,5 @@
+bzr-svn-0.4.11	2008-08-26
+
 bzr-svn-0.4.11~rc2	2008-08-26
 
   CHANGES
@@ -27,6 +29,8 @@ bzr-svn-0.4.11~rc2	2008-08-26
    * Create tags base directory if it doesn't exist.
 
    * Add --merged option to svn-push command.
+
+   * Improve tag/branch discovery.
 
 bzr-svn 0.4.11~rc1	2008-08-08
 
