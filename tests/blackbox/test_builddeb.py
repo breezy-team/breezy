@@ -113,10 +113,9 @@ class TestBuilddeb(BuilddebTestCase):
                               self.uncommited_file])
 
   def orig_dir(self):
-    return os.path.join('..', 'tarballs')
+    return '..'
 
   def make_upstream_tarball(self):
-    os.mkdir(self.orig_dir())
     f = open(os.path.join(self.orig_dir(), self.package_name + "_" +
                           str(self.package_version.upstream_version) +
                           ".orig.tar.gz"), 'wb')

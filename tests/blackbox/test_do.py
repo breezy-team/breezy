@@ -77,9 +77,8 @@ class TestDo(ExternalBase):
       f.close()
 
   def make_upstream_tarball(self):
-    os.mkdir('../tarballs')
     self.build_tree(['test-0.1/', 'test-0.1/a'])
-    tar = tarfile.open(os.path.join('../tarballs/', 'test_0.1.orig.tar.gz'),
+    tar = tarfile.open(os.path.join('..', 'test_0.1.orig.tar.gz'),
                        'w:gz')
     try:
       tar.add('test-0.1')

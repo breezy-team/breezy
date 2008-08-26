@@ -83,7 +83,8 @@ global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 
 default_build_dir = '../build-area'
-default_orig_dir = '../tarballs'
+default_orig_dir = '..'
+default_result_dir = '..'
 
 
 class cmd_builddeb(Command):
@@ -104,12 +105,12 @@ class cmd_builddeb(Command):
   Specify the command to use when building using the --builder option,
 
   You can also specify directories to use for different things. --build-dir
-  is the directory to build the packages beneath, defaults to ../build-area.
-  --orig-dir specifies the directory that contains the .orig.tar.gz files 
-  for use in merge mode, defaults to ../tarballs. --result-dir specifies where
-  the resulting package files should be placed, defaults to whatever is 
-  used for the build directory. --result-dir will have problems if you use a
-  build command that places the results in a different directory.
+  is the directory to build the packages beneath, which defaults to
+  '../build-area'. '--orig-dir' specifies the directory that contains the
+  .orig.tar.gz files , which defaults to '..'. '--result-dir' specifies where
+  the resulting package files should be placed, which defaults to '..'.
+  --result-dir will have problems if you use a build command that places
+  the results in a different directory.
 
   The --reuse option will be useful if you are in merge mode, and the upstream
   tarball is very large. It attempts to reuse a build directory from an earlier
@@ -302,6 +303,8 @@ class cmd_builddeb(Command):
         build.clean()
       if result is not None:
         build.move_result(result)
+      else:
+        build.move_result(default_result_dir, allow_missing=True)
 
 
 register_command(cmd_builddeb)

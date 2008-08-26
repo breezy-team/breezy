@@ -41,6 +41,7 @@ from bzrlib.plugins.builddeb.errors import (DebianError,
                     NoSourceDirError,
                     BuildFailedError,
                     StopBuild,
+                    MissingChanges,
                     )
 from bzrlib.plugins.builddeb.util import recursive_copy, tarball_name
 
@@ -307,15 +308,21 @@ class DebBuild(object):
     info("Cleaning build dir: %s", source_dir)
     shutil.rmtree(source_dir)
 
-  def move_result(self, result):
+  def move_result(self, result, allow_missing=False):
     """Moves the files that resulted from the build to the given dir.
 
     The files are found by reading the changes file.
     """
-    info("Placing result in %s", result)
     package = self._properties.package()
     version = self._properties.full_version()
-    changes = DebianChanges(package, version, self._properties.build_dir())
+    try:
+        changes = DebianChanges(package, version,
+                self._properties.build_dir())
+    except MissingChanges:
+        if allow_missing:
+            return
+        raise
+    info("Placing result in %s", result)
     files = changes.files()
     if not os.path.exists(result):
       os.makedirs(result)
