@@ -49,46 +49,44 @@ class ChunkWriter(object):
              4      11.1  4.1   974      619  10.8  4.1  728   945
             20      11.9  4.1   0        1012 11.1  4.1  0     1012
 
-            repack = 0
-            zsync   time  MB    repacked    max_zsync
-             0       6.7  24.7  0           6270
-             1       6.5  13.2  0           3342
-             2       6.6   9.6  0           2414
-             5       6.5   6.2  0           1549
-             6       6.5   5.8  1           1435
-             7       6.6   5.5  19          1337
-             8       6.7   5.3  81          1220
-            10       6.8   5.0  260         967
-            11       6.8   4.9  366         839
-            12       6.9   4.8  454         731
-            15       7.2   4.7  704         450
-            20       7.7   4.6  1133        7
+            repack = 0                             time w/ add_node
+            zsync   time  MB    repack  max_zsync
+             0       6.7  24.7  0       6270
+             1       6.5  13.2  0       3342
+             2       6.6   9.6  0       2414
+             5       6.5   6.2  0       1549
+             6       6.5   5.8  1       1435
+             7       6.6   5.5  19      1337
+             8       6.7   5.3  81      1220
+            10       6.8   5.0  260     967
+            11       6.8   4.9  366     839
+            12       6.9   4.8  454     731
+            15       7.2   4.7  704     450
+            20       7.7   4.6  1133    7
 
         In testing, some values for mysql-unpacked::
 
-                    overall estim            next_bytes estim
+                    next_bytes estim
             repack  time  MB    hit_max full
-             1      52.4  16.9  4295    0    51.7  15.4  3913  0
-             2      55.8  14.1  3561    0    54.4  13.6  3454  8
-             3      60.3  13.5  3407    197
-             4      66.7  13.4  3203    2154
-            20      69.3  13.4  0       3380 67.0  13.4  0     3380
+             1      51.7  15.4  3913  0
+             2      54.4  13.6  3454  8
+            20      67.0  13.4  0     3380      46.7
 
             repack=0
-            zsync
-             0      47.7 116.5  0       29782
-             1      48.5  60.2  0       15356
-             2      48.1  42.4  0       10822
-             5      48.3  25.5  0       6491
-             6      48.0  23.2  13      5896
-             7      48.1  21.6  29      5451
-             8      48.1  20.3  52      5108
-            10      46.9  18.6  195     4526
-            11      48.8  18.0  421     4143
-            12      47.4  17.5  702     3738
-            15      49.6  16.5  1223    2969
-            20      48.9  15.7  2182    1810
-
+            zsync                               time w/ add_node
+             0      47.7 116.5  0       29782   29.5
+             1      48.5  60.2  0       15356   27.8
+             2      48.1  42.4  0       10822   27.8
+             5      48.3  25.5  0       6491    26.8
+             6      48.0  23.2  13      5896    27.3
+             7      48.1  21.6  29      5451    27.5
+             8      48.1  20.3  52      5108    27.1
+            10      46.9  18.6  195     4526    29.4
+            11      48.8  18.0  421     4143    29.2
+            12      47.4  17.5  702     3738    28.0
+            15      49.6  16.5  1223    2969    28.9
+            20      48.9  15.7  2182    1810    29.6
+            30            15.4  3891    23      31.4
     """
 
     _max_repack = 0
@@ -142,7 +140,7 @@ class ChunkWriter(object):
             raise AssertionError('Somehow we ended up with too much'
                                  ' compressed data, %d > %d'
                                  % (self.bytes_out_len, self.chunk_size))
-        nulls_needed = self.chunk_size - self.bytes_out_len % self.chunk_size
+        nulls_needed = self.chunk_size - self.bytes_out_len
         if nulls_needed:
             self.bytes_list.append("\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
