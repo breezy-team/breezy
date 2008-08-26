@@ -827,34 +827,41 @@ class SvnRepository(Repository):
         return branches
 
     @needs_read_lock
-    def find_tags_between(self, project, layout, mapping, from_revnum, to_revnum, tags={}):
-        for (paths, revnum, revprops) in self._log.iter_changes(None, from_revnum, to_revnum):
-            for p in sorted(paths):
-                (action, cf, cr) = paths[p]
-                if layout.is_tag_parent(p, project) and cf is not None:
-                    pass # FIXME
-                else:
-                    try:
-                        (pt, proj, bp, rp) = layout.parse(p)
-                    except errors.InvalidSvnBranchPath:
-                        continue
-                    if pt != "tag" or (project is not None and proj != project):
-                        continue
-                    if action == "D" and rp == "":
-                        tags[p] = None
-                    elif rp == "" and cf is not None:
-                        # This tag was (recreated) here, so unless anything else under this 
-                        # tag changed
-                        tp = p
-                        tr = revnum
-                        newpaths = copy(paths)
-                        del newpaths[p]
-                        if not changes.changes_path(newpaths, p, False):
-                            tp = cf
-                            tr = cr
-                        tags[p] = self.generate_revision_id(tr, tp, mapping)
+    def find_tags_between(self, project, layout, mapping, from_revnum, to_revnum, tags=None):
+        if tags is None:
+            tags = {}
+        assert from_revnum <= to_revnum
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for (paths, revnum, revprops) in self._log.iter_changes(None, from_revnum, to_revnum, pb=pb):
+                for p in sorted(paths):
+                    (action, cf, cr) = paths[p]
+                    if layout.is_tag_parent(p, project) and cf is not None:
+                        pass # FIXME
                     else:
-                        tags[bp] = self.generate_revision_id(revnum, bp, mapping, revprops=revprops)
+                        try:
+                            (pt, proj, bp, rp) = layout.parse(p)
+                        except errors.InvalidSvnBranchPath:
+                            continue
+                        if pt != "tag" or (project is not None and proj != project):
+                            continue
+                        if action == "D" and rp == "":
+                            tags[p] = None
+                        elif rp == "" and cf is not None:
+                            # This tag was (recreated) here, so unless anything else under this 
+                            # tag changed
+                            tp = p
+                            tr = revnum
+                            newpaths = copy(paths)
+                            del newpaths[p]
+                            if not changes.changes_path(newpaths, p, False) and layout.is_branch(cf):
+                                tp = cf
+                                tr = int(self.transport.get_dir(cf, cr)[2][properties.PROP_ENTRY_COMMITTED_REV])
+                            tags[p] = self.generate_revision_id(tr, tp, mapping)
+                        else:
+                            tags[bp] = self.generate_revision_id(revnum, bp, mapping, revprops=revprops)
+        finally:
+            pb.finished()
 
         return dict([(layout.get_tag_name(p, project), revid) for (p, revid) in tags.items() if revid is not None])
 
