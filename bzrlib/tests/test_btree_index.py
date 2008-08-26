@@ -204,16 +204,16 @@ class TestBTreeBuilder(BTreeTestCase):
 
     def test_2_leaves_1_0(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
-        nodes = self.make_nodes(800, 1, 0)
+        nodes = self.make_nodes(400, 1, 0)
         for node in nodes:
             builder.add_node(*node)
         # NamedTemporaryFile dies on builder.finish().read(). weird.
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(9602, len(content))
+        self.assertEqual(9283, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
             "row_lengths=1,2\n",
             content[:77])
         root = content[77:4096]
@@ -223,18 +223,18 @@ class TestBTreeBuilder(BTreeTestCase):
         expected_root = (
             "type=internal\n"
             "offset=0\n"
-            ) + ("635" * 40) + "\n"
+            ) + ("307" * 40) + "\n"
         self.assertEqual(expected_root, root_bytes)
         # We already know serialisation works for leaves, check key selection:
         leaf1_bytes = zlib.decompress(leaf1)
         sorted_node_keys = sorted(node[0] for node in nodes)
         node = btree_index._LeafNode(leaf1_bytes, 1, 0)
-        self.assertEqual(594, len(node.keys))
-        self.assertEqual(sorted_node_keys[:594], sorted(node.keys))
+        self.assertEqual(231, len(node.keys))
+        self.assertEqual(sorted_node_keys[:231], sorted(node.keys))
         leaf2_bytes = zlib.decompress(leaf2)
         node = btree_index._LeafNode(leaf2_bytes, 1, 0)
-        self.assertEqual(800 - 594, len(node.keys))
-        self.assertEqual(sorted_node_keys[594:], sorted(node.keys))
+        self.assertEqual(400 - 231, len(node.keys))
+        self.assertEqual(sorted_node_keys[231:], sorted(node.keys))
 
     def test_last_page_rounded_1_layer(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
@@ -260,25 +260,25 @@ class TestBTreeBuilder(BTreeTestCase):
 
     def test_last_page_not_rounded_2_layer(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
-        nodes = self.make_nodes(800, 1, 0)
+        nodes = self.make_nodes(400, 1, 0)
         for node in nodes:
             builder.add_node(*node)
         # NamedTemporaryFile dies on builder.finish().read(). weird.
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(9602, len(content))
+        self.assertEqual(9283, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=800\n"
+            "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
             "row_lengths=1,2\n",
             content[:77])
         # Check the last page is well formed
         leaf2 = content[8192:]
         leaf2_bytes = zlib.decompress(leaf2)
         node = btree_index._LeafNode(leaf2_bytes, 1, 0)
-        self.assertEqual(800 - 594, len(node.keys))
+        self.assertEqual(400 - 231, len(node.keys))
         sorted_node_keys = sorted(node[0] for node in nodes)
-        self.assertEqual(sorted_node_keys[594:], sorted(node.keys))
+        self.assertEqual(sorted_node_keys[231:], sorted(node.keys))
 
     def test_three_level_tree_details(self):
         # The left most pointer in the second internal node in a row should
@@ -319,27 +319,29 @@ class TestBTreeBuilder(BTreeTestCase):
 
     def test_2_leaves_2_2(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
-        nodes = self.make_nodes(200, 2, 2)
+        nodes = self.make_nodes(100, 2, 2)
         for node in nodes:
             builder.add_node(*node)
         # NamedTemporaryFile dies on builder.finish().read(). weird.
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(10639, len(content))
+        self.assertEqual(12643, len(content))
         self.assertEqual(
-            "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=400\n"
-            "row_lengths=1,2\n",
+            "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=200\n"
+            "row_lengths=1,3\n",
             content[:77])
         root = content[77:4096]
         leaf1 = content[4096:8192]
-        leaf2 = content[8192:]
+        leaf2 = content[8192:12288]
+        leaf3 = content[12288:]
         root_bytes = zlib.decompress(root)
         expected_root = (
             "type=internal\n"
             "offset=0\n"
-            "1111111111111111111111111111111111111111\x00"
-            ) + ("151" * 40) + "\n"
+            + ("0" * 40) + "\x00" + ("91" * 40) + "\n"
+            + ("1" * 40) + "\x00" + ("81" * 40) + "\n"
+            )
         self.assertEqual(expected_root, root_bytes)
         # We assume the other leaf nodes have been written correctly - layering
         # FTW.
@@ -606,7 +608,7 @@ class TestBTreeIndex(BTreeTestCase):
             builder.add_node(*node)
         transport = get_transport('trace+' + self.get_url(''))
         size = transport.put_file('index', builder.finish())
-        self.assertEqual(9152, size)
+        self.assertEqual(17692, size)
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
         del transport._activity[:]
         self.assertEqual([], transport._activity)
@@ -617,7 +619,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_validate_one_page(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
-        nodes = self.make_nodes(80, 2, 2)
+        nodes = self.make_nodes(45, 2, 2)
         for node in nodes:
             builder.add_node(*node)
         transport = get_transport('trace+' + self.get_url(''))
@@ -629,24 +631,24 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read linearly.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             transport._activity)
-        self.assertEqual(2768, size)
+        self.assertEqual(1514, size)
 
     def test_validate_two_pages(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
-        nodes = self.make_nodes(160, 2, 2)
+        nodes = self.make_nodes(80, 2, 2)
         for node in nodes:
             builder.add_node(*node)
         transport = get_transport('trace+' + self.get_url(''))
         size = transport.put_file('index', builder.finish())
         # Root page, 2 leaf pages
-        self.assertEqual(9152, size)
+        self.assertEqual(9339, size)
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
         del transport._activity[:]
         self.assertEqual([], transport._activity)
         index.validate()
         # The entire index should have been read linearly.
         self.assertEqual([('readv', 'index', [(0, 4096)], False, None),
-            ('readv', 'index', [(4096, 4096), (8192, 960)], False, None)],
+            ('readv', 'index', [(4096, 4096), (8192, 1147)], False, None)],
             transport._activity)
         # XXX: TODO: write some badly-ordered nodes, and some pointers-to-wrong
         # node and make validate find them.
@@ -691,15 +693,15 @@ class TestBTreeIndex(BTreeTestCase):
         # read.
         self.shrink_page_size()
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
-        # 40k nodes is enough to create a two internal nodes on the second
+        # 20k nodes is enough to create a two internal nodes on the second
         # level, with a 2K page size
-        nodes = self.make_nodes(20000, 2, 2)
+        nodes = self.make_nodes(10000, 2, 2)
         for node in nodes:
             builder.add_node(*node)
         transport = get_transport('trace+' + self.get_url(''))
         size = transport.put_file('index', builder.finish())
-        self.assertEqual(780162, size, 'number of expected bytes in the'
-                                       ' output changed')
+        self.assertEqual(1303220, size, 'number of expected bytes in the'
+                                        ' output changed')
         page_size = btree_index._PAGE_SIZE
         del builder
         index = btree_index.BTreeGraphIndex(transport, 'index', size)
@@ -713,7 +715,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(3, len(index._row_lengths),
             "Not enough rows: %r" % index._row_lengths)
         # Should be as long as the nodes we supplied
-        self.assertEqual(40000, len(found_nodes))
+        self.assertEqual(20000, len(found_nodes))
         # Should have the same content
         self.assertEqual(set(nodes), set(bare_nodes))
         # Should have done linear scan IO up the index, ignoring
@@ -721,14 +723,14 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read
         total_pages = sum(index._row_lengths)
         self.assertEqual(total_pages, index._row_offsets[-1])
-        self.assertEqual(780162, size)
+        self.assertEqual(1303220, size)
         # The start of the leaves
         first_byte = index._row_offsets[-2] * page_size
         readv_request = []
         for offset in range(first_byte, size, page_size):
             readv_request.append((offset, page_size))
         # The last page is truncated
-        readv_request[-1] = (readv_request[-1][0], 780162 % page_size)
+        readv_request[-1] = (readv_request[-1][0], 1303220 % page_size)
         expected = [('readv', 'index', [(0, page_size)], False, None),
              ('readv',  'index', readv_request, False, None)]
         if expected != transport._activity:
@@ -769,7 +771,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(nodes[30], bare_nodes[0])
         # Should have read the root node, then one leaf page:
         self.assertEqual([('readv', 'index', [(0, 4096)], False, None),
-             ('readv',  'index', [(4096, 4096), ], False, None)],
+             ('readv',  'index', [(8192, 4096), ], False, None)],
             transport._activity)
 
     def test_iter_key_prefix_1_element_key_None(self):
