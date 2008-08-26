@@ -265,6 +265,8 @@ class SvnRaTransport(Transport):
         assert isinstance(limit, int)
         from threading import Thread, Semaphore
 
+        self.mutter('svn iter-log -r%d:%d %r ' % (from_revnum, to_revnum, paths))
+
         class logfetcher(Thread):
             def __init__(self, transport, *args, **kwargs):
                 Thread.__init__(self)
