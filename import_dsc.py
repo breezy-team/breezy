@@ -50,6 +50,7 @@ from bzrlib.errors import (FileExists,
         UncommittedChanges,
         NotBranchError,
         NoRepositoryPresent,
+        AlreadyBranchError,
         )
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revision import NULL_REVISION
@@ -1797,6 +1798,30 @@ class DistributionBranch(object):
         self.upstream_tree = dir_to.open_workingtree()
         self.upstream_branch = br_to
 
+    def _create_empty_upstream_tree(self, basedir):
+        to_location = os.path.join(basedir,
+                self.name + "-upstream")
+        to_transport = transport.get_transport(to_location)
+        to_transport.ensure_base()
+        format = bzrdir.format_registry.make_bzrdir('default')
+        try:
+            existing_bzrdir = bzrdir.BzrDir.open_from_transport(
+                    to_transport)
+        except NotBranchError:
+            # really a NotBzrDir error...
+            create_branch = bzrdir.BzrDir.create_branch_convenience
+            branch = create_branch(to_transport.base,
+                    format=format,
+                    possible_transports=[to_transport])
+        else:
+            if existing_bzrdir.has_branch():
+                raise AlreadyBranchError(location)
+            else:
+                branch = existing_bzrdir.create_branch()
+                existing_bzrdir.create_workingtree()
+        self.upstream_branch = branch
+        self.upstream_tree = branch.bzrdir.open_workingtree()
+
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
@@ -1814,11 +1839,14 @@ class DistributionBranch(object):
     def merge_upstream(self, tarball_filename, version, previous_version):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
-        upstream_tip = self._revid_of_upstream_version_from_branch(
-                previous_version)
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
-            self._extract_upstream_tree(upstream_tip, tempdir)
+            if previous_version is not None:
+                upstream_tip = self._revid_of_upstream_version_from_branch(
+                        previous_version)
+                self._extract_upstream_tree(upstream_tip, tempdir)
+            else:
+                self._create_empty_upstream_tree(tempdir)
             if self.has_upstream_version(version):
                 raise UpstreamAlreadyImported(version)
             m = md5.new()
@@ -1827,11 +1855,18 @@ class DistributionBranch(object):
             tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
             try:
                 # FIXME: should use upstream_parents()?
+                parents = []
+                if self.upstream_branch.last_revision() != NULL_REVISION:
+                    parents = [self.branch.last_revision()]
                 self.import_upstream(tarball_dir, version, md5sum,
-                        [self.upstream_branch.last_revision()])
+                        parents)
             finally:
                 shutil.rmtree(tarball_dir)
-            conflicts = self.tree.merge_from_branch(self.upstream_branch)
+            if self.branch.last_revision() != NULL_REVISION:
+                conflicts = self.tree.merge_from_branch(self.upstream_branch)
+            else:
+                conflicts = 0
+                self.tree.pull(self.upstream_branch)
             self.upstream_branch.tags.merge_to(self.branch.tags)
             return conflicts
         finally:

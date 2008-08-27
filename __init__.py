@@ -427,10 +427,19 @@ class cmd_merge_upstream(Command):
             if config.split:
                 raise BzrCommandError("Split mode is not yet supported")
 
-            changelog = find_changelog(tree, False)[0]
+            try:
+                changelog = find_changelog(tree, False)[0]
+                current_version = changelog.version
+                if package is None:
+                    package = changelog.package
+            except MissingChangelogError:
+                current_version = None
+
             if package is None:
-                package = changelog.package
-            current_version = changelog.version
+                raise BzrCommandError("You did not specify --package, and there "
+                        "is no changelog from which to determine the package "
+                        "name, which is needed to know the name to give the "
+                        ".orig.tar.gz. Please specify --package.")
 
             orig_dir = config.orig_dir or default_orig_dir
             orig_dir = os.path.join(tree.basedir, orig_dir)
@@ -455,6 +464,8 @@ class cmd_merge_upstream(Command):
                     distribution_name = target_distribution
             db = DistributionBranch(distribution_name, tree.branch, None,
                     tree=tree)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
             conflicts = db.merge_upstream(tarball_filename,
                     Version(version), current_version)
             info("The new upstream version has been imported. You should "
@@ -575,28 +586,7 @@ class cmd_import_dsc(Command):
                             last_version)
                     db._extract_upstream_tree(upstream_tip, tempdir)
                 else:
-                    to_location = os.path.join(tempdir,
-                            distribution_name + "-upstream")
-                    to_transport = get_transport(to_location)
-                    to_transport.ensure_base()
-                    format = bzrdir.format_registry.make_bzrdir('default')
-                    try:
-                        existing_bzrdir = bzrdir.BzrDir.open_from_transport(
-                                to_transport)
-                    except NotBranchError:
-                        # really a NotBzrDir error...
-                        create_branch = bzrdir.BzrDir.create_branch_convenience
-                        branch = create_branch(to_transport.base,
-                                format=format,
-                                possible_transports=[to_transport])
-                    else:
-                        if existing_bzrdir.has_branch():
-                            raise AlreadyBranchError(location)
-                        else:
-                            branch = existing_bzrdir.create_branch()
-                            existing_bzrdir.create_workingtree()
-                    db.upstream_branch = branch
-                    db.upstream_tree = branch.bzrdir.open_workingtree()
+                    db._create_empty_upstream_tree(tempdir)
                 self.import_many(db, files_list, orig_target)
             finally:
                 shutil.rmtree(tempdir)
