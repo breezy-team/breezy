@@ -1175,6 +1175,9 @@ class _TestBranch(bzrlib.branch.Branch):
     def sprout(self, *args, **kwargs):
         self.calls.append('sprout')
 
+    def copy_content_into(self, destination, revision_id=None):
+        self.calls.append('copy_content_into')
+
 
 class TestBzrDirSprout(TestCaseWithMemoryTransport):
 
@@ -1204,5 +1207,4 @@ class TestBzrDirSprout(TestCaseWithMemoryTransport):
         result = source_bzrdir.sprout(target_url, recurse='no')
 
         # The bzrdir called the branch's sprout method.
-        self.assertEqual(['sprout'], source_bzrdir.test_branch.calls)
-        
+        self.assertSubset(['sprout'], source_bzrdir.test_branch.calls)
