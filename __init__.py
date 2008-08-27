@@ -383,29 +383,38 @@ class cmd_merge_upstream(Command):
     archive, or a directory. The source may also be a remote file.
 
     You must supply the version number of the new upstream release
-    as the second argument to the command.
-
-    The third argument must be the target distribtution you aim to
-    upload to, one of "debian" or "ubuntu". You can also specify the
-    target used in the changelog, e.g. "unstable", and it will be
-    resolved automatically.
+    using --version, and the target distribution using --distribution.
+    The target distribtution is the distribution that you aim to upload to,
+    one of "debian" or "ubuntu". You can also specify the target used in
+    the changelog, e.g. "unstable", and it will be resolved automatically.
 
     If there is no debian changelog in the branch to retrieve the package
     name from then you must pass the --package option. If this version
     will change the name of the source package then you can use this option
     to set the new name.
     """
-    takes_args = ['tarball', 'version', 'target_distribution']
+    takes_args = ['tarball']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
                          type=str)
+    version_opt = Option('version', help="The version number of this release.",
+                         type=str)
+    distribution_opt = Option('distribution', help="The distribution that "
+            "this release is targetted at", type=str)
+
     takes_options = [package_opt, no_user_conf_opt]
 
-    def run(self, tarball, version, target_distribution, package=None,
+    def run(self, tarball, version=None, distribution=None, package=None,
             no_user_config=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+        if version is None:
+            raise BzrCommandError("You must specify the version number using "
+                    "--version.")
+        if distribution is None:
+            raise BzrCommandError("You must specify the target distribution "
+                    "using --distribution.")
         tree, _ = WorkingTree.open_containing('.')
         tree.lock_write()
         try:
@@ -452,16 +461,16 @@ class cmd_merge_upstream(Command):
                                       "are of different formats. Either delete the target "
                                       "file, or use it as the argument to import.")
             tarball_filename = os.path.join(orig_dir, dest_name)
-            target_distribution = target_distribution.lower()
-            distribution_name = lookup_distribution(target_distribution)
-            target_name = target_distribution
+            distribution = distribution.lower()
+            distribution_name = lookup_distribution(distribution)
+            target_name = distribution
             if distribution_name is None:
-                if target_distribution not in ("debian", "ubuntu"):
+                if distribution not in ("debian", "ubuntu"):
                     raise BzrCommandError("Unknown target distribution: %s" \
                             % target_dist)
                 else:
                     target_name = None
-                    distribution_name = target_distribution
+                    distribution_name = distribution
             db = DistributionBranch(distribution_name, tree.branch, None,
                     tree=tree)
             dbs = DistributionBranchSet()
@@ -501,11 +510,13 @@ class cmd_import_dsc(Command):
     system you can use this command.
     """
 
-    takes_args = ['target_distribution', 'files*']
+    takes_args = ['files*']
     
     filename_opt = Option('file', help="File containing URIs of source "
                           "packages to import.", type=str, argname="filename",
                           short_name='F')
+    distribution_opt = Option('distribution', help="The distribution that "
+            "these packages were uploaded to.")
 
     takes_options = [filename_opt]
 
@@ -532,16 +543,19 @@ class cmd_import_dsc(Command):
                 get_dsc_part(from_transport, name)
             db.import_package(os.path.join(orig_target, filename))
 
-    def run(self, target_distribution, files_list, filename=None):
+    def run(self, files_list, distribution=None, filename=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
-        target_distribution = target_distribution.lower()
-        distribution_name = lookup_distribution(target_distribution)
+        if distribution is None:
+            raise BzrCommandError("You must specify the distribution "
+                    "these packages were uploaded to using --distribution.")
+        distribution = distribution.lower()
+        distribution_name = lookup_distribution(distribution)
         if distribution_name is None:
-            if target_distribution not in ("debian", "ubuntu"):
+            if distribution not in ("debian", "ubuntu"):
                 raise BzrCommandError("Unknown target distribution: %s" \
                         % target_dist)
             else:
-                distribution_name = target_distribution
+                distribution_name = distribution
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:

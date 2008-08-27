@@ -71,17 +71,17 @@ Now you need to populate this branch with the files from the upstream tarball.
 ``merge-upstream`` command. To use it you need to download the upstream
 tarball in to the current directory. Then you enter the current directory
 and run the command, passing it the name of the upstream tarball, and the
-version number that it corresponds to. This is the upstream version number,
-not the packaging version. It is required as it is difficult to guess this
-number, and so it is better for the user to provide it. In our example the
-upstream tarball is named ``scruff-0.1.tar.gz`` and the version number is
-``0.1``. As there is not code in the branch yet the plugin does not know
-what package you are creating. So you must also supply the package name
-using the ``--package`` option. This means that once you have downloaded
-the tarball you should run::
+version number that it corresponds to. It is required as it is difficult
+to guess this number, and so it is better for the user to provide it.
+In our example the upstream tarball is named ``scruff-0.1.tar.gz`` and
+the version number is ``0.1``. As there is not code in the branch yet the
+plugin does not know what package you are creating. So you must also supply
+the package name using the ``--package`` option. This means that once you
+have downloaded the tarball you should run::
 
   $ cd scruff/
-  $ bzr merge-upstream ../scruff-0.1.tar.gz 0.1 debian --package scruff
+  $ bzr merge-upstream ../scruff-0.1.tar.gz --version 0.1 \
+      --distribution debian --package scruff
 
 If it is instead intended for Ubuntu then substitute "debian" with
 "ubuntu".
@@ -140,7 +140,7 @@ run
 
   $ bzr init scruff
   $ cd scruff
-  $ bzr import-dsc debian ../*.dsc
+  $ bzr import-dsc --distribution debian ../*.dsc
 
 which will create a branch named ``scruff``, which will have the history
 populated with the information in the source packages. You can see this
@@ -156,7 +156,7 @@ It is also possible to retrieve the .dsc files over ``HTTP``, ``FTP`` or
 ``SFTP`` automatically. Just give the URIs to the files on the command line
 instead of local paths. For instance::
 
-  $ bzr import-dsc debian \
+  $ bzr import-dsc --distribution debian \
     http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
 
 As it is unwieldy to provide lots of URIs on the command line it is also
@@ -168,7 +168,7 @@ needed to ensure the history is correct. For instance if the file
 
 ::
 
-  $ bzr import-dsc debian -F package-sources
+  $ bzr import-dsc --distribution debian -F package-sources
 
 will import all of the ``.dsc`` files listed. You can provide both a file
 and a list of packages on the command line if you like.
@@ -210,7 +210,8 @@ tarball that represents this release. This tarball can be local or remote.
 For instance when the ``0.2`` version of ``scruff`` is released the command
 to update to the new version is::
 
-  $ bzr merge-upstream http://scruff.org/releases/scruff-0.2.tar.gz 0.2-1 debian
+  $ bzr merge-upstream --version 0.2-1 --distribution debian \
+        http://scruff.org/releases/scruff-0.2.tar.gz
 
 This command downloads the new version, and imports it in to the branch. It
 then merges in the packaging changes to the new version.
@@ -250,7 +251,7 @@ location of the ``.dsc`` file you would like to import. As well as using a
 local path this can be any URI that Bazaar supports, for instance a
 ``http://`` URL. For instance::
 
-  $ bzr import-dsc debian ../scruff_0.2-1.1.dsc
+  $ bzr import-dsc --distribution debian ../scruff_0.2-1.1.dsc
 
 The command will import the changes and then leave you with a tree that is
 the result of merging the changes in the source package in to the tip of
