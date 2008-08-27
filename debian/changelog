@@ -1,4 +1,4 @@
-bzr-builddeb (2.0) unstable; urgency=low
+bzr-builddeb (2.0) experimental; urgency=low
 
   [ Jelmer Vernooij ]
   * Support +bzr for snapshots as well as ~bzr.
