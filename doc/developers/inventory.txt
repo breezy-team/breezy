@@ -159,7 +159,7 @@ Design elements to achieve the goals in a future inventory implementation
 
  * Item_keys_introduced_by is innately a history-using function; we can
    reproduce the text-key finding logic by doing a tree diff between any tree
-   and and older tree - that will limit the amount of data we need to process
+   and an older tree - that will limit the amount of data we need to process
    to something proportional to the difference and the size of each fragment.
    When checking many versions we can track which fragments we have examined
    and only look at new unique ones as each version is examined in turn.
@@ -188,7 +188,7 @@ Overview
 --------
 
 We store two maps - fileid:inventory_entry and path:fileid, in a stable
-hash trie, stored in densly packed fragemnts.. We pack keys into the map
+hash trie, stored in densly packed fragments.. We pack keys into the map
 densely up the tree, with a single canonical form for any given tree. This is
 more stable than simple fixed size buckets, which prevents corner cases where
 the tree size varies right on a bucket size border. (Note that such cases are
@@ -209,7 +209,7 @@ Goal satisfaction
  5. Success - looking at the difference against all parents we can determine
     new keys without reference to the repository content will be inserted
     into.
- 6. This probably needs needs a path->id map, allowing a 2-step lookup.
+ 6. This probably needs a path->id map, allowing a 2-step lookup.
  7. If we allocate buckets by hashing the id, then this is succeed, though,
     as per 4 it will need recursive lookups.
  8. Success
@@ -241,8 +241,9 @@ map_node: INTERNAL_NODE or LEAF_NODE
 INTERNAL_NODE:
 INTERNAL_NODE_SIGNATURE
 hash_prefix: PREFIX
-HASHPREFIX CHK TYPE SIZE
-HASHPREFIX CHK TYPE SIZE ...
+prefix_width: INT
+PREFIX CHK TYPE SIZE
+PREFIX CHK TYPE SIZE ...
 
 (Where TYPE is I for internal or L for leaf).
 
@@ -258,25 +259,10 @@ For content maps, VALUE::
   fileid basename kind last-changed kind-specific-details
 
 
-
-
 The path and content maps are populated simply by serialising every inventory
 entry and inserting them into both the path map and the content map. The maps
-start with just a single leaf node with an empty prefix. When a leaf nodes size
-exceeds the fragment size it is split into N smaller leaf nodes with a longer
-prefix. The prefixes are the smallest that can be used to create smaller leaf
-nodes. Often this will be one octet (say from AB to two nodes with ABC and ABE
-respectively). When an internal node exceeds the size threshold the same
-process is applied. When removing a node from a from a leaf, the size of the
-pther children pointed at by the containing internal node is checked - if the
-collection of other children could be combined within the size threshold then
-they are and the internal node is removed. This is repeated recursively if the
-size of the newly combined node is smaller than the previous internal node. If
-any children of an internal node are leaf nodes, combining is not possible
-unless they are all leaf nodes.
+start with just a single leaf node with an empty prefix. 
 
-Multiple versions of nodes for the same PREFIX will compress well for the same
-tree.
 
 
 Apply
@@ -307,3 +293,159 @@ common. To do this, we start at the root node, and follow every CHK pointer
 that is only in one tree. We can then bring in all the value from the leaf
 nodes and do a set difference to get the altered ones, which we would then
 parse.
+
+Radix tree based inventories
+============================
+
+Overview
+--------
+
+We store two maps - fileid:path and path:inventory_entry. The fileid:path map
+is a hash trie (as file ids have no useful locality of reference). The
+path:inventory_entry map is stored as a regular trie. As for hash tries we
+define a single canonical representation for regular tries similar to that
+defined above for hash tries.
+
+Goal satisfaction
+-----------------
+
+ 1. Success
+ 2. Success
+ 3. Success
+ 4. Success
+ 5. Success - looking at the difference against all parents we can determine
+    new keys without reference to the repository content will be inserted
+    into.
+ 6. Success
+ 7. Success
+ 8. Success
+ 9. Fail - data beyond that currently included in testaments is included
+    in the strong validator.
+
+Issues
+------
+
+ 1. Tuning the fragment size needs doing.
+ 1. Testing.
+ 1. Writing code.
+ 1. Separate root node, or inline into revision?
+ 1. What about LCA merge of inventories?
+
+Canonical form
+--------------
+
+There are five fragment types for the canonical form:
+
+The root node, hash trie internal and leaf nodes as previous.
+
+Then we have two more, the internal and leaf node for the radix tree.
+
+radix_node: INTERNAL_NODE or LEAF_NODE
+
+INTERNAL_NODE:
+INTERNAL_NODE_SIGNATURE
+prefix: PREFIX
+suffix CHK TYPE SIZE
+suffix CHK TYPE SIZE ...
+
+(Where TYPE is I for internal or L for leaf).
+
+LEAF_NODE:
+LEAF_NODE_SIGNATURE
+prefix: PREFIX
+suffix\x00VALUE
+
+For the content map we use the same value as for hashtrie inventories.
+
+
+Node splitting and joining in the radix tree are managed in the same fashion as
+as for the internal nodes of the hashtries.
+
+
+Apply
+-----
+
+Apply is implemented as for hashtries - we just remove and reinsert the
+fileid:paths map entries, and likewise for the path:entry map. We can however
+cheaply detect invalid deltas where a delete fails to include its children.
+
+Delta
+-----
+
+Delta generation is very similar to that with hash tries, except we get the
+path of nodes as part of the lookup process.
+
+
+Hash Trie details
+=================
+
+The canonical form for a hash trie is a tree of internal nodes leading down to
+leaf nodes, with no node exceeding some threshold size, and every node
+containing as much content as it can, but no leaf node containing less than
+its lower size threshold. (In the event that an imbalance in the hash function
+causes a tree where an internal node is needed, but any prefix generates a
+child with less than the lower threshold, the smallest prefix should be taken).
+An internal node holds some number of key prefixs, all with the same bit-width.
+A leaf node holds the actual values. As trees do not spring fully-formed, the
+canonical form is defined iteratively - by taking every item in a tree and
+inserting it into a new tree in order you can determine what canonical form
+would look like.  As that is an expensive operation, it should only be done
+rarely.
+
+Updates to a tree that is in canonical form can be done preserving canonical
+form if we can prove that our rules for insertion are order-independent,
+and that our rules for deletion generate the same tree as if we never
+inserted those nodes.
+
+Our hash tries are balanced vertically but not horizontally. That is, one leg
+of a tree can be arbitrarily deeper than adjacent legs. We require that each
+node along a path within the tree be densely packed, with the densest nodes
+near the top of the tree, and the least dense at the bottom. Except where the
+tree cannot support it, no node is smaller than a minimum_size, and none
+larger than maximum_size. The minimum size constraint is only applied when
+there are enough entries under a prefix to meet that minimum. The maximum
+size constraint is always applied except when a node with a single entry
+is larger than the maximum size. Loosely, the maximum size constraint wins
+over the minimum size constraint, and if the minimum size contraint is to
+be ignored, a deeper prefix can be chosen to pack the containing node more
+densely, as long as no additional minimum sizes checks on child nodes are
+violated.
+
+Insertion
+---------
+
+1. Hash the entry, and insert the entry in the leaf node with a matching
+   prefix, creating that node and linking it from the internal node containing
+   that prefix if there is no appropriate leaf node.
+1. Starting at the highest node altered, for all altered nodes, check if it has
+   transitioned across either size boundary - 0 < min_size < max_size. If it
+   has not, proceed to update the CHK pointers.
+1. If it increased above min_size, check the node above to see if it can be
+   more densely packed. To be below the min_size the node's parent must
+   have hit the max size constraint and been forced to split even though this
+   child did not have enough content to support a min_size node - so the prefix
+   chosen in the parent may be been shorter than desirable and we may now be able
+   to more densely pack the parent by splitting the child nodes more. So if the
+   parent node can support a deeper prefix without hitting max_size, and the
+   count of under min_size nodes cannot be reduced, the parent should be given
+   a deeper prefix.
+1. If it increased above max_size, shrink the prefix width used to split out
+   new nodes until the the node is below max_size (unless the prefix
+   width is already 1 - the minimum).
+   To shrink the prefix of an internal node, create new internal nodes for each
+   new prefix, and populate them with the content of the nodes which were
+   formerly linked. (This will normally bubble down due to keeping densely
+   packed nodes).
+   To shrink the prefix of a leaf node, create an internal node with the same
+   prefix, then choose a width for the internal node such that the contents 
+   of the leaf all fit into new leaves obeying the min_size and max_size rules.
+   The largest prefix possible should be chosen, to obey the
+   higher-nodes-are-denser rule. That rule also gives room in leaf nodes for 
+   growth without affecting the parent node packing.
+1. Update the CHK pointers - serialise every altered node to generate a CHK,
+   and update the CHK placeholder in the nodes parent; then reserialise the
+   parent. CHK pointer propogation can be done lazily when many updates are
+   expected.
+
+Multiple versions of nodes for the same PREFIX and internal prefix width should
+compress well for the same tree.
