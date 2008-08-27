@@ -1112,10 +1112,12 @@ class BzrDir(object):
         else:
             result_branch = source_branch.sprout(
                 result, revision_id=_mod_revision.NULL_REVISION)
+            parent_location = result_branch.get_parent()
         mutter("created new branch %r" % (result_branch,))
         repository_policy.configure_branch(result_branch)
         if source_branch is not None:
             source_branch.copy_content_into(result_branch, revision_id)
+            result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (

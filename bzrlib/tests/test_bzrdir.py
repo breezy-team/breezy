@@ -1208,3 +1208,9 @@ class TestBzrDirSprout(TestCaseWithMemoryTransport):
 
         # The bzrdir called the branch's sprout method.
         self.assertSubset(['sprout'], source_bzrdir.test_branch.calls)
+
+    def test_sprout_parent(self):
+        grandparent_tree = self.make_branch('grandparent')
+        parent = grandparent_tree.bzrdir.sprout('parent').open_branch()
+        branch_tree = parent.bzrdir.sprout('branch').open_branch()
+        self.assertContainsRe(branch_tree.get_parent(), '/parent/$')
