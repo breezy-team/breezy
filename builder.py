@@ -323,7 +323,7 @@ class DebBuild(object):
     The files are found by reading the changes file.
     """
     package = self._properties.package()
-    version = self._properties.full_version()
+    version = self._properties.full_version_no_epoch()
     try:
         changes = DebianChanges(package, version,
                 self._properties.build_dir(), arch=arch)
