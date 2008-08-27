@@ -26,6 +26,9 @@ from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import HookFailedError
 from bzrlib.plugins.builddeb.hooks import run_hook
 
+class MockTree:
+  def abspath(self, relpath):
+    return os.path.abspath(relpath)
 
 class HookTests(TestCaseInTempDir):
 
@@ -36,7 +39,7 @@ class HookTests(TestCaseInTempDir):
     f = open(self.default_conf, 'wb')
     f.close()
     config = DebBuildConfig([(self.default_conf, False)])
-    run_hook('pre-build', config)
+    run_hook(MockTree(), 'pre-build', config)
 
   def test_run_hook_raises_when_hook_fails(self):
     f = open(self.default_conf, 'wb')
@@ -45,7 +48,7 @@ class HookTests(TestCaseInTempDir):
     finally:
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
-    self.assertRaises(HookFailedError, run_hook, 'pre-build', config)
+    self.assertRaises(HookFailedError, run_hook, MockTree(), 'pre-build', config)
 
   def test_run_hook_when_hook_passes(self):
     f = open(self.default_conf, 'wb')
@@ -54,7 +57,7 @@ class HookTests(TestCaseInTempDir):
     finally:
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
-    run_hook('pre-build', config)
+    run_hook(MockTree(), 'pre-build', config)
 
   def test_run_hook_uses_cwd_by_default(self):
     f = open(self.default_conf, 'wb')
@@ -63,7 +66,7 @@ class HookTests(TestCaseInTempDir):
     finally:
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
-    run_hook('pre-build', config)
+    run_hook(MockTree(), 'pre-build', config)
     self.failUnlessExists('a')
 
   def test_run_hook_uses_passed_wd(self):
@@ -74,7 +77,7 @@ class HookTests(TestCaseInTempDir):
     finally:
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
-    run_hook('pre-build', config, wd='dir')
+    run_hook(MockTree(), 'pre-build', config, wd='dir')
     self.failUnlessExists('dir/a')
 
   def test_run_hook_uses_shell(self):
@@ -84,7 +87,7 @@ class HookTests(TestCaseInTempDir):
     finally:
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
-    run_hook('post-build', config)
+    run_hook(MockTree(), 'post-build', config)
     self.failUnlessExists('a')
     self.failUnlessExists('b')
 
@@ -101,7 +104,7 @@ class HookTests(TestCaseInTempDir):
       f.close()
     config = DebBuildConfig([(self.local_conf, False),
                              (self.default_conf, False)])
-    run_hook('post-build', config)
+    run_hook(MockTree(), 'post-build', config)
     self.failIfExists('a')
     self.failUnlessExists('b')
 

@@ -72,5 +72,19 @@ There are many more options available when building. The output of
 
 lists them all.
 
+Remote Branches
+---------------
+
+It is possible to build directly from remote branches, e.g.::
+
+  $ bzr builddeb http://bzr.debian.org/pkg-bazaar/bzr-builddeb/trunk/
+
+This doesn't require you to have any of the branch history locally, and will
+just download what is needed to build the branch.
+
+If you do not have different directories set in ``~/.bazaar/builddeb.conf``
+then all actions will take place within ``./build-area/``, which should
+avoid overwriting any files that you wish to keep.
+
 .. vim: set ft=rst tw=76 :
 

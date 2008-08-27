@@ -138,6 +138,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
     self.write_changelog('changelog')
     tree.add(['changelog'])
     os.symlink('.', 'debian')
+    tree.add(['debian'])
     (cl, lq) = find_changelog(tree, True)
     self.assertEqual(str(cl), cl_block1)
     self.assertEqual(lq, True)
@@ -168,11 +169,20 @@ class GetRevisionSnapshotTests(TestCase):
   def test_with_snapshot(self):
     self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
 
+  def test_with_snapshot_plus(self):
+    self.assertEquals("30", get_snapshot_revision("0.4.4+bzr30"))
+
   def test_without_snapshot(self):
     self.assertEquals(None, get_snapshot_revision("0.4.4"))
 
   def test_non_numeric_snapshot(self):
     self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
+
+  def test_with_svn_snapshot(self):
+    self.assertEquals("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
+
+  def test_with_svn_snapshot_plus(self):
+    self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
 
 
 class LookupDistributionTests(TestCase):

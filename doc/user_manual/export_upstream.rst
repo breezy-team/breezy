@@ -121,5 +121,11 @@ find the tag we created previously.
 Note that this variable substitution only occurs from the configuration file,
 and does not work if this option is passed on the command line.
 
+It is possible to export a snapshot of the upstream by appending ``~bzr``
+and a revision number to the upstream version. For example, using version 
+``0.1~bzr42-1`` in the changelog would export revision 42 in the upstream
+branch. A similar directive exists for Subversion revision numbers. E.g. 
+``0.1~svn42-1`` would export Subversion revision 42.
+
 .. vim: set ft=rst tw=76 :
 

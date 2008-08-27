@@ -1,3 +1,45 @@
+bzr-builddeb (1.0) UNRELEASED; urgency=low
+
+  [ Jelmer Vernooij ]
+  * Support +bzr for snapshots as well as ~bzr.
+  * Lock the tree before starting as remote trees are more strict about this,
+    meaning there were problems with remote branches.
+  * Import apt_pkg only when used, as it is used rarely and importing it
+    has an overhead, and also leads to increased memory usage.
+
+ -- James Westby <james.westby@canonical.com>  Fri, 13 Jun 2008 15:03:53 +0100
+
+bzr-builddeb (0.95) unstable; urgency=low
+
+  [ Jelmer Vernooij ]
+  * Support building from remote branches,
+    "bzr builddeb http://wherever/package.debian" will now work.
+
+ -- James Westby <james.westby@canonical.com>  Fri, 16 May 2008 12:29:08 +0100
+
+bzr-builddeb (0.94) unstable; urgency=low
+
+  [ Jelmer Vernooij ]
+  * Support building against snapshots from Subversion branches.
+  * Suggest bzr-svn to hint that you can work with svn. The version
+    is the one that exports the svn-buildpackage mergeWithUpstream
+    property as "merge = True", so that bzr-builddeb will seamlessly
+    build these branches.
+
+  [ Sebastian Bober ]
+  * Disable the testsuite during build as we can't be sure that
+    /etc/apt/sources.list has a deb-src line. "check" or "test"
+    in DEB_BUILD_OPTIONS will turn it back on again. (Closes: #472543)
+  * Build-Depend and Depend on python-apt, as it is used directly
+    now.
+  * Tweaks to stamp handling in debian/rules.
+
+  [ James Westby ]
+  * Make the tarball dir before trying to download from the archive in
+    to it. (LP: #223948)
+
+ -- James Westby <james.westby@canonical.com>  Thu, 15 May 2008 16:59:00 +0100
+
 bzr-builddeb (0.93) unstable; urgency=low
 
   [ Arnaud Fontaine ]

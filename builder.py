@@ -25,8 +25,6 @@ import tarfile
 import tempfile
 import os
 
-import apt_pkg
-
 from debian_bundle.changelog import Version
 
 from bzrlib.branch import Branch
@@ -211,6 +209,7 @@ class DebBuild(object):
     os.unlink(fetched_tarball)
 
   def _get_upstream_from_archive(self):
+    import apt_pkg
     apt_pkg.init()
     sources = apt_pkg.GetPkgSrcRecords()
     sources.Restart()
@@ -220,6 +219,8 @@ class DebBuild(object):
     while sources.Lookup(package):
       if version == Version(sources.Version).upstream_version:
         tarball_dir = self._properties.tarball_dir()
+        if not os.path.exists(tarball_dir):
+            os.makedirs(tarball_dir)
         command = 'apt-get source -y --tar-only %s=%s' % \
             (package, sources.Version)
         proc = subprocess.Popen(command, shell=True, cwd=tarball_dir)

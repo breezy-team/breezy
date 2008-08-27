@@ -47,12 +47,6 @@ def recursive_copy(fromdir, todir):
       shutil.copy(path, todir)
 
 
-def goto_branch(branch):
-  """Changes to the specified branch dir if it is not None"""
-  if branch is not None:
-    info("Building using branch at %s", branch)
-    os.chdir(branch)
-
 def find_changelog(t, merge):
     changelog_file = 'debian/changelog'
     larstiq = False
@@ -69,7 +63,8 @@ def find_changelog(t, merge):
           raise MissingChangelogError("debian/changelog")
       else:
         if merge and t.has_filename('changelog'):
-          if os.path.islink('debian') and os.readlink('debian') == '.':
+          if (t.kind(t.path2id('debian')) == 'symlink' and 
+              t.get_symlink_target(t.path2id('debian')) == '.'):
             changelog_file = 'changelog'
             larstiq = True
       mutter("Using '%s' to get package information", changelog_file)
@@ -84,16 +79,19 @@ def find_changelog(t, merge):
     return changelog, larstiq
 
 def tarball_name(package, version):
-  """Return the name of the .orig.tar.gz for the given pakcage and version."""
+  """Return the name of the .orig.tar.gz for the given package and version."""
 
   return "%s_%s.orig.tar.gz" % (package, str(version))
 
 def get_snapshot_revision(upstream_version):
   """Return the upstream revision specifier if specified in the upstream version or None. """
-  match = re.search("~bzr([0-9]+)$", upstream_version)
-  if match is None:
-    return None
-  return match.groups()[0]
+  match = re.search("(?:~|\\+)bzr([0-9]+)$", upstream_version)
+  if match is not None:
+    return match.groups()[0]
+  match = re.search("(?:~|\\+)svn([0-9]+)$", upstream_version)
+  if match is not None:
+    return "svn:%s" % match.groups()[0]
+  return None
 
 
 def lookup_distribution(target_dist):
