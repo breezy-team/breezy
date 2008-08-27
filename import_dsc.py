@@ -363,9 +363,10 @@ class DscImporter(object):
           os.mkdir(self.orig_target)
         new_filename = os.path.join(self.orig_target,
                                     os.path.basename(origname))
+        contents = f.read()
         new_f = open(new_filename, 'wb')
         try:
-          new_f.write(f.read())
+          new_f.write(contents)
         finally:
           new_f.close()
         f.close()

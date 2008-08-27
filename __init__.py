@@ -420,7 +420,7 @@ class cmd_merge_upstream(Command):
                               "information from, please use the --package "
                               "option to give the name of the package")
 
-    orig_dir = config.orig_dir or '../tarballs'
+    orig_dir = config.orig_dir or default_orig_dir
     orig_dir = os.path.join(tree.basedir, orig_dir)
 
     dest_name = tarball_name(package, version)
@@ -538,7 +538,7 @@ class cmd_import_dsc(Command):
         to = snapshot
       importer = SnapshotImporter(snapshot, other_sources=files_list)
     if initial:
-      orig_target = os.path.join(to, '../tarballs')
+      orig_target = os.path.join(to, default_orig_dir)
       importer.import_dsc(to, orig_target=orig_target)
     else :
       inc_to = '.'
@@ -551,7 +551,7 @@ class cmd_import_dsc(Command):
                              (_default_conf, False)])
       orig_target = config.orig_dir
       if orig_target is None:
-        orig_target = os.path.join(inc_to, '../tarballs')
+        orig_target = os.path.join(inc_to, default_orig_dir)
       importer.incremental_import_dsc(inc_to, orig_target=orig_target)
 
 

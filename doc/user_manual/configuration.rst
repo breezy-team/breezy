@@ -44,13 +44,12 @@ These change the directories that the plugin uses for various things.
 
   * ``result-dir = path``
 
-    The directory the resulting files will be placed in. (Defaults to whatever
-    is being used for ``build_dir``).
+    The directory the resulting files will be placed in. (Defaults to ``..``)
 
   * ``orig-dir = path``
 
     The directory to search for the ``.orig.tar.gz`` when not in native mode. 
-    (Defaults to ``../tarballs`` relative to the branch).
+    (Defaults to ``..`` relative to the branch).
 
 Modes
 ^^^^^

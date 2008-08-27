@@ -97,7 +97,7 @@ easily, which will become important later.
 The upstream tarball is also converted to the required form, this means that
 it is repacked to ``.tar.gz`` format if it is in a different format, and then
 renamed to the correct name for the ``.orig.tar.gz`` part of a source package.
-Finally it is placed in the ``../tarballs/`` directory, where later commands
+Finally it is placed in the parent directory, where later commands
 will expect to find it. If you do not like this location for the upstream
 tarballs you are free to change it, the `Configuration Files`_ section
 explains how.
@@ -189,9 +189,9 @@ available on ``snapshot.debian.net``.
 .. _snapshot.debian.net: http://snapshot.debian.net/
 
 The process places all of the ``.orig.tar.gz`` files from the source packages
-in ``../tarballs/``, as they are required if that version of the package is
+in the parent directory, as they are required if that version of the package is
 going to be built. If you do not like to use the disk space for these files
-then they can be deleted, provided they can be replaced from elsewhere. If
+then they can be deleted, provided they can be retrived from elsewhere. If
 you do not like the location of those files then you can configure a
 different location. See the `Configuration Files`_ section for instructions.
 
