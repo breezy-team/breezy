@@ -353,7 +353,7 @@ class SvnRepository(Repository):
                                       self.get_fileid_map(revision.svn_meta.revnum, 
                                                           revision.svn_meta.branch_path,
                                                           revision.svn_mapping), parentfileidmap)
-        conn = self.transport.connections.get(urlutils.join(self.transport.get_svn_repos_root(), parent_branch_path))
+        conn = self.transport.get_connection(parent_branch_path)
         try:
             reporter = conn.do_diff(revision.svn_meta.revnum, "", urlutils.join(self.transport.get_svn_repos_root(), revision.svn_meta.branch_path), editor, True, True, False)
             reporter.set_path("", parentrevnum, start_empty)

@@ -73,7 +73,7 @@ class SubversionTags(BasicTags):
         if from_bp == path:
             return
         self._ensure_tag_parent_exists(parent)
-        conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
+        conn = self.repository.transport.get_connection(parent)
         deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
         try:
             ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tag %s" % tag_name.encode("utf-8")})
@@ -116,7 +116,7 @@ class SubversionTags(BasicTags):
     def delete_tag(self, tag_name):
         path = self.branch.layout.get_tag_path(tag_name, self.branch.project)
         parent = urlutils.dirname(path)
-        conn = self.repository.transport.connections.get(urlutils.join(self.repository.base, parent))
+        conn = self.repository.transport.get_connection(parent)
         try:
             if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
                 raise NoSuchTag(tag_name)

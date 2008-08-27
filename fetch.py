@@ -755,7 +755,7 @@ class InterFromSvnRepository(InterRepository):
                     try:
                         conn = None
                         try:
-                            conn = self.source.transport.connections.get(urlutils.join(repos_root, parent_branch))
+                            conn = self.source.transport.get_connection(parent_branch)
 
                             assert revmeta.revnum > parent_revnum or start_empty
 

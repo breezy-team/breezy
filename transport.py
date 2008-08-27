@@ -193,8 +193,12 @@ class SvnRaTransport(Transport):
         from bzrlib.plugins.svn import lazy_check_versions
         lazy_check_versions()
 
-    def get_connection(self):
-        return self.connections.get(self.svn_url)
+    def get_connection(self, repos_path=None):
+        if repos_path is not None:
+            return self.connections.get(urlutils.join(self.get_svn_repos_root(), 
+                                        repos_path))
+        else:
+            return self.connections.get(self.svn_url)
 
     def add_connection(self, conn):
         self.connections.add(conn)

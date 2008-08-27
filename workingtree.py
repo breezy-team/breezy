@@ -159,7 +159,7 @@ class SvnWorkingTree(WorkingTree):
             revnum = self.branch.get_revnum()
         adm = self._get_wc(write_lock=True)
         try:
-            conn = self.branch.repository.transport.connections.get(bzr_to_svn_url(self.branch.base))
+            conn = self.branch.repository.transport.get_connection(self.branch.get_branch_path())
             try:
                 update_wc(adm, self.basedir, conn, revnum)
             finally:
