@@ -92,6 +92,7 @@ CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
 CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
 CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
+CURLE_SEND_ERROR = _get_pycurl_errcode('E_SEND_ERROR', 55)
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -254,18 +255,29 @@ class PyCurlTransport(HttpTransportBase):
         return msg
 
     def _post(self, body_bytes):
-        fake_file = StringIO(body_bytes)
         curl = self._get_curl()
-        # Other places that use the Curl object (returned by _get_curl)
-        # for GET requests explicitly set HTTPGET, so it should be safe to
-        # re-use the same object for both GETs and POSTs.
+        abspath, data, header = self._setup_request(curl, '.bzr/smart')
         curl.setopt(pycurl.POST, 1)
+        fake_file = StringIO(body_bytes)
         curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
         curl.setopt(pycurl.READFUNCTION, fake_file.read)
-        abspath, data, header = self._setup_request(curl, '.bzr/smart')
         # We override the Expect: header so that pycurl will send the POST
         # body immediately.
-        self._curl_perform(curl, header, ['Expect: '])
+        try:
+            self._curl_perform(curl, header, ['Expect: '])
+        except pycurl.error, e:
+            if e[0] == CURLE_SEND_ERROR:
+                # This has been observed when curl assumes a closed connection
+                # when talking to HTTP/1.0 servers, getting a 403, but trying
+                # to send the request body anyway. (see bug #225020)
+                code = curl.getinfo(pycurl.HTTP_CODE)
+                if code == 403:
+                    raise errors.InvalidHttpResponse(
+                        abspath,
+                        'Unexpected send error,'
+                        ' the server probably closed the connection')
+            # Re-raise otherwise
+            raise
         data.seek(0)
         code = curl.getinfo(pycurl.HTTP_CODE)
         msg = self._parse_headers(header)
