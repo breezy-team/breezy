@@ -1111,9 +1111,10 @@ class BzrDir(object):
             result_branch = result.create_branch()
         else:
             result_branch = source_branch.sprout(
-                result, revision_id=revision_id)
+                result, revision_id=_mod_revision.NULL_REVISION)
         mutter("created new branch %r" % (result_branch,))
         repository_policy.configure_branch(result_branch)
+        source_branch.copy_content_into(result_branch, revision_id)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (
