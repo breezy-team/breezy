@@ -38,6 +38,9 @@ IN DEVELOPMENT
       ``0700`` and files to ``0600`` rather than leaving them unmodified.
       Now we ignore ``0000`` as the permissions and assume they are
       invalid. (John Arbash Meinel, #259855)
+
+    * Merging from a previously joined branch will no longer cause 
+      a traceback. (Jelmer Vernooij, #203376)
     
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
