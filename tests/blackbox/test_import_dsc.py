@@ -77,7 +77,7 @@ class TestImportDsc(BuilddebTestCase):
   def test_import_dsc(self):
     self.make_real_source_package()
     tree = self.make_branch_and_tree('.')
-    self.run_bzr('import-dsc debian %s' % self.dsc_name)
+    self.run_bzr('import-dsc --distribution debian %s' % self.dsc_name)
     tree.lock_read()
     try:
       self.check_inventory_shape(tree.inventory,
@@ -86,11 +86,18 @@ class TestImportDsc(BuilddebTestCase):
       tree.unlock()
     self.assertEqual(len(tree.branch.revision_history()), 2)
 
-  def test_import_incremental_no_files(self):
+  def test_import_no_files(self):
     self.make_branch_and_tree('.')
     self.make_real_source_package()
     self.run_bzr_error(['You must give the location of at least one source '
-        'package.'], 'import-dsc debian')
+        'package.'], 'import-dsc --distribution debian')
+
+  def test_import_no_distribution(self):
+    self.make_branch_and_tree('.')
+    self.make_real_source_package()
+    self.run_bzr_error(['You must specify the distribution these packages '
+            'were uploaded to using --distribution.'],
+            'import-dsc %s' % self.dsc_name)
 
 # vim: ts=2 sts=2 sw=2
 

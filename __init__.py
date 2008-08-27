@@ -404,7 +404,8 @@ class cmd_merge_upstream(Command):
     distribution_opt = Option('distribution', help="The distribution that "
             "this release is targetted at", type=str)
 
-    takes_options = [package_opt, no_user_conf_opt]
+    takes_options = [package_opt, no_user_conf_opt, version_opt,
+            distribution_opt]
 
     def run(self, tarball, version=None, distribution=None, package=None,
             no_user_config=None):
@@ -517,9 +518,9 @@ class cmd_import_dsc(Command):
                           "packages to import.", type=str, argname="filename",
                           short_name='F')
     distribution_opt = Option('distribution', help="The distribution that "
-            "these packages were uploaded to.")
+            "these packages were uploaded to.", type=str)
 
-    takes_options = [filename_opt]
+    takes_options = [filename_opt, distribution_opt]
 
     def import_many(self, db, files_list, orig_target):
         cache = DscCache()
