@@ -304,7 +304,12 @@ class SvnRaTransport(Transport):
                     self.pending.append(Exception("Some exception was not handled"))
                     self.semaphore.release()
 
-        fetcher = logfetcher(self, paths=paths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions, revprops=revprops)
+        if paths is None:
+            newpaths = None
+        else:
+            newpaths = [p.rstrip("/") for p in paths]
+
+        fetcher = logfetcher(self, paths=newpaths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions, revprops=revprops)
         fetcher.start()
         return iter(fetcher.next, None)
 
@@ -322,9 +327,14 @@ class SvnRaTransport(Transport):
 
         self.mutter('svn log -r%d:%d %r' % (from_revnum, to_revnum, paths))
 
+        if paths is None:
+            newpaths = None
+        else:
+            newpaths = [p.rstrip("/") for p in paths]
+
         conn = self.get_connection()
         try:
-            return conn.get_log(rcvr, paths, 
+            return conn.get_log(rcvr, newpaths, 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
                     include_merged_revisions,

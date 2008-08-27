@@ -25,6 +25,7 @@
 #include <svn_error_codes.h>
 #include <svn_config.h>
 #include <svn_version.h>
+#include <svn_path.h>
 
 #include "util.h"
 
@@ -120,6 +121,32 @@ bool string_list_to_apr_array(apr_pool_t *pool, PyObject *l, apr_array_header_t 
 	}
 	return true;
 }
+
+bool path_list_to_apr_array(apr_pool_t *pool, PyObject *l, apr_array_header_t **ret)
+{
+	int i;
+	if (l == Py_None) {
+		*ret = NULL;
+		return true;
+	}
+	if (!PyList_Check(l)) {
+		PyErr_Format(PyExc_TypeError, "Expected list of strings, got: %s",
+					 l->ob_type->tp_name);
+		return false;
+	}
+	*ret = apr_array_make(pool, PyList_Size(l), sizeof(char *));
+	for (i = 0; i < PyList_GET_SIZE(l); i++) {
+		PyObject *item = PyList_GET_ITEM(l, i);
+		if (!PyString_Check(item)) {
+			PyErr_Format(PyExc_TypeError, "Expected list of strings, item was %s", item->ob_type->tp_name);
+			return false;
+		}
+		APR_ARRAY_PUSH(*ret, char *) = svn_path_canonicalize(PyString_AsString(item), pool);
+	}
+	return true;
+}
+
+
 
 PyObject *prop_hash_to_dict(apr_hash_t *props)
 {
