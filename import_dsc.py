@@ -1,5 +1,6 @@
 #    import_dsc.py -- Import a series of .dsc files.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
+#              (C) 2008 Canonical Ltd.
 #
 #    Code is also taken from bzrtools, which is
 #             (C) 2005, 2006, 2007 Aaron Bentley <aaron.bentley@utoronto.ca>

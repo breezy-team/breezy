@@ -2,6 +2,7 @@
 #    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
 #                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #                  2007 Reinhard Tartler <siretart@tauware.de>
+#                  2008 Canonical Ltd.
 #    
 #    This file is part of bzr-builddeb.
 #

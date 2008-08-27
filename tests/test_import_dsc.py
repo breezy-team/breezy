@@ -1,5 +1,6 @@
 #    test_import_dsc.py -- Test importing .dsc files.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
+#              (C) 2008 Canonical Ltd.
 #    
 #    This file is part of bzr-builddeb.
 #
