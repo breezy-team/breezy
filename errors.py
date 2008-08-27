@@ -93,4 +93,11 @@ class MissingChanges(BzrError):
     self.changes = changes
 
 
+class UpstreamAlreadyImported(BzrError):
+    _fmt = """Upstream version %(version)s has already been imported."""
+
+    def __init__(self, version):
+        self.version = str(version)
+
+
 # vim: ts=2 sts=2 sw=2

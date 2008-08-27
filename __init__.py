@@ -26,6 +26,8 @@ import os
 import subprocess
 import urlparse
 
+from debian_bundle.changelog import Version
+
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
@@ -51,7 +53,10 @@ from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
 from bzrlib.plugins.builddeb.hooks import run_hook
-from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
+from bzrlib.plugins.builddeb.import_dsc import (
+        DistributionBranch,
+        DistributionBranchSet,
+        )
 from bzrlib.plugins.builddeb.properties import BuildProperties
 from bzrlib.plugins.builddeb.util import (find_changelog,
         lookup_distribution,
@@ -83,6 +88,9 @@ export_upstream_opt = Option('export-upstream',
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported",
     type=str)
+no_user_conf_opt = Option('no-user-config',
+    help="Stop builddeb from reading the user's config file. Used mainly "
+    "for tests")
 
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
@@ -180,15 +188,14 @@ class cmd_builddeb(Command):
   source_opt = Option('source', help="Build a source package, uses "
                       +"source-builder, which defaults to \"dpkg-buildpackage "
                       +"-rfakeroot -uc -us -S\"", short_name='S')
-  no_user_conf = Option('no-user-config', help="Stop builddeb from reading the user's "
-                        +"config file. Used mainly for tests")
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = [working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-      export_upstream_revision_opt, source_opt, 'revision', no_user_conf]
+      export_upstream_revision_opt, source_opt, 'revision',
+      no_user_conf_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
@@ -360,96 +367,99 @@ register_command(cmd_builddeb)
 
 
 class cmd_merge_upstream(Command):
-  """Merges a new upstream version into the current branch.
+    """Merges a new upstream version into the current branch.
 
-  Takes a new upstream version and merges it in to your branch, so that your
-  packaging changes are applied to the new version.
+    Takes a new upstream version and merges it in to your branch, so that your
+    packaging changes are applied to the new version.
 
-  You must supply the source to import from, and the version number of the
-  new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
-  archive, or a directory. The source may also be a remote file.
+    You must supply the source to import from, and the version number of the
+    new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
+    archive, or a directory. The source may also be a remote file.
 
-  If there is no debian changelog in the branch to retrieve the package
-  name from then you must pass the --package option. If this version
-  will change the name of the source package then you can use this option
-  to set the new name.
-  """
-  takes_args = ['path']
-  aliases = ['mu']
+    You must supply the version number of the new upstream release
+    as the second argument to the command.
 
-  package_opt = Option('package', help="The name of the source package.",
-                       type=str)
-  version_opt = Option('version', help="The version number of the new "
-                       "upstream release. (Required).", type=str)
-  takes_options = [package_opt, version_opt]
+    The third argument must be the target distribtution you aim to
+    upload to, one of "debian" or "ubuntu". You can also specify the
+    target used in the changelog, e.g. "unstable", and it will be
+    resolved automatically.
 
-  def run(self, path, version=None, package=None):
+    If there is no debian changelog in the branch to retrieve the package
+    name from then you must pass the --package option. If this version
+    will change the name of the source package then you can use this option
+    to set the new name.
+    """
+    takes_args = ['tarball', 'version', 'target_distribution']
+    aliases = ['mu']
 
-    from bzrlib.errors import (NoSuchTag,
-                               TagAlreadyExists,
-                               )
-    from bzrlib.plugins.builddeb.errors import MissingChangelogError
-    from bzrlib.plugins.builddeb.merge_upstream import merge_upstream
-    from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+    package_opt = Option('package', help="The name of the source package.",
+                         type=str)
+    takes_options = [package_opt, no_user_conf_opt]
 
-    if version is None:
-      raise BzrCommandError("You must supply the --version argument.")
+    def run(self, tarball, version, target_distribution, package=None,
+            no_user_config=None):
+        from bzrlib.plugins.builddeb.errors import MissingChangelogError
+        from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+        tree, _ = WorkingTree.open_containing('.')
+        tree.lock_write()
+        try:
+            # Check for uncommitted changes.
+            if tree.changes_from(tree.basis_tree()).has_changed():
+                raise BzrCommandError("There are uncommitted changes in the "
+                        "working tree. You must commit before using this "
+                        "command")
+            if no_user_config:
+                config_files = [(local_conf, True), (default_conf, False)]
+            else:
+                config_files = [(local_conf, True), (global_conf, True),
+                                     (default_conf, False)]
+            if config.merge:
+                raise BzrCommandError("Merge upstream in merge mode is not yet "
+                        "supported")
+            if config.native:
+                raise BzrCommandError("Merge upstream in native mode is not yet "
+                        "supported")
+            if config.export_upstream:
+                raise BzrCommandError("Export upstream mode is not yet "
+                        "supported")
+            if config.split:
+                raise BzrCommandError("Split mode is not yet supported")
 
-    tree, _ = WorkingTree.open_containing('.')
+            changelog = find_changelog(tree, False)[0]
+            if package is None:
+                package = changelog.package
+            current_version = changelog.version
 
-    config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)])
-
-    if config.merge:
-      raise BzrCommandError("Merge upstream in merge mode is not yet "
-                            "supported")
-    if config.native:
-      raise BzrCommandError("Merge upstream in native mode is not yet "
-                            "supported")
-    if config.export_upstream:
-      raise BzrCommandError("Export upstream mode is not yet "
-                            "supported")
-    if config.split:
-      raise BzrCommandError("Split mode is not yet supported")
-
-    if package is None:
-      try:
-        package = find_changelog(tree, False)[0].package
-      except MissingChangelogError:
-        raise BzrCommandError("There is no changelog to rertrieve the package "
-                              "information from, please use the --package "
-                              "option to give the name of the package")
-
-    orig_dir = config.orig_dir or default_orig_dir
-    orig_dir = os.path.join(tree.basedir, orig_dir)
-
-    dest_name = tarball_name(package, version)
-    try:
-      repack_tarball(path, dest_name, target_dir=orig_dir)
-    except FileExists:
-      raise BzrCommandError("The target file %s already exists, and is either "
-                            "different to the new upstream tarball, or they "
-                            "are of different formats. Either delete the target "
-                            "file, or use it as the argument to import.")
-    filename = os.path.join(orig_dir, dest_name)
-
-    try:
-      merge_upstream(tree, filename, version)
-    # TODO: tidy all of this up, and be more precise in what is wrong and
-    #       what can be done.
-    except NoSuchTag, e:
-      raise BzrCommandError("The tag of the last upstream import can not be "
-                            "found. You should tag the revision that matches "
-                            "the last upstream version. Expected to find %s." % \
-                            e.tag_name)
-    except TagAlreadyExists:
-      raise BzrCommandError("It appears as though this merge has already "
-                            "been performed, as there is already a tag "
-                            "for this upstream version. If that is not the "
-                            "case then delete that tag and try again.")
-    info("The new upstream version has been imported. You should now update "
-         "the changelog (try dch -v %s), and then commit. Note that debcommit "
-         "will not do what you want in this case." % str(version))
+            orig_dir = config.orig_dir or default_orig_dir
+            orig_dir = os.path.join(tree.basedir, orig_dir)
+            dest_name = tarball_name(package, version)
+            try:
+                repack_tarball(tarball, dest_name, target_dir=orig_dir)
+            except FileExists:
+                raise BzrCommandError("The target file %s already exists, and is either "
+                                      "different to the new upstream tarball, or they "
+                                      "are of different formats. Either delete the target "
+                                      "file, or use it as the argument to import.")
+            tarball_filename = os.path.join(orig_dir, dest_name)
+            target_distribution = target_distribution.lower()
+            distribution_name = lookup_distribution(target_distribution)
+            target_name = target_distribution
+            if distribution_name is None:
+                if target_distribution not in ("debian", "ubuntu"):
+                    raise BzrCommandError("Unknown target distribution: %s" \
+                            % target_dist)
+                else:
+                    target_name = None
+                    distribution_name = target_distribution
+            db = DistributionBranch(distribution_name, tree.branch, None,
+                    tree=tree)
+            conflicts = db.merge_upstream(tarball_filename,
+                    Version(version), current_version)
+            info("The new upstream version has been imported. You should "
+                 "now update the changelog (try dch -v %s), resolve any "
+                 "conflicts, and then commit." % str(version))
+        finally:
+            tree.unlock()
 
 
 register_command(cmd_merge_upstream)
@@ -669,12 +679,10 @@ class cmd_mark_uploaded(Command):
     by marking the current tip revision with the version indicated
     in debian/changelog.
     """
-    no_user_conf = Option('no-user-config', help="Stop builddeb from reading the user's "
-                          +"config file. Used mainly for tests")
     force = Option('force', help="Mark the upload even if it is already "
             "marked.")
 
-    takes_options = [merge_opt, no_user_conf, force]
+    takes_options = [merge_opt, no_user_conf_opt, force]
 
     def run(self, merge=False, no_user_config=False, force=None):
         t = WorkingTree.open_containing('.')[0]
@@ -699,6 +707,8 @@ class cmd_mark_uploaded(Command):
                 raise BzrCommandError("Unknown target distribution: %s" \
                         % target_dist)
             db = DistributionBranch(distribution_name, t.branch, None)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
             if db.has_version(changelog.version):
                 if not force:
                     raise BzrCommandError("This version has already been "

@@ -25,6 +25,7 @@
 #
 
 import gzip
+import md5
 import os
 import select
 import shutil
@@ -40,12 +41,15 @@ from debian_bundle.changelog import Version, Changelog
 from bzrlib import (bzrdir,
                     generate_ids,
                     osutils,
+                    transport,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (FileExists,
         BzrError,
         UncommittedChanges,
+        NotBranchError,
+        NoRepositoryPresent,
         )
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revision import NULL_REVISION
@@ -62,6 +66,7 @@ from bzrlib.plugins.bzrtools.upstream_import import (
 from bzrlib.plugins.builddeb.errors import (ImportError,
                 OnlyImportSingleDsc,
                 UnknownType,
+                UpstreamAlreadyImported,
                 )
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
@@ -956,10 +961,6 @@ class DistributionBranch(object):
         self.upstream_branch = upstream_branch
         self.tree = tree
         self.upstream_tree = upstream_tree
-        if self.tree is not None:
-            assert self.upstream_tree is not None
-        if self.upstream_tree is not None:
-            assert self.tree is not None
         self.get_lesser_branches = None
         self.get_greater_branches = None
 
@@ -1766,3 +1767,72 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tempdir)
 
+    def _extract_upstream_tree(self, upstream_tip, basedir):
+        # Extract that to a tempdir so we can get a working
+        # tree for it.
+        # TODO: should stack rather than trying to use the repository,
+        # as that will be more efficient.
+        to_location = os.path.join(basedir, self.name + "-upstream")
+        to_transport = transport.get_transport(to_location)
+        br_to = dir_to = repository_to = None
+        try:
+            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
+        except NotBranchError:
+            pass
+        else:
+            try:
+                repository_to = dir_to.find_repository()
+            except NoRepositoryPresent:
+                pass
+        if dir_to is None:
+            dir_to = self.branch.bzrdir.clone_on_transport(to_transport,
+                    revision_id=upstream_tip)
+            br_to = dir_to.open_branch()
+        elif repository_to is None:
+            assert False, "Strange situation to be in"
+        else:
+            repository_to.fetch(self.branch.repository,
+                    revision_id=upstream_tip)
+            br_to = br_from.clone(dir_to, revision_id=revision_id)
+        self.upstream_tree = dir_to.open_workingtree()
+        self.upstream_branch = br_to
+
+    def _extract_tarball_to_tempdir(self, tarball_filename):
+        tempdir = tempfile.mkdtemp()
+        try:
+            assert os.system("tar xzf %s -C %s --strip-components 1"
+                    % (tarball_filename, tempdir)) == 0
+            return tempdir
+        except:
+            shutil.rmtree(tempdir)
+            raise
+
+    def _revid_of_upstream_version_from_branch(self, version):
+        tag_name = self.upstream_tag_name(version)
+        return self.branch.tags.lookup_tag(tag_name)
+
+    def merge_upstream(self, tarball_filename, version, previous_version):
+        assert self.upstream_branch is None, \
+                "Should use self.upstream_branch if set"
+        upstream_tip = self._revid_of_upstream_version_from_branch(
+                previous_version)
+        tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
+        try:
+            self._extract_upstream_tree(upstream_tip, tempdir)
+            if self.has_upstream_version(version):
+                raise UpstreamAlreadyImported(version)
+            m = md5.new()
+            m.update(open(tarball_filename).read())
+            md5sum = m.hexdigest()
+            tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
+            try:
+                # FIXME: should use upstream_parents()?
+                self.import_upstream(tarball_dir, version, md5sum,
+                        [self.upstream_branch.last_revision()])
+            finally:
+                shutil.rmtree(tarball_dir)
+            conflicts = self.tree.merge_from_branch(self.upstream_branch)
+            self.upstream_branch.tags.merge_to(self.branch.tags)
+            return conflicts
+        finally:
+            shutil.rmtree(tempdir)
