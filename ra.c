@@ -766,7 +766,7 @@ static PyObject *ra_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 		return NULL;
 	}
 	Py_BEGIN_ALLOW_THREADS
-	err = svn_ra_open2(&ret->ra, apr_pstrdup(ret->pool, url),
+	err = svn_ra_open2(&ret->ra, svn_path_canonicalize(url, ret->pool),
 			   callbacks2, ret, config_hash, ret->pool);
 	Py_END_ALLOW_THREADS
 	if (!check_error(err)) {
