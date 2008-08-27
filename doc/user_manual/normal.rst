@@ -59,11 +59,9 @@ Creating a New Package
 .. TODO: perhaps add a command to do all of these steps.
 
 You need to create a new branch in which to do your work. To create a new
-branch you use the ``bzr init`` command. However `bzr-builddeb` uses tags,
-which are currently not available in the default branch format of Bazaar.
-This means that you need to create a branch with the following command::
+branch you use the ``bzr init`` command.
 
-  $ bzr init --dirstate-tags scruff
+  $ bzr init scruff
 
 (replacing scruff with the name of your package. This name is the name of
 the branch that is created, and as such you can pick any name that you like).
@@ -83,7 +81,10 @@ using the ``--package`` option. This means that once you have downloaded
 the tarball you should run::
 
   $ cd scruff/
-  $ bzr merge-upstream ../scruff-0.1.tar.gz --version 0.1 --package scruff
+  $ bzr merge-upstream ../scruff-0.1.tar.gz 0.1 debian --package scruff
+
+If it is instead intended for Ubuntu then substitute "debian" with
+"ubuntu".
 
 This command will work for upstream tarballs that are ``.tar.gz``, ``.tgz``,
 ``.tar`` or ``.tar.bz2``, or unpacked directories if you have one of those
@@ -137,12 +138,17 @@ run
 
 ::
 
-  $ bzr import-dsc --initial --to scruff *.dsc
+  $ bzr init scruff
+  $ cd scruff
+  $ bzr import-dsc debian ../*.dsc
 
 which will create a branch named ``scruff``, which will have the history
 populated with the information in the source packages. You can see this
 with ``bzr log`` in the branch, or ``bzr viz`` if you have `bzr-gtk`_
-installed.
+installed. It assumes that all packages were uploaded to Debian. If
+they were uploaded to Ubuntu instead then substitute "debian" with
+"ubuntu". If they were mixed then you have to perform some manual
+steps to get the correct history.
 
 .. _bzr-gtk: https://launchpad.net/bzr-gtk/
 
@@ -150,7 +156,7 @@ It is also possible to retrieve the .dsc files over ``HTTP``, ``FTP`` or
 ``SFTP`` automatically. Just give the URIs to the files on the command line
 instead of local paths. For instance::
 
-  $ bzr import-dsc --initial --to scruff \
+  $ bzr import-dsc debian \
     http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
 
 As it is unwieldy to provide lots of URIs on the command line it is also
@@ -162,31 +168,10 @@ needed to ensure the history is correct. For instance if the file
 
 ::
 
-  $ bzr import-dsc --initial --to scruff -F package-sources
+  $ bzr import-dsc debian -F package-sources
 
 will import all of the ``.dsc`` files listed. You can provide both a file
 and a list of packages on the command line if you like.
-
-`snapshot.debian.net`_ stores every version of a package that gets uploaded to
-Debian. This means that the history of a package is available, even if you
-don't have all of the source packages yourself. If you want to use this
-history it is easy to do so. If you pass the ``--snapshot`` option to the
-``import-dsc`` command then the list of source packages you supply
-will be supplemented with all those found on ``snapshot.debian.net``. The
-option takes the name of the source package as it is known to
-``snapshot.debian.net``. For instance if there are several versions of
-``scruff`` available on this service then I can run
-
-::
-
-  $ bzr import-dsc --initial --to scruff --snapshot scruff *.dsc
-
-to have all those versions automatically imported. If you use the
-``--snapshot`` option then it is possible to omit all of the source packages
-from the command line, so that the history is made up of only those packages
-available on ``snapshot.debian.net``.
-
-.. _snapshot.debian.net: http://snapshot.debian.net/
 
 The process places all of the ``.orig.tar.gz`` files from the source packages
 in the parent directory, as they are required if that version of the package is
@@ -225,8 +210,7 @@ tarball that represents this release. This tarball can be local or remote.
 For instance when the ``0.2`` version of ``scruff`` is released the command
 to update to the new version is::
 
-  $ bzr merge-upstream --version 0.2 \
-       http://scruff.org/releases/scruff-0.2.tar.gz
+  $ bzr merge-upstream http://scruff.org/releases/scruff-0.2.tar.gz 0.2-1 debian
 
 This command downloads the new version, and imports it in to the branch. It
 then merges in the packaging changes to the new version.
@@ -236,14 +220,11 @@ will be notified. You must resolve the conflicts in the normal way. One thing
 that you need to do is update the version in ``debian/changelog``. ``dch``
 can help with this. In the above example the following command would work::
 
-  $ dch -v 0.2
+  $ dch -v 0.2-1
 
 Once you have resolved any conflicts, updated the changelog, and edited any
 other files as you require, you can commit the changes, and then attempt to
-build the new version. Note that the ``debcommit`` tool in the ``devscripts``
-package will not do the right thing in this case, it will use the entire
-``debian/changelog`` as the commit message, rather than just the latest
-version. You should commit manually in this case.
+build the new version.
 
 ::
 
@@ -269,7 +250,7 @@ location of the ``.dsc`` file you would like to import. As well as using a
 local path this can be any URI that Bazaar supports, for instance a
 ``http://`` URL. For instance::
 
-  $ bzr import-dsc ../scruff_0.2-1.1.dsc
+  $ bzr import-dsc debian ../scruff_0.2-1.1.dsc
 
 The command will import the changes and then leave you with a tree that is
 the result of merging the changes in the source package in to the tip of
