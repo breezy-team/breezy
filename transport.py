@@ -173,21 +173,16 @@ class SvnRaTransport(Transport):
     This implements just as much of Transport as is necessary 
     to fool Bazaar. """
     @convert_svn_error
-    def __init__(self, url="", _backing_url=None, pool=None, _uuid=None, _repos_root=None):
+    def __init__(self, url="", pool=None, _uuid=None, _repos_root=None):
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
-        # _backing_url is an evil hack so the root directory of a repository 
-        # can be accessed on some HTTP repositories. 
-        if _backing_url is None:
-            _backing_url = self.svn_url
-        self._backing_url = _backing_url.rstrip("/")
         Transport.__init__(self, bzr_url)
 
         if pool is None:
             self.connections = ConnectionPool()
 
             # Make sure that the URL is valid by connecting to it.
-            self.connections.add(self.connections.get(self._backing_url))
+            self.connections.add(self.connections.get(self.svn_url))
         else:
             self.connections = pool
 
@@ -199,7 +194,7 @@ class SvnRaTransport(Transport):
         lazy_check_versions()
 
     def get_connection(self):
-        return self.connections.get(self._backing_url)
+        return self.connections.get(self.svn_url)
 
     def add_connection(self, conn):
         self.connections.add(conn)
@@ -305,12 +300,7 @@ class SvnRaTransport(Transport):
                     self.pending.append(Exception("Some exception was not handled"))
                     self.semaphore.release()
 
-        if paths is None:
-            newpaths = None
-        else:
-            newpaths = [self._request_path(path) for path in paths]
-        
-        fetcher = logfetcher(self, paths=newpaths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions, revprops=revprops)
+        fetcher = logfetcher(self, paths=paths, start=from_revnum, end=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, include_merged_revisions=include_merged_revisions, revprops=revprops)
         fetcher.start()
         return iter(fetcher.next, None)
 
@@ -328,25 +318,15 @@ class SvnRaTransport(Transport):
 
         self.mutter('svn log -r%d:%d %r' % (from_revnum, to_revnum, paths))
 
-        if paths is None:
-            newpaths = None
-        else:
-            newpaths = [self._request_path(path) for path in paths]
-
         conn = self.get_connection()
         try:
-            return conn.get_log(rcvr, newpaths, 
+            return conn.get_log(rcvr, paths, 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
                     include_merged_revisions,
                     revprops)
         finally:
             self.add_connection(conn)
-
-    def _open_real_transport(self):
-        if self._backing_url != self.svn_url:
-            return self.connections.get(self.svn_url)
-        return self.get_connection()
 
     def change_rev_prop(self, revnum, name, value):
         conn = self.get_connection()
@@ -357,7 +337,6 @@ class SvnRaTransport(Transport):
             self.add_connection(conn)
 
     def get_dir(self, path, revnum, kind=False):
-        path = self._request_path(path)
         conn = self.get_connection()
         self.mutter('svn get-dir -r%d %s' % (revnum, path))
         try:
@@ -366,7 +345,6 @@ class SvnRaTransport(Transport):
             self.add_connection(conn)
 
     def get_file(self, path, stream, revnum):
-        path = self._request_path(path)
         conn = self.get_connection()
         self.mutter('svn get-file -r%d %s' % (revnum, path))
         try:
@@ -377,16 +355,6 @@ class SvnRaTransport(Transport):
     def mutter(self, text, *args):
         if 'transport' in debug.debug_flags:
             mutter(text, *args)
-
-    def _request_path(self, relpath):
-        if self._backing_url == self.svn_url:
-            return relpath.strip("/")
-        newsvnurl = urlutils.join(self.svn_url, relpath)
-        if newsvnurl == self._backing_url:
-            return ""
-        newrelpath = urlutils.relative_url(self._backing_url+"/", newsvnurl+"/").strip("/")
-        self.mutter('request path %r -> %r', relpath, newrelpath)
-        return newrelpath
 
     def list_dir(self, relpath):
         assert len(relpath) == 0 or relpath[0] != "/"
@@ -401,7 +369,6 @@ class SvnRaTransport(Transport):
         return dirents.keys()
 
     def check_path(self, path, revnum):
-        path = self._request_path(path)
         conn = self.get_connection()
         self.mutter('svn check-path -r%d %s' % (revnum, path))
         try:
