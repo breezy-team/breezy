@@ -27,6 +27,7 @@ from bzrlib.plugins.builddeb.util import (
                   find_changelog,
                   recursive_copy,
                   get_snapshot_revision,
+                  lookup_distribution,
                   )
 
 from bzrlib.tests import (TestCaseWithTransport,
@@ -172,5 +173,34 @@ class GetRevisionSnapshotTests(TestCase):
 
   def test_non_numeric_snapshot(self):
     self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
+
+
+class LookupDistributionTests(TestCase):
+
+    def lookup_ubuntu(self, target):
+        self.assertEqual(lookup_distribution(target), 'ubuntu')
+
+    def lookup_debian(self, target):
+        self.assertEqual(lookup_distribution(target), 'debian')
+
+    def lookup_other(self, target):
+        self.assertEqual(lookup_distribution(target), None)
+
+    def test_lookup_ubuntu(self):
+        self.lookup_ubuntu('intrepid')
+        self.lookup_ubuntu('hardy-proposed')
+        self.lookup_ubuntu('gutsy-updates')
+        self.lookup_ubuntu('feisty-security')
+        self.lookup_ubuntu('dapper-backports')
+
+    def test_lookup_debian(self):
+        self.lookup_debian('unstable')
+        self.lookup_debian('stable-security')
+        self.lookup_debian('testing-proposed-updates')
+        self.lookup_debian('etch-backports')
+
+    def test_lookup_other(self):
+        self.lookup_other('not-a-target')
+
 
 # vim: ts=2 sts=2 sw=2

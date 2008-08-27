@@ -95,4 +95,21 @@ def get_snapshot_revision(upstream_version):
     return None
   return match.groups()[0]
 
+
+def lookup_distribution(target_dist):
+  debian_releases = ('woody', 'sarge', 'etch', 'lenny', 'stable',
+          'testing', 'unstable', 'experimental', 'frozen')
+  debian_targets = ('', '-security', '-proposed-updates', '-backports')
+  ubuntu_releases = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
+          'feisty', 'gutsy', 'hardy', 'intrepid')
+  ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
+  all_debian = [r + t for r in debian_releases for t in debian_targets]
+  all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]
+  if target_dist in all_debian:
+    return "debian"
+  if target_dist in all_ubuntu:
+    return "ubuntu"
+  return None
+
+
 # vim: ts=2 sts=2 sw=2

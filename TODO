@@ -24,4 +24,5 @@ merge-upstream.
     somewhere else so that the build doesn't fail.
   - Falling back to ../tarballs if .. doesn't have what we need.
   - Moving a source result.
+  - .changes files for packages with an epoch.
 

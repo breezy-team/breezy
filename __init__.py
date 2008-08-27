@@ -48,8 +48,13 @@ from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
 from bzrlib.plugins.builddeb.hooks import run_hook
+from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.properties import BuildProperties
-from bzrlib.plugins.builddeb.util import goto_branch, find_changelog, tarball_name
+from bzrlib.plugins.builddeb.util import (goto_branch,
+        find_changelog,
+        tarball_name,
+        lookup_distribution,
+        )
 from bzrlib.plugins.builddeb.version import version_info
 
 
@@ -613,6 +618,57 @@ class cmd_bd_do(Command):
 
 
 register_command(cmd_bd_do)
+
+
+class cmd_mark_uploaded(Command):
+    """Mark that this branch has been uploaded, prior to pushing it.
+    
+    When a package has been uploaded we want to mark the revision
+    that it was uploaded in. This command automates doing that
+    by marking the current tip revision with the version indicated
+    in debian/changelog.
+    """
+    no_user_conf = Option('no-user-config', help="Stop builddeb from reading the user's "
+                          +"config file. Used mainly for tests")
+    force = Option('force', help="Mark the upload even if it is already "
+            "marked.")
+
+    takes_options = [merge_opt, no_user_conf, force]
+
+    def run(self, merge=False, no_user_config=False, force=None):
+        t = WorkingTree.open_containing('.')[0]
+        t.lock_write()
+        try:
+            if t.changes_from(t.basis_tree()).has_changed():
+              raise BzrCommandError("There are uncommitted changes in the "
+                      "working tree. You must commit before using this command")
+            if no_user_config:
+                config_files = [(local_conf, True), (default_conf, False)]
+            else:
+                config_files = [(local_conf, True), (global_conf, True),
+                                     (default_conf, False)]
+            config = DebBuildConfig(config_files)
+            if not merge:
+                merge = config.merge
+            (changelog, larstiq) = find_changelog(t, False)
+            distributions = changelog.distributions.strip()
+            target_dist = distributions.split()[0]
+            distribution_name = lookup_distribution(target_dist)
+            if distribution_name is None:
+                raise BzrCommandError("Unknown target distribution: %s" \
+                        % target_dist)
+            db = DistributionBranch(distribution_name, t.branch, None)
+            if db.has_version(changelog.version):
+                if not force:
+                    raise BzrCommandError("This version has already been "
+                            "marked uploaded. Use --force to force marking "
+                            "this new version.")
+            db.tag_version(changelog.version)
+        finally:
+            t.unlock()
+
+
+register_command(cmd_mark_uploaded)
 
 
 def test_suite():
