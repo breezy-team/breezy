@@ -23,11 +23,14 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
+import shutil
 import subprocess
+import tempfile
 import urlparse
 
 from debian_bundle.changelog import Version
 
+from bzrlib import bzrdir
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
@@ -35,6 +38,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
                            NotBranchError,
                            FileExists,
+                           AlreadyBranchError,
                            )
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
@@ -56,6 +60,8 @@ from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
+        DscCache,
+        DscComp,
         )
 from bzrlib.plugins.builddeb.properties import BuildProperties
 from bzrlib.plugins.builddeb.util import (find_changelog,
@@ -408,11 +414,7 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("There are uncommitted changes in the "
                         "working tree. You must commit before using this "
                         "command")
-            if no_user_config:
-                config_files = [(local_conf, True), (default_conf, False)]
-            else:
-                config_files = [(local_conf, True), (global_conf, True),
-                                     (default_conf, False)]
+            config = debuild_config(tree, tree, no_user_config)
             if config.merge:
                 raise BzrCommandError("Merge upstream in merge mode is not yet "
                         "supported")
@@ -466,104 +468,140 @@ register_command(cmd_merge_upstream)
 
 
 class cmd_import_dsc(Command):
-  """Import a series of source packages.
+    """Import a series of source packages.
 
-  Provide a number of source packages (.dsc files), and they will
-  be imported to create a branch with history that reflects those
-  packages. You must provide the --to option with the name of the
-  branch that will be created, and the --initial option to indicate
-  this is an initial import.
+    Provide a number of source packages (.dsc files), and they will
+    be imported to create a branch with history that reflects those
+    packages.
 
-  If there are packages that are available on snapshot.debian.net
-  then you can use the --snapshot option to supplement the packages
-  you provide with those available on that service. Pass the name
-  of the source package as on snapshot.debian.net as this option,
-  i.e. to import all versions of apt
+    The first argument is the distribution that these source packages
+    were uploaded to, one of "debian" or "ubuntu". It can also
+    be the target distribution from the changelog, e.g. "unstable",
+    which will be resolved to the correct distribution.
 
-    import-dsc --initial --snapshot apt
+    You can also specify a file (possibly remote) that contains a
+    list of source packages (.dsc files) to import using the --file
+    option. Each line is taken to be a URI or path to import. The
+    sources specified in the file are used in addition to those
+    specified on the command line.
 
-  If you use the --snapshot option then you don't have to provide
-  any source packages on the command line, and if you omit the
-  --to option then the name of the package as passed to --snapshot
-  will be used as the branch name.
+    If you have an existing branch containing packaging and you want to
+    import a .dsc from an upload done from outside the version control
+    system you can use this command.
+    """
 
-  In addition to the above choices you can specify a file
-  (possibly remote) that contains a list of source packages (.dsc
-  files) to import. Each line is taken to be a URI or path to
-  import. The sources specified in the file are used in addition
-  to those specified by other methods.
+    takes_args = ['target_distribution', 'files*']
+    
+    filename_opt = Option('file', help="File containing URIs of source "
+                          "packages to import.", type=str, argname="filename",
+                          short_name='F')
 
-  If you have an existing branch containing packaging and you want to
-  import a .dsc from an upload done from outside the version control
-  system you can use this command. In this case you can only specify
-  one file on the command line, or use a file containing only a single
-  filename, and do not use the --initial option.
-  """
+    takes_options = [filename_opt]
 
-  takes_args = ['files*']
-  
-  to_opt = Option('to', help="The branch to import to.", type=str)
-  snapshot_opt = Option('snapshot', help="Retrieve source packages from "
-                        "snapshot.debian.net.", type=str)
-  filename_opt = Option('file', help="File containing URIs of source "
-                        "packages to import.", type=str, argname="filename",
-                        short_name='F')
-  initial_opt = Option('initial',
-        help="Perform an initial import to create a new branch.")
+    def import_many(self, db, files_list, orig_target):
+        cache = DscCache()
+        files_list.sort(cmp=DscComp(cache).cmp)
+        if not os.path.exists(orig_target):
+            os.makedirs(orig_target)
+        for dscname in files_list:
+            dsc = cache.get_dsc(dscname)
+            def get_dsc_part(from_transport, filename):
+                from_f = from_transport.get(filename)
+                contents = from_f.read()
+                to_f = open(os.path.join(orig_target, filename), 'wb')
+                try:
+                    to_f.write(contents)
+                finally:
+                    to_f.close()
+            base, filename = urlutils.split(dscname)
+            from_transport = cache.get_transport(dscname)
+            get_dsc_part(from_transport, filename)
+            for file_details in dsc['files']:
+                name = file_details['name']
+                get_dsc_part(from_transport, name)
+            db.import_package(os.path.join(orig_target, filename))
 
-  takes_options = [to_opt, snapshot_opt, filename_opt, initial_opt]
-
-  def run(self, files_list, to=None, snapshot=None, filename=None,
-          initial=False):
-    from bzrlib.plugins.builddeb.import_dsc import DscImporter, SnapshotImporter
-    if files_list is None:
-      files_list = []
-    if filename is not None:
-      if isinstance(filename, unicode):
-        filename = filename.encode('utf-8')
-      base_dir, path = urlutils.split(filename)
-      sources_file = get_transport(base_dir).get(path)
-      for line in sources_file:
-        line.strip()
-        files_list.append(line)
-    if snapshot is None:
-      if not initial:
-        if len(files_list) != 1:
-          raise BzrCommandError("You must give the location of exactly one "
-                                "source package.")
-      else:
-        if len(files_list) < 1:
-          raise BzrCommandError("You must give the location of at least one "
-                                "source package to install, or use the "
-                                "--file or --snapshot options.")
-        if to is None:
-          raise BzrCommandError("You must specify the name of the "
-                                "destination branch using the --to option.")
-      importer = DscImporter(files_list)
-    else:
-      if not initial:
-        raise BzrCommandError("You cannot use the --snapshot option without "
-            "the --initial option.")
-      if to is None:
-        to = snapshot
-      importer = SnapshotImporter(snapshot, other_sources=files_list)
-    if initial:
-      orig_target = os.path.join(to, default_orig_dir)
-      importer.import_dsc(to, orig_target=orig_target)
-    else :
-      inc_to = '.'
-      if to is not None:
-        inc_to = to
-      _local_conf = os.path.join(inc_to, local_conf)
-      _global_conf = os.path.join(inc_to, global_conf)
-      _default_conf = os.path.join(inc_to, default_conf)
-      config = DebBuildConfig([(_local_conf, True), (_global_conf, True),
-                             (_default_conf, False)])
-      orig_target = config.orig_dir
-      if orig_target is None:
-        orig_target = os.path.join(inc_to, default_orig_dir)
-      importer.incremental_import_dsc(inc_to, orig_target=orig_target)
-
+    def run(self, target_distribution, files_list, filename=None):
+        from bzrlib.plugins.builddeb.errors import MissingChangelogError
+        target_distribution = target_distribution.lower()
+        distribution_name = lookup_distribution(target_distribution)
+        if distribution_name is None:
+            if target_distribution not in ("debian", "ubuntu"):
+                raise BzrCommandError("Unknown target distribution: %s" \
+                        % target_dist)
+            else:
+                distribution_name = target_distribution
+        try:
+            tree = WorkingTree.open_containing('.')[0]
+        except NotBranchError:
+            raise BzrCommandError("There is no tree to import the packages in to")
+        tree.lock_write()
+        try:
+            if tree.changes_from(tree.basis_tree()).has_changed():
+                raise BzrCommandError("There are uncommitted changes in the "
+                        "working tree. You must commit before using this "
+                        "command")
+            if files_list is None:
+                files_list = []
+            if filename is not None:
+                if isinstance(filename, unicode):
+                    filename = filename.encode('utf-8')
+                base_dir, path = urlutils.split(filename)
+                sources_file = get_transport(base_dir).get(path)
+                for line in sources_file:
+                    line.strip()
+                    files_list.append(line)
+            if len(files_list) < 1:
+                raise BzrCommandError("You must give the location of at least one "
+                                      "source package to install, or use the "
+                                      "--file option.")
+            config = debuild_config(tree, tree, False)
+            orig_dir = config.orig_dir or default_orig_dir
+            orig_target = os.path.join(tree.basedir, default_orig_dir)
+            db = DistributionBranch(distribution_name, tree.branch,
+                    None, tree=tree)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
+            try:
+                (changelog, larstiq) = find_changelog(tree, False)
+                last_version = changelog.version
+            except MissingChangelogError:
+                last_version = None
+            tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir,
+                        '..'))
+            try:
+                if last_version is not None:
+                    upstream_tip = db._revid_of_upstream_version_from_branch(
+                            last_version)
+                    db._extract_upstream_tree(upstream_tip, tempdir)
+                else:
+                    to_location = os.path.join(tempdir,
+                            distribution_name + "-upstream")
+                    to_transport = get_transport(to_location)
+                    to_transport.ensure_base()
+                    format = bzrdir.format_registry.make_bzrdir('default')
+                    try:
+                        existing_bzrdir = bzrdir.BzrDir.open_from_transport(
+                                to_transport)
+                    except NotBranchError:
+                        # really a NotBzrDir error...
+                        create_branch = bzrdir.BzrDir.create_branch_convenience
+                        branch = create_branch(to_transport.base,
+                                format=format,
+                                possible_transports=[to_transport])
+                    else:
+                        if existing_bzrdir.has_branch():
+                            raise AlreadyBranchError(location)
+                        else:
+                            branch = existing_bzrdir.create_branch()
+                            existing_bzrdir.create_workingtree()
+                    db.upstream_branch = branch
+                    db.upstream_tree = branch.bzrdir.open_workingtree()
+                self.import_many(db, files_list, orig_target)
+            finally:
+                shutil.rmtree(tempdir)
+        finally:
+            tree.unlock()
 
 register_command(cmd_import_dsc)
 
@@ -596,9 +634,8 @@ class cmd_bd_do(Command):
   takes_args = ['command?']
 
   def run(self, command=None):
-
-    config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)])
+    t = WorkingTree.open_containing('.')[0]
+    config = debuild_config(t, t, False)
 
     if not config.merge:
       raise BzrCommandError("This command only works for merge mode "
@@ -612,7 +649,6 @@ class cmd_bd_do(Command):
       except KeyError:
         command = "/bin/sh"
       give_instruction = True
-    t = WorkingTree.open_containing('.')[0]
     (changelog, larstiq) = find_changelog(t, True)
     build_dir = config.build_dir
     if build_dir is None:
@@ -690,13 +726,9 @@ class cmd_mark_uploaded(Command):
         try:
             if t.changes_from(t.basis_tree()).has_changed():
               raise BzrCommandError("There are uncommitted changes in the "
-                      "working tree. You must commit before using this command")
-            if no_user_config:
-                config_files = [(local_conf, True), (default_conf, False)]
-            else:
-                config_files = [(local_conf, True), (global_conf, True),
-                                     (default_conf, False)]
-            config = DebBuildConfig(config_files)
+                      "working tree. You must commit before using this "
+                      "command")
+            config = debuild_config(t, t, no_user_config)
             if not merge:
                 merge = config.merge
             (changelog, larstiq) = find_changelog(t, False)

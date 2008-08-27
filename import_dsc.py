@@ -172,14 +172,14 @@ def do_directory(tt, trans_id, tree, relative_path, path):
 
 
 def should_ignore(relative_path):
-  parts = splitpath(relative_path)
-  if not parts:
-    return False
-  for part in parts:
-    if part in files_to_ignore:
-      return True
-    if part.endswith(',v'):
-      return True
+    parts = splitpath(relative_path)
+    if not parts:
+        return False
+    for part in parts:
+        if part in files_to_ignore:
+            return True
+        if part.endswith(',v'):
+            return True
 
 
 def top_directory(path):
