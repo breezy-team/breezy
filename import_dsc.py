@@ -1184,6 +1184,34 @@ class DistributionBranch(object):
         self.upstream_branch.tags.set_tag(tag_name,
                 self.upstream_branch.last_revision())
 
+    def _default_config_for_tree(self, tree):
+        # FIXME: shouldn't go to configobj directly
+        path = '.bzr-builddeb/default.conf'
+        c_fileid = tree.path2id(path)
+        config = None
+        if c_fileid is not None:
+            tree.lock_read()
+            try:
+                config = ConfigObj(tree.get_file(c_fileid, path))
+                try:
+                    config['BUILDDEB']
+                except KeyError:
+                    config['BUILDDEB'] = {}
+            finally:
+                tree.unlock()
+        return config
+
+
+    def _is_tree_native(self, tree):
+        config = self._default_config_for_tree(tree)
+        if config is not None:
+            try:
+                current_value = config['BUILDDEB']['native']
+            except KeyError:
+                current_value = False
+            return current_value == "True"
+        return False
+
     def is_version_native(self, version):
         """Determines whether the given version is native.
 
@@ -1193,6 +1221,9 @@ class DistributionBranch(object):
             imported, False otherwise.
         """
         revid = self.revid_of_version(version)
+        rev_tree = self.branch.repository.revision_tree(revid)
+        if self._is_tree_native(rev_tree):
+            return True
         rev = self.branch.repository.get_revision(revid)
         try:
             prop = rev.properties["deb-native"]
@@ -1522,6 +1553,52 @@ class DistributionBranch(object):
               sep = "\n"
         return (message, author)
 
+    def _mark_native_config(self, native):
+        poss_native_tree = self.branch.repository.revision_tree(
+                self.branch.last_revision())
+        current_native = self._is_tree_native(poss_native_tree)
+        current_config = self._default_config_for_tree(poss_native_tree)
+        dirname = os.path.join(self.tree.basedir,
+                '.bzr-builddeb')
+        if current_config is not None:
+            # Add that back to the current tree
+            os.mkdir(dirname)
+            current_config.filename = os.path.join(dirname,
+                    'default.conf')
+            current_config.write()
+            dir_id = poss_native_tree.path2id('.bzr-builddeb')
+            file_id = poss_native_tree.path2id(
+                    '.bzr-builddeb/default.conf')
+            self.tree.add(['.bzr-builddeb/',
+                    '.bzr-builddeb/default.conf'],
+                    ids=[dir_id, file_id])
+        if native != current_native:
+            if current_config is None:
+                needs_add = True
+                if native:
+                    current_config = ConfigObj()
+                    current_config['BUILDDEB'] = {}
+            if current_config is not None:
+                if native:
+                    current_config['BUILDDEB']['native'] = True
+                else:
+                    del current_config['BUILDDEB']['native']
+                    if len(current_config['BUILDDEB']) == 0:
+                        del current_config['BUILDDEB']
+                if len(current_config) == 0:
+                    self.tree.remove(['.bzr-builddeb',
+                            '.bzr-builddeb/default.conf'],
+                            keep_files=False)
+                else:
+                    if needs_add:
+                        os.mkdir(dirname)
+                    current_config.filename = os.path.join(dirname,
+                            'default.conf')
+                    current_config.write()
+                    if needs_add:
+                        self.tree.add(['.bzr-builddeb/',
+                                '.bzr-builddeb/default.conf'])
+
     def import_debian(self, debian_part, version, parents, md5,
             native=False):
         """Import the debian part of a source package.
@@ -1578,6 +1655,7 @@ class DistributionBranch(object):
         revprops={"deb-md5":md5}
         if native:
             revprops['deb-native'] = "True"
+        self._mark_native_config(native)
         self.tree.commit(message, author=author, revprops=revprops)
         self.tag_version(version)
 
@@ -1857,7 +1935,7 @@ class DistributionBranch(object):
                 # FIXME: should use upstream_parents()?
                 parents = []
                 if self.upstream_branch.last_revision() != NULL_REVISION:
-                    parents = [self.branch.last_revision()]
+                    parents = [self.upstream_branch.last_revision()]
                 self.import_upstream(tarball_dir, version, md5sum,
                         parents)
             finally:

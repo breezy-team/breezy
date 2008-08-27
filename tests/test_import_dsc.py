@@ -2242,6 +2242,8 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.db1.tag_version(version1)
         self.tree1.commit("two", revprops={'deb-native': "True"})
         self.db1.tag_version(version2)
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
 
@@ -2255,7 +2257,11 @@ class DistributionBranchTests(TestCaseWithTransport):
         up_rh1 = self.up_tree1.branch.revision_history()
         self.assertEqual(len(rh1), 1)
         self.assertEqual(len(up_rh1), 0)
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version))
+        revtree = self.tree1.branch.repository.revision_tree(rh1[0])
+        self.assertTrue(self.db1._is_tree_native(revtree))
 
     def test_import_native_two(self):
         version1 = Version("1.0")
@@ -2285,6 +2291,8 @@ class DistributionBranchTests(TestCaseWithTransport):
                 modified=["debian/changelog", "COPYING"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
 
@@ -2313,6 +2321,8 @@ class DistributionBranchTests(TestCaseWithTransport):
                 modified=["README", "debian/changelog"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
 
@@ -2342,10 +2352,13 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(rev_tree1.get_parent_ids(), [rh1[0]])
         self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
         self.check_changes(rev_tree2.changes_from(rev_tree1),
-                added=["NEWS"], removed=["BUGS"],
-                modified=["debian/changelog", "COPYING"])
+                added=["NEWS", ".bzr-builddeb/",
+                    ".bzr-builddeb/default.conf"],
+                removed=["BUGS"], modified=["debian/changelog", "COPYING"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
 
@@ -2378,18 +2391,23 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(rev_tree2.get_parent_ids(), [rh1[0], up_rh1[1]])
         self.assertEqual(up_rev_tree1.get_parent_ids(), [rh1[0]])
         self.check_changes(rev_tree2.changes_from(rev_tree1),
-                added=["NEWS"], removed=["BUGS"],
+                added=["NEWS"],
+                removed=["BUGS", ".bzr-builddeb/",
+                    ".bzr-builddeb/default.conf"],
                 modified=["debian/changelog", "COPYING"])
         self.check_changes(up_rev_tree1.changes_from(rev_tree1),
                 added=["NEWS"],
                 removed=["debian/", "debian/changelog", "debian/control",
-                        "BUGS", "README"],
+                        "BUGS", "README", ".bzr-builddeb/",
+                        ".bzr-builddeb/default.conf"],
                 modified=["COPYING"])
         self.check_changes(rev_tree2.changes_from(up_rev_tree1),
                 added=["debian/", "debian/changelog", "debian/control",
                 "README"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[0])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[1])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version1))
         self.assertFalse(self.db1.is_version_native(version2))
 
@@ -2430,6 +2448,8 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
         self.assertEqual(self.db1.revid_of_upstream_version(version1),
                 up_rh1[0])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
         self.assertFalse(self.db1.is_version_native(version3))
@@ -2481,6 +2501,8 @@ class DistributionBranchTests(TestCaseWithTransport):
                 up_rh1[0])
         self.assertEqual(self.db1.revid_of_upstream_version(version3),
                 up_rh1[1])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
         self.assertFalse(self.db1.is_version_native(version3))
@@ -2531,6 +2553,8 @@ class DistributionBranchTests(TestCaseWithTransport):
                 up_rh1[0])
         self.assertEqual(self.db1.revid_of_upstream_version(version3),
                 up_rh1[1])
+        self.tree1.lock_read()
+        self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
         self.assertTrue(self.db1.is_version_native(version2))
         self.assertFalse(self.db1.is_version_native(version3))
