@@ -286,7 +286,7 @@ class RevisionSpec_revno(RevisionSpec):
     than the branch's history, the first revision is returned.
     Examples::
 
-      revno:1                   -> return the first revision
+      revno:1                   -> return the first revision of this branch
       revno:3:/path/to/branch   -> return the 3rd revision of
                                    the branch '/path/to/branch'
       revno:-1                  -> The last revision in a branch.
