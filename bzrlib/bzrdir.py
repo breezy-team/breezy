@@ -993,7 +993,7 @@ class BzrDir(object):
             try:
                 branch = self.open_branch()
                 source_repository = branch.repository
-                result_format._branch_format = branch._format.__class__()
+                result_format._branch_format = branch._format
             except errors.NotBranchError:
                 source_branch = None
                 source_repository = self.open_repository()
