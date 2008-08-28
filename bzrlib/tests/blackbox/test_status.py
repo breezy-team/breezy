@@ -298,6 +298,21 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqual("working tree is out of date, run 'bzr update'\n",
                          err)
 
+    def test_status_write_lock(self):
+        """That that status works without fetching history and
+        having a write lock.
+
+        See https://bugs.launchpad.net/bzr/+bug/149270
+        """
+        mkdir('branch1')
+        wt = self.make_branch_and_tree('branch1')
+        b = wt.branch
+        wt.commit('Empty commit 1')
+        wt2 = b.bzrdir.sprout('branch2').open_workingtree()
+        wt2.commit('Empty commit 2', allow_pointless=True)
+        out, err = self.run_bzr('status branch1 -rbranch:branch2')
+        self.assertEqual('', out)
+
 
 class CheckoutStatus(BranchStatus):
 

@@ -181,6 +181,7 @@ class TestLS(TestCaseWithTransport):
         os.chdir('subdir')
         self.ls_equals('', '--revision 1')
 
+
     def test_ls_branch(self):
         """If a branch is specified, files are listed from it"""
         self.build_tree(['subdir/', 'subdir/b'])

@@ -67,6 +67,23 @@ def tree_files(file_list, default_branch=u'.'):
                                      (e.path, file_list[0]))
 
 
+def _get_revision_tree(command_name, revision, branch=None, tree=None):
+    if branch is None:
+        branch = tree.branch
+    if revision is None:
+        if tree is not None:
+            rev_tree = tree.basis_tree()
+        else:
+            rev_tree = branch.basis_tree()
+    else:
+        if len(revision) != 1:
+            raise errors.BzrCommandError(
+                'bzr %s --revision takes exactly one revision identifier' % (
+                    command_name,))
+        rev_tree = revision[0].as_tree(branch)
+    return rev_tree
+
+
 # XXX: Bad function name; should possibly also be a class method of
 # WorkingTree rather than a function.
 def internal_tree_files(file_list, default_branch=u'.'):
@@ -477,8 +494,7 @@ class cmd_inventory(Command):
                     raise errors.BzrCommandError(
                         'bzr inventory --revision takes exactly one revision'
                         ' identifier')
-                revision_id = revision[0].as_revision_id(work_tree.branch)
-                tree = work_tree.branch.repository.revision_tree(revision_id)
+                tree = revision[0].as_tree(work_tree.branch)
 
                 extra_trees = [work_tree]
                 tree.lock_read()
@@ -1836,11 +1852,8 @@ class cmd_ls(Command):
             relpath = u''
         elif relpath:
             relpath += '/'
-        if revision is not None:
-            tree = branch.repository.revision_tree(
-                revision[0].as_revision_id(branch))
-        elif tree is None:
-            tree = branch.basis_tree()
+        if revision is not None or tree is None:
+            tree = _get_revision_tree('ls', revision, branch=branch)
 
         tree.lock_read()
         try:
@@ -2064,17 +2077,11 @@ class cmd_export(Command):
             subdir = None
         else:
             b, subdir = Branch.open_containing(branch_or_subdir)
-            
-        if revision is None:
-            # should be tree.last_revision  FIXME
-            rev_id = b.last_revision()
-        else:
-            if len(revision) != 1:
-                raise errors.BzrCommandError('bzr export --revision takes exactly 1 argument')
-            rev_id = revision[0].as_revision_id(b)
-        t = b.repository.revision_tree(rev_id)
+            tree = None
+
+        rev_tree = _get_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(t, dest, format, root, subdir)
+            export(rev_tree, dest, format, root, subdir)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
@@ -2113,19 +2120,16 @@ class cmd_cat(Command):
     def _run(self, tree, b, relpath, filename, revision, name_from_revision):
         if tree is None:
             tree = b.basis_tree()
-        if revision is None:
-            revision_id = b.last_revision()
-        else:
-            revision_id = revision[0].as_revision_id(b)
+        rev_tree = _get_revision_tree('cat', revision, branch=b)
 
         cur_file_id = tree.path2id(relpath)
-        rev_tree = b.repository.revision_tree(revision_id)
         old_file_id = rev_tree.path2id(relpath)
-        
+
         if name_from_revision:
             if old_file_id is None:
-                raise errors.BzrCommandError("%r is not present in revision %s"
-                                                % (filename, revision_id))
+                raise errors.BzrCommandError(
+                    "%r is not present in revision %s" % (
+                        filename, rev_tree.get_revision_id()))
             else:
                 content = rev_tree.get_file_text(old_file_id)
         elif cur_file_id is not None:
@@ -2133,8 +2137,9 @@ class cmd_cat(Command):
         elif old_file_id is not None:
             content = rev_tree.get_file_text(old_file_id)
         else:
-            raise errors.BzrCommandError("%r is not present in revision %s" %
-                                         (filename, revision_id))
+            raise errors.BzrCommandError(
+                "%r is not present in revision %s" % (
+                    filename, rev_tree.get_revision_id()))
         self.outf.write(content)
 
 
@@ -3235,17 +3240,11 @@ class cmd_revert(Command):
 
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
-        if revision is None:
-            rev_id = tree.last_revision()
-        elif len(revision) != 1:
-            raise errors.BzrCommandError('bzr revert --revision takes exactly 1 argument')
-        else:
-            rev_id = revision[0].as_revision_id(tree.branch)
+        rev_tree = _get_revision_tree('revert', revision, tree=tree)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            tree.revert(file_list,
-                        tree.branch.repository.revision_tree(rev_id),
-                        not no_backup, pb, report_changes=True)
+            tree.revert(file_list, rev_tree, not no_backup, pb,
+                report_changes=True)
         finally:
             pb.finished()
 
@@ -3546,13 +3545,7 @@ class cmd_annotate(Command):
         else:
             branch.lock_read()
         try:
-            if revision is None:
-                revision_id = branch.last_revision()
-            elif len(revision) != 1:
-                raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
-            else:
-                revision_id = revision[0].as_revision_id(branch)
-            tree = branch.repository.revision_tree(revision_id)
+            tree = _get_revision_tree('annotate', revision, branch=branch)
             if wt is not None:
                 file_id = wt.path2id(relpath)
             else:

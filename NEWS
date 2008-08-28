@@ -36,6 +36,10 @@ IN DEVELOPMENT
       pycurl try to send a body request to an HTTP/1.0 server which has
       already refused to handle the request. (Vincent Ladeuil, #225020)
 
+    * Fixed ``bzr st -r branch:PATH_TO_BRANCH`` where the other branch
+      is in a different repository than the current one.
+      (Lukáš Lalinský, #144421)
+
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
       permissions). This would cause us to set all subdirectories to
@@ -87,6 +91,9 @@ IN DEVELOPMENT
     * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
+
+    * New method ``RevisionSpec.as_tree`` for representing the revision
+      specifier as a revision tree object. (Lukáš Lalinský)
 
     * Mail clients for `bzr send` are now listed in a registry.  This
       allows plugins to add new clients by registering them with
