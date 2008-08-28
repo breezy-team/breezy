@@ -2147,7 +2147,6 @@ def revert(working_tree, target_tree, filenames, backups=False,
         working_tree.set_merge_modified(merge_modified)
     finally:
         target_tree.unlock()
-        target_tree.unlock()
         tt.finalize()
         pb.clear()
     return conflicts
