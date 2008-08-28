@@ -67,6 +67,9 @@ IN DEVELOPMENT
     * The deprecated ``Branch.abspath`` and unimplemented 
       ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
 
+    * BzrDir.cloning_metadir implementations must now take a require_stacking
+      parameter.  (Aaron Bentley)
+
   TESTING:
 
     * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
