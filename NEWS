@@ -18,6 +18,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr branch`` now respects default stacking policies.  (Aaron Bentley)
+
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
       ``bzr info`` if it completed successfully.
       (Marius Kruger)
