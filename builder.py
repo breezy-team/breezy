@@ -245,11 +245,12 @@ class DebBuild(object):
       tarballdir = os.path.join('..', 'tarballs')
       found = False
       if tarballdir != self._properties.tarball_dir():
-        tarball = os.path.join(tarballdir,self._tarball_name())
+        compat_tarball = os.path.join(tarballdir,self._tarball_name())
         info("For compatibility looking for %s to use as upstream source",
-                tarball)
-        if os.path.exists(tarball):
+                compat_tarball)
+        if os.path.exists(compat_tarball):
           found = True
+          tarball = compat_tarball
       if not found:
         if self._get_upstream_from_archive():
           return tarball
