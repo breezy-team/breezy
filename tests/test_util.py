@@ -27,6 +27,7 @@ from bzrlib.plugins.builddeb.util import (
                   find_changelog,
                   recursive_copy,
                   get_snapshot_revision,
+                  lookup_distribution,
                   )
 
 from bzrlib.tests import (TestCaseWithTransport,
@@ -69,6 +70,7 @@ bzr-builddeb (0.17) unstable; urgency=low
     needed currently.
 
  -- James Westby <jw+debian@jameswestby.net>  Sun, 17 Jun 2007 18:48:28 +0100
+
 """
 
 
@@ -78,7 +80,7 @@ class FindChangelogTests(TestCaseWithTransport):
     f = open(filename, 'wb')
     try:
       f.write(cl_block1)
-      f.write(""" 
+      f.write("""\
 bzr-builddeb (0.16.2) unstable; urgency=low
 
   * loosen the dependency on bzr. bzr-builddeb seems to be not be broken
@@ -181,5 +183,34 @@ class GetRevisionSnapshotTests(TestCase):
 
   def test_with_svn_snapshot_plus(self):
     self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
+
+
+class LookupDistributionTests(TestCase):
+
+    def lookup_ubuntu(self, target):
+        self.assertEqual(lookup_distribution(target), 'ubuntu')
+
+    def lookup_debian(self, target):
+        self.assertEqual(lookup_distribution(target), 'debian')
+
+    def lookup_other(self, target):
+        self.assertEqual(lookup_distribution(target), None)
+
+    def test_lookup_ubuntu(self):
+        self.lookup_ubuntu('intrepid')
+        self.lookup_ubuntu('hardy-proposed')
+        self.lookup_ubuntu('gutsy-updates')
+        self.lookup_ubuntu('feisty-security')
+        self.lookup_ubuntu('dapper-backports')
+
+    def test_lookup_debian(self):
+        self.lookup_debian('unstable')
+        self.lookup_debian('stable-security')
+        self.lookup_debian('testing-proposed-updates')
+        self.lookup_debian('etch-backports')
+
+    def test_lookup_other(self):
+        self.lookup_other('not-a-target')
+
 
 # vim: ts=2 sts=2 sw=2

@@ -80,7 +80,8 @@ def lookup_tag(tree):
    cl_id = tree.path2id('debian/changelog')
    if cl_id is None:
      raise AddChangelogError('debian/changelog')
-   cl = Changelog(tree.get_file_text(cl_id))
+   cl = Changelog()
+   cl.parse_changelog(tree.get_file_text(cl_id), max_blocks=1)
    upstream_version = cl.upstream_version
    tag = make_upstream_tag(upstream_version)
    return tree.branch.tags.lookup_tag(tag)

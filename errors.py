@@ -85,4 +85,19 @@ class UnknownType(BzrError):
   def __init__(self, path):
     self.path = path
 
+
+class MissingChanges(BzrError):
+  _fmt = """Could not find .changes file: %(changes)s."""
+
+  def __init__(self, changes):
+    self.changes = changes
+
+
+class UpstreamAlreadyImported(BzrError):
+    _fmt = """Upstream version %(version)s has already been imported."""
+
+    def __init__(self, version):
+        self.version = str(version)
+
+
 # vim: ts=2 sts=2 sw=2

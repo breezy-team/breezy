@@ -40,6 +40,11 @@ class BuildProperties(object):
   def full_version(self):
     return self._changelog.full_version
 
+  def full_version_no_epoch(self):
+    if self._changelog.debian_version is None:
+        return self.upstream_version()
+    return self.upstream_version() + "-" + self.debian_version()
+
   def build_dir(self):
     return self._build_dir
 
