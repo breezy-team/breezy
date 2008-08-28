@@ -32,6 +32,13 @@ IN DEVELOPMENT
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
       users. (Robert Collins, #205416)
 
+    * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
+      for the containing ``.bzr/`` directory (it does not implement
+      permissions). This would cause us to set all subdirectories to
+      ``0700`` and files to ``0600`` rather than leaving them unmodified.
+      Now we ignore ``0000`` as the permissions and assume they are
+      invalid. (John Arbash Meinel, #259855)
+    
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
@@ -51,6 +58,9 @@ IN DEVELOPMENT
       the target tree. Previously it returned True unconditionally.
       (Robert Collins)
 
+    * The deprecated ``Branch.abspath`` and unimplemented 
+      ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
+
   TESTING:
 
     * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
@@ -64,9 +74,34 @@ IN DEVELOPMENT
       This allows dynamic log output filtering by plugins.
       (Robert Collins)
 
+    * ``bzrlib.btree_index`` is now available, providing a b-tree index
+      layer. The design is memory conservative (limited memory cache),
+      faster to seek (approx 100 nodes per page, gives 100-way fan out),
+      and stores compressed pages allowing more keys per page.
+      (Robert Collins, John Arbash Meinel)
+
     * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
+
+    * Mail clients for `bzr send` are now listed in a registry.  This
+      allows plugins to add new clients by registering them with
+      ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
+      clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+bzr 1.6 2008-08-25
+------------------
+
+Finally, the long awaited bzr 1.6 has been released. This release includes
+new features like Stacked Branches, improved weave merge, and an updated
+server protocol (now on v3) which will allow for better cross version
+compatibility. With this release we have deprecated Knit format
+repositories, and recommend that users upgrade them, we will continue to
+support reading and writing them for the forseeable future, but we will
+not be tuning them for performance as pack repositories have proven to be
+better at scaling. This will also be the first release to bundle
+TortoiseBzr in the standalone Windows installer.
 
 
 bzr 1.6rc5 2008-08-19
