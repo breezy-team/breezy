@@ -37,7 +37,7 @@ except ImportError, e:
 
 if getattr(kerberos, "authGSSClientWrap", None) is None:
     raise errors.DependencyNotPresent('kerberos', 
-                                      "missing encryption functions")
+        "missing encryption function authGSSClientWrap")
 
 
 class GSSAPIFtp(ftplib.FTP):
@@ -59,8 +59,19 @@ class GSSAPIFtp(ftplib.FTP):
 
     def gssapi_login(self, user):
         # Try GSSAPI login first
+
+        # Used FTP response codes:
+        # 235 [ADAT=base64data] - indicates that the security data exchange 
+        #     completed successfully.
+        # 334 [ADAT=base64data] - indicates that the requested security 
+        #     mechanism is ok, and includes security data to be used by the 
+        #     client to construct the next command.
+        # 335 [ADAT=base64data] - indicates that the security data is
+        #     acceptable, and more is required to complete the security 
+        #     data exchange.
+
         resp = self.sendcmd('AUTH GSSAPI')
-        if resp[:3] == '334':
+        if resp[:4] == '334':
             rc, self.vc = kerberos.authGSSClientInit("ftp@%s" % self.host)
             if kerberos.authGSSClientStep(self.vc, "") != 1:
                 while resp[:3] in ('334', '335'):
@@ -70,7 +81,7 @@ class GSSAPIFtp(ftplib.FTP):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
                         if not ((resp[:3] == '235' and rc == 1) or 
                                 (resp[:3] == '335' and rc == 0)):
-                            raise AssertionError
+                            raise ftplib.error_reply, resp
             info("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
 
@@ -83,6 +94,10 @@ class GSSAPIFtp(ftplib.FTP):
 
 
 class GSSAPIFtpTransport(FtpTransport):
+    """FTP transport implementation that will try to use GSSAPI authentication.
+
+    """
+
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
 
