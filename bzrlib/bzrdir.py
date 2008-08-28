@@ -1040,6 +1040,11 @@ class BzrDir(object):
         return self.cloning_metadir()
 
     def _get_metadir(self, require_stacking=False):
+        """Get a metadir suitable for cloning, maybe forcing stacking.
+
+        :require_stacking: If True, non-stackable formats will be upgraded
+            to similar stackable formats.
+        """
         cloning_format = self.cloning_metadir()
         if (require_stacking and not
             cloning_format.get_branch_format().supports_stacking()):
@@ -1116,6 +1121,8 @@ class BzrDir(object):
             # Not especially, but it's part of the contract.
             result_branch = result.create_branch()
         else:
+            # Force NULL revision to avoid using repository before stacking
+            # is configured.
             result_branch = source_branch.sprout(
                 result, revision_id=_mod_revision.NULL_REVISION)
             parent_location = result_branch.get_parent()
@@ -1123,6 +1130,7 @@ class BzrDir(object):
         repository_policy.configure_branch(result_branch)
         if source_branch is not None:
             source_branch.copy_content_into(result_branch, revision_id)
+            # Override copy_content_into
             result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
