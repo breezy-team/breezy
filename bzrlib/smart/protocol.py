@@ -335,8 +335,25 @@ class _StatefulDecoder(object):
             return self._in_buffer_list[0]
         in_buffer = ''.join(self._in_buffer_list)
         assert len(in_buffer) == self._in_buffer_len
-        in_buffer_list = [in_buffer]
+        self._in_buffer_list = [in_buffer]
         return in_buffer
+
+    def _get_in_bytes(self, count):
+        """Grab X bytes from the input_buffer.
+
+        Callers should have already checked that self._in_buffer_len is >
+        count. Note, this does not consume the bytes from the buffer. The
+        caller will still need to call _get_in_buffer() and then
+        _set_in_buffer() if they actually need to consume the bytes.
+        """
+        # check if we can yield the bytes from just the first entry in our list
+        assert len(self._in_buffer_list) > 0
+        if len(self._in_buffer_list[0]) > count:
+            return self._in_buffer_list[0][:count]
+        # We can't yield it from the first buffer, so collapse all buffers, and
+        # yield it from that
+        in_buf = self._get_in_buffer()
+        return in_buf[:count]
 
     def _set_in_buffer(self, new_buf):
         if new_buf is not None:
@@ -896,14 +913,14 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # A length prefix by itself is 4 bytes, and we don't even have that
             # many yet.
             raise _NeedMoreBytes(4)
-        in_buf = self._get_in_buffer()
-        (length,) = struct.unpack('!L', in_buf[:4])
+        (length,) = struct.unpack('!L', self._get_in_bytes(4))
         end_of_bytes = 4 + length
         if self._in_buffer_len < end_of_bytes:
             # We haven't yet read as many bytes as the length-prefix says there
             # are.
             raise _NeedMoreBytes(end_of_bytes)
         # Extract the bytes from the buffer.
+        in_buf = self._get_in_buffer()
         bytes = in_buf[4:end_of_bytes]
         self._set_in_buffer(in_buf[end_of_bytes:])
         return bytes
