@@ -26,20 +26,19 @@ We build packages for every supported Ubuntu release
 when the release passes end-of-life because all users should
 have upgraded by then.  (As of May 2008, Edgy Eft is no longer supported.)
 
-We build a distinct package for each distrorelease that has
-different packaging requirements.  As of bzr 1.5, Dapper uses
-``python-support`` and later distributions use ``python-central``, so we
-build one version for dapper and one version for everything else.  If you
-upload a release-specific version, you should add a suffix to the
+We build a distinct package for each distrorelease.  As of bzr 1.5, Dapper
+uses ``python-support`` and later distributions use ``python-central``.
+If you upload a release-specific version, you should add a suffix to the
 package version, e.g. ``bzr.1.3-1~bazaar1~dapper1``.
 
-Every package is first uploaded into one distroversion of the beta ppa.
-It can then be copied to other compatible distroversions.  For final
-release versions it is also copied to the main PPA.
+Every package is first uploaded into the beta ppa.  For final release
+versions it is also copied to the main PPA.
 
 The ``debian/`` directory containing the packaging information is kept in
 branches on Launchpad, named like 
 <https://code.launchpad.net/~bzr/bzr/packaging-hardy>.
+or
+<lp:~bzr/bzr/packaging-hardy>.
 
 Preconditions
 -------------
@@ -77,14 +76,30 @@ Preconditions
 
     sudo apt-get install build-essential devscripts dput quilt patch
 
+* You will also want to have the ``bzr-builddeb`` plugin installed.
+
+
 Packaging Bazaar
 ----------------
 
-#. You will need a working directory for each supported release, such as
-   ``~/bzr/Packaging/hardy``
+Short form
+~~~~~~~~~~
 
-#. Download the official tarball of the release to e.g. ``~/bzr/Releases``
-   if you don't already have it.
+For people who have already set up everything they need, building the
+release packages is as simple as::
+
+  cd ~/dev/bzr/releases/packaging
+  export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid"
+  ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
+  ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh 1.6~beta3-1~bazaar1
+  ~/dev/bzr/bzr.dev/tools/packaging/build-packages
+  dput bzr-beta-ppa build-area/bzr_1.6~beta3~bazaar1*.changes
+
+Long Form
+~~~~~~~~~
+
+#. You will end up checking out a separate directory for each supported
+   release. Such as ``~/dev/bzr/releases/packaging/hardy``
 
 #. Decide on the final version number.  It should be of this form::
 
@@ -97,26 +112,23 @@ Packaging Bazaar
    to make them sort before the final release, like this:
    ``bzr-1.6~beta3-1~bazaar1~hardy1``.
 
-#. Create a directory per release::
+   Final releases will use a release string of the form:
+   ``bzr-1.6-1~bazaar1~hardy1``
 
-     mkdir ~/bzr/Releases/hardy
+#. Export the distroreleases that you will be packaging for::
 
-#. Copy or hardlink the original tarball into your per-disto directory, under an 
-   appropriate name ending in ``.orig.tar.gz``.  Untar it.  The extracted
-   source directory and ``.orig`` file must match the version number you
-   calculated above.  For example::
+      export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid"
 
-     cp -l ~/bzr/Releases/bzr-1.6b3.tar.gz ~/bzr/Releases/hardy/bzr_1.6~beta3.orig.tar.gz
-     cd ~/bzr/Releases/hardy
-     tar xfvz bzr_1.6~beta3.orig.tar.gz
-     mv bzr-1.6b3 bzr-1.6~beta3
+#. Checkout (or update) the packaging branch for each supported release::
 
-#. Change into that directory and check out the packaging branch::
+      bzr co lp:~bzr/bzr/packaging-hardy
 
-     cd bzr-1.6~beta3
-     bzr checkout \
-       bzr+ssh://bazaar.launchpad.net/~bzr/bzr/packaging-hardy \
-       debian
+   There is a script available to help::
+
+      tools/packaging/update-packaging-branches.sh
+
+#. The ``bzr-builddeb`` step will download the original tarball if you do
+   not already have it. Putting it into a ``tarballs`` directory.
 
 #. For Bazaar plugins, change the ``debian/control`` file to express a
    dependency on the correct version of ``bzr``.
@@ -132,7 +144,7 @@ Packaging Bazaar
       dch -v '1.6~beta3-1~bazaar1~hardy1' -D hardy
 
    dch will default to the distro you're working in and this isn't checked
-   against the version number (which is just our conversion), so make sure 
+   against the version number (which is just our convention), so make sure 
    to specify it.
 
    Make sure you have the correct email address for yourself, version
@@ -150,31 +162,48 @@ Packaging Bazaar
    that the distro name in the version is consistent with the target name
    outside the parenthesis.
 
-#. Commit these changes into the packaging branch::
+   You will also want to commit these changes into the packaging branch.
 
-     bzr ci -m '1.6~beta3-1~bazaar1~hardy1: New upstream release.' debian
+   There is a helper script which will update the changelog and commit it
+   for all of your ``$UBUNTU_RELEASES``. It is available as::
 
-#. Remove the .bzr directory from the Debian dir, as this adds unnecessary
-   cruft to the package::
+      tools/packaging/update-changelogs.sh
 
-     rm debian/.bzr -R
+   You must supply the release string, such as::
 
-#. Build a source package::
+      tools/packaging/update-changelogs.sh 1.6~beta3-1~bazaar1
 
-     debuild -S -sa -i -D
+   It will automatically append the distro numbering on the end.
 
-   This will create a ``.changes`` file in the per-distro directory,
-   and should invoke gpg to sign it with your key.
-   Check that file is reasonable: it should be uploading to the intended
-   distribution, have a .orig file included, and the right version number.
+#. Build the source packages::
 
+      cd packaging-$DISTRO; bzr builddeb -S
+
+   This will create a ``.changes`` file in ``build-area``. You will need
+   to sign it with::
+
+      debsign -m$UID build-area/*.changes
+
+   Where ``$UID`` is the gpg key you want to use to sign the changes.
+   Alternatively, you can configure ``~/.bazaar/builddeb.conf`` with::
+
+      [BUILDDEB]
+      builder = dpkg-buildpackage -rfakeroot
+      source-builder= dpkg-buildpackage -rfakeroot -S -sa
+
+   Which tells ``bzr builddeb`` to automatically sign the package with the
+   key associated with the user who created the changelog entry.
+     
 #. Upload into the beta PPA for each release::
 
-     dput bzr-beta-ppa ../bzr__1.6~beta3-1\~bazaar1\~hardy1\_source.changes
+     dput bzr-beta-ppa build-area/*.changes
 
 #. For final release versions, also copy it into the ``~bzr`` PPA::
 
-    dput bzr-ppa ../bzr__1.6-1\~bazaar1\~hardy1\_source.changes
+     dput bzr-ppa ../bzr__1.6-1\~bazaar1\~hardy1\_source.changes
+
+   Alternatively, you can use Launchpad's "copy" feature to copy the
+   packages between repositories.
 
 #. You should soon get an "upload accepted" mail from Launchpad, which
    means that your package is waiting to be built.  You can then track its
