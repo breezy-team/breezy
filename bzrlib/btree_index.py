@@ -37,7 +37,6 @@ from bzrlib import (
     trace,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
-from bzrlib.osutils import basename, dirname
 from bzrlib.transport import get_transport
 
 
@@ -161,38 +160,31 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
-        self._check_key(key)
-        if index._newline_null_re.search(value) is not None:
-            raise errors.BadIndexValue(value)
-        if len(references) != self.reference_lists:
-            raise errors.BadIndexValue(references)
-        node_refs = []
-        for reference_list in references:
-            for reference in reference_list:
-                # If reference is in self._nodes, then we have already checked
-                # it
-                if reference not in self._nodes:
-                    self._check_key(reference)
-            node_refs.append(tuple(reference_list))
+        # we don't care about absent_references
+        node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
         self._nodes[key] = (tuple(node_refs), value)
         self._keys.add(key)
-        if self._key_length > 1 and self._nodes_by_key is not None:
-            key_dict = self._nodes_by_key
-            if self.reference_lists:
-                key_value = key, value, tuple(node_refs)
-            else:
-                key_value = key, value
-            # possibly should do this on-demand, but it seems likely it is 
-            # always wanted
-            # For a key of (foo, bar, baz) create
-            # _nodes_by_key[foo][bar][baz] = key_value
-            for subkey in key[:-1]:
-                key_dict = key_dict.setdefault(subkey, {})
-            key_dict[key[-1]] = key_value
+        if self._nodes_by_key is not None and self._key_length > 1:
+            self._update_nodes_by_key(key, value, node_refs)
         if len(self._keys) < self._spill_at:
             return
+        self._spill_mem_keys_to_disk()
+
+    def _spill_mem_keys_to_disk(self):
+        """Write the in memory keys down to disk to cap memory consumption.
+
+        If we already have some keys written to disk, we will combine them so
+        as to preserve the sorted order.  The algorithm for combining uses
+        powers of two.  So on the first spill, write all mem nodes into a
+        single index. On the second spill, combine the mem nodes with the nodes
+        on disk to create a 2x sized disk index and get rid of the first index.
+        On the third spill, create a single new disk index, which will contain
+        the mem nodes, and preserve the existing 2x sized index.  On the fourth,
+        combine mem with the first and second indexes, creating a new one of
+        size 4x. On the fifth create a single new one, etc.
+        """
         iterators_to_combine = [self._iter_mem_nodes()]
         pos = -1
         for pos, backing in enumerate(self._backing_indices):
@@ -203,9 +195,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
         backing_pos = pos + 1
         new_backing_file, size = \
             self._write_nodes(self._iter_smallest(iterators_to_combine))
-        new_backing = BTreeGraphIndex(
-            get_transport(dirname(new_backing_file.name)),
-            basename(new_backing_file.name), size)
+        dir_path, base_name = osutils.split(new_backing_file.name)
+        # Note: The transport here isn't strictly needed, because we will use
+        #       direct access to the new_backing._file object
+        new_backing = BTreeGraphIndex(get_transport(dir_path),
+                                      base_name, size)
         # GC will clean up the file
         new_backing._file = new_backing_file
         if len(self._backing_indices) == backing_pos:

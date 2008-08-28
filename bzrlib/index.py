@@ -134,6 +134,40 @@ class GraphIndexBuilder(object):
             key_dict = key_dict.setdefault(subkey, {})
         key_dict[key[-1]] = key_value
 
+    def _check_key_ref_value(self, key, references, value):
+        """Check that 'key' and 'references' are all valid.
+
+        :param key: A key tuple. Must conform to the key interface (be a tuple,
+            be of the right length, not have any whitespace or nulls in any key
+            element.)
+        :param references: An iterable of reference lists. Something like
+            [[(ref, key)], [(ref, key), (other, key)]]
+        :param value: The value associate with this key. Must not contain
+            newlines or null characters.
+        :return: (node_refs, absent_references)
+            node_refs   basically a packed form of 'references' where all
+                        iterables are tuples
+            absent_references   reference keys that are not in self._nodes.
+                                This may contain duplicates if the same key is
+                                referenced in multiple lists.
+        """
+        self._check_key(key)
+        if _newline_null_re.search(value) is not None:
+            raise errors.BadIndexValue(value)
+        if len(references) != self.reference_lists:
+            raise errors.BadIndexValue(references)
+        node_refs = []
+        absent_references = []
+        for reference_list in references:
+            for reference in reference_list:
+                # If reference *is* in self._nodes, then we know it has already
+                # been checked.
+                if reference not in self._nodes:
+                    self._check_key(reference)
+                    absent_references.append(reference)
+            node_refs.append(tuple(reference_list))
+        return tuple(node_refs), absent_references
+
     def add_node(self, key, value, references=()):
         """Add a node to the index.
 
@@ -145,24 +179,17 @@ class GraphIndexBuilder(object):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
-        self._check_key(key)
-        if _newline_null_re.search(value) is not None:
-            raise errors.BadIndexValue(value)
-        if len(references) != self.reference_lists:
-            raise errors.BadIndexValue(references)
-        node_refs = []
-        for reference_list in references:
-            for reference in reference_list:
-                self._check_key(reference)
-                if reference not in self._nodes:
-                    self._nodes[reference] = ('a', (), '')
-            node_refs.append(tuple(reference_list))
-        if key in self._nodes and self._nodes[key][0] == '':
+        (node_refs,
+         absent_references) = self._check_key_ref_value(key, references, value)
+        if key in self._nodes and self._nodes[key][0] != 'a':
             raise errors.BadIndexDuplicateKey(key, self)
-        node_refs = tuple(node_refs)
+        for reference in absent_references:
+            # There may be duplicates, but I don't think it is worth worrying
+            # about
+            self._nodes[reference] = ('a', (), '')
         self._nodes[key] = ('', node_refs, value)
         self._keys.add(key)
-        if self._key_length > 1 and self._nodes_by_key is not None:
+        if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
     def finish(self):
@@ -172,7 +199,7 @@ class GraphIndexBuilder(object):
         lines.append(_OPTION_LEN + str(len(self._keys)) + '\n')
         prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
-        # polynomial work to resolve offsets (references to later in the 
+        # polynomial work to resolve offsets (references to later in the
         # file cannot be determined until all the inbetween references have
         # been calculated too) we pad the offsets with 0's to make them be
         # of consistent length. Using binary offsets would break the trivial
