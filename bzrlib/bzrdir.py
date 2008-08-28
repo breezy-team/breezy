@@ -1020,15 +1020,17 @@ class BzrDir(object):
             result_format.workingtree_format = tree._format.__class__()
         return result_format, source_repository
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, require_stacking=False):
         """Produce a metadir suitable for cloning or sprouting with.
 
         These operations may produce workingtrees (yes, even though they're
         "cloning" something that doesn't have a tree), so a viable workingtree
         format must be selected.
 
+        :require_stacking: If True, non-stackable formats will be upgraded
+            to similar stackable formats.
         :returns: a BzrDirFormat with all component formats either set
-            appropriately or set to None if that component should not be 
+            appropriately or set to None if that component should not be
             created.
         """
         format, repository = self._cloning_metadir()
@@ -1037,33 +1039,24 @@ class BzrDir(object):
                 return format
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
-        return format
-
-    def checkout_metadir(self):
-        return self.cloning_metadir()
-
-    def _get_metadir(self, require_stacking=False):
-        """Get a metadir suitable for cloning, maybe forcing stacking.
-
-        :require_stacking: If True, non-stackable formats will be upgraded
-            to similar stackable formats.
-        """
-        cloning_format = self.cloning_metadir()
         if (require_stacking and not
-            cloning_format.get_branch_format().supports_stacking()):
+            format.get_branch_format().supports_stacking()):
             # We need to make a stacked branch, but the default format for the
             # target doesn't support stacking.  So force a branch that *can*
             # support stacking.
             from bzrlib.branch import BzrBranchFormat7
-            cloning_format._branch_format = BzrBranchFormat7()
-            mutter("using %r for stacking" % (cloning_format._branch_format,))
+            format._branch_format = BzrBranchFormat7()
+            mutter("using %r for stacking" % (format._branch_format,))
             from bzrlib.repofmt import pack_repo
-            if cloning_format.repository_format.rich_root_data:
+            if format.repository_format.rich_root_data:
                 repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
             else:
                 repo_format = pack_repo.RepositoryFormatKnitPack5()
-            cloning_format._repository_format = repo_format
-        return cloning_format
+            format.repository_format = repo_format
+        return format
+
+    def checkout_metadir(self):
+        return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
@@ -1091,7 +1084,7 @@ class BzrDir(object):
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
-        cloning_format = self._get_metadir(stacked)
+        cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
         try:
@@ -1193,8 +1186,10 @@ class BzrDirPreSplitOut(BzrDir):
         """Pre-splitout bzrdirs do not suffer from stale locks."""
         raise NotImplementedError(self.break_lock)
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, require_stacking=False):
         """Produce a metadir suitable for cloning with."""
+        if require_stacking:
+            return format_registry.make_bzrdir('1.6')
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,
