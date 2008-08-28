@@ -71,16 +71,16 @@ class GSSAPIFtp(ftplib.FTP):
         #     data exchange.
 
         resp = self.sendcmd('AUTH GSSAPI')
-        if resp[:4] == '334':
+        if resp.startswith('334 '):
             rc, self.vc = kerberos.authGSSClientInit("ftp@%s" % self.host)
             if kerberos.authGSSClientStep(self.vc, "") != 1:
-                while resp[:3] in ('334', '335'):
+                while resp[:4] in ('334 ', '335 '):
                     authdata = kerberos.authGSSClientResponse(self.vc)
                     resp = self.sendcmd('ADAT ' + authdata)
                     if resp[:9] in ('235 ADAT=', '335 ADAT='):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
-                        if not ((resp[:3] == '235' and rc == 1) or 
-                                (resp[:3] == '335' and rc == 0)):
+                        if not ((resp.startswith('235 ') and rc == 1) or 
+                                (resp.startswith('335 ') and rc == 0)):
                             raise ftplib.error_reply, resp
             info("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
