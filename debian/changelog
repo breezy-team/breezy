@@ -1,4 +1,12 @@
-bzr-builddeb (1.0) UNRELEASED; urgency=low
+bzr-builddeb (2.1) UNRELEASED; urgency=low
+
+  * Fix retrieval of the upstream source from a watch file of the archive.
+    - It would download to the specified tarball directory, but then
+      report it as stored in the compatibility directory.
+
+ -- James Westby <james.westby@canonical.com>  Thu, 28 Aug 2008 11:41:35 +0100
+
+bzr-builddeb (2.0) experimental; urgency=low
 
   [ Jelmer Vernooij ]
   * Support +bzr for snapshots as well as ~bzr.
@@ -7,6 +15,31 @@ bzr-builddeb (1.0) UNRELEASED; urgency=low
   * Import apt_pkg only when used, as it is used rarely and importing it
     has an overhead, and also leads to increased memory usage.
   * Add -d option to merge-upstream.
+
+  [ James Westby ]
+  * Lots of compatibilty breaking changes. Please see NEWS.Debian for advice.
+  * Use the last entry from debian/changelog as the commit message
+    when importing a .diff.gz or native package with import-dsc.
+  * Use dpkg-source to extract source pacakges, which is much more robust.
+  * Don't use strict changelog parsing from python-debian, as we don't
+    need faithful reproduction.
+  * Follow dpkg-buildpackage etc. more closely by looking for .orig.tar.gz
+    in the parent directory, and placing the result of the build there.
+    - ../tarballs is still used a fallback for compatibility.
+    - moving the result doesn't fail the build if the .changes can't be
+      found when the default is used, to support builders that move
+      the package elsewhere.
+    - The .changes file can be missed if the arch is not what is expected,
+      for instance if "debuild -S" was set as the builder.
+  * builddeb --result now works for packages with an epoch.
+  * Added mark-uploaded command that sets the appropriate tag based
+    on the version, for use after upload.
+  * merge-upstream and import-dsc have had their command line options
+    changed to be more sensible, and to be future-proof. Details in
+    the online help or the documetation.
+  * --snapshot has been dropped from import-dsc. snapshot.debian.net
+    is virtually useless currently. Something similar can be brought
+    back when we have such a service again.
 
  -- James Westby <james.westby@canonical.com>  Fri, 13 Jun 2008 15:03:53 +0100
 

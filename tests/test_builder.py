@@ -425,7 +425,7 @@ class TestDefaultBuilder(BuilderTestCase):
   def test_move_result_errors_on_missing_changes_file(self):
     """Test that the move_result errors if the changes file is missing."""
     builder = self.get_builder()
-    self.assertRaises(errors.DebianError, builder.move_result, self.result_dir)
+    self.assertRaises(errors.MissingChanges, builder.move_result, self.result_dir)
 
   def test_move_result_errors_on_missing_result_file(self):
     """Test that the move_result errors if one of the files is missing."""

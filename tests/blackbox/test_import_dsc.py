@@ -76,9 +76,8 @@ class TestImportDsc(BuilddebTestCase):
 
   def test_import_dsc(self):
     self.make_real_source_package()
-    self.run_bzr('import-dsc --initial --to %s %s' % \
-        (self.package_name, self.dsc_name))
-    tree = WorkingTree.open(self.package_name)
+    tree = self.make_branch_and_tree('.')
+    self.run_bzr('import-dsc --distribution debian %s' % self.dsc_name)
     tree.lock_read()
     try:
       self.check_inventory_shape(tree.inventory,
@@ -87,37 +86,18 @@ class TestImportDsc(BuilddebTestCase):
       tree.unlock()
     self.assertEqual(len(tree.branch.revision_history()), 2)
 
-  def test_import_no_to(self):
-    self.make_real_source_package()
-    self.run_bzr_error(['You must specify the name of the destination branch '
-        'using the --to option.'], 'import-dsc --initial %s' % self.dsc_name)
-
-  def test_import_snapshot_incremental(self):
+  def test_import_no_files(self):
     self.make_branch_and_tree('.')
     self.make_real_source_package()
-    self.run_bzr_error(['You cannot use the --snapshot option without the '
-        '--initial option'],
-        'import-dsc --snapshot %s %s' % (self.package_name, self.dsc_name))
+    self.run_bzr_error(['You must give the location of at least one source '
+        'package.'], 'import-dsc --distribution debian')
 
-  def test_import_snapshot_incremental_with_to(self):
-    self.make_branch_and_tree('target')
-    self.make_real_source_package()
-    self.run_bzr_error(['You cannot use the --snapshot option without the '
-        '--initial option'],
-        'import-dsc --snapshot %s --to target %s' % \
-        (self.package_name, self.dsc_name))
-
-  def test_import_incremental_no_files(self):
+  def test_import_no_distribution(self):
     self.make_branch_and_tree('.')
     self.make_real_source_package()
-    self.run_bzr_error(['You must give the location of exactly one source '
-        'package.'], 'import-dsc')
-
-  def test_import_incremental_two_files(self):
-    self.make_branch_and_tree('.')
-    self.make_real_source_package()
-    self.run_bzr_error(['You must give the location of exactly one source '
-        'package.'], 'import-dsc %s %s' % (self.dsc_name, self.dsc_name))
+    self.run_bzr_error(['You must specify the distribution these packages '
+            'were uploaded to using --distribution.'],
+            'import-dsc %s' % self.dsc_name)
 
 # vim: ts=2 sts=2 sw=2
 

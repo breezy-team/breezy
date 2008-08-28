@@ -39,6 +39,7 @@ from bzrlib.plugins.builddeb.errors import (DebianError,
                     NoSourceDirError,
                     BuildFailedError,
                     StopBuild,
+                    MissingChanges,
                     )
 from bzrlib.plugins.builddeb.util import recursive_copy, tarball_name
 
@@ -241,17 +242,27 @@ class DebBuild(object):
     tarball = os.path.join(tarballdir,self._tarball_name())
     info("Looking for %s to use as upstream source", tarball)
     if not os.path.exists(tarball):
-      if self._get_upstream_from_archive():
-        return tarball
-      if not self._has_watch():
-        raise DebianError('Could not find upstream tarball at '+tarball)
-      else:
-        if not os.path.exists(tarballdir):
-          os.mkdir(tarballdir)
+      tarballdir = os.path.join('..', 'tarballs')
+      found = False
+      if tarballdir != self._properties.tarball_dir():
+        compat_tarball = os.path.join(tarballdir,self._tarball_name())
+        info("For compatibility looking for %s to use as upstream source",
+                compat_tarball)
+        if os.path.exists(compat_tarball):
+          found = True
+          tarball = compat_tarball
+      if not found:
+        if self._get_upstream_from_archive():
+          return tarball
+        if not self._has_watch():
+          raise DebianError('Could not find upstream tarball at '+tarball)
         else:
-          if not os.path.isdir(tarballdir):
-            raise DebianError('%s is not a directory.' % tarballdir)
-        self._get_upstream_from_watch()
+          if not os.path.exists(tarballdir):
+            os.mkdir(tarballdir)
+          else:
+            if not os.path.isdir(tarballdir):
+              raise DebianError('%s is not a directory.' % tarballdir)
+          self._get_upstream_from_watch()
     return tarball
 
   def _tarball_name(self):
@@ -308,15 +319,21 @@ class DebBuild(object):
     info("Cleaning build dir: %s", source_dir)
     shutil.rmtree(source_dir)
 
-  def move_result(self, result):
+  def move_result(self, result, allow_missing=False, arch=None):
     """Moves the files that resulted from the build to the given dir.
 
     The files are found by reading the changes file.
     """
-    info("Placing result in %s", result)
     package = self._properties.package()
-    version = self._properties.full_version()
-    changes = DebianChanges(package, version, self._properties.build_dir())
+    version = self._properties.full_version_no_epoch()
+    try:
+        changes = DebianChanges(package, version,
+                self._properties.build_dir(), arch=arch)
+    except MissingChanges:
+        if allow_missing:
+            return
+        raise
+    info("Placing result in %s", result)
     files = changes.files()
     if not os.path.exists(result):
       os.makedirs(result)

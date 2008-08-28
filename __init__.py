@@ -2,6 +2,7 @@
 #    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
 #                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #                  2007 Reinhard Tartler <siretart@tauware.de>
+#                  2008 Canonical Ltd.
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -23,9 +24,14 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
+import shutil
 import subprocess
+import tempfile
 import urlparse
 
+from debian_bundle.changelog import Version
+
+from bzrlib import bzrdir
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
@@ -33,6 +39,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
                            NotBranchError,
                            FileExists,
+                           AlreadyBranchError,
                            )
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
@@ -51,8 +58,17 @@ from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
 from bzrlib.plugins.builddeb.hooks import run_hook
+from bzrlib.plugins.builddeb.import_dsc import (
+        DistributionBranch,
+        DistributionBranchSet,
+        DscCache,
+        DscComp,
+        )
 from bzrlib.plugins.builddeb.properties import BuildProperties
-from bzrlib.plugins.builddeb.util import find_changelog, tarball_name
+from bzrlib.plugins.builddeb.util import (find_changelog,
+        lookup_distribution,
+        tarball_name,
+        )
 from bzrlib.plugins.builddeb.version import version_info
 
 
@@ -79,6 +95,9 @@ export_upstream_opt = Option('export-upstream',
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported",
     type=str)
+no_user_conf_opt = Option('no-user-config',
+    help="Stop builddeb from reading the user's config file. Used mainly "
+    "for tests")
 
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
@@ -86,7 +105,8 @@ global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 
 default_build_dir = '../build-area'
-default_orig_dir = '../tarballs'
+default_orig_dir = '..'
+default_result_dir = '..'
 
 
 def debuild_config(tree, working_tree, no_user_config):
@@ -130,12 +150,12 @@ class cmd_builddeb(Command):
   Specify the command to use when building using the --builder option,
 
   You can also specify directories to use for different things. --build-dir
-  is the directory to build the packages beneath, defaults to ../build-area.
-  --orig-dir specifies the directory that contains the .orig.tar.gz files 
-  for use in merge mode, defaults to ../tarballs. --result-dir specifies where
-  the resulting package files should be placed, defaults to whatever is 
-  used for the build directory. --result-dir will have problems if you use a
-  build command that places the results in a different directory.
+  is the directory to build the packages beneath, which defaults to
+  '../build-area'. '--orig-dir' specifies the directory that contains the
+  .orig.tar.gz files , which defaults to '..'. '--result-dir' specifies where
+  the resulting package files should be placed, which defaults to '..'.
+  --result-dir will have problems if you use a build command that places
+  the results in a different directory.
 
   The --reuse option will be useful if you are in merge mode, and the upstream
   tarball is very large. It attempts to reuse a build directory from an earlier
@@ -175,15 +195,14 @@ class cmd_builddeb(Command):
   source_opt = Option('source', help="Build a source package, uses "
                       +"source-builder, which defaults to \"dpkg-buildpackage "
                       +"-rfakeroot -uc -us -S\"", short_name='S')
-  no_user_conf = Option('no-user-config', help="Stop builddeb from reading the user's "
-                        +"config file. Used mainly for tests")
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = [working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-      export_upstream_revision_opt, source_opt, 'revision', no_user_conf]
+      export_upstream_revision_opt, source_opt, 'revision',
+      no_user_conf_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
@@ -340,8 +359,13 @@ class cmd_builddeb(Command):
         run_hook(tree, 'post-build', config, wd=properties.source_dir())
         if not dont_purge:
           build.clean()
+        arch = None
+        if source:
+          arch = "source"
         if result is not None:
-          build.move_result(result)
+          build.move_result(result, arch=arch)
+        else:
+          build.move_result(default_result_dir, allow_missing=True, arch=arch)
     finally:
       tree.unlock()
 
@@ -350,203 +374,242 @@ register_command(cmd_builddeb)
 
 
 class cmd_merge_upstream(Command):
-  """Merges a new upstream version into the current branch.
+    """Merges a new upstream version into the current branch.
 
-  Takes a new upstream version and merges it in to your branch, so that your
-  packaging changes are applied to the new version.
+    Takes a new upstream version and merges it in to your branch, so that your
+    packaging changes are applied to the new version.
 
-  You must supply the source to import from, and the version number of the
-  new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
-  archive, or a directory. The source may also be a remote file.
+    You must supply the source to import from, and the version number of the
+    new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
+    archive, or a directory. The source may also be a remote file.
 
-  If there is no debian changelog in the branch to retrieve the package
-  name from then you must pass the --package option. If this version
-  will change the name of the source package then you can use this option
-  to set the new name.
-  """
-  takes_args = ['path']
-  aliases = ['mu']
+    You must supply the version number of the new upstream release
+    using --version, and the target distribution using --distribution.
+    The target distribtution is the distribution that you aim to upload to,
+    one of "debian" or "ubuntu". You can also specify the target used in
+    the changelog, e.g. "unstable", and it will be resolved automatically.
 
-  package_opt = Option('package', help="The name of the source package.",
-                       type=str)
-  version_opt = Option('version', help="The version number of the new "
-                       "upstream release. (Required).", type=str)
-  directory_opt = Option('directory', help='Working tree into which to merge.',
-                         short_name='d', type=unicode)
+    If there is no debian changelog in the branch to retrieve the package
+    name from then you must pass the --package option. If this version
+    will change the name of the source package then you can use this option
+    to set the new name.
+    """
+    takes_args = ['tarball']
+    aliases = ['mu']
 
-  takes_options = [package_opt, version_opt, directory_opt]
+    package_opt = Option('package', help="The name of the source package.",
+                         type=str)
+    version_opt = Option('version', help="The version number of this release.",
+                         type=str)
+    distribution_opt = Option('distribution', help="The distribution that "
+            "this release is targetted at", type=str)
+    directory_opt = Option('directory', help='Working tree into which to merge.',
+                           short_name='d', type=unicode)
 
-  def run(self, path, version=None, package=None, directory="."):
+    takes_options = [package_opt, no_user_conf_opt, version_opt,
+            distribution_opt, directory_opt]
 
-    from bzrlib.errors import (NoSuchTag,
-                               TagAlreadyExists,
-                               )
-    from bzrlib.plugins.builddeb.errors import MissingChangelogError
-    from bzrlib.plugins.builddeb.merge_upstream import merge_upstream
-    from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+    def run(self, tarball, version=None, distribution=".", package=None,
+            no_user_config=None, directory=None):
+        from bzrlib.plugins.builddeb.errors import MissingChangelogError
+        from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+        if version is None:
+            raise BzrCommandError("You must specify the version number using "
+                    "--version.")
+        if distribution is None:
+            raise BzrCommandError("You must specify the target distribution "
+                    "using --distribution.")
+        tree, _ = WorkingTree.open_containing(directory)
+        tree.lock_write()
+        try:
+            # Check for uncommitted changes.
+            if tree.changes_from(tree.basis_tree()).has_changed():
+                raise BzrCommandError("There are uncommitted changes in the "
+                        "working tree. You must commit before using this "
+                        "command")
+            config = debuild_config(tree, tree, no_user_config)
+            if config.merge:
+                raise BzrCommandError("Merge upstream in merge mode is not yet "
+                        "supported")
+            if config.native:
+                raise BzrCommandError("Merge upstream in native mode is not yet "
+                        "supported")
+            if config.export_upstream:
+                raise BzrCommandError("Export upstream mode is not yet "
+                        "supported")
+            if config.split:
+                raise BzrCommandError("Split mode is not yet supported")
 
-    if version is None:
-      raise BzrCommandError("You must supply the --version argument.")
+            try:
+                changelog = find_changelog(tree, False)[0]
+                current_version = changelog.version
+                if package is None:
+                    package = changelog.package
+            except MissingChangelogError:
+                current_version = None
 
-    tree, _ = WorkingTree.open_containing(directory)
+            if package is None:
+                raise BzrCommandError("You did not specify --package, and there "
+                        "is no changelog from which to determine the package "
+                        "name, which is needed to know the name to give the "
+                        ".orig.tar.gz. Please specify --package.")
 
-    config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)])
-
-    if config.merge:
-      raise BzrCommandError("Merge upstream in merge mode is not yet "
-                            "supported")
-    if config.native:
-      raise BzrCommandError("Merge upstream in native mode is not yet "
-                            "supported")
-    if config.export_upstream:
-      raise BzrCommandError("Export upstream mode is not yet "
-                            "supported")
-    if config.split:
-      raise BzrCommandError("Split mode is not yet supported")
-
-    if package is None:
-      try:
-        package = find_changelog(tree, False)[0].package
-      except MissingChangelogError:
-        raise BzrCommandError("There is no changelog to rertrieve the package "
-                              "information from, please use the --package "
-                              "option to give the name of the package")
-
-    orig_dir = config.orig_dir or '../tarballs'
-    orig_dir = os.path.join(tree.basedir, orig_dir)
-
-    dest_name = tarball_name(package, version)
-    try:
-      repack_tarball(path, dest_name, target_dir=orig_dir)
-    except FileExists:
-      raise BzrCommandError("The target file %s already exists, and is either "
-                            "different to the new upstream tarball, or they "
-                            "are of different formats. Either delete the target "
-                            "file, or use it as the argument to import.")
-    filename = os.path.join(orig_dir, dest_name)
-
-    try:
-      merge_upstream(tree, filename, version)
-    # TODO: tidy all of this up, and be more precise in what is wrong and
-    #       what can be done.
-    except NoSuchTag, e:
-      raise BzrCommandError("The tag of the last upstream import can not be "
-                            "found. You should tag the revision that matches "
-                            "the last upstream version. Expected to find %s." % \
-                            e.tag_name)
-    except TagAlreadyExists:
-      raise BzrCommandError("It appears as though this merge has already "
-                            "been performed, as there is already a tag "
-                            "for this upstream version. If that is not the "
-                            "case then delete that tag and try again.")
-    info("The new upstream version has been imported. You should now update "
-         "the changelog (try dch -v %s), and then commit. Note that debcommit "
-         "will not do what you want in this case." % str(version))
+            orig_dir = config.orig_dir or default_orig_dir
+            orig_dir = os.path.join(tree.basedir, orig_dir)
+            dest_name = tarball_name(package, version)
+            try:
+                repack_tarball(tarball, dest_name, target_dir=orig_dir)
+            except FileExists:
+                raise BzrCommandError("The target file %s already exists, and is either "
+                                      "different to the new upstream tarball, or they "
+                                      "are of different formats. Either delete the target "
+                                      "file, or use it as the argument to import.")
+            tarball_filename = os.path.join(orig_dir, dest_name)
+            distribution = distribution.lower()
+            distribution_name = lookup_distribution(distribution)
+            target_name = distribution
+            if distribution_name is None:
+                if distribution not in ("debian", "ubuntu"):
+                    raise BzrCommandError("Unknown target distribution: %s" \
+                            % target_dist)
+                else:
+                    target_name = None
+                    distribution_name = distribution
+            db = DistributionBranch(distribution_name, tree.branch, None,
+                    tree=tree)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
+            conflicts = db.merge_upstream(tarball_filename,
+                    Version(version), current_version)
+            info("The new upstream version has been imported. You should "
+                 "now update the changelog (try dch -v %s), resolve any "
+                 "conflicts, and then commit." % str(version))
+        finally:
+            tree.unlock()
 
 
 register_command(cmd_merge_upstream)
 
 
 class cmd_import_dsc(Command):
-  """Import a series of source packages.
+    """Import a series of source packages.
 
-  Provide a number of source packages (.dsc files), and they will
-  be imported to create a branch with history that reflects those
-  packages. You must provide the --to option with the name of the
-  branch that will be created, and the --initial option to indicate
-  this is an initial import.
+    Provide a number of source packages (.dsc files), and they will
+    be imported to create a branch with history that reflects those
+    packages.
 
-  If there are packages that are available on snapshot.debian.net
-  then you can use the --snapshot option to supplement the packages
-  you provide with those available on that service. Pass the name
-  of the source package as on snapshot.debian.net as this option,
-  i.e. to import all versions of apt
+    The first argument is the distribution that these source packages
+    were uploaded to, one of "debian" or "ubuntu". It can also
+    be the target distribution from the changelog, e.g. "unstable",
+    which will be resolved to the correct distribution.
 
-    import-dsc --initial --snapshot apt
+    You can also specify a file (possibly remote) that contains a
+    list of source packages (.dsc files) to import using the --file
+    option. Each line is taken to be a URI or path to import. The
+    sources specified in the file are used in addition to those
+    specified on the command line.
 
-  If you use the --snapshot option then you don't have to provide
-  any source packages on the command line, and if you omit the
-  --to option then the name of the package as passed to --snapshot
-  will be used as the branch name.
+    If you have an existing branch containing packaging and you want to
+    import a .dsc from an upload done from outside the version control
+    system you can use this command.
+    """
 
-  In addition to the above choices you can specify a file
-  (possibly remote) that contains a list of source packages (.dsc
-  files) to import. Each line is taken to be a URI or path to
-  import. The sources specified in the file are used in addition
-  to those specified by other methods.
+    takes_args = ['files*']
+    
+    filename_opt = Option('file', help="File containing URIs of source "
+                          "packages to import.", type=str, argname="filename",
+                          short_name='F')
+    distribution_opt = Option('distribution', help="The distribution that "
+            "these packages were uploaded to.", type=str)
 
-  If you have an existing branch containing packaging and you want to
-  import a .dsc from an upload done from outside the version control
-  system you can use this command. In this case you can only specify
-  one file on the command line, or use a file containing only a single
-  filename, and do not use the --initial option.
-  """
+    takes_options = [filename_opt, distribution_opt]
 
-  takes_args = ['files*']
-  
-  to_opt = Option('to', help="The branch to import to.", type=str)
-  snapshot_opt = Option('snapshot', help="Retrieve source packages from "
-                        "snapshot.debian.net.", type=str)
-  filename_opt = Option('file', help="File containing URIs of source "
-                        "packages to import.", type=str, argname="filename",
-                        short_name='F')
-  initial_opt = Option('initial',
-        help="Perform an initial import to create a new branch.")
+    def import_many(self, db, files_list, orig_target):
+        cache = DscCache()
+        files_list.sort(cmp=DscComp(cache).cmp)
+        if not os.path.exists(orig_target):
+            os.makedirs(orig_target)
+        for dscname in files_list:
+            dsc = cache.get_dsc(dscname)
+            def get_dsc_part(from_transport, filename):
+                from_f = from_transport.get(filename)
+                contents = from_f.read()
+                to_f = open(os.path.join(orig_target, filename), 'wb')
+                try:
+                    to_f.write(contents)
+                finally:
+                    to_f.close()
+            base, filename = urlutils.split(dscname)
+            from_transport = cache.get_transport(dscname)
+            get_dsc_part(from_transport, filename)
+            for file_details in dsc['files']:
+                name = file_details['name']
+                get_dsc_part(from_transport, name)
+            db.import_package(os.path.join(orig_target, filename))
 
-  takes_options = [to_opt, snapshot_opt, filename_opt, initial_opt]
-
-  def run(self, files_list, to=None, snapshot=None, filename=None,
-          initial=False):
-    from bzrlib.plugins.builddeb.import_dsc import DscImporter, SnapshotImporter
-    if files_list is None:
-      files_list = []
-    if filename is not None:
-      if isinstance(filename, unicode):
-        filename = filename.encode('utf-8')
-      base_dir, path = urlutils.split(filename)
-      sources_file = get_transport(base_dir).get(path)
-      for line in sources_file:
-        line.strip()
-        files_list.append(line)
-    if snapshot is None:
-      if not initial:
-        if len(files_list) != 1:
-          raise BzrCommandError("You must give the location of exactly one "
-                                "source package.")
-      else:
-        if len(files_list) < 1:
-          raise BzrCommandError("You must give the location of at least one "
-                                "source package to install, or use the "
-                                "--file or --snapshot options.")
-        if to is None:
-          raise BzrCommandError("You must specify the name of the "
-                                "destination branch using the --to option.")
-      importer = DscImporter(files_list)
-    else:
-      if not initial:
-        raise BzrCommandError("You cannot use the --snapshot option without "
-            "the --initial option.")
-      if to is None:
-        to = snapshot
-      importer = SnapshotImporter(snapshot, other_sources=files_list)
-    if initial:
-      orig_target = os.path.join(to, '../tarballs')
-      importer.import_dsc(to, orig_target=orig_target)
-    else :
-      inc_to = '.'
-      if to is not None:
-        inc_to = to
-      _local_conf = os.path.join(inc_to, local_conf)
-      _global_conf = os.path.join(inc_to, global_conf)
-      _default_conf = os.path.join(inc_to, default_conf)
-      config = DebBuildConfig([(_local_conf, True), (_global_conf, True),
-                             (_default_conf, False)])
-      orig_target = config.orig_dir
-      if orig_target is None:
-        orig_target = os.path.join(inc_to, '../tarballs')
-      importer.incremental_import_dsc(inc_to, orig_target=orig_target)
-
+    def run(self, files_list, distribution=None, filename=None):
+        from bzrlib.plugins.builddeb.errors import MissingChangelogError
+        if distribution is None:
+            raise BzrCommandError("You must specify the distribution "
+                    "these packages were uploaded to using --distribution.")
+        distribution = distribution.lower()
+        distribution_name = lookup_distribution(distribution)
+        if distribution_name is None:
+            if distribution not in ("debian", "ubuntu"):
+                raise BzrCommandError("Unknown target distribution: %s" \
+                        % target_dist)
+            else:
+                distribution_name = distribution
+        try:
+            tree = WorkingTree.open_containing('.')[0]
+        except NotBranchError:
+            raise BzrCommandError("There is no tree to import the packages in to")
+        tree.lock_write()
+        try:
+            if tree.changes_from(tree.basis_tree()).has_changed():
+                raise BzrCommandError("There are uncommitted changes in the "
+                        "working tree. You must commit before using this "
+                        "command")
+            if files_list is None:
+                files_list = []
+            if filename is not None:
+                if isinstance(filename, unicode):
+                    filename = filename.encode('utf-8')
+                base_dir, path = urlutils.split(filename)
+                sources_file = get_transport(base_dir).get(path)
+                for line in sources_file:
+                    line.strip()
+                    files_list.append(line)
+            if len(files_list) < 1:
+                raise BzrCommandError("You must give the location of at least one "
+                                      "source package to install, or use the "
+                                      "--file option.")
+            config = debuild_config(tree, tree, False)
+            orig_dir = config.orig_dir or default_orig_dir
+            orig_target = os.path.join(tree.basedir, default_orig_dir)
+            db = DistributionBranch(distribution_name, tree.branch,
+                    None, tree=tree)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
+            try:
+                (changelog, larstiq) = find_changelog(tree, False)
+                last_version = changelog.version
+            except MissingChangelogError:
+                last_version = None
+            tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir,
+                        '..'))
+            try:
+                if last_version is not None:
+                    upstream_tip = db._revid_of_upstream_version_from_branch(
+                            last_version)
+                    db._extract_upstream_tree(upstream_tip, tempdir)
+                else:
+                    db._create_empty_upstream_tree(tempdir)
+                self.import_many(db, files_list, orig_target)
+            finally:
+                shutil.rmtree(tempdir)
+        finally:
+            tree.unlock()
 
 register_command(cmd_import_dsc)
 
@@ -579,9 +642,8 @@ class cmd_bd_do(Command):
   takes_args = ['command?']
 
   def run(self, command=None):
-
-    config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)])
+    t = WorkingTree.open_containing('.')[0]
+    config = debuild_config(t, t, False)
 
     if not config.merge:
       raise BzrCommandError("This command only works for merge mode "
@@ -595,7 +657,6 @@ class cmd_bd_do(Command):
       except KeyError:
         command = "/bin/sh"
       give_instruction = True
-    t = WorkingTree.open_containing('.')[0]
     (changelog, larstiq) = find_changelog(t, True)
     build_dir = config.build_dir
     if build_dir is None:
@@ -652,6 +713,53 @@ class cmd_bd_do(Command):
 
 
 register_command(cmd_bd_do)
+
+
+class cmd_mark_uploaded(Command):
+    """Mark that this branch has been uploaded, prior to pushing it.
+    
+    When a package has been uploaded we want to mark the revision
+    that it was uploaded in. This command automates doing that
+    by marking the current tip revision with the version indicated
+    in debian/changelog.
+    """
+    force = Option('force', help="Mark the upload even if it is already "
+            "marked.")
+
+    takes_options = [merge_opt, no_user_conf_opt, force]
+
+    def run(self, merge=False, no_user_config=False, force=None):
+        t = WorkingTree.open_containing('.')[0]
+        t.lock_write()
+        try:
+            if t.changes_from(t.basis_tree()).has_changed():
+              raise BzrCommandError("There are uncommitted changes in the "
+                      "working tree. You must commit before using this "
+                      "command")
+            config = debuild_config(t, t, no_user_config)
+            if not merge:
+                merge = config.merge
+            (changelog, larstiq) = find_changelog(t, False)
+            distributions = changelog.distributions.strip()
+            target_dist = distributions.split()[0]
+            distribution_name = lookup_distribution(target_dist)
+            if distribution_name is None:
+                raise BzrCommandError("Unknown target distribution: %s" \
+                        % target_dist)
+            db = DistributionBranch(distribution_name, t.branch, None)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
+            if db.has_version(changelog.version):
+                if not force:
+                    raise BzrCommandError("This version has already been "
+                            "marked uploaded. Use --force to force marking "
+                            "this new version.")
+            db.tag_version(changelog.version)
+        finally:
+            t.unlock()
+
+
+register_command(cmd_mark_uploaded)
 
 
 def test_suite():

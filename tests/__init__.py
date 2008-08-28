@@ -96,22 +96,6 @@ tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
                      ]
 
 
-class MergeUpstreamAdaptor(object):
-
-  def adapt(self, test):
-    result = TestSuite()
-    for (name, function, source) in tarball_functions:
-      new_test = deepcopy(test)
-      new_test.build_tarball = function(source)
-      new_test.upstream_tarball = source
-      def make_new_id():
-        new_id = '%s(%s)' % (test.id(), name)
-        return lambda: new_id
-      new_test.id = make_new_id()
-      result.addTest(new_test)
-    return result
-
-
 class RepackTarballAdaptor(object):
 
   def adapt(self, test):
@@ -140,6 +124,7 @@ def test_suite():
             'test_config',
             'test_hooks',
             'test_import_dsc',
+            'test_merge_upstream',
             'test_repack_tarball_extra',
             'test_util',
             ]
@@ -153,8 +138,6 @@ def test_suite():
     for mod in doctest_mod_names:
       suite.addTest(doctest.DocTestSuite(mod))
 
-    adapt_modules(['%s.test_merge_upstream' % __name__],
-                  MergeUpstreamAdaptor(), loader, suite)
     adapt_modules(['%s.test_repack_tarball' % __name__],
                   RepackTarballAdaptor(), loader, suite)
 

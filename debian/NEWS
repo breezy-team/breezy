@@ -1,3 +1,21 @@
+bzr-builddeb (2.0) unstable; urgency=low
+
+  There have been several compatibility breaks in this release.
+
+  * builddeb now looks for .orig.tar.gz files in the parent
+    directory of the branch when needed, but still falls back
+    to ../tarballs for compatibility. It will also place
+    the result of the build in the parent dir if it can find it.
+    This is to make it resemble dpkg-buildpackage more.
+  * import-dsc --snapshot has been removed, as snapshot.debian.net
+    is nearly useless at the moment. It can be ressurected later
+    if needed.
+  * The command line options of merge-upstream and import-dsc
+    have been overhauled. It shouldn't be possible to
+    break anything by using the same arguments as before.
+
+ -- James Westby <james.westby@canonical.com>  Wed, 27 Aug 2008 21:27:37 +0100
+
 bzr-builddeb (0.91) unstable; urgency=low
 
   --working-tree is no longer needed, as the default is now to use the

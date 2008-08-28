@@ -25,7 +25,7 @@ from debian_bundle import deb822
 
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.builddeb.errors import DebianError
+from bzrlib.plugins.builddeb.errors import DebianError, MissingChanges
 
 class DebianChanges(deb822.Changes):
   """Abstraction of the .changes file. Use it to find out what files were 
@@ -57,7 +57,7 @@ class DebianChanges(deb822.Changes):
       changes = os.path.join(dir,changes)
     mutter("Looking for %s", changes)
     if not os.path.exists(changes):
-      raise DebianError("Could not find .changes file: %s" % changes)
+      raise MissingChanges(changes)
     fp = open(changes)
     deb822.Changes.__init__(self, fp)
     self._filename = changes
