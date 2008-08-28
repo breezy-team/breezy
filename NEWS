@@ -16,6 +16,11 @@ IN DEVELOPMENT
       them automatically, much as ``bzr add`` scans for new files that
       are not ignored and adds them automatically. (Robert Collins)
 
+  FEATURES
+
+    * Support for GSSAPI authentication when using FTP as documented in 
+      RFC2228. (Jelmer Vernooij, #49623)
+
   IMPROVEMENTS:
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
@@ -32,12 +37,19 @@ IN DEVELOPMENT
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
       users. (Robert Collins, #205416)
 
+    * Catch the infamous "select/poll returned error" which occurs when
+      pycurl try to send a body request to an HTTP/1.0 server which has
+      already refused to handle the request. (Vincent Ladeuil, #225020)
+
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
       permissions). This would cause us to set all subdirectories to
       ``0700`` and files to ``0600`` rather than leaving them unmodified.
       Now we ignore ``0000`` as the permissions and assume they are
       invalid. (John Arbash Meinel, #259855)
+
+    * Merging from a previously joined branch will no longer cause 
+      a traceback. (Jelmer Vernooij, #203376)
     
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
@@ -58,6 +70,9 @@ IN DEVELOPMENT
       the target tree. Previously it returned True unconditionally.
       (Robert Collins)
 
+    * The deprecated ``Branch.abspath`` and unimplemented 
+      ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
+
   TESTING:
 
     * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
@@ -66,6 +81,10 @@ IN DEVELOPMENT
       it be unique. (Jonathan Lange)
 
   INTERNALS:
+
+    * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
+      This allows dynamic log output filtering by plugins.
+      (Robert Collins)
 
     * ``bzrlib.btree_index`` is now available, providing a b-tree index
       layer. The design is memory conservative (limited memory cache),
@@ -76,6 +95,25 @@ IN DEVELOPMENT
     * ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
+
+    * Mail clients for `bzr send` are now listed in a registry.  This
+      allows plugins to add new clients by registering them with
+      ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
+      clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+bzr 1.6 2008-08-25
+------------------
+
+Finally, the long awaited bzr 1.6 has been released. This release includes
+new features like Stacked Branches, improved weave merge, and an updated
+server protocol (now on v3) which will allow for better cross version
+compatibility. With this release we have deprecated Knit format
+repositories, and recommend that users upgrade them, we will continue to
+support reading and writing them for the forseeable future, but we will
+not be tuning them for performance as pack repositories have proven to be
+better at scaling. This will also be the first release to bundle
+TortoiseBzr in the standalone Windows installer.
 
 
 bzr 1.6rc5 2008-08-19

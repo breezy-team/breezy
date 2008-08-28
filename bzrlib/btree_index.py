@@ -52,13 +52,6 @@ _PAGE_SIZE = 4096
 # 4K per page: 4MB - 1000 entries
 _NODE_CACHE_SIZE = 1000
 
-leaf_value_hits = [0, 0]
-internal_node_hits = [0, 0]
-leaf_node_hits = [0, 0]
-miss_attempts = 0  # Missed this entry while looking up
-bisect_shortcut = [0, 0]
-dupes = [0]
-
 
 class _BuilderRow(object):
     """The stored state accumulated while writing out a row in the index.
@@ -669,7 +662,7 @@ class BTreeGraphIndex(object):
             found[node_pos] = node
         return found
 
-    def _get_nodes(self, cache, node_indexes, counter):
+    def _get_nodes(self, cache, node_indexes):
         found = {}
         needed = []
         for idx in node_indexes:
@@ -678,10 +671,8 @@ class BTreeGraphIndex(object):
                 continue
             try:
                 found[idx] = cache[idx]
-                counter[0] += 1
             except KeyError:
                 needed.append(idx)
-                counter[1] += 1
         found.update(self._cache_nodes(needed, cache))
         return found
 
@@ -690,13 +681,11 @@ class BTreeGraphIndex(object):
 
         After getting it, the node will be cached.
         """
-        return self._get_nodes(self._internal_node_cache, node_indexes,
-                               internal_node_hits)
+        return self._get_nodes(self._internal_node_cache, node_indexes)
 
     def _get_leaf_nodes(self, node_indexes):
         """Get a bunch of nodes, from cache or disk."""
-        found = self._get_nodes(self._leaf_node_cache, node_indexes,
-                                leaf_node_hits)
+        found = self._get_nodes(self._leaf_node_cache, node_indexes)
         if self._leaf_value_cache is not None:
             for node in found.itervalues():
                 for key, value in node.keys.iteritems():
@@ -762,17 +751,13 @@ class BTreeGraphIndex(object):
         # iter_steps = len(in_keys) + len(fixed_keys)
         # bisect_steps = len(in_keys) * math.log(len(fixed_keys), 2)
         if len(in_keys) == 1: # Bisect will always be faster for M = 1
-            bisect_shortcut[0] += 1
             return [(bisect_right(fixed_keys, in_keys[0]), in_keys)]
         # elif bisect_steps < iter_steps:
-        #     bisect_shortcut[0] += len(in_keys)
         #     offsets = {}
         #     for key in in_keys:
         #         offsets.setdefault(bisect_right(fixed_keys, key),
         #                            []).append(key)
         #     return [(o, offsets[o]) for o in sorted(offsets)]
-        else:
-            bisect_shortcut[1] += len(in_keys)
         in_keys_iter = iter(in_keys)
         fixed_keys_iter = enumerate(fixed_keys)
         cur_in_key = in_keys_iter.next()
@@ -841,7 +826,6 @@ class BTreeGraphIndex(object):
         if not keys:
             return
 
-        global leaf_value_hits, miss_attempts, dupes
         if not self.key_count():
             return
 
@@ -852,7 +836,6 @@ class BTreeGraphIndex(object):
             for key in keys:
                 value = self._leaf_value_cache.get(key, None)
                 if value is not None:
-                    leaf_value_hits[0] += 1
                     # This key is known not to be here, skip it
                     value, refs = value
                     if self.node_ref_lists:
@@ -860,7 +843,6 @@ class BTreeGraphIndex(object):
                     else:
                         yield (self, key, value)
                 else:
-                    leaf_value_hits[1] += 1
                     needed_keys.append(key)
 
         last_key = None
@@ -904,8 +886,6 @@ class BTreeGraphIndex(object):
                         yield (self, next_sub_key, value, refs)
                     else:
                         yield (self, next_sub_key, value)
-                else:
-                    miss_attempts += 1
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.

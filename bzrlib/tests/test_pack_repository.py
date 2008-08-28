@@ -413,6 +413,8 @@ class TestPackRepository(TestCaseWithTransport):
     def test_break_lock_breaks_physical_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo._pack_collection.lock_names()
+        repo.control_files.leave_in_place()
+        repo.unlock()
         repo2 = repository.Repository.open('.')
         self.assertTrue(repo.get_physical_lock_status())
         self.prepare_for_break_lock()
