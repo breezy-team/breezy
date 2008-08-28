@@ -1049,6 +1049,9 @@ class BzrDir(object):
             from bzrlib.branch import BzrBranchFormat7
             cloning_format._branch_format = BzrBranchFormat7()
             mutter("using %r for stacking" % (cloning_format._branch_format,))
+            from bzrlib.repofmt import pack_repo
+            repository_format = pack_repo.RepositoryFormatKnitPack5()
+            cloning_format._repository_format = repository_format
         return cloning_format
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
@@ -2903,29 +2906,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 
         Creates the desired repository in the bzrdir we already have.
         """
-        if self._stack_on or self._require_stacking:
-            # we may be coming from a format that doesn't support stacking,
-            # but we require it in the destination, so force creation of a new
-            # one here.
-            #
-            # TODO: perhaps this should be treated as a distinct repository
-            # acquisition policy?
-            repository_format = self._bzrdir._format.repository_format
-            if not repository_format.supports_external_lookups:
-                # should possibly be controlled by the registry rather than
-                # hardcoded here.
-                from bzrlib.repofmt import pack_repo
-                if repository_format.rich_root_data:
-                    repository_format = \
-                        pack_repo.RepositoryFormatKnitPack5RichRoot()
-                else:
-                    repository_format = pack_repo.RepositoryFormatKnitPack5()
-                note("using %r for stacking" % (repository_format,))
-            repository = repository_format.initialize(self._bzrdir,
-                shared=shared)
-        else:
-            # let bzrdir choose
-            repository = self._bzrdir.create_repository(shared=shared)
+        repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)

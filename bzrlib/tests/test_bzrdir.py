@@ -482,6 +482,8 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
                                                stacked=True)
         self.assertEqual(child_branch.bzrdir.root_transport.base,
                          new_child.open_branch().get_stacked_on_url())
+        self.assertTrue(
+            new_child.open_repository()._format.supports_external_lookups)
 
     def test_add_fallback_repo_handles_absolute_urls(self):
         stack_on = self.make_branch('stack_on', format='development1')
