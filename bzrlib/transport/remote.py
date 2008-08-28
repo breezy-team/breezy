@@ -341,14 +341,28 @@ class RemoteTransport(transport.ConnectedTransport, medium.SmartClientMedium):
         data = response_handler.read_body_bytes()
         # Cache the results, but only until they have been fulfilled
         data_map = {}
+        data_offset = 0
         for c_offset in coalesced:
             if len(data) < c_offset.length:
                 raise errors.ShortReadvError(relpath, c_offset.start,
                             c_offset.length, actual=len(data))
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start+suboffset, subsize)
-                data_map[key] = data[suboffset:suboffset+subsize]
-            data = data[c_offset.length:]
+                this_data = data[data_offset+suboffset:
+                                 data_offset+suboffset+subsize]
+                # Special case when the data is in-order, rather than packing
+                # into a map and then back out again. Benchmarking shows that
+                # this has 100% hit rate, but leave in the data_map work just
+                # in case.
+                # TODO: Could we get away with using buffer() to avoid the
+                #       memory copy?  Callers would need to realize they may
+                #       not have a real string.
+                if key == cur_offset_and_size:
+                    yield cur_offset_and_size[0], this_data
+                    cur_offset_and_size = offset_stack.next()
+                else:
+                    data_map[key] = this_data
+            data_offset += c_offset.length
 
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
