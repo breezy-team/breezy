@@ -20,10 +20,6 @@
 import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
-# [max_repack, buffer_full, repacks_with_space, min_compression,
-#  total_bytes_in, total_bytes_out, avg_comp,
-#  bytes_autopack, bytes_sync_packed, num_full_by_zsync]
-_stats = [0, 0, 0, 999, 0, 0, 0, 0, 0, 0]
 
 class ChunkWriter(object):
     """ChunkWriter allows writing of compressed data with a fixed size.
@@ -40,54 +36,57 @@ class ChunkWriter(object):
         will sometimes start over and compress the whole list to get tighter
         packing. We get diminishing returns after a while, so this limits the
         number of times we will try.
-        In testing, some values for bzr.dev::
+        The default is to try to avoid recompressing entirely, but setting this
+        to something like 20 will give maximum compression.
 
-            repack  time  MB   max   full
-             1       7.5  4.6  1140  0
-             2       8.4  4.2  1036  1          6.8
-             3       9.8  4.1  1012  278
-             4      10.8  4.1  728   945
-            20      11.1  4.1  0     1012
-
-            repack = 0
-            zsync   time  MB    repack  max_z   time w/ add_node
-             0       6.7  24.7  0       6270    5.0
-             1       6.5  13.2  0       3342    4.3
-             2       6.6   9.6  0       2414    4.9
-             5       6.5   6.2  0       1549    4.8
-             6       6.5   5.8  1       1435    4.8
-             7       6.6   5.5  19      1337    4.8
-             8       6.7   5.3  81      1220    4.4
-            10       6.8   5.0  260     967     5.3
-            11       6.8   4.9  366     839     5.3
-            12       6.9   4.8  454     731     5.1
-            15       7.2   4.7  704     450     5.8
-            20       7.7   4.6  1133    7       5.8
-
-        In testing, some values for mysql-unpacked::
-
-                    next_bytes estim
-            repack  time  MB    hit_max full
-             1      51.7  15.4  3913  0
-             2      54.4  13.7  3467  0         35.4
-            20      67.0  13.4  0     3380      46.7
-
-            repack=0
-            zsync                               time w/ add_node
-             0      47.7 116.5  0       29782   29.5
-             1      48.5  60.2  0       15356   27.8
-             2      48.1  42.4  0       10822   27.8
-             5      48.3  25.5  0       6491    26.8
-             6      48.0  23.2  13      5896    27.3
-             7      48.1  21.6  29      5451    27.5
-             8      48.1  20.3  52      5108    27.1
-            10      46.9  18.6  195     4526    29.4
-            11      48.8  18.0  421     4143    29.2
-            12      47.4  17.5  702     3738    28.0
-            15      49.6  16.5  1223    2969    28.9
-            20      48.9  15.7  2182    1810    29.6
-            30            15.4  3891    23      31.4
+    :cvar _max_zsync: Another tunable nob. If _max_repack is set to 0, then you
+        can limit the number of times we will try to pack more data into a
+        node. This allows us to do a single compression pass, rather than
+        trying until we overflow, and then recompressing again.
     """
+    #    In testing, some values for bzr.dev::
+    #        repack  time  MB   max   full
+    #         1       7.5  4.6  1140  0
+    #         2       8.4  4.2  1036  1          6.8
+    #         3       9.8  4.1  1012  278
+    #         4      10.8  4.1  728   945
+    #        20      11.1  4.1  0     1012
+    #        repack = 0
+    #        zsync   time  MB    repack  max_z   time w/ add_node
+    #         0       6.7  24.7  0       6270    5.0
+    #         1       6.5  13.2  0       3342    4.3
+    #         2       6.6   9.6  0       2414    4.9
+    #         5       6.5   6.2  0       1549    4.8
+    #         6       6.5   5.8  1       1435    4.8
+    #         7       6.6   5.5  19      1337    4.8
+    #         8       6.7   5.3  81      1220    4.4
+    #        10       6.8   5.0  260     967     5.3
+    #        11       6.8   4.9  366     839     5.3
+    #        12       6.9   4.8  454     731     5.1
+    #        15       7.2   4.7  704     450     5.8
+    #        20       7.7   4.6  1133    7       5.8
+
+    #    In testing, some values for mysql-unpacked::
+    #                next_bytes estim
+    #        repack  time  MB    hit_max full
+    #         1      51.7  15.4  3913  0
+    #         2      54.4  13.7  3467  0         35.4
+    #        20      67.0  13.4  0     3380      46.7
+    #        repack=0
+    #        zsync                               time w/ add_node
+    #         0      47.7 116.5  0       29782   29.5
+    #         1      48.5  60.2  0       15356   27.8
+    #         2      48.1  42.4  0       10822   27.8
+    #         5      48.3  25.5  0       6491    26.8
+    #         6      48.0  23.2  13      5896    27.3
+    #         7      48.1  21.6  29      5451    27.5
+    #         8      48.1  20.3  52      5108    27.1
+    #        10      46.9  18.6  195     4526    29.4
+    #        11      48.8  18.0  421     4143    29.2
+    #        12      47.4  17.5  702     3738    28.0
+    #        15      49.6  16.5  1223    2969    28.9
+    #        20      48.9  15.7  2182    1810    29.6
+    #        30            15.4  3891    23      31.4
 
     _max_repack = 0
     _max_zsync = 8
@@ -125,16 +124,6 @@ class ChunkWriter(object):
         out = self.compressor.flush(Z_FINISH)
         self.bytes_list.append(out)
         self.bytes_out_len += len(out)
-        if self.num_repack > 0 and self.bytes_out_len > 0:
-            comp = float(self.seen_bytes) / self.bytes_out_len
-            if comp < _stats[3]:
-                _stats[3] = comp
-        _stats[4] += self.seen_bytes
-        _stats[5] += self.bytes_out_len
-        _stats[6] = float(_stats[4]) / _stats[5]
-
-        if self._max_repack == 0 and self.num_repack == 1:
-            _stats[9] += 1
 
         if self.bytes_out_len > self.chunk_size:
             raise AssertionError('Somehow we ended up with too much'
@@ -204,10 +193,8 @@ class ChunkWriter(object):
             self.bytes_in.append(bytes)
             self.seen_bytes += len(bytes)
             self.unflushed_in_bytes += len(bytes)
-            _stats[7] += 1 # len(bytes)
         else:
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
-            _stats[8] += 1 # len(bytes)
             # Note: It is tempting to do this as a look-ahead pass, and to
             # 'copy()' the compressor before flushing. However, it seems that
             # 'flush()' is when the compressor actually does most work
@@ -248,11 +235,9 @@ class ChunkWriter(object):
                     # When we get *to* _max_repack, bump over so that the
                     # earlier > _max_repack will be triggered.
                     self.num_repack += 1
-                    _stats[0] += 1
                 if this_len + 10 > capacity:
                     (bytes_out, this_len,
                      compressor) = self._recompress_all_bytes_in()
-                    _stats[1] += 1
                     self.compressor = compressor
                     # Force us to not allow more data
                     self.num_repack = self._max_repack + 1
@@ -264,7 +249,6 @@ class ChunkWriter(object):
                     # This fits when we pack it tighter, so use the new packing
                     # There is one Z_SYNC_FLUSH call in
                     # _recompress_all_bytes_in
-                    _stats[2] += 1
                     self.compressor = compressor
                     self.bytes_in.append(bytes)
                     self.bytes_list = bytes_out
