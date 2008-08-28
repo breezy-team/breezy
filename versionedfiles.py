@@ -49,6 +49,7 @@ class SvnTexts(VersionedFiles):
                     try:
                         stream = StringIO()
                         self.repository.transport.get_file(urlutils.join(branch, k), stream, revnum)
+                        stream.seek(0)
                         lines = stream.readlines()
                     except SubversionException, (_, num):
                         if num == ERR_FS_NOT_FILE:

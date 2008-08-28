@@ -4,6 +4,8 @@ bzr-svn 0.4.12	UNRELEASED
 
    * Cope with svn+ prefix when setting tags. (#261748)
 
+   * Fix contents of files when using stacked branching. (#262314)
+
 bzr-svn 0.4.11	2008-08-26
 
 bzr-svn 0.4.11~rc2	2008-08-26
