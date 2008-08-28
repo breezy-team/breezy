@@ -478,8 +478,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
             if backing is None:
                 continue
             for node in backing.iter_entries_prefix(keys):
-                # TODO: We should probably remove yielded keys from the keys
-                #       list
                 yield (self,) + node[1:]
         if self._key_length == 1:
             for key in keys:
