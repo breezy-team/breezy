@@ -68,18 +68,18 @@ class TestDo(ExternalBase):
     tree.add(source_files)
     return tree
 
-  def make_merge_mode_config(self):
+  def make_merge_mode_config(self, tree):
     os.mkdir('.bzr-builddeb/')
     f = open('.bzr-builddeb/default.conf', 'wb')
     try:
       f.write('[BUILDDEB]\nmerge = True\n')
     finally:
       f.close()
+    tree.add(['.bzr-builddeb/', '.bzr-builddeb/default.conf'])
 
   def make_upstream_tarball(self):
-    os.mkdir('../tarballs')
     self.build_tree(['test-0.1/', 'test-0.1/a'])
-    tar = tarfile.open(os.path.join('../tarballs/', 'test_0.1.orig.tar.gz'),
+    tar = tarfile.open(os.path.join('..', 'test_0.1.orig.tar.gz'),
                        'w:gz')
     try:
       tar.add('test-0.1')
@@ -110,27 +110,28 @@ class TestDo(ExternalBase):
                         '/merge.html for more information.'], 'bd-do true')
 
   def test_fails_no_changelog(self):
-    self.make_merge_mode_config()
+    tree = self.make_branch_and_tree('.')
+    self.make_merge_mode_config(tree)
     self.run_bzr_error(['Could not find changelog'], 'bd-do true')
 
   def test_no_copy_on_fail(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr_error(['Not updating the working tree as the command '
                         'failed.'], ['bd-do', 'touch debian/do && false'])
     self.failIfExists('debian/do')
 
   def test_copy_on_success(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'touch debian/do'])
     self.failUnlessExists('debian/do')
 
   def test_removed_files_are_removed_in_branch(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'rm debian/changelog'])
     # It might be nice if this was actually gone, but that would involve
@@ -139,29 +140,29 @@ class TestDo(ExternalBase):
     self.failUnlessExists('debian/changelog')
 
   def test_new_directories_created(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'mkdir debian/dir'])
     self.failUnlessExists('debian/dir')
 
   def test_contents_taken_from_export(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'echo a > debian/changelog'])
     self.assertFileEqual('a\n', 'debian/changelog')
 
   def test_export_purged(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'echo a > debian/changelog'])
     self.failIfExists(self.build_dir())
 
   def test_uses_shell(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     old_shell = os.environ['SHELL']
     os.environ['SHELL'] = "touch debian/shell"
@@ -172,8 +173,8 @@ class TestDo(ExternalBase):
     self.failUnlessExists('debian/shell')
 
   def test_export_upstream(self):
-    self.make_merge_mode_config()
-    self.make_unpacked_source()
+    tree = self.make_unpacked_source()
+    self.make_merge_mode_config(tree)
     f = open('.bzr-builddeb/default.conf', 'ab')
     try:
       f.write('export-upstream = upstream\n')

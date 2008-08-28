@@ -93,13 +93,12 @@ These change the directories that the plugin uses for various things.
 
   * ``result-dir = path``
 
-    The directory the resulting files will be placed in. (Defaults to whatever
-    is being used for ``build_dir``).
+    The directory the resulting files will be placed in. (Defaults to ``..``)
 
   * ``orig-dir = path``
 
     The directory to search for the ``.orig.tar.gz`` when not in native mode. 
-    (Defaults to ``../tarballs`` relative to the branch).
+    (Defaults to ``..`` relative to the branch).
 
 Modes
 #####
@@ -254,13 +253,7 @@ Merge mode is when only the ``debian/`` directory of the package is versioned,
 with the upstream version of the code living elsewhere. It allows for clear
 separation of the Debian specific changes from the upstream code.
 
-If you want to use merge mode you need to create a tarballs directory for
-the ``.orig.tar.gz`` files:: 
-
-  $ cd path/to/project
-  $ mkdir tarballs
-
-Then copy the ``.orig.tar.gz`` file for the current version in to this 
+First copy the ``.orig.tar.gz`` file for the current version in to the parent
 directory. If you do not have the upstream tarball for the current version,
 but you do have a ``watch`` file detailing where it can be found then the
 plugin will automatically retrieve the tarballs as they are needed.

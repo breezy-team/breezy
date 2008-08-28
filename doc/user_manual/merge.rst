@@ -76,15 +76,12 @@ run ``bzr add`` to tell Bazaar to version the files, and then make the first
 commit.
 
 Merge mode requires the upstream tarballs to be available when building. By
-default it searches for them in ``../tarballs/``. If you would like to use a
-different location then see the `Configuration Files`_ section. First you
-should create this directory::
+default it searches for them in the parent directory. If you would like to use a
+different location then see the `Configuration Files`_ section. 
 
-  $ mkdir ../tarballs/
-
-and then add the upstream tarballs to it. The plugin expects them to be
-named as they would be in a source package, that is the tarball for version
-``0.1`` of ``scruff`` would be::
+First place the upstream tarball in the parent directory. The plugin expects
+them to be named as they would be in a source package, that is the tarball
+for version ``0.1`` of ``scruff`` would be::
 
   scruff_0.1.orig.tar.gz
 
@@ -103,7 +100,7 @@ New upstream version
 
 There are three steps to updating a merge mode package to a new upstream
 version. The first is to download the new upstream tarball, and place it in
-``../tarballs/``, named as the plugin expects to find it (see above). The
+the parent directory, named as the plugin expects to find it (see above). The
 ``merge-upstream`` command will automate this part of the process in the
 future, but for now it must be done manually.
 

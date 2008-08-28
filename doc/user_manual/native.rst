@@ -78,7 +78,9 @@ run
 
 ::
 
-  $ bzr import-dsc --initial --to scruff *.dsc
+  $ bzr init scruff
+  $ cd scruff
+  $ bzr import-dsc --distribution debian *.dsc
 
 which will create a branch named ``scruff``, which will have the history
 populated with the information in the source packages. You can see this
@@ -91,7 +93,7 @@ It is also possible to retrieve the .dsc files over ``HTTP``, ``FTP`` or
 ``SFTP`` automatically. Just give the URIs to the files on the command line
 instead of local paths. For instance::
 
-  $ bzr import-dsc --initial --to scruff \
+  $ bzr import-dsc --distribution debian \
     http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
 
 As it is unwieldy to provide lots of URIs on the command line it is also
@@ -103,31 +105,10 @@ needed to ensure the history is correct. For instance if the file
 
 ::
 
-  $ bzr import-dsc --initial --to scruff -F package-sources
+  $ bzr import-dsc --distribution debian -F package-sources
 
 will import all of the ``.dsc`` files listed. You can provide both a file
 and a list of packages on the command line if you like.
-
-`snapshot.debian.net`_ stores every version of a package that gets uploaded to
-Debian. This means that the history of a package is available, even if you
-don't have all of the source packages yourself. If you want to use this
-history it is easy to do so. If you pass the ``--snapshot`` option to the
-``import-dsc`` command then the list of source packages you supply
-will be supplemented with all those found on ``snapshot.debian.net``. The
-option takes the name of the source package as it is known to
-``snapshot.debian.net``. For instance if there are several versions of
-``scruff`` available on this service then I can run
-
-::
-
-  $ bzr import-dsc --initial --to scruff --snapshot scruff *.dsc
-
-to have all those versions automatically imported. If you use the
-``--snapshot`` option then it is possible to omit all of the source packages
-from the command line, so that the history is made up of only those packages
-available on ``snapshot.debian.net``.
-
-.. _snapshot.debian.net: http://snapshot.debian.net/
 
 All of the above takes care to create the configuration file that tells
 `bzr-builddeb` that you are building a native package, so you should not

@@ -110,7 +110,6 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
                 upstream_branch.tags.get_reverse_tag_dict(), package,
                 previous_version)
   tree.merge_from_branch(upstream_branch)
-  tree.commit('import upstream from branch %s' % upstream_branch.base)
   return version
 
 
@@ -153,7 +152,8 @@ def lookup_tag(tree):
    cl_id = tree.path2id('debian/changelog')
    if cl_id is None:
      raise AddChangelogError('debian/changelog')
-   cl = Changelog(tree.get_file_text(cl_id))
+   cl = Changelog()
+   cl.parse_changelog(tree.get_file_text(cl_id), max_blocks=1)
    upstream_version = cl.upstream_version
    tag = make_upstream_tag(upstream_version)
    return tree.branch.tags.lookup_tag(tag)
