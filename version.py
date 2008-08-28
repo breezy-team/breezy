@@ -26,7 +26,7 @@
 # releaselevel of 'dev' for unreleased under-development code.
 #
 # Please set this to 'final' before upload.
-version_info = (2, 0, 0, 'final', 0)
+version_info = (2, 0, 1, 'final', 0)
 
 # vim: ts=2 sts=2 sw=2
 

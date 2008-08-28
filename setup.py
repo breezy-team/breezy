@@ -23,7 +23,7 @@
 from distutils.core import setup
 
 setup(name="bzr-builddeb",
-      version="2.0",
+      version="2.0.1",
       description="Build a .deb from a bzr branch",
       author="James Westby",
       author_email="jw+debian@jameswestby.net",

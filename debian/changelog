@@ -1,3 +1,9 @@
+bzr-builddeb (2.0.1) UNRELEASED; urgency=low
+
+  * 
+
+ -- James Westby <james.westby@canonical.com>  Thu, 28 Aug 2008 11:41:35 +0100
+
 bzr-builddeb (2.0) experimental; urgency=low
 
   [ Jelmer Vernooij ]
