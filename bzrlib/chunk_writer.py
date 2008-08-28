@@ -97,20 +97,17 @@ class ChunkWriter(object):
         :param chunk_size: The total byte count to emit at the end of the
             chunk.
         :param reserved: How many bytes to allow for reserved data. reserved
-            data space can only be written to via the write_reserved method.
+            data space can only be written to via the write(..., reserved=True).
         """
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()
         self.bytes_in = []
         self.bytes_list = []
         self.bytes_out_len = 0
-        self.compressed = None
-        self.seen_bytes = 0
         # bytes that have been seen, but not included in a flush to out yet
         self.unflushed_in_bytes = 0
         self.num_repack = 0
         self.num_zsync = 0
-        self.done = False # We will accept no more bytes
         self.unused_bytes = None
         self.reserved_size = reserved
 
@@ -119,6 +116,16 @@ class ChunkWriter(object):
 
         This returns the final compressed chunk, and either None, or the
         bytes that did not fit in the chunk.
+
+        :return: (compressed_bytes, unused_bytes, num_nulls_needed)
+            compressed_bytes    a list of bytes that were output from the
+                                compressor. If the compressed length was not
+                                exactly chunk_size, the final string will be a
+                                string of all null bytes to pad this to
+                                chunk_size
+            unused_bytes        None, or the last bytes that were added, which
+                                we could not fit.
+            num_nulls_needed    How many nulls are padded at the end
         """
         self.bytes_in = None # Free the data cached so far, we don't need it
         out = self.compressor.flush(Z_FINISH)
@@ -137,19 +144,13 @@ class ChunkWriter(object):
     def _recompress_all_bytes_in(self, extra_bytes=None):
         """Recompress the current bytes_in, and optionally more.
 
-        :param extra_bytes: Optional, if supplied we will try to add it with
+        :param extra_bytes: Optional, if supplied we will add it with
             Z_SYNC_FLUSH
-        :return: (bytes_out, compressor, alt_compressed)
+        :return: (bytes_out, bytes_out_len, alt_compressed)
             bytes_out   is the compressed bytes returned from the compressor
+            bytes_out_len the length of the compressed output
             compressor  An object with everything packed in so far, and
                         Z_SYNC_FLUSH called.
-            alt_compressed  If the compressor supports copy(), then this is a
-                            snapshot just before extra_bytes is added.
-                            It is (bytes_out, compressor) as well.
-                            The idea is if you find you cannot fit the new
-                            bytes, you don't have to start over.
-                            And if you *can* you don't have to Z_SYNC_FLUSH
-                            yet.
         """
         compressor = zlib.compressobj()
         bytes_out = []
@@ -171,6 +172,10 @@ class ChunkWriter(object):
 
         If the bytes fit, False is returned. Otherwise True is returned
         and the bytes have not been added to the chunk.
+
+        :param bytes: The bytes to include
+        :param reserved: If True, we can use the space reserved in the
+            constructor.
         """
         if self.num_repack > self._max_repack and not reserved:
             self.unused_bytes = bytes
@@ -180,32 +185,31 @@ class ChunkWriter(object):
         else:
             capacity = self.chunk_size - self.reserved_size
         comp = self.compressor
+
         # Check to see if the currently unflushed bytes would fit with a bit of
         # room to spare, assuming no compression.
         next_unflushed = self.unflushed_in_bytes + len(bytes)
         remaining_capacity = capacity - self.bytes_out_len - 10
         if (next_unflushed < remaining_capacity):
-            # Yes, just push it in, assuming it will fit
+            # looks like it will fit
             out = comp.compress(bytes)
             if out:
                 self.bytes_list.append(out)
                 self.bytes_out_len += len(out)
             self.bytes_in.append(bytes)
-            self.seen_bytes += len(bytes)
             self.unflushed_in_bytes += len(bytes)
         else:
             # This may or may not fit, try to add it with Z_SYNC_FLUSH
             # Note: It is tempting to do this as a look-ahead pass, and to
-            # 'copy()' the compressor before flushing. However, it seems that
-            # 'flush()' is when the compressor actually does most work
-            # (consider it the real compression pass over the data-so-far).
-            # Which means that it is the same thing as increasing repack,
-            # similar cost, same benefit. And this way we still have the
-            # 'repack' knob that can be adjusted, and not depend on a
-            # platform-specific 'copy()' function.
+            #       'copy()' the compressor before flushing. However, it seems
+            #       that Which means that it is the same thing as increasing
+            #       repack, similar cost, same benefit. And this way we still
+            #       have the 'repack' knob that can be adjusted, and not depend
+            #       on a platform-specific 'copy()' function.
             self.num_zsync += 1
             if self._max_repack == 0 and self.num_zsync > self._max_zsync:
                 self.num_repack += 1
+                self.unused_bytes = bytes
                 return True
             out = comp.compress(bytes)
             out += comp.flush(Z_SYNC_FLUSH)
@@ -224,7 +228,6 @@ class ChunkWriter(object):
             if self.bytes_out_len + safety_margin <= capacity:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)
-                self.seen_bytes += len(bytes)
             else:
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
@@ -247,8 +250,6 @@ class ChunkWriter(object):
                     return True
                 else:
                     # This fits when we pack it tighter, so use the new packing
-                    # There is one Z_SYNC_FLUSH call in
-                    # _recompress_all_bytes_in
                     self.compressor = compressor
                     self.bytes_in.append(bytes)
                     self.bytes_list = bytes_out
