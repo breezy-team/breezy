@@ -1050,8 +1050,11 @@ class BzrDir(object):
             cloning_format._branch_format = BzrBranchFormat7()
             mutter("using %r for stacking" % (cloning_format._branch_format,))
             from bzrlib.repofmt import pack_repo
-            repository_format = pack_repo.RepositoryFormatKnitPack5()
-            cloning_format._repository_format = repository_format
+            if cloning_format.repository_format.rich_root_data:
+                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+            else:
+                repo_format = pack_repo.RepositoryFormatKnitPack5()
+            cloning_format._repository_format = repo_format
         return cloning_format
 
     def sprout(self, url, revision_id=None, force_new_repo=False,

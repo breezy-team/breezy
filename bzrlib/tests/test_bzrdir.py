@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -482,8 +482,25 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
                                                stacked=True)
         self.assertEqual(child_branch.bzrdir.root_transport.base,
                          new_child.open_branch().get_stacked_on_url())
-        self.assertTrue(
-            new_child.open_repository()._format.supports_external_lookups)
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertFalse(repo.supports_rich_root())
+
+    def test_sprout_upgrades_to_rich_root_format_if_needed(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='rich-root-pack')
+        def do_sprout():
+            try:
+                return child_branch.bzrdir.sprout(new_child_transport.base,
+                                                  stacked=True)
+            except errors.IncompatibleRepositories:
+                raise AssertionError(
+                    'Rich root format should be sprout-compatible')
+        self.expectFailure('Rich root format should be sprout-compatible',
+                           do_sprout)
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertTrue(repo.supports_rich_root())
 
     def test_add_fallback_repo_handles_absolute_urls(self):
         stack_on = self.make_branch('stack_on', format='development1')
