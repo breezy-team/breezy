@@ -39,6 +39,13 @@ IN DEVELOPMENT
       Now we ignore ``0000`` as the permissions and assume they are
       invalid. (John Arbash Meinel, #259855)
     
+    * ``RemoteTransport.readv()`` was being inefficient about how it
+      buffered the readv data and processed it. It would keep appending to
+      the same string (causing many copies) and then pop bytes out of the
+      start of the string (causing more copies).
+      With this patch "bzr+ssh://local" speeds improve by up to 3x.
+      (John Arbash Meinel)
+
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
