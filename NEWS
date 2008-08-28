@@ -1055,6 +1055,9 @@ bzr 1.4rc1 2008-04-11
     * Reconfigure can convert a branch to be standalone or to use a shared
       repository.  (Aaron Bentley)
 
+    * Support for GSSAPI authentication when using FTP as documented in 
+      RFC2228. (Jelmer Vernooij, #49623)
+
   IMPROVEMENTS:
 
     * The smart protocol now has support for setting branches' revision info
