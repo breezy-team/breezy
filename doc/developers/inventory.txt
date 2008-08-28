@@ -61,12 +61,12 @@ that an inventory is stored as. We have a number of goals we want to achieve:
  5. Allow fetch to determine the file texts that need to be pulled to ensure
     that the entire tree can be reconstructed without having to probe every
     path in the tree.
- 6. Allow bzr map paths to file ids without reading the entire serialised
+ 6. Allow bzr to map paths to file ids without reading the entire serialised
     form. This is something that is used by commands such as merge PATH and
     diff -r X PATH.
  7. Let bzr map file ids to paths without reading the entire serialised form.
     This is used by commands that are presenting output to the user such as
-    loggerhed, bzr-search, log FILENAME.
+    loggerhead, bzr-search, log FILENAME.
  8. We want a strong validator for inventories which is cheap to generate.
     Specifically we should be able to create the generator for a new commit
     without processing all the data of the basis commit.
@@ -76,7 +76,7 @@ that an inventory is stored as. We have a number of goals we want to achieve:
 
 
 We have current performance and memory bugs in log -v, merge, commit, diff -r,
-loggerhead and status -r which can be addresessed by an inventory system
+loggerhead and status -r which can be addressed by an inventory system
 meeting these goals.
 
 Current situation
@@ -188,7 +188,7 @@ Overview
 --------
 
 We store two maps - fileid:inventory_entry and path:fileid, in a stable
-hash trie, stored in densly packed fragments.. We pack keys into the map
+hash trie, stored in densly packed fragments. We pack keys into the map
 densely up the tree, with a single canonical form for any given tree. This is
 more stable than simple fixed size buckets, which prevents corner cases where
 the tree size varies right on a bucket size border. (Note that such cases are
@@ -385,7 +385,7 @@ containing as much content as it can, but no leaf node containing less than
 its lower size threshold. (In the event that an imbalance in the hash function
 causes a tree where an internal node is needed, but any prefix generates a
 child with less than the lower threshold, the smallest prefix should be taken).
-An internal node holds some number of key prefixs, all with the same bit-width.
+An internal node holds some number of key prefixes, all with the same bit-width.
 A leaf node holds the actual values. As trees do not spring fully-formed, the
 canonical form is defined iteratively - by taking every item in a tree and
 inserting it into a new tree in order you can determine what canonical form
@@ -424,14 +424,14 @@ Insertion
    more densely packed. To be below the min_size the node's parent must
    have hit the max size constraint and been forced to split even though this
    child did not have enough content to support a min_size node - so the prefix
-   chosen in the parent may be been shorter than desirable and we may now be able
+   chosen in the parent may be shorter than desirable and we may now be able
    to more densely pack the parent by splitting the child nodes more. So if the
    parent node can support a deeper prefix without hitting max_size, and the
    count of under min_size nodes cannot be reduced, the parent should be given
    a deeper prefix.
 1. If it increased above max_size, shrink the prefix width used to split out
-   new nodes until the the node is below max_size (unless the prefix
-   width is already 1 - the minimum).
+   new nodes until the node is below max_size (unless the prefix width is
+   already 1 - the minimum).
    To shrink the prefix of an internal node, create new internal nodes for each
    new prefix, and populate them with the content of the nodes which were
    formerly linked. (This will normally bubble down due to keeping densely
