@@ -3073,28 +3073,6 @@ format_registry.register_metadir('development-subtree',
     alias=True,
     )
 # And the development formats which the will have aliased one of follow:
-format_registry.register_metadir('development0',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0',
-    help='Trivial rename of pack-0.92 to provide a development format. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
-    )
-format_registry.register_metadir('development0-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0Subtree',
-    help='Trivial rename of pack-0.92-subtree to provide a development format. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
-    )
 format_registry.register_metadir('development1',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
     help='A branch and pack based repository that supports stacking. '
