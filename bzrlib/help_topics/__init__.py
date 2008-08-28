@@ -149,10 +149,24 @@ def _help_on_revisionspec(name):
     import bzrlib.revisionspec
 
     out = []
-    out.append("Revision Identifiers\n")
-    out.append("A revision, or a range bound, can be one of the following.\n")
+    out.append(
+"""Revision Identifiers
+
+A revision identifier refers to a specific state of a branch's history. It can
+be a revision number, or a keyword followed by ':' and often other
+parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
+and 'submit:'.
+
+If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
+revision range. Examples: '3647..3649', 'date:yesterday..-1' and
+'branch:/path/to/branch1/..branch:/branch2' (note that there are no quotes or
+spaces around the '..'). More than two revisions can be specified by using this syntax.
+
+The keywords used as revision selection methods are the following:
+""")
     details = []
-    details.append("\nFurther details are given below.\n")
+    details.append("\nIn addition, plugins can provide other keywords.")
+    details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
