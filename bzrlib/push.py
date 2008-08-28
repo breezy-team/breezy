@@ -105,8 +105,15 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             revision_id=revision_id, stacked_on=stacked_on)
         br_to = dir_to.open_branch()
         # TODO: Some more useful message about what was copied
-        if stacked_on is not None:
-            note('Created new stacked branch referring to %s.' % stacked_on)
+        try:
+            finally_stacked_on = br_to.get_stacked_on_url()
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat,
+                errors.NotStacked):
+            finally_stacked_on = None
+        if finally_stacked_on is not None:
+            note('Created new stacked branch referring to %s.' %
+                 finally_stacked_on)
         else:
             note('Created new branch.')
         # We successfully created the target, remember it
