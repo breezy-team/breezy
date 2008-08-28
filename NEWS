@@ -16,6 +16,11 @@ IN DEVELOPMENT
       them automatically, much as ``bzr add`` scans for new files that
       are not ignored and adds them automatically. (Robert Collins)
 
+  FEATURES
+
+    * Support for GSSAPI authentication when using FTP as documented in 
+      RFC2228. (Jelmer Vernooij, #49623)
+
   IMPROVEMENTS:
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
