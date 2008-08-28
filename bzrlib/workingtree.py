@@ -520,7 +520,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_workingtree()
         self.copy_content_into(result, revision_id)
         return result
 

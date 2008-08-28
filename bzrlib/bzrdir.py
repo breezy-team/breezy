@@ -193,7 +193,7 @@ class BzrDir(object):
         """
         transport.ensure_base()
         require_stacking = (stacked_on is not None)
-        metadir = self._get_metadir(require_stacking)
+        metadir = self.cloning_metadir(require_stacking)
         result = metadir.initialize_on_transport(transport)
         repository_policy = None
         try:
