@@ -295,12 +295,14 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
-    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     # Convert view_revisions into (view, None, None) groups to fit with
     # the standard interface here.
     if type(view_revisions) == list:
+        # A single batch conversion is faster than many incremental ones.
+        # As we have all the data, do a batch conversion.
         nones = [None] * len(view_revisions)
         log_rev_iterator = iter([zip(view_revisions, nones, nones)])
     else:
@@ -314,7 +316,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     return log_rev_iterator
 
 
-def make_search_filter(branch, generate_delta, search, log_rev_iterator):
+def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """Create a filtered iterator of log_rev_iterator matching on a regex.
 
     :param branch: The branch being logged.
@@ -322,7 +324,7 @@ def make_search_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     if search is None:
@@ -341,7 +343,7 @@ def _filter_message_re(searchRE, log_rev_iterator):
         yield new_revs
 
 
-def make_delta_filter(branch, generate_delta, search, log_rev_iterator):
+def _make_delta_filter(branch, generate_delta, search, log_rev_iterator):
     """Add revision deltas to a log iterator if needed.
 
     :param branch: The branch being logged.
@@ -349,7 +351,7 @@ def make_delta_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     if not generate_delta:
@@ -358,6 +360,7 @@ def make_delta_filter(branch, generate_delta, search, log_rev_iterator):
 
 
 def _generate_deltas(repository, log_rev_iterator):
+    """Create deltas for each batch of revisions in log_rev_iterator."""
     for revs in log_rev_iterator:
         revisions = [rev[1] for rev in revs]
         deltas = repository.get_deltas_for_revisions(revisions)
@@ -365,7 +368,7 @@ def _generate_deltas(repository, log_rev_iterator):
         yield revs
 
 
-def make_revision_objects(branch, generate_delta, search, log_rev_iterator):
+def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
     """Extract revision objects from the repository
 
     :param branch: The branch being logged.
@@ -373,7 +376,7 @@ def make_revision_objects(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over iterators of ((rev_id, revno, merge_depth), rev,
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     repository = branch.repository
@@ -386,7 +389,7 @@ def make_revision_objects(branch, generate_delta, search, log_rev_iterator):
         yield revs
 
 
-def make_batch_filter(branch, generate_delta, search, log_rev_iterator):
+def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     """Group up a single large batch into smaller ones.
 
     :param branch: The branch being logged.
@@ -394,7 +397,7 @@ def make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over ((rev_id, revno, merge_depth), rev, delta).
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev, delta).
     """
     repository = branch.repository
     num = 9
@@ -996,11 +999,11 @@ properties_handler_registry = registry.Registry()
 # this won't be considered a stable api.
 log_adapters = [
     # core log logic
-    make_batch_filter,
+    _make_batch_filter,
     # read revision objects
-    make_revision_objects,
+    _make_revision_objects,
     # filter on log messages
-    make_search_filter,
+    _make_search_filter,
     # generate deltas for things we will show
-    make_delta_filter
+    _make_delta_filter
     ]
