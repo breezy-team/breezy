@@ -70,6 +70,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
+      This allows dynamic log output filtering by plugins.
+      (Robert Collins)
+
     * ``bzrlib.btree_index`` is now available, providing a b-tree index
       layer. The design is memory conservative (limited memory cache),
       faster to seek (approx 100 nodes per page, gives 100-way fan out),
