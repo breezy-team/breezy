@@ -17,6 +17,8 @@ Overall developer documentation
 * `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
   (wiki) |--| a guide for writing Python programs that work with Bazaar.
 
+* `Testing <testing.html>`_ |--| Testing bzr.
+
 * `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
   |--| specific advice on writing Bazaar plugins.
 
