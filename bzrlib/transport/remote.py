@@ -43,7 +43,7 @@ class _SmartStat(object):
         self.st_mode = mode
 
 
-class RemoteTransport(transport.ConnectedTransport):
+class RemoteTransport(transport.ConnectedTransport, medium.SmartClientMedium):
     """Connection to a smart server.
 
     The connection holds references to the medium that can be used to send
@@ -312,14 +312,13 @@ class RemoteTransport(transport.ConnectedTransport):
         offsets = list(offsets)
 
         sorted_offsets = sorted(offsets)
-        # turn the list of offsets into a stack
-        offset_stack = iter(offsets)
-        cur_offset_and_size = offset_stack.next()
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
         try:
+            # if relpath.endswith('.pack'):
+            #     import pdb; pdb.set_trace()
             result = self._client.call_with_body_readv_array(
                 ('readv', self._remote_path(relpath),),
                 [(c.start, c.length) for c in coalesced])
@@ -332,6 +331,12 @@ class RemoteTransport(transport.ConnectedTransport):
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(resp)
 
+        return self._handle_response(offsets, coalesced, response_handler)
+
+    def _handle_response(self, offsets, coalesced, response_handler):
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
         # FIXME: this should know how many bytes are needed, for clarity.
         data = response_handler.read_body_bytes()
         # Cache the results, but only until they have been fulfilled
