@@ -1171,12 +1171,20 @@ class _TestBranch(bzrlib.branch.Branch):
     def __init__(self, *args, **kwargs):
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
-    
+        self._parent = None
+
     def sprout(self, *args, **kwargs):
         self.calls.append('sprout')
+        return _TestBranch()
 
     def copy_content_into(self, destination, revision_id=None):
         self.calls.append('copy_content_into')
+
+    def get_parent(self):
+        return self._parent
+
+    def set_parent(self, parent):
+        self._parent = parent
 
 
 class TestBzrDirSprout(TestCaseWithMemoryTransport):
