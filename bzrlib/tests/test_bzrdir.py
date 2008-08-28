@@ -486,6 +486,17 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertTrue(repo._format.supports_external_lookups)
         self.assertFalse(repo.supports_rich_root())
 
+    def test_clone_on_transport_upgrades_format_if_stacked_on_specified(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.clone_on_transport(new_child_transport,
+            stacked_on=child_branch.bzrdir.root_transport.base)
+        self.assertEqual(child_branch.bzrdir.root_transport.base,
+                         new_child.open_branch().get_stacked_on_url())
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertFalse(repo.supports_rich_root())
+
     def test_sprout_upgrades_to_rich_root_format_if_needed(self):
         child_branch, new_child_transport = self.prepare_default_stacking(
             child_format='rich-root-pack')

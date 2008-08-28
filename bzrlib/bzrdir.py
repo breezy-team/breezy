@@ -177,7 +177,8 @@ class BzrDir(object):
                                        preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
-                           force_new_repo=False, preserve_stacking=False):
+                           force_new_repo=False, preserve_stacking=False,
+                           stacked_on=None):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -191,9 +192,10 @@ class BzrDir(object):
             new branch on top of the other branch's stacked-on branch.
         """
         transport.ensure_base()
-        result = self.cloning_metadir().initialize_on_transport(transport)
+        require_stacking = (stacked_on is not None)
+        metadir = self._get_metadir(require_stacking)
+        result = metadir.initialize_on_transport(transport)
         repository_policy = None
-        stack_on = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
@@ -208,7 +210,7 @@ class BzrDir(object):
                 local_repo = local_branch.repository
             if preserve_stacking:
                 try:
-                    stack_on = local_branch.get_stacked_on_url()
+                    stacked_on = local_branch.get_stacked_on_url()
                 except (errors.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -217,7 +219,8 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo, stack_on, self.root_transport.base)
+                force_new_repo, stacked_on, self.root_transport.base,
+                require_stacking=require_stacking)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
