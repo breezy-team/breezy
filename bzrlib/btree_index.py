@@ -136,6 +136,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             key_elements=key_elements)
         self._spill_at = spill_at
         self._backing_indices = []
+        # A map of {key: (node_refs, value)}
+        self._nodes = {}
         # Indicate it hasn't been built yet
         self._nodes_by_key = None
 
@@ -157,7 +159,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = (tuple(node_refs), value)
+        self._nodes[key] = (node_refs, value)
         self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
