@@ -705,7 +705,8 @@ class Branch(object):
         """
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
-        new_history = self.revision_history()
+        else:
+            new_history = self.revision_history()
         if revision_id is not None and new_history != []:
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]

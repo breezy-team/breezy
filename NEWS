@@ -23,6 +23,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr branch`` uses the default stacking policy if the branch format
+      supports it. (Aaron Bentley)
+
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
       ``bzr info`` if it completed successfully.
       (Marius Kruger)
@@ -72,6 +75,9 @@ IN DEVELOPMENT
 
     * The deprecated ``Branch.abspath`` and unimplemented 
       ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
+
+    * BzrDir.cloning_metadir implementations must now take a require_stacking
+      parameter.  (Aaron Bentley)
 
   TESTING:
 
