@@ -32,6 +32,10 @@ IN DEVELOPMENT
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
       users. (Robert Collins, #205416)
 
+    * Catch the infamous "select/poll returned error" which occurs when
+      pycurl try to send a body request to an HTTP/1.0 server which has
+      already refused to handle the request. (Vincent Ladeuil, #225020)
+
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
       permissions). This would cause us to set all subdirectories to
@@ -72,6 +76,10 @@ IN DEVELOPMENT
       it be unique. (Jonathan Lange)
 
   INTERNALS:
+
+    * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
+      This allows dynamic log output filtering by plugins.
+      (Robert Collins)
 
     * ``bzrlib.btree_index`` is now available, providing a b-tree index
       layer. The design is memory conservative (limited memory cache),
