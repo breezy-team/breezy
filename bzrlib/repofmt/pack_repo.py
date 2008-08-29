@@ -1724,7 +1724,13 @@ class KnitPackRepository(KnitRepository):
     def _warn_if_deprecated(self):
         # This class isn't deprecated, but one sub-format is
         if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
-            super(KnitPackRepository, self)._warn_if_deprecated()
+            from bzrlib import repository
+            if repository._deprecation_warning_done:
+                return
+            repository._deprecation_warning_done = True
+            warning("Format %s for %s is deprecated - please use"
+                    " 'bzr upgrade --1.6.1-rich-root'"
+                    % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
