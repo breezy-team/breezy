@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     merge,
     repository,
+    versionedfile,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -170,8 +171,11 @@ class TestFetch(TestCaseWithTransport):
         knit3_tree = self.make_branch_and_tree('knit3',
             format='dirstate-with-subtree')
         knit3_tree.commit('blah')
-        self.assertRaises(errors.IncompatibleRepositories,
-                          knit_tree.branch.fetch, knit3_tree.branch)
+        e = self.assertRaises(errors.IncompatibleRepositories,
+                              knit_tree.branch.fetch, knit3_tree.branch)
+        self.assertContainsRe(str(e),
+            r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
+            r"different rich-root support")
 
 
 class TestMergeFetch(TestCaseWithTransport):
@@ -324,6 +328,105 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class TestKnitToPackFetch(TestCaseWithTransport):
+
+    def find_get_record_stream(self, calls):
+        """In a list of calls, find 'get_record_stream' calls.
+
+        This also ensures that there is only one get_record_stream call.
+        """
+        get_record_call = None
+        for call in calls:
+            if call[0] == 'get_record_stream':
+                self.assertIs(None, get_record_call,
+                              "there should only be one call to"
+                              " get_record_stream")
+                get_record_call = call
+        self.assertIsNot(None, get_record_call,
+                         "there should be exactly one call to "
+                         " get_record_stream")
+        return get_record_call
+
+    def test_fetch_with_deltas_no_delta_closure(self):
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        source = tree.branch.repository
+        source.texts = versionedfile.RecordingVersionedFilesDecorator(
+                        source.texts)
+        source.signatures = versionedfile.RecordingVersionedFilesDecorator(
+                        source.signatures)
+        source.revisions = versionedfile.RecordingVersionedFilesDecorator(
+                        source.revisions)
+        source.inventories = versionedfile.RecordingVersionedFilesDecorator(
+                        source.inventories)
+        # precondition
+        self.assertTrue(target._fetch_uses_deltas)
+        target.fetch(source, revision_id='rev-one')
+        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.texts.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.inventories.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.revisions.calls))
+        # XXX: Signatures is special, and slightly broken. The
+        # standard item_keys_introduced_by actually does a lookup for every
+        # signature to see if it exists, rather than waiting to do them all at
+        # once at the end. The fetch code then does an all-at-once and just
+        # allows for some of them to be missing.
+        # So we know there will be extra calls, but the *last* one is the one
+        # we care about.
+        signature_calls = source.signatures.calls[-1:]
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(signature_calls))
+
+    def test_fetch_no_deltas_with_delta_closure(self):
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        source = tree.branch.repository
+        source.texts = versionedfile.RecordingVersionedFilesDecorator(
+                        source.texts)
+        source.signatures = versionedfile.RecordingVersionedFilesDecorator(
+                        source.signatures)
+        source.revisions = versionedfile.RecordingVersionedFilesDecorator(
+                        source.revisions)
+        source.inventories = versionedfile.RecordingVersionedFilesDecorator(
+                        source.inventories)
+        target._fetch_uses_deltas = False
+        target.fetch(source, revision_id='rev-one')
+        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.texts.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.inventories.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.revisions.calls))
+        # XXX: Signatures is special, and slightly broken. The
+        # standard item_keys_introduced_by actually does a lookup for every
+        # signature to see if it exists, rather than waiting to do them all at
+        # once at the end. The fetch code then does an all-at-once and just
+        # allows for some of them to be missing.
+        # So we know there will be extra calls, but the *last* one is the one
+        # we care about.
+        signature_calls = source.signatures.calls[-1:]
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(signature_calls))
 
 
 class Test1To2Fetch(TestCaseWithTransport):

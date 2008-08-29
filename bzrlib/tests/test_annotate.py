@@ -116,7 +116,7 @@ h
 #  |\
 #  A B  # line should be annotated as new for A and B
 #  |\|
-#  C D  # line should 'converge' and say D
+#  C D  # line should 'converge' and say A
 #  |/
 #  E    # D should supersede A and stay as D (not become E because C references
 #         A)
@@ -150,14 +150,14 @@ rev-C fourth-C
 
 duplicate_D = annotation("""\
 rev-base first
-rev-D alt-second
+rev-A alt-second
 rev-base third
 rev-D fourth-D
 """)
 
 duplicate_E = annotation("""\
 rev-base first
-rev-D alt-second
+rev-A alt-second
 rev-base third
 rev-E fourth-E
 """)
@@ -184,7 +184,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                      committer="joe@foo.com",
                      timestamp=1166046000.00, timezone=0)
 
-        tree2 = tree1.bzrdir.clone('tree2').open_workingtree()
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
 
         self.build_tree_contents([('tree1/a', 'first\nsecond\n')])
         tree1.commit('b', rev_id='rev-2',
@@ -235,7 +235,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1, tree2 = self.create_merged_trees()
         tree1.unlock()
 
-        tree3 = tree2.bzrdir.clone('tree3').open_workingtree()
+        tree3 = tree2.bzrdir.sprout('tree3').open_workingtree()
 
         tree2.commit('noop', rev_id='rev-1_1_2')
         self.assertEqual(0, tree1.merge_from_branch(tree2.branch))
@@ -246,7 +246,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                      committer='jerry@foo.com',
                      timestamp=1166046003.00, timezone=0)
 
-        tree4 = tree3.bzrdir.clone('tree4').open_workingtree()
+        tree4 = tree3.bzrdir.sprout('tree4').open_workingtree()
 
         tree3.commit('noop', rev_id='rev-1_2_2',
                      committer='jerry@foo.com',
@@ -275,7 +275,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree1/file', base_text)])
         tree1.add(['file'], ['file-id'])
         tree1.commit('base', rev_id='rev-base')
-        tree2 = tree1.bzrdir.clone('tree2').open_workingtree()
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
 
         self.build_tree_contents([('tree1/file', a_text),
                                   ('tree2/file', b_text)])

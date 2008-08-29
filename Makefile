@@ -83,6 +83,7 @@ endif
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/developer-guide/HACKING.txt \
+	doc/en/developer-guide/testing.txt \
 	doc/en/release-notes/NEWS.txt
 txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(derived_txt_files) \

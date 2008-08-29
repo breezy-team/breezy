@@ -437,7 +437,7 @@ class TestSetPluginsPath(TestCase):
 
     def test_set_plugins_path_with_trailing_slashes(self):
         """set_plugins_path should set the module __path__ based on
-        BZR_PLUGIN_PATH."""
+        BZR_PLUGIN_PATH after removing all trailing slashes."""
         old_path = bzrlib.plugins.__path__
         old_env = os.environ.get('BZR_PLUGIN_PATH')
         try:
@@ -445,8 +445,9 @@ class TestSetPluginsPath(TestCase):
             os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
                 "second/\\/\\/"
             bzrlib.plugin.set_plugins_path()
-            expected_path = ['first', 'second',
-                os.path.dirname(bzrlib.plugins.__file__)]
+            # We expect our nominated paths to have all path-seps removed,
+            # and this is testing only that.
+            expected_path = ['first', 'second']
             self.assertEqual(expected_path,
                 bzrlib.plugins.__path__[:len(expected_path)])
         finally:
