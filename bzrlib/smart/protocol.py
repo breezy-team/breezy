@@ -323,7 +323,6 @@ class _StatefulDecoder(object):
 
     def __init__(self):
         self.finished_reading = False
-        # self._in_buffer = None
         self._in_buffer_list = []
         self._in_buffer_len = 0
         self.unused_data = ''
@@ -334,7 +333,10 @@ class _StatefulDecoder(object):
         if len(self._in_buffer_list) == 1:
             return self._in_buffer_list[0]
         in_buffer = ''.join(self._in_buffer_list)
-        assert len(in_buffer) == self._in_buffer_len
+        if len(in_buffer) != self._in_buffer_len:
+            raise AssertionError(
+                "Length of buffer did not match expected value: %s != %s"
+                % self._in_buffer_len, len(in_buffer))
         self._in_buffer_list = [in_buffer]
         return in_buffer
 
@@ -347,7 +349,9 @@ class _StatefulDecoder(object):
         _set_in_buffer() if they actually need to consume the bytes.
         """
         # check if we can yield the bytes from just the first entry in our list
-        assert len(self._in_buffer_list) > 0
+        if len(self._in_buffer_list) == 0:
+            raise AssertionError('Callers must be sure we have buffered bytes'
+                ' before calling _get_in_bytes')
         if len(self._in_buffer_list[0]) > count:
             return self._in_buffer_list[0][:count]
         # We can't yield it from the first buffer, so collapse all buffers, and
