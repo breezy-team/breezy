@@ -141,7 +141,7 @@ bool path_list_to_apr_array(apr_pool_t *pool, PyObject *l, apr_array_header_t **
 			PyErr_Format(PyExc_TypeError, "Expected list of strings, item was %s", item->ob_type->tp_name);
 			return false;
 		}
-		APR_ARRAY_PUSH(*ret, char *) = svn_path_canonicalize(PyString_AsString(item), pool);
+		APR_ARRAY_PUSH(*ret, const char *) = svn_path_canonicalize(PyString_AsString(item), pool);
 	}
 	return true;
 }

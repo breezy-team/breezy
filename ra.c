@@ -1251,9 +1251,11 @@ static PyObject *get_commit_editor(PyObject *self, PyObject *args, PyObject *kwa
 	const svn_delta_editor_t *editor;
 	void *edit_baton;
 	RemoteAccessObject *ra = (RemoteAccessObject *)self;
-	apr_hash_t *hash_lock_tokens, *hash_revprops;
+	apr_hash_t *hash_lock_tokens;
 #if SVN_VER_MAJOR == 1 && SVN_VER_MINOR < 5
 	PyObject *py_log_msg;
+#else
+	apr_hash_t *hash_revprops;
 #endif
 	svn_error_t *err;
 
