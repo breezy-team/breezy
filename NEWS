@@ -54,13 +54,6 @@ IN DEVELOPMENT
     * Merging from a previously joined branch will no longer cause 
       a traceback. (Jelmer Vernooij, #203376)
     
-    * ``RemoteTransport.readv()`` was being inefficient about how it
-      buffered the readv data and processed it. It would keep appending to
-      the same string (causing many copies) and then pop bytes out of the
-      start of the string (causing more copies).
-      With this patch "bzr+ssh://local" speeds improve by up to 3x.
-      (John Arbash Meinel)
-
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
@@ -113,6 +106,46 @@ IN DEVELOPMENT
       allows plugins to add new clients by registering them with
       ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
       clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+bzr 1.6.1rc1 2008-08-29
+-----------------------
+
+This release fixes a few regressions found in the 1.6 client. Fetching
+changes was using an O(N^2) buffering algorithm, so for large projects it
+would cause memory thrashing. There is also a specific problem with the
+``--1.6-rich-root`` format, which prevented stacking on top of
+``--rich-root-pack`` repositories, and could allow users to accidentally
+fetch experimental data (``-subtree``) without representing it properly.
+The ``--1.6-rich-root`` format has been deprecated and users are
+recommended to upgrade to ``--1.6.1-rich-root`` immediately.  Also we
+re-introduced a workaround for users who have repositories with incorrect
+nodes (not possible if you only used official releases).
+I should also clarify that none of this is data loss level issues, but
+still sufficient enough to warrant an updated release.
+
+  BUG FIXES:
+
+    * ``RemoteTransport.readv()`` was being inefficient about how it
+      buffered the readv data and processed it. It would keep appending to
+      the same string (causing many copies) and then pop bytes out of the
+      start of the string (causing more copies).
+      With this patch "bzr+ssh://local" can improve dramatically,
+      especially for projects with large files.
+      (John Arbash Meinel)
+
+    * Revision texts were always meant to be stored as fulltexts. There
+      was a bug in a bzr.dev version that would accidentally create deltas
+      when copying from a Pack repo to a Knit repo. This has been fixed,
+      but to support those repositories, we know always request full texts
+      for Revision texts. (John Arbash Meinel, #261339)
+
+    * The previous ``--1.6-rich-root`` format used an incorrect xml
+      serializer, which would accidentally support fetching from a
+      repository that supported subtrees, even though the local one would
+      not. We deprecated that format, and introduced a new one that uses
+      the correct serializer ``--1.6.1-rich-root``.
+      (John Arbash Meinel, #262333)
 
 
 bzr 1.6 2008-08-25
