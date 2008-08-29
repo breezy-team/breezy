@@ -17,6 +17,7 @@
 """Foreign branch utilities."""
 
 from bzrlib import errors, registry
+from bzrlib.commands import Command, Option
 
 
 class VcsMapping(object):
@@ -67,4 +68,66 @@ class FakeControlFiles(object):
 
     def break_lock(self):
         pass
+
+
+class cmd_dpush(Command):
+    """Push diffs into Subversion without any Bazaar-specific properties set.
+
+    This will afterwards rebase the local Bazaar branch on the Subversion 
+    branch unless the --no-rebase option is used, in which case 
+    the two branches will be out of sync. 
+    """
+    takes_args = ['location?']
+    takes_options = ['remember', Option('directory',
+            help='Branch to push from, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+            Option('no-rebase', help="Don't rebase after push")]
+
+    def run(self, location=None, remember=False, directory=None, 
+            no_rebase=False):
+        from bzrlib import urlutils
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.branch import Branch
+        from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.workingtree import WorkingTree
+
+        if directory is None:
+            directory = "."
+        try:
+            source_wt = WorkingTree.open_containing(directory)[0]
+            source_branch = source_wt.branch
+        except NoWorkingTree:
+            source_branch = Branch.open_containing(directory)[0]
+            source_wt = None
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
+        target_branch = bzrdir.open_branch()
+        target_branch.lock_write()
+        revid_map = source_branch.dpush(target_branch)
+        # We successfully created the target, remember it
+        if source_branch.get_push_location() is None or remember:
+            source_branch.set_push_location(target_branch.base)
+        if not no_rebase:
+            _, old_last_revid = source_branch.last_revision_info()
+            new_last_revid = revid_map[old_last_revid]
+            if source_wt is not None:
+                source_wt.pull(target_branch, overwrite=True, 
+                               stop_revision=new_last_revid)
+            else:
+                source_branch.pull(target_branch, overwrite=True, 
+                                   stop_revision=new_last_revid)
+
+
 
