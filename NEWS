@@ -4,8 +4,8 @@ Bazaar Release Notes
 
 .. contents::
 
-bzr 1.6rc1 IN DEVELOPMENT
--------------------------
+bzr 1.6.1rc1 IN DEVELOPMENT
+---------------------------
 
   BUG FIXES:
 
@@ -13,8 +13,22 @@ bzr 1.6rc1 IN DEVELOPMENT
       buffered the readv data and processed it. It would keep appending to
       the same string (causing many copies) and then pop bytes out of the
       start of the string (causing more copies).
-      With this patch "bzr+ssh://local" speeds improve by up to 3x.
+      With this patch "bzr+ssh://local" can improve dramatically,
+      especially for projects with large files.
       (John Arbash Meinel)
+
+    * Revision texts were always meant to be stored as fulltexts. There
+      was a bug in a bzr.dev version that would accidentally create deltas
+      when copying from a Pack repo to a Knit repo. This has been fixed,
+      but to support those repositories, we know always request full texts
+      for Revision texts. (John Arbash Meinel, #261339)
+
+    * The previous ``--1.6-rich-root`` format used an incorrect xml
+      serializer, which would accidentally support fetching from a
+      repository that supported subtrees, even though the local one would
+      not. We deprecated that format, and introduced a new one that uses
+      the correct serializer ``--1.6.1-rich-root``.
+      (John Arbash Meinel, #262333)
 
 
 bzr 1.6 2008-08-25
