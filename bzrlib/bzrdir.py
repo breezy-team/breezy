@@ -153,6 +153,7 @@ class BzrDir(object):
             raise errors.UnsupportedFormatError(format=format)
         if recommend_upgrade \
             and getattr(format, 'upgrade_recommended', False):
+            import pdb; pdb.set_trace()
             ui.ui_factory.recommend_upgrade(
                 format.get_format_description(),
                 basedir)
@@ -3031,6 +3032,16 @@ format_registry.register_metadir('1.6-rich-root',
          'and rich root data (needed for bzr-svn). ',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('1.6-old-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRootBroken',
+    help='(deprecated, use --1.6-rich-root instead) A branch and pack based'
+         ' repository that supports stacking and rich root data (needed for'
+         ' bzr-svn).',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    deprecated=True,
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
