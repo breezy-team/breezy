@@ -666,6 +666,26 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # with buffering
         self.assertIsNot(None, index._nodes)
 
+    def test_iter_entries_buffers_by_bytes_read(self):
+        index = self.make_index(nodes=self.make_nodes(64))
+        list(index.iter_entries([self.make_key(10)]))
+        # The first time through isn't enough to trigger a buffer all
+        self.assertIs(None, index._nodes)
+        self.assertEqual(4096, index._bytes_read)
+        # Grabbing a key in that same page won't trigger a buffer all, as we
+        # still haven't read 50% of the file
+        list(index.iter_entries([self.make_key(11)]))
+        self.assertIs(None, index._nodes)
+        self.assertEqual(4096, index._bytes_read)
+        # We haven't read more data, so reading outside the range won't trigger
+        # a buffer all right away
+        list(index.iter_entries([self.make_key(40)]))
+        self.assertIs(None, index._nodes)
+        self.assertEqual(8192, index._bytes_read)
+        # But on the next pass, we will trigger buffer all
+        list(index.iter_entries([self.make_key(32)]))
+        self.assertIsNot(None, index._nodes)
+
     def test_iter_entries_references_resolved(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', ), ('ref', )], )),
@@ -789,7 +809,20 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             (('name', ), '', ()), (('foo', ), '', ())])
         self.assertEqual(2, index.key_count())
 
-    def test_readv_all_triggers_buffer_all(self):
+    def test_read_and_parse_tracks_real_read_value(self):
+        index = self.make_index(nodes=self.make_nodes(10))
+        del index._transport._activity[:]
+        index._read_and_parse([(0, 200)])
+        self.assertEqual([
+            ('readv', 'index', [(0, 200)], True, index._size),
+            ],
+            index._transport._activity)
+        # The readv expansion code will expand the initial request to 4096
+        # bytes, which is more than enough to read the entire index, and we
+        # will track the fact that we read that many bytes.
+        self.assertEqual(index._size, index._bytes_read)
+
+    def test_read_and_parse_triggers_buffer_all(self):
         index = self.make_index(key_elements=2, nodes=[
             (('name', 'fin1'), 'data', ()),
             (('name', 'fin2'), 'beta', ()),

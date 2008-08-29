@@ -272,6 +272,8 @@ class GraphIndex(object):
         self._keys_by_offset = None
         self._nodes_by_key = None
         self._size = size
+        # The number of bytes we've read so far in trying to process this file
+        self._bytes_read = 0
 
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
@@ -477,6 +479,12 @@ class GraphIndex(object):
             return []
         if self._size is None and self._nodes is None:
             self._buffer_all()
+
+        if self._nodes is None and self._bytes_read * 2 >= self._size:
+            # We've already read more than 50% of the file, go ahead and buffer
+            # the whole thing
+            self._buffer_all()
+
         # We fit about 20 keys per minimum-read (4K), so if we are looking for
         # more than 1/20th of the index its likely (assuming homogenous key
         # spread) that we'll read the entire index. If we're going to do that,
@@ -989,6 +997,7 @@ class GraphIndex(object):
                 self._size)
             # parse
             for offset, data in readv_data:
+                self._bytes_read += len(data)
                 if offset == 0 and len(data) == self._size:
                     # We 'accidentally' read the whole range, go straight into
                     # '_buffer_all'. This could happen because the transport
