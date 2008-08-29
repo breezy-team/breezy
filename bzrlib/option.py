@@ -345,6 +345,10 @@ class RegistryOption(Option):
         for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
+            if not value_switches:
+                help = help + '  "' + name + '": ' + switch_help
+                if not help.endswith("."):
+                    help = help + "."
         return RegistryOption(name_, help, reg, title=title,
             value_switches=value_switches, enum_switch=enum_switch)
 

@@ -26,6 +26,7 @@ import warnings
 
 import bzrlib
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     errors,
     memorytree,
@@ -421,7 +422,7 @@ class TestTreeProviderAdapter(TestCase):
         tests = list(iter(suite))
         # XXX We should not have tests fail as we add more scenarios
         # abentley 20080412
-        self.assertEqual(5, len(tests))
+        self.assertEqual(6, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = workingtree.WorkingTreeFormat3
@@ -547,6 +548,43 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
 
+    def test_make_branch_builder(self):
+        builder = self.make_branch_builder('dir')
+        self.assertIsInstance(builder, branchbuilder.BranchBuilder)
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+
+    def test_make_branch_builder_with_format(self):
+        # Use a repo layout that doesn't conform to a 'named' layout, to ensure
+        # that the format objects are used.
+        format = bzrdir.BzrDirMetaFormat1()
+        repo_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repo_format
+        builder = self.make_branch_builder('dir', format=format)
+        the_branch = builder.get_branch()
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+        self.assertEqual(format.repository_format.__class__,
+                         the_branch.repository._format.__class__)
+        self.assertEqual(repo_format.get_format_string(),
+                         self.get_transport().get_bytes(
+                            'dir/.bzr/repository/format'))
+
+    def test_make_branch_builder_with_format_name(self):
+        builder = self.make_branch_builder('dir', format='knit')
+        the_branch = builder.get_branch()
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+        dir_format = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(dir_format.repository_format.__class__,
+                         the_branch.repository._format.__class__)
+        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+                         self.get_transport().get_bytes(
+                            'dir/.bzr/repository/format'))
+
     def test_safety_net(self):
         """No test should modify the safety .bzr directory.
 
@@ -604,6 +642,18 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertIsDirectory('a_dir', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
+
+    def test_make_branch_builder(self):
+        builder = self.make_branch_builder('dir')
+        rev_id = builder.build_commit()
+        self.failUnlessExists('dir')
+        a_dir = bzrdir.BzrDir.open('dir')
+        self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
+        a_branch = a_dir.open_branch()
+        builder_branch = builder.get_branch()
+        self.assertEqual(a_branch.base, builder_branch.base)
+        self.assertEqual((1, rev_id), builder_branch.last_revision_info())
+        self.assertEqual((1, rev_id), a_branch.last_revision_info())
 
 
 class TestTestCaseTransports(TestCaseWithTransport):

@@ -1296,6 +1296,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     upgrade_recommended = False
 
+    _tree_class = WorkingTree4
+
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
@@ -1339,7 +1341,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         state = dirstate.DirState.initialize(local_path)
         state.unlock()
         del state
-        wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
                          _bzrdir=a_bzrdir,
@@ -1347,6 +1349,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt._new_tree()
         wt.lock_tree_write()
         try:
+            self._init_custom_control_files(wt)
             if revision_id in (None, NULL_REVISION):
                 if branch.repository.supports_rich_root():
                     wt._set_root_id(generate_ids.gen_root_id())
@@ -1390,13 +1393,22 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             wt.unlock()
         return wt
 
+    def _init_custom_control_files(self, wt):
+        """Subclasses with custom control files should override this method.
+        
+        The working tree and control files are locked for writing when this
+        method is called.
+        
+        :param wt: the WorkingTree object
+        """
+
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.
 
         :param a_bzrdir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
-        return WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+        return self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                            branch=a_bzrdir.open_branch(),
                            _format=self,
                            _bzrdir=a_bzrdir,
@@ -1968,7 +1980,6 @@ class InterDirStateTree(InterTree):
         # record is handled, but isn't interesting to process (unchanged)
         uninteresting = object()
 
-
         old_dirname_to_file_id = {}
         new_dirname_to_file_id = {}
         # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
@@ -2157,14 +2168,15 @@ class InterDirStateTree(InterTree):
                     return uninteresting
             elif source_minikind in 'a' and target_minikind in 'fdlt':
                 # looks like a new file
+                path = pathjoin(entry[0][0], entry[0][1])
+                # parent id is the entry for the path in the target tree
+                # TODO: these are the same for an entire directory: cache em.
+                parent_id = state._get_entry(target_index,
+                                             path_utf8=entry[0][0])[0][2]
+                if parent_id == entry[0][2]:
+                    parent_id = None
                 if path_info is not None:
-                    path = pathjoin(entry[0][0], entry[0][1])
-                    # parent id is the entry for the path in the target tree
-                    # TODO: these are the same for an entire directory: cache em.
-                    parent_id = state._get_entry(target_index,
-                                                 path_utf8=entry[0][0])[0][2]
-                    if parent_id == entry[0][2]:
-                        parent_id = None
+                    # Present on disk:
                     if use_filesystem_for_exec:
                         # We need S_ISREG here, because we aren't sure if this
                         # is a file or not.
@@ -2182,9 +2194,15 @@ class InterDirStateTree(InterTree):
                            (None, path_info[2]),
                            (None, target_exec))
                 else:
-                    # but its not on disk: we deliberately treat this as just
-                    # never-present. (Why ?! - RBC 20070224)
-                    pass
+                    # Its a missing file, report it as such.
+                    return (entry[0][2],
+                           (None, utf8_decode(path)[0]),
+                           False,
+                           (False, True),
+                           (None, parent_id),
+                           (None, utf8_decode(entry[0][1])[0]),
+                           (None, None),
+                           (None, False))
             elif source_minikind in 'fdlt' and target_minikind in 'a':
                 # unversioned, possibly, or possibly not deleted: we dont care.
                 # if its still on disk, *and* theres no other entry at this
@@ -2508,7 +2526,6 @@ class InterDirStateTree(InterTree):
                         current_dir_info = dir_iterator.next()
                     except StopIteration:
                         current_dir_info = None
-
 
     @staticmethod
     def is_compatible(source, target):
