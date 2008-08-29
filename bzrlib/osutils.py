@@ -1119,6 +1119,34 @@ def check_legal_path(path):
         raise errors.IllegalPath(path)
 
 
+_WIN32_ERROR_DIRECTORY = 267 # Similar to errno.ENOTDIR
+
+def _is_error_enotdir(e):
+    """Check if this exception represents ENOTDIR.
+
+    Unfortunately, python is very inconsistent about the exception
+    here. The cases are:
+      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
+      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
+         which is the windows error code.
+      3) Windows, Python2.5 uses errno == EINVAL and
+         winerror == ERROR_DIRECTORY
+
+    :param e: An Exception object (expected to be OSError with an errno
+        attribute, but we should be able to cope with anything)
+    :return: True if this represents an ENOTDIR error. False otherwise.
+    """
+    en = getattr(e, 'errno', None)
+    if (en == errno.ENOTDIR
+        or (sys.platform == 'win32'
+            and (en == _WIN32_ERROR_DIRECTORY
+                 or (en == errno.EINVAL
+                     and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+        ))):
+        return True
+    return False
+
+
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
@@ -1168,11 +1196,17 @@ def walkdirs(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
+        try:
+            names = sorted(_listdir(top))
+        except OSError, e:
+            if not _is_error_enotdir(e):
+                raise
+        else:
+            for name in names:
+                abspath = top_slash + name
+                statvalue = _lstat(abspath)
+                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock

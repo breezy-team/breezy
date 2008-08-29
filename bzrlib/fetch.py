@@ -180,7 +180,7 @@ class RepoFetcher(object):
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
                         text_keys, self.to_repository._fetch_order,
-                        self.to_repository._fetch_uses_deltas))
+                        not self.to_repository._fetch_uses_deltas))
                     # Cause an error if a text occurs after we have done the
                     # copy.
                     text_keys = None
@@ -243,7 +243,7 @@ class RepoFetcher(object):
             to_weave.insert_record_stream(from_weave.get_record_stream(
                 [(rev_id,) for rev_id in revs],
                 self.to_repository._fetch_order,
-                self.to_repository._fetch_uses_deltas))
+                not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
 
@@ -255,7 +255,7 @@ class RepoFetcher(object):
         to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
             [(rev_id,) for rev_id in revs],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas)))
+            not self.to_repository._fetch_uses_deltas)))
         self._fetch_just_revision_texts(revs)
 
     def _fetch_just_revision_texts(self, version_ids):
@@ -264,7 +264,7 @@ class RepoFetcher(object):
         to_rf.insert_record_stream(from_rf.get_record_stream(
             [(rev_id,) for rev_id in version_ids],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas))
+            not self.to_repository._fetch_uses_deltas))
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and

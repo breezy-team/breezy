@@ -438,11 +438,25 @@ class TestStatus(TestCaseWithTransport):
         b_tree.add('b')
         b_tree.commit('b')
 
-        chdir('a')
-        self.run_bzr('merge ../b')
-        out, err = self.run_bzr('status --no-pending')
+        self.run_bzr('merge ../b', working_dir='a')
+        out, err = self.run_bzr('status --no-pending', working_dir='a')
         self.assertEquals(out, "added:\n  b\n")
 
+    def test_pending_specific_files(self):
+        """With a specific file list, pending merges are not shown."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a', 'content of a\n')])
+        tree.add('a')
+        r1_id = tree.commit('one')
+        alt = tree.bzrdir.sprout('alt').open_workingtree()
+        self.build_tree_contents([('alt/a', 'content of a\nfrom alt\n')])
+        alt_id = alt.commit('alt')
+        tree.merge_from_branch(alt.branch)
+        output = StringIO()
+        show_tree_status(tree, to_file=output)
+        self.assertContainsRe(output.getvalue(), 'pending merges:')
+        out, err = self.run_bzr('status tree/a')
+        self.assertNotContainsRe(out, 'pending merges:')
 
 
 class TestStatusEncodings(TestCaseWithTransport):

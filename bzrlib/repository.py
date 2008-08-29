@@ -291,8 +291,14 @@ class CommitBuilder(object):
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
-                # appropriate.
-                return None, (ie.revision == self._new_revision_id)
+                # appropriate. If its not being considered for committing then
+                # it and all its parents to the root must be unaltered so
+                # no-change against the basis.
+                if ie.revision == self._new_revision_id:
+                    raise AssertionError("Impossible situation, a skipped "
+                        "inventory entry (%r) claims to be modified in this "
+                        "commit (%r).", (ie, self._new_revision_id))
+                return None, False
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
@@ -530,21 +536,21 @@ class Repository(object):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
-        if not self._add_fallback_repository_check(repository):
-            raise errors.IncompatibleRepositories(self, repository)
+        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
 
-    def _add_fallback_repository_check(self, repository):
+    def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
+
+        Raise an error if not.
         
         :param repository: A repository to fallback to.
-        :return: True if the repositories can stack ok.
         """
-        return InterRepository._same_model(self, repository)
+        return InterRepository._assert_same_model(self, repository)
 
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
@@ -691,9 +697,9 @@ class Repository(object):
         # Additional places to query for data.
         self._fallback_repositories = []
         # What order should fetch operations request streams in?
-        # The default is unsorted as that is the cheapest for an origin to
+        # The default is unordered as that is the cheapest for an origin to
         # provide.
-        self._fetch_order = 'unsorted'
+        self._fetch_order = 'unordered'
         # Does this repository use deltas that can be fetched as-deltas ?
         # (E.g. knits, where the knit deltas can be transplanted intact.
         # We default to False, which will ensure that enough data to get
@@ -967,11 +973,12 @@ class Repository(object):
                 not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
+        # if there is no specific appropriate InterRepository, this will get
+        # the InterRepository base class, which raises an
+        # IncompatibleRepositories when asked to fetch.
         inter = InterRepository.get(source, self)
-        try:
-            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
-        except NotImplementedError:
-            raise errors.IncompatibleRepositories(source, self)
+        return inter.fetch(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts)
 
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
@@ -1625,7 +1632,6 @@ class Repository(object):
         else:
             return self.get_inventory(revision_id)
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2005,7 +2011,6 @@ class MetaDirRepository(Repository):
         super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
-    @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         return self._transport.has('shared-storage')
@@ -2362,10 +2367,16 @@ class InterRepository(InterObject):
         :param pb: optional progress bar to use for progress reports. If not
                    provided a default one will be created.
 
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
+        :returns: (copied_revision_count, failures).
         """
-        raise NotImplementedError(self.fetch)
+        # Normally we should find a specific InterRepository subclass to do
+        # the fetch; if nothing else then at least InterSameDataRepository.
+        # If none of them is suitable it looks like fetching is not possible;
+        # we try to give a good message why.  _assert_same_model will probably
+        # give a helpful message; otherwise a generic one.
+        self._assert_same_model(self.source, self.target)
+        raise errors.IncompatibleRepositories(self.source, self.target,
+            "no suitableInterRepository found")
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
@@ -2445,12 +2456,27 @@ class InterRepository(InterObject):
 
     @staticmethod
     def _same_model(source, target):
-        """True if source and target have the same data representation."""
+        """True if source and target have the same data representation.
+        
+        Note: this is always called on the base class; overriding it in a
+        subclass will have no effect.
+        """
+        try:
+            InterRepository._assert_same_model(source, target)
+            return True
+        except errors.IncompatibleRepositories, e:
+            return False
+
+    @staticmethod
+    def _assert_same_model(source, target):
+        """Raise an exception if two repositories do not use the same model.
+        """
         if source.supports_rich_root() != target.supports_rich_root():
-            return False
+            raise errors.IncompatibleRepositories(source, target,
+                "different rich-root support")
         if source._serializer != target._serializer:
-            return False
-        return True
+            raise errors.IncompatibleRepositories(source, target,
+                "different serializers")
 
 
 class InterSameDataRepository(InterRepository):
@@ -2731,10 +2757,15 @@ class InterPackRepo(InterSameDataRepository):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        if len(self.source._fallback_repositories) > 0:
+        if (len(self.source._fallback_repositories) > 0 or
+            len(self.target._fallback_repositories) > 0):
+            # The pack layer is not aware of fallback repositories, so when
+            # fetching from a stacked repository or into a stacked repository
+            # we use the generic fetch logic which uses the VersionedFiles
+            # attributes on repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
-                                      pb, find_ghosts)
+                                  pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
         from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
