@@ -132,7 +132,7 @@ class cmd_dpush(Command):
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        revid_map = source_branch.dpush(target_branch)
+        revid_map = source_branch.dpull(target_branch)
         # We successfully created the target, remember it
         if source_branch.get_push_location() is None or remember:
             source_branch.set_push_location(target_branch.base)
