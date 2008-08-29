@@ -999,14 +999,9 @@ class GraphIndex(object):
             for offset, data in readv_data:
                 self._bytes_read += len(data)
                 if offset == 0 and len(data) == self._size:
-                    # We 'accidentally' read the whole range, go straight into
-                    # '_buffer_all'. This could happen because the transport
-                    # upcast our readv request, or because we actually need
-                    # most of the file.
-                    # TODO: This could have been triggered by
-                    # _lookup_keys_via_location, so we can't just return
-                    # unconditionally here, we need to still fill out the
-                    # _bisect_nodes list.
+                    # We read the whole range, most likely because the
+                    # Transport upcast our readv ranges into one long request
+                    # for enough total data to grab the whole index.
                     self._buffer_all(StringIO(data))
                     return
                 if self._bisect_nodes is None:
