@@ -153,7 +153,6 @@ class BzrDir(object):
             raise errors.UnsupportedFormatError(format=format)
         if recommend_upgrade \
             and getattr(format, 'upgrade_recommended', False):
-            import pdb; pdb.set_trace()
             ui.ui_factory.recommend_upgrade(
                 format.get_format_description(),
                 basedir)
