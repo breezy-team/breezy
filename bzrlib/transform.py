@@ -2413,6 +2413,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
             if parent_file_id is not None:
                 tt.unversion_file(parent_id)
             new_conflicts.add((c_type, 'Created directory', new_parent_id))
+        elif c_type == 'versioning no contents':
+            tt.cancel_versioning(conflict[1])
     return new_conflicts
 
 
