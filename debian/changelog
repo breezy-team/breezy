@@ -1,5 +1,9 @@
 bzr-builddeb (2.1) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
+  * Add simple deb: directory service for Bazaar that uses the dpkg Vcs-* fields.
+
+  [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
 
  -- James Westby <james.westby@canonical.com>  Thu, 28 Aug 2008 11:41:35 +0100
