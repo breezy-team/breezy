@@ -2178,6 +2178,8 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
 
 def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                  backups, merge_modified, basis_tree=None):
+    if basis_tree is not None:
+        basis_tree.lock_read()
     change_list = target_tree.iter_changes(working_tree,
         specific_files=specific_files, pb=pb)
     if target_tree.get_root_id() is None:
