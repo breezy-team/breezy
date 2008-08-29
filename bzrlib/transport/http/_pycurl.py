@@ -267,17 +267,20 @@ class PyCurlTransport(HttpTransportBase):
             self._curl_perform(curl, header, ['Expect: '])
         except pycurl.error, e:
             if e[0] == CURLE_SEND_ERROR:
-                # This has been observed when curl assumes a closed connection
-                # when talking to HTTP/1.0 servers, getting a 403, but trying
-                # to send the request body anyway. (see bug #225020)
-                code = curl.getinfo(pycurl.HTTP_CODE)
-                if code == 403:
-                    raise errors.InvalidHttpResponse(
-                        abspath,
-                        'Unexpected send error,'
-                        ' the server probably closed the connection')
-            # Re-raise otherwise
-            raise
+                # When talking to an HTTP/1.0 server, getting a 400+ error code
+                # triggers a bug in some combinations of curl/kernel in rare
+                # occurrences. Basically, the server closes the connection
+                # after sending the error but the client (having received and
+                # parsed the response) still try to send the request body (see
+                # bug #225020 and its upstream associated bug).  Since the
+                # error code and the headers are known to be available, we just
+                # swallow the exception, leaving the upper levels handle the
+                # 400+ error.
+                mutter('got pycurl error in POST: %s, %s, %s, url: %s ',
+                       e[0], e[1], e, abspath)
+            else:
+                # Re-raise otherwise
+                raise
         data.seek(0)
         code = curl.getinfo(pycurl.HTTP_CODE)
         msg = self._parse_headers(header)
