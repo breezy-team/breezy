@@ -85,9 +85,12 @@ class SvnRemoteAccess(BzrDir):
             transport = transport.clone_root()
         return SvnRepository(self, transport, self.branch_path)
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
-        return bzrlib.bzrdir.format_registry.make_bzrdir("rich-root-pack")
+        if stacked:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6-rich-root")
+        else:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("rich-root-pack")
 
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
