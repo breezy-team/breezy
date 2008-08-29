@@ -2714,11 +2714,11 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
 
-    def _stub_initialize_remote(self, branch):
-        """As a special workaround create critical control files for a remote working tree.
-        
+    def _stub_initialize_on_transport(self, transport):
+        """Workaround: create control files for a remote working tree.
+
         This ensures that it can later be updated and dealt with locally,
-        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
+        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
         no working tree.  (See bug #43064).
         """
         sio = StringIO()
@@ -2729,7 +2729,6 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             mode=branch.control_files._file_mode)
         branch._transport.put_bytes('pending-merges', '',
             mode=branch.control_files._file_mode)
-        
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

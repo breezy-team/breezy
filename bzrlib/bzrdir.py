@@ -1240,6 +1240,9 @@ class BzrDirPreSplitOut(BzrDir):
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
         """See BzrDir.create_workingtree."""
+        # The workingtree is sometimes created when the bzrdir is created,
+        # but not when cloning.
+
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
         # created
@@ -1249,13 +1252,25 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be 
         # done on this format anyway. So - acceptable wart.
-        result = self.open_workingtree(recommend_upgrade=False)
+        try:
+            result = self.open_workingtree(recommend_upgrade=False)
+        except errors.NoSuchFile:
+            result = self._init_workingtree()
         if revision_id is not None:
             if revision_id == _mod_revision.NULL_REVISION:
                 result.set_parent_ids([])
             else:
                 result.set_parent_ids([revision_id])
         return result
+
+    def _init_workingtree(self):
+        from bzrlib.workingtree import WorkingTreeFormat2
+        try:
+            return WorkingTreeFormat2().initialize(self)
+        except errors.NotLocalUrl:
+            # Even though we can't access the working tree, we need to
+            # create its control files.
+            return WorkingTreeFormat2()._stub_initialize_remote(self.transport)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
@@ -1892,17 +1907,11 @@ class BzrDirFormat5(BzrDirFormat):
         """
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
-        from bzrlib.workingtree import WorkingTreeFormat2
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
-            try:
-                WorkingTreeFormat2().initialize(result)
-            except errors.NotLocalUrl:
-                # Even though we can't access the working tree, we need to
-                # create its control files.
-                WorkingTreeFormat2()._stub_initialize_remote(branch)
+            result._init_workingtree()
         return result
 
     def _open(self, transport):
