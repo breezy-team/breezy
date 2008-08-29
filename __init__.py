@@ -152,9 +152,9 @@ class cmd_builddeb(Command):
   You can also specify directories to use for different things. --build-dir
   is the directory to build the packages beneath, which defaults to
   '../build-area'. '--orig-dir' specifies the directory that contains the
-  .orig.tar.gz files , which defaults to '..'. '--result-dir' specifies where
+  .orig.tar.gz files , which defaults to '..'. '--result' specifies where
   the resulting package files should be placed, which defaults to '..'.
-  --result-dir will have problems if you use a build command that places
+  --result will have problems if you use a build command that places
   the results in a different directory.
 
   The --reuse option will be useful if you are in merge mode, and the upstream

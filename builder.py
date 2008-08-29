@@ -337,6 +337,11 @@ class DebBuild(object):
     files = changes.files()
     if not os.path.exists(result):
       os.makedirs(result)
+    dir, base = os.path.split(changes.filename())
+    if dir == result:
+      mutter("Not moving result as source and destination locations "
+             "are the same")
+      return
     mutter("Moving %s to %s", changes.filename(), result)
     shutil.move(changes.filename(), result)
     mutter("Moving all files given in %s", changes.filename())
