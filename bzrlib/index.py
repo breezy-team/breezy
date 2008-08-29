@@ -468,13 +468,19 @@ class GraphIndex(object):
             keys supplied. No additional keys will be returned, and every
             key supplied that is in the index will be returned.
         """
-        # PERFORMANCE TODO: parse and bisect all remaining data at some
-        # threshold of total-index processing/get calling layers that expect to
-        # read the entire index to use the iter_all_entries  method instead.
         keys = set(keys)
         if not keys:
             return []
         if self._size is None and self._nodes is None:
+            self._buffer_all()
+        # We fit about 20 keys per minimum-read (4K), so if we are looking for
+        # more than 1/20th of the index its likely (assuming homogenous key
+        # spread) that we'll read the entire index. If we're going to do that,
+        # buffer the whole thing. A better analysis might take key spread into
+        # account - but B+Tree indices are better anyway.
+        # We could look at all data read, and use a threshold there, which will
+        # trigger on ancestry walks, but that is not yet fully mapped out.
+        if self._nodes is None and len(keys) * 20 > self.key_count():
             self._buffer_all()
         if self._nodes is not None:
             return self._iter_entries_from_total_buffer(keys)

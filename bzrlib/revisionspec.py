@@ -596,7 +596,7 @@ class RevisionSpec_date(RevisionSpec):
 
     One way to display all the changes since yesterday would be::
 
-        bzr log -r date:yesterday..-1
+        bzr log -r date:yesterday..
 
     Examples::
 
@@ -787,7 +787,7 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
 
     Diffing against this shows all the changes that were made in this branch,
     and is a good predictor of what merge will do.  The submit branch is
-    used by the bundle and merge directive comands.  If no submit branch
+    used by the bundle and merge directive commands.  If no submit branch
     is specified, the parent branch is used instead.
 
     The common ancestor is the last revision that existed in both

@@ -117,8 +117,9 @@ class LocalTransport(Transport):
         This function only exists for the LocalTransport, since it is
         the only one that has direct local access.
         This is mostly for stuff like WorkingTree which needs to know
-        the local working directory.
-        
+        the local working directory.  The returned path will always contain
+        forward slashes as the path separator, regardless of the platform.
+
         This function is quite expensive: it calls realpath which resolves
         symlinks.
         """

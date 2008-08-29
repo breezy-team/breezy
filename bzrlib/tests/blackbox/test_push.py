@@ -87,7 +87,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved location: %s\n' 
+                          'Using saved push location: %s\n' 
                           'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,

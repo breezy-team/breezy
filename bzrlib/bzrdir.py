@@ -217,7 +217,7 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo, stack_on)
+                force_new_repo, stack_on, self.root_transport.base)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
@@ -380,6 +380,7 @@ class BzrDir(object):
         repository used instead.
 
         If stack_on is supplied, will not seek a containing shared repo.
+
         :param force_new_repo: If True, require a new repository to be created.
         :param stack_on: If supplied, the location to stack on.  If not
             supplied, a default_stack_on location may be used.
@@ -636,7 +637,7 @@ class BzrDir(object):
 
     def _find_creation_modes(self):
         """Determine the appropriate modes for files and directories.
-        
+
         They're always set to be consistent with the base directory,
         assuming that this transport allows setting modes.
         """
@@ -655,9 +656,14 @@ class BzrDir(object):
             # directories and files are read-write for this user. This is
             # mostly a workaround for filesystems which lie about being able to
             # write to a directory (cygwin & win32)
-            self._dir_mode = (st.st_mode & 07777) | 00700
-            # Remove the sticky and execute bits for files
-            self._file_mode = self._dir_mode & ~07111
+            if (st.st_mode & 07777 == 00000):
+                # FTP allows stat but does not return dir/file modes
+                self._dir_mode = None
+                self._file_mode = None
+            else:
+                self._dir_mode = (st.st_mode & 07777) | 00700
+                # Remove the sticky and execute bits for files
+                self._file_mode = self._dir_mode & ~07111
 
     def _get_file_mode(self):
         """Return Unix mode for newly created files, or None.
@@ -978,12 +984,16 @@ class BzrDir(object):
             return False
 
     def _cloning_metadir(self):
-        """Produce a metadir suitable for cloning with."""
+        """Produce a metadir suitable for cloning with.
+        
+        :returns: (destination_bzrdir_format, source_repository)
+        """
         result_format = self._format.__class__()
         try:
             try:
                 branch = self.open_branch()
                 source_repository = branch.repository
+                result_format._branch_format = branch._format
             except errors.NotBranchError:
                 source_branch = None
                 source_repository = self.open_repository()
@@ -1007,12 +1017,18 @@ class BzrDir(object):
             result_format.workingtree_format = tree._format.__class__()
         return result_format, source_repository
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, require_stacking=False):
         """Produce a metadir suitable for cloning or sprouting with.
 
         These operations may produce workingtrees (yes, even though they're
         "cloning" something that doesn't have a tree), so a viable workingtree
         format must be selected.
+
+        :require_stacking: If True, non-stackable formats will be upgraded
+            to similar stackable formats.
+        :returns: a BzrDirFormat with all component formats either set
+            appropriately or set to None if that component should not be
+            created.
         """
         format, repository = self._cloning_metadir()
         if format._workingtree_format is None:
@@ -1020,6 +1036,20 @@ class BzrDir(object):
                 return format
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
+        if (require_stacking and not
+            format.get_branch_format().supports_stacking()):
+            # We need to make a stacked branch, but the default format for the
+            # target doesn't support stacking.  So force a branch that *can*
+            # support stacking.
+            from bzrlib.branch import BzrBranchFormat7
+            format._branch_format = BzrBranchFormat7()
+            mutter("using %r for stacking" % (format._branch_format,))
+            from bzrlib.repofmt import pack_repo
+            if format.repository_format.rich_root_data:
+                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+            else:
+                repo_format = pack_repo.RepositoryFormatKnitPack5()
+            format.repository_format = repo_format
         return format
 
     def checkout_metadir(self):
@@ -1051,7 +1081,8 @@ class BzrDir(object):
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
-        cloning_format = self.cloning_metadir()
+        cloning_format = self.cloning_metadir(stacked)
+        # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
         try:
             source_branch = self.open_branch()
@@ -1073,15 +1104,27 @@ class BzrDir(object):
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo = repository_policy.acquire_repository()
         if source_repository is not None:
+            # Fetch while stacked to prevent unstacked fetch from
+            # Branch.sprout.
             result_repo.fetch(source_repository, revision_id=revision_id)
 
-        # Create/update the result branch
-        if source_branch is not None:
-            result_branch = source_branch.sprout(result,
-                revision_id=revision_id)
-        else:
+        if source_branch is None:
+            # this is for sprouting a bzrdir without a branch; is that
+            # actually useful?
+            # Not especially, but it's part of the contract.
             result_branch = result.create_branch()
+        else:
+            # Force NULL revision to avoid using repository before stacking
+            # is configured.
+            result_branch = source_branch.sprout(
+                result, revision_id=_mod_revision.NULL_REVISION)
+            parent_location = result_branch.get_parent()
+        mutter("created new branch %r" % (result_branch,))
         repository_policy.configure_branch(result_branch)
+        if source_branch is not None:
+            source_branch.copy_content_into(result_branch, revision_id)
+            # Override copy_content_into
+            result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
         if isinstance(target_transport, LocalTransport) and (
@@ -1140,8 +1183,10 @@ class BzrDirPreSplitOut(BzrDir):
         """Pre-splitout bzrdirs do not suffer from stale locks."""
         raise NotImplementedError(self.break_lock)
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, require_stacking=False):
         """Produce a metadir suitable for cloning with."""
+        if require_stacking:
+            return format_registry.make_bzrdir('1.6')
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,
@@ -1173,7 +1218,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch."""
-        return self.open_branch()
+        return self._format.get_branch_format().initialize(self)
 
     def destroy_branch(self):
         """See BzrDir.destroy_branch."""
@@ -1821,6 +1866,10 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
+    def get_branch_format(self):
+        from bzrlib import branch
+        return branch.BzrBranchFormat4()
+
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
         return "All-in-one format 5"
@@ -1883,6 +1932,10 @@ class BzrDirFormat6(BzrDirFormat):
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
         return "All-in-one format 6"
+
+    def get_branch_format(self):
+        from bzrlib import branch
+        return branch.BzrBranchFormat4()
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -2973,13 +3026,13 @@ format_registry.register_metadir('rich-root-pack',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('stacked',
+format_registry.register_metadir('1.6',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
     help='A branch and pack based repository that supports stacking. ',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('stacked-rich-root',
+format_registry.register_metadir('1.6-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A branch and pack based repository that supports stacking '
          'and rich root data (needed for bzr-svn). ',

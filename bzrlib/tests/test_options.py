@@ -17,15 +17,12 @@
 import re
 
 from bzrlib import (
-    builtins,
     bzrdir,
     commands,
     errors,
     option,
-    repository,
-    symbol_versioning,
     )
-from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
+from bzrlib.builtins import cmd_commit
 from bzrlib.commands import Command, parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
@@ -41,16 +38,18 @@ class OptionTests(TestCase):
 
     def test_parse_args(self):
         """Option parser"""
-        eq = self.assertEquals
-        eq(parse_args(cmd_commit(), ['--help']),
-           ([], {'fixes': [], 'help': True}))
-        eq(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'fixes': [], 'message': 'biter'}))
+        # XXX: Using cmd_commit makes these tests overly sensitive to changes
+        # to cmd_commit, when they are meant to be about option parsing in
+        # general.
+        self.assertEqual(parse_args(cmd_commit(), ['--help']),
+           ([], {'exclude': [], 'fixes': [], 'help': True}))
+        self.assertEqual(parse_args(cmd_commit(), ['--message=biter']),
+           ([], {'exclude': [], 'fixes': [], 'message': 'biter'}))
 
     def test_no_more_opts(self):
         """Terminated options"""
-        self.assertEquals(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {'fixes': []}))
+        self.assertEqual(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
+                          (['-file-with-dashes'], {'exclude': [], 'fixes': []}))
 
     def test_option_help(self):
         """Options have help strings."""
@@ -67,7 +66,7 @@ class OptionTests(TestCase):
     def test_option_arg_help(self):
         """Help message shows option arguments."""
         out, err = self.run_bzr('help commit')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, r'--file[ =]MSGFILE')
 
     def test_unknown_short_opt(self):
@@ -81,8 +80,7 @@ class OptionTests(TestCase):
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
-        self.assertEqual(
-            (['-'], {'fixes': []}), parse_args(cmd_commit(), ['-']))
+        self.assertEqual((['-']), parse_args(cmd_commit(), ['-'])[0])
 
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
