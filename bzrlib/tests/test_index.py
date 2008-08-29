@@ -353,6 +353,20 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 
+    def make_key(self, number):
+        return (str(number) + 'X'*100,)
+
+    def make_value(self, number):
+            return str(number) + 'Y'*100
+
+    def make_nodes(self, count=64):
+        # generate a big enough index that we only read some of it on a typical
+        # bisection lookup.
+        nodes = []
+        for counter in range(count):
+            nodes.append((self.make_key(counter), self.make_value(counter), ()))
+        return nodes
+
     def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
         builder = GraphIndexBuilder(ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
@@ -372,7 +386,21 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual([], index._parsed_byte_map)
         self.assertEqual([], index._parsed_key_map)
 
-    def test_first_lookup_key_via_location(self):
+    def test_key_count_buffers(self):
+        index = self.make_index(nodes=self.make_nodes(2))
+        # reset the transport log
+        del index._transport._activity[:]
+        self.assertEqual(2, index.key_count())
+        # We should have requested reading the header bytes
+        self.assertEqual([
+            ('readv', 'index', [(0, 200)], True, index._size),
+            ],
+            index._transport._activity)
+        # And that should have been enough to trigger reading the whole index
+        # with buffering
+        self.assertIsNot(None, index._nodes)
+
+    def test_lookup_key_via_location_buffers(self):
         index = self.make_index()
         # reset the transport log
         del index._transport._activity[:]
@@ -390,44 +418,48 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # is a trivial index.
         self.assertEqual([((index._size // 2, ('missing', )), False)],
             result)
-        # And the regions of the file that have been parsed - in this case the
-        # entire file - should be in the parsed region map.
-        self.assertEqual([(0, 60)], index._parsed_byte_map)
-        self.assertEqual([(None, None)], index._parsed_key_map)
+        # And this should have caused the file to be fully buffered
+        self.assertIsNot(None, index._nodes)
+        self.assertEqual([], index._parsed_byte_map)
 
-    def test_parsing_parses_data_adjacent_to_parsed_regions(self):
-        # we trim data we recieve to remove the first and trailing
-        # partial lines, except when they start at the end/finish at the start
-        # of a region we've alread parsed/ the end of the file. The trivial
-        # test for this is an index with 1 key.
-        index = self.make_index(nodes=[(('name', ), 'data', ())])
+    def test_first_lookup_key_via_location(self):
+        # We need enough data so that the _HEADER_READV doesn't consume the
+        # whole file. We always read 800 bytes for every key, and the local
+        # transport natural expansion is 4096 bytes. So we have to have >8192
+        # bytes or we will trigger "buffer_all".
+        # We also want the 'missing' key to fall within the range that *did*
+        # read
+        nodes = []
+        index = self.make_index(nodes=self.make_nodes(64))
         # reset the transport log
         del index._transport._activity[:]
+        # do a _lookup_keys_via_location call for the middle of the file, which
+        # is what bisection uses.
+        start_lookup = index._size // 2
         result = index._lookup_keys_via_location(
-            [(index._size // 2, ('missing', ))])
+            [(start_lookup, ('40missing', ))])
         # this should have asked for a readv request, with adjust_for_latency,
         # and two regions: the header, and half-way into the file.
         self.assertEqual([
-            ('readv', 'index', [(36, 36), (0, 200)], True, 72),
+            ('readv', 'index',
+             [(start_lookup, 800), (0, 200)], True, index._size),
             ],
             index._transport._activity)
         # and the result should be that the key cannot be present, because this
-        # is a trivial index and we should not have to do more round trips.
-        self.assertEqual([((index._size // 2, ('missing', )), False)],
+        # is a trivial index.
+        self.assertEqual([((start_lookup, ('40missing', )), False)],
             result)
-        # The whole file should be parsed at this point.
-        self.assertEqual([(0, 72)], index._parsed_byte_map)
-        self.assertEqual([(None, ('name',))], index._parsed_key_map)
+        # And this should not have caused the file to be fully buffered
+        self.assertIs(None, index._nodes)
+        # And the regions of the file that have been parsed should be in the
+        # parsed_byte_map and the parsed_key_map
+        self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(26)),
+                          (self.make_key(31), self.make_key(48))],
+                         index._parsed_key_map)
 
     def test_parsing_non_adjacent_data_trims(self):
-        # generate a big enough index that we only read some of it on a typical
-        # bisection lookup.
-        nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        for counter in range(64):
-            nodes.append((make_key(counter), 'Y'*100, ()))
-        index = self.make_index(nodes=nodes)
+        index = self.make_index(nodes=self.make_nodes(64))
         result = index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # and the result should be that the key cannot be present, because key is
@@ -437,8 +469,9 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             result)
         # and we should have a parse map that includes the header and the
         # region that was parsed after trimming.
-        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+        self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(26)),
+                          (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
 
     def test_parsing_data_handles_parsed_contained_regions(self):
@@ -448,53 +481,45 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # which then trims the start and end so the parsed size is < readv
         # miniumum.
         # then a dual lookup (or a reference lookup for that matter) which
-        # abuts or overlaps the parsed region on both sides will need to 
+        # abuts or overlaps the parsed region on both sides will need to
         # discard the data in the middle, but parse the end as well.
         #
-        # we test this by doing a single lookup to seed the data, then 
-        # a lookup for two keys that are present, and adjacent - 
+        # we test this by doing a single lookup to seed the data, then
+        # a lookup for two keys that are present, and adjacent -
         # we except both to be found, and the parsed byte map to include the
         # locations of both keys.
-        nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        def make_value(number):
-            return 'Y'*100
-        for counter in range(128):
-            nodes.append((make_key(counter), make_value(counter), ()))
-        index = self.make_index(nodes=nodes)
+        index = self.make_index(nodes=self.make_nodes(128))
         result = index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # and we should have a parse map that includes the header and the
         # region that was parsed after trimming.
-        self.assertEqual([(0, 3991), (11622, 15534)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(116)), (make_key(35), make_key(51))],
+        self.assertEqual([(0, 4045), (11759, 15707)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(116)),
+                          (self.make_key(35), self.make_key(51))],
             index._parsed_key_map)
         # now ask for two keys, right before and after the parsed region
         result = index._lookup_keys_via_location(
-            [(11450, make_key(34)), (15534, make_key(52))])
+            [(11450, self.make_key(34)), (15707, self.make_key(52))])
         self.assertEqual([
-            ((11450, make_key(34)), (index, make_key(34), make_value(34))),
-            ((15534, make_key(52)), (index, make_key(52), make_value(52))),
+            ((11450, self.make_key(34)),
+             (index, self.make_key(34), self.make_value(34))),
+            ((15707, self.make_key(52)),
+             (index, self.make_key(52), self.make_value(52))),
             ],
             result)
-        self.assertEqual([(0, 3991), (9975, 17799)], index._parsed_byte_map)
+        self.assertEqual([(0, 4045), (9889, 17993)], index._parsed_byte_map)
 
     def test_lookup_missing_key_answers_without_io_when_map_permits(self):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
-        nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        for counter in range(64):
-            nodes.append((make_key(counter), 'Y'*100, ()))
-        index = self.make_index(nodes=nodes)
+        index = self.make_index(nodes=self.make_nodes(64))
         # lookup the keys in the middle of the file
         result =index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # check the parse map, this determines the test validity
-        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+        self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(26)),
+                          (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         # reset the transport log
         del index._transport._activity[:]
@@ -502,7 +527,6 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # not create a new transport request, and should return False (cannot
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
-        # 
         result = index._lookup_keys_via_location(
             [(4000, ('40', ))])
         self.assertEqual([((4000, ('40', )), False)],
@@ -512,20 +536,14 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
     def test_lookup_present_key_answers_without_io_when_map_permits(self):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
-        nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        def make_value(number):
-            return str(number) + 'Y'*100
-        for counter in range(64):
-            nodes.append((make_key(counter), make_value(counter), ()))
-        index = self.make_index(nodes=nodes)
+        index = self.make_index(nodes=self.make_nodes(64))
         # lookup the keys in the middle of the file
         result =index._lookup_keys_via_location(
             [(index._size // 2, ('40', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+        self.assertEqual([(None, self.make_key(26)),
+                          (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         # reset the transport log
         del index._transport._activity[:]
@@ -534,28 +552,25 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
         # 
-        result = index._lookup_keys_via_location([(4000, make_key(40))])
+        result = index._lookup_keys_via_location([(4000, self.make_key(40))])
         self.assertEqual(
-            [((4000, make_key(40)), (index, make_key(40), make_value(40)))],
+            [((4000, self.make_key(40)),
+              (index, self.make_key(40), self.make_value(40)))],
             result)
         self.assertEqual([], index._transport._activity)
 
     def test_lookup_key_below_probed_area(self):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
-        nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        for counter in range(64):
-            nodes.append((make_key(counter), 'Y'*100, ()))
-        index = self.make_index(nodes=nodes)
+        index = self.make_index(nodes=self.make_nodes(64))
         # ask for the key in the middle, but a key that is located in the
         # unparsed region before the middle.
         result =index._lookup_keys_via_location(
             [(index._size // 2, ('30', ))])
         # check the parse map, this determines the test validity
-        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+        self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(26)),
+                          (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         self.assertEqual([((index._size // 2, ('30', )), -1)],
             result)
@@ -563,19 +578,15 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
     def test_lookup_key_above_probed_area(self):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
-        nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        for counter in range(64):
-            nodes.append((make_key(counter), 'Y'*100, ()))
-        index = self.make_index(nodes=nodes)
+        index = self.make_index(nodes=self.make_nodes(64))
         # ask for the key in the middle, but a key that is located in the
         # unparsed region after the middle.
         result =index._lookup_keys_via_location(
             [(index._size // 2, ('50', ))])
         # check the parse map, this determines the test validity
-        self.assertEqual([(0, 3972), (5001, 8914)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(26)), (make_key(31), make_key(48))],
+        self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(26)),
+                          (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         self.assertEqual([((index._size // 2, ('50', )), +1)],
             result)
@@ -584,13 +595,9 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
         nodes = []
-        def make_key(number):
-            return (str(number) + 'X'*100,)
-        def make_value(number):
-            return str(number) + 'Y'*100
         for counter in range(64):
-            nodes.append((make_key(counter), make_value(counter),
-                ((make_key(counter + 20),),)  ))
+            nodes.append((self.make_key(counter), self.make_value(counter),
+                ((self.make_key(counter + 20),),)  ))
         index = self.make_index(ref_lists=1, nodes=nodes)
         # lookup a key in the middle that does not exist, so that when we can
         # check that the referred-to-keys are not accessed automatically.
@@ -599,7 +606,8 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # check the parse map - only the start and middle should have been
         # parsed.
         self.assertEqual([(0, 3890), (6444, 10274)], index._parsed_byte_map)
-        self.assertEqual([(None, make_key(25)), (make_key(37), make_key(52))],
+        self.assertEqual([(None, self.make_key(25)),
+                          (self.make_key(37), self.make_key(52))],
             index._parsed_key_map)
         # and check the transport activity likewise.
         self.assertEqual(
@@ -609,10 +617,11 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         del index._transport._activity[:]
         # now looking up a key in the portion of the file already parsed should
         # only perform IO to resolve its key references.
-        result = index._lookup_keys_via_location([(4000, make_key(40))])
+        result = index._lookup_keys_via_location([(4000, self.make_key(40))])
         self.assertEqual(
-            [((4000, make_key(40)),
-              (index, make_key(40), make_value(40), ((make_key(60),),)))],
+            [((4000, self.make_key(40)),
+              (index, self.make_key(40), self.make_value(40),
+               ((self.make_key(60),),)))],
             result)
         self.assertEqual([('readv', 'index', [(11976, 800)], True, 15813)],
             index._transport._activity)
@@ -639,6 +648,23 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
             (index, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_all_entries()))
+
+    def test_iter_entries_buffers_once(self):
+        index = self.make_index(nodes=self.make_nodes(2))
+        # reset the transport log
+        del index._transport._activity[:]
+        self.assertEqual(set([(index, self.make_key(1), self.make_value(1))]),
+                         set(index.iter_entries([self.make_key(1)])))
+        # We should have requested reading the header bytes
+        # But not needed any more than that because it would have triggered a
+        # buffer all
+        self.assertEqual([
+            ('readv', 'index', [(0, 200)], True, index._size),
+            ],
+            index._transport._activity)
+        # And that should have been enough to trigger reading the whole index
+        # with buffering
+        self.assertIsNot(None, index._nodes)
 
     def test_iter_entries_references_resolved(self):
         index = self.make_index(1, nodes=[
@@ -762,6 +788,16 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(nodes=[
             (('name', ), '', ()), (('foo', ), '', ())])
         self.assertEqual(2, index.key_count())
+
+    def test_readv_all_triggers_buffer_all(self):
+        index = self.make_index(key_elements=2, nodes=[
+            (('name', 'fin1'), 'data', ()),
+            (('name', 'fin2'), 'beta', ()),
+            (('ref', 'erence'), 'refdata', ())])
+        self.assertTrue(index._size > 0)
+        self.assertIs(None, index._nodes)
+        index._read_and_parse([(0, index._size)])
+        self.assertIsNot(None, index._nodes)
 
     def test_validate_bad_index_errors(self):
         trans = self.get_transport()

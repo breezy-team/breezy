@@ -288,14 +288,18 @@ class GraphIndex(object):
         return "%s(%r)" % (self.__class__.__name__,
             self._transport.abspath(self._name))
 
-    def _buffer_all(self):
+    def _buffer_all(self, stream=None):
         """Buffer all the index data.
 
         Mutates self._nodes and self.keys_by_offset.
         """
+        if self._nodes is not None:
+            # We already did this
+            return
         if 'index' in debug.debug_flags:
             mutter('Reading entire index %s', self._transport.abspath(self._name))
-        stream = self._transport.get(self._name)
+        if stream is None:
+            stream = self._transport.get(self._name)
         self._read_prefix(stream)
         self._expected_elements = 3 + self._key_length
         line_count = 0
@@ -629,10 +633,24 @@ class GraphIndex(object):
         if self._bisect_nodes is None:
             readv_ranges.append(_HEADER_READV)
         self._read_and_parse(readv_ranges)
+        result = []
+        if self._nodes is not None:
+            # _read_and_parse triggered a _buffer_all because we requested the
+            # whole data range
+            for location, key in location_keys:
+                if key not in self._nodes: # not present
+                    result.append(((location, key), False))
+                elif self.node_ref_lists:
+                    value, refs = self._nodes[key]
+                    result.append(((location, key),
+                        (self, key, value, refs)))
+                else:
+                    result.append(((location, key),
+                        (self, key, self._nodes[key])))
+            return result
         # generate results:
         #  - figure out <, >, missing, present
         #  - result present references so we can return them.
-        result = []
         # keys that we cannot answer until we resolve references
         pending_references = []
         pending_locations = set()
@@ -971,6 +989,17 @@ class GraphIndex(object):
                 self._size)
             # parse
             for offset, data in readv_data:
+                if offset == 0 and len(data) == self._size:
+                    # We 'accidentally' read the whole range, go straight into
+                    # '_buffer_all'. This could happen because the transport
+                    # upcast our readv request, or because we actually need
+                    # most of the file.
+                    # TODO: This could have been triggered by
+                    # _lookup_keys_via_location, so we can't just return
+                    # unconditionally here, we need to still fill out the
+                    # _bisect_nodes list.
+                    self._buffer_all(StringIO(data))
+                    return
                 if self._bisect_nodes is None:
                     # this must be the start
                     if not (offset == 0):
