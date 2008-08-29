@@ -422,7 +422,7 @@ class TestTreeProviderAdapter(TestCase):
         tests = list(iter(suite))
         # XXX We should not have tests fail as we add more scenarios
         # abentley 20080412
-        self.assertEqual(5, len(tests))
+        self.assertEqual(6, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = workingtree.WorkingTreeFormat3
