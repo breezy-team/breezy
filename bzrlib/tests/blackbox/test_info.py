@@ -247,7 +247,7 @@ Repository:
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root \
 or dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -415,7 +415,7 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root or \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -552,7 +552,7 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root or \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -676,7 +676,7 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root or \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -1092,7 +1092,7 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: '1.6 or 1.6-rich-root'
+        format = {True: '1.6 or 1.6.1-rich-root'
                         ' or dirstate or dirstate-tags or pack-0.92'
                         ' or rich-root or rich-root-pack',
                   False: 'dirstate'}[light_checkout]
