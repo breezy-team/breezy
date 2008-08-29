@@ -4,6 +4,18 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.6.1 IN DEVELOPMENT
+------------------------
+
+  BUG FIXES:
+
+    * Revision texts were always meant to be stored as fulltexts. There
+      was a bug in a bzr.dev version that would accidentally create deltas
+      when copying from a Pack repo to a Knit repo. This has been fixed,
+      but to support those repositories, we know always request full texts
+      for Revision texts. (John Arbash Meinel, #261339)
+
+
 bzr 1.6 2008-08-25
 ------------------
 
