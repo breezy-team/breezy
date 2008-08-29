@@ -62,7 +62,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         commit_id = mapping[commit_handle]
 
         # Get the corresponding Revision object.
-        revid = default_mapping.convert_revision_id_git_to_bzr(commit_id)
+        revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
         repo = Repository.open('.')
         rev = repo.get_revision(revid)
         self.assertIsInstance(rev, revision.Revision)
@@ -82,7 +82,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
     def test_revision_tree(self):
         commit_id = self.simple_commit()
-        revid = default_mapping.convert_revision_id_git_to_bzr(commit_id)
+        revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
         repo = Repository.open('.')
         tree = repo.revision_tree(revid)
         self.assertEquals(tree.get_revision_id(), revid)
@@ -95,7 +95,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         commit_id = self.simple_commit()
 
         # Get the corresponding Inventory object.
-        revid = default_mapping.convert_revision_id_git_to_bzr(commit_id)
+        revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
         repo = Repository.open('.')
         inv = repo.get_inventory(revid)
         self.assertIsInstance(inv, inventory.Inventory)

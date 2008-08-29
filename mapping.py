@@ -22,18 +22,19 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    def convert_revision_id_git_to_bzr(self, git_rev_id):
+    def revision_id_foreign_to_bzr(self, git_rev_id):
         """Convert a git revision id handle to a Bazaar revision id."""
         return "%s:%s" % (self.revid_prefix, git_rev_id)
 
-    def convert_revision_id_bzr_to_git(self, bzr_rev_id):
+    def revision_id_bzr_to_foreign(self, bzr_rev_id):
         """Convert a Bazaar revision id to a git revision id handle."""
-        assert bzr_rev_id.startswith("%s:" % self.namespace)
+        assert bzr_rev_id.startswith("%s:" % self.revid_prefix)
         return bzr_rev_id[len(self.revid_prefix)+1:]
 
 
 class BzrGitMappingExperimental(BzrGitMapping):
-    namespace = 'git-experimental'
+    revid_prefix = 'git-experimental'
+    experimental = True
 
 
 default_mapping = BzrGitMappingExperimental()
