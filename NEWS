@@ -4,6 +4,19 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.6rc1 IN DEVELOPMENT
+-------------------------
+
+  BUG FIXES:
+
+    * ``RemoteTransport.readv()`` was being inefficient about how it
+      buffered the readv data and processed it. It would keep appending to
+      the same string (causing many copies) and then pop bytes out of the
+      start of the string (causing more copies).
+      With this patch "bzr+ssh://local" speeds improve by up to 3x.
+      (John Arbash Meinel)
+
+
 bzr 1.6 2008-08-25
 ------------------
 
