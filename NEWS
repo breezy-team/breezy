@@ -4,8 +4,21 @@ Bazaar Release Notes
 
 .. contents::
 
-bzr 1.6.1rc1 IN DEVELOPMENT
----------------------------
+bzr 1.6.1rc1 2008-08-29
+-----------------------
+
+This release fixes a few regressions found in the 1.6 client. Fetching
+changes was using an O(N^2) buffering algorithm, so for large projects it
+would cause memory thrashing. There is also a specific problem with the
+``--1.6-rich-root`` format, which prevented stacking on top of
+``--rich-root-pack`` repositories, and could allow users to accidentally
+fetch experimental data (``-subtree``) without representing it properly.
+The ``--1.6-rich-root`` format has been deprecated and users are
+recommended to upgrade to ``--1.6.1-rich-root`` immediately.  Also we
+re-introduced a workaround for users who have repositories with incorrect
+nodes (not possible if you only used official releases).
+I should also clarify that none of this is data loss level issues, but
+still sufficient enough to warrant an updated release.
 
   BUG FIXES:
 
