@@ -71,9 +71,10 @@ class FakeControlFiles(object):
 
 
 class cmd_dpush(Command):
-    """Push diffs into Subversion without any Bazaar-specific properties set.
+    """Push diffs into a foreign version control system without any 
+    Bazaar-specific metadata.
 
-    This will afterwards rebase the local Bazaar branch on the Subversion 
+    This will afterwards rebase the local Bazaar branch on the remote
     branch unless the --no-rebase option is used, in which case 
     the two branches will be out of sync. 
     """
