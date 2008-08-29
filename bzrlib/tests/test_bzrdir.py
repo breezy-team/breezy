@@ -489,15 +489,8 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
     def test_sprout_upgrades_to_rich_root_format_if_needed(self):
         child_branch, new_child_transport = self.prepare_default_stacking(
             child_format='rich-root-pack')
-        def do_sprout():
-            try:
-                return child_branch.bzrdir.sprout(new_child_transport.base,
-                                                  stacked=True)
-            except errors.IncompatibleRepositories:
-                raise AssertionError(
-                    'Rich root format should be sprout-compatible')
-        self.expectFailure('Rich root format should be sprout-compatible',
-                           do_sprout)
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base,
+                                               stacked=True)
         repo = new_child.open_repository()
         self.assertTrue(repo._format.supports_external_lookups)
         self.assertTrue(repo.supports_rich_root())
