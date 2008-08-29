@@ -433,6 +433,12 @@ class TestDefaultBuilder(BuilderTestCase):
     self.make_changes_file()
     self.assertRaises(errors.DebianError, builder.move_result, self.result_dir)
 
+  def test_move_result_handles_moving_to_same_place(self):
+    builder = self.get_builder()
+    self.make_changes_file()
+    self.make_result_files()
+    builder.move_result(self.build_dir)
+
 
 class TestNativeBuilder(BuilderTestCase):
   """Test the native builder."""
