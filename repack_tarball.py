@@ -20,9 +20,11 @@
 
 import gzip
 import os
+from StringIO import StringIO
 import tarfile
 import bz2
 import sha
+import zipfile
 
 from bzrlib.errors import (
                            FileExists,
@@ -54,12 +56,11 @@ def repack_tarball(orig_name, new_name, target_dir=None):
                        will be created if non-existant.
   :type target_dir: string
   :return: None
-  :warning: .zip files are currently unsupported.
   :throws NoSuchFile: if orig_name doesn't exist.
   :throws NotADirectory: if target_dir exists and is not a directory.
   :throws FileExists: if the target filename (after considering target_dir)
                       exists, and is not identical to the source.
-  :throes BzrCommandError: if the source isn't supported for repacking.
+  :throws BzrCommandError: if the source isn't supported for repacking.
   """
   if target_dir is not None:
     if not os.path.exists(target_dir):
@@ -119,9 +120,30 @@ def repack_tarball(orig_name, new_name, target_dir=None):
           gz.write(old_tar_content_decompressed)
         finally:
           gz.close()
+      elif orig_name.endswith('.zip') or zipfile.is_zipfile(orig_name):
+        import time
+        zip = zipfile.ZipFile(trans_file, "r")
+        try:
+          tar = tarfile.open(new_name, 'w:gz')
+          try:
+            for info in zip.infolist():
+              tarinfo = tarfile.TarInfo(info.filename)
+              tarinfo.size = info.file_size
+              tarinfo.mtime = time.mktime(info.date_time + (0, 1, -1))
+              if info.filename.endswith("/"):
+                  tarinfo.mode = 0755
+                  tarinfo.type = tarfile.DIRTYPE
+              else:
+                  tarinfo.mode = 0644
+                  tarinfo.type = tarfile.REGTYPE
+              contents = StringIO(zip.read(info.filename))
+              tar.addfile(tarinfo, contents)
+          finally:
+            tar.close()
+        finally:
+          zip.close()
       else:
         raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
-      # TODO: handle zip files.
     finally:
       trans_file.close()
 

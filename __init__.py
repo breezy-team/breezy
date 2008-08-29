@@ -424,19 +424,19 @@ class cmd_merge_upstream(Command):
             if tree.changes_from(tree.basis_tree()).has_changed():
                 raise BzrCommandError("There are uncommitted changes in the "
                         "working tree. You must commit before using this "
-                        "command")
+                        "command.")
             config = debuild_config(tree, tree, no_user_config)
             if config.merge:
-                raise BzrCommandError("Merge upstream in merge mode is not yet "
-                        "supported")
+                raise BzrCommandError("Merge upstream in merge mode is not "
+                        "yet supported.")
             if config.native:
-                raise BzrCommandError("Merge upstream in native mode is not yet "
-                        "supported")
+                raise BzrCommandError("Merge upstream in native mode is not "
+                        "yet supported.")
             if config.export_upstream:
                 raise BzrCommandError("Export upstream mode is not yet "
-                        "supported")
+                        "supported.")
             if config.split:
-                raise BzrCommandError("Split mode is not yet supported")
+                raise BzrCommandError("Split mode is not yet supported.")
 
             try:
                 changelog = find_changelog(tree, False)[0]
@@ -447,10 +447,10 @@ class cmd_merge_upstream(Command):
                 current_version = None
 
             if package is None:
-                raise BzrCommandError("You did not specify --package, and there "
-                        "is no changelog from which to determine the package "
-                        "name, which is needed to know the name to give the "
-                        ".orig.tar.gz. Please specify --package.")
+                raise BzrCommandError("You did not specify --package, and "
+                        "there is no changelog from which to determine the "
+                        "package name, which is needed to know the name to "
+                        "give the .orig.tar.gz. Please specify --package.")
 
             orig_dir = config.orig_dir or default_orig_dir
             orig_dir = os.path.join(tree.basedir, orig_dir)
@@ -458,10 +458,11 @@ class cmd_merge_upstream(Command):
             try:
                 repack_tarball(tarball, dest_name, target_dir=orig_dir)
             except FileExists:
-                raise BzrCommandError("The target file %s already exists, and is either "
-                                      "different to the new upstream tarball, or they "
-                                      "are of different formats. Either delete the target "
-                                      "file, or use it as the argument to import.")
+                raise BzrCommandError("The target file %s already exists, and "
+                        "is either different to the new upstream tarball, or "
+                        "they are of different formats. Either delete the "
+                        "target file, or use it as the argument to import." \
+                        % dest_name)
             tarball_filename = os.path.join(orig_dir, dest_name)
             distribution = distribution.lower()
             distribution_name = lookup_distribution(distribution)
