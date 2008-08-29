@@ -2104,7 +2104,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            '1.6-rich-root')
+            '1.6.1-rich-root')
 
     def _ignore_setting_bzrdir(self, format):
         pass

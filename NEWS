@@ -4,6 +4,19 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.6.1 IN DEVELOPMENT
+------------------------
+
+  BUG FIXES:
+
+    * The previous ``--1.6-rich-root`` format used an incorrect xml
+      serializer, which would accidentally support fetching from a
+      repository that supported subtrees, even though the local one would
+      not. We deprecated that format, and introduced a new one that uses
+      the correct serializer ``--1.6.1-rich-root``.
+      (John Arbash Meinel, #262333)
+
+
 bzr 1.6 2008-08-25
 ------------------
 
