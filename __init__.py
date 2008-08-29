@@ -16,7 +16,7 @@
 
 """Foreign branch utilities."""
 
-from bzrlib import registry
+from bzrlib import errors, registry
 
 
 class VcsMapping(object):
@@ -52,4 +52,19 @@ class VcsMappingRegistry(registry.Registry):
     def get_default(self):
         """Convenience function for obtaining the default mapping to use."""
         return self.get(self._get_default_key())
+
+
+class FakeControlFiles(object):
+    """Dummy implementation of ControlFiles.
+    
+    This is required as some code relies on controlfiles being 
+    available."""
+    def get_utf8(self, name):
+        raise errors.NoSuchFile(name)
+
+    def get(self, name):
+        raise errors.NoSuchFile(name)
+
+    def break_lock(self):
+        pass
 
