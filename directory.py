@@ -58,7 +58,8 @@ class VcsDirectory(object):
             version = sorted(urls,cmp=apt_pkg.VersionCompare)[0]
 
         if not version in urls:
-            raise errors.InvalidURL(path=url, extra='version %s not found' % version)
+            raise errors.InvalidURL(path=url,
+                    extra='version %s not found' % version)
         
         info("Retrieving Vcs locating from %s Debian version %s", name, version)
 
@@ -66,7 +67,14 @@ class VcsDirectory(object):
             return urls[version]["Bzr"]
 
         if "Svn" in urls[version]:
-            return urls[version]["Svn"]
+            try:
+                import bzrlib.plugins.svn
+            except ImportError:
+                info("This package uses subversion. If you would like to "
+                        "access it with bzr then please install bzr-svn "
+                        "and re-run the command.")
+            else:
+                return urls[version]["Svn"]
 
         raise errors.InvalidURL(path=url,
             extra='unsupported VCSes %r found' % urls[version].keys())
