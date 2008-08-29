@@ -317,8 +317,6 @@ class RemoteTransport(transport.ConnectedTransport, medium.SmartClientMedium):
                                fudge_factor=self._bytes_to_read_before_seek))
 
         try:
-            # if relpath.endswith('.pack'):
-            #     import pdb; pdb.set_trace()
             result = self._client.call_with_body_readv_array(
                 ('readv', self._remote_path(relpath),),
                 [(c.start, c.length) for c in coalesced])
