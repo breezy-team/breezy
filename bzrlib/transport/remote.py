@@ -421,9 +421,6 @@ class RemoteTransport(transport.ConnectedTransport):
     def disconnect(self):
         self.get_smart_medium().disconnect()
 
-    def delete_tree(self, relpath):
-        raise errors.TransportNotPossible('readonly transport')
-
     def stat(self, relpath):
         resp = self._call2('stat', self._remote_path(relpath))
         if resp[0] == 'stat':
