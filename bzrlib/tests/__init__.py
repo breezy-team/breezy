@@ -58,6 +58,7 @@ from bzrlib import (
     progress,
     ui,
     urlutils,
+    registry,
     workingtree,
     )
 import bzrlib.branch
@@ -2671,6 +2672,59 @@ class TestIdList(object):
         return self.tests.has_key(test_id)
 
 
+class TestPrefixAliasRegistry(registry.Registry):
+    """A registry for test prefix aliases.
+
+    This helps implement shorcuts for the --starting-with selftest
+    option. Overriding existing prefixes is not allowed but not fatal (a
+    warning will be emitted).
+    """
+
+    def register(self, key, obj, help=None, info=None,
+                 override_existing=False):
+        """See Registry.register.
+
+        Trying to override an existing alias causes a warning to be emitted,
+        not a fatal execption.
+        """
+        try:
+            super(TestPrefixAliasRegistry, self).register(
+                key, obj, help=help, info=info, override_existing=False)
+        except KeyError:
+            actual = self.get(key)
+            note('Test prefix alias %s is already used for %s, ignoring %s'
+                 % (key, actual, obj))
+
+    def resolve_alias(self, id_start):
+        """Replace the alias by the prefix in the given string.
+
+        Using an unknown prefix is an error to help catching typos.
+        """
+        parts = id_start.split('.')
+        try:
+            parts[0] = self.get(parts[0])
+        except KeyError:
+            raise errors.BzrCommandError(
+                '%s is not a known test prefix alias' % parts[0])
+        return '.'.join(parts)
+
+
+test_prefix_alias_registry = TestPrefixAliasRegistry()
+"""Registry of test prefix aliases."""
+
+
+# This alias allows to detect typos ('bzrlin.') by making all valid test ids
+# appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
+test_prefix_alias_registry.register('bzrlib', 'bzrlib')
+
+# Obvious higest levels prefixes, feel free to add your own via a plugin
+test_prefix_alias_registry.register('bd', 'bzrlib.doc')
+test_prefix_alias_registry.register('bu', 'bzrlib.utils')
+test_prefix_alias_registry.register('bt', 'bzrlib.tests')
+test_prefix_alias_registry.register('bb', 'bzrlib.tests.blackbox')
+test_prefix_alias_registry.register('bp', 'bzrlib.plugins')
+
+
 def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
@@ -2838,6 +2892,7 @@ def test_suite(keep_only=None, starting_with=None):
     loader = TestUtil.TestLoader()
 
     if starting_with is not None:
+        starting_with = test_prefix_alias_registry.resolve_alias(starting_with)
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
