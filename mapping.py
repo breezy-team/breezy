@@ -16,6 +16,7 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
+from bzrlib import errors
 from bzrlib.plugins.git import foreign
 
 class BzrGitMapping(foreign.VcsMapping):
@@ -28,7 +29,8 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def revision_id_bzr_to_foreign(self, bzr_rev_id):
         """Convert a Bazaar revision id to a git revision id handle."""
-        assert bzr_rev_id.startswith("%s:" % self.revid_prefix)
+        if not bzr_rev_id.startswith("%s:" % self.revid_prefix):
+            raise errors.InvalidRevisionId(bzr_rev_id, self)
         return bzr_rev_id[len(self.revid_prefix)+1:]
 
 

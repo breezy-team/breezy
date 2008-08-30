@@ -88,7 +88,7 @@ class GitRepository(repository.Repository):
             max_count = 1000
             cms = None
             while cms != []:
-                cms = self._git.commits(default_mapping.revision_id_bzr_to_foreign(revision_id), max_count=max_count, skip=skip)
+                cms = self._git.commits(self.lookup_git_revid(revision_id, self), max_count=max_count, skip=skip)
                 skip += max_count
                 ret += [default_mapping.revision_id_foreign_to_bzr(cm.id) for cm in cms]
         return [None] + ret
@@ -105,12 +105,18 @@ class GitRepository(repository.Repository):
             if revid == revision.NULL_REVISION:
                 ret[revid] = ()
             else:
-                commit = self._git.commit(default_mapping.revision_id_bzr_to_foreign(revid))
+                commit = self._git.commit(self.lookup_git_revid(revid, default_mapping))
                 ret[revid] = tuple([default_mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         return ret
 
+    def lookup_git_revid(self, bzr_revid, mapping):
+        try:
+            return mapping.revision_id_bzr_to_foreign(bzr_revid)
+        except errors.InvalidRevisionId:
+            raise errors.NoSuchRevision(bzr_revid, self)
+
     def get_revision(self, revision_id):
-        git_commit_id = default_mapping.revision_id_bzr_to_foreign(revision_id)
+        git_commit_id = self.lookup_git_revid(revision_id, default_mapping)
         commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
         revision = self._parse_rev(commit)
@@ -175,7 +181,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def __init__(self, repository, revision_id):
         self._repository = repository
         self.revision_id = revision_id
-        git_id = default_mapping.revision_id_bzr_to_foreign(revision_id)
+        git_id = repository.lookup_git_revid(revision_id, default_mapping)
         self.tree = repository._git.commit(git_id).tree
         self._inventory = inventory.Inventory(revision_id=revision_id)
         self._inventory.root.revision = revision_id
