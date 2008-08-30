@@ -704,7 +704,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
-BZR_DEFAULT_INTERFACE = '0.0.0.0'
+BZR_DEFAULT_INTERFACE = None
 BZR_DEFAULT_PORT = 4155
 
 
@@ -736,23 +736,27 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """Connect this medium if not already connected."""
         if self._connected:
             return
-        self._socket = socket.socket()
-        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         if self._port is None:
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
-        try:
-            self._socket.connect((self._host, port))
-        except socket.error, err:
-            # socket errors either have a (string) or (errno, string) as their
-            # args.
-            if type(err.args) is str:
-                err_msg = err.args
-            else:
-                err_msg = err.args[1]
-            raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                    (self._host, port, err_msg))
+        sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC, 
+                                       socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG)
+        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+            self._socket = socket.socket(family, socktype, proto)
+            if proto == socket.IPPROTO_TCP:
+                self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            try:
+                self._socket.connect(sockaddr)
+            except socket.error, err:
+                # socket errors either have a (string) or (errno, string) as their
+                # args.
+                if type(err.args) is str:
+                    err_msg = err.args
+                else:
+                    err_msg = err.args[1]
+                raise errors.ConnectionError("failed to connect to %s:%d: %s" %
+                        (self._host, port, err_msg))
         self._connected = True
 
     def _flush(self):

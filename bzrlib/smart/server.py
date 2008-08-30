@@ -59,13 +59,18 @@ class SmartTCPServer(object):
         from socket import error as socket_error
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
-        self._server_socket = socket.socket()
+        addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC, 
+            socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG|socket.AI_PASSIVE)[0]
+
+        (family, socktype, proto, canonname, sockaddr) = addrs
+
+        self._server_socket = socket.socket(family, socktype, proto)
         # SO_REUSERADDR has a different meaning on Windows
         if sys.platform != 'win32':
             self._server_socket.setsockopt(socket.SOL_SOCKET,
                 socket.SO_REUSEADDR, 1)
         try:
-            self._server_socket.bind((host, port))
+            self._server_socket.bind(sockaddr)
         except self._socket_error, message:
             raise errors.CannotBindAddress(host, port, message)
         self._sockname = self._server_socket.getsockname()

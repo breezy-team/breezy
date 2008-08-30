@@ -21,6 +21,8 @@ IN DEVELOPMENT
     * Support for GSSAPI authentication when using FTP as documented in 
       RFC2228. (Jelmer Vernooij, #49623)
 
+    * Add support for IPv6 in the smart server. (Jelmer Vernooij, #165014)
+
   IMPROVEMENTS:
 
     * ``bzr branch`` uses the default stacking policy if the branch format
