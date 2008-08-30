@@ -13,7 +13,7 @@ XS-Dm-Upload-Allowed: yes
 Package: bzr
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree
-Recommends: bzrtools, python-paramiko
+Recommends: bzrtools, python-paramiko, ca-certificates
 Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils
 XB-Python-Version: ${python:Versions}
 Description: easy to use distributed version control system

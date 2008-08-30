@@ -1,6 +1,7 @@
 bzr (1.6.1~rc1-1) experimental; urgency=low
 
   * New upstream release.
+  * Recommend ca-certificates. (Closes: #452024)
 
  -- Jelmer Vernooij <jelmer@samba.org>  Sat, 30 Aug 2008 04:34:17 +0200
 
