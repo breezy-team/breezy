@@ -110,6 +110,14 @@ class RevpropChangeFailed(BzrError):
         self.name = name
 
 
+class DavRequestFailed(BzrError):
+    _fmt = """%(msg)s"""
+
+    def __init__(self, msg):
+        BzrError.__init__(self)
+        self.msg = msg
+
+
 def convert_error(err):
     """Convert a Subversion exception to the matching BzrError.
 
@@ -134,6 +142,8 @@ def convert_error(err):
         return RaRequestFailed(msg)
     elif num == ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
+    elif num == ERR_RA_DAV_REQUEST_FAILED:
+        return DavRequestFailed(msg)
     elif num > 0 and num < 1000:
         return OSError(num, msg)
     else:
