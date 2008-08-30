@@ -2698,7 +2698,7 @@ class TestPrefixAliasRegistry(registry.Registry):
     def resolve_alias(self, id_start):
         """Replace the alias by the prefix in the given string.
 
-        Using a unknown prefix is an error to help catching typos.
+        Using an unknown prefix is an error to help catching typos.
         """
         parts = id_start.split('.')
         try:
@@ -2710,7 +2710,7 @@ class TestPrefixAliasRegistry(registry.Registry):
 
 
 test_prefix_alias_registry = TestPrefixAliasRegistry()
-"""Registry of test prefixe aliases."""
+"""Registry of test prefix aliases."""
 
 
 # This alias allows to detect typos ('bzrlin.') by making all valid test ids
