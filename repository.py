@@ -88,7 +88,7 @@ class GitRepository(repository.Repository):
             max_count = 1000
             cms = None
             while cms != []:
-                cms = self._git.commits(self.lookup_git_revid(revision_id, self), max_count=max_count, skip=skip)
+                cms = self._git.commits(self.lookup_git_revid(revision_id, default_mapping), max_count=max_count, skip=skip)
                 skip += max_count
                 ret += [default_mapping.revision_id_foreign_to_bzr(cm.id) for cm in cms]
         return [None] + ret

@@ -67,6 +67,12 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         rev = repo.get_revision(revid)
         self.assertIsInstance(rev, revision.Revision)
 
+    def test_get_revision_unknown(self):
+        tests.run_git('init')
+
+        repo = Repository.open('.')
+        self.assertRaises(errors.NoSuchRevision, repo.get_revision, "bla")
+
     def simple_commit(self):
         # Create a git repository with some interesting files in a revision.
         tests.run_git('init')
