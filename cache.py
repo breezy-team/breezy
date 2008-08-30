@@ -21,7 +21,7 @@ from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import mutter, warning
 from bzrlib.plugins.svn import version_info
 
-import os
+import os, sys
 
 def create_cache_dir():
     """Create the top-level bzr-svn cache directory.
@@ -35,7 +35,17 @@ def create_cache_dir():
     else:
         name = 'svn-cache'
         extra = ""
-    cache_dir = os.path.join(config_dir(), name)
+    if sys.platform == "nt":
+        try:
+            from bzrlib.win32utils import get_local_appdata_location
+        except ImportError:
+            base_cache_dir = config_dir()
+        else:
+            base_cache_dir = get_local_appdata_location()
+            assert base_cache_dir is not None
+    else:
+        base_cache_dir = config_dir()
+    cache_dir = os.path.join(base_cache_dir, name)
 
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)

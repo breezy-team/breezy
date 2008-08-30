@@ -8,6 +8,9 @@ bzr-svn 0.4.12	UNRELEASED
 
    * Fix compatibility with Bazaar 1.7.
 
+   * Use local application data directory on Windows for bzr-svn cache.
+     (#231041)
+
 bzr-svn 0.4.11	2008-08-26
 
 bzr-svn 0.4.11~rc2	2008-08-26
