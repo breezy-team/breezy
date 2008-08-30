@@ -86,6 +86,10 @@ IN DEVELOPMENT
       addition, addCleanup no longer requires that the callables passed to
       it be unique. (Jonathan Lange)
 
+    * ``selftest``'s ``--starting-with`` option can now use predefined
+      prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
+      ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
+
   INTERNALS:
 
     * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
