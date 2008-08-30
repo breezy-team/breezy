@@ -17,10 +17,10 @@
 import os
 import sys
 
-from bzrlib import osutils, get_user_encoding
+from bzrlib import osutils
 from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
 from bzrlib.win32utils import glob_expand, get_app_path
-import bzrlib.win32utils
+from bzrlib import win32utils
 
 
 # Features
@@ -168,95 +168,60 @@ class TestAppPaths(TestCase):
         p = get_app_path('not-existing')
         self.assertEquals('not-existing', p)
 
+
 class TestLocationsCtypes(TestCase):
 
     _test_needs_features = [CtypesFeature]
 
+    def assertPathsEqual(self, p1, p2):
+        # TODO: The env var values in particular might return the "short"
+        # version (ie, "C:\DOCUME~1\...").  Its even possible the returned
+        # values will differ only by case - handle these situations as we
+        # come across them.
+        self.assertEquals(p1, p2)
+
     def test_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
-        first = bzrlib.win32utils.get_appdata_location()
-        old = os.environ.get("APPDATA")
-        if old is not None:
-            del os.environ["APPDATA"]
-        try:
-            self.assertEquals(first, bzrlib.win32utils.get_appdata_location())
-        finally:
-            if old is not None:
-                os.environ["APPDATA"] = old
+        first = win32utils.get_appdata_location()
+        self._captureVar("APPDATA", None)
+        self.assertPathsEqual(first, win32utils.get_appdata_location())
  
     def test_appdata_matches_environment(self):
         # Typically the APPDATA environment variable will match
         # get_appdata_location
-        self.assertEquals(bzrlib.win32utils.get_appdata_location(),
-                          os.environ["APPDATA"].decode(get_user_encoding()))
+        # XXX - See bug 262874, which asserts the correct encoding is 'mbcs',
+        encoding = osutils.get_user_encoding()
+        self.assertPathsEqual(win32utils.get_appdata_location(),
+                              os.environ["APPDATA"].decode(encoding))
 
     def test_local_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
-        first = bzrlib.win32utils.get_local_appdata_location()
-        old = os.environ.get("LOCALAPPDATA")
-        if old is not None:
-            del os.environ["LOCALAPPDATA"]
-        try:
-            self.assertEquals(first,
-                              bzrlib.win32utils.get_local_appdata_location())
-        finally:
-            if old is not None:
-                os.environ["LOCALAPPDATA"] = old
+        first = win32utils.get_local_appdata_location()
+        self._captureVar("LOCALAPPDATA", None)
+        self.assertPathsEqual(first, win32utils.get_local_appdata_location())
 
     def test_local_appdata_matches_environment(self):
         # LOCALAPPDATA typically only exists on Vista, so we only attempt to
         # compare when it exists.
-        lad = bzrlib.win32utils.get_local_appdata_location()
+        lad = win32utils.get_local_appdata_location()
         env = os.environ.get("LOCALAPPDATA")
         if env:
-            self.assertEquals(lad, env)
+            # XXX - See bug 262874, which asserts the correct encoding is 'mbcs'
+            encoding = osutils.get_user_encoding()
+            self.assertPathsEqual(lad, env.decode(encoding))
 
-class TestLocationsPywin32(TestCase):
+
+class TestLocationsPywin32(TestLocationsCtypes):
 
     _test_needs_features = [Win32comShellFeature]
 
     def setUp(self):
-        self.old_ctypes = bzrlib.win32utils.has_ctypes
-        bzrlib.win32utils.has_ctypes = False
+        super(TestLocationsPywin32, self).setUp()
+        # We perform the exact same tests after disabling the use of ctypes.
+        # This causes the implementation to fall back to pywin32.
+        self.old_ctypes = win32utils.has_ctypes
+        win32utils.has_ctypes = False
         self.addCleanup(self.restoreCtypes)
 
     def restoreCtypes(self):
-        bzrlib.win32utils.has_ctypes = self.old_ctypes
-
-    def test_appdata_not_using_environment(self):
-        # Test that we aren't falling back to the environment
-        first = bzrlib.win32utils.get_appdata_location()
-        old = os.environ.get("APPDATA")
-        if old is not None:
-            del os.environ["APPDATA"]
-        try:
-            self.assertEquals(first, bzrlib.win32utils.get_appdata_location())
-        finally:
-            if old is not None:
-                os.environ["APPDATA"] = old
-
-    def test_appdata_matches_environment(self):
-        # Typically the APPDATA environment variable will match
-        # get_appdata_location
-        self.assertEquals(bzrlib.win32utils.get_appdata_location(),
-                          os.environ["APPDATA"].decode(get_user_encoding()))
-
-    def test_local_appdata_not_using_environment(self):
-        # Test that we aren't falling back to the environment
-        first = bzrlib.win32utils.get_local_appdata_location()
-        old = os.environ.get("LOCALAPPDATA")
-        if old is not None:
-            del os.environ["LOCALAPPDATA"]
-        try:
-            self.assertEquals(first,
-                              bzrlib.win32utils.get_local_appdata_location())
-        finally:
-            if old is not None:
-                os.environ["LOCALAPPDATA"] = old
-
-    def test_local_appdata_matches_environment(self):
-        # LOCALAPPDATA typically only exists on Vista.
-        lad = bzrlib.win32utils.get_local_appdata_location()
-        env = os.environ.get("LOCALAPPDATA")
-        if env:
-            self.assertEquals(lad, env)
+        win32utils.has_ctypes = self.old_ctypes
