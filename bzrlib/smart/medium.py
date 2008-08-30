@@ -741,22 +741,29 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         else:
             port = int(self._port)
         sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC, 
-                                       socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG)
+            socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG)
+        err = socket.error("no address found for %s" % self._host)
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
-            self._socket = socket.socket(family, socktype, proto)
-            if proto == socket.IPPROTO_TCP:
-                self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             try:
+                self._socket = socket.socket(family, socktype, proto)
+                self._socket.setsockopt(socket.IPPROTO_TCP, 
+                                        socket.TCP_NODELAY, 1)
                 self._socket.connect(sockaddr)
             except socket.error, err:
-                # socket errors either have a (string) or (errno, string) as their
-                # args.
-                if type(err.args) is str:
-                    err_msg = err.args
-                else:
-                    err_msg = err.args[1]
-                raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                        (self._host, port, err_msg))
+                if self._socket is not None:
+                    self._socket.close()
+                self._socket = None
+                continue
+            break
+        if self._socket is None:
+            # socket errors either have a (string) or (errno, string) as their
+            # args.
+            if type(err.args) is str:
+                err_msg = err.args
+            else:
+                err_msg = err.args[1]
+            raise errors.ConnectionError("failed to connect to %s:%d: %s" %
+                    (self._host, port, err_msg))
         self._connected = True
 
     def _flush(self):
