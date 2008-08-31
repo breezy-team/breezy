@@ -380,7 +380,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                     # make sure at least one of the new parents contains 
                     # the ie.file_id, ie.revision combination
                     if (len(filter(lambda inv: ie.file_id in inv and
-                        inv[ie.file_id].revision == ie.revision, parent_invs))
+                        inv[ie.file_id].text_sha1 == ie.text_sha1, parent_invs))
                         == 0):
                         raise ReplayParentsInconsistent(ie.file_id, ie.revision)
                 i += 1

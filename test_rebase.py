@@ -387,14 +387,14 @@ class ReplaySnapshotTests(TestCaseWithTransport):
 
     def test_two_revisions(self):
         wt = self.make_branch_and_tree("old")
-        self.build_tree(['old/afile', 'old/notherfile'])
+        self.build_tree_contents([('old/afile', 'afilecontents'), ('old/notherfile', 'notherfilecontents')])
         wt.add(["afile"], ["somefileid"])
         wt.commit("bla", rev_id="oldparent")
         wt.add(["notherfile"])
         wt.commit("bla", rev_id="oldcommit")
         oldrepos = wt.branch.repository
         wt = self.make_branch_and_tree("new")
-        self.build_tree(['new/afile', 'new/notherfile'])
+        self.build_tree_contents([('new/afile', 'afilecontents'), ('new/notherfile', 'notherfilecontents')])
         wt.add(["afile"], ["afileid"])
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
@@ -435,7 +435,9 @@ class ReplaySnapshotTests(TestCaseWithTransport):
 
     def test_multi_revisions(self):
         wt = self.make_branch_and_tree("old")
-        self.build_tree(['old/afile', 'old/sfile', 'old/notherfile'])
+        self.build_tree_contents([('old/afile', 'afilecontent'), 
+                         ('old/sfile', 'sfilecontent'),
+                         ('old/notherfile', 'notherfilecontent')])
         wt.add(['sfile'])
         wt.add(["afile"], ["somefileid"])
         wt.commit("bla", rev_id="oldgrandparent")
@@ -445,7 +447,9 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="oldcommit")
         oldrepos = wt.branch.repository
         wt = self.make_branch_and_tree("new")
-        self.build_tree(['new/afile', 'new/sfile', 'new/notherfile'])
+        self.build_tree_contents([('new/afile', 'afilecontent'), 
+                         ('new/sfile', 'sfilecontent'),
+                         ('new/notherfile', 'notherfilecontent')])
         wt.add(['sfile'])
         wt.add(["afile"], ["afileid"])
         wt.commit("bla", rev_id="newgrandparent")
