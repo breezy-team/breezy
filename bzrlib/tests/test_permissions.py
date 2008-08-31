@@ -29,7 +29,7 @@ permissions should be inherited individually, rather than all be the same.
 # TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
 #                    defined by the local umask. This isn't terrible, is it
 #                    the truly desired behavior?
- 
+
 import os
 import sys
 import stat
@@ -84,11 +84,6 @@ class TestPermissions(TestCaseWithTransport):
     def test_new_files(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
-        elif sys.platform == 'darwin':
-            # OS X creates temp dirs with the 'wheel' group, which users are
-            # not likely to be in, and this prevents us from setting the sgid
-            # bit
-            os.chown(self.test_dir, os.getuid(), os.getgid())
 
         t = self.make_branch_and_tree('.')
         b = t.branch
@@ -142,6 +137,19 @@ class TestPermissions(TestCaseWithTransport):
         t.add('c')
         t.commit('new c')
         check_mode_r(self, '.bzr', 0664, 0775)
+
+
+    def test_new_files_group_sticky_bit(self):
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+        elif sys.platform == 'darwin':
+            # OS X creates temp dirs with the 'wheel' group, which users are
+            # not likely to be in, and this prevents us from setting the sgid
+            # bit
+            os.chown(self.test_dir, os.getuid(), os.getgid())
+
+        t = self.make_branch_and_tree('.')
+        b = t.branch
 
         # Test the group sticky bit
         # Recursively update the modes of all files
