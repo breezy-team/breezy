@@ -18,8 +18,11 @@ bzr-svn 0.4.12	UNRELEASED
    * Fix forward declarations of Python types, fixes 
      compilation on mingw. (#263284)
 
-   * Disable explicit revnum reporting for inventory entries during fetch.
-     (It caused speed regressions and is not necessary).
+   * Avoid explicit revnum reporting for inventory entries during fetch.
+     (It caused severe speed regressions and is not necessary).
+
+   * Fix size of bool variable in replacement stdbool.h. This was 
+     causing strange errors on Windows, most notably slow fetches.
 
   FEATURES
 
