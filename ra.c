@@ -2729,12 +2729,38 @@ static PyObject *get_ssl_client_cert_pw_file_provider(PyObject *self)
 	return (PyObject *)auth;
 }
 
+#if defined(WIN32)
+static PyObject *get_windows_simple_provider(PyObject* self)
+{
+	AuthProviderObject *auth = PyObject_New(AuthProviderObject, &AuthProvider_Type);
+	auth->pool = Pool(NULL);
+	if (auth->pool == NULL)
+		return NULL;
+	svn_auth_get_windows_simple_provider(&auth->provider, auth->pool);
+	return (PyObject *)auth;
+}
+
+static PyObject *get_windows_ssl_server_trust_provider(PyObject *self)
+{
+	AuthProviderObject *auth = PyObject_New(AuthProviderObject, &AuthProvider_Type);
+	auth->pool = Pool(NULL);
+	if (auth->pool == NULL)
+		return NULL;
+	svn_auth_get_windows_ssl_server_trust_provider(&auth->provider, auth->pool);
+	return (PyObject *)auth;
+}
+#endif
+
 static PyMethodDef ra_module_methods[] = {
 	{ "version", (PyCFunction)version, METH_NOARGS, NULL },
 	{ "get_ssl_client_cert_pw_file_provider", (PyCFunction)get_ssl_client_cert_pw_file_provider, METH_NOARGS, NULL },
 	{ "get_ssl_client_cert_file_provider", (PyCFunction)get_ssl_client_cert_file_provider, METH_NOARGS, NULL },
 	{ "get_ssl_server_trust_file_provider", (PyCFunction)get_ssl_server_trust_file_provider, METH_NOARGS, NULL },
 	{ "get_simple_provider", (PyCFunction)get_simple_provider, METH_NOARGS, NULL },
+#if defined(WIN32)
+	{ "get_windows_simple_provider", (PyCFunction)get_windows_simple_provider, METH_NOARGS, NULL },
+	{ "get_windows_ssl_server_trust_provider", (PyCFunction)get_windows_ssl_server_trust_provider, METH_NOARGS, NULL },
+#endif
 	{ "get_username_prompt_provider", (PyCFunction)get_username_prompt_provider, METH_VARARGS, NULL },
 	{ "get_simple_prompt_provider", (PyCFunction)get_simple_prompt_provider, METH_VARARGS, NULL },
 	{ "get_ssl_server_trust_prompt_provider", (PyCFunction)get_ssl_server_trust_prompt_provider, METH_VARARGS, NULL },
