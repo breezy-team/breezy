@@ -24,8 +24,8 @@
 
 #include "util.h"
 
-PyAPI_DATA(PyTypeObject) Repository_Type;
-PyAPI_DATA(PyTypeObject) FileSystem_Type;
+extern PyTypeObject Repository_Type;
+extern PyTypeObject FileSystem_Type;
 
 typedef struct { 
 	PyObject_HEAD

@@ -27,9 +27,9 @@
 #include "ra.h"
 #include "wc.h"
 
-PyAPI_DATA(PyTypeObject) Client_Type;
-PyAPI_DATA(PyTypeObject) Config_Type;
-PyAPI_DATA(PyTypeObject) ConfigItem_Type;
+extern PyTypeObject Client_Type;
+extern PyTypeObject Config_Type;
+extern PyTypeObject ConfigItem_Type;
 
 typedef struct {
 	PyObject_HEAD

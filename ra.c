@@ -32,11 +32,11 @@
 
 static PyObject *busy_exc;
 
-PyAPI_DATA(PyTypeObject) Reporter_Type;
-PyAPI_DATA(PyTypeObject) RemoteAccess_Type;
-PyAPI_DATA(PyTypeObject) AuthProvider_Type;
-PyAPI_DATA(PyTypeObject) CredentialsIter_Type;
-PyAPI_DATA(PyTypeObject) TxDeltaWindowHandler_Type;
+extern PyTypeObject Reporter_Type;
+extern PyTypeObject RemoteAccess_Type;
+extern PyTypeObject AuthProvider_Type;
+extern PyTypeObject CredentialsIter_Type;
+extern PyTypeObject TxDeltaWindowHandler_Type;
 
 static svn_error_t *py_commit_callback(const svn_commit_info_t *commit_info, void *baton, apr_pool_t *pool)
 {

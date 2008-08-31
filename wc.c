@@ -26,8 +26,8 @@
 #include "util.h"
 #include "editor.h"
 
-PyAPI_DATA(PyTypeObject) Entry_Type;
-PyAPI_DATA(PyTypeObject) Adm_Type;
+extern PyTypeObject Entry_Type;
+extern PyTypeObject Adm_Type;
 
 static PyObject *py_entry(const svn_wc_entry_t *entry);
 

@@ -22,10 +22,10 @@
 
 #pragma GCC visibility push(hidden)
 
-PyAPI_DATA(PyTypeObject) DirectoryEditor_Type;
-PyAPI_DATA(PyTypeObject) FileEditor_Type;
-PyAPI_DATA(PyTypeObject) Editor_Type;
-PyAPI_DATA(PyTypeObject) TxDeltaWindowHandler_Type;
+extern PyTypeObject DirectoryEditor_Type;
+extern PyTypeObject FileEditor_Type;
+extern PyTypeObject Editor_Type;
+extern PyTypeObject TxDeltaWindowHandler_Type;
 PyObject *new_editor_object(const svn_delta_editor_t *editor, void *baton, apr_pool_t *pool, PyTypeObject *type, void (*done_cb) (void *baton), void *done_baton);
 
 #define DirectoryEditor_Check(op) PyObject_TypeCheck(op, &DirectoryEditor_Type)
