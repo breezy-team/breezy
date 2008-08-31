@@ -3234,7 +3234,7 @@ UTF8Filesystem = _UTF8Filesystem()
 
 
 class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlined filesystem is case-insensitive
+    """Check if underlying filesystem is case-insensitive
     (e.g. on Windows, Cygwin, MacOS)
     """
 

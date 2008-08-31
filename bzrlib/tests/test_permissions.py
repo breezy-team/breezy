@@ -84,6 +84,11 @@ class TestPermissions(TestCaseWithTransport):
     def test_new_files(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
+        elif sys.platform == 'darwin':
+            # OS X creates temp dirs with the 'wheel' group, which users are
+            # not likely to be in, and this prevents us from setting the sgid
+            # bit
+            os.chown(self.test_dir, os.getuid(), os.getgid())
 
         t = self.make_branch_and_tree('.')
         b = t.branch
