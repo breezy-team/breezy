@@ -24,6 +24,8 @@ bzr-svn 0.4.12	UNRELEASED
    * Fix size of bool variable in replacement stdbool.h. This was 
      causing strange errors on Windows, most notably slow fetches.
 
+   * Fix pull into Subversion working copies.
+
   FEATURES
 
    * Use native Windows password prompter on Windows. (#263287)

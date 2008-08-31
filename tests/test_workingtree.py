@@ -346,6 +346,18 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.basis_tree()
         delta = tree.changes_from(tree.basis_tree())
         self.assertEqual("bl", delta.modified[0][0])
+
+    def test_pull(self):
+        repos_url = self.make_client('a', 'dc')
+
+        dc = self.get_commit_editor(repos_url)
+        dc.add_dir("bar")
+        dc.close()
+
+        tree = WorkingTree.open("dc")
+        br = Branch.open(repos_url)
+        tree.pull(br)
+        self.assertEquals(tree.last_revision(), br.last_revision())
  
     def test_working_inventory(self):
         self.make_client('a', 'dc')

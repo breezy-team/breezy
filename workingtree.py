@@ -592,7 +592,7 @@ class SvnWorkingTree(WorkingTree):
         if stop_revision is None:
             stop_revision = self.branch.last_revision()
         revnumber = self.branch.lookup_revision_id(stop_revision)
-        fetched = self._update(revnumbe)
+        fetched = self._update(revnumber)
         self.base_revnum = fetched
         self.base_revid = self.branch.generate_revision_id(fetched)
         self.base_tree = None
