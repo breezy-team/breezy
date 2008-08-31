@@ -88,9 +88,9 @@ class RemoteBzrDir(BzrDir):
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, stacked=False):
         self._ensure_real()
-        return self._real_bzrdir.cloning_metadir()
+        return self._real_bzrdir.cloning_metadir(stacked)
 
     def _translate_error(self, err, **context):
         _translate_error(err, bzrdir=self, **context)
