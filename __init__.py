@@ -419,11 +419,11 @@ class cmd_svn_push(Command):
                     target_branch.unlock()
             except NotBranchError:
                 target_branch = bzrdir.import_branch(source_branch, revision_id, _push_merged=merged)
-            # We successfully created the target, remember it
-            if source_branch.get_push_location() is None or remember:
-                source_branch.set_push_location(target_branch.base)
         finally:
             source_branch.unlock()
+        # We successfully created the target, remember it
+        if source_branch.get_push_location() is None or remember:
+            source_branch.set_push_location(target_branch.base)
 
 register_command(cmd_svn_push)
 
