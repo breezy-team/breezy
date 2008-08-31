@@ -18,6 +18,9 @@ bzr-svn 0.4.12	UNRELEASED
    * Fix forward declarations of Python types, fixes 
      compilation on mingw. (#263284)
 
+   * Disable explicit revnum reporting for inventory entries during fetch.
+     (It caused speed regressions and is not necessary).
+
   FEATURES
 
    * Use native Windows password prompter on Windows. (#263287)

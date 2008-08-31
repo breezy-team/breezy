@@ -585,11 +585,6 @@ class TreeDeltaBuildEditor(DeltaBuildEditor):
 def report_inventory_contents(reporter, inv, revnum, start_empty):
     try:
         reporter.set_path("", revnum, start_empty)
-
-        # Report status of existing paths
-        for path, entry in inv.iter_entries():
-            if path != "":
-                reporter.set_path(path.encode("utf-8"), revnum, start_empty)
     except:
         reporter.abort()
         raise
