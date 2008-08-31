@@ -245,10 +245,14 @@ class cmd_remove_tree(Command):
     To re-create the working tree, use "bzr checkout".
     """
     _see_also = ['checkout', 'working-trees']
-
     takes_args = ['location?']
+    takes_options = [
+        Option('force',
+               help='Remove the working tree even if it has '
+                    'uncommitted changes.'),
+        ]
 
-    def run(self, location='.'):
+    def run(self, location='.', force=False):
         d = bzrdir.BzrDir.open(location)
         
         try:
@@ -258,7 +262,11 @@ class cmd_remove_tree(Command):
         except errors.NotLocalUrl:
             raise errors.BzrCommandError("You cannot remove the working tree of a "
                                          "remote path")
-        
+        if not force:
+            changes = working.changes_from(working.basis_tree())
+            if changes.has_changed():
+                raise errors.UncommittedChanges(working)
+
         working_path = working.bzrdir.root_transport.base
         branch_path = working.branch.bzrdir.root_transport.base
         if working_path != branch_path:

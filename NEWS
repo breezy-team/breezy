@@ -12,6 +12,10 @@ IN DEVELOPMENT
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
+    * ``bzr remove-tree`` will now refuse to remove a tree with uncommitted
+      changes, unless the ``--force`` option is specified.
+      (Lukáš Lalinský, #74101)
+
     * ``bzr rm`` will now scan for files that are missing and remove just
       them automatically, much as ``bzr add`` scans for new files that
       are not ignored and adds them automatically. (Robert Collins)
