@@ -335,7 +335,9 @@ class TestRepository(TestCaseWithRepository):
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
                          list(tree.list_files(include_root=True)))
-        tree = wt.branch.repository.revision_tree(NULL_REVISION)
+        tree = self.callDeprecated(['NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.'],
+            wt.branch.repository.revision_tree, None)
         self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
