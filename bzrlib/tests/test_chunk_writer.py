@@ -58,8 +58,9 @@ class TestWriter(TestCaseWithTransport):
             # Create a line with this group
             lines.append(''.join(map(str, numbers)) + '\n')
         writer = chunk_writer.ChunkWriter(4096)
-        for line in lines:
+        for idx, line in enumerate(lines):
             if writer.write(line):
+                self.assertEqual(46, idx)
                 break
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
@@ -78,9 +79,12 @@ class TestWriter(TestCaseWithTransport):
             # Create a line with this group
             lines.append(''.join(map(str, numbers)) + '\n')
         writer = chunk_writer.ChunkWriter(4096, 256)
-        for line in lines:
+        for idx, line in enumerate(lines):
             if writer.write(line):
+                self.assertEqual(44, idx)
                 break
+        else:
+            self.fail('We were able to write all lines')
         self.assertFalse(writer.write("A"*256, reserved=True))
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)

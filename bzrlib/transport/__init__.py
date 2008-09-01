@@ -1722,6 +1722,25 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
+# Default to trying GSSAPI authentication (if the kerberos module is available)
+register_transport_proto('ftp+gssapi://', register_netloc=True)
+register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_transport_proto('aftp+gssapi://', register_netloc=True)
+register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_transport_proto('ftp+nogssapi://', register_netloc=True)
+register_transport_proto('aftp+nogssapi://', register_netloc=True)
+
+register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp', 
+                        'FtpTransport')
+register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp', 
+                        'FtpTransport')
+
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
                         'MemoryTransport')
