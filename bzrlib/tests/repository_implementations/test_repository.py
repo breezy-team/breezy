@@ -335,7 +335,7 @@ class TestRepository(TestCaseWithRepository):
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
                          list(tree.list_files(include_root=True)))
-        tree = wt.branch.repository.revision_tree(None)
+        tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
