@@ -187,7 +187,8 @@ class cmd_rebase(Command):
                     return
                 if not our_new:
                     self.outf.write("Base branch is descendant of current "
-                        "branch. Use 'bzr pull'.\n")
+                        "branch. Pulling instead.\n")
+                    wt.pull(upstream, onto)
                     return
             # else: include extra revisions needed to make start_revid mean
             # something.

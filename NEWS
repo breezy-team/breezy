@@ -1,3 +1,10 @@
+0.4.2	UNRELEASED
+
+ FEATURES
+
+  * Will automatically pull if it's not possible to rebase. 
+    (#240204)
+
 0.4.1	2008-09-01
 
  BUG FIXES

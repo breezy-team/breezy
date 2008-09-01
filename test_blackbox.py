@@ -56,7 +56,9 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m bloe')
         os.chdir('../feature')
-        self.check_output("Base branch is descendant of current branch. Use 'bzr pull'.\n", 'rebase ../main')
+        self.check_output("Base branch is descendant of current branch. Pulling instead.\n", 'rebase ../main')
+        self.assertEquals(Branch.open("../feature").revision_history(), 
+                          Branch.open("../main").revision_history())
 
     def test_no_pending_merges(self):
         self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'], 'rebase --pending-merges')
