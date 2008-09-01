@@ -93,6 +93,9 @@ IN DEVELOPMENT
       prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
       ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
 
+    * ``selftest``'s ``--starting-with`` option now accepts multiple values.
+      (Vincent Ladeuil)
+
   INTERNALS:
 
     * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.

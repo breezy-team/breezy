@@ -2303,15 +2303,18 @@ def condition_id_in_list(id_list):
     return condition
 
 
-def condition_id_startswith(start):
+def condition_id_startswith(starts):
     """Create a condition filter verifying that test's id starts with a string.
     
-    :param start: A string.
-    :return: A callable that returns True if the test's id starts with the
-        given string.
+    :param starts: A list of string.
+    :return: A callable that returns True if the test's id starts with one of 
+        the given strings.
     """
     def condition(test):
-        return test.id().startswith(start)
+        for start in starts:
+            if test.id().startswith(start):
+                return True
+        return False
     return condition
 
 
@@ -2339,7 +2342,7 @@ def filter_suite_by_condition(suite, condition):
         test case which should be included in the result.
     :return: A suite which contains the tests found in suite that pass
         condition.
-    """ 
+    """
     result = []
     for test in iter_suite_tests(suite):
         if condition(test):
@@ -2353,7 +2356,7 @@ def filter_suite_by_re(suite, pattern):
     :param suite:           the source suite
     :param pattern:         pattern that names must match
     :returns: the newly created suite
-    """ 
+    """
     condition = condition_id_re(pattern)
     result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
@@ -2375,7 +2378,7 @@ def filter_suite_by_id_startswith(suite, start):
     """Create a test suite by filtering another one.
 
     :param suite: The source suite.
-    :param start: A string the test id must start with.
+    :param start: A list of string the test id must start with one of.
     :returns: the newly created suite
     """
     condition = condition_id_startswith(start)
@@ -2428,7 +2431,7 @@ def split_suite_by_condition(suite, condition):
         suite matching the condition, and the second contains the remainder
         from suite. The order within each output suite is the same as it was in
         suite.
-    """ 
+    """
     matched = []
     did_not_match = []
     for test in iter_suite_tests(suite):
@@ -2450,7 +2453,7 @@ def split_suite_by_re(suite, pattern):
         suite matching pattern, and the second contains the remainder from
         suite. The order within each output suite is the same as it was in
         suite.
-    """ 
+    """
     return split_suite_by_condition(suite, condition_id_re(pattern))
 
 
@@ -2891,17 +2894,21 @@ def test_suite(keep_only=None, starting_with=None):
 
     loader = TestUtil.TestLoader()
 
-    if starting_with is not None:
-        starting_with = test_prefix_alias_registry.resolve_alias(starting_with)
+    if starting_with:
+        starting_with = [test_prefix_alias_registry.resolve_alias(start)
+                         for start in starting_with]
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
-            return (
-                # Either the module name starts with the specified string
-                name.startswith(starting_with)
-                # or it may contain tests starting with the specified string
-                or starting_with.startswith(name)
-                )
+            for start in starting_with:
+                if (
+                    # Either the module name starts with the specified string
+                    name.startswith(start)
+                    # or it may contain tests starting with the specified string
+                    or start.startswith(name)
+                    ):
+                    return True
+            return False
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
@@ -2967,7 +2974,7 @@ def test_suite(keep_only=None, starting_with=None):
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
-    if starting_with is not None:
+    if starting_with:
         suite = filter_suite_by_id_startswith(suite, starting_with)
 
     if keep_only is not None:
@@ -2976,7 +2983,7 @@ def test_suite(keep_only=None, starting_with=None):
         suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
-        if starting_with is not None:
+        if starting_with:
             # The tester has used both keep_only and starting_with, so he is
             # already aware that some tests are excluded from the list, there
             # is no need to tell him which.

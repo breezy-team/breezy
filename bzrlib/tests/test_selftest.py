@@ -1784,13 +1784,14 @@ class TestSelftestFiltering(TestCase):
 
     def test_condition_id_startswith(self):
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        start = klass + 'test_condition_id_starts'
-        test_names = [klass + 'test_condition_id_startswith']
+        start1 = klass + 'test_condition_id_starts'
+        start2 = klass + 'test_condition_id_in'
+        test_names = [ klass + 'test_condition_id_in_list',
+                      klass + 'test_condition_id_startswith',
+                     ]
         filtered_suite = filter_suite_by_condition(
-            self.suite, tests.condition_id_startswith(start))
-        my_pattern = 'TestSelftestFiltering.*test_condition_id_startswith'
-        re_filtered = filter_suite_by_re(self.suite, my_pattern)
-        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
+            self.suite, tests.condition_id_startswith([start1, start2]))
+        self.assertEqual(test_names, _test_ids(filtered_suite))
 
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
@@ -1849,16 +1850,19 @@ class TestSelftestFiltering(TestCase):
 
     def test_filter_suite_by_id_startswith(self):
         # By design this test may fail if another test is added whose name also
-        # begins with the start value used.
+        # begins with one of the start value used.
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        start = klass + 'test_filter_suite_by_id_starts'
-        test_list = [klass + 'test_filter_suite_by_id_startswith']
-        filtered_suite = tests.filter_suite_by_id_startswith(self.suite, start)
-        filtered_names = _test_ids(filtered_suite)
+        start1 = klass + 'test_filter_suite_by_id_starts'
+        start2 = klass + 'test_filter_suite_by_id_li'
+        test_list = [klass + 'test_filter_suite_by_id_list',
+                     klass + 'test_filter_suite_by_id_startswith',
+                     ]
+        filtered_suite = tests.filter_suite_by_id_startswith(
+            self.suite, [start1, start2])
         self.assertEqual(
-            filtered_names,
-            ['bzrlib.tests.test_selftest.'
-             'TestSelftestFiltering.test_filter_suite_by_id_startswith'])
+            test_list,
+            _test_ids(filtered_suite),
+            )
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
