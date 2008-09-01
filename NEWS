@@ -91,7 +91,7 @@ IN DEVELOPMENT
       ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
 
     * ``selftest``'s ``--starting-with`` option now accepts multiple values.
-     (Vincent Ladeuil)
+      (Vincent Ladeuil)
 
   INTERNALS:
 
