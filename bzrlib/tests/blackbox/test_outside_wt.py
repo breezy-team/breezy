@@ -19,7 +19,6 @@
 """Black-box tests for running bzr outside of a working tree."""
 
 import os
-import tempfile
 
 from bzrlib import (
     osutils,
@@ -32,7 +31,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
     """Test that bzr gives proper errors outside of a working tree."""
 
     def test_cwd_log(self):
-        tmp_dir = tempfile.mkdtemp()
+        tmp_dir = osutils.mkdtemp()
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
         os.chdir(tmp_dir)
         out, err = self.run_bzr('log', retcode=3)
@@ -47,7 +46,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
                          u' "%s".\n' % url, err)
 
     def test_diff_outside_tree(self):
-        tmp_dir = tempfile.mkdtemp()
+        tmp_dir = osutils.mkdtemp()
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
         os.chdir(tmp_dir)
         self.run_bzr('init branch1')
