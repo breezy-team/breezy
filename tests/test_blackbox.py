@@ -50,6 +50,10 @@ class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
         repos_url = self.make_repository('d')
         self.run_bzr('info -v %s' % repos_url)
 
+    def test_pack(self):
+        repos_url = self.make_repository('d')
+        self.run_bzr('pack %s' % repos_url)
+
     def test_push(self):
         repos_url = self.make_repository('d')
         
