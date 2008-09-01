@@ -5,7 +5,7 @@ from distutils.core import setup
 setup(name='bzr-rebase',
       description='Rebase plugin for Bazaar',
       keywords='plugin bzr rebase',
-      version='0.4',
+      version='0.4.1',
       url='http://bazaar-vcs.org/Rebase',
       download_url='http://bazaar-vcs.org/Rebase',
       license='GPLv3 or later',

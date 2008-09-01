@@ -1,3 +1,13 @@
+0.4.1	2008-09-01
+
+ BUG FIXES
+
+  * Loosen check of text parents a bit (required for bzr-svn).
+
+ CHANGES
+
+  * Support DESTDIR in Makefile.
+
 0.4		2008-08-02
 
  CHANGES
