@@ -23,8 +23,8 @@ from bzrlib.plugins.git.dir import GitBzrDirFormat
 
 bzrdir.format_registry.register(
     'git', GitBzrDirFormat,
-    help='GIT - the stupid content tracker.',
-    native=False, hidden=True, experimental=True,
+    help='GIT repository.', 
+    native=False, experimental=True,
     )
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)

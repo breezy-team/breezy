@@ -167,6 +167,9 @@ class GitRepository(repository.Repository):
         assert revision_id != None
         return self.revision_tree(revision_id).inventory
 
+    def set_make_working_trees(self, trees):
+        pass
+
 
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')

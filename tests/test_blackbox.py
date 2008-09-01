@@ -62,6 +62,9 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(error, '')
         self.assertEqual(output, "a\n")
 
+    def test_init(self):
+        self.run_bzr("init-repo --git repo") 
+
     def test_info_verbose(self):
         self.simple_commit()
 

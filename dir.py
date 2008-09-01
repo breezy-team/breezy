@@ -16,7 +16,7 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir"""
 
-import git
+import git, os
 
 from bzrlib.lazy_import import lazy_import
 from bzrlib import (
@@ -26,6 +26,7 @@ from bzrlib import (
     )
 
 lazy_import(globals(), """
+from bzrlib.lockable_files import TransportLock
 from bzrlib.plugins.git import (
     errors,
     branch,
@@ -114,11 +115,15 @@ class GitDir(bzrdir.BzrDir):
     def cloning_metadir(self):
         return bzrdir.BzrDirFormat.get_default_format()
 
+    def create_repository(self, shared=False):
+        return self.open_repository()
+
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
     """The .git directory control format."""
 
     _gitdir_class = GitDir
+    _lock_class = TransportLock
 
     @classmethod
     def _known_formats(self):
@@ -158,6 +163,20 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     def get_format_description(self):
         return "Local Git Repository"
+
+    def get_format_string(self):
+        return "Local Git Repository"
+
+    def initialize_on_transport(self, transport):
+        from bzrlib.transport.local import LocalTransport
+
+        if not isinstance(transport, LocalTransport):
+            raise NotImplementedError(self.initialize, 
+                "Can't create Git Repositories/branches on "
+                "non-local transports")
+
+        git.repo.Repo.create(transport.local_abspath(".")) 
+        return self.open(transport)
 
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
