@@ -1658,7 +1658,7 @@ class Repository(object):
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
-        `revision_id` may be None for the empty tree revision.
+        `revision_id` may be NULL_REVISION for the empty tree revision.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
         # TODO: refactor this to use an existing revision object
