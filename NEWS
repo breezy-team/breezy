@@ -26,6 +26,9 @@ bzr-svn 0.4.12	UNRELEASED
 
    * Fix pull into Subversion working copies.
 
+   * Properly encode cache file path in case it contains non-ascii 
+     characters. (#262923)
+
   FEATURES
 
    * Use native Windows password prompter on Windows. (#263287)
