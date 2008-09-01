@@ -138,7 +138,6 @@ class TestPermissions(TestCaseWithTransport):
         t.commit('new c')
         check_mode_r(self, '.bzr', 0664, 0775)
 
-
     def test_new_files_group_sticky_bit(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
