@@ -29,6 +29,8 @@ bzr-svn 0.4.12	UNRELEASED
    * Properly encode cache file path in case it contains non-ascii 
      characters. (#262923)
 
+   * Don't link explicitly against apr libraries. (#262711)
+
   FEATURES
 
    * Use native Windows password prompter on Windows. (#263287)

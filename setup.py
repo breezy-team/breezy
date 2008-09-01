@@ -86,8 +86,7 @@ def apr_build_data():
     includedir = apr_config("--includedir")
     if not os.path.isdir(includedir):
         raise Exception("APR development headers not found")
-    ldflags = filter(lambda x: x != "", apr_config("--link-ld").split(" "))
-    return (includedir, ldflags)
+    return (includedir,)
 
 
 def svn_build_data():
@@ -114,7 +113,7 @@ if os.name == "nt":
     # just clobber the functions above we can't use
     # for simplicitly, everything is done in the 'svn' one
     def apr_build_data():
-        return '.', ''
+        return '.', 
 
     def svn_build_data():
         # environment vars for the directories we need.
@@ -164,13 +163,12 @@ if os.name == "nt":
 
         return includes, lib_dirs, libs,
 
-(apr_includedir, apr_ldflags) = apr_build_data()
+(apr_includedir, ) = apr_build_data()
 (svn_includedirs, svn_libdirs, extra_libs) = svn_build_data()
 
 def SvnExtension(name, *args, **kwargs):
     kwargs["include_dirs"] = [apr_includedir] + svn_includedirs
     kwargs["library_dirs"] = svn_libdirs
-    kwargs["extra_link_args"] = apr_ldflags
     if os.name == 'nt':
         # on windows, just ignore and overwrite the libraries!
         kwargs["libraries"] = extra_libs
