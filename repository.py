@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion repository access."""
 
-from bzrlib import osutils, ui, urlutils, xml7
+from bzrlib import osutils, ui, urlutils, xml6
 from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat)
@@ -186,7 +186,7 @@ class SvnRepository(Repository):
         assert self.uuid is not None
         self.base = transport.base
         assert self.base is not None
-        self._serializer = xml7.serializer_v7
+        self._serializer = xml6.serializer_v6
         self.get_config().add_location(self.base)
         self._log = logwalker.LogWalker(transport=transport)
         self.fileid_map = FileIdMap(simple_apply_changes, self)

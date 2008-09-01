@@ -14,12 +14,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bzrlib import osutils, urlutils
+from bzrlib.trace import warning
 from bzrlib.versionedfile import FulltextContentFactory, VersionedFiles, VirtualVersionedFiles
 
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import ERR_FS_NOT_FILE
 
 from cStringIO import StringIO
+
+_warned_experimental = False
 
 class SvnTexts(VersionedFiles):
     """Subversion texts backend."""
@@ -34,6 +37,10 @@ class SvnTexts(VersionedFiles):
         raise NotImplementedError(self.add_mpdiffs)
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
+        global _warned_experimental
+        if not _warned_experimental:
+            warning("stacking support in bzr-svn is experimental.")
+            _warned_experimental = True
         # TODO: there may be valid text revisions that only exist as 
         # ghosts in the repository itself. This function will 
         # not be able to report them.
