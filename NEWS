@@ -81,6 +81,11 @@ IN DEVELOPMENT
     * Show proper error rather than traceback when an unknown revision 
       id is specified to ``bzr cat-revision``. (Jelmer Vernooij, #175569)
 
+    * Trailing text in the dirstate file could cause the C dirstate parser
+      to try to allocate an invalid amount of memory. We now properly
+      check and test for parsing a dirstate with invalid trailing data.
+      (John Arbash Meinel, #186014)
+
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
