@@ -2868,6 +2868,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_transport_implementations',
+                   'bzrlib.tests.test_transport_log',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
