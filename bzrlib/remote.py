@@ -88,9 +88,9 @@ class RemoteBzrDir(BzrDir):
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, stacked=False):
         self._ensure_real()
-        return self._real_bzrdir.cloning_metadir()
+        return self._real_bzrdir.cloning_metadir(stacked)
 
     def _translate_error(self, err, **context):
         _translate_error(err, bzrdir=self, **context)
@@ -1039,7 +1039,6 @@ class RemoteRepository(object):
         # destination
         from bzrlib import osutils
         import tarfile
-        import tempfile
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
@@ -1049,7 +1048,7 @@ class RemoteRepository(object):
         try:
             tar = tarfile.open('repository', fileobj=tar_file,
                 mode='r|bz2')
-            tmpdir = tempfile.mkdtemp()
+            tmpdir = osutils.mkdtemp()
             try:
                 _extract_tar(tar, tmpdir)
                 tmp_bzrdir = BzrDir.open(tmpdir)
@@ -1592,6 +1591,11 @@ class RemoteBranch(branch.Branch):
 
     def is_locked(self):
         return self._lock_count >= 1
+
+    @needs_read_lock
+    def revision_id_to_revno(self, revision_id):
+        self._ensure_real()
+        return self._real_branch.revision_id_to_revno(revision_id)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
