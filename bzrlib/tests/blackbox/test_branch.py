@@ -221,7 +221,7 @@ class TestBranchStacked(ExternalBase):
             ['branch', '--stacked', 'trunk', 'shallow'])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
-            'Source format does not support stacking, using format: 1.6\n'
+            'Source format does not support stacking, using format: \'1.6\'\n'
             '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
             '\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
@@ -234,7 +234,7 @@ class TestBranchStacked(ExternalBase):
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             'Source format does not support stacking, using format:'
-            ' 1.6.1-rich-root\n'
+            ' \'1.6.1-rich-root\'\n'
             '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
             '\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),

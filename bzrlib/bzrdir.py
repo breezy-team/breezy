@@ -1051,7 +1051,8 @@ class BzrDir(object):
             else:
                 bzrdir_format_name = '1.6'
                 repo_format = pack_repo.RepositoryFormatKnitPack5()
-            note('Source format does not support stacking, using format: %s\n  %s\n',
+            note('Source format does not support stacking, using format:'
+                 ' \'%s\'\n  %s\n',
                  bzrdir_format_name, repo_format.get_format_description())
             format.repository_format = repo_format
         return format
