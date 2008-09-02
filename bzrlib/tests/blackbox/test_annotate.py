@@ -156,7 +156,7 @@ class TestSimpleAnnotate(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('file', 'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', committer="test@host", rev_id="1")
+        tree.commit('add file', committer="test@host", rev_id="rev1")
         self.build_tree_contents([('file', 'foo\nbar\ngam\n')])
         tree.branch.get_config().set_user_option('email', 'current@host2')
 
@@ -173,9 +173,49 @@ class TestSimpleAnnotate(TestCaseWithTransport):
         tree = self._setup_edited_file()
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
-            '       1 | foo\n'
+            '    rev1 | foo\n'
             'current: | bar\n'
-            '       1 | gam\n',
+            '    rev1 | gam\n',
+            out)
+
+    def _create_merged_file(self):
+        """Create a file with a pending merge and local edit."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('file', 'foo\ngam\n')])
+        tree.add('file')
+        tree.commit('add file', rev_id="rev1", committer="test@host")
+        # right side
+        self.build_tree_contents([('file', 'foo\nbar\ngam\n')])
+        tree.commit("right", rev_id="rev1.1.1", committer="test@host")
+        tree.pull(tree.branch, True, "rev1")
+        # left side
+        self.build_tree_contents([('file', 'foo\nbaz\ngam\n')])
+        tree.commit("left", rev_id="rev2", committer="test@host")
+        # merge
+        tree.merge_from_branch(tree.branch, "rev1.1.1")
+        # edit the file to be 'resolved' and have a further local edit
+        self.build_tree_contents([('file', 'local\nfoo\nbar\nbaz\ngam\n')])
+
+    def test_annotated_edited_merged_file_revnos(self):
+        self._create_merged_file()
+        out, err = self.run_bzr('annotate file')
+        self.assertEqual(
+            '3?    robertc | local\n'
+            '1     test@ho | foo\n'
+            '1.1.1 test@ho | bar\n'
+            '2     test@ho | baz\n'
+            '1     test@ho | gam\n',
+            out)
+
+    def test_annotated_edited_merged_file_ids(self):
+        self._create_merged_file()
+        out, err = self.run_bzr('annotate file --show-ids')
+        self.assertEqual(
+            'current: | local\n'
+            '    rev1 | foo\n'
+            'rev1.1.1 | bar\n'
+            '    rev2 | baz\n'
+            '    rev1 | gam\n',
             out)
 
     def test_annotate_empty_file(self):

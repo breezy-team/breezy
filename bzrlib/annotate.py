@@ -35,6 +35,7 @@ from bzrlib import (
     tsort,
     )
 from bzrlib.config import extract_email_address
+from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib.revision import CURRENT_REVISION, Revision
 
 
@@ -89,14 +90,15 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
     if show_ids:
         return _show_id_annotations(annotations, to_file, full)
 
-    # Calculate the lengths of the various columns
+    # Create a virtual revision to represent the current tree state.
+    # Should get some more pending commit attributes, like pending tags,
+    # bugfixes etc.
     current_rev = Revision(CURRENT_REVISION)
     current_rev.parent_ids = tree.get_parent_ids()
     current_rev.committer = tree.branch.get_config().username()
     current_rev.message = "?"
     current_rev.timestamp = round(time.time(), 3)
     current_rev.timezone = osutils.local_time_offset()
-    # Should get pending tags/fixes etc - pending commit attributes.
     annotation = list(_expand_annotations(annotations, tree.branch,
         current_rev))
     _print_annotations(annotation, verbose, to_file, full)
@@ -179,7 +181,26 @@ def _expand_annotations(annotations, branch, current_rev=None):
     :param branch: A locked branch to query for revision details.
     """
     repository = branch.repository
-    revision_id_to_revno = branch.get_revision_id_to_revno_map()
+    if current_rev is not None:
+        # This can probably become a function on MutableTree, get_revno_map there,
+        # or something.
+        last_revision = current_rev.revision_id
+        # XXX: Partially Cloned from branch, uses the old_get_graph, eep.
+        graph = repository.get_graph()
+        revision_graph = dict(((key, value) for key, value in
+            graph.iter_ancestry(current_rev.parent_ids) if value is not None))
+        revision_graph = _strip_NULL_ghosts(revision_graph)
+        revision_graph[last_revision] = current_rev.parent_ids
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+            for seq_num, rev_id, depth, revno, end_of_merge in
+                merge_sorted_revisions)
+    else:
+        revision_id_to_revno = branch.get_revision_id_to_revno_map()
     last_origin = None
     revision_ids = set(o for o, t in annotations)
     revisions = {}
