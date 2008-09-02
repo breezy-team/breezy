@@ -50,7 +50,7 @@ class TransportLogDecorator(TransportDecorator):
         super(TransportLogDecorator, self).__init__(*args, **kw)
         def _make_hook(hookname):
             def _hook(relpath, *args, **kw):
-                return self._log_call(hookname, relpath, *args, **kw)
+                return self._log_and_call(hookname, relpath, *args, **kw)
             return _hook
         for methodname in (
             'append_bytes',
@@ -59,7 +59,6 @@ class TransportLogDecorator(TransportDecorator):
             'delete',
             'get',
             'has',
-            'iter_files_recursive',
             'open_write_stream',
             'mkdir',
             'move',
@@ -75,8 +74,13 @@ class TransportLogDecorator(TransportDecorator):
     def _get_url_prefix(self):
         return 'log+'
 
-    def _log_call(self, methodname, relpath, *args, **kwargs):
-        before = time.time()
+    def iter_files_recursive(self):
+        # needs special handling because it does not have a relpath parameter
+        mutter("%s %s"
+            % ('iter_files_recursive', self._decorated.base))
+        return self._call_and_log_result('iter_files_recursive', (), {})
+
+    def _log_and_call(self, methodname, relpath, *args, **kwargs):
         if kwargs:
             kwargs_str = dict(kwargs)
         else:
@@ -85,8 +89,12 @@ class TransportLogDecorator(TransportDecorator):
                % (methodname, self._decorated.abspath(relpath),
                   self._shorten(self._strip_tuple_parens(args)),
                   kwargs_str))
+        return self._call_and_log_result(methodname, (relpath,) + args, kwargs)
+
+    def _call_and_log_result(self, methodname, args, kwargs):
+        before = time.time()
         try:
-            result = getattr(self._decorated, methodname)(relpath, *args)
+            result = getattr(self._decorated, methodname)(*args, **kwargs)
         except Exception, e:
             mutter("  --> %s" % e)
             mutter("      %.03fs" % (time.time() - before))
