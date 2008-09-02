@@ -97,14 +97,15 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
 
     def check_shallow_branch(self, branch_revid, stacked_on):
         """Assert that the branch 'newbranch' has been published correctly.
-        
+
         :param stacked_on: url of a branch this one is stacked upon.
-        :param branch_revid: a revision id that should be the only 
+        :param branch_revid: a revision id that should be the only
             revision present in the stacked branch, and it should not be in
             the reference branch.
         """
@@ -218,6 +219,27 @@ class TestBranchStacked(ExternalBase):
         trunk = self.make_branch('trunk', format='pack-0.92')
         out, err = self.run_bzr(
             ['branch', '--stacked', 'trunk', 'shallow'])
+        # We should notify the user that we upgraded their format
+        self.assertEqualDiff(
+            'Source format does not support stacking, using format: \'1.6\'\n'
+            '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
+            '\n'
+            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            err)
+
+    def test_branch_stacked_from_rich_root_non_stackable(self):
+        trunk = self.make_branch('trunk', format='rich-root-pack')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', 'trunk', 'shallow'])
+        # We should notify the user that we upgraded their format
+        self.assertEqualDiff(
+            'Source format does not support stacking, using format:'
+            ' \'1.6.1-rich-root\'\n'
+            '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
+            '\n'
+            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            err)
+
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

@@ -1049,9 +1049,14 @@ class BzrDir(object):
             mutter("using %r for stacking" % (format._branch_format,))
             from bzrlib.repofmt import pack_repo
             if format.repository_format.rich_root_data:
+                bzrdir_format_name = '1.6.1-rich-root'
                 repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
             else:
+                bzrdir_format_name = '1.6'
                 repo_format = pack_repo.RepositoryFormatKnitPack5()
+            note('Source format does not support stacking, using format:'
+                 ' \'%s\'\n  %s\n',
+                 bzrdir_format_name, repo_format.get_format_description())
             format.repository_format = repo_format
         return format
 
