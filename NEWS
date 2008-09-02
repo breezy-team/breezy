@@ -35,6 +35,17 @@ IN DEVELOPMENT
       to recover if you realize you uncommitted the wrong thing.
       (John Arbash Meinel)
 
+    * When reading index files, if we happen to read the whole file in a
+      single request treat it as a ``_buffer_all`` request. This happens
+      most often on small indexes over remote transports, where we default
+      to reading 64kB. It saves a round trip for each small index during
+      fetch operations. Also, if we have read more than 50% of an index
+      file, trigger a ``_buffer_all`` on the next request. This works
+      around some inefficiencies because reads don't fall neatly on page
+      boundaries, so we would ignore those bytes, but request them again
+      later. This could trigger a total read size of more than the whole
+      file. (John Arbash Meinel)
+
   BUG FIXES:
 
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
