@@ -1049,6 +1049,9 @@ class BzrDir(object):
                 repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
             else:
                 repo_format = pack_repo.RepositoryFormatKnitPack5()
+            note('Stacking requires repository format:\n  %s\n'
+                 'Not preserving source format.',
+                 repo_format.get_format_description())
             format.repository_format = repo_format
         return format
 
