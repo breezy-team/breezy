@@ -51,6 +51,7 @@ cdef extern from "stdlib.h":
 # inner loops, we don't need to do that at all, as the reference only lasts for
 # a very short time.
 cdef extern from "Python.h":
+    ctypedef int Py_ssize_t
     int PyList_Append(object lst, object item) except -1
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
     int PyList_CheckExact(object)
