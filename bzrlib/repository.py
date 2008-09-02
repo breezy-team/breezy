@@ -2306,9 +2306,14 @@ format_registry.register_lazy(
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack5RichRoot',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack5RichRootBroken',
     )
 
 # Development formats. 
@@ -2909,13 +2914,17 @@ class InterKnit1and2(InterKnitRepo):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit1 source and Knit3 target"""
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit3
         try:
-            from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
-                RepositoryFormatKnit3)
+            from bzrlib.repofmt.knitrepo import (
+                RepositoryFormatKnit1,
+                RepositoryFormatKnit3,
+                )
             from bzrlib.repofmt.pack_repo import (
                 RepositoryFormatKnitPack1,
                 RepositoryFormatKnitPack3,
+                RepositoryFormatKnitPack4,
+                RepositoryFormatKnitPack5,
+                RepositoryFormatKnitPack5RichRoot,
                 RepositoryFormatPackDevelopment0,
                 RepositoryFormatPackDevelopment0Subtree,
                 )
@@ -2923,6 +2932,9 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnit1,
                 RepositoryFormatKnitPack1,
                 RepositoryFormatPackDevelopment0,
+                RepositoryFormatKnitPack4,
+                RepositoryFormatKnitPack5,
+                RepositoryFormatKnitPack5RichRoot,
                 )
             subtrees = (
                 RepositoryFormatKnit3,

@@ -413,6 +413,8 @@ class TestPackRepository(TestCaseWithTransport):
     def test_break_lock_breaks_physical_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo._pack_collection.lock_names()
+        repo.control_files.leave_in_place()
+        repo.unlock()
         repo2 = repository.Repository.open('.')
         self.assertTrue(repo.get_physical_lock_status())
         self.prepare_for_break_lock()
@@ -495,7 +497,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
-    def test_stack_checks_compatibility(self):
+    def test_stack_checks_rich_root_compatibility(self):
         # early versions of the packing code relied on pack internals to
         # stack, but the current version should be able to stack on any
         # format.
@@ -507,7 +509,10 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if repo.supports_rich_root():
             # can only stack on repositories that have compatible internal
             # metadata
-            matching_format_name = 'pack-0.92-subtree'
+            if getattr(repo._format, 'supports_tree_reference', False):
+                matching_format_name = 'pack-0.92-subtree'
+            else:
+                matching_format_name = 'rich-root-pack'
             mismatching_format_name = 'pack-0.92'
         else:
             matching_format_name = 'pack-0.92'
@@ -523,6 +528,32 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
             r'KnitPackRepository.*/repo/.*\n'
             r'different rich-root support')
+
+    def test_stack_checks_serializers_compatibility(self):
+        repo = self.make_repository('repo', format=self.get_format())
+        if getattr(repo._format, 'supports_tree_reference', False):
+            # can only stack on repositories that have compatible internal
+            # metadata
+            matching_format_name = 'pack-0.92-subtree'
+            mismatching_format_name = 'rich-root-pack'
+        else:
+            if repo.supports_rich_root():
+                matching_format_name = 'rich-root-pack'
+                mismatching_format_name = 'pack-0.92-subtree'
+            else:
+                raise TestNotApplicable('No formats use non-v5 serializer'
+                    ' without having rich-root also set')
+        base = self.make_repository('base', format=matching_format_name)
+        repo.add_fallback_repository(base)
+        # you can't stack on something with incompatible data
+        bad_repo = self.make_repository('mismatch',
+            format=mismatching_format_name)
+        e = self.assertRaises(errors.IncompatibleRepositories,
+            repo.add_fallback_repository, bad_repo)
+        self.assertContainsRe(str(e),
+            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+            r'KnitPackRepository.*/repo/.*\n'
+            r'different serializers')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
@@ -590,9 +621,9 @@ def load_tests(basic_tests, module, test_loader):
          dict(format_name='1.6',
               format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
               format_supports_external_lookups=True),
-         dict(format_name='1.6-rich-root',
+         dict(format_name='1.6.1-rich-root',
               format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
-                  "(bzr 1.6)\n",
+                  "(bzr 1.6.1)\n",
               format_supports_external_lookups=True),
          dict(format_name='development',
               format_string="Bazaar development format 1 "

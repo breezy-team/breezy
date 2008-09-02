@@ -185,7 +185,7 @@ class Option(object):
             argname = 'ARG'
         self.argname = argname
         if param_name is None:
-            self._param_name = self.name
+            self._param_name = self.name.replace('-', '_')
         else:
             self._param_name = param_name
         self.custom_callback = custom_callback
@@ -210,22 +210,22 @@ class Option(object):
             option_strings.append('-%s' % short_name)
         optargfn = self.type
         if optargfn is None:
-            parser.add_option(action='callback', 
-                              callback=self._optparse_bool_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_bool_callback,
                               callback_args=(True,),
                               help=self.help,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
-            parser.add_option(action='callback', 
-                              callback=self._optparse_bool_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_bool_callback,
                               callback_args=(False,),
                               help=optparse.SUPPRESS_HELP, *negation_strings)
         else:
-            parser.add_option(action='callback', 
-                              callback=self._optparse_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_callback,
                               type='string', metavar=self.argname.upper(),
                               help=self.help,
-                              default=OptionParser.DEFAULT_VALUE, 
+                              default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):

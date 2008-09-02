@@ -16,7 +16,15 @@ IN DEVELOPMENT
       them automatically, much as ``bzr add`` scans for new files that
       are not ignored and adds them automatically. (Robert Collins)
 
+  FEATURES
+
+    * Support for GSSAPI authentication when using FTP as documented in 
+      RFC2228. (Jelmer Vernooij, #49623)
+
   IMPROVEMENTS:
+
+    * ``bzr branch`` uses the default stacking policy if the branch format
+      supports it. (Aaron Bentley)
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
       ``bzr info`` if it completed successfully.
@@ -32,19 +40,29 @@ IN DEVELOPMENT
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
       users. (Robert Collins, #205416)
 
+    * Catch the infamous "select/poll returned error" which occurs when
+      pycurl try to send a body request to an HTTP/1.0 server which has
+      already refused to handle the request. (Vincent Ladeuil, #225020)
+
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
       permissions). This would cause us to set all subdirectories to
       ``0700`` and files to ``0600`` rather than leaving them unmodified.
       Now we ignore ``0000`` as the permissions and assume they are
       invalid. (John Arbash Meinel, #259855)
-    
+
+    * Merging from a previously joined branch will no longer cause 
+      a traceback. (Jelmer Vernooij, #203376)
+
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
       the internal ``show_tree_status`` function should be aware that
       the show_pending flag is now authoritative for showing pending
       merges, as it was originally. (Robert Collins, #225204)
+
+    * Set valid default _param_name for Option so that ListOption can embed
+      '-' in names. (Vincent Ladeuil, #263249)
 
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
@@ -61,12 +79,22 @@ IN DEVELOPMENT
     * The deprecated ``Branch.abspath`` and unimplemented 
       ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
 
+    * BzrDir.cloning_metadir implementations must now take a require_stacking
+      parameter.  (Aaron Bentley)
+
   TESTING:
 
     * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
       which are then passed to the cleanup callable as it is run. In
       addition, addCleanup no longer requires that the callables passed to
       it be unique. (Jonathan Lange)
+
+    * ``selftest``'s ``--starting-with`` option can now use predefined
+      prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
+      ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
+
+    * ``selftest``'s ``--starting-with`` option now accepts multiple values.
+      (Vincent Ladeuil)
 
   INTERNALS:
 
@@ -88,6 +116,46 @@ IN DEVELOPMENT
       allows plugins to add new clients by registering them with
       ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
       clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+bzr 1.6.1rc1 2008-08-29
+-----------------------
+
+This release fixes a few regressions found in the 1.6 client. Fetching
+changes was using an O(N^2) buffering algorithm, so for large projects it
+would cause memory thrashing. There is also a specific problem with the
+``--1.6-rich-root`` format, which prevented stacking on top of
+``--rich-root-pack`` repositories, and could allow users to accidentally
+fetch experimental data (``-subtree``) without representing it properly.
+The ``--1.6-rich-root`` format has been deprecated and users are
+recommended to upgrade to ``--1.6.1-rich-root`` immediately.  Also we
+re-introduced a workaround for users who have repositories with incorrect
+nodes (not possible if you only used official releases).
+I should also clarify that none of this is data loss level issues, but
+still sufficient enough to warrant an updated release.
+
+  BUG FIXES:
+
+    * ``RemoteTransport.readv()`` was being inefficient about how it
+      buffered the readv data and processed it. It would keep appending to
+      the same string (causing many copies) and then pop bytes out of the
+      start of the string (causing more copies).
+      With this patch "bzr+ssh://local" can improve dramatically,
+      especially for projects with large files.
+      (John Arbash Meinel)
+
+    * Revision texts were always meant to be stored as fulltexts. There
+      was a bug in a bzr.dev version that would accidentally create deltas
+      when copying from a Pack repo to a Knit repo. This has been fixed,
+      but to support those repositories, we know always request full texts
+      for Revision texts. (John Arbash Meinel, #261339)
+
+    * The previous ``--1.6-rich-root`` format used an incorrect xml
+      serializer, which would accidentally support fetching from a
+      repository that supported subtrees, even though the local one would
+      not. We deprecated that format, and introduced a new one that uses
+      the correct serializer ``--1.6.1-rich-root``.
+      (John Arbash Meinel, #262333)
 
 
 bzr 1.6 2008-08-25

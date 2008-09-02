@@ -58,6 +58,7 @@ from bzrlib import (
     progress,
     ui,
     urlutils,
+    registry,
     workingtree,
     )
 import bzrlib.branch
@@ -2302,15 +2303,18 @@ def condition_id_in_list(id_list):
     return condition
 
 
-def condition_id_startswith(start):
+def condition_id_startswith(starts):
     """Create a condition filter verifying that test's id starts with a string.
     
-    :param start: A string.
-    :return: A callable that returns True if the test's id starts with the
-        given string.
+    :param starts: A list of string.
+    :return: A callable that returns True if the test's id starts with one of 
+        the given strings.
     """
     def condition(test):
-        return test.id().startswith(start)
+        for start in starts:
+            if test.id().startswith(start):
+                return True
+        return False
     return condition
 
 
@@ -2338,7 +2342,7 @@ def filter_suite_by_condition(suite, condition):
         test case which should be included in the result.
     :return: A suite which contains the tests found in suite that pass
         condition.
-    """ 
+    """
     result = []
     for test in iter_suite_tests(suite):
         if condition(test):
@@ -2352,7 +2356,7 @@ def filter_suite_by_re(suite, pattern):
     :param suite:           the source suite
     :param pattern:         pattern that names must match
     :returns: the newly created suite
-    """ 
+    """
     condition = condition_id_re(pattern)
     result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
@@ -2374,7 +2378,7 @@ def filter_suite_by_id_startswith(suite, start):
     """Create a test suite by filtering another one.
 
     :param suite: The source suite.
-    :param start: A string the test id must start with.
+    :param start: A list of string the test id must start with one of.
     :returns: the newly created suite
     """
     condition = condition_id_startswith(start)
@@ -2427,7 +2431,7 @@ def split_suite_by_condition(suite, condition):
         suite matching the condition, and the second contains the remainder
         from suite. The order within each output suite is the same as it was in
         suite.
-    """ 
+    """
     matched = []
     did_not_match = []
     for test in iter_suite_tests(suite):
@@ -2449,7 +2453,7 @@ def split_suite_by_re(suite, pattern):
         suite matching pattern, and the second contains the remainder from
         suite. The order within each output suite is the same as it was in
         suite.
-    """ 
+    """
     return split_suite_by_condition(suite, condition_id_re(pattern))
 
 
@@ -2671,6 +2675,59 @@ class TestIdList(object):
         return self.tests.has_key(test_id)
 
 
+class TestPrefixAliasRegistry(registry.Registry):
+    """A registry for test prefix aliases.
+
+    This helps implement shorcuts for the --starting-with selftest
+    option. Overriding existing prefixes is not allowed but not fatal (a
+    warning will be emitted).
+    """
+
+    def register(self, key, obj, help=None, info=None,
+                 override_existing=False):
+        """See Registry.register.
+
+        Trying to override an existing alias causes a warning to be emitted,
+        not a fatal execption.
+        """
+        try:
+            super(TestPrefixAliasRegistry, self).register(
+                key, obj, help=help, info=info, override_existing=False)
+        except KeyError:
+            actual = self.get(key)
+            note('Test prefix alias %s is already used for %s, ignoring %s'
+                 % (key, actual, obj))
+
+    def resolve_alias(self, id_start):
+        """Replace the alias by the prefix in the given string.
+
+        Using an unknown prefix is an error to help catching typos.
+        """
+        parts = id_start.split('.')
+        try:
+            parts[0] = self.get(parts[0])
+        except KeyError:
+            raise errors.BzrCommandError(
+                '%s is not a known test prefix alias' % parts[0])
+        return '.'.join(parts)
+
+
+test_prefix_alias_registry = TestPrefixAliasRegistry()
+"""Registry of test prefix aliases."""
+
+
+# This alias allows to detect typos ('bzrlin.') by making all valid test ids
+# appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
+test_prefix_alias_registry.register('bzrlib', 'bzrlib')
+
+# Obvious higest levels prefixes, feel free to add your own via a plugin
+test_prefix_alias_registry.register('bd', 'bzrlib.doc')
+test_prefix_alias_registry.register('bu', 'bzrlib.utils')
+test_prefix_alias_registry.register('bt', 'bzrlib.tests')
+test_prefix_alias_registry.register('bb', 'bzrlib.tests.blackbox')
+test_prefix_alias_registry.register('bp', 'bzrlib.plugins')
+
+
 def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
@@ -2837,16 +2894,21 @@ def test_suite(keep_only=None, starting_with=None):
 
     loader = TestUtil.TestLoader()
 
-    if starting_with is not None:
+    if starting_with:
+        starting_with = [test_prefix_alias_registry.resolve_alias(start)
+                         for start in starting_with]
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
-            return (
-                # Either the module name starts with the specified string
-                name.startswith(starting_with)
-                # or it may contain tests starting with the specified string
-                or starting_with.startswith(name)
-                )
+            for start in starting_with:
+                if (
+                    # Either the module name starts with the specified string
+                    name.startswith(start)
+                    # or it may contain tests starting with the specified string
+                    or start.startswith(name)
+                    ):
+                    return True
+            return False
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
@@ -2912,7 +2974,7 @@ def test_suite(keep_only=None, starting_with=None):
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
-    if starting_with is not None:
+    if starting_with:
         suite = filter_suite_by_id_startswith(suite, starting_with)
 
     if keep_only is not None:
@@ -2921,7 +2983,7 @@ def test_suite(keep_only=None, starting_with=None):
         suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
-        if starting_with is not None:
+        if starting_with:
             # The tester has used both keep_only and starting_with, so he is
             # already aware that some tests are excluded from the list, there
             # is no need to tell him which.
@@ -3234,7 +3296,7 @@ UTF8Filesystem = _UTF8Filesystem()
 
 
 class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlined filesystem is case-insensitive
+    """Check if underlying filesystem is case-insensitive
     (e.g. on Windows, Cygwin, MacOS)
     """
 

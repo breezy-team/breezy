@@ -74,6 +74,31 @@ class TestPermissions(tests.TestCaseWithTransport):
         self.assertEqualMode(mode, b.control_files._dir_mode)
         self.assertEqualMode(mode & ~07111, b.control_files._file_mode)
 
+        os.mkdir('d')
+        os.chmod('d', 0700)
+        b = self.make_branch('d')
+        self.assertEqualMode(0700, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0600, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0700, b.control_files._dir_mode)
+        self.assertEqualMode(0600, b.control_files._file_mode)
+        check_mode_r(self, 'd/.bzr', 00600, 00700)
+
+    def test_new_branch_group_sticky_bit(self):
+        if isinstance(self.branch_format, RemoteBranchFormat):
+            # Remote branch format have no permission logic in them; there's
+            # nothing to test here.
+            raise tests.TestNotApplicable('Remote branches have no'
+                                          ' permission logic')
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable('chmod has no effect on win32')
+        elif sys.platform == 'darwin':
+            # OS X creates temp dirs with the 'wheel' group, which users are
+            # not likely to be in, and this prevents us from setting the sgid
+            # bit
+            os.chown(self.test_dir, os.getuid(), os.getgid())
+        # also, these are BzrBranch format specific things..
+        t = self.make_branch_and_tree('.')
+        b = t.branch
         os.mkdir('b')
         os.chmod('b', 02777)
         b = self.make_branch('b')
@@ -91,15 +116,6 @@ class TestPermissions(tests.TestCaseWithTransport):
         self.assertEqualMode(02750, b.control_files._dir_mode)
         self.assertEqualMode(00640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
-
-        os.mkdir('d')
-        os.chmod('d', 0700)
-        b = self.make_branch('d')
-        self.assertEqualMode(0700, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0600, b.bzrdir._get_file_mode())
-        self.assertEqualMode(0700, b.control_files._dir_mode)
-        self.assertEqualMode(0600, b.control_files._file_mode)
-        check_mode_r(self, 'd/.bzr', 00600, 00700)
 
     def test_mode_0(self):
         """Test when a transport returns null permissions for .bzr"""
