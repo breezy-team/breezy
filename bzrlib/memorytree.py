@@ -68,8 +68,6 @@ class MemoryTree(mutabletree.MutableTree):
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
         revision_id = _mod_revision.ensure_null(branch.last_revision())
-        if _mod_revision.is_null(revision_id):
-            revision_id = None
         return MemoryTree(branch, revision_id)
 
     def _gather_kinds(self, files, kinds):
@@ -206,7 +204,7 @@ class MemoryTree(mutabletree.MutableTree):
         """Populate the in-tree state from the branch."""
         self._basis_tree = self.branch.repository.revision_tree(
             self._branch_revision_id)
-        if self._branch_revision_id is None:
+        if self._branch_revision_id == _mod_revision.NULL_REVISION:
             self._parent_ids = []
         else:
             self._parent_ids = [self._branch_revision_id]

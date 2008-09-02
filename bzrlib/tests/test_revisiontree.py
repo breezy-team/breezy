@@ -53,7 +53,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         # the parents for a revision_tree(NULL_REVISION) are []:
         self.assertEqual([],
             self.t.branch.repository.revision_tree(
-                _mod_revision.NULL_REVISION).get_parent_ids())
+                revision.NULL_REVISION).get_parent_ids())
 
     def test_empty_no_root(self):
         null_tree = self.t.branch.repository.revision_tree(
