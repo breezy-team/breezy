@@ -125,7 +125,7 @@ def Connection(url):
             elif "«" in msg:
                 new_url = msg[msg.index("»")+2:msg.index("«")]
             else:
-                new_url = None
+                raise AssertionError("Unable to parse error message: %s" % msg)
             raise RedirectRequested(source=url, target=new_url, 
                                     is_permanent=True)
         raise
