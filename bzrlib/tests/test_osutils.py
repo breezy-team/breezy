@@ -37,6 +37,7 @@ from bzrlib.osutils import (
         is_inside_or_parent_of_any,
         pathjoin,
         pumpfile,
+        pump_string_file,
         )
 from bzrlib.tests import (
         probe_unicode_in_user_encoding,
@@ -439,6 +440,30 @@ class TestPumpFile(TestCase):
         if response_data != self.test_data:
             message = "Data not equal.  Expected %d bytes, received %d."
             self.fail(message % (len(response_data), self.test_data_len))
+
+
+class TestPumpStringFile(TestCase):
+
+    def test_empty(self):
+        output = StringIO()
+        pump_string_file("", output)
+        self.assertEqual("", output.getvalue())
+
+    def test_more_than_segment_size(self):
+        output = StringIO()
+        pump_string_file("123456789", output, 2)
+        self.assertEqual("123456789", output.getvalue())
+
+    def test_segment_size(self):
+        output = StringIO()
+        pump_string_file("12", output, 2)
+        self.assertEqual("12", output.getvalue())
+
+    def test_segment_size_multiple(self):
+        output = StringIO()
+        pump_string_file("1234", output, 2)
+        self.assertEqual("1234", output.getvalue())
+
 
 class TestSafeUnicode(TestCase):
 

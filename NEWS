@@ -54,6 +54,9 @@ IN DEVELOPMENT
     * Merging from a previously joined branch will no longer cause 
       a traceback. (Jelmer Vernooij, #203376)
 
+    * Pack operations on windows network shares will work even with large
+      files. (Robert Collins, #255656)
+
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
