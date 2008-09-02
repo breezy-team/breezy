@@ -64,6 +64,9 @@ IN DEVELOPMENT
     * Set valid default _param_name for Option so that ListOption can embed
       '-' in names. (Vincent Ladeuil, #263249)
 
+    * Show proper error rather than traceback when an unknown revision 
+      id is specified to ``bzr cat-revision``. (Jelmer Vernooij, #175569)
+
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
