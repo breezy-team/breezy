@@ -60,11 +60,11 @@ def load_tests(standard_tests, module, loader):
     to_adapt, result = split_suite_by_re(standard_tests, "readdir")
     adapter = TestScenarioApplier()
     from bzrlib import _readdir_py
-    adapter.scenarios = [('python', {'read_dir':_readdir_py.read_dir})]
+    adapter.scenarios = [('python', {'read_dir': _readdir_py.read_dir})]
     try:
         from bzrlib import _readdir_pyx
         adapter.scenarios.append(
-            (('pyrex', {'read_dir':_readdir_pyx.read_dir})))
+            (('pyrex', {'read_dir': _readdir_pyx.read_dir})))
     except ImportError:
         pass
     adapt_tests(to_adapt, adapter, result)
@@ -751,19 +751,23 @@ class TestWalkDirs(TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_names = ['.bzr', '0file', '1dir', '2file']
-        # read_dir either returns None, or a value
+        # read_dir returns pairs, which form a table with either None in all
+        # the first columns, or a sort key to get best on-disk-read order, 
+        # and the disk path name in utf-8 encoding in the second column.
         read_result = self.read_dir('.')
+        # The second column is always the names, and every name except "." and
+        # ".." should be present.
+        names = sorted([row[1] for row in read_result])
+        self.assertEqual(expected_names, names)
+        expected_sort_key = None
         if read_result[0][0] is None:
-            # No innate sort:
-            expected_keys = [None, None, None, None]
-            expected = zip(expected_keys, expected_names)
-            expected.sort()
-            self.assertEqual(expected, sorted(read_result))
+            # No sort key returned - all keys must None
+            operator = self.assertEqual
         else:
-            # Check that the names we need are present in the second
-            # column
-            names = sorted([result[1] for result in read_result])
-            self.assertEqual(expected_names, names)
+            # A sort key in the first row implies sort keys in the other rows.
+            operator = self.assertNotEqual
+        for row in read_result:
+            operator(None, row[0])
         
     def test_walkdirs(self):
         tree = [

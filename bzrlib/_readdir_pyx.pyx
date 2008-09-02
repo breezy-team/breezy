@@ -105,7 +105,7 @@ def read_dir(path):
             name = entry.d_name
             if not (name[0] == dot and (
                 (name[1] == 0) or 
-                (name[1] == dot and name [2] == 0))
+                (name[1] == dot and name[2] == 0))
                 ):
                 result.append((entry.d_ino, entry.d_name))
     finally:
