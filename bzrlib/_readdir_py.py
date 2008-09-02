@@ -21,10 +21,11 @@ import os
 
 
 def read_dir(path):
-    """Like os.listdir, this reads a directories contents.
+    """Like os.listdir, this reads the contents of a directory.
 
     There is a C module which is recommended which will return
-    a file kind in the second element of the returned tuples.
+    a sort key in the first element of the tuple to allow slightly
+    more efficient behaviour on the operating systems part.
 
     :param path: the directory to list.
     :return: a list of (None, basename) tuples.

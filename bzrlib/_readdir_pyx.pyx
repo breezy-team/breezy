@@ -69,7 +69,7 @@ cdef extern from 'readdir.h':
     pass
 
 def read_dir(path):
-    """Like os.listdir, this reads a directories contents.
+    """Like os.listdir, this reads the contents of a directory.
 
     :param path: the directory to list.
     :return: a list of (sort_key, basename) tuples.
