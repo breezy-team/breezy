@@ -61,10 +61,8 @@ def run_cmd(cmd, arg):
 def apr_config(arg):
     apr_config_cmd = os.getenv("APR_CONFIG")
     if apr_config_cmd is None:
-        cmds = ["apr-config", "apr-1-config", "/usr/local/apr/bin/apr-config",
-                "/usr/local/apr/bin/apr-1-config", 
-                "/opt/local/bin/apr-1-config",
-                "/usr/local/bin/apr-config", ]
+        cmds = ["apr-1-config", "/usr/local/apr/bin/apr-1-config", 
+                "/opt/local/bin/apr-1-config", ]
         for cmd in cmds:
             try:
                 res = run_cmd(cmd, arg)
