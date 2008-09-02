@@ -452,7 +452,7 @@ class TestStatus(TestCaseWithTransport):
         self.build_tree_contents([('alt/a', 'content of a\nfrom alt\n')])
         alt_id = alt.commit('alt')
         tree.merge_from_branch(alt.branch)
-        output = StringIO()
+        output = self.make_utf8_encoded_stringio()
         show_tree_status(tree, to_file=output)
         self.assertContainsRe(output.getvalue(), 'pending merges:')
         out, err = self.run_bzr('status tree/a')
