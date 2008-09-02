@@ -97,14 +97,15 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
 
     def check_shallow_branch(self, branch_revid, stacked_on):
         """Assert that the branch 'newbranch' has been published correctly.
-        
+
         :param stacked_on: url of a branch this one is stacked upon.
-        :param branch_revid: a revision id that should be the only 
+        :param branch_revid: a revision id that should be the only
             revision present in the stacked branch, and it should not be in
             the reference branch.
         """
@@ -218,6 +219,11 @@ class TestBranchStacked(ExternalBase):
         trunk = self.make_branch('trunk', format='pack-0.92')
         out, err = self.run_bzr(
             ['branch', '--stacked', 'trunk', 'shallow'])
+        # We should notify the user that we upgraded their format
+        self.assertContainsRe(err, 'Stacking requires repository format:')
+        self.assertContainsRe(err, r'Packs 5 \(adds stacking support,'
+                                   r' requires bzr 1\.6\)')
+        self.assertContainsRe(err, r'Not preserving source format\.')
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
