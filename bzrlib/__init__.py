@@ -41,11 +41,12 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 6, 0, 'beta', 4)
+version_info = (1, 7, 0, 'dev', 0)
 
 
-# API compatibility version: bzrlib is currently API compatible with 1.6.
-api_minimum_version = (1, 6, 0)
+# API compatibility version: bzrlib is currently API compatible with 1.7.
+api_minimum_version = (1, 7, 0)
+
 
 def _format_version_tuple(version_info):
     """Turn a version number 3-tuple or 5-tuple into a short string.

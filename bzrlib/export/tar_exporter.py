@@ -23,15 +23,17 @@ import tarfile
 import time
 
 from bzrlib import errors, export, osutils
+from bzrlib.export import _export_iter_entries
 from bzrlib.trace import mutter
 
 
-def tar_exporter(tree, dest, root, compression=None):
+def tar_exporter(tree, dest, root, subdir, compression=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
+    mutter('export version %r', tree)
     now = time.time()
     compression = str(compression or '')
     if dest == '-':
@@ -42,16 +44,7 @@ def tar_exporter(tree, dest, root, compression=None):
         if root is None:
             root = export.get_root_name(dest)
         ball = tarfile.open(dest, 'w:' + compression)
-    mutter('export version %r', tree)
-    inv = tree.inventory
-    entries = inv.iter_entries()
-    entries.next() # skip root
-    for dp, ie in entries:
-        # The .bzr* namespace is reserved for "magic" files like
-        # .bzrignore and .bzrrules - do not export these
-        if dp.startswith(".bzr"):
-            continue
-
+    for dp, ie in _export_iter_entries(tree, subdir):
         filename = osutils.pathjoin(root, dp).encode('utf8')
         item = tarfile.TarInfo(filename)
         item.mtime = now
@@ -82,9 +75,9 @@ def tar_exporter(tree, dest, root, compression=None):
     ball.close()
 
 
-def tgz_exporter(tree, dest, root):
-    tar_exporter(tree, dest, root, compression='gz')
+def tgz_exporter(tree, dest, root, subdir):
+    tar_exporter(tree, dest, root, subdir, compression='gz')
 
 
-def tbz_exporter(tree, dest, root):
-    tar_exporter(tree, dest, root, compression='bz2')
+def tbz_exporter(tree, dest, root, subdir):
+    tar_exporter(tree, dest, root, subdir, compression='bz2')

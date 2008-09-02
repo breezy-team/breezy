@@ -557,11 +557,6 @@ class Tree(object):
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
-        file_id = self.path2id(rules.RULES_TREE_FILENAME)
-        if file_id is not None:
-            ini_file = self.get_file(file_id)
-            searcher = rules._StackedRulesSearcher(
-                [rules._IniBasedRulesSearcher(ini_file), default_searcher])
         return searcher
 
 
@@ -953,7 +948,7 @@ class InterTree(InterObject):
                 self.source._comparison_data(from_entry, path)
             kind = (from_kind, None)
             executable = (from_executable, None)
-            changed_content = True
+            changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)

@@ -1195,6 +1195,10 @@ class KnitVersionedFiles(VersionedFiles):
                     current_source = key_source
                 source_keys[-1][1].append(key)
         else:
+            if ordering != 'unordered':
+                raise AssertionError('valid values for ordering are:'
+                    ' "unordered" or "topological" not: %r'
+                    % (ordering,))
             # Just group by source; remote sources first.
             present_keys = []
             source_keys = []

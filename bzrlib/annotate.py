@@ -345,16 +345,9 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                     if len(heads) == 1:
                         output_append((iter(heads).next(), left[1]))
                     else:
-                        # Both claim different origins
-                        output_append((revision_id, left[1]))
-                        # We know that revision_id is the head for
-                        # left and right, so cache it
-                        heads_provider.cache(
-                            (revision_id, left[0]),
-                            (revision_id,))
-                        heads_provider.cache(
-                            (revision_id, right[0]),
-                            (revision_id,))
+                        # Both claim different origins, sort lexicographically
+                        # so that we always get a stable result.
+                        output_append(sorted([left, right])[0])
         last_child_idx = child_idx + match_len
 
 

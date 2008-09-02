@@ -758,8 +758,8 @@ class Commit(object):
                     # the path has a deleted parent, do not add it.
                     continue
             if exclude and is_inside_any(exclude, path):
-                # Skip - it is to be considered by the final copy-from-basis
-                # step.
+                # Skip excluded paths. Excluded paths are processed by
+                # _update_builder_with_changes.
                 continue
             content_summary = self.work_tree.path_content_summary(path)
             # Note that when a filter of specific files is given, we must only

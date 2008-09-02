@@ -291,8 +291,14 @@ class CommitBuilder(object):
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
-                # appropriate.
-                return None, (ie.revision == self._new_revision_id)
+                # appropriate. If its not being considered for committing then
+                # it and all its parents to the root must be unaltered so
+                # no-change against the basis.
+                if ie.revision == self._new_revision_id:
+                    raise AssertionError("Impossible situation, a skipped "
+                        "inventory entry (%r) claims to be modified in this "
+                        "commit (%r).", (ie, self._new_revision_id))
+                return None, False
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
@@ -691,9 +697,9 @@ class Repository(object):
         # Additional places to query for data.
         self._fallback_repositories = []
         # What order should fetch operations request streams in?
-        # The default is unsorted as that is the cheapest for an origin to
+        # The default is unordered as that is the cheapest for an origin to
         # provide.
-        self._fetch_order = 'unsorted'
+        self._fetch_order = 'unordered'
         # Does this repository use deltas that can be fetched as-deltas ?
         # (E.g. knits, where the knit deltas can be transplanted intact.
         # We default to False, which will ensure that enough data to get
@@ -2300,9 +2306,14 @@ format_registry.register_lazy(
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack5RichRoot',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack5RichRootBroken',
     )
 
 # Development formats. 
@@ -2903,13 +2914,17 @@ class InterKnit1and2(InterKnitRepo):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit1 source and Knit3 target"""
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit3
         try:
-            from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
-                RepositoryFormatKnit3)
+            from bzrlib.repofmt.knitrepo import (
+                RepositoryFormatKnit1,
+                RepositoryFormatKnit3,
+                )
             from bzrlib.repofmt.pack_repo import (
                 RepositoryFormatKnitPack1,
                 RepositoryFormatKnitPack3,
+                RepositoryFormatKnitPack4,
+                RepositoryFormatKnitPack5,
+                RepositoryFormatKnitPack5RichRoot,
                 RepositoryFormatPackDevelopment0,
                 RepositoryFormatPackDevelopment0Subtree,
                 )
@@ -2917,6 +2932,9 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnit1,
                 RepositoryFormatKnitPack1,
                 RepositoryFormatPackDevelopment0,
+                RepositoryFormatKnitPack4,
+                RepositoryFormatKnitPack5,
+                RepositoryFormatKnitPack5RichRoot,
                 )
             subtrees = (
                 RepositoryFormatKnit3,

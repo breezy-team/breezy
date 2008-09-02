@@ -21,11 +21,8 @@ provide custom behaviour for selected files in selected branches.
 Files
 -----
 
-Branch-specific rules are defined in ``.bzrrules`` in the root of the
-working tree. Default rules for all branches are defined in
-``BZR_HOME/rules``. Either or both files may be missing. If a rule is
-matched by a pattern in the branch level file, searching stops.
-
+Default rules for all branches are defined in the optional file
+``BZR_HOME/rules``. 
 
 Rule Patterns
 -------------
