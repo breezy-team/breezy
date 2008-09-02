@@ -2317,19 +2317,7 @@ format_registry.register_lazy(
     )
 
 # Development formats. 
-# 1.2->1.3
-# development 0 - stub to introduce development versioning scheme.
-format_registry.register_lazy(
-    "Bazaar development format 0 (needs bzr.dev from before 1.3)\n",
-    'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment0',
-    )
-format_registry.register_lazy(
-    ("Bazaar development format 0 with subtree support "
-        "(needs bzr.dev from before 1.3)\n"),
-    'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment0Subtree',
-    )
+# 1.5->1.6
 format_registry.register_lazy(
     "Bazaar development format 1 (needs bzr.dev from before 1.6)\n",
     'bzrlib.repofmt.pack_repo',
@@ -2341,7 +2329,7 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment1Subtree',
     )
-# 1.3->1.4 go below here
+# 1.6->1.7 go below here
 
 
 class InterRepository(InterObject):
@@ -2925,13 +2913,13 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack4,
                 RepositoryFormatKnitPack5,
                 RepositoryFormatKnitPack5RichRoot,
-                RepositoryFormatPackDevelopment0,
-                RepositoryFormatPackDevelopment0Subtree,
+                RepositoryFormatPackDevelopment1,
+                RepositoryFormatPackDevelopment1Subtree,
                 )
             nosubtrees = (
                 RepositoryFormatKnit1,
                 RepositoryFormatKnitPack1,
-                RepositoryFormatPackDevelopment0,
+                RepositoryFormatPackDevelopment1,
                 RepositoryFormatKnitPack4,
                 RepositoryFormatKnitPack5,
                 RepositoryFormatKnitPack5RichRoot,
@@ -2939,7 +2927,7 @@ class InterKnit1and2(InterKnitRepo):
             subtrees = (
                 RepositoryFormatKnit3,
                 RepositoryFormatKnitPack3,
-                RepositoryFormatPackDevelopment0Subtree,
+                RepositoryFormatPackDevelopment1Subtree,
                 )
             return (isinstance(source._format, nosubtrees) and
                 isinstance(target._format, subtrees))
