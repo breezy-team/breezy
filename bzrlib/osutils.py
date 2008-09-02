@@ -1261,7 +1261,7 @@ def _walkdirs_fs_utf8(top, prefix=""):
     _lstat = os.lstat
     _directory = _directory_kind
     # Use C accelerated directory listing.
-    _listdir = read_dir
+    _listdir = _read_dir
     _kind_from_mode = _formats.get
 
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1531,6 +1531,6 @@ def resource_string(package, resource_name):
 
 
 try:
-    from bzrlib._readdir_pyx import read_dir
+    from bzrlib._readdir_pyx import read_dir as _read_dir
 except ImportError:
-    from bzrlib._readdir_py import read_dir
+    from bzrlib._readdir_py import read_dir as _read_dir
