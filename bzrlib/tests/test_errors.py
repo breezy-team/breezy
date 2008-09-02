@@ -45,6 +45,13 @@ class TestErrors(TestCaseWithTransport):
             "Error: the reason why",
             str(error))
 
+    def test_dirstate_corrupt(self):
+        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
+                                       'trailing garbage: "x"')
+        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
+            " appears to be corrupt: trailing garbage: \"x\"",
+            str(error))
+
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
         self.assertEqualDiff(

@@ -21,6 +21,7 @@ import os
 
 from bzrlib import (
     dirstate,
+    errors,
     tests,
     )
 from bzrlib.tests import test_dirstate
@@ -700,7 +701,8 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
             f.write('bogus\n')
         finally:
             f.close()
-        e = self.assertRaises(AssertionError, state._read_dirblocks_if_needed)
+        e = self.assertRaises(errors.DirstateCorrupt,
+                              state._read_dirblocks_if_needed)
         # Make sure we mention the bogus characters in the error
         self.assertContainsRe(str(e), 'bogus')
 
