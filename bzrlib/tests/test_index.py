@@ -595,14 +595,51 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # generate a big enough index that we only read some of it on a typical
         # bisection lookup.
         nodes = []
+        for counter in range(99):
+            nodes.append((self.make_key(counter), self.make_value(counter),
+                ((self.make_key(counter + 20),),)  ))
+        index = self.make_index(ref_lists=1, nodes=nodes)
+        # lookup a key in the middle that does not exist, so that when we can
+        # check that the referred-to-keys are not accessed automatically.
+        index_size = index._size
+        index_center = index_size // 2
+        result = index._lookup_keys_via_location(
+            [(index_center, ('40', ))])
+        # check the parse map - only the start and middle should have been
+        # parsed.
+        self.assertEqual([(0, 4027), (10198, 14028)], index._parsed_byte_map)
+        self.assertEqual([(None, self.make_key(17)),
+                          (self.make_key(44), self.make_key(5))],
+            index._parsed_key_map)
+        # and check the transport activity likewise.
+        self.assertEqual(
+            [('readv', 'index', [(index_center, 800), (0, 200)], True,
+                                  index_size)],
+            index._transport._activity)
+        # reset the transport log for testing the reference lookup
+        del index._transport._activity[:]
+        # now looking up a key in the portion of the file already parsed should
+        # only perform IO to resolve its key references.
+        result = index._lookup_keys_via_location([(11000, self.make_key(45))])
+        self.assertEqual(
+            [((11000, self.make_key(45)),
+              (index, self.make_key(45), self.make_value(45),
+               ((self.make_key(65),),)))],
+            result)
+        self.assertEqual([('readv', 'index', [(15093, 800)], True, index_size)],
+            index._transport._activity)
+
+    def test_lookup_key_can_buffer_all(self):
+        nodes = []
         for counter in range(64):
             nodes.append((self.make_key(counter), self.make_value(counter),
                 ((self.make_key(counter + 20),),)  ))
         index = self.make_index(ref_lists=1, nodes=nodes)
         # lookup a key in the middle that does not exist, so that when we can
         # check that the referred-to-keys are not accessed automatically.
-        result =index._lookup_keys_via_location(
-            [(index._size // 2, ('40', ))])
+        index_size = index._size
+        index_center = index_size // 2
+        result = index._lookup_keys_via_location([(index_center, ('40', ))])
         # check the parse map - only the start and middle should have been
         # parsed.
         self.assertEqual([(0, 3890), (6444, 10274)], index._parsed_byte_map)
@@ -611,20 +648,22 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             index._parsed_key_map)
         # and check the transport activity likewise.
         self.assertEqual(
-            [('readv', 'index', [(7906, 800), (0, 200)], True, 15813)],
+            [('readv', 'index', [(index_center, 800), (0, 200)], True,
+                                  index_size)],
             index._transport._activity)
         # reset the transport log for testing the reference lookup
         del index._transport._activity[:]
         # now looking up a key in the portion of the file already parsed should
         # only perform IO to resolve its key references.
-        result = index._lookup_keys_via_location([(4000, self.make_key(40))])
+        result = index._lookup_keys_via_location([(7000, self.make_key(40))])
         self.assertEqual(
-            [((4000, self.make_key(40)),
+            [((7000, self.make_key(40)),
               (index, self.make_key(40), self.make_value(40),
                ((self.make_key(60),),)))],
             result)
-        self.assertEqual([('readv', 'index', [(11976, 800)], True, 15813)],
-            index._transport._activity)
+        # Resolving the references would have required more data read, and we
+        # are already above the 50% threshold, so it triggered a _buffer_all
+        self.assertEqual([('get', 'index')], index._transport._activity)
 
     def test_iter_all_entries_empty(self):
         index = self.make_index()
@@ -682,8 +721,13 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         list(index.iter_entries([self.make_key(40)]))
         self.assertIs(None, index._nodes)
         self.assertEqual(8192, index._bytes_read)
-        # But on the next pass, we will trigger buffer all
+        # On the next pass, we will not trigger buffer all if the key is
+        # available without reading more
         list(index.iter_entries([self.make_key(32)]))
+        self.assertIs(None, index._nodes)
+        # But if we *would* need to read more to resolve it, then we will
+        # buffer all.
+        list(index.iter_entries([self.make_key(60)]))
         self.assertIsNot(None, index._nodes)
 
     def test_iter_entries_references_resolved(self):

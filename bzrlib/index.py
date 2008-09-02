@@ -480,11 +480,6 @@ class GraphIndex(object):
         if self._size is None and self._nodes is None:
             self._buffer_all()
 
-        if self._nodes is None and self._bytes_read * 2 >= self._size:
-            # We've already read more than 50% of the file, go ahead and buffer
-            # the whole thing
-            self._buffer_all()
-
         # We fit about 20 keys per minimum-read (4K), so if we are looking for
         # more than 1/20th of the index its likely (assuming homogenous key
         # spread) that we'll read the entire index. If we're going to do that,
@@ -714,9 +709,15 @@ class GraphIndex(object):
             if length > 0:
                 readv_ranges.append((location, length))
         self._read_and_parse(readv_ranges)
+        if self._nodes is not None:
+            # The _read_and_parse triggered a _buffer_all, grab the data and
+            # return it
+            for location, key in pending_references:
+                value, refs = self._nodes[key]
+                result.append(((location, key), (self, key, value, refs)))
+            return result
         for location, key in pending_references:
             # answer key references we had to look-up-late.
-            index = self._parsed_key_index(key)
             value, refs = self._bisect_nodes[key]
             result.append(((location, key), (self, key,
                 value, self._resolve_references(refs))))
@@ -992,25 +993,32 @@ class GraphIndex(object):
 
         :param readv_ranges: A prepared readv range list.
         """
-        if readv_ranges:
-            readv_data = self._transport.readv(self._name, readv_ranges, True,
-                self._size)
-            # parse
-            for offset, data in readv_data:
-                self._bytes_read += len(data)
-                if offset == 0 and len(data) == self._size:
-                    # We read the whole range, most likely because the
-                    # Transport upcast our readv ranges into one long request
-                    # for enough total data to grab the whole index.
-                    self._buffer_all(StringIO(data))
-                    return
-                if self._bisect_nodes is None:
-                    # this must be the start
-                    if not (offset == 0):
-                        raise AssertionError()
-                    offset, data = self._parse_header_from_bytes(data)
-                # print readv_ranges, "[%d:%d]" % (offset, offset + len(data))
-                self._parse_region(offset, data)
+        if not readv_ranges:
+            return
+        if self._nodes is None and self._bytes_read * 2 >= self._size:
+            # We've already read more than 50% of the file and we are about to
+            # request more data, just _buffer_all() and be done
+            self._buffer_all()
+            return
+
+        readv_data = self._transport.readv(self._name, readv_ranges, True,
+            self._size)
+        # parse
+        for offset, data in readv_data:
+            self._bytes_read += len(data)
+            if offset == 0 and len(data) == self._size:
+                # We read the whole range, most likely because the
+                # Transport upcast our readv ranges into one long request
+                # for enough total data to grab the whole index.
+                self._buffer_all(StringIO(data))
+                return
+            if self._bisect_nodes is None:
+                # this must be the start
+                if not (offset == 0):
+                    raise AssertionError()
+                offset, data = self._parse_header_from_bytes(data)
+            # print readv_ranges, "[%d:%d]" % (offset, offset + len(data))
+            self._parse_region(offset, data)
 
     def _signature(self):
         """The file signature for this index type."""
