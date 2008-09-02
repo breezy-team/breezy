@@ -379,7 +379,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Return RevisionTree for the current last revision.
         
         If the left most parent is a ghost then the returned tree will be an
-        empty tree - one obtained by calling repository.revision_tree(None).
+        empty tree - one obtained by calling 
+        repository.revision_tree(NULL_REVISION).
         """
         try:
             revision_id = self.get_parent_ids()[0]
@@ -387,7 +388,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # no parents, return an empty revision tree.
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
-            return self.branch.repository.revision_tree(None)
+            return self.branch.repository.revision_tree(
+                       _mod_revision.NULL_REVISION)
         try:
             return self.revision_tree(revision_id)
         except errors.NoSuchRevision:
@@ -404,7 +406,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if self.branch.repository.has_revision(revision_id):
                 raise
             # the basis tree is a ghost so return an empty tree.
-            return self.branch.repository.revision_tree(None)
+            return self.branch.repository.revision_tree(
+                       _mod_revision.NULL_REVISION)
 
     def _cleanup(self):
         self._flush_ignore_list_cache()

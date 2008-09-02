@@ -1166,7 +1166,7 @@ class Repository(object):
                      t in self.revision_trees(required_trees))
         for revision in revisions:
             if not revision.parent_ids:
-                old_tree = self.revision_tree(None)
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
             else:
                 old_tree = trees[revision.parent_ids[0]]
             yield trees[revision.revision_id].changes_from(old_tree)
@@ -1658,11 +1658,12 @@ class Repository(object):
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
-        `revision_id` may be None for the empty tree revision.
+        `revision_id` may be NULL_REVISION for the empty tree revision.
         """
+        revision_id = _mod_revision.ensure_null(revision_id)
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
-        if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
+        if revision_id == _mod_revision.NULL_REVISION:
             return RevisionTree(self, Inventory(root_id=None), 
                                 _mod_revision.NULL_REVISION)
         else:
@@ -1959,7 +1960,8 @@ def _install_revision(repository, rev, revision_tree, signature):
             present_parents.append(p_id)
             parent_trees[p_id] = repository.revision_tree(p_id)
         else:
-            parent_trees[p_id] = repository.revision_tree(None)
+            parent_trees[p_id] = repository.revision_tree(
+                                     _mod_revision.NULL_REVISION)
 
     inv = revision_tree.inventory
     entries = inv.iter_entries()
