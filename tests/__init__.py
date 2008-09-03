@@ -123,6 +123,7 @@ def test_suite():
             'test_import_dsc',
             'test_merge_upstream',
             'test_repack_tarball_extra',
+            'test_revspec',
             'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)

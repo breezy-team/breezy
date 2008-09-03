@@ -100,4 +100,35 @@ class UpstreamAlreadyImported(BzrError):
         self.version = str(version)
 
 
+class AmbiguousPackageSpecification(BzrError):
+    _fmt = ("You didn't specify a distribution with the package "
+            "specification, and tags exists that state that the "
+            "version that you specified has been uploaded to more "
+            "than one distribution. Please specify which version "
+            "you wish to refer to by by appending ':debian' or "
+            "':ubuntu' to the revision specifier: %(specifier)s")
+
+    def __init__(self, specifier):
+        self.specifier = specifier
+
+
+class UnknownVersion(BzrError):
+    _fmt = ("No tag exists in this branch indicating that version "
+            "'%(version)s' has been uploaded.")
+
+    def __init__(self, version):
+        self.version = version
+
+
+class UnknownDistribution(BzrError):
+    _fmt = "Unknown distribution: %(distribution)s."
+
+    def __init__(self, distribution):
+        self.distribution = distribution
+
+
+class VersionNotSpecified(BzrError):
+    _fmt = "You did not specify a package version."
+
+
 # vim: ts=2 sts=2 sw=2
