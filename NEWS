@@ -4,6 +4,17 @@ Bazaar Release Notes
 
 .. contents::
 
+IN DEVELOPMENT (1.6rc2?)
+------------------------
+
+  BUG FIXES:
+
+    * Copying between ``rich-root`` and ``rich-root-pack`` (and vice
+      versa) was accidentally using the inter-model fetcher, instead of
+      recognizing that both were 'rich root' formats.
+      (John Arbash Meinel, #264321)
+
+
 bzr 1.6.1rc1 2008-08-29
 -----------------------
 
