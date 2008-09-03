@@ -145,6 +145,11 @@ IN DEVELOPMENT
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
 
+    * ``GraphIndexBuilder.add_node`` and ``BTreeBuilder`` have been
+      streamlined a bit. This should make creating large indexes faster.
+      (In benchmarking, it now takes less time to create a BTree index than
+      it takes to read the GraphIndex one.) (John Arbash Meinel)
+
     * Mail clients for `bzr send` are now listed in a registry.  This
       allows plugins to add new clients by registering them with
       ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
