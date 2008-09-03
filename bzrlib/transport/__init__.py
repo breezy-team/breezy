@@ -1758,6 +1758,9 @@ register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs',
                         'FakeNFSTransportDecorator')
 
+register_transport_proto('log+')
+register_lazy_transport('log+', 'bzrlib.transport.log', 'TransportLogDecorator')
+
 register_transport_proto('trace+')
 register_lazy_transport('trace+', 'bzrlib.transport.trace',
                         'TransportTraceDecorator')
