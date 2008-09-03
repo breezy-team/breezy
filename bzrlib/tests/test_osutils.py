@@ -81,7 +81,7 @@ class _ReadDirFeature(Feature):
             return False
 
     def feature_name(self):
-        return 'bzrlib._btree_serializer_c'
+        return 'bzrlib._readdir_pyx'
 
 ReadDirFeature = _ReadDirFeature()
 
