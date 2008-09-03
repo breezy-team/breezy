@@ -484,7 +484,7 @@ elif 'py2exe' in sys.argv:
             plugins = set(dirs)
         x = []
         for i in files:
-            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll"]:
+            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue
