@@ -147,6 +147,17 @@ IN DEVELOPMENT
       clients now use this mechanism.  (Neil Martinsen-Burrell)
 
 
+bzr 1.6.1rc2 2008-09-03
+-----------------------
+
+  BUG FIXES:
+
+    * Copying between ``rich-root`` and ``rich-root-pack`` (and vice
+      versa) was accidentally using the inter-model fetcher, instead of
+      recognizing that both were 'rich root' formats.
+      (John Arbash Meinel, #264321)
+
+
 bzr 1.6.1rc1 2008-08-29
 -----------------------
 
