@@ -40,17 +40,50 @@ from bzrlib.osutils import (
         pump_string_file,
         )
 from bzrlib.tests import (
+        adapt_tests,
+        Feature,
         probe_unicode_in_user_encoding,
+        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
+        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (
     FakeReadFile,
     )
 from bzrlib.tests.test__walkdirs_win32 import WalkdirsWin32Feature
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize readdir tests."""
+    to_adapt, result = split_suite_by_re(standard_tests, "readdir")
+    adapter = TestScenarioApplier()
+    from bzrlib import _readdir_py
+    adapter.scenarios = [('python', {'read_dir': _readdir_py.read_dir})]
+    if ReadDirFeature.available():
+        adapter.scenarios.append(('pyrex',
+            {'read_dir': ReadDirFeature.read_dir}))
+    adapt_tests(to_adapt, adapter, result)
+    return result
+
+
+class _ReadDirFeature(Feature):
+
+    def _probe(self):
+        try:
+            from bzrlib import _readdir_pyx
+            self.read_dir = _readdir_pyx.read_dir
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'bzrlib._btree_serializer_c'
+
+ReadDirFeature = _ReadDirFeature()
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -746,6 +779,38 @@ class TestSplitLines(TestCase):
 
 class TestWalkDirs(TestCaseInTempDir):
 
+    def test_readdir(self):
+        tree = [
+            '.bzr/',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '2file'
+            ]
+        self.build_tree(tree)
+        expected_names = ['.bzr', '0file', '1dir', '2file']
+        # read_dir returns pairs, which form a table with either None in all
+        # the first columns, or a sort key to get best on-disk-read order, 
+        # and the disk path name in utf-8 encoding in the second column.
+        read_result = self.read_dir('.')
+        # The second column is always the names, and every name except "." and
+        # ".." should be present.
+        names = sorted([row[1] for row in read_result])
+        self.assertEqual(expected_names, names)
+        expected_sort_key = None
+        if read_result[0][0] is None:
+            # No sort key returned - all keys must None
+            operator = self.assertEqual
+        else:
+            # A sort key in the first row implies sort keys in the other rows.
+            operator = self.assertNotEqual
+        for row in read_result:
+            operator(None, row[0])
+
+    def test_compiled_extension_exists(self):
+        self.requireFeature(ReadDirFeature)
+        
     def test_walkdirs(self):
         tree = [
             '.bzr',
