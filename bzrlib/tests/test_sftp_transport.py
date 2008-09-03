@@ -30,6 +30,8 @@ except ImportError:
 from bzrlib import (
     bzrdir,
     errors,
+    tests,
+    transport as _mod_transport,
     )
 from bzrlib.osutils import (
     pathjoin,
@@ -46,6 +48,7 @@ from bzrlib.transport import get_transport
 import bzrlib.transport.http
 
 if paramiko_loaded:
+    from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.transport.sftp import (
         SFTPAbsoluteServer,
         SFTPHomeDirServer,
@@ -76,7 +79,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         set_test_transport_to_sftp(self)
 
 
-class SFTPLockTests (TestCaseWithSFTPServer):
+class SFTPLockTests(TestCaseWithSFTPServer):
 
     def test_sftp_locks(self):
         from bzrlib.errors import LockError
@@ -459,3 +462,22 @@ class TestSocketDelay(TestCase):
         self.assertAlmostEqual(t2 - t1, 100 + 7)
 
 
+class Test_SFTPReadvHelper(tests.TestCase):
+
+    def assertGetRequests(self, expected_requests, offsets):
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        self.assertEqual(expected_requests, helper._get_requests())
+
+    def test__get_requests(self):
+        # Small single requests become a single readv request
+        self.assertGetRequests([(0, 100)], [(0, 20), (30, 50), (20, 10),
+                                            (80, 20)])
+        # Non-contiguous ranges are given as multiple requests
+        self.assertGetRequests([(0, 20), (30, 50)],
+                               [(10, 10), (30, 20), (0, 10), (50, 30)])
+        # Ranges larger than _max_request_size (32kB) are broken up into
+        # multiple requests, even if it actually spans multiple logical
+        # requests
+        self.assertGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
+                               [(0, 40000), (40000, 100), (40100, 1900),
+                                (42000, 24000)])
