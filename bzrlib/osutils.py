@@ -1470,6 +1470,20 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
+
+
 def recv_all(socket, bytes):
     """Receive an exact number of bytes.
 
