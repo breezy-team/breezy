@@ -2916,21 +2916,35 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatPackDevelopment1,
                 RepositoryFormatPackDevelopment1Subtree,
                 )
-            nosubtrees = (
-                RepositoryFormatKnit1,
-                RepositoryFormatKnitPack1,
-                RepositoryFormatPackDevelopment1,
-                RepositoryFormatKnitPack4,
-                RepositoryFormatKnitPack5,
-                RepositoryFormatKnitPack5RichRoot,
+            norichroot = (
+                RepositoryFormatKnit1,            # no rr, no subtree
+                RepositoryFormatKnitPack1,        # no rr, no subtree
+                RepositoryFormatPackDevelopment1, # no rr, no subtree
+                RepositoryFormatKnitPack5,        # no rr, no subtree
                 )
-            subtrees = (
-                RepositoryFormatKnit3,
-                RepositoryFormatKnitPack3,
-                RepositoryFormatPackDevelopment1Subtree,
+            richroot = (
+                RepositoryFormatKnit3,            # rr, subtree
+                RepositoryFormatKnitPack3,        # rr, subtree
+                RepositoryFormatKnitPack4,        # rr, no subtree
+                RepositoryFormatKnitPack5RichRoot,# rr, no subtree
+                RepositoryFormatPackDevelopment1Subtree, # rr, subtree
                 )
-            return (isinstance(source._format, nosubtrees) and
-                isinstance(target._format, subtrees))
+            for format in norichroot:
+                if format.rich_root_data:
+                    raise AssertionError('Format %s is a rich-root format'
+                        ' but is included in the non-rich-root list'
+                        % (format,))
+            for format in richroot:
+                if not format.rich_root_data:
+                    raise AssertionError('Format %s is not a rich-root format'
+                        ' but is included in the rich-root list'
+                        % (format,))
+            # TODO: One alternative is to just check format.rich_root_data,
+            #       instead of keeping membership lists. However, the formats
+            #       *also* have to use the same 'Knit' style of storage
+            #       (line-deltas, fulltexts, etc.)
+            return (isinstance(source._format, norichroot) and
+                    isinstance(target._format, richroot))
         except AttributeError:
             return False
 
