@@ -224,6 +224,16 @@ class BzrCheckError(InternalBzrError):
         self.message = message
 
 
+class DirstateCorrupt(BzrError):
+
+    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
+
+    def __init__(self, state, msg):
+        BzrError.__init__(self)
+        self.state = state
+        self.msg = msg
+
+
 class DisabledMethod(InternalBzrError):
 
     _fmt = "The smart server method '%(class_name)s' is disabled."

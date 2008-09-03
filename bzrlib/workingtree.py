@@ -520,7 +520,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_workingtree()
         self.copy_content_into(result, revision_id)
         return result
 
@@ -1316,9 +1316,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 only_change_inv = True
             elif self.has_filename(from_rel) and not self.has_filename(to_rel):
                 only_change_inv = False
-            elif (sys.platform == 'win32'
-                and from_rel.lower() == to_rel.lower()
-                and self.has_filename(from_rel)):
+            elif (not self.case_sensitive
+                  and from_rel.lower() == to_rel.lower()
+                  and self.has_filename(from_rel)):
                 only_change_inv = False
             else:
                 # something is wrong, so lets determine what exactly
@@ -2714,22 +2714,19 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
 
-    def _stub_initialize_remote(self, branch):
-        """As a special workaround create critical control files for a remote working tree.
-        
+    def _stub_initialize_on_transport(self, transport, file_mode):
+        """Workaround: create control files for a remote working tree.
+
         This ensures that it can later be updated and dealt with locally,
-        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
+        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
         no working tree.  (See bug #43064).
         """
         sio = StringIO()
         inv = Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
-        branch._transport.put_file('inventory', sio,
-            mode=branch.control_files._file_mode)
-        branch._transport.put_bytes('pending-merges', '',
-            mode=branch.control_files._file_mode)
-        
+        transport.put_file('inventory', sio, file_mode)
+        transport.put_bytes('pending-merges', '', file_mode)
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

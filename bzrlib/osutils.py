@@ -569,6 +569,24 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     return length
 
 
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
+
+
 def file_iterator(input_file, readsize=32768):
     while True:
         b = input_file.read(readsize)
@@ -1260,7 +1278,8 @@ def _walkdirs_fs_utf8(top, prefix=""):
     """
     _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
+    # Use C accelerated directory listing.
+    _listdir = _read_dir
     _kind_from_mode = _formats.get
 
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1276,11 +1295,13 @@ def _walkdirs_fs_utf8(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        # read_dir supplies in should-stat order.
+        for _, name in sorted(_listdir(top)):
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1539,3 +1560,9 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+try:
+    from bzrlib._readdir_pyx import read_dir as _read_dir
+except ImportError:
+    from bzrlib._readdir_py import read_dir as _read_dir

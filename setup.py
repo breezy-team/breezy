@@ -225,8 +225,10 @@ def add_pyrex_extension(module_name, **kwargs):
             ext_modules.append(Extension(module_name, [c_name], **kwargs))
 
 
+add_pyrex_extension('bzrlib._btree_serializer_c')
 add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._readdir_pyx')
 if sys.platform == 'win32':
     # pyrex uses the macro WIN32 to detect the platform, even though it should
     # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the

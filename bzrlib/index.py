@@ -272,6 +272,8 @@ class GraphIndex(object):
         self._keys_by_offset = None
         self._nodes_by_key = None
         self._size = size
+        # The number of bytes we've read so far in trying to process this file
+        self._bytes_read = 0
 
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
@@ -288,14 +290,18 @@ class GraphIndex(object):
         return "%s(%r)" % (self.__class__.__name__,
             self._transport.abspath(self._name))
 
-    def _buffer_all(self):
+    def _buffer_all(self, stream=None):
         """Buffer all the index data.
 
         Mutates self._nodes and self.keys_by_offset.
         """
+        if self._nodes is not None:
+            # We already did this
+            return
         if 'index' in debug.debug_flags:
             mutter('Reading entire index %s', self._transport.abspath(self._name))
-        stream = self._transport.get(self._name)
+        if stream is None:
+            stream = self._transport.get(self._name)
         self._read_prefix(stream)
         self._expected_elements = 3 + self._key_length
         line_count = 0
@@ -468,13 +474,20 @@ class GraphIndex(object):
             keys supplied. No additional keys will be returned, and every
             key supplied that is in the index will be returned.
         """
-        # PERFORMANCE TODO: parse and bisect all remaining data at some
-        # threshold of total-index processing/get calling layers that expect to
-        # read the entire index to use the iter_all_entries  method instead.
         keys = set(keys)
         if not keys:
             return []
         if self._size is None and self._nodes is None:
+            self._buffer_all()
+
+        # We fit about 20 keys per minimum-read (4K), so if we are looking for
+        # more than 1/20th of the index its likely (assuming homogenous key
+        # spread) that we'll read the entire index. If we're going to do that,
+        # buffer the whole thing. A better analysis might take key spread into
+        # account - but B+Tree indices are better anyway.
+        # We could look at all data read, and use a threshold there, which will
+        # trigger on ancestry walks, but that is not yet fully mapped out.
+        if self._nodes is None and len(keys) * 20 > self.key_count():
             self._buffer_all()
         if self._nodes is not None:
             return self._iter_entries_from_total_buffer(keys)
@@ -623,10 +636,24 @@ class GraphIndex(object):
         if self._bisect_nodes is None:
             readv_ranges.append(_HEADER_READV)
         self._read_and_parse(readv_ranges)
+        result = []
+        if self._nodes is not None:
+            # _read_and_parse triggered a _buffer_all because we requested the
+            # whole data range
+            for location, key in location_keys:
+                if key not in self._nodes: # not present
+                    result.append(((location, key), False))
+                elif self.node_ref_lists:
+                    value, refs = self._nodes[key]
+                    result.append(((location, key),
+                        (self, key, value, refs)))
+                else:
+                    result.append(((location, key),
+                        (self, key, self._nodes[key])))
+            return result
         # generate results:
         #  - figure out <, >, missing, present
         #  - result present references so we can return them.
-        result = []
         # keys that we cannot answer until we resolve references
         pending_references = []
         pending_locations = set()
@@ -682,9 +709,15 @@ class GraphIndex(object):
             if length > 0:
                 readv_ranges.append((location, length))
         self._read_and_parse(readv_ranges)
+        if self._nodes is not None:
+            # The _read_and_parse triggered a _buffer_all, grab the data and
+            # return it
+            for location, key in pending_references:
+                value, refs = self._nodes[key]
+                result.append(((location, key), (self, key, value, refs)))
+            return result
         for location, key in pending_references:
             # answer key references we had to look-up-late.
-            index = self._parsed_key_index(key)
             value, refs = self._bisect_nodes[key]
             result.append(((location, key), (self, key,
                 value, self._resolve_references(refs))))
@@ -960,18 +993,32 @@ class GraphIndex(object):
 
         :param readv_ranges: A prepared readv range list.
         """
-        if readv_ranges:
-            readv_data = self._transport.readv(self._name, readv_ranges, True,
-                self._size)
-            # parse
-            for offset, data in readv_data:
-                if self._bisect_nodes is None:
-                    # this must be the start
-                    if not (offset == 0):
-                        raise AssertionError()
-                    offset, data = self._parse_header_from_bytes(data)
-                # print readv_ranges, "[%d:%d]" % (offset, offset + len(data))
-                self._parse_region(offset, data)
+        if not readv_ranges:
+            return
+        if self._nodes is None and self._bytes_read * 2 >= self._size:
+            # We've already read more than 50% of the file and we are about to
+            # request more data, just _buffer_all() and be done
+            self._buffer_all()
+            return
+
+        readv_data = self._transport.readv(self._name, readv_ranges, True,
+            self._size)
+        # parse
+        for offset, data in readv_data:
+            self._bytes_read += len(data)
+            if offset == 0 and len(data) == self._size:
+                # We read the whole range, most likely because the
+                # Transport upcast our readv ranges into one long request
+                # for enough total data to grab the whole index.
+                self._buffer_all(StringIO(data))
+                return
+            if self._bisect_nodes is None:
+                # this must be the start
+                if not (offset == 0):
+                    raise AssertionError()
+                offset, data = self._parse_header_from_bytes(data)
+            # print readv_ranges, "[%d:%d]" % (offset, offset + len(data))
+            self._parse_region(offset, data)
 
     def _signature(self):
         """The file signature for this index type."""

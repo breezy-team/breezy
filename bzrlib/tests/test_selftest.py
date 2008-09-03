@@ -422,7 +422,7 @@ class TestTreeProviderAdapter(TestCase):
         tests = list(iter(suite))
         # XXX We should not have tests fail as we add more scenarios
         # abentley 20080412
-        self.assertEqual(5, len(tests))
+        self.assertEqual(6, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = workingtree.WorkingTreeFormat3
@@ -1784,13 +1784,14 @@ class TestSelftestFiltering(TestCase):
 
     def test_condition_id_startswith(self):
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        start = klass + 'test_condition_id_starts'
-        test_names = [klass + 'test_condition_id_startswith']
+        start1 = klass + 'test_condition_id_starts'
+        start2 = klass + 'test_condition_id_in'
+        test_names = [ klass + 'test_condition_id_in_list',
+                      klass + 'test_condition_id_startswith',
+                     ]
         filtered_suite = filter_suite_by_condition(
-            self.suite, tests.condition_id_startswith(start))
-        my_pattern = 'TestSelftestFiltering.*test_condition_id_startswith'
-        re_filtered = filter_suite_by_re(self.suite, my_pattern)
-        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
+            self.suite, tests.condition_id_startswith([start1, start2]))
+        self.assertEqual(test_names, _test_ids(filtered_suite))
 
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
@@ -1849,16 +1850,19 @@ class TestSelftestFiltering(TestCase):
 
     def test_filter_suite_by_id_startswith(self):
         # By design this test may fail if another test is added whose name also
-        # begins with the start value used.
+        # begins with one of the start value used.
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        start = klass + 'test_filter_suite_by_id_starts'
-        test_list = [klass + 'test_filter_suite_by_id_startswith']
-        filtered_suite = tests.filter_suite_by_id_startswith(self.suite, start)
-        filtered_names = _test_ids(filtered_suite)
+        start1 = klass + 'test_filter_suite_by_id_starts'
+        start2 = klass + 'test_filter_suite_by_id_li'
+        test_list = [klass + 'test_filter_suite_by_id_list',
+                     klass + 'test_filter_suite_by_id_startswith',
+                     ]
+        filtered_suite = tests.filter_suite_by_id_startswith(
+            self.suite, [start1, start2])
         self.assertEqual(
-            filtered_names,
-            ['bzrlib.tests.test_selftest.'
-             'TestSelftestFiltering.test_filter_suite_by_id_startswith'])
+            test_list,
+            _test_ids(filtered_suite),
+            )
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
@@ -2170,3 +2174,46 @@ class TestFilteredByNameStartTestLoader(tests.TestCase):
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))
+
+
+class TestTestPrefixRegistry(tests.TestCase):
+
+    def _get_registry(self):
+        tp_registry = tests.TestPrefixAliasRegistry()
+        return tp_registry
+
+    def test_register_new_prefix(self):
+        tpr = self._get_registry()
+        tpr.register('foo', 'fff.ooo.ooo')
+        self.assertEquals('fff.ooo.ooo', tpr.get('foo'))
+
+    def test_register_existing_prefix(self):
+        tpr = self._get_registry()
+        tpr.register('bar', 'bbb.aaa.rrr')
+        tpr.register('bar', 'bBB.aAA.rRR')
+        self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              r'.*bar.*bbb.aaa.rrr.*bBB.aAA.rRR')
+
+    def test_get_unknown_prefix(self):
+        tpr = self._get_registry()
+        self.assertRaises(KeyError, tpr.get, 'I am not a prefix')
+
+    def test_resolve_prefix(self):
+        tpr = self._get_registry()
+        tpr.register('bar', 'bb.aa.rr')
+        self.assertEquals('bb.aa.rr', tpr.resolve_alias('bar'))
+
+    def test_resolve_unknown_alias(self):
+        tpr = self._get_registry()
+        self.assertRaises(errors.BzrCommandError,
+                          tpr.resolve_alias, 'I am not a prefix')
+
+    def test_predefined_prefixes(self):
+        tpr = tests.test_prefix_alias_registry
+        self.assertEquals('bzrlib', tpr.resolve_alias('bzrlib'))
+        self.assertEquals('bzrlib.doc', tpr.resolve_alias('bd'))
+        self.assertEquals('bzrlib.utils', tpr.resolve_alias('bu'))
+        self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
+        self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
+        self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
