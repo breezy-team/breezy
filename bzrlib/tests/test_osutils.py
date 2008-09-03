@@ -40,6 +40,7 @@ from bzrlib.osutils import (
         )
 from bzrlib.tests import (
         adapt_tests,
+        Feature,
         probe_unicode_in_user_encoding,
         split_suite_by_re,
         StringIOWrapper,
@@ -61,14 +62,27 @@ def load_tests(standard_tests, module, loader):
     adapter = TestScenarioApplier()
     from bzrlib import _readdir_py
     adapter.scenarios = [('python', {'read_dir': _readdir_py.read_dir})]
-    try:
-        from bzrlib import _readdir_pyx
-        adapter.scenarios.append(
-            (('pyrex', {'read_dir': _readdir_pyx.read_dir})))
-    except ImportError:
-        pass
+    if ReadDirFeature.available():
+        adapter.scenarios.append(('pyrex',
+            {'read_dir': ReadDirFeature.read_dir}))
     adapt_tests(to_adapt, adapter, result)
     return result
+
+
+class _ReadDirFeature(Feature):
+
+    def _probe(self):
+        try:
+            from bzrlib import _readdir_pyx
+            self.read_dir = _readdir_pyx.read_dir
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'bzrlib._btree_serializer_c'
+
+ReadDirFeature = _ReadDirFeature()
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -768,6 +782,9 @@ class TestWalkDirs(TestCaseInTempDir):
             operator = self.assertNotEqual
         for row in read_result:
             operator(None, row[0])
+
+    def test_compiled_extension_exists(self):
+        self.requireFeature(ReadDirFeature)
         
     def test_walkdirs(self):
         tree = [
