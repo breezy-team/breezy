@@ -33,7 +33,7 @@ class TestMissing(TestCaseWithTransport):
     def assertUnmerged(self, expected, source, target, restrict='all'):
         unmerged = missing.find_unmerged(source, target, restrict=restrict)
         self.assertEqual(expected, unmerged)
-            
+
     def test_find_unmerged(self):
         original_tree = self.make_branch_and_tree('original')
         original = original_tree.branch
@@ -43,24 +43,24 @@ class TestMissing(TestCaseWithTransport):
         merger = merger_tree.branch
         self.assertUnmerged(([], []), original, puller)
         original_tree.commit('a', rev_id='a')
-        self.assertUnmerged(([(1, 'a')], []), original, puller)
+        self.assertUnmerged(([('1', 'a')], []), original, puller)
         puller_tree.pull(original)
         self.assertUnmerged(([], []), original, puller)
         merger_tree.pull(original)
         original_tree.commit('b', rev_id='b')
         original_tree.commit('c', rev_id='c')
-        self.assertUnmerged(([(2, 'b'), (3, 'c')], []),
+        self.assertUnmerged(([('2', 'b'), ('3', 'c')], []),
                             original, puller)
 
         puller_tree.pull(original)
         self.assertUnmerged(([], []), original, puller)
-        self.assertUnmerged(([(2, 'b'), (3, 'c')], []),
+        self.assertUnmerged(([('2', 'b'), ('3', 'c')], []),
                             original, merger)
         merger_tree.merge_from_branch(original)
-        self.assertUnmerged(([(2, 'b'), (3, 'c')], []),
+        self.assertUnmerged(([('2', 'b'), ('3', 'c')], []),
                             original, merger)
         merger_tree.commit('d', rev_id='d')
-        self.assertUnmerged(([], [(2, 'd')]), original, merger)
+        self.assertUnmerged(([], [('2', 'd')]), original, merger)
 
     def test_iter_log_revisions(self):
         base_tree = self.make_branch_and_tree('base')
@@ -85,7 +85,7 @@ class TestMissing(TestCaseWithTransport):
 
         base_extra, child_extra = missing.find_unmerged(base_tree.branch,
                                                         child_tree.branch)
-        results = list(iter_log_revisions(base_extra, 
+        results = list(iter_log_revisions(base_extra,
                             base_tree.branch.repository,
                             verbose=True))
         self.assertEqual([], results)
@@ -97,10 +97,10 @@ class TestMissing(TestCaseWithTransport):
 
         r0,r1,r2,r3 = results
 
-        self.assertEqual((2, 'c-2'), (r0.revno, r0.rev.revision_id))
-        self.assertEqual((3, 'c-3'), (r1.revno, r1.rev.revision_id))
-        self.assertEqual((4, 'c-4'), (r2.revno, r2.rev.revision_id))
-        self.assertEqual((5, 'c-5'), (r3.revno, r3.rev.revision_id))
+        self.assertEqual(('2', 'c-2'), (r0.revno, r0.rev.revision_id))
+        self.assertEqual(('3', 'c-3'), (r1.revno, r1.rev.revision_id))
+        self.assertEqual(('4', 'c-4'), (r2.revno, r2.rev.revision_id))
+        self.assertEqual(('5', 'c-5'), (r3.revno, r3.rev.revision_id))
 
         delta0 = r0.delta
         self.assertNotEqual(None, delta0)
@@ -135,10 +135,11 @@ class TestMissing(TestCaseWithTransport):
 class TestFindUnmerged(tests.TestCaseWithTransport):
 
     def assertUnmerged(self, local, remote, local_branch, remote_branch,
-                       restrict):
+                       restrict, include_merges=False):
         """Check the output of find_unmerged_mainline_revisions"""
         local_extra, remote_extra = missing.find_unmerged(
-                                        local_branch, remote_branch, restrict)
+                                        local_branch, remote_branch, restrict,
+                                        include_merges=include_merges)
         self.assertEqual(local, local_extra)
         self.assertEqual(remote, remote_extra)
 
@@ -154,25 +155,17 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         rev1 = tree.commit('one')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         rev2 = tree2.commit('two')
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
-        self.assertUnmerged([], [(2, rev2)], tree.branch, tree2.branch, 'all')
-        self.assertUnmerged([(2, rev2)], [], tree2.branch, tree.branch, 'all')
+        self.assertUnmerged([], [('2', rev2)], tree.branch, tree2.branch, 'all')
+        self.assertUnmerged([('2', rev2)], [], tree2.branch, tree.branch, 'all')
 
     def test_restrict(self):
         tree = self.make_branch_and_tree('tree')
         rev1 = tree.commit('one')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         rev2 = tree2.commit('two')
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
-        self.assertUnmerged([], [(2, rev2)], tree.branch, tree2.branch, 'all')
+        self.assertUnmerged([], [('2', rev2)], tree.branch, tree2.branch, 'all')
         self.assertUnmerged([], None, tree.branch, tree2.branch, 'local')
-        self.assertUnmerged(None, [(2, rev2)], tree.branch, tree2.branch,
+        self.assertUnmerged(None, [('2', rev2)], tree.branch, tree2.branch,
                                                'remote')
 
     def test_merged(self):
@@ -184,9 +177,29 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         tree.merge_from_branch(tree2.branch)
         rev4 = tree.commit('four')
 
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        self.assertUnmerged([('2', rev4)], [], tree.branch, tree2.branch, 'all')
 
-        self.assertUnmerged([(2, rev4)], [], tree.branch, tree2.branch, 'all')
+    def test_include_merges(self):
+        tree = self.make_branch_and_tree('tree')
+        rev1 = tree.commit('one', rev_id='rev1')
+
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        rev2 = tree2.commit('two', rev_id='rev2')
+        rev3 = tree2.commit('three', rev_id='rev3')
+
+        tree3 = tree2.bzrdir.sprout('tree3').open_workingtree()
+        rev4 = tree3.commit('four', rev_id='rev4')
+        rev5 = tree3.commit('five', rev_id='rev5')
+
+        tree2.merge_from_branch(tree3.branch)
+        rev6 = tree2.commit('six', rev_id='rev6')
+
+        import pdb; pdb.set_trace()
+        self.assertUnmerged([], [('4', 'rev6'),
+                                 ('3.1.2', 'rev5'), ('3.1.1', 'rev4'),
+                                 ('3', 'rev3'), ('2', 'rev2'),
+                                 ],
+                            tree.branch, tree2.branch, 'all',
+                            include_merges=True)
+
+    # TODO: test_dont_include_already_merged_merges ?

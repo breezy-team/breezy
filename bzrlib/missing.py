@@ -16,8 +16,10 @@
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
-from bzrlib.log import (
-    LogRevision,
+from bzrlib import (
+    log,
+    repository as _mod_repository,
+    tsort,
     )
 
 
@@ -39,10 +41,11 @@ def iter_log_revisions(revisions, revision_source, verbose):
             delta = revision_tree.changes_from(parent_tree)
         else:
             delta = None
-        yield LogRevision(rev, revno, delta=delta)
+        yield log.LogRevision(rev, revno, delta=delta)
 
 
-def find_unmerged(local_branch, remote_branch, restrict='all'):
+def find_unmerged(local_branch, remote_branch, restrict='all',
+                  include_merges=False, reverse=False):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -52,6 +55,10 @@ def find_unmerged(local_branch, remote_branch, restrict='all'):
         unique revisions from both sides. If 'local', we will return None
         for the remote revisions, similarly if 'remote' we will return None for
         the local revisions.
+    :param include_merges: Show mainline revisions only if False,
+        all revisions otherwise.
+    :param reverse: Show oldest versions first when True, newest versions
+        first when False. 
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
@@ -60,15 +67,16 @@ def find_unmerged(local_branch, remote_branch, restrict='all'):
     try:
         remote_branch.lock_read()
         try:
-            return _find_unmerged(local_branch,
-                remote_branch, restrict=restrict)
+            return _find_unmerged(
+                local_branch, remote_branch, restrict=restrict,
+                include_merges=include_merges, reverse=reverse)
         finally:
             remote_branch.unlock()
     finally:
         local_branch.unlock()
 
 
-def _enumerate_mainline(ancestry, graph, tip_revno, tip):
+def _enumerate_mainline(ancestry, graph, tip_revno, tip, reverse=False):
     """Enumerate the mainline revisions for these revisions.
 
     :param ancestry: A set of revisions that we care about
@@ -95,14 +103,51 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip):
         parents = parent_map.get(cur)
         if not parents:
             break # Ghost, we are done
-        mainline.append((cur_revno, cur))
+        mainline.append((str(cur_revno), cur))
         cur = parents[0]
         cur_revno -= 1
-    mainline.reverse()
+    if reverse:
+        mainline.reverse()
     return mainline
 
 
-def _find_unmerged(local_branch, remote_branch, restrict):
+def _enumerate_with_merges(ancestry, graph, tip_revno, tip, reverse=False):
+    """Enumerate the revisions for the ancestry.
+
+    :param ancestry: A set of revisions that we care about
+    :param graph: A Graph which lets us find the parents for a revision
+    :param tip_revno: The revision number for the tip revision
+    :param tip: The tip of the ancsetry
+    :return: [(revno, revision_id)] for all revisions in ancestry that
+        are parents from tip, or None if ancestry is None.
+    """
+    if ancestry is None:
+        return None
+    if not ancestry: #Empty ancestry, no need to do any work
+        return []
+
+    parent_map = graph.get_parent_map(ancestry)
+    # filter out ghosts; merge_sort errors on ghosts. 
+    # XXX: is this needed here ? -- vila080903
+    rev_graph = _mod_repository._strip_NULL_ghosts(parent_map)
+    # XXX: what if rev_graph is empty now ?
+    merge_sorted_revisions = tsort.merge_sort(rev_graph, tip,
+                                              None, generate_revno=True)
+    # merge_sort calculate revno for the given graph, we have to recalculate
+    # the correct revno from the tip_revno.
+    ms_tip_revno = merge_sorted_revisions[0][3]
+    revno_delta = tip_revno - ms_tip_revno[0]
+    if reverse:
+        merge_sorted_revisions = log.reverse_by_depth(merge_sorted_revisions)
+    revline = []
+    for seq, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+        real_revno = (revno[0] + revno_delta,) + revno[1:]
+        revline.append(('.'.join(map(str, real_revno)), rev_id))
+    return revline
+
+
+def _find_unmerged(local_branch, remote_branch, restrict,
+                   include_merges, reverse):
     """See find_unmerged.
 
     The branches should already be locked before entering.
@@ -112,29 +157,34 @@ def _find_unmerged(local_branch, remote_branch, restrict):
     if local_revno == remote_revno and local_revision_id == remote_revision_id:
         # A simple shortcut when the tips are at the same point
         return [], []
-    graph = local_branch.repository.get_graph(
-                remote_branch.repository)
+    graph = local_branch.repository.get_graph(remote_branch.repository)
     if restrict == 'remote':
         local_extra = None
-        remote_extra = graph.find_unique_ancestors(
-            remote_revision_id, [local_revision_id])
+        remote_extra = graph.find_unique_ancestors(remote_revision_id,
+                                                   [local_revision_id])
     elif restrict == 'local':
         remote_extra = None
-        local_extra = graph.find_unique_ancestors(
-            local_revision_id, [remote_revision_id])
+        local_extra = graph.find_unique_ancestors(local_revision_id,
+                                                  [remote_revision_id])
     else:
         if restrict != 'all':
             raise ValueError('param restrict not one of "all", "local",'
                              ' "remote": %r' % (restrict,))
-        local_extra, remote_extra = graph.find_difference(
-            local_revision_id, remote_revision_id)
-    # Now that we have unique ancestors, compute just the mainline, and
-    # generate revnos for them.
-    local_mainline = _enumerate_mainline(local_extra, graph, local_revno,
-                                         local_revision_id)
-    remote_mainline = _enumerate_mainline(remote_extra, graph, remote_revno,
-                                          remote_revision_id)
-    return local_mainline, remote_mainline
+        local_extra, remote_extra = graph.find_difference(local_revision_id,
+                                                          remote_revision_id)
+    if include_merges:
+        locals = _enumerate_with_merges(local_extra, graph, local_revno,
+                                        local_revision_id, reverse)
+        remotes = _enumerate_with_merges(remote_extra, graph, remote_revno,
+                                      remote_revision_id, reverse)
+    else:
+        # Now that we have unique ancestors, compute just the mainline, and
+        # generate revnos for them.
+        locals = _enumerate_mainline(local_extra, graph, local_revno,
+                                     local_revision_id, reverse)
+        remotes = _enumerate_mainline(remote_extra, graph, remote_revno,
+                                      remote_revision_id, reverse)
+    return locals, remotes
 
 
 def sorted_revisions(revisions, history_map):
