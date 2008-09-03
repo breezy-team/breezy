@@ -672,7 +672,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 

@@ -27,8 +27,8 @@ IN DEVELOPMENT
       to ``.bzr.log``, which may help in debugging or profiling.
       (Martin Pool)
 
-    * ``bzr branch`` uses the default stacking policy if the branch format
-      supports it. (Aaron Bentley)
+    * ``bzr branch`` and ``bzr push`` use the default stacking policy if the
+      branch format supports it. (Aaron Bentley)
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
       ``bzr info`` if it completed successfully.
@@ -38,6 +38,17 @@ IN DEVELOPMENT
       restore the branch to that tip using ``bzr pull``.  This allows you
       to recover if you realize you uncommitted the wrong thing.
       (John Arbash Meinel)
+
+    * When reading index files, if we happen to read the whole file in a
+      single request treat it as a ``_buffer_all`` request. This happens
+      most often on small indexes over remote transports, where we default
+      to reading 64kB. It saves a round trip for each small index during
+      fetch operations. Also, if we have read more than 50% of an index
+      file, trigger a ``_buffer_all`` on the next request. This works
+      around some inefficiencies because reads don't fall neatly on page
+      boundaries, so we would ignore those bytes, but request them again
+      later. This could trigger a total read size of more than the whole
+      file. (John Arbash Meinel)
 
   BUG FIXES:
 
@@ -58,6 +69,9 @@ IN DEVELOPMENT
     * Merging from a previously joined branch will no longer cause 
       a traceback. (Jelmer Vernooij, #203376)
 
+    * Pack operations on windows network shares will work even with large
+      files. (Robert Collins, #255656)
+
     * Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
       status. Status is also about 7% faster on mozilla sized trees
       when the path to the root of the tree has been given. Users of
@@ -70,6 +84,11 @@ IN DEVELOPMENT
 
     * Show proper error rather than traceback when an unknown revision 
       id is specified to ``bzr cat-revision``. (Jelmer Vernooij, #175569)
+
+    * Trailing text in the dirstate file could cause the C dirstate parser
+      to try to allocate an invalid amount of memory. We now properly
+      check and test for parsing a dirstate with invalid trailing data.
+      (John Arbash Meinel, #186014)
 
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
@@ -85,6 +104,9 @@ IN DEVELOPMENT
 
     * The deprecated ``Branch.abspath`` and unimplemented 
       ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
+
+    * BzrDir.clone_on_transport implementations must now accept a stacked_on
+      parameter.  (Aaron Bentley)
 
     * BzrDir.cloning_metadir implementations must now take a require_stacking
       parameter.  (Aaron Bentley)

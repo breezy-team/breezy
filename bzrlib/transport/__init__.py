@@ -254,7 +254,7 @@ class FileFileStream(FileStream):
         self.file_handle.close()
 
     def write(self, bytes):
-        self.file_handle.write(bytes)
+        osutils.pump_string_file(bytes, self.file_handle)
 
 
 class AppendBasedFileStream(FileStream):
