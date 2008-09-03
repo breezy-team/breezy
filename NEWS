@@ -90,6 +90,10 @@ IN DEVELOPMENT
       check and test for parsing a dirstate with invalid trailing data.
       (John Arbash Meinel, #186014)
 
+    * Use a Windows api function to get a Unicode host name, rather than
+      assuming the host name is ascii.
+      (Mark Hammond, John Arbash Meinel, #256550)
+
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
