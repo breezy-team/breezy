@@ -69,6 +69,11 @@ try:
     has_win32file = True
 except ImportError:
     has_win32file = False
+try:
+    import win32api
+    has_win32api = True
+except ImportError:
+    has_win32api = False
 
 # pulling in win32com.shell is a bit of overhead, and normally we don't need
 # it as ctypes is preferred and common.  lazy_imports and "optional"
@@ -259,27 +264,58 @@ def get_user_name():
     return os.environ.get('USERNAME', None)
 
 
+# 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
+# computer or the cluster associated with the local computer."
+_WIN32_ComputerNameDnsHostname = 1
+
 def get_host_name():
     """Return host machine name.
     If name cannot be obtained return None.
 
-    Returned value can be unicode or plain sring.
-    To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    :return: A unicode string representing the host name. On win98, this may be
+        a plain string as win32 api doesn't support unicode.
     """
+    if has_win32api:
+        try:
+            return win32api.GetComputerNameEx(_WIN32_ComputerNameDnsHostname)
+        except (NotImplementedError, win32api.error):
+            # NotImplemented will happen on win9x...
+            pass
     if has_ctypes:
         try:
             kernel32 = ctypes.windll.kernel32
-            GetComputerName = getattr(kernel32, 'GetComputerName'+suffix)
         except AttributeError:
-            pass
+            pass # Missing the module we need
         else:
             buf = create_buffer(MAX_COMPUTERNAME_LENGTH+1)
             n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
-            if GetComputerName(buf, ctypes.byref(n)):
+
+            # Try GetComputerNameEx which gives a proper Unicode hostname
+            GetComputerNameEx = getattr(kernel32, 'GetComputerNameEx'+suffix,
+                                        None)
+            if (GetComputerNameEx is not None
+                and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
+                                      buf, ctypes.byref(n))):
                 return buf.value
-    # otherwise try env variables
-    return os.environ.get('COMPUTERNAME', None)
+
+            # Try GetComputerName in case GetComputerNameEx wasn't found
+            # It returns the NETBIOS name, which isn't as good, but still ok.
+            # The first GetComputerNameEx might have changed 'n', so reset it
+            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
+            GetComputerName = getattr(kernel32, 'GetComputerName'+suffix,
+                                      None)
+            if (GetComputerName is not None
+                and GetComputerName(buf, ctypes.byref(n))):
+                return buf.value
+    # otherwise try env variables, which will be 'mbcs' encoded
+    # on Windows (Python doesn't expose the native win32 unicode environment)
+    # According to this:
+    # http://msdn.microsoft.com/en-us/library/aa246807.aspx
+    # environment variables should always be encoded in 'mbcs'.
+    try:
+        return os.environ['COMPUTERNAME'].decode("mbcs")
+    except KeyError:
+        return None
 
 
 def _ensure_unicode(s):
@@ -287,7 +323,7 @@ def _ensure_unicode(s):
         import bzrlib
         s = s.decode(bzrlib.user_encoding)
     return s
-    
+
 
 def get_appdata_location_unicode():
     return _ensure_unicode(get_appdata_location())

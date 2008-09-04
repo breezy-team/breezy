@@ -769,6 +769,13 @@ class TestPatienceDiffLib(TestCase):
         self._PatienceSequenceMatcher = \
             bzrlib._patiencediff_py.PatienceSequenceMatcher_py
 
+    def test_diff_unicode_string(self):
+        a = ''.join([unichr(i) for i in range(4000, 4500, 3)])
+        b = ''.join([unichr(i) for i in range(4300, 4800, 2)])
+        sm = self._PatienceSequenceMatcher(None, a, b)
+        mb = sm.get_matching_blocks()
+        self.assertEquals(35, len(mb))
+
     def test_unique_lcs(self):
         unique_lcs = self._unique_lcs
         self.assertEquals(unique_lcs('', ''), [])

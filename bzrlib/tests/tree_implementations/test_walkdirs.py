@@ -16,6 +16,9 @@
 
 """Tests for the generic Tree.walkdirs interface."""
 
+import os
+
+from bzrlib import tests
 from bzrlib.osutils import has_symlinks
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
@@ -98,3 +101,22 @@ class TestWalkdirs(TestCaseWithTree):
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
         self.assertEqual(len(expected_dirblocks), len(result))
+
+    def test_walkdir_versioned_kind(self):
+        work_tree = self.make_branch_and_tree('tree')
+        work_tree.set_root_id('tree-root')
+        self.build_tree(['tree/file', 'tree/dir/'])
+        work_tree.add(['file', 'dir'], ['file-id', 'dir-id'])
+        os.unlink('tree/file')
+        os.rmdir('tree/dir')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        if tree.path2id('file') is None:
+            raise tests.TestNotApplicable(
+                'Tree type cannot represent dangling ids.')
+        expected = [(('', 'tree-root'), [
+            ('dir', 'dir', 'unknown', None, 'dir-id', 'directory'),
+            ('file', 'file', 'unknown', None, 'file-id', 'file')]),
+            (('dir', 'dir-id'), [])]
+        self.assertEqual(expected, list(tree.walkdirs()))

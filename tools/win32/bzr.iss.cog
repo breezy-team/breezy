@@ -42,7 +42,6 @@ SourceDir="..\..\win32_bzr.exe"
 
 SetupIconFile="..\bzr.ico"
 InfoBeforeFile="..\tools\win32\info.txt"
-InfoAfterFile="..\tools\win32\survey.txt"
 
 VersionInfoCompany="Canonical Ltd."
 VersionInfoCopyright="Canonical Ltd., 2005-2008"
@@ -177,7 +176,6 @@ Name: "{group}\Open Bzr log file"; Filename: "notepad.exe"; Parameters: "{userdo
 
 [Tasks]
 Name: Path; Description: "Add {app} directory to PATH environment variable"
-Name: Shell; Description: "Add Bzr context menu to shell"; Flags: unchecked
 ; [[[cog
 ; if "TBZR" in os.environ:
 ;     cog.outl('Name: TBZRReadme; Description: "View the TortoiseBZR Readme"; Components: tortoise')
@@ -199,7 +197,6 @@ Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "InstallPath"; ValueType: stri
 [Run]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--start-bzr"; Flags: skipifdoesntexist runhidden;
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Flags: skipifdoesntexist skipifsilent runhidden;
-Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Shell; Flags: skipifdoesntexist skipifsilent runhidden;
 ; [[[cog
 ; if "TBZR" in os.environ:
 ;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/s tbzr.dll"; WorkingDir: "{app}"; Components: tortoise; Description: "Registering Tortoise"; StatusMsg: "Registering Tortoise"')
@@ -209,11 +206,13 @@ Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Sh
 
 
 [UninstallRun]
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden; 
 ; [[[cog
 ; if "TBZR" in os.environ:
 ;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s tbzr.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist')
 ; ]]]
 ; [[[end]]]
+
 
 [Code]
 const
