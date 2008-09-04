@@ -179,8 +179,9 @@ class _SFTPReadvHelper(object):
                 requests.append((start, next_size))
                 size -= next_size
                 start += next_size
-        mutter('SFTP.readv() %s offsets => %s coalesced => %s requests',
-                len(sorted_offsets), len(coalesced), len(requests))
+        mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
+               self.relpath, len(sorted_offsets), len(coalesced),
+               len(requests))
         return requests
 
     def request_and_yield_offsets(self, fp):
