@@ -24,26 +24,6 @@ You need the Subversion libraries, including the development files. This should
 be readily packaged for most platforms. The package name for Debian 
 and Debian-based distributions such as Ubuntu is ``libsvn-dev``. 
 
-From Source on Mac OS X
-***********************
-
-To install on OS X Leopard do something like the following.  Note: If you have MacPython installed, you may encounter problems when building BzrSvn.  
-
-::
-
-  # Install the latest stable Bazaar (if you didn't already)
-  sudo easy_install -U paramiko pycrypto bzr
-
-  # Install the bzr_svn plugin
-  mkdir ~/.bazaar ~/.bazaar/plugins
-  cd ~/.bazaar/plugins
-  rm -rf svn
-  bzr checkout --lightweight \
-    http://people.samba.org/bzr/jelmer/bzr-svn/stable svn
-
-  make
-
- 
 bzr-rebase
 ^^^^^^^^^^
 
@@ -95,19 +75,9 @@ Mac OS X
 
 Download the latest Subversion DMG from: http://svnbinaries.open.collab.net/servlets/ProjectDocumentList
 
-After installing, add the svn-python bindings to your Python2.5 installation
+bzr-svn DMG packages can be found in bzr-svn launchpad page.
 
-::
-
-  # Tiger
-  echo "/opt/subversion-1.5.x/lib/svn-python/" > \
-	  /Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/site-packages/subversion.pth
-
-  # Leopard
-  echo "/opt/subversion-1.5.x/lib/svn-python/" > \
-	  /System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/site-packages/subversion.pth
-
-Install the bzr_svn plugin following the instructions in the `From Source on Mac OS X`_ section. A DMG will hopefully be released soon as well.
+bzr-svn is now also available in MacPorts, and can be installed with: $ sudo port install bzr-svn
 
 ..
 	vim: ft=rest
