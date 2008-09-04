@@ -1,5 +1,9 @@
 bzr-svn 0.4.13	UNRELEASED
 
+  BUG FIXES
+
+   * Fix compatibility with Subversion 1.4 on Windows.
+
 bzr-svn 0.4.12	2008-09-01
 
   BUG FIXES
