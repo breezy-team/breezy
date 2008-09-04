@@ -123,6 +123,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * A new hook, ``Branch.open``, has been added, which is called when
+      branch objects are opened. (Robert Collins)
+
     * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
       This allows dynamic log output filtering by plugins.
       (Robert Collins)

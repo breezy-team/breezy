@@ -107,6 +107,27 @@ class ChangeBranchTipTestCase(TestCaseWithMemoryTransport):
         return branch
 
 
+class TestOpen(TestCaseWithMemoryTransport):
+
+    def capture_hook(self, branch):
+        self.hook_calls.append(branch)
+
+    def install_hook(self):
+        self.hook_calls = []
+        Branch.hooks.install_named_hook('open', self.capture_hook, None)
+
+    def test_create(self):
+        self.install_hook()
+        b = self.make_branch('.')
+        self.assertEqual([b], self.hook_calls)
+
+    def test_open(self):
+        branch_url = self.make_branch('.').bzrdir.root_transport.base
+        self.install_hook()
+        b = Branch.open(branch_url)
+        self.assertEqual([b], self.hook_calls)
+
+
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for pre_change_branch_tip hook.
     

@@ -1277,6 +1277,10 @@ class RemoteBranch(branch.Branch):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # The base class init is not called.
+        hooks = branch.Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport

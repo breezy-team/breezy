@@ -91,6 +91,9 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._open_hook()
+        hooks = Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
 
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
@@ -1068,6 +1071,8 @@ class BranchHooks(Hooks):
         # (branch, revision_history), and the branch will
         # be write-locked.
         self['set_rh'] = []
+        # Invoked after a branch is opened. The api signature is (branch).
+        self['open'] = []
         # invoked after a push operation completes.
         # the api signature is
         # (push_result)
