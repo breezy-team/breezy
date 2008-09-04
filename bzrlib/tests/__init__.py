@@ -2750,7 +2750,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
                    'bzrlib.tests.per_lock',
-                   'bzrlib.tests.repository_implementations',
+                   'bzrlib.tests.per_repository',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',

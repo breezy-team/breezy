@@ -33,7 +33,7 @@ from bzrlib.tests import (
                           TestScenarioApplier,
                           TestSuite,
                           )
-from bzrlib.tests.repository_implementations import (
+from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
     TestCaseWithRepository,
     )
