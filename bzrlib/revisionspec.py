@@ -486,9 +486,10 @@ class RevisionSpec_before(RevisionSpec):
       before:1913    -> Return the parent of revno 1913 (revno 1912)
       before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
                                             aaaa@bbbb-1234567890
-      bzr diff -r before:revid:aaaa..revid:aaaa
-            -> Find the changes between revision 'aaaa' and its parent.
-               (what changes did 'aaaa' introduce)
+      bzr diff -r before:1913..1913
+            -> Find the changes between revision 1913 and its parent (1912).
+               (What changes did revision 1913 introduce).
+               This is equivalent to:  bzr diff -c 1913
     """
 
     prefix = 'before:'
