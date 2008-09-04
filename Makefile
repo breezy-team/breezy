@@ -100,3 +100,6 @@ tags::
 	$(CTAGS) -R .
 
 ctags:: tags
+
+homepage.html: wiki.py README INSTALL
+	python wiki.py | tail -n +2 | rst2html > $@
