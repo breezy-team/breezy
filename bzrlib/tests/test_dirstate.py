@@ -25,6 +25,7 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
+    revision as _mod_revision,
     )
 from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import (
@@ -966,7 +967,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.set_parent_trees(
                 ((revid1, tree1.branch.repository.revision_tree(revid1)),
                  (revid2, tree2.branch.repository.revision_tree(revid2)),
-                 ('ghost-rev', tree2.branch.repository.revision_tree(None))),
+                 ('ghost-rev', tree2.branch.repository.revision_tree(
+                                   _mod_revision.NULL_REVISION))),
                 ['ghost-rev'])
             self.assertEqual([revid1, revid2, 'ghost-rev'],
                              state.get_parent_ids())
@@ -1603,7 +1605,7 @@ class TestDirstateSortOrder(TestCaseWithTransport):
 
         # *really* cheesy way to just get an empty tree
         repo = self.make_repository('repo')
-        empty_tree = repo.revision_tree(None)
+        empty_tree = repo.revision_tree(_mod_revision.NULL_REVISION)
         state.set_parent_trees([('null:', empty_tree)], [])
 
         dirblock_names = [d[0] for d in state._dirblocks]
