@@ -95,6 +95,31 @@ Repository
 Repositories store committed history: file texts, revisions, inventories,
 and graph relationships between them.
 
+Stacked Repositories
+====================
+
+Repositories can be configured to refer to a list of "fallback"
+repositories.  If a particular revision is not present in the original
+repository, it refers the query to the fallbacks.
+
+Compression deltas don't span physical repository boundaries.  So the
+first commit to a new empty repository with fallback repositories will
+store a full text of the inventory, and of every new file text.
+
+At runtime, repository stacking is actually configured by the branch, not
+the repository.  So doing ``a_bzrdir.open_repository()`` 
+gets you just the single physical repository, while 
+``a_bzrdir.open_branch().repository`` gets one configured with a stacking. 
+Therefore to permanently change the fallback repository stored on disk,
+you must use ``Branch.set_stacked_on_url``.  
+
+Changing away from an existing stacked on url will copy across any
+necessary history so that the repository remains usable.
+
+A repository opened from an hpss server is never stacked on the server
+side, because this could cause complexity or security problems with the
+server acting as a proxy for the client.  Instead, the branch on the
+server exposes the stacked-on URL and the client can open that.
 
 
 ..
