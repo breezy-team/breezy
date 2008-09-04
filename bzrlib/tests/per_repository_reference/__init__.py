@@ -95,7 +95,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
         ]
-    # Parameterize repository_implementations test modules by format.
+    # Parameterize per_repository_reference test modules by format.
     result = TestSuite()
     adapt_tests(standard_tests, adapter, result)
     adapt_modules(module_list, adapter, loader, result)
