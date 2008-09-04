@@ -24,6 +24,7 @@
 # suite.  Those formats all date back to 0.7; so we should be able to remove
 # these methods when we officially drop support for those formats.
 
+import bisect
 import errno
 import itertools
 import os
@@ -189,7 +190,6 @@ class _SFTPReadvHelper(object):
         :return: Yield the data requested by the original readv caller, one by
             one.
         """
-        import pdb; pdb.set_trace()
         requests = self._get_requests()
         offset_iter = iter(self.original_offsets)
         cur_offset, cur_size = offset_iter.next()
@@ -210,15 +210,17 @@ class _SFTPReadvHelper(object):
         data_stream = itertools.chain(fp.readv(requests),
                                       itertools.repeat(None))
         for request, data in itertools.izip(requests, data_stream):
+            start, length = request
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,
-                        cur_start, 0, len(data))
-            start, length = request
-            assert len(data) == length
+                        start, length, len(data))
+            if len(data) != length:
+                raise errors.ShortReadvError(self.relpath,
+                    start, length, len(data))
             if last_end is None:
                 # This is the first request, just buffer it
-                buffered_data.append(data)
+                buffered_data = [data]
                 buffered_len = length
                 cur_start = start
             elif start == last_end:
@@ -226,7 +228,6 @@ class _SFTPReadvHelper(object):
                 # buffer, so this is all part of a larger coalesced range.
                 buffered_data.append(data)
                 buffered_len += length
-                last_end = start + length
             else:
                 # We have an 'interrupt' in the data stream. So we know we are
                 # at a request boundary.
@@ -234,13 +235,11 @@ class _SFTPReadvHelper(object):
                     # We haven't consumed the buffer so far, so put it into
                     # data_chunks, and continue.
                     buffered = ''.join(buffered_data)
-                    assert len(buffered) == buffered_len
-                    data_chunks.append((cur_start, cur_start + buffered_len,
-                                        buffered))
+                    data_chunks.append((cur_start, buffered))
                 cur_start = start
-                last_end = start + length
                 buffered_data = [data]
-                buffered_len = data
+                buffered_len = length
+            last_end = start + length
             if cur_start == cur_offset and cur_size <= buffered_len:
                 # Simplify the next steps a bit by transforming buffered_data
                 # into a single string
@@ -270,14 +269,36 @@ class _SFTPReadvHelper(object):
                     buffered_len = len(buffered)
         if buffered_len:
             buffered = ''.join(buffered_data)
-            data_chunks.append((cur_start, cur_start + buffered_len,
-                                buffered))
+            data_chunks.append((cur_start, buffered))
         if data_chunks:
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
-            assert sorted(data_chunks) == data_chunks
-            raise AssertionError('not actually implemented yet')
+            # We use an interesting process for data_chunks
+            # Specifically if we have "bisect_left([(start, len, entries)],
+            #                                       (qstart,)])
+            # If start == qstart, then we get the specific node. Otherwise we
+            # get the previous node
+            while True:
+                idx = bisect.bisect_left(data_chunks, (cur_offset,))
+                if data_chunks[idx][0] == cur_offset: # The data starts here
+                    data = data_chunks[idx][1][:cur_size]
+                elif idx > 0:
+                    # The data is in a portion of a previous page
+                    idx -= 1
+                    sub_offset = cur_offset - data_chunks[idx][0]
+                    data = data_chunks[idx][1]
+                    data = data[sub_offset:sub_offset + cur_size]
+                else:
+                    # We are missing the page where the data should be found,
+                    # something is wrong
+                    data = ''
+                if len(data) != cur_size:
+                    raise AssertionError('We must have miscalulated.'
+                        ' We expected %d bytes, but only found %d'
+                        % (cur_size, len(data)))
+                yield cur_offset, data
+                cur_offset, cur_size = offset_iter.next()
 
 
 class SFTPTransport(ConnectedTransport):
