@@ -107,10 +107,10 @@ class MemoryTree(mutabletree.MutableTree):
     def rename_one(self, from_rel, to_rel):
         file_id = self.path2id(from_rel)
         to_dir, to_tail = os.path.split(to_rel)
-        to_parent_id = self.path2id(to_dir)
+        to_parent_id = self._inventory[file_id].parent_id
         self._file_transport.move(from_rel, to_rel)
         self._inventory.rename(file_id, to_parent_id, to_tail)
-        
+
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         id = self.path2id(path)
