@@ -122,6 +122,10 @@ IN DEVELOPMENT
       addition, addCleanup no longer requires that the callables passed to
       it be unique. (Jonathan Lange)
 
+    * ``bzrlib.tests.repository_implementations`` has been renamed to
+      ``bzrlib.tests.per_repository`` so that we have a common structure
+      (and it is shorter). (John Arbash Meinel, #239343)
+
     * ``selftest``'s ``--starting-with`` option can now use predefined
       prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
       ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
