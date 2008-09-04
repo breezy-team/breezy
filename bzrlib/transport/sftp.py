@@ -196,7 +196,7 @@ class _SFTPReadvHelper(object):
         # paramiko .readv() yields strings that are in the order of the requests
         # So we track the current request to know where the next data is
         # being returned from.
-        cur_start = None
+        input_start = None
         last_end = None
         buffered_data = []
         buffered_len = 0
@@ -209,8 +209,7 @@ class _SFTPReadvHelper(object):
         # short readv.
         data_stream = itertools.chain(fp.readv(requests),
                                       itertools.repeat(None))
-        for request, data in itertools.izip(requests, data_stream):
-            start, length = request
+        for (start, length), data in itertools.izip(requests, data_stream):
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,
@@ -222,7 +221,7 @@ class _SFTPReadvHelper(object):
                 # This is the first request, just buffer it
                 buffered_data = [data]
                 buffered_len = length
-                cur_start = start
+                input_start = start
             elif start == last_end:
                 # The data we are reading fits neatly on the previous
                 # buffer, so this is all part of a larger coalesced range.
@@ -235,17 +234,24 @@ class _SFTPReadvHelper(object):
                     # We haven't consumed the buffer so far, so put it into
                     # data_chunks, and continue.
                     buffered = ''.join(buffered_data)
-                    data_chunks.append((cur_start, buffered))
-                cur_start = start
+                    data_chunks.append((input_start, buffered))
+                input_start = start
                 buffered_data = [data]
                 buffered_len = length
             last_end = start + length
-            if cur_start == cur_offset and cur_size <= buffered_len:
+            if input_start == cur_offset and cur_size <= buffered_len:
                 # Simplify the next steps a bit by transforming buffered_data
-                # into a single string
+                # into a single string. We also have the nice property that
+                # when there is only one string ''.join([x]) == x, so there is
+                # no data copying.
                 buffered = ''.join(buffered_data)
                 buffered_offset = 0
-                while (cur_start == cur_offset
+                # TODO: We *could* also consider the case where cur_offset is in
+                #       in the buffered range, even though it doesn't *start*
+                #       the buffered range. But for packs we pretty much always
+                #       read in order, so you won't get any extra data in the
+                #       middle.
+                while (input_start == cur_offset
                        and (buffered_offset + cur_size) <= buffered_len):
                     # We've buffered enough data to process this request, spit it
                     # out
@@ -253,7 +259,7 @@ class _SFTPReadvHelper(object):
                     # move the direct pointer into our buffered data
                     buffered_offset += cur_size
                     # Move the start-of-buffer pointer
-                    cur_start += cur_size
+                    input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
                     cur_offset, cur_size = offset_iter.next()
@@ -269,8 +275,10 @@ class _SFTPReadvHelper(object):
                     buffered_len = len(buffered)
         if buffered_len:
             buffered = ''.join(buffered_data)
-            data_chunks.append((cur_start, buffered))
+            data_chunks.append((input_start, buffered))
         if data_chunks:
+            mutter('SFTP readv left with %d out-of-order bytes',
+                   sum(map(lambda x: len(x[1]), data_chunks)))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
