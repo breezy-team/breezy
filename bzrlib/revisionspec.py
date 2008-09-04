@@ -475,10 +475,11 @@ class RevisionSpec_before(RevisionSpec):
 
     help_txt = """Selects the parent of the revision specified.
 
-    Supply any revision spec to return the parent of that revision.
+    Supply any revision spec to return the parent of that revision.  This is
+    mostly useful when inspecting revisions that are not in the revision history
+    of a branch.
+
     It is an error to request the parent of the null revision (before:0).
-    This is mostly useful when inspecting revisions that are not in the
-    revision history of a branch.
 
     Examples::
 
