@@ -1277,6 +1277,22 @@ class RemoteBranch(branch.Branch):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        self._setup_stacking()
+
+    def _setup_stacking(self):
+        # configure stacking into the remote repository, by reading it from
+        # the vfs branch.  note that this currently implicitly creates a
+        # _real_branch so will block getting rid of vfs until the operation is
+        # done at a higher level.
+        try:
+            fallback_url = self.get_stacked_on_url()
+            fallback_repo = BzrDir.open(fallback_url,
+                [self.bzrdir.root_transport,
+                 self._real_branch._transport])
+            self.repository.add_fallback_repository(fallback_repo)
+        except (errors.NotStacked, errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            pass
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
