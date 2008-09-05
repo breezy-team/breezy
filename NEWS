@@ -103,6 +103,10 @@ IN DEVELOPMENT
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
+  DOCUMENTATION:
+
+    * Updated developer documentation.  (Martin Pool)
+
   API CHANGES:
 
     * Exporters now take 4 parameters. (Robert Collins)
