@@ -221,7 +221,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         r = ra.RemoteAccess(url)
         assert isinstance(url, str)
         ret = {}
-        def rcvr(orig_paths, rev, revprops, has_children):
+        def rcvr(orig_paths, rev, revprops, has_children=None):
             ret[rev] = (orig_paths, revprops.get(properties.PROP_REVISION_AUTHOR), revprops.get(properties.PROP_REVISION_DATE), revprops.get(properties.PROP_REVISION_LOG))
         r.get_log(rcvr, [""], start_revnum, stop_revnum, 0, True, True, 
                   revprops=[properties.PROP_REVISION_AUTHOR, properties.PROP_REVISION_DATE, properties.PROP_REVISION_LOG])
