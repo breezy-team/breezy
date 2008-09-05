@@ -549,9 +549,15 @@ class RemoteRepository(object):
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
-    def lock_write(self, token=None):
+    def lock_write(self, token=None, _skip_rpc=False):
         if not self._lock_mode:
-            self._lock_token = self._remote_lock_write(token)
+            if _skip_rpc:
+                if self._lock_token is not None:
+                    if token != self._lock_token:
+                        raise TokenMismatch(token, self._lock_token)
+                self._lock_token = token
+            else:
+                self._lock_token = self._remote_lock_write(token)
             # if self._lock_token is None, then this is something like packs or
             # svn where we don't get to lock the repo, or a weave style repository
             # where we cannot lock it over the wire and attempts to do so will
@@ -1365,6 +1371,7 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.get_stacked_on_url()
 
     def lock_read(self):
+        self.repository.lock_read()
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
@@ -1392,11 +1399,27 @@ class RemoteBranch(branch.Branch):
         return branch_token, repo_token
             
     def lock_write(self, token=None):
+        #
+        # What BzrBranch.lock_write does:
+        #  - lock_write its repo (with no token)
+        #  - then lock_write itself (via self.control_files)
+        #
+        # But we don't want to do multiple round-trips to lock the branch +
+        # repo.  So, we:
+        #  - do Branch.lock_write RPC (which locks repo too)
+        #  - make sure self.repository's lock state is in sync with the results
+        #    of that RPC.
+
+
         if not self._lock_mode:
             remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
             if not self._lock_token:
                 raise SmartProtocolError('Remote server did not return a token!')
+            if self.repository._lock_token is None:
+                self.repository.lock_write(
+                    self._repo_lock_token, _skip_rpc=True)
+
             # TODO: We really, really, really don't want to call _ensure_real
             # here, but it's the easiest way to ensure coherency between the
             # state of the RemoteBranch and RemoteRepository objects and the
@@ -1428,6 +1451,7 @@ class RemoteBranch(branch.Branch):
                 if token != self._lock_token:
                     raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
+        self.repository.lock_write(self._repo_lock_token)
         return self._lock_token or None
 
     def _unlock(self, branch_token, repo_token):
@@ -1442,32 +1466,35 @@ class RemoteBranch(branch.Branch):
         raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
-        self._lock_count -= 1
-        if not self._lock_count:
-            self._clear_cached_state()
-            mode = self._lock_mode
-            self._lock_mode = None
-            if self._real_branch is not None:
-                if (not self._leave_lock and mode == 'w' and
-                    self._repo_lock_token):
-                    # If this RemoteBranch will remove the physical lock for the
-                    # repository, make sure the _real_branch doesn't do it
-                    # first.  (Because the _real_branch's repository is set to
-                    # be the RemoteRepository.)
-                    self._real_branch.repository.leave_lock_in_place()
-                self._real_branch.unlock()
-            if mode != 'w':
-                # Only write-locked branched need to make a remote method call
-                # to perfom the unlock.
-                return
-            if not self._lock_token:
-                raise AssertionError('Locked, but no token!')
-            branch_token = self._lock_token
-            repo_token = self._repo_lock_token
-            self._lock_token = None
-            self._repo_lock_token = None
-            if not self._leave_lock:
-                self._unlock(branch_token, repo_token)
+        try:
+            self._lock_count -= 1
+            if not self._lock_count:
+                self._clear_cached_state()
+                mode = self._lock_mode
+                self._lock_mode = None
+                if self._real_branch is not None:
+                    if (not self._leave_lock and mode == 'w' and
+                        self._repo_lock_token):
+                        # If this RemoteBranch will remove the physical lock
+                        # for the repository, make sure the _real_branch
+                        # doesn't do it first.  (Because the _real_branch's
+                        # repository is set to be the RemoteRepository.)
+                        self._real_branch.repository.leave_lock_in_place()
+                    self._real_branch.unlock()
+                if mode != 'w':
+                    # Only write-locked branched need to make a remote method
+                    # call to perfom the unlock.
+                    return
+                if not self._lock_token:
+                    raise AssertionError('Locked, but no token!')
+                branch_token = self._lock_token
+                repo_token = self._repo_lock_token
+                self._lock_token = None
+                self._repo_lock_token = None
+                if not self._leave_lock:
+                    self._unlock(branch_token, repo_token)
+        finally:
+            self.repository.unlock()
 
     def break_lock(self):
         self._ensure_real()
