@@ -356,10 +356,10 @@ class RemoteRepository(object):
 
         Used before calls to self._real_repository.
         """
-        if not self._real_repository:
+        if self._real_repository is None:
             self.bzrdir._ensure_real()
-            #self._real_repository = self.bzrdir._real_bzrdir.open_repository()
-            self._set_real_repository(self.bzrdir._real_bzrdir.open_repository())
+            self._set_real_repository(
+                self.bzrdir._real_bzrdir.open_repository())
 
     def _translate_error(self, err, **context):
         self.bzrdir._translate_error(err, repository=self, **context)
@@ -595,6 +595,8 @@ class RemoteRepository(object):
         :param repository: The repository to fallback to for non-hpss
             implemented operations.
         """
+        if self._real_repository is not None:
+            raise AssertionError('_real_repository is already set')
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
@@ -709,7 +711,8 @@ class RemoteRepository(object):
         # FIXME: It ought to be possible to call this without immediately
         # triggering _ensure_real.  For now it's the easiest thing to do.
         self._ensure_real()
-        builder = self._real_repository.get_commit_builder(branch, parents,
+        real_repo = self._real_repository
+        builder = real_repo.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
         return builder
@@ -1307,17 +1310,20 @@ class RemoteBranch(branch.Branch):
                     'to use vfs implementation')
             self.bzrdir._ensure_real()
             self._real_branch = self.bzrdir._real_bzrdir.open_branch()
-            # Give the remote repository the matching real repo.
-            real_repo = self._real_branch.repository
-            if isinstance(real_repo, RemoteRepository):
-                real_repo._ensure_real()
-                real_repo = real_repo._real_repository
-            self.repository._set_real_repository(real_repo)
-            # Give the branch the remote repository to let fast-pathing happen.
+            if self.repository._real_repository is None:
+                # Give the remote repository the matching real repo.
+                real_repo = self._real_branch.repository
+                if isinstance(real_repo, RemoteRepository):
+                    real_repo._ensure_real()
+                    real_repo = real_repo._real_repository
+                self.repository._set_real_repository(real_repo)
+            # Give the real branch the remote repository to let fast-pathing
+            # happen.
             self._real_branch.repository = self.repository
-            # XXX: deal with _lock_mode == 'w'
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
+            elif self._lock_mode == 'w':
+                self._real_branch.lock_write(token=self._lock_token)
 
     def _translate_error(self, err, **context):
         self.repository._translate_error(err, branch=self, **context)
@@ -1399,45 +1405,21 @@ class RemoteBranch(branch.Branch):
         return branch_token, repo_token
             
     def lock_write(self, token=None):
-        #
-        # What BzrBranch.lock_write does:
-        #  - lock_write its repo (with no token)
-        #  - then lock_write itself (via self.control_files)
-        #
-        # But we don't want to do multiple round-trips to lock the branch +
-        # repo.  So, we:
-        #  - do Branch.lock_write RPC (which locks repo too)
-        #  - make sure self.repository's lock state is in sync with the results
-        #    of that RPC.
-
-
         if not self._lock_mode:
+            # Lock the branch and repo in one remote call.
             remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
             if not self._lock_token:
                 raise SmartProtocolError('Remote server did not return a token!')
+            # Tell the self.repository object that it is locked.
             self.repository.lock_write(
                 self._repo_lock_token, _skip_rpc=True)
 
-            # TODO: We really, really, really don't want to call _ensure_real
-            # here, but it's the easiest way to ensure coherency between the
-            # state of the RemoteBranch and RemoteRepository objects and the
-            # physical locks.  If we don't materialise the real objects here,
-            # then getting everything in the right state later is complex, so
-            # for now we just do it the lazy way.
-            #   -- Andrew Bennetts, 2007-02-22.
-            self._ensure_real()
             if self._real_branch is not None:
-                self._real_branch.repository.lock_write(
-                    token=self._repo_lock_token)
-                try:
                     self._real_branch.lock_write(token=self._lock_token)
-                finally:
-                    self._real_branch.repository.unlock()
             if token is not None:
                 self._leave_lock = True
             else:
-                # XXX: this case seems to be unreachable; token cannot be None.
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -1445,11 +1427,13 @@ class RemoteBranch(branch.Branch):
             raise errors.ReadOnlyTransaction
         else:
             if token is not None:
-                # A token was given to lock_write, and we're relocking, so check
-                # that the given token actually matches the one we already have.
+                # A token was given to lock_write, and we're relocking, so
+                # check that the given token actually matches the one we
+                # already have.
                 if token != self._lock_token:
                     raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
+            # Re-lock the repository too.
             self.repository.lock_write(self._repo_lock_token)
         return self._lock_token or None
 
