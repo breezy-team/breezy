@@ -156,6 +156,14 @@ IN DEVELOPMENT
       clients now use this mechanism.  (Neil Martinsen-Burrell)
 
 
+bzr 1.6.1 2008-09-05
+--------------------
+
+A couple regressions were found in the 1.6 release. There was a
+performance issue when using ``bzr+ssh`` to branch large repositories,
+and some problems with stacking and ``rich-root`` capable repositories.
+
+
 bzr 1.6.1rc2 2008-09-03
 -----------------------
 
