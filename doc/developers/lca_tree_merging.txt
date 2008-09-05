@@ -1,14 +1,14 @@
-====================
-LCA Merge Resolution
-====================
+================
+LCA Tree Merging
+================
 
 There are 2 ways that you get LCA merge resolution in bzr. First, if you use
-``bzr merge --lca``, the content of files will be resolved using a Least Common
-Ancestors algorithm. That is not being described here.
+``bzr merge --lca``, the *content* of files will be resolved using a Least Common
+Ancestors algorithm. That is described in <lca-merge.html> not here.
 
-This is describing how we handle merging tree-shape when there is not a single
-unique ancestor (criss-cross merge). With a single LCA, we use simple
-3-way-merge logic.
+This document describes how we handle merging tree-shape when there is not
+a single unique ancestor (criss-cross merge). With a single LCA, we use
+simple 3-way-merge logic.
 
 When there are multiple possible LCAs, we use a different algorithm for
 handling tree-shape merging. Described here.
@@ -57,11 +57,11 @@ Resolution Algorithm
 2. Find the values from ``LCA1`` and ``LCA2`` which are not the same as
    ``BASE``. The idea here is to provide a rudimentary "heads" comparison.
    Often, the whole tree graph will have a criss-cross, but the per-file
-   (per-scalar) graph would be linear. And the value in one LCA strictly
+   (per-scalar) graph would be linear, and the value in one LCA strictly
    dominates the other. It is possible to construct a scenario where one side
    dominates the other, but the dominated value is not ``BASE``, but a second
    intermediate value. Most scalars are rarely changed, so this is unlikely to
-   be an issue. And the trade-off is having to generate and inspect the
+   be an issue. The trade-off is having to generate and inspect the
    per-scalar graph.
 
    If there are no LCA values that are different from ``BASE``, we use a simple
@@ -71,19 +71,18 @@ Resolution Algorithm
    If there is only one unique LCA value, we again use three-way merge logic
    using that unique value as the base.
 
-4. At this point we have determined that we have at least 2 unique values in
+4. At this point, we have determined that we have at least 2 unique values in
    our LCAs which means that ``THIS`` and ``OTHER`` would both have to resolve
    the conflict. If they resolved it in the same way, we would have caught that
    in step 1. So they either both picked a different LCA value, or one (or
    both) chose a new value to use.
 
-   So at this point, if ``OTHER`` and ``THIS`` both picked a different LCA
-   value, we conflict.
+   If ``OTHER`` and ``THIS`` both picked a different LCA value, we conflict.
 
    If ``OTHER`` and ``THIS`` both have values that are not LCA values, we also
    conflict. (Same as 3-way, both sides modified a value in different ways.)
 
-5. (optional) The only tricky part is this, if ``OTHER`` has a LCA value, but
+5. (optional) The only tricky part is this: if ``OTHER`` has a LCA value, but
    ``THIS`` does not, then we go with ``THIS``, and conversely if ``THIS`` has
    an LCA value, but ``OTHER`` does not, then we go with ``OTHER``. The idea is
    that ``THIS`` and ``OTHER`` may have resolved things in the same way, and
@@ -118,7 +117,7 @@ For a single entry, the last modified revision in ``D`` is:
 4) ``D`` if ``B`` and ``C`` modified it
 
 This means that if the last modified revision is the same, there have been no
-changes in the intermediate time. And if ``OTHER`` has the same last modified
+changes in the intermediate time. If ``OTHER`` also has the same last modified
 revision as *any* LCA, then we know that all other LCAs' last-modified
 revisions are in the ancestry of that value. (Otherwise, when ``OTHER`` would
 need to create a new last modified revision as part of the merge.)
