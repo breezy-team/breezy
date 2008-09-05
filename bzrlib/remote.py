@@ -1416,7 +1416,7 @@ class RemoteBranch(branch.Branch):
                 self._repo_lock_token, _skip_rpc=True)
 
             if self._real_branch is not None:
-                    self._real_branch.lock_write(token=self._lock_token)
+                self._real_branch.lock_write(token=self._lock_token)
             if token is not None:
                 self._leave_lock = True
             else:
@@ -1528,7 +1528,9 @@ class RemoteBranch(branch.Branch):
             raise errors.UnexpectedSmartServerResponse(response)
         new_revno, new_revision_id = response[1:]
         self._last_revision_info_cache = new_revno, new_revision_id
-        self._real_branch._last_revision_info_cache = new_revno, new_revision_id
+        if self._real_branch is not None:
+            cache = new_revno, new_revision_id
+            self._real_branch._last_revision_info_cache = cache
 
     def _set_last_revision(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
