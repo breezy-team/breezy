@@ -1107,7 +1107,7 @@ class LoggingMerger(object):
 
 
 class TestMergerBase(TestCaseWithMemoryTransport):
-    """Tests for Merger that can be done without hitting disk."""
+    """Common functionality for Merger tests that don't write to disk."""
 
     def get_builder(self):
         builder = self.make_branch_builder('path')
@@ -1117,12 +1117,14 @@ class TestMergerBase(TestCaseWithMemoryTransport):
 
     def setup_simple_graph(self):
         """Create a simple 3-node graph.
-                A
-                |\\
-                B C
 
         :return: A BranchBuilder
         """
+        #
+        #  A
+        #  |\
+        #  B C
+        #
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', ('', None, 'directory', None))])
@@ -1132,13 +1134,14 @@ class TestMergerBase(TestCaseWithMemoryTransport):
 
     def setup_criss_cross_graph(self):
         """Create a 5-node graph with a criss-cross.
-                A
-                |\\
-                B C
-                |X|
-                D E
+
         :return: A BranchBuilder
         """
+        # A
+        # |\
+        # B C
+        # |X|
+        # D E
         builder = self.setup_simple_graph()
         builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
@@ -1152,11 +1155,9 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         self.addCleanup(mem_tree.unlock)
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             mem_tree, other_revision_id)
-        if interesting_files is not None:
-            merger.set_interesting_files(interesting_files)
-        if interesting_ids is not None:
-            # It seems there is no matching function for set_interesting_ids
-            merger.interesting_ids = interesting_ids
+        merger.set_interesting_files(interesting_files)
+        # It seems there is no matching function for set_interesting_ids
+        merger.interesting_ids = interesting_ids
         merger.merge_type = _mod_merge.Merge3Merger
         return merger
 
@@ -1218,14 +1219,11 @@ class TestMergerInMemory(TestMergerBase):
                                             for t in merger._lca_trees])
 
     def test_criss_cross_not_supported_merge_type(self):
-        class NoLCATreesMerger(LoggingMerger):
-            # We intentionally do not define supports_lca_trees
-            pass
-
         merger = self.make_Merger(self.setup_criss_cross_graph(), 'E-id')
-        merger.merge_type = NoLCATreesMerger
+        # We explicitly do not define supports_lca_trees
+        merger.merge_type = LoggingMerger
         merge_obj = merger.make_merger()
-        self.assertIsInstance(merge_obj, NoLCATreesMerger)
+        self.assertIsInstance(merge_obj, LoggingMerger)
         self.assertFalse('lca_trees' in merge_obj.kwargs)
 
     def test_criss_cross_unsupported_merge_type(self):
@@ -1278,7 +1276,7 @@ class TestMergerEntriesLCA(TestMergerBase):
                          ], entries)
 
     def test_not_in_base(self):
-        # LCA's all have the same last-modified revision for the file, as do
+        # LCAs all have the same last-modified revision for the file, as do
         # the tips, but the base has something different
         #       A    base, doesn't have the file
         #       |\
@@ -1344,6 +1342,11 @@ class TestMergerEntriesLCA(TestMergerBase):
                          ], entries)
 
     def test_file_not_in_one_lca(self):
+        #   A   # just root
+        #   |\
+        #   B C # B no file, C introduces a file
+        #   |X|
+        #   D E # D and E both have the file, unchanged from C
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', (u'', 'a-root-id', 'directory', None))])
@@ -1449,7 +1452,7 @@ class TestMergerEntriesLCA(TestMergerBase):
                          ], entries)
 
     def test_one_lca_supersedes(self):
-        # One LCA supersede's the other LCA's last modified value, but the
+        # One LCA supersedes the other LCAs last modified value, but the
         # value is not the same as BASE.
         #       A    base, introduces 'foo', last mod A
         #       |\
