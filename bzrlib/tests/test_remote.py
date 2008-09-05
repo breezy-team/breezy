@@ -718,7 +718,7 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         client._calls = []
 
         err = self.assertRaises(
-            errors.ErrorFromSmartServer,
+            errors.UntranslateableErrorFromSmartServer,
             branch.set_last_revision_info, 123, 'revid')
         self.assertEqual(('UnexpectedError',), err.error_tuple)
         branch.unlock()
@@ -1102,7 +1102,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response('AnUnexpectedError')
-        e = self.assertRaises(errors.ErrorFromSmartServer,
+        e = self.assertRaises(errors.UntranslateableErrorFromSmartServer,
             self.applyDeprecated, one_four, repo.get_revision_graph, revid)
         self.assertEqual(('AnUnexpectedError',), e.error_tuple)
 
@@ -1370,9 +1370,10 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         ErrorFromSmartServer is propagated unmodified.
         """
         error_tuple = ('An unknown error tuple',)
-        server_error = errors.ErrorFromSmartServer(error_tuple)
-        translated_error = self.translateErrorFromSmartServer(server_error)
-        self.assertEqual(server_error, translated_error)
+        server_err = errors.ErrorFromSmartServer(error_tuple)
+        translated_error = self.translateErrorFromSmartServer(server_err)
+        expected_error = errors.UntranslateableErrorFromSmartServer(server_err)
+        self.assertEqual(expected_error, translated_error)
 
     def test_context_missing_a_key(self):
         """In case of a bug in the client, or perhaps an unexpected response

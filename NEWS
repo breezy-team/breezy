@@ -96,6 +96,9 @@ IN DEVELOPMENT
       check and test for parsing a dirstate with invalid trailing data.
       (John Arbash Meinel, #186014)
 
+    * Unexpected error responses from a smart server no longer cause the
+      client to traceback.  (Andrew Bennetts, #263527)
+      
     * Use a Windows api function to get a Unicode host name, rather than
       assuming the host name is ascii.
       (Mark Hammond, John Arbash Meinel, #256550)
