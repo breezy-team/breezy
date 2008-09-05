@@ -8,6 +8,7 @@ from distutils.command.install_lib import install_lib
 from distutils import log
 import sys
 import os
+import re
 
 # Build instructions for Windows:
 # * Install the SVN dev kit ZIP for Windows from
@@ -105,9 +106,42 @@ def svn_build_data():
     raise Exception("Subversion development files not found. "
                     "Please set SVN_PREFIX or (SVN_LIBRARY_PATH and SVN_HEADER_PATH) environment variable. ")
 
+class VersionQuery(object):
+    def __init__(self, filename):
+        self.filename = filename
+        f = file(filename, "rU")
+        try:
+            self.text = f.read()
+        finally:
+            f.close()
+
+    def grep(self, what):
+        m = re.search(r"^#define\s+%s\s+(\d+)\s*$" % (what,), self.text, re.MULTILINE)
+        if not m:
+            raise Exception, "Definition for %s was not found in file %s." % (what, self.filename)
+        return int(m.group(1))
+
 # Windows versions - we use environment variables to locate the directories
 # and hard-code a list of libraries.
 if os.name == "nt":
+    def get_apr_version():
+        apr_version_file = os.path.join(os.environ["SVN_DEV"], r"include\apr\apr_version.h")
+        if not os.path.isfile(apr_version_file):
+            raise Exception(
+                "Please check that your SVN_DEV location is correct.\n"
+                "Unable to find required apr\\apr_version.h file.")
+        query = VersionQuery(apr_version_file)
+        return query.grep("APR_MAJOR_VERSION"), query.grep("APR_MINOR_VERSION"), query.grep("APR_PATCH_VERSION")
+
+    def get_svn_version():
+        svn_version_file = os.path.join(os.environ["SVN_DEV"], r"include\svn_version.h")
+        if not os.path.isfile(svn_version_file):
+            raise Exception(
+                "Please check that your SVN_DEV location is correct.\n"
+                "Unable to find required svn_version.h file.")
+        query = VersionQuery(svn_version_file)
+        return query.grep("SVN_VER_MAJOR"), query.grep("SVN_VER_MINOR"), query.grep("SVN_VER_PATCH")
+
     # just clobber the functions above we can't use
     # for simplicitly, everything is done in the 'svn' one
     def apr_build_data():
@@ -132,6 +166,9 @@ if os.name == "nt":
                 "Please set SVN_LIBINTL to the location of the svn libintl "
                 "packages - see README.txt in the SV_DEV dir")
 
+        svn_version = get_svn_version()
+        apr_version = get_apr_version()
+
         includes = [
             # apr dirs.
             os.path.join(svn_dev_dir, r"include\apr"),
@@ -149,8 +186,14 @@ if os.name == "nt":
             os.path.join(svn_bdb_dir, "lib"),
             os.path.join(svn_libintl_dir, "lib"),
         ]
-        libs = """libapr libapriconv libaprutil libneon
-                  libsvn_subr-1 libsvn_client-1 libsvn_ra-1
+        aprlibs = """libapr libapriconv libaprutil""".split()
+        if apr_version[0] == 1:
+            aprlibs = [aprlib + "-1" for aprlib in aprlibs]
+        elif apr_version[0] > 1:
+            raise Exception(
+                "You have apr version %d.%d.%d.\n"
+                "This setup only knows how to build with 0.*.* or 1.*.*." % apr_version)
+        libs = """libneon libsvn_subr-1 libsvn_client-1 libsvn_ra-1
                   libsvn_ra_dav-1 libsvn_ra_local-1 libsvn_ra_svn-1
                   libsvn_repos-1 libsvn_wc-1 libsvn_delta-1 libsvn_diff-1
                   libsvn_fs-1 libsvn_repos-1 libsvn_fs_fs-1 libsvn_fs_base-1
@@ -158,8 +201,11 @@ if os.name == "nt":
                   libdb44 xml
                   advapi32 shell32 ws2_32 zlibstat
                """.split()
+        if svn_version >= (1,5,0):
+            # Since 1.5.0 libsvn_ra_dav-1 was removed
+            libs.remove("libsvn_ra_dav-1")
 
-        return includes, lib_dirs, libs,
+        return includes, lib_dirs, aprlibs+libs,
 
 (apr_includedir, ) = apr_build_data()
 (svn_includedirs, svn_libdirs, extra_libs) = svn_build_data()
@@ -180,8 +226,13 @@ class install_lib_with_dlls(install_lib):
     def _get_dlls(self):
         # return a list of of (FQ-in-name, relative-out-name) tuples.
         ret = []
-        apr_bins = """libaprutil.dll libapriconv.dll libapr.dll intl3_svn.dll
-                      libdb44.dll libeay32.dll ssleay32.dll""".split()
+        apr_bins = [libname + ".dll" for libname in extra_libs if libname.startswith("libapr")]
+        if get_svn_version() >= (1,5,0):
+            # Since 1.5.0 these libraries became shared
+            apr_bins += """libsvn_client-1.dll libsvn_delta-1.dll libsvn_diff-1.dll
+                           libsvn_fs-1.dll libsvn_ra-1.dll libsvn_repos-1.dll
+                           libsvn_subr-1.dll libsvn_wc-1.dll""".split()
+        apr_bins += """intl3_svn.dll libdb44.dll libeay32.dll ssleay32.dll""".split()
         look_dirs = os.environ.get("PATH","").split(os.pathsep)
         look_dirs.insert(0, os.path.join(os.environ["SVN_DEV"], "bin"))
     
