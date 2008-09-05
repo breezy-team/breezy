@@ -1031,12 +1031,11 @@ class Merge3Merger(object):
             else:
                 names.append(entry.name)
                 parents.append(entry.parent_id)
-        return self._merge_names(file_id, parents, names)
+        return self._merge_names(file_id, parents, names,
+                                 resolver=self._three_way)
 
-    def _merge_names(self, file_id, parents, names, resolver=None):
+    def _merge_names(self, file_id, parents, names, resolver):
         """Perform a merge on file_id names and parents"""
-        if resolver is None:
-            resolver = self._three_way
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
 
@@ -1236,13 +1235,12 @@ class Merge3Merger(object):
         """Perform a merge on the execute bit."""
         executable = [self.executable(t, file_id) for t in (self.base_tree,
                       self.other_tree, self.this_tree)]
-        self._merge_executable(file_id, executable, file_status)
+        self._merge_executable(file_id, executable, file_status,
+                               resolver=self._three_way)
 
     def _merge_executable(self, file_id, executable, file_status,
-                          resolver=None):
+                          resolver):
         """Perform a merge on the execute bit."""
-        if resolver is None:
-            resolver = self._three_way
         base_executable, other_executable, this_executable = executable
         if file_status == "deleted":
             return
