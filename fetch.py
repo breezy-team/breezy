@@ -650,7 +650,7 @@ class InterFromSvnRepository(InterRepository):
             checked = set()
         if revision_id in checked:
             return []
-        extra = set()
+        extra = list()
         def check_revid(revision_id):
             revs = []
             meta_map = {}
@@ -673,7 +673,7 @@ class InterFromSvnRepository(InterRepository):
                 if revid in checked:
                     # This revision (and its ancestry) has already been checked
                     break
-                extra.update(parent_ids[1:])
+                extra.extend(parent_ids[1:])
                 if not self.target.has_revision(revid):
                     revs.append(revid)
                 elif not find_ghosts:
@@ -684,7 +684,8 @@ class InterFromSvnRepository(InterRepository):
 
         needed = check_revid(revision_id)
 
-        for revid in extra:
+        while len(extra) > 0:
+            revid = extra.pop()
             if revid not in checked:
                 needed += check_revid(revid)
 
@@ -700,7 +701,7 @@ class InterFromSvnRepository(InterRepository):
         :param revids: Revision ids to copy.
         :param pb: Optional progress bar
         """
-        raise NotImplementedError(self._copy_revisions_replay)
+        raise NotImplementedError(self._fetch_replay)
 
     def _fetch_switch(self, repos_root, revids, pb=None):
         """Copy a set of related revisions using svn.ra.switch.
