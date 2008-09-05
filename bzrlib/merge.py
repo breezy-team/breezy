@@ -97,7 +97,7 @@ class Merger(object):
         self._revision_graph = revision_graph
         self._base_is_ancestor = None
         self._base_is_other_ancestor = None
-        self._is_criss_cross = False
+        self._is_criss_cross = None
         self._lca_trees = None
 
     @property
@@ -357,8 +357,10 @@ class Merger(object):
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
             self.base_tree = self.revision_tree(self.base_rev_id)
+            self._is_criss_cross = False
         else:
             lcas = self.revision_graph.find_lca(revisions[0], revisions[1])
+            self._is_criss_cross = False
             if len(lcas) == 0:
                 self.base_rev_id = NULL_REVISION
             elif len(lcas) == 1:
@@ -705,7 +707,6 @@ class Merge3Merger(object):
         else:
             interesting_ids = self.interesting_ids
         result = []
-        # XXX: Do we want a better sort order than this?
         walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
 
         base_inventory = self.base_tree.inventory
@@ -763,13 +764,13 @@ class Merge3Merger(object):
                 lca_names.append(lca_ie.name)
                 lca_executable.append(lca_ie.executable)
 
-            kind_winner = Merge3Merger._lca_multi_way(
+            kind_winner = self._lca_multi_way(
                 (base_ie.kind, lca_kinds),
                 other_ie.kind, this_ie.kind)
-            parent_id_winner = Merge3Merger._lca_multi_way(
+            parent_id_winner = self._lca_multi_way(
                 (base_ie.parent_id, lca_parent_ids),
                 other_ie.parent_id, this_ie.parent_id)
-            name_winner = Merge3Merger._lca_multi_way(
+            name_winner = self._lca_multi_way(
                 (base_ie.name, lca_names),
                 other_ie.name, this_ie.name)
 
@@ -795,10 +796,10 @@ class Merge3Merger(object):
                                  in zip(lca_entries, self._lca_trees)]
                     this_sha1 = get_sha1(this_ie, self.this_tree)
                     other_sha1 = get_sha1(other_ie, self.other_tree)
-                    sha1_winner = Merge3Merger._lca_multi_way(
+                    sha1_winner = self._lca_multi_way(
                         (base_sha1, lca_sha1s), other_sha1, this_sha1,
                         allow_overriding_lca=False)
-                    exec_winner = Merge3Merger._lca_multi_way(
+                    exec_winner = self._lca_multi_way(
                         (base_ie.executable, lca_executable),
                         other_ie.executable, this_ie.executable)
                     if (parent_id_winner == 'this' and name_winner == 'this'
@@ -818,7 +819,7 @@ class Merge3Merger(object):
                                    in zip(lca_entries, self._lca_trees)]
                     this_target = get_target(this_ie, self.this_tree)
                     other_target = get_target(other_ie, self.other_tree)
-                    target_winner = Merge3Merger._lca_multi_way(
+                    target_winner = self._lca_multi_way(
                         (base_target, lca_targets),
                         other_target, this_target)
                     if (parent_id_winner == 'this' and name_winner == 'this'
