@@ -132,6 +132,10 @@ IN DEVELOPMENT
       addition, addCleanup no longer requires that the callables passed to
       it be unique. (Jonathan Lange)
 
+    * Fix some tests that fail on Windows because files are deleted while 
+      still in use. 
+      (Mark Hammond)
+
     * ``selftest``'s ``--starting-with`` option can now use predefined
       prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
       ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
