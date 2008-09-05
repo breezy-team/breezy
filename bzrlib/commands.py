@@ -366,7 +366,7 @@ class Command(object):
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
 
-        # If this will be rendered as plan text, convert it
+        # If this will be rendered as plain text, convert it
         if plain:
             import bzrlib.help_topics
             result = bzrlib.help_topics.help_as_plain_text(result)
@@ -389,7 +389,7 @@ class Command(object):
                     sections[label] += '\n' + section
                 else:
                     sections[label] = section
-            
+
         lines = text.rstrip().splitlines()
         summary = lines.pop(0)
         sections = {}
@@ -497,7 +497,7 @@ class Command(object):
         self._setup_outf()
 
         return self.run(**all_cmd_args)
-    
+
     def run(self):
         """Actually run the command.
 

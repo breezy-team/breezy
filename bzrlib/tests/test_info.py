@@ -146,8 +146,9 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree',
                 'pack-0.92', 'pack-0.92-subtree', 'rich-root',
-                'rich-root-pack'):
-                expected = 'dirstate or dirstate-tags or pack-0.92 or'\
+                'rich-root-pack', '1.6', '1.6.1-rich-root'):
+                expected = '1.6 or 1.6.1-rich-root or ' \
+                    'dirstate or dirstate-tags or pack-0.92 or'\
                     ' rich-root or rich-root-pack'
             if key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'

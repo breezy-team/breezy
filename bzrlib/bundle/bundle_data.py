@@ -159,16 +159,13 @@ class BundleInfo(object):
     def get_base(self, revision):
         revision_info = self.get_revision_info(revision.revision_id)
         if revision_info.base_id is not None:
-            if revision_info.base_id == NULL_REVISION:
-                return None
-            else:
-                return revision_info.base_id
+            return revision_info.base_id
         if len(revision.parent_ids) == 0:
             # There is no base listed, and
             # the lowest revision doesn't have a parent
             # so this is probably against the empty tree
-            # and thus base truly is None
-            return None
+            # and thus base truly is NULL_REVISION
+            return NULL_REVISION
         else:
             return revision.parent_ids[-1]
 

@@ -374,32 +374,36 @@ class Tree(object):
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
 
+    def _iter_parent_trees(self):
+        """Iterate through parent trees, defaulting to Tree.revision_tree."""
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self.repository.revision_tree(revision_id)
+
+    @staticmethod
+    def _file_revision(revision_tree, file_id):
+        """Determine the revision associated with a file in a given tree."""
+        revision_tree.lock_read()
+        try:
+            return revision_tree.inventory[file_id].revision
+        finally:
+            revision_tree.unlock()
+
     def _get_file_revision(self, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        def file_revision(revision_tree):
-            revision_tree.lock_read()
-            try:
-                return revision_tree.inventory[file_id].revision
-            finally:
-                revision_tree.unlock()
-
-        def iter_parent_trees():
-            for revision_id in self.get_parent_ids():
-                try:
-                    yield self.revision_tree(revision_id)
-                except:
-                    yield self.repository.revision_tree(revision_id)
 
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, file_revision(t)) for t in
-                iter_parent_trees()]
+            parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+                self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
                          self.get_file(file_id).readlines())
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = file_revision(self)
+            last_revision = self._file_revision(self, file_id)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
@@ -553,11 +557,6 @@ class Tree(object):
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
-        file_id = self.path2id(rules.RULES_TREE_FILENAME)
-        if file_id is not None:
-            ini_file = self.get_file(file_id)
-            searcher = rules._StackedRulesSearcher(
-                [rules._IniBasedRulesSearcher(ini_file), default_searcher])
         return searcher
 
 
@@ -949,7 +948,7 @@ class InterTree(InterObject):
                 self.source._comparison_data(from_entry, path)
             kind = (from_kind, None)
             executable = (from_executable, None)
-            changed_content = True
+            changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
@@ -971,7 +970,7 @@ class MultiWalker(object):
         that they yield (path, object) tuples, where that object will have a
         '.file_id' member, that can be used to check equality.
 
-        :param master_tree: All trees will be 'slaved' to the master_tree. Such
+        :param master_tree: All trees will be 'slaved' to the master_tree such
             that nodes in master_tree will be used as 'first-pass' sync points.
             Any nodes that aren't in master_tree will be merged in a second
             pass.
@@ -1025,12 +1024,12 @@ class MultiWalker(object):
         if not isinstance(path2, unicode):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
-        return cmp(MultiWalker._path_key(path1), MultiWalker._path_key(path2))
+        return cmp(MultiWalker._path_to_key(path1),
+                   MultiWalker._path_to_key(path2))
 
     @staticmethod
-    def _path_key(other):
-        path = other[0]
-        dirname, basename = os.path.split(path)
+    def _path_to_key(path):
+        dirname, basename = osutils.split(path)
         return (dirname.split(u'/'), basename)
 
     def _lookup_by_file_id(self, extra_entries, other_tree, file_id):
@@ -1169,7 +1168,8 @@ class MultiWalker(object):
         #       might ensure better ordering, in case a caller strictly
         #       requires parents before children.
         for idx, other_extra in enumerate(self._others_extra):
-            others = sorted(other_extra.itervalues(), key=self._path_key)
+            others = sorted(other_extra.itervalues(),
+                            key=lambda x: self._path_to_key(x[0]))
             for other_path, other_ie in others:
                 file_id = other_ie.file_id
                 # We don't need to check out_of_order_processed here, because

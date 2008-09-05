@@ -466,6 +466,24 @@ class TestMerge(TestCaseWithTransport):
         source.commit('Add bar')
         subtree.merge_from_branch(source.branch)
 
+    def test_merge_joined_branch(self):
+        source = self.make_branch_and_tree('source', format='rich-root-pack')
+        self.build_tree(['source/foo'])
+        source.add('foo')
+        source.commit('Add foo')
+        target = self.make_branch_and_tree('target', format='rich-root-pack')
+        self.build_tree(['target/bla'])
+        target.add('bla')
+        target.commit('Add bla')
+        nested = source.bzrdir.sprout('target/subtree').open_workingtree()
+        target.subsume(nested)
+        target.commit('Join nested')
+        self.build_tree(['source/bar'])
+        source.add('bar')
+        source.commit('Add bar')
+        target.merge_from_branch(source.branch)
+        target.commit('Merge source')
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 

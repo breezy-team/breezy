@@ -64,6 +64,24 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
 class TestRepository(TestCaseWithRepository):
 
+    def test_attribute__fetch_order(self):
+        """Test the the _fetch_order attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._fetch_order in ('topological', 'unordered'))
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Test the the _fetch_uses_deltas attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._fetch_uses_deltas in (True, False))
+
+    def test_attribute__fetch_reconcile(self):
+        """Test the the _fetch_reconcile attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._fetch_reconcile in (True, False))
+
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""
         tree = self.make_branch_and_tree('tree')
@@ -317,7 +335,9 @@ class TestRepository(TestCaseWithRepository):
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
                          list(tree.list_files(include_root=True)))
-        tree = wt.branch.repository.revision_tree(None)
+        tree = self.callDeprecated(['NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.'],
+            wt.branch.repository.revision_tree, None)
         self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
@@ -931,7 +951,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
 
-    def test_get_unsorted_ancestry(self):
+    def test_get_unordered_ancestry(self):
         repo = self.bzrdir.open_repository()
         self.assertEqual(set(repo.get_ancestry('rev3')),
                          set(repo.get_ancestry('rev3', topo_sorted=False)))

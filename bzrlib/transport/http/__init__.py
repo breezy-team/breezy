@@ -27,6 +27,7 @@ import urllib
 import sys
 
 from bzrlib import (
+    debug,
     errors,
     ui,
     urlutils,
@@ -230,7 +231,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            mutter('http readv of %s  offsets => %s collapsed %s',
+            if 'http' in debug.debug_flags:
+                mutter('http readv of %s  offsets => %s collapsed %s',
                     relpath, len(offsets), len(coalesced))
 
             # Cache the data read, but only until it's been used
@@ -552,7 +554,16 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         self._response_body = data
 
     def _read_bytes(self, count):
+        """See SmartClientMediumRequest._read_bytes."""
         return self._response_body.read(count)
+
+    def _read_line(self):
+        line, excess = medium._get_line(self._response_body.read)
+        if excess != '':
+            raise AssertionError(
+                '_get_line returned excess bytes, but this mediumrequest '
+                'cannot handle excess. (%r)' % (excess,))
+        return line
 
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading."""

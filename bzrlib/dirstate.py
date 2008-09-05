@@ -1199,6 +1199,7 @@ class DirState(object):
                     fingerprint = ''
                 insertions[file_id] = (key, minikind, inv_entry.executable,
                                        fingerprint, new_path)
+            # Transform moves into delete+add pairs
             if None not in (old_path, new_path):
                 for child in self._iter_child_entries(0, old_path):
                     if child[0][2] in insertions or child[0][2] in removals:
@@ -1228,6 +1229,21 @@ class DirState(object):
                 self._get_block_entry_index(dirname, basename, 0)
             entry = self._dirblocks[block_i][1][entry_i]
             self._make_absent(entry)
+            # See if we have a malformed delta: deleting a directory must not
+            # leave crud behind. This increases the number of bisects needed
+            # substantially, but deletion or renames of large numbers of paths
+            # is rare enough it shouldn't be an issue (famous last words?) RBC
+            # 20080730.
+            block_i, entry_i, d_present, f_present = \
+                self._get_block_entry_index(path, '', 0)
+            if d_present:
+                # The dir block is still present in the dirstate; this could
+                # be due to it being in a parent tree, or a corrupt delta.
+                for child_entry in self._dirblocks[block_i][1]:
+                    if child_entry[1][0][0] not in ('r', 'a'):
+                        raise errors.InconsistentDelta(path, entry[0][2],
+                            "The file id was deleted but its children were "
+                            "not deleted.")
 
     def _apply_insertions(self, adds):
         for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):

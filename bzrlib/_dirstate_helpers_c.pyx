@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 This is the python implementation for DirState functions.
 """
 
+from bzrlib import errors
 from bzrlib.dirstate import DirState
 
 
@@ -50,6 +51,7 @@ cdef extern from "stdlib.h":
 # inner loops, we don't need to do that at all, as the reference only lasts for
 # a very short time.
 cdef extern from "Python.h":
+    ctypedef int Py_ssize_t
     int PyList_Append(object lst, object item) except -1
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
     int PyList_CheckExact(object)
@@ -59,7 +61,7 @@ cdef extern from "Python.h":
     char *PyString_AsString(object p)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
     object PyString_FromString(char *)
-    object PyString_FromStringAndSize(char *, int)
+    object PyString_FromStringAndSize(char *, Py_ssize_t)
     int PyString_Size(object p)
     int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
     int PyString_CheckExact(object p)
@@ -109,6 +111,13 @@ def _py_memrchr(s, c):
     if found == NULL:
         return None
     return <char*>found - <char*>_s
+
+cdef object safe_string_from_size(char *s, Py_ssize_t size):
+    if size < 0:
+        raise AssertionError(
+            'tried to create a string with an invalid size: %d @0x%x'
+            % (size, <int>s))
+    return PyString_FromStringAndSize(s, size)
 
 
 cdef int _is_aligned(void *ptr):
@@ -470,6 +479,7 @@ def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
 cdef class Reader:
     """Maintain the current location, and return fields as you parse them."""
 
+    cdef object state # The DirState object
     cdef object text # The overall string object
     cdef char *text_cstr # Pointer to the beginning of text
     cdef int text_size # Length of text
@@ -478,18 +488,32 @@ cdef class Reader:
     cdef char *cur_cstr # Pointer to the current record
     cdef char *next # Pointer to the end of this record
 
-    def __init__(self, text):
+    def __init__(self, text, state):
+        self.state = state
         self.text = text
         self.text_cstr = PyString_AsString(text)
         self.text_size = PyString_Size(text)
         self.end_cstr = self.text_cstr + self.text_size
         self.cur_cstr = self.text_cstr
 
-    cdef char *get_next(self, int *size):
+    cdef char *get_next(self, int *size) except NULL:
         """Return a pointer to the start of the next field."""
         cdef char *next
+        cdef Py_ssize_t extra_len
+
+        if self.cur_cstr == NULL:
+            raise AssertionError('get_next() called when cur_str is NULL')
+        elif self.cur_cstr >= self.end_cstr:
+            raise AssertionError('get_next() called when there are no chars'
+                                 ' left')
         next = self.cur_cstr
-        self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr-next)
+        self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr - next)
+        if self.cur_cstr == NULL:
+            extra_len = self.end_cstr - next
+            raise errors.DirstateCorrupt(self.state,
+                'failed to find trailing NULL (\\0).'
+                ' Trailing garbage: %r'
+                % safe_string_from_size(next, extra_len))
         size[0] = self.cur_cstr - next
         self.cur_cstr = self.cur_cstr + 1
         return next
@@ -499,7 +523,7 @@ cdef class Reader:
         cdef int size
         cdef char *next
         next = self.get_next(&size)
-        return PyString_FromStringAndSize(next, size)
+        return safe_string_from_size(next, size)
 
     cdef int _init(self) except -1:
         """Get the pointer ready.
@@ -570,7 +594,7 @@ cdef class Reader:
                        # <object>
                        PyString_AS_STRING_void(p_current_dirname[0]),
                        cur_size+1) != 0):
-            dirname = PyString_FromStringAndSize(dirname_cstr, cur_size)
+            dirname = safe_string_from_size(dirname_cstr, cur_size)
             p_current_dirname[0] = <void*>dirname
             new_block[0] = 1
         else:
@@ -621,13 +645,13 @@ cdef class Reader:
         # marker.
         trailing = self.get_next(&cur_size)
         if cur_size != 1 or trailing[0] != c'\n':
-            raise AssertionError(
+            raise errors.DirstateCorrupt(self.state,
                 'Bad parse, we expected to end on \\n, not: %d %s: %s'
-                % (cur_size, PyString_FromStringAndSize(trailing, cur_size),
+                % (cur_size, safe_string_from_size(trailing, cur_size),
                    ret))
         return ret
 
-    def _parse_dirblocks(self, state):
+    def _parse_dirblocks(self):
         """Parse all dirblocks in the state file."""
         cdef int num_trees
         cdef object current_block
@@ -637,14 +661,15 @@ cdef class Reader:
         cdef int expected_entry_count
         cdef int entry_count
 
-        num_trees = state._num_present_parents() + 1
-        expected_entry_count = state._num_entries
+        num_trees = self.state._num_present_parents() + 1
+        expected_entry_count = self.state._num_entries
 
         # Ignore the first record
         self._init()
 
         current_block = []
-        state._dirblocks = [('', current_block), ('', [])]
+        dirblocks = [('', current_block), ('', [])]
+        self.state._dirblocks = dirblocks
         obj = ''
         current_dirname = <void*>obj
         new_block = 0
@@ -662,15 +687,16 @@ cdef class Reader:
             if new_block:
                 # new block - different dirname
                 current_block = []
-                PyList_Append(state._dirblocks,
+                PyList_Append(dirblocks,
                               (<object>current_dirname, current_block))
             PyList_Append(current_block, entry)
             entry_count = entry_count + 1
         if entry_count != expected_entry_count:
-            raise AssertionError('We read the wrong number of entries.'
+            raise errors.DirstateCorrupt(self.state,
+                    'We read the wrong number of entries.'
                     ' We expected to read %s, but read %s'
                     % (expected_entry_count, entry_count))
-        state._split_root_dirblock_into_contents()
+        self.state._split_root_dirblock_into_contents()
 
 
 def _read_dirblocks_c(state):
@@ -689,7 +715,7 @@ def _read_dirblocks_c(state):
     text = state._state_file.read()
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
-    reader = Reader(text)
+    reader = Reader(text, state)
 
-    reader._parse_dirblocks(state)
+    reader._parse_dirblocks()
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED

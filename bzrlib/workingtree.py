@@ -379,7 +379,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Return RevisionTree for the current last revision.
         
         If the left most parent is a ghost then the returned tree will be an
-        empty tree - one obtained by calling repository.revision_tree(None).
+        empty tree - one obtained by calling 
+        repository.revision_tree(NULL_REVISION).
         """
         try:
             revision_id = self.get_parent_ids()[0]
@@ -387,7 +388,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # no parents, return an empty revision tree.
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
-            return self.branch.repository.revision_tree(None)
+            return self.branch.repository.revision_tree(
+                       _mod_revision.NULL_REVISION)
         try:
             return self.revision_tree(revision_id)
         except errors.NoSuchRevision:
@@ -404,7 +406,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if self.branch.repository.has_revision(revision_id):
                 raise
             # the basis tree is a ghost so return an empty tree.
-            return self.branch.repository.revision_tree(None)
+            return self.branch.repository.revision_tree(
+                       _mod_revision.NULL_REVISION)
 
     def _cleanup(self):
         self._flush_ignore_list_cache()
@@ -520,7 +523,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_workingtree()
         self.copy_content_into(result, revision_id)
         return result
 
@@ -1316,9 +1319,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 only_change_inv = True
             elif self.has_filename(from_rel) and not self.has_filename(to_rel):
                 only_change_inv = False
-            elif (sys.platform == 'win32'
-                and from_rel.lower() == to_rel.lower()
-                and self.has_filename(from_rel)):
+            elif (not self.case_sensitive
+                  and from_rel.lower() == to_rel.lower()
+                  and self.has_filename(from_rel)):
                 only_change_inv = False
             else:
                 # something is wrong, so lets determine what exactly
@@ -1859,9 +1862,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # Recurse directory and add all files
             # so we can check if they have changed.
             for parent_info, file_infos in\
-                osutils.walkdirs(self.abspath(directory),
-                    directory):
-                for relpath, basename, kind, lstat, abspath in file_infos:
+                self.walkdirs(directory):
+                for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.path2id(relpath) or self.is_ignored(relpath):
                         # Add nested content for deletion.
@@ -1877,8 +1879,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             filename = self.relpath(abspath)
             if len(filename) > 0:
                 new_files.add(filename)
-                if osutils.isdir(abspath):
-                    recurse_directory_to_add_files(filename)
+                recurse_directory_to_add_files(filename)
 
         files = list(new_files)
 
@@ -2418,10 +2419,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 relroot = ""
             # FIXME: stash the node in pending
             entry = inv[top_id]
-            for name, child in entry.sorted_children():
-                dirblock.append((relroot + name, name, child.kind, None,
-                    child.file_id, child.kind
-                    ))
+            if entry.kind == 'directory':
+                for name, child in entry.sorted_children():
+                    dirblock.append((relroot + name, name, child.kind, None,
+                        child.file_id, child.kind
+                        ))
             yield (currentdir[0], entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
@@ -2715,22 +2717,19 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
 
-    def _stub_initialize_remote(self, branch):
-        """As a special workaround create critical control files for a remote working tree.
-        
+    def _stub_initialize_on_transport(self, transport, file_mode):
+        """Workaround: create control files for a remote working tree.
+
         This ensures that it can later be updated and dealt with locally,
-        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
+        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
         no working tree.  (See bug #43064).
         """
         sio = StringIO()
         inv = Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
-        branch._transport.put_file('inventory', sio,
-            mode=branch.control_files._file_mode)
-        branch._transport.put_bytes('pending-merges', '',
-            mode=branch.control_files._file_mode)
-        
+        transport.put_file('inventory', sio, file_mode)
+        transport.put_bytes('pending-merges', '', file_mode)
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):

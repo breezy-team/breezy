@@ -82,7 +82,7 @@ TODO: Merge that Wiki page into this document.
 Understanding the Development Process
 =====================================
 
-The development team follows many best-practices including:
+The development team follows many practices including:
 
 * a public roadmap and planning process in which anyone can participate
 
@@ -108,79 +108,6 @@ The key tools we use to enable these practices are:
 For further information, see http://bazaar-vcs.org/BzrDevelopment.
 
 
-A Closer Look at the Merge & Review Process
-===========================================
-
-If you'd like to propose a change, please post to the
-bazaar@lists.canonical.com list with a bundle, patch, or link to a
-branch. Put '[PATCH]' or '[MERGE]' in the subject so Bundle Buggy
-can pick it out, and explain the change in the email message text.
-Remember to update the NEWS file as part of your change if it makes any
-changes visible to users or plugin developers. Please include a diff
-against mainline if you're giving a link to a branch.
-
-You can generate a bundle like this::
-
-  bzr bundle > mybundle.patch
-  
-A .patch extension is recommended instead of .bundle as many mail clients
-will send the latter as a binary file. If a bundle would be too long or your
-mailer mangles whitespace (e.g. implicitly converts Unix newlines to DOS
-newlines), use the merge-directive command instead like this::
-
-  bzr merge-directive http://bazaar-vcs.org http://example.org/my_branch > my_directive.patch
-
-See the help for details on the arguments to merge-directive.
-
-Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
-want it to be merged. If you want comments from developers rather than
-to be merged, you can put '[RFC]' in the subject line.
-
-Anyone is welcome to review code.  There are broadly three gates for
-code to get in:
-
- * Doesn't reduce test coverage: if it adds new methods or commands,
-   there should be tests for them.  There is a good test framework
-   and plenty of examples to crib from, but if you are having trouble
-   working out how to test something feel free to post a draft patch
-   and ask for help.
-
- * Doesn't reduce design clarity, such as by entangling objects
-   we're trying to separate.  This is mostly something the more
-   experienced reviewers need to help check.
-
- * Improves bugs, features, speed, or code simplicity.
-
-Code that goes in should pass all three. The core developers take care
-to keep the code quality high and understandable while recognising that
-perfect is sometimes the enemy of good. (It is easy for reviews to make
-people notice other things which should be fixed but those things should
-not hold up the original fix being accepted. New things can easily be
-recorded in the Bug Tracker instead.)
-
-Anyone can "vote" on the mailing list. Core developers can also vote using
-Bundle Buggy. Here are the voting codes and their explanations.
-
-:approve:  Reviewer wants this submission merged.
-:tweak:    Reviewer wants this submission merged with small changes. (No
-  re-review required.)
-:abstain:  Reviewer does not intend to vote on this patch.
-:resubmit: Please make changes and resubmit for review.
-:reject:   Reviewer doesn't want this kind of change merged.
-:comment:  Not really a vote. Reviewer just wants to comment, for now.
-
-If a change gets two approvals from core reviewers, and no rejections,
-then it's OK to come in.  Any of the core developers can bring it into the
-bzr.dev trunk and backport it to maintenance branches if required.  The
-Release Manager will merge the change into the branch for a pending
-release, if any. As a guideline, core developers usually merge their own
-changes and volunteer to merge other contributions if they were the second
-reviewer to agree to a change.
-
-To track the progress of proposed changes, use Bundle Buggy. See
-http://bundlebuggy.aaronbentley.com/help for a link to all the
-outstanding merge requests together with an explanation of the columns.
-Bundle Buggy will also mail you a link to track just your change.
 
 
 Preparing a Sandbox for Making Changes to Bazaar
@@ -264,454 +191,176 @@ Automatically-generated API reference information is available at
 <http://starship.python.net/crew/mwh/bzrlibapi/>.  
 (There is an experimental editable version at 
 <http://starship.python.net/crew/mwh/bzrlibapi-oe/>.)
-See also the `Essential Domain Classes`_
-section of this guide.
 
+See also the `Bazaar Architectural Overview  <../../developers/overview.html>`_.
 
-Testing Bazaar
-##############
 
-The Importance of Testing
-=========================
+The Code Review Process
+#######################
 
-Reliability is a critical success factor for any Version Control System.
-We want Bazaar to be highly reliable across multiple platforms while
-evolving over time to meet the needs of its community. 
+All code changes coming in to Bazaar are reviewed by someone else.
+Normally changes by core contributors are reviewed by one other core
+developer, and changes from other people are reviewed by two core
+developers.  Use intelligent discretion if the patch is trivial.
 
-In a nutshell, this is want we expect and encourage:
+Good reviews do take time. They also regularly require a solid
+understanding of the overall code base. In practice, this means a small
+number of people often have a large review burden - with knowledge comes
+responsibility. No one like their merge requests sitting in a queue going
+nowhere, so reviewing sooner rather than later is strongly encouraged.
 
-* New functionality should have test cases.  Preferably write the
-  test before writing the code.
 
-  In general, you can test at either the command-line level or the
-  internal API level.  See Writing tests below for more detail.
 
-* Try to practice Test-Driven Development: before fixing a bug, write a
-  test case so that it does not regress.  Similarly for adding a new
-  feature: write a test case for a small version of the new feature before
-  starting on the code itself.  Check the test fails on the old code, then
-  add the feature or fix and check it passes.
+Sending patches for review
+==========================
 
-By doing these things, the Bazaar team gets increased confidence that
-changes do what they claim to do, whether provided by the core team or
-by community members. Equally importantly, we can be surer that changes
-down the track do not break new features or bug fixes that you are
-contributing today.
+If you'd like to propose a change, please post to the
+bazaar@lists.canonical.com list with a bundle, patch, or link to a
+branch. Put ``[PATCH]`` or ``[MERGE]`` in the subject so Bundle Buggy
+can pick it out, and explain the change in the email message text.
+Remember to update the NEWS file as part of your change if it makes any
+changes visible to users or plugin developers. Please include a diff
+against mainline if you're giving a link to a branch.
 
-As of May 2008, Bazaar ships with a test suite containing over 12000 tests
-and growing. We are proud of it and want to remain so. As community
-members, we all benefit from it. Would you trust version control on
-your project to a product *without* a test suite like Bazaar has?
+You can generate a merge request like this::
 
+  bzr send -o bug-1234.diff
+  
+A ``.diff`` extension is recommended instead of .bundle as many mail clients
+will send the latter as a binary file.
 
-Running the Test Suite
-======================
+``bzr send`` can also send mail directly if you prefer; see the help.
 
-Currently, bzr selftest is used to invoke tests.
-You can provide a pattern argument to run a subset. For example, 
-to run just the blackbox tests, run::
+Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
+want it to be merged. If you want comments from developers rather than
+to be merged, you can put ``[RFC]`` in the subject line.
 
-  ./bzr selftest -v blackbox
+If this change addresses a bug, please put the bug number in the subject
+line too, in the form ``[#1]`` so that Bundle Buggy can recognize it.
 
-To skip a particular test (or set of tests), use the --exclude option
-(shorthand -x) like so::
+If the change is intended for a particular release mark that in the
+subject too, e.g. ``[1.6]``.
 
-  ./bzr selftest -v -x blackbox  
 
-To ensure that all tests are being run and succeeding, you can use the
---strict option which will fail if there are any missing features or known
-failures, like so::
+Review cover letters
+====================
 
-  ./bzr selftest --strict
+Please put a "cover letter" on your merge request explaining:
 
-To list tests without running them, use the --list-only option like so::
+* the reason **why** you're making this change
 
-  ./bzr selftest --list-only
+* **how** this change acheives this purpose
 
-This option can be combined with other selftest options (like -x) and
-filter patterns to understand their effect.
+* anything else you may have fixed in passing 
 
-Once you understand how to create a list of tests, you can use the --load-list
-option to run only a restricted set of tests that you kept in a file, one test
-id by line. Keep in mind that this will never be sufficient to validate your
-modifications, you still need to run the full test suite for that, but using it
-can help in some cases (like running only the failed tests for some time)::
+* anything significant that you thought of doing, such as a more
+  extensive fix or a different approach, but didn't or couldn't do now
 
-  ./bzr selftest -- load-list my_failing_tests
+A good cover letter makes reviewers' lives easier because they can decide
+from the letter whether they agree with the purpose and approach, and then
+assess whether the patch actually does what the cover letter says.
+Explaining any "drive-by fixes" or roads not taken may also avoid queries
+from the reviewer.  All in all this should give faster and better reviews.
+Sometimes writing the cover letter helps the submitter realize something
+else they need to do.  The size of the cover letter should be proportional
+to the size and complexity of the patch.
 
-This option can also be combined with other selftest options, including
-patterns. It has some drawbacks though, the list can become out of date pretty
-quick when doing Test Driven Development.
 
-To address this concern, there is another way to run a restricted set of tests:
-the --starting-with option will run only the tests whose name starts with the
-specified string. It will also avoid loading the other tests and as a
-consequence starts running your tests quicker::
+Reviewing proposed changes
+==========================
 
-  ./bzr selftest --starting-with bzrlib.blackbox
+Anyone is welcome to review code, and reply to the thread with their
+opinion or comments.
 
-This option can be combined with all the other selftest options including
---load-list. The later is rarely used but allows to run a subset of a list of
-failing tests for example.
+The simplest way to review a proposed change is to just read the patch on
+the list or in Bundle Buggy.  For more complex changes it may be useful
+to make a new working tree or branch from trunk, and merge the proposed
+change into it, so you can experiment with the code or look at a wider
+context.
 
-Test suite debug flags
-----------------------
+There are three main requirements for code to get in:
 
-Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
-``-E=foo`` debug flags.  These flags are:
+* Doesn't reduce test coverage: if it adds new methods or commands,
+  there should be tests for them.  There is a good test framework
+  and plenty of examples to crib from, but if you are having trouble
+  working out how to test something feel free to post a draft patch
+  and ask for help.
 
-:allow_debug: do *not* clear the global debug flags when running a test.
-  This can provide useful logging to help debug test failures when used
-  with e.g. ``bzr -Dhpss selftest -E=allow_debug``
+* Doesn't reduce design clarity, such as by entangling objects
+  we're trying to separate.  This is mostly something the more
+  experienced reviewers need to help check.
 
+* Improves bugs, features, speed, or code simplicity.
 
-Writing Tests
-=============
-
-In general tests should be placed in a file named test_FOO.py where 
-FOO is the logical thing under test. That file should be placed in the
-tests subdirectory under the package being tested.
-
-For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
-See bzrlib/tests/test_sampler.py for a template test script.
-
-Tests can be written for the UI or for individual areas of the library.
-Choose whichever is appropriate: if adding a new command, or a new command 
-option, then you should be writing a UI test.  If you are both adding UI
-functionality and library functionality, you will want to write tests for 
-both the UI and the core behaviours.  We call UI tests 'blackbox' tests
-and they are found in ``bzrlib/tests/blackbox/*.py``. 
-
-When writing blackbox tests please honour the following conventions:
-
- 1. Place the tests for the command 'name' in
-    bzrlib/tests/blackbox/test_name.py. This makes it easy for developers
-    to locate the test script for a faulty command.
-
- 2. Use the 'self.run_bzr("name")' utility function to invoke the command
-    rather than running bzr in a subprocess or invoking the
-    cmd_object.run() method directly. This is a lot faster than
-    subprocesses and generates the same logging output as running it in a
-    subprocess (which invoking the method directly does not).
- 
- 3. Only test the one command in a single test script. Use the bzrlib 
-    library when setting up tests and when evaluating the side-effects of
-    the command. We do this so that the library api has continual pressure
-    on it to be as functional as the command line in a simple manner, and
-    to isolate knock-on effects throughout the blackbox test suite when a
-    command changes its name or signature. Ideally only the tests for a
-    given command are affected when a given command is changed.
-
- 4. If you have a test which does actually require running bzr in a
-    subprocess you can use ``run_bzr_subprocess``. By default the spawned
-    process will not load plugins unless ``--allow-plugins`` is supplied.
-
-When writing library functionality, it is often necessary to set up a
-branch with a certain history. Most current tests do this by inheriting
-from ``TestCaseWithTransport`` and using the ``make_branch_and_tree``
-helper to give them a ``WorkingTree`` that they can commit to. However,
-there is a newer api available from ``TestCaseWithMemoryTransport`` using
-the ``make_branch_builder`` helper. This helper is preferred, because it
-can build the changes in memory, rather than on disk. Tests that are
-explictly testing how we work with disk objects should, of course, use a
-real ``WorkingTree``. See ``bzrlib/branch_builder.py`` for how to use the
-class.
-
-
-Doctests
---------
-
-We make selective use of doctests__.  In general they should provide 
-*examples* within the API documentation which can incidentally be tested.  We 
-don't try to test every important case using doctests -- regular Python
-tests are generally a better solution.
-
-Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
-
-  __ http://docs.python.org/lib/module-doctest.html
-
-
-Skipping tests and test requirements
-------------------------------------
-
-In our enhancements to unittest we allow for some addition results beyond
-just success or failure.
-
-If a test can't be run, it can say that it's skipped.  This is typically
-used in parameterized tests - for example if a transport doesn't support
-setting permissions, we'll skip the tests that relating to that.  ::
-
-    try:
-        return self.branch_format.initialize(repo.bzrdir)
-    except errors.UninitializableFormat:
-        raise tests.TestSkipped('Uninitializable branch format')
-
-Raising TestSkipped is a good idea when you want to make it clear that the
-test was not run, rather than just returning which makes it look as if it
-was run and passed.
-
-Several different cases are distinguished:
-
-TestSkipped
-        Generic skip; the only type that was present up to bzr 0.18.
-
-TestNotApplicable
-        The test doesn't apply to the parameters with which it was run.
-        This is typically used when the test is being applied to all
-        implementations of an interface, but some aspects of the interface
-        are optional and not present in particular concrete
-        implementations.  (Some tests that should raise this currently
-        either silently return or raise TestSkipped.)  Another option is
-        to use more precise parameterization to avoid generating the test
-        at all.
-
-TestPlatformLimit
-        **(Not implemented yet)**
-        The test can't be run because of an inherent limitation of the
-        environment, such as not having symlinks or not supporting
-        unicode.
-
-UnavailableFeature
-        The test can't be run because a dependency (typically a Python
-        library) is not available in the test environment.  These
-        are in general things that the person running the test could fix 
-        by installing the library.  It's OK if some of these occur when 
-        an end user runs the tests or if we're specifically testing in a
-        limited environment, but a full test should never see them.
-
-KnownFailure
-        The test exists but is known to fail, for example because the 
-        code to fix it hasn't been run yet.  Raising this allows 
-        you to distinguish these failures from the ones that are not 
-        expected to fail.  This could be conditionally raised if something
-        is broken on some platforms but not on others.
-
-        If the test would fail because of something we don't expect or
-        intend to fix, KnownFailure is not appropriate, and
-        TestNotApplicable might be better. 
-
-We plan to support three modes for running the test suite to control the
-interpretation of these results.  Strict mode is for use in situations
-like merges to the mainline and releases where we want to make sure that
-everything that can be tested has been tested.  Lax mode is for use by
-developers who want to temporarily tolerate some known failures.  The
-default behaviour is obtained by ``bzr selftest`` with no options, and
-also (if possible) by running under another unittest harness.
-
-======================= ======= ======= ========
-result                  strict  default lax
-======================= ======= ======= ========
-TestSkipped             pass    pass    pass
-TestNotApplicable       pass    pass    pass
-TestPlatformLimit       pass    pass    pass
-TestDependencyMissing   fail    pass    pass
-KnownFailure            fail    pass    pass
-======================= ======= ======= ========
-     
-
-Test feature dependencies
--------------------------
-
-Rather than manually checking the environment in each test, a test class
-can declare its dependence on some test features.  The feature objects are
-checked only once for each run of the whole test suite.
-
-For historical reasons, as of May 2007 many cases that should depend on
-features currently raise TestSkipped.)
-
-::
-
-    class TestStrace(TestCaseWithTransport):
-
-        _test_needs_features = [StraceFeature]
-
-This means all tests in this class need the feature.  The feature itself
-should provide a ``_probe`` method which is called once to determine if
-it's available.
-
-These should generally be equivalent to either TestDependencyMissing or
-sometimes TestPlatformLimit.
-
-
-Known failures
---------------
-
-Known failures are when a test exists but we know it currently doesn't
-work, allowing the test suite to still pass.  These should be used with
-care, we don't want a proliferation of quietly broken tests.  It might be
-appropriate to use them if you've committed a test for a bug but not the
-fix for it, or if something works on Unix but not on Windows.
-
-
-Testing exceptions and errors
------------------------------
-
-It's important to test handling of errors and exceptions.  Because this
-code is often not hit in ad-hoc testing it can often have hidden bugs --
-it's particularly common to get NameError because the exception code
-references a variable that has since been renamed.
-
-.. TODO: Something about how to provoke errors in the right way?
-
-In general we want to test errors at two levels:
-
-1. A test in ``test_errors.py`` checking that when the exception object is
-   constructed with known parameters it produces an expected string form.
-   This guards against mistakes in writing the format string, or in the
-   ``str`` representations of its parameters.  There should be one for
-   each exception class.
+Code that goes in should not degrade any of these aspects.  Patches are
+welcome that only cleanup the code without changing the external
+behaviour.  The core developers take care to keep the code quality high
+and understandable while recognising that perfect is sometimes the enemy
+of good. 
 
-2. Tests that when an api is called in a particular situation, it raises
-   an error of the expected class.  You should typically use
-   ``assertRaises``, which in the Bazaar test suite returns the exception
-   object to allow you to examine its parameters.  
-
-In some cases blackbox tests will also want to check error reporting.  But
-it can be difficult to provoke every error through the commandline
-interface, so those tests are only done as needed -- eg in response to a
-particular bug or if the error is reported in an unusual way(?)  Blackbox
-tests should mostly be testing how the command-line interface works, so
-should only test errors if there is something particular to the cli in how
-they're displayed or handled.
-
-
-Testing warnings
-----------------
-
-The Python ``warnings`` module is used to indicate a non-fatal code
-problem.  Code that's expected to raise a warning can be tested through
-callCatchWarnings.
-
-The test suite can be run with ``-Werror`` to check no unexpected errors
-occur.
-
-However, warnings should be used with discretion.  It's not an appropriate
-way to give messages to the user, because the warning is normally shown
-only once per source line that causes the problem.  You should also think
-about whether the warning is serious enought that it should be visible to
-users who may not be able to fix it.
-
-
-Interface implementation testing and test scenarios
----------------------------------------------------
-
-There are several cases in Bazaar of multiple implementations of a common 
-conceptual interface.  ("Conceptual" because 
-it's not necessary for all the implementations to share a base class,
-though they often do.)  Examples include transports and the working tree,
-branch and repository classes. 
-
-In these cases we want to make sure that every implementation correctly
-fulfils the interface requirements.  For example, every Transport should
-support the ``has()`` and ``get()`` and ``clone()`` methods.  We have a
-sub-suite of tests in ``test_transport_implementations``.  (Most
-per-implementation tests are in submodules of ``bzrlib.tests``, but not
-the transport tests at the moment.)  
-
-These tests are repeated for each registered Transport, by generating a
-new TestCase instance for the cross product of test methods and transport
-implementations.  As each test runs, it has ``transport_class`` and
-``transport_server`` set to the class it should test.  Most tests don't
-access these directly, but rather use ``self.get_transport`` which returns
-a transport of the appropriate type.
-
-The goal is to run per-implementation only tests that relate to that
-particular interface.  Sometimes we discover a bug elsewhere that happens
-with only one particular transport.  Once it's isolated, we can consider 
-whether a test should be added for that particular implementation,
-or for all implementations of the interface.
-
-The multiplication of tests for different implementations is normally 
-accomplished by overriding the ``test_suite`` function used to load 
-tests from a module.  This function typically loads all the tests,
-then applies a TestProviderAdapter to them, which generates a longer 
-suite containing all the test variations.
-
-
-Test scenarios
---------------
-
-Some utilities are provided for generating variations of tests.  This can
-be used for per-implementation tests, or other cases where the same test
-code needs to run several times on different scenarios.
-
-The general approach is to define a class that provides test methods,
-which depend on attributes of the test object being pre-set with the
-values to which the test should be applied.  The test suite should then
-also provide a list of scenarios in which to run the tests.
-
-Typically ``multiply_tests_from_modules`` should be called from the test
-module's ``test_suite`` function.
-
-
-Essential Domain Classes
-########################
-
-Introducing the Object Model
-============================
-
-The core domain objects within the bazaar model are:
-
-* Transport
-
-* Branch
-
-* Repository
-
-* WorkingTree
-
-Transports are explained below. See http://bazaar-vcs.org/Classes/
-for an introduction to the other key classes.
-
-Using Transports
-================
-
-The ``Transport`` layer handles access to local or remote directories.
-Each Transport object acts like a logical connection to a particular
-directory, and it allows various operations on files within it.  You can
-*clone* a transport to get a new Transport connected to a subdirectory or
-parent directory.
-
-Transports are not used for access to the working tree.  At present
-working trees are always local and they are accessed through the regular
-Python file io mechanisms.
-
-Filenames vs URLs
------------------
-
-Transports work in URLs.  Take note that URLs are by definition only
-ASCII - the decision of how to encode a Unicode string into a URL must be
-taken at a higher level, typically in the Store.  (Note that Stores also
-escape filenames which cannot be safely stored on all filesystems, but
-this is a different level.)
-
-The main reason for this is that it's not possible to safely roundtrip a
-URL into Unicode and then back into the same URL.  The URL standard
-gives a way to represent non-ASCII bytes in ASCII (as %-escapes), but
-doesn't say how those bytes represent non-ASCII characters.  (They're not
-guaranteed to be UTF-8 -- that is common but doesn't happen everywhere.)
-
-For example if the user enters the url ``http://example/%e0`` there's no
-way to tell whether that character represents "latin small letter a with
-grave" in iso-8859-1, or "latin small letter r with acute" in iso-8859-2
-or malformed UTF-8.  So we can't convert their URL to Unicode reliably.
-
-Equally problematic if we're given a url-like string containing non-ascii
-characters (such as the accented a) we can't be sure how to convert that
-to the correct URL, because we don't know what encoding the server expects
-for those characters.  (Although this is not totally reliable we might still
-accept these and assume they should be put into UTF-8.)
-
-A similar edge case is that the url ``http://foo/sweet%2Fsour`` contains
-one directory component whose name is "sweet/sour".  The escaped slash is
-not a directory separator.  If we try to convert URLs to regular Unicode
-paths this information will be lost.
-
-This implies that Transports must natively deal with URLs; for simplicity
-they *only* deal with URLs and conversion of other strings to URLs is done
-elsewhere.  Information they return, such as from ``list_dir``, is also in
-the form of URL components.
+It is easy for reviews to make people notice other things which should be
+fixed but those things should not hold up the original fix being accepted.
+New things can easily be recorded in the Bug Tracker instead.
 
+It's normally much easier to review several smaller patches than one large
+one.  You might want to use ``bzr-loom`` to maintain threads of related
+work, or submit a preparatory patch that will make your "real" change
+easier.
+
+
+Checklist for reviewers
+=======================
+
+* Do you understand what the code's doing and why?
+
+* Will it perform reasonably for large inputs, both in memory size and
+  run time?  Are there some scenarios where performance should be
+  measured?
+
+* Is it tested, and are the tests at the right level?  Are there both
+  blackbox (command-line level) and API-oriented tests?
+
+* If this change will be visible to end users or API users, is it
+  appropriately documented in NEWS?
+
+* Does it meet the coding standards below?
+
+* If it changes the user-visible behaviour, does it update the help
+  strings and user documentation?
+
+* If it adds a new major concept or standard practice, does it update the
+  developer documentation?
+
+* (your ideas here...)
+
+
+Bundle Buggy and review outcomes
+================================
+
+Anyone can "vote" on the mailing list by expressing an opinion. Core
+developers can also vote using Bundle Buggy. Here are the voting codes and
+their explanations.
+
+:approve:  Reviewer wants this submission merged.
+:tweak:    Reviewer wants this submission merged with small changes. (No
+  re-review required.)
+:abstain:  Reviewer does not intend to vote on this patch.
+:resubmit: Please make changes and resubmit for review.
+:reject:   Reviewer doesn't want this kind of change merged.
+:comment:  Not really a vote. Reviewer just wants to comment, for now.
+
+If a change gets two approvals from core reviewers, and no rejections,
+then it's OK to come in.  Any of the core developers can bring it into the
+bzr.dev trunk and backport it to maintenance branches if required.  The
+Release Manager will merge the change into the branch for a pending
+release, if any. As a guideline, core developers usually merge their own
+changes and volunteer to merge other contributions if they were the second
+reviewer to agree to a change.
+
+To track the progress of proposed changes, use Bundle Buggy. See
+http://bundlebuggy.aaronbentley.com/help for a link to all the
+outstanding merge requests together with an explanation of the columns.
+Bundle Buggy will also mail you a link to track just your change.
 
 Coding Style Guidelines
 #######################
@@ -906,6 +555,29 @@ loading in registered code only when it's needed, and keeping
 associated information such as a help string or description.
 
 
+InterObject and multiple dispatch
+=================================
+
+The ``InterObject`` provides for two-way `multiple dispatch`__: matching
+up for example a source and destination repository to find the right way
+to transfer data between them. 
+
+.. __: http://en.wikipedia.org/wiki/Multiple_dispatch
+
+There is a subclass ``InterObject`` classes for each type of object that is
+dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
+class will return an ``InterObject`` instance providing the best match for 
+those parameters, and this instance then has methods for operations
+between the objects.
+
+  inter = InterRepository.get(source_repo, target_repo)
+  inter.fetch(revision_id)
+
+``InterRepository`` also acts as a registry-like object for its
+subclasses, and they can be added through ``.register_optimizer``.  The
+right one to run is selected by asking each class, in reverse order of
+registration, whether it ``.is_compatible`` with the relevant objects.
+
 Lazy Imports
 ============
 
@@ -1018,6 +690,12 @@ later re-raised.  Even then, think about whether catching just
 ``Exception`` (which excludes system errors in Python2.5 and later) would
 be better.
 
+
+Test coverage
+=============
+
+All code should be exercised by the test suite.  See `Guide to Testing
+Bazaar <testing.html>`_ for detailed information about writing tests.
 
 
 Core Topics
@@ -1158,118 +836,6 @@ a capital letter and finishing with a full stop (period).
 
 All help messages and documentation should have two spaces between
 sentences.
-
-
-Writing tests
-=============
-
-In general tests should be placed in a file named test_FOO.py where 
-FOO is the logical thing under test. That file should be placed in the
-tests subdirectory under the package being tested.
-
-For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
-See bzrlib/tests/test_sampler.py for a template test script.
-
-Tests can be written for the UI or for individual areas of the library.
-Choose whichever is appropriate: if adding a new command, or a new command 
-option, then you should be writing a UI test.  If you are both adding UI
-functionality and library functionality, you will want to write tests for 
-both the UI and the core behaviours.  We call UI tests 'blackbox' tests
-and they are found in ``bzrlib/tests/blackbox/*.py``. 
-
-When writing blackbox tests please honour the following conventions:
-
- 1. Place the tests for the command 'name' in
-    bzrlib/tests/blackbox/test_name.py. This makes it easy for developers
-    to locate the test script for a faulty command.
-
- 2. Use the 'self.run_bzr("name")' utility function to invoke the command
-    rather than running bzr in a subprocess or invoking the
-    cmd_object.run() method directly. This is a lot faster than
-    subprocesses and generates the same logging output as running it in a
-    subprocess (which invoking the method directly does not).
- 
- 3. Only test the one command in a single test script. Use the bzrlib 
-    library when setting up tests and when evaluating the side-effects of
-    the command. We do this so that the library api has continual pressure
-    on it to be as functional as the command line in a simple manner, and
-    to isolate knock-on effects throughout the blackbox test suite when a
-    command changes its name or signature. Ideally only the tests for a
-    given command are affected when a given command is changed.
-
- 4. If you have a test which does actually require running bzr in a
-    subprocess you can use ``run_bzr_subprocess``. By default the spawned
-    process will not load plugins unless ``--allow-plugins`` is supplied.
-
-
-Test support
-------------
-
-We have a rich collection of tools to support writing tests. Please use
-them in preference to ad-hoc solutions as they provide portability and
-performance benefits.
-
-TreeBuilder
-~~~~~~~~~~~
-
-The ``TreeBuilder`` interface allows the construction of arbitrary trees
-with a declarative interface. A sample session might look like::
-
-  tree = self.make_branch_and_tree('path')
-  builder = TreeBuilder()
-  builder.start_tree(tree)
-  builder.build(['foo', "bar/", "bar/file"])
-  tree.commit('commit the tree')
-  builder.finish_tree()
-
-Please see bzrlib.treebuilder for more details.
-
-BranchBuilder
-~~~~~~~~~~~~~
-
-The ``BranchBuilder`` interface allows the creation of test branches in a
-quick and easy manner. A sample session::
-
-  builder = BranchBuilder(self.get_transport().clone('relpath'))
-  builder.build_commit()
-  builder.build_commit()
-  builder.build_commit()
-  branch = builder.get_branch()
-
-Please see bzrlib.branchbuilder for more details.
-
-Doctests
---------
-
-We make selective use of doctests__.  In general they should provide 
-*examples* within the API documentation which can incidentally be tested.  We 
-don't try to test every important case using doctests -- regular Python
-tests are generally a better solution.
-
-Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
-
-  __ http://docs.python.org/lib/module-doctest.html
-
-
-Running tests
-=============
-Currently, bzr selftest is used to invoke tests.
-You can provide a pattern argument to run a subset. For example, 
-to run just the blackbox tests, run::
-
-  ./bzr selftest -v blackbox
-
-To skip a particular test (or set of tests), use the --exclude option
-(shorthand -x) like so::
-
-  ./bzr selftest -v -x blackbox  
-
-To list tests without running them, use the --list-only option like so::
-
-  ./bzr selftest --list-only
-
-This option can be combined with other selftest options (like -x) and
-filter patterns to understand their effect.
 
 
 Handling Errors and Exceptions
@@ -1663,34 +1229,6 @@ Then add these lines for the relevant branches in ``locations.conf``::
 While attending a sprint, RobertCollins' Dbus plugin is useful for the
 same reason. See the documentation within the plugin for information on
 how to set it up and configure it.
-
-
-Reviewing Changes
-=================
-
-Setting Up Your Workspace for Reviews
--------------------------------------
-
-TODO: Incorporate John Arbash Meinel's detailed email to Ian C on the
-numerous ways of setting up integration branches.
-
-
-The Review Checklist
---------------------
-
-See `A Closer Look at the Merge & Review Process`_
-for information on the gates used to decide whether code can be merged
-or not and details on how review results are recorded and communicated.
-
-
-The Importance of Timely Reviews
---------------------------------
-
-Good reviews do take time. They also regularly require a solid
-understanding of the overall code base. In practice, this means a small
-number of people often have a large review burden - with knowledge comes
-responsibility. No one like their merge requests sitting in a queue going
-nowhere, so reviewing sooner rather than later is strongly encouraged.
 
 
 Submitting Changes

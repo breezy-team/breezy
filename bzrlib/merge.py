@@ -871,6 +871,9 @@ class Merge3Merger(object):
             self.tt.final_kind(other_root)
         except NoSuchFile:
             return
+        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+            # the other tree's root is a non-root in the current tree
+            return
         self.reparent_children(self.other_tree.inventory.root, self.tt.root)
         self.tt.cancel_creation(other_root)
         self.tt.cancel_versioning(other_root)

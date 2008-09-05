@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     help_topics,
     repository,
+    osutils,
     symbol_versioning,
     urlutils,
     win32utils,
@@ -42,6 +43,7 @@ from bzrlib.errors import (NotBranchError,
                            )
 from bzrlib.tests import (
     TestCase,
+    TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
     test_sftp_transport
@@ -440,9 +442,9 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(parent_bzrdir.root_transport.base,
                          repo_policy._stack_on_pwd)
 
-    def prepare_default_stacking(self):
+    def prepare_default_stacking(self, child_format='development1'):
         parent_bzrdir = self.make_bzrdir('.')
-        child_branch = self.make_branch('child', format='development1')
+        child_branch = self.make_branch('child', format=child_format)
         parent_bzrdir.get_config().set_default_stack_on(child_branch.base)
         new_child_transport = parent_bzrdir.transport.clone('child2')
         return child_branch, new_child_transport
@@ -458,6 +460,51 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         new_child = child_branch.bzrdir.sprout(new_child_transport.base)
         self.assertEqual(child_branch.base,
                          new_child.open_branch().get_stacked_on_url())
+
+    def test_clone_ignores_policy_for_unsupported_formats(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.clone_on_transport(new_child_transport)
+        self.assertRaises(errors.UnstackableBranchFormat,
+                          new_child.open_branch().get_stacked_on_url)
+
+    def test_sprout_ignores_policy_for_unsupported_formats(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base)
+        self.assertRaises(errors.UnstackableBranchFormat,
+                          new_child.open_branch().get_stacked_on_url)
+
+    def test_sprout_upgrades_format_if_stacked_specified(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base,
+                                               stacked=True)
+        self.assertEqual(child_branch.bzrdir.root_transport.base,
+                         new_child.open_branch().get_stacked_on_url())
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertFalse(repo.supports_rich_root())
+
+    def test_clone_on_transport_upgrades_format_if_stacked_on_specified(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.clone_on_transport(new_child_transport,
+            stacked_on=child_branch.bzrdir.root_transport.base)
+        self.assertEqual(child_branch.bzrdir.root_transport.base,
+                         new_child.open_branch().get_stacked_on_url())
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertFalse(repo.supports_rich_root())
+
+    def test_sprout_upgrades_to_rich_root_format_if_needed(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='rich-root-pack')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base,
+                                               stacked=True)
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertTrue(repo.supports_rich_root())
 
     def test_add_fallback_repo_handles_absolute_urls(self):
         stack_on = self.make_branch('stack_on', format='development1')
@@ -531,7 +578,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('topdir'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('topdir', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -544,7 +591,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('branch', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -556,7 +603,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('repo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -571,7 +618,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('shared/branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('shared', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -586,7 +633,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('foo'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('foo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'bar')
 
@@ -599,7 +646,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('bar', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'baz')
 
@@ -1113,3 +1160,88 @@ class TestDotBzrHidden(TestCaseWithTransport):
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
         self.assertEquals(['a'], self.get_ls())
+
+
+class _TestBzrDirFormat(bzrdir.BzrDirMetaFormat1):
+    """Test BzrDirFormat implementation for TestBzrDirSprout."""
+
+    def _open(self, transport):
+        return _TestBzrDir(transport, self)
+
+
+class _TestBzrDir(bzrdir.BzrDirMeta1):
+    """Test BzrDir implementation for TestBzrDirSprout.
+    
+    When created a _TestBzrDir already has repository and a branch.  The branch
+    is a test double as well.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(_TestBzrDir, self).__init__(*args, **kwargs)
+        self.test_branch = _TestBranch()
+        self.test_branch.repository = self.create_repository()
+
+    def open_branch(self, unsupported=False):
+        return self.test_branch
+
+    def cloning_metadir(self, require_stacking=False):
+        return _TestBzrDirFormat()
+
+
+class _TestBranch(bzrlib.branch.Branch):
+    """Test Branch implementation for TestBzrDirSprout."""
+
+    def __init__(self, *args, **kwargs):
+        super(_TestBranch, self).__init__(*args, **kwargs)
+        self.calls = []
+        self._parent = None
+
+    def sprout(self, *args, **kwargs):
+        self.calls.append('sprout')
+        return _TestBranch()
+
+    def copy_content_into(self, destination, revision_id=None):
+        self.calls.append('copy_content_into')
+
+    def get_parent(self):
+        return self._parent
+
+    def set_parent(self, parent):
+        self._parent = parent
+
+
+class TestBzrDirSprout(TestCaseWithMemoryTransport):
+
+    def test_sprout_uses_branch_sprout(self):
+        """BzrDir.sprout calls Branch.sprout.
+
+        Usually, BzrDir.sprout should delegate to the branch's sprout method
+        for part of the work.  This allows the source branch to control the
+        choice of format for the new branch.
+        
+        There are exceptions, but this tests avoids them:
+          - if there's no branch in the source bzrdir,
+          - or if the stacking has been requested and the format needs to be
+            overridden to satisfy that.
+        """
+        # Make an instrumented bzrdir.
+        t = self.get_transport('source')
+        t.ensure_base()
+        source_bzrdir = _TestBzrDirFormat().initialize_on_transport(t)
+        # The instrumented bzrdir has a test_branch attribute that logs calls
+        # made to the branch contained in that bzrdir.  Initially the test
+        # branch exists but no calls have been made to it.
+        self.assertEqual([], source_bzrdir.test_branch.calls)
+
+        # Sprout the bzrdir
+        target_url = self.get_url('target')
+        result = source_bzrdir.sprout(target_url, recurse='no')
+
+        # The bzrdir called the branch's sprout method.
+        self.assertSubset(['sprout'], source_bzrdir.test_branch.calls)
+
+    def test_sprout_parent(self):
+        grandparent_tree = self.make_branch('grandparent')
+        parent = grandparent_tree.bzrdir.sprout('parent').open_branch()
+        branch_tree = parent.bzrdir.sprout('branch').open_branch()
+        self.assertContainsRe(branch_tree.get_parent(), '/parent/$')
