@@ -464,20 +464,20 @@ class TestSocketDelay(TestCase):
 
 class Test_SFTPReadvHelper(tests.TestCase):
 
-    def assertGetRequests(self, expected_requests, offsets):
+    def checkGetRequests(self, expected_requests, offsets):
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
         self.assertEqual(expected_requests, helper._get_requests())
 
     def test__get_requests(self):
         # Small single requests become a single readv request
-        self.assertGetRequests([(0, 100)], [(0, 20), (30, 50), (20, 10),
-                                            (80, 20)])
+        self.checkGetRequests([(0, 100)],
+                              [(0, 20), (30, 50), (20, 10), (80, 20)])
         # Non-contiguous ranges are given as multiple requests
-        self.assertGetRequests([(0, 20), (30, 50)],
-                               [(10, 10), (30, 20), (0, 10), (50, 30)])
+        self.checkGetRequests([(0, 20), (30, 50)],
+                              [(10, 10), (30, 20), (0, 10), (50, 30)])
         # Ranges larger than _max_request_size (32kB) are broken up into
         # multiple requests, even if it actually spans multiple logical
         # requests
-        self.assertGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
-                               [(0, 40000), (40000, 100), (40100, 1900),
-                                (42000, 24000)])
+        self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
+                              [(0, 40000), (40000, 100), (40100, 1900),
+                               (42000, 24000)])

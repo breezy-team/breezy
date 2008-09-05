@@ -751,14 +751,18 @@ class Transport(object):
         return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0,
-                          allow_overlap=False):
+    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
         into a single large request, while retaining the original
         offsets.
         Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
+        Note that overlapping requests are not permitted. (So [(15, 10), (20,
+        10)] will raise a ValueError.) This is because the data we access never
+        overlaps, and it allows callers to trust that we only need any byte of
+        data for 1 request (so nothing needs to be buffered to fulfill a second
+        request.)
 
         :param offsets: A list of (start, length) pairs
         :param limit: Only combine a maximum of this many pairs Some transports
@@ -772,8 +776,6 @@ class Transport(object):
                 When a single offset is bigger than 'max_size', it will keep
                 its size and be alone in the coalesced offset.
                 0 means no maximum size.
-        :param allow_overlap: If False, raise an error if requested ranges
-            overlap.
         :return: return a list of _CoalescedOffset objects, which have members
             for where to start, how much to read, and how to split those chunks
             back up
@@ -789,8 +791,10 @@ class Transport(object):
                 and start >= cur.start
                 and (limit <= 0 or len(cur.ranges) < limit)
                 and (max_size <= 0 or end - cur.start <= max_size)):
-                if not allow_overlap and start < last_end:
-                    raise errors.OverlappingReadv()
+                if start < last_end:
+                    raise errors.ValueError('Overlapping range not allowed:'
+                        ' last range ended at %s, new one starts at %s'
+                        % (last_end, start))
                 cur.length = end - cur.start
                 cur.ranges.append((start-cur.start, size))
             else:
