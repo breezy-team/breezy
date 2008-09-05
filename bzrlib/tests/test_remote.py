@@ -494,9 +494,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         # unlock
         client.add_success_response('ok')
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         branch.lock_write()
         client._calls = []
         result = branch.set_revision_history([])
@@ -522,9 +519,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         # unlock
         client.add_success_response('ok')
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -551,7 +545,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         client.add_success_response('ok')
 
         branch = self.make_remote_branch(transport, client)
-        branch._ensure_real = lambda: None
         branch.lock_write()
         client._calls = []
 
@@ -577,7 +570,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         client.add_success_response('ok')
 
         branch = self.make_remote_branch(transport, client)
-        branch._ensure_real = lambda: None
         branch.lock_write()
         self.addCleanup(branch.unlock)
         client._calls = []
@@ -609,9 +601,6 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         client.add_success_response('ok')
 
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -637,9 +626,6 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         client.add_success_response('ok')
 
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -713,9 +699,6 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         client.add_success_response('ok')
 
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -742,9 +725,6 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         client.add_success_response('ok')
 
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         self.addCleanup(branch.unlock)
