@@ -65,6 +65,10 @@ IN DEVELOPMENT
       pycurl try to send a body request to an HTTP/1.0 server which has
       already refused to handle the request. (Vincent Ladeuil, #225020)
 
+    * Fix ``ObjectNotLocked`` errors when using various commands
+      (including ``bzr cat`` and ``bzr annotate``) in combination with a
+      smart server URL.  (Andrew Bennetts, #237067)
+
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
       permissions). This would cause us to set all subdirectories to
