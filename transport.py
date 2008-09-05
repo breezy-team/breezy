@@ -291,8 +291,8 @@ class SvnRaTransport(Transport):
             def run(self):
                 assert not self.busy, "already running"
                 self.busy = True
-                def rcvr(*args):
-                    self.pending.append(args)
+                def rcvr(orig_paths, revision, revprops, has_children=None):
+                    self.pending.append((orig_paths, revision, revprops, has_children))
                     self.semaphore.release()
                 try:
                     try:
