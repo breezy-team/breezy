@@ -427,7 +427,23 @@ class OldServerTransport(object):
         return OldSmartClient()
 
 
-class TestBranchLastRevisionInfo(tests.TestCase):
+class RemoteBranchTestCase(tests.TestCase):
+
+    def make_remote_branch(self, transport, client):
+        """Make a RemoteBranch using 'client' as its _SmartClient.
+        
+        A RemoteBzrDir and RemoteRepository will also be created to fill out
+        the RemoteBranch, albeit with stub values for some of their attributes.
+        """
+        # we do not want bzrdir to make any remote calls, so use False as its
+        # _client.  If it tries to make a remote call, this will fail
+        # immediately.
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        return RemoteBranch(bzrdir, repo, _client=client)
+
+
+class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
     def test_empty_branch(self):
         # in an empty branch we decode the response properly
@@ -436,9 +452,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         client.add_success_response('ok', '0', 'null:')
         transport.mkdir('quack')
         transport = transport.clone('quack')
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        branch = self.make_remote_branch(transport, client)
         result = branch.last_revision_info()
 
         self.assertEqual(
@@ -454,9 +468,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         client.add_success_response('ok', '2', revid)
         transport.mkdir('kwaak')
         transport = transport.clone('kwaak')
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        branch = self.make_remote_branch(transport, client)
         result = branch.last_revision_info()
 
         self.assertEqual(
@@ -465,7 +477,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         self.assertEqual((2, revid), result)
 
 
-class TestBranchSetLastRevision(tests.TestCase):
+class TestBranchSetLastRevision(RemoteBranchTestCase):
 
     def test_set_empty(self):
         # set_revision_history([]) is translated to calling
@@ -481,11 +493,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         client.add_success_response('ok')
         # unlock
         client.add_success_response('ok')
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         branch.lock_write()
         client._calls = []
         result = branch.set_revision_history([])
@@ -510,11 +518,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         client.add_success_response('ok')
         # unlock
         client.add_success_response('ok')
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -540,10 +544,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         # unlock
         client.add_success_response('ok')
 
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        branch = RemoteBranch(bzrdir, repo, _client=client)
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         branch.lock_write()
         client._calls = []
 
@@ -568,10 +569,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         # unlock
         client.add_success_response('ok')
 
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        branch = RemoteBranch(bzrdir, repo, _client=client)
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         branch.lock_write()
         self.addCleanup(branch.unlock)
         client._calls = []
@@ -586,7 +584,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         self.assertEqual(rejection_msg_unicode, err.msg)
 
 
-class TestBranchSetLastRevisionInfo(tests.TestCase):
+class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
 
     def test_set_last_revision_info(self):
         # set_last_revision_info(num, 'rev-id') is translated to calling
@@ -602,11 +600,7 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         # unlock
         client.add_success_response('ok')
 
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -631,12 +625,7 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         # unlock
         client.add_success_response('ok')
 
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        branch = RemoteBranch(bzrdir, repo, _client=client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -651,6 +640,9 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         branch._lock_count = 2
         branch._lock_token = 'branch token'
         branch._repo_lock_token = 'repo token'
+        branch.repository._lock_mode = 'w'
+        branch.repository._lock_count = 2
+        branch.repository._lock_token = 'repo token'
 
     def test_backwards_compatibility(self):
         """If the server does not support the Branch.set_last_revision_info
@@ -669,8 +661,7 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
         client.add_unknown_method_response('Branch.set_last_revision_info')
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
+        branch = self.make_remote_branch(transport, client)
         class StubRealBranch(object):
             def __init__(self):
                 self.calls = []
@@ -707,12 +698,7 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         # unlock
         client.add_success_response('ok')
 
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        branch = RemoteBranch(bzrdir, repo, _client=client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         client._calls = []
@@ -738,12 +724,7 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         # unlock
         client.add_success_response('ok')
 
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        branch = RemoteBranch(bzrdir, repo, _client=client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
+        branch = self.make_remote_branch(transport, client)
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         self.addCleanup(branch.unlock)
@@ -783,7 +764,7 @@ class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
         ##     client._calls)
 
 
-class TestBranchLockWrite(tests.TestCase):
+class TestBranchLockWrite(RemoteBranchTestCase):
 
     def test_lock_write_unlockable(self):
         transport = MemoryTransport()
@@ -791,10 +772,7 @@ class TestBranchLockWrite(tests.TestCase):
         client.add_error_response('UnlockableTransport')
         transport.mkdir('quack')
         transport = transport.clone('quack')
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        branch = RemoteBranch(bzrdir, repo, _client=client)
+        branch = self.make_remote_branch(transport, client)
         self.assertRaises(errors.UnlockableTransport, branch.lock_write)
         self.assertEqual(
             [('call', 'Branch.lock_write', ('quack/', '', ''))],
