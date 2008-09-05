@@ -1416,9 +1416,8 @@ class RemoteBranch(branch.Branch):
             self._lock_token, self._repo_lock_token = remote_tokens
             if not self._lock_token:
                 raise SmartProtocolError('Remote server did not return a token!')
-            if self.repository._lock_token is None:
-                self.repository.lock_write(
-                    self._repo_lock_token, _skip_rpc=True)
+            self.repository.lock_write(
+                self._repo_lock_token, _skip_rpc=True)
 
             # TODO: We really, really, really don't want to call _ensure_real
             # here, but it's the easiest way to ensure coherency between the
@@ -1451,7 +1450,7 @@ class RemoteBranch(branch.Branch):
                 if token != self._lock_token:
                     raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
-        self.repository.lock_write(self._repo_lock_token)
+            self.repository.lock_write(self._repo_lock_token)
         return self._lock_token or None
 
     def _unlock(self, branch_token, repo_token):
