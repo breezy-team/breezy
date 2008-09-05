@@ -1393,3 +1393,43 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
             self._get_log(keep_log_file=True),
             "Missing key 'branch' in context")
         
+
+class TestStacking(tests.TestCaseWithTransport):
+    """Tests for operations on stacked remote repositories.
+    
+    The underlying format type must support stacking.
+    """
+
+    def test_access_stacked_remote(self):
+        # based on <http://launchpad.net/bugs/261315>
+        # make a branch stacked on another repository containing an empty
+        # revision, then open it over hpss - we should be able to see that
+        # revision.
+        base_transport = self.get_transport()
+        base_builder = self.make_branch_builder('base', format='1.6')
+        base_builder.start_series()
+        base_revid = base_builder.build_snapshot('rev-id', None,
+            [('add', ('', None, 'directory', None))],
+            'message')
+        base_builder.finish_series()
+        stacked_branch = self.make_branch('stacked', format='1.6')
+        stacked_branch.set_stacked_on_url('../base')
+        # start a server looking at this
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        remote_bzrdir = BzrDir.open(smart_server.get_url() + '/stacked')
+        # can get its branch and repository
+        remote_branch = remote_bzrdir.open_branch()
+        remote_repo = remote_branch.repository
+        # it should have an appropriate fallback repository, which should also
+        # be a RemoteRepository
+        self.assertEquals(len(remote_repo._fallback_repositories), 1)
+        self.assertIsInstance(remote_repo._fallback_repositories[0],
+            RemoteRepository)
+        # and it has the revision committed to the underlying repository;
+        # these have varying implementations so we try several of them
+        self.assertTrue(remote_repo.has_revisions([base_revid]))
+        self.assertTrue(remote_repo.has_revision(base_revid))
+        self.assertEqual(remote_repo.get_revision(base_revid).message,
+            'message')

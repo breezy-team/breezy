@@ -29,6 +29,7 @@ from bzrlib import (
     repository,
     revision,
     symbol_versioning,
+    urlutils,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -432,10 +433,17 @@ class RemoteRepository(object):
             'Repository.has_revision', path, revision_id)
         if response[0] not in ('yes', 'no'):
             raise errors.UnexpectedSmartServerResponse(response)
-        return response[0] == 'yes'
+        if response[0] == 'yes':
+            return True
+        for fallback_repo in self._fallback_repositories:
+            if fallback_repo.has_revision(revision_id):
+                return True
+        return False
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
+        # FIXME: This does many roundtrips, particularly when there are
+        # fallback repositories.  -- mbp 20080905
         result = set()
         for revision_id in revision_ids:
             if self.has_revision(revision_id):
@@ -1286,9 +1294,11 @@ class RemoteBranch(branch.Branch):
         # done at a higher level.
         try:
             fallback_url = self.get_stacked_on_url()
+            # it's relative to this branch...
+            fallback_url = urlutils.join(self.base, fallback_url)
             fallback_repo = BzrDir.open(fallback_url,
                 [self.bzrdir.root_transport,
-                 self._real_branch._transport])
+                 self._real_branch._transport]).open_repository()
             self.repository.add_fallback_repository(fallback_repo)
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:

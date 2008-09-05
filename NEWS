@@ -39,6 +39,9 @@ IN DEVELOPMENT
       to recover if you realize you uncommitted the wrong thing.
       (John Arbash Meinel)
 
+    * Fix problems in accessing stacked repositories over ``bzr://``.
+      (Martin Pool, #261315)
+
     * ``SFTPTransport.readv()`` was accidentally using ``list += string``,
       which 'works', but adds each character separately to the list,
       rather than using ``list.append(string)``. Fixing this makes the
