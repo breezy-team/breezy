@@ -1546,7 +1546,7 @@ class TransportTests(TestTransportImplementation):
         content = osutils.rand_bytes(200*1024)
         content_size = len(content)
         if transport.is_readonly():
-            file('a', 'w').write(content)
+            file('a', 'wb').write(content)
         else:
             transport.put_bytes('a', content)
         def check_result_data(result_vector):
