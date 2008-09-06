@@ -6,7 +6,7 @@ bzr-svn 0.4.13	UNRELEASED
 
    * Fix bug modifying set of right hand side revisions during fetch. (#264740)
 
-   * Fix linking against Subversion 1.5 on Windows.
+   * Fix linking against Subversion 1.5 on Windows. (#263570)
 
 bzr-svn 0.4.12	2008-09-01
 
