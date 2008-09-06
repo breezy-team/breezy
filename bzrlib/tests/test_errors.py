@@ -557,7 +557,7 @@ class TestErrors(TestCaseWithTransport):
     def test_untranslateable_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')
         orig_err = errors.ErrorFromSmartServer(error_tuple)
-        err = errors.UntranslateableErrorFromSmartServer(orig_err)
+        err = errors.UnknownErrorFromSmartServer(orig_err)
         self.assertEquals(
             "Server sent an unexpected error: ('error', 'tuple')", str(err))
 

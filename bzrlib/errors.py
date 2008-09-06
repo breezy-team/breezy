@@ -2510,7 +2510,7 @@ class UnexpectedSmartServerResponse(BzrError):
 class ErrorFromSmartServer(BzrError):
     """An error was received from a smart server.
 
-    :seealso: UntranslateableErrorFromSmartServer
+    :seealso: UnknownErrorFromSmartServer
     """
 
     _fmt = "Error received from smart server: %(error_tuple)r"
@@ -2526,7 +2526,7 @@ class ErrorFromSmartServer(BzrError):
         self.error_args = error_tuple[1:]
 
 
-class UntranslateableErrorFromSmartServer(BzrError):
+class UnknownErrorFromSmartServer(BzrError):
     """An ErrorFromSmartServer could not be translated into a typical bzrlib
     error.
 
