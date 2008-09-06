@@ -19,10 +19,11 @@
 from bzrlib.log import (
     LogRevision,
     )
+import bzrlib.revision as _mod_revision
 
 
 def iter_log_revisions(revisions, revision_source, verbose):
-    last_tree = revision_source.revision_tree(None)
+    last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
     last_rev_id = None
     for revno, rev_id in revisions:
         rev = revision_source.get_revision(rev_id)

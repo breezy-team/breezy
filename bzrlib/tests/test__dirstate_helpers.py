@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import os
 
 from bzrlib import (
     dirstate,
+    errors,
     tests,
     )
 from bzrlib.tests import test_dirstate
@@ -690,6 +691,20 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
         read_dirblocks(state)
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
+
+    def test_trailing_garbage(self):
+        tree, state, expected = self.create_basic_dirstate()
+        # We can modify the file as long as it hasn't been read yet.
+        f = open('dirstate', 'ab')
+        try:
+            # Add bogus trailing garbage
+            f.write('bogus\n')
+        finally:
+            f.close()
+        e = self.assertRaises(errors.DirstateCorrupt,
+                              state._read_dirblocks_if_needed)
+        # Make sure we mention the bogus characters in the error
+        self.assertContainsRe(str(e), 'bogus')
 
 
 class TestCompiledReadDirblocks(TestReadDirblocks):

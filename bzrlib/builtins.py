@@ -226,7 +226,12 @@ class cmd_cat_revision(Command):
         # TODO: jam 20060112 should cat-revision always output utf-8?
         if revision_id is not None:
             revision_id = osutils.safe_revision_id(revision_id, warn=False)
-            self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
+            try:
+                self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
+            except errors.NoSuchRevision:
+                msg = "The repository %s contains no revision %s." % (b.repository.base,
+                    revision_id)
+                raise errors.BzrCommandError(msg)
         elif revision is not None:
             for rev in revision:
                 if rev is None:
@@ -652,7 +657,7 @@ class cmd_pull(Command):
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 if not is_quiet():
-                    self.outf.write("Using saved location: %s\n" % display_url)
+                    self.outf.write("Using saved parent location: %s\n" % display_url)
                 location = stored_loc
 
         if mergeable is not None:
@@ -801,7 +806,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                self.outf.write("Using saved push location: %s\n" % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
@@ -2664,9 +2669,10 @@ class cmd_selftest(Command):
                             help='Load a test id list from a text file.'),
                      ListOption('debugflag', type=str, short_name='E',
                                 help='Turn on a selftest debug flag.'),
-                     Option('starting-with', type=str, argname='TESTID',
-                            short_name='s',
-                            help='Load only the tests starting with TESTID.'),
+                     ListOption('starting-with', type=str, argname='TESTID',
+                                param_name='starting_with', short_name='s',
+                                help=
+                                'Load only the tests starting with TESTID.'),
                      ]
     encoding_type = 'replace'
 
@@ -3073,13 +3079,16 @@ class cmd_merge(Command):
         Report if the remembered location was used.
         """
         stored_location = tree.branch.get_submit_branch()
+        stored_location_type = "submit"
         if stored_location is None:
             stored_location = tree.branch.get_parent()
+            stored_location_type = "parent"
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
         display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
-        note(u"%s remembered location %s", verb_string, display_url)
+        note(u"%s remembered %s location %s", verb_string,
+                stored_location_type, display_url)
         return stored_location
 
 
@@ -3344,7 +3353,8 @@ class cmd_missing(Command):
                                              " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            self.outf.write("Using last location: " + display_url + "\n")
+            self.outf.write("Using saved parent location: "
+                    + display_url + "\n")
 
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -4115,7 +4125,7 @@ class cmd_send(Command):
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
     specific clients are "evolution", "kmail", "mutt", and "thunderbird";
     generic options are "default", "editor", "emacsclient", "mapi", and
-    "xdg-email".
+    "xdg-email".  Plugins may also add supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
@@ -4193,21 +4203,23 @@ class cmd_send(Command):
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')
             stored_submit_branch = branch.get_submit_branch()
-            remembered_submit_branch = False
+            remembered_submit_branch = None
             if submit_branch is None:
                 submit_branch = stored_submit_branch
-                remembered_submit_branch = True
+                remembered_submit_branch = "submit"
             else:
                 if stored_submit_branch is None or remember:
                     branch.set_submit_branch(submit_branch)
             if submit_branch is None:
                 submit_branch = branch.get_parent()
-                remembered_submit_branch = True
+                remembered_submit_branch = "parent"
             if submit_branch is None:
                 raise errors.BzrCommandError('No submit branch known or'
                                              ' specified')
-            if remembered_submit_branch:
-                note('Using saved location "%s" to determine what changes to submit.', submit_branch)
+            if remembered_submit_branch is not None:
+                note('Using saved %s location "%s" to determine what '
+                        'changes to submit.', remembered_submit_branch,
+                        submit_branch)
 
             if mail_to is None:
                 submit_config = Branch.open(submit_branch).get_config()

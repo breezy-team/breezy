@@ -1722,8 +1722,15 @@ class KnitPackRepository(KnitRepository):
         self._fetch_order = 'unordered'
 
     def _warn_if_deprecated(self):
-        # This class isn't deprecated
-        pass
+        # This class isn't deprecated, but one sub-format is
+        if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
+            from bzrlib import repository
+            if repository._deprecation_warning_done:
+                return
+            repository._deprecation_warning_done = True
+            warning("Format %s for %s is deprecated - please use"
+                    " 'bzr upgrade --1.6.1-rich-root'"
+                    % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
@@ -2086,12 +2093,54 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
 
 class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
+    """A repository with rich roots and stacking.
+
+    New in release 1.6.1.
+
+    Supports stacking on other repositories, allowing data to be accessed
+    without being stored locally.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False # no subtrees
+    _serializer = xml6.serializer_v6
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            '1.6.1-rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
+
+    def get_format_description(self):
+        return "Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)"
+
+
+class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     """A repository with rich roots and external references.
 
     New in release 1.6.
 
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
+
+    This format was deprecated because the serializer it uses accidentally
+    supported subtrees, when the format was not intended to. This meant that
+    someone could accidentally fetch from an incorrect repository.
     """
 
     repository_class = KnitPackRepository
@@ -2115,91 +2164,17 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-            
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
-        return "Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
+        return ("Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
+                " (deprecated)")
 
 
-class RepositoryFormatPackDevelopment0(RepositoryFormatPack):
-    """A no-subtrees development repository.
-
-    This format should be retained until the second release after bzr 1.0.
-
-    No changes to the disk behaviour from pack-0.92.
-    """
-
-    repository_class = KnitPackRepository
-    _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development0')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 0 (needs bzr.dev from before 1.3)\n"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "pack-0.92\n")
-
-    def check_conversion_target(self, target_format):
-        pass
-
-
-class RepositoryFormatPackDevelopment0Subtree(RepositoryFormatPack):
-    """A subtrees development repository.
-
-    This format should be retained until the second release after bzr 1.0.
-
-    No changes to the disk behaviour from pack-0.92-subtree.
-    """
-
-    repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
-    rich_root_data = True
-    supports_tree_reference = True
-    _serializer = xml7.serializer_v7
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir(
-            'development0-subtree')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-            
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 0 with subtree support "
-            "(needs bzr.dev from before 1.3)\n")
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "pack-0.92-subtree\n")
-
-
-class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
+class RepositoryFormatPackDevelopment1(RepositoryFormatPack):
     """A no-subtrees development repository.
 
     This format should be retained until the second release after bzr 1.5.
@@ -2208,6 +2183,9 @@ class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
     reconcile compared to pack-0.92 formats.
     """
 
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
     supports_external_lookups = True
 
     def _get_matching_bzrdir(self):
@@ -2231,7 +2209,7 @@ class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
         pass
 
 
-class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPackDevelopment0Subtree):
+class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
     This format should be retained until the second release after bzr 1.5.
@@ -2240,6 +2218,11 @@ class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPackDevelopment0Su
     reconcile compared to pack-0.92 formats.
     """
 
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = True
+    _serializer = xml7.serializer_v7
     supports_external_lookups = True
 
     def _get_matching_bzrdir(self):

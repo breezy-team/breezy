@@ -23,7 +23,10 @@ import sys
 import tempfile
 import tarfile
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.pack import ContainerSerialiser
 from bzrlib.smart.request import (
@@ -357,7 +360,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             osutils.rmtree(tmp_dirname)
 
     def _copy_to_tempdir(self, from_repo):
-        tmp_dirname = tempfile.mkdtemp(prefix='tmpbzrclone')
+        tmp_dirname = osutils.mkdtemp(prefix='tmpbzrclone')
         tmp_bzrdir = from_repo.bzrdir._format.initialize(tmp_dirname)
         tmp_repo = from_repo._format.initialize(tmp_bzrdir)
         from_repo.copy_content_into(tmp_repo)
@@ -370,8 +373,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             # all finished; write the tempfile out to the network
             temp.seek(0)
             return SuccessfulSmartServerResponse(('ok',), temp.read())
-            # FIXME: Don't read the whole thing into memory here; rather stream it
-            # out from the file onto the network. mbp 20070411
+            # FIXME: Don't read the whole thing into memory here; rather stream
+            # it out from the file onto the network. mbp 20070411
         finally:
             temp.close()
 

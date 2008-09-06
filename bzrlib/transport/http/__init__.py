@@ -27,6 +27,7 @@ import urllib
 import sys
 
 from bzrlib import (
+    debug,
     errors,
     ui,
     urlutils,
@@ -230,7 +231,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            mutter('http readv of %s  offsets => %s collapsed %s',
+            if 'http' in debug.debug_flags:
+                mutter('http readv of %s  offsets => %s collapsed %s',
                     relpath, len(offsets), len(coalesced))
 
             # Cache the data read, but only until it's been used
