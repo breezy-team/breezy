@@ -186,3 +186,19 @@ server_stopped (SmartTCPServer)
 
 Invoked whenever the server stops serving a directory.
 The hook signature is the same as ``server_started``.
+
+
+commit_message_template (msgeditor)
+-----------------------------------
+
+Invoked by commit to generate a commit message template.
+Each hook can modify the commit message template.
+The hook signature is (commit, start_message), where:
+
+  commit
+    A commit object, for the commit in progress
+
+  start_message
+    The original commit message, None initially.
+
+The hook should return a new commit message template.

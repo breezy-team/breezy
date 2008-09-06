@@ -18,6 +18,9 @@ IN DEVELOPMENT
 
   FEATURES
 
+    * New ``commit_message_template`` hook that is called by the commit 
+      code to generate a template commit message. (Jelmer Vernooij)
+
     * Support for GSSAPI authentication when using FTP as documented in 
       RFC2228. (Jelmer Vernooij, #49623)
 
