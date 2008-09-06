@@ -1717,6 +1717,9 @@ def _translate_error(err, **context):
       - bzrdir
       - token
       - other_branch
+
+    If the error from the server doesn't match a known pattern, then
+    UnknownErrorFromSmartServer is raised.
     """
     def find(name):
         try:
@@ -1744,5 +1747,5 @@ def _translate_error(err, **context):
         raise errors.DivergedBranches(find('branch'), find('other_branch'))
     elif err.error_verb == 'TipChangeRejected':
         raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
-    raise
+    raise errors.UnknownErrorFromSmartServer(err)
 
