@@ -18,6 +18,7 @@
 
 import git, os
 
+import bzrlib
 from bzrlib.lazy_import import lazy_import
 from bzrlib import (
     bzrdir,
@@ -112,8 +113,11 @@ class GitDir(bzrdir.BzrDir):
             return workingtree.GitWorkingTree(self, self.open_repository(), 
                                                   self.open_branch())
 
-    def cloning_metadir(self):
-        return bzrdir.BzrDirFormat.get_default_format()
+    def cloning_metadir(self, stacked=False):
+        if stacked:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("pack-0.92")
+        else:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6")
 
     def create_repository(self, shared=False):
         return self.open_repository()
