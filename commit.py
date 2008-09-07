@@ -701,12 +701,12 @@ def dpush(target, source, stop_revision=None):
         if stop_revision is None:
             stop_revision = ensure_null(source.last_revision())
         if target.last_revision() in (stop_revision, source.last_revision()):
-            return
+            return {}
         graph = target.repository.get_graph()
         if not source.repository.get_graph().is_ancestor(target.last_revision(), 
                                                         stop_revision):
             if graph.is_ancestor(stop_revision, target.last_revision()):
-                return
+                return {}
             raise DivergedBranches(source, target)
         todo = target.mainline_missing_revisions(source, stop_revision)
         revid_map = {}
