@@ -26,7 +26,6 @@ unique ID.
 
 import os
 from cStringIO import StringIO
-import urllib
 from zlib import adler32
 
 import bzrlib
