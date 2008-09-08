@@ -24,12 +24,11 @@ from bzrlib import (
     tsort,
     revision as _mod_revision,
     )
-from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
 from bzrlib.osutils import is_inside_any
 from bzrlib.symbol_versioning import (deprecated_function,
         )
-from bzrlib.trace import warning
+from bzrlib.trace import mutter, warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -246,3 +245,24 @@ def show_pending_merges(new, to_file, short=False):
                             revisions[sub_merge],
                             term_width - len(sub_prefix))
             to_file.write(sub_prefix + log_message + '\n')
+
+
+def _raise_if_nonexistent(paths, old_tree, new_tree):
+    """Complain if paths are not in either inventory or tree.
+
+    It's OK with the files exist in either tree's inventory, or 
+    if they exist in the tree but are not versioned.
+    
+    This can be used by operations such as bzr status that can accept
+    unknown or ignored files.
+    """
+    mutter("check paths: %r", paths)
+    if not paths:
+        return
+    s = old_tree.filter_unversioned_files(paths)
+    s = new_tree.filter_unversioned_files(s)
+    s = [path for path in s if not new_tree.has_filename(path)]
+    if s:
+        raise errors.PathsDoNotExist(sorted(s))
+
+
