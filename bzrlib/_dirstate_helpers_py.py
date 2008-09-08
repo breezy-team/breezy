@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import os
 
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
+from bzrlib import errors
 from bzrlib.dirstate import DirState
 
 
@@ -201,8 +202,8 @@ def _read_dirblocks_py(state):
     # Remove the last blank entry
     trailing = fields.pop()
     if trailing != '':
-        raise AssertionError("dirstate file has trailing garbage: %r"
-            % (trailing,))
+        raise errors.DirstateCorrupt(state,
+            'trailing garbage: %r' % (trailing,))
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.
@@ -220,7 +221,7 @@ def _read_dirblocks_py(state):
     field_count = len(fields)
     # this checks our adjustment, and also catches file too short.
     if field_count - cur != expected_field_count:
-        raise AssertionError(
+        raise errors.DirstateCorrupt(state,
             'field count incorrect %s != %s, entry_size=%s, '\
             'num_entries=%s fields=%r' % (
             field_count - cur, expected_field_count, entry_size,

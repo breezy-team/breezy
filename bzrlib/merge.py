@@ -413,37 +413,43 @@ class Merger(object):
                                change_reporter=self.change_reporter,
                                **kwargs)
 
+    def _do_merge_to(self, merge):
+        merge.do_merge()
+        if self.recurse == 'down':
+            for relpath, file_id in self.this_tree.iter_references():
+                sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
+                other_revision = self.other_tree.get_reference_revision(
+                    file_id, relpath)
+                if  other_revision == sub_tree.last_revision():
+                    continue
+                sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
+                sub_merge.merge_type = self.merge_type
+                other_branch = self.other_branch.reference_parent(file_id, relpath)
+                sub_merge.set_other_revision(other_revision, other_branch)
+                base_revision = self.base_tree.get_reference_revision(file_id)
+                sub_merge.base_tree = \
+                    sub_tree.branch.repository.revision_tree(base_revision)
+                sub_merge.base_rev_id = base_revision
+                sub_merge.do_merge()
+        
     def do_merge(self):
         self.this_tree.lock_tree_write()
-        if self.base_tree is not None:
-            self.base_tree.lock_read()
-        if self.other_tree is not None:
-            self.other_tree.lock_read()
         try:
-            merge = self.make_merger()
-            merge.do_merge()
-            if self.recurse == 'down':
-                for relpath, file_id in self.this_tree.iter_references():
-                    sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
-                    other_revision = self.other_tree.get_reference_revision(
-                        file_id, relpath)
-                    if  other_revision == sub_tree.last_revision():
-                        continue
-                    sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
-                    sub_merge.merge_type = self.merge_type
-                    other_branch = self.other_branch.reference_parent(file_id, relpath)
-                    sub_merge.set_other_revision(other_revision, other_branch)
-                    base_revision = self.base_tree.get_reference_revision(file_id)
-                    sub_merge.base_tree = \
-                        sub_tree.branch.repository.revision_tree(base_revision)
-                    sub_merge.base_rev_id = base_revision
-                    sub_merge.do_merge()
-
-        finally:
-            if self.other_tree is not None:
-                self.other_tree.unlock()
             if self.base_tree is not None:
-                self.base_tree.unlock()
+                self.base_tree.lock_read()
+            try:
+                if self.other_tree is not None:
+                    self.other_tree.lock_read()
+                try:
+                    merge = self.make_merger()
+                    self._do_merge_to(merge)
+                finally:
+                    if self.other_tree is not None:
+                        self.other_tree.unlock()
+            finally:
+                if self.base_tree is not None:
+                    self.base_tree.unlock()
+        finally:
             self.this_tree.unlock()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero and not is_quiet():
@@ -631,6 +637,9 @@ class Merge3Merger(object):
         try:
             self.tt.final_kind(other_root)
         except NoSuchFile:
+            return
+        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+            # the other tree's root is a non-root in the current tree
             return
         self.reparent_children(self.other_tree.inventory.root, self.tt.root)
         self.tt.cancel_creation(other_root)

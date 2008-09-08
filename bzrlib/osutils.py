@@ -569,6 +569,24 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     return length
 
 
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
+
+
 def file_iterator(input_file, readsize=32768):
     while True:
         b = input_file.read(readsize)
@@ -1119,6 +1137,34 @@ def check_legal_path(path):
         raise errors.IllegalPath(path)
 
 
+_WIN32_ERROR_DIRECTORY = 267 # Similar to errno.ENOTDIR
+
+def _is_error_enotdir(e):
+    """Check if this exception represents ENOTDIR.
+
+    Unfortunately, python is very inconsistent about the exception
+    here. The cases are:
+      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
+      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
+         which is the windows error code.
+      3) Windows, Python2.5 uses errno == EINVAL and
+         winerror == ERROR_DIRECTORY
+
+    :param e: An Exception object (expected to be OSError with an errno
+        attribute, but we should be able to cope with anything)
+    :return: True if this represents an ENOTDIR error. False otherwise.
+    """
+    en = getattr(e, 'errno', None)
+    if (en == errno.ENOTDIR
+        or (sys.platform == 'win32'
+            and (en == _WIN32_ERROR_DIRECTORY
+                 or (en == errno.EINVAL
+                     and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+        ))):
+        return True
+    return False
+
+
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
@@ -1168,11 +1214,17 @@ def walkdirs(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
+        try:
+            names = sorted(_listdir(top))
+        except OSError, e:
+            if not _is_error_enotdir(e):
+                raise
+        else:
+            for name in names:
+                abspath = top_slash + name
+                statvalue = _lstat(abspath)
+                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1226,7 +1278,8 @@ def _walkdirs_fs_utf8(top, prefix=""):
     """
     _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
+    # Use C accelerated directory listing.
+    _listdir = _read_dir
     _kind_from_mode = _formats.get
 
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1242,11 +1295,13 @@ def _walkdirs_fs_utf8(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        # read_dir supplies in should-stat order.
+        for _, name in sorted(_listdir(top)):
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1415,6 +1470,20 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
+
+
 def recv_all(socket, bytes):
     """Receive an exact number of bytes.
 
@@ -1491,3 +1560,9 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+try:
+    from bzrlib._readdir_pyx import read_dir as _read_dir
+except ImportError:
+    from bzrlib._readdir_py import read_dir as _read_dir

@@ -80,6 +80,28 @@ def _get_protocol_factory_for_bytes(bytes):
     return protocol_factory, bytes
 
 
+def _get_line(read_bytes_func):
+    """Read bytes using read_bytes_func until a newline byte.
+    
+    This isn't particularly efficient, so should only be used when the
+    expected size of the line is quite short.
+    
+    :returns: a tuple of two strs: (line, excess)
+    """
+    newline_pos = -1
+    bytes = ''
+    while newline_pos == -1:
+        new_bytes = read_bytes_func(1)
+        bytes += new_bytes
+        if new_bytes == '':
+            # Ran out of bytes before receiving a complete line.
+            return bytes, ''
+        newline_pos = bytes.find('\n')
+    line = bytes[:newline_pos+1]
+    excess = bytes[newline_pos+1:]
+    return line, excess
+
+
 class SmartMedium(object):
     """Base class for smart protocol media, both client- and server-side."""
 
@@ -131,17 +153,8 @@ class SmartMedium(object):
 
         :returns: a string of bytes ending in a newline (byte 0x0A).
         """
-        newline_pos = -1
-        bytes = ''
-        while newline_pos == -1:
-            new_bytes = self.read_bytes(1)
-            bytes += new_bytes
-            if new_bytes == '':
-                # Ran out of bytes before receiving a complete line.
-                return bytes
-            newline_pos = bytes.find('\n')
-        line = bytes[:newline_pos+1]
-        self._push_back(bytes[newline_pos+1:])
+        line, excess = _get_line(self.read_bytes)
+        self._push_back(excess)
         return line
  
 
@@ -438,13 +451,21 @@ class SmartClientMediumRequest(object):
         return self._medium.read_bytes(count)
 
     def read_line(self):
-        line = self._medium._get_line()
+        line = self._read_line()
         if not line.endswith('\n'):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
                 "please check connectivity and permissions",
                 "(and try -Dhpss if further diagnosis is required)")
         return line
+
+    def _read_line(self):
+        """Helper for SmartClientMediumRequest.read_line.
+        
+        By default this forwards to self._medium._get_line because we are
+        operating on the medium's stream.
+        """
+        return self._medium._get_line()
 
 
 class SmartClientMedium(SmartMedium):
