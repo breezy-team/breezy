@@ -351,7 +351,13 @@ class MergeSorter(object):
             if parent is None:
                 # end of mainline_revisions history
                 continue
-            if self._graph[revision][0] == parent:
+            graph_parent_ids = self._graph[revision]
+            if not graph_parent_ids:
+                # We ran into a ghost, skip over it, this is a workaround for
+                # bug #243536, the _graph has had ghosts stripped, but the
+                # mainline_revisions have not
+                continue
+            if graph_parent_ids[0] == parent:
                 continue
             # remove it from its prior spot
             self._graph[revision].remove(parent)
@@ -510,12 +516,12 @@ class MergeSorter(object):
                     revno = parent_revno[:-1] + (parent_revno[-1] + 1,)
             else:
                 # no parents, use the root sequence
-                root_count = revno_to_branch_count.get(0, 0)
+                root_count = revno_to_branch_count.get(0, -1)
+                root_count += 1
                 if root_count:
                     revno = (0, root_count, 1)
                 else:
                     revno = (1,)
-                root_count += 1
                 revno_to_branch_count[0] = root_count
 
             # store the revno for this node for future reference

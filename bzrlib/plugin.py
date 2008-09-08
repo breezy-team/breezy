@@ -20,9 +20,10 @@
 When load_plugins() is invoked, any python module in any directory in
 $BZR_PLUGIN_PATH will be imported.  The module will be imported as
 'bzrlib.plugins.$BASENAME(PLUGIN)'.  In the plugin's main body, it should
-update any bzrlib registries it wants to extend; for example, to add new
-commands, import bzrlib.commands and add your new command to the plugin_cmds
-variable.
+update any bzrlib registries it wants to extend.
+
+See the plugin-api developer documentation for information about writing
+plugins.
 
 BZR_PLUGIN_PATH is also honoured for any plugins imported via
 'import bzrlib.plugins.PLUGINNAME', as long as set_plugins_path has been 
@@ -41,6 +42,7 @@ import zipfile
 
 from bzrlib import (
     config,
+    debug,
     osutils,
     trace,
     )
@@ -100,6 +102,19 @@ def set_plugins_path():
     if not bzr_exe:     # don't look inside library.zip
         # search the plugin path before the bzrlib installed dir
         path.append(os.path.dirname(_mod_plugins.__file__))
+    # search the arch independent path if we can determine that and
+    # the plugin is found nowhere else
+    if sys.platform != 'win32':
+        try:
+            from distutils.sysconfig import get_python_lib
+        except ImportError:
+            # If distutuils is not available, we just won't add that path
+            pass
+        else:
+            archless_path = osutils.pathjoin(get_python_lib(), 'bzrlib',
+                    'plugins')
+            if archless_path not in path:
+                path.append(archless_path)
     _mod_plugins.__path__ = path
     return path
 
@@ -207,6 +222,8 @@ def load_from_dir(d):
             else:
                 trace.warning('Unable to load plugin %r from %r' % (name, d))
             trace.log_exception_quietly()
+            if 'error' in debug.debug_flags:
+                trace.print_exception(sys.exc_info(), sys.stderr)
 
 
 @deprecated_function(one_three)
@@ -286,6 +303,8 @@ def load_from_zip(zip_name):
             trace.warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
             trace.log_exception_quietly()
+            if 'error' in debug.debug_flags:
+                trace.print_exception(sys.exc_info(), sys.stderr)
 
 
 def plugins():
@@ -407,13 +426,25 @@ class PlugIn(object):
         else:
             return None
 
+    def load_plugin_tests(self, loader):
+        """Return the adapted plugin's test suite.
+
+        :param loader: The custom loader that should be used to load additional
+            tests.
+
+        """
+        if getattr(self.module, 'load_tests', None) is not None:
+            return loader.loadTestsFromModule(self.module)
+        else:
+            return None
+
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
         version_info = getattr(self.module, 'version_info', None)
         if version_info is not None and len(version_info) == 3:
             version_info = tuple(version_info) + ('final', 0)
         return version_info
-    
+
     def _get__version__(self):
         version_info = self.version_info()
         if version_info is None:

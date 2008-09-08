@@ -50,7 +50,6 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_ninety,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
@@ -92,14 +91,6 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
-@deprecated_function(zero_ninety)
-def clear_connection_cache():
-    """Remove all hosts from the SFTP connection cache.
-
-    Primarily useful for test cases wanting to force garbage collection.
-    We don't have a global connection cache anymore.
-    """
-
 class SFTPLock(object):
     """This fakes a lock in a remote location.
     
@@ -111,8 +102,6 @@ class SFTPLock(object):
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
 
     def __init__(self, path, transport):
-        assert isinstance(transport, SFTPTransport)
-
         self.lock_file = None
         self.path = path
         self.lock_path = path + '.write-lock'
@@ -164,7 +153,6 @@ class SFTPTransport(ConnectedTransport):
     _max_request_size = 32768
 
     def __init__(self, base, _from_transport=None):
-        assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base,
                                             _from_transport=_from_transport)
 
@@ -341,14 +329,15 @@ class SFTPTransport(ConnectedTransport):
         cur_offset_and_size = offset_stack.next()
 
         for data in fp.readv(requests):
-            cur_data += data
+            cur_data.append(data)
             cur_data_len += len(data)
 
             if cur_data_len < cur_coalesced.length:
                 continue
-            assert cur_data_len == cur_coalesced.length, \
-                "Somehow we read too much: %s != %s" % (cur_data_len,
-                                                        cur_coalesced.length)
+            if cur_data_len != cur_coalesced.length:
+                raise AssertionError(
+                    "Somehow we read too much: %s != %s" 
+                    % (cur_data_len, cur_coalesced.length))
             all_data = ''.join(cur_data)
             cur_data = []
             cur_data_len = 0
@@ -530,7 +519,21 @@ class SFTPTransport(ConnectedTransport):
         try:
             self._get_sftp().mkdir(abspath, local_mode)
             if mode is not None:
-                self._get_sftp().chmod(abspath, mode=mode)
+                # chmod a dir through sftp will erase any sgid bit set
+                # on the server side.  So, if the bit mode are already
+                # set, avoid the chmod.  If the mode is not fine but
+                # the sgid bit is set, report a warning to the user
+                # with the umask fix.
+                stat = self._get_sftp().lstat(abspath)
+                mode = mode & 0777 # can't set special bits anyway
+                if mode != stat.st_mode & 0777:
+                    if stat.st_mode & 06000:
+                        warning('About to chmod %s over sftp, which will result'
+                                ' in its suid or sgid bits being cleared.  If'
+                                ' you want to preserve those bits, change your '
+                                ' environment on the server to use umask 0%03o.'
+                                % (abspath, 0777 - mode))
+                    self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
@@ -581,7 +584,8 @@ class SFTPTransport(ConnectedTransport):
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
-            if (e.args == ('mkdir failed',)):
+            if (e.args == ('mkdir failed',) or
+                e.args[0].startswith('syserr: File exists')):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
@@ -948,10 +952,11 @@ class SFTPServer(Server):
     def setUp(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
-        assert (backing_server is None or
-                isinstance(backing_server, local.LocalURLServer)), (
-            "backing_server should not be %r, because this can only serve the "
-            "local current working directory." % (backing_server,))
+        if not (backing_server is None or
+                isinstance(backing_server, local.LocalURLServer)):
+            raise AssertionError(
+                "backing_server should not be %r, because this can only serve the "
+                "local current working directory." % (backing_server,))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
@@ -1019,10 +1024,12 @@ class SFTPServerWithoutSSH(SFTPServer):
             def close(self):
                 pass
 
-        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
-                                     root=self._root, home=self._server_homedir)
+        server = paramiko.SFTPServer(
+            FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+            root=self._root, home=self._server_homedir)
         try:
-            server.start_subsystem('sftp', None, sock)
+            server.start_subsystem(
+                'sftp', None, ssh.SocketAsChannelAdapter(sock))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly

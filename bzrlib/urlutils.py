@@ -26,6 +26,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from posixpath import split as _posix_split, normpath as _posix_normpath
 import urllib
+import urlparse
 
 from bzrlib import (
     errors,
@@ -75,10 +76,10 @@ def file_relpath(base, path):
     
     This assumes that both paths are already fully specified file:// URLs.
     """
-    assert len(base) >= MIN_ABS_FILEURL_LENGTH, ('Length of base must be equal or'
-        ' exceed the platform minimum url length (which is %d)' % 
-        MIN_ABS_FILEURL_LENGTH)
-
+    if len(base) < MIN_ABS_FILEURL_LENGTH:
+        raise ValueError('Length of base must be equal or'
+            ' exceed the platform minimum url length (which is %d)' %
+            MIN_ABS_FILEURL_LENGTH)
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(osutils.relpath(base, path))
@@ -249,6 +250,11 @@ def _win32_local_path_from_url(url):
             raise errors.InvalidURL(url, 'Win32 UNC path urls'
                 ' have form file://HOST/path')
         return unescape(win32_url)
+
+    # allow empty paths so we can serve all roots
+    if win32_url == '///':
+        return '/'
+    
     # usual local path with drive letter
     if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
@@ -270,6 +276,9 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
+    if path == '/':
+        return 'file:///'
+
     win32_path = osutils._win32_abspath(path)
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):
@@ -574,7 +583,8 @@ def unescape_for_display(url, encoding):
     :return: A unicode string which can be safely encoded into the 
          specified encoding.
     """
-    assert encoding is not None, 'you cannot specify None for the display encoding.'
+    if encoding is None:
+        raise ValueError('you cannot specify None for the display encoding')
     if url.startswith('file://'):
         try:
             path = local_path_from_url(url)
@@ -635,3 +645,45 @@ def derive_to_location(from_location):
             return from_location[sep+1:]
         else:
             return from_location
+
+
+def _is_absolute(url):
+    return (osutils.pathjoin('/foo', url) == url)
+
+
+def rebase_url(url, old_base, new_base):
+    """Convert a relative path from an old base URL to a new base URL.
+
+    The result will be a relative path.
+    Absolute paths and full URLs are returned unaltered.
+    """
+    scheme, separator = _find_scheme_and_separator(url)
+    if scheme is not None:
+        return url
+    if _is_absolute(url):
+        return url
+    old_parsed = urlparse.urlparse(old_base)
+    new_parsed = urlparse.urlparse(new_base)
+    if (old_parsed[:2]) != (new_parsed[:2]):
+        raise errors.InvalidRebaseURLs(old_base, new_base)
+    return determine_relative_path(new_parsed[2],
+                                   join(old_parsed[2], url))
+
+
+def determine_relative_path(from_path, to_path):
+    """Determine a relative path from from_path to to_path."""
+    from_segments = osutils.splitpath(from_path)
+    to_segments = osutils.splitpath(to_path)
+    count = -1
+    for count, (from_element, to_element) in enumerate(zip(from_segments,
+                                                       to_segments)):
+        if from_element != to_element:
+            break
+    else:
+        count += 1
+    unique_from = from_segments[count:]
+    unique_to = to_segments[count:]
+    segments = (['..'] * len(unique_from) + unique_to)
+    if len(segments) == 0:
+        return '.'
+    return osutils.pathjoin(*segments)

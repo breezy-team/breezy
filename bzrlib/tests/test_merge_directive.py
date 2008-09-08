@@ -374,7 +374,7 @@ class TestMergeDirectiveBranch(object):
 
     def test_disk_name(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        tree_a.branch.nick = 'fancy-name'
+        tree_a.branch.nick = 'fancy <name>'
         md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
             tree_b.branch.base)
         self.assertEqual('fancy-name-2', md.get_disk_name(tree_a.branch))
@@ -576,6 +576,17 @@ class TestMergeDirectiveBranch(object):
             branch_c.base, base_revision_id='rev2a')
         revision = md.install_revisions(tree_b.branch.repository)
 
+    def test_handle_target_not_a_branch(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        branch_c.pull(tree_a.branch)
+        self.build_tree_contents([('tree_a/file', 'content_q\ncontent_r\n')])
+        tree_a.commit('rev3a', rev_id='rev3a')
+        md = self.from_objects(tree_a.branch.repository, 'rev3a', 500, 36,
+            branch_c.base, base_revision_id='rev2a')
+        md.target_branch = self.get_url('not-a-branch')
+        self.assertRaises(errors.TargetNotBranch, md.install_revisions,
+                tree_b.branch.repository)
+
 
 class TestMergeDirective1Branch(tests.TestCaseWithTransport,
     TestMergeDirectiveBranch):
@@ -620,7 +631,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         public_branch=None, message=None, base_revision_id=None):
         include_patch = (patch_type in ('bundle', 'diff'))
         include_bundle = (patch_type == 'bundle')
-        assert patch_type in ('bundle', 'diff', None)
+        self.assertTrue(patch_type in ('bundle', 'diff', None))
         return merge_directive.MergeDirective2.from_objects(
             repository, revision_id, time, timezone, target_branch,
             include_patch, include_bundle, local_target_branch, public_branch,

@@ -204,7 +204,8 @@ class Commit(object):
                reporter=None,
                config=None,
                message_callback=None,
-               recursive='down'):
+               recursive='down',
+               exclude=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -232,6 +233,9 @@ class Commit(object):
         :param verbose: if True and the reporter is not None, report everything
         :param recursive: If set to 'down', commit in any subtrees that have
             pending changes of any sort during this commit.
+        :param exclude: None or a list of relative paths to exclude from the
+            commit. Pending changes to excluded files will be ignored by the
+            commit. 
         """
         mutter('preparing to commit')
 
@@ -255,6 +259,11 @@ class Commit(object):
         self.bound_branch = None
         self.any_entries_changed = False
         self.any_entries_deleted = False
+        if exclude is not None:
+            self.exclude = sorted(
+                minimum_path_selection(exclude))
+        else:
+            self.exclude = []
         self.local = local
         self.master_branch = None
         self.master_locked = False
@@ -329,12 +338,15 @@ class Commit(object):
             self.pb.show_count = True
             self.pb.show_bar = True
 
-            # After a merge, a selected file commit is not supported.
-            # See 'bzr help merge' for an explanation as to why.
             self.basis_inv = self.basis_tree.inventory
             self._gather_parents()
+            # After a merge, a selected file commit is not supported.
+            # See 'bzr help merge' for an explanation as to why.
             if len(self.parents) > 1 and self.specific_files:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
+            # Excludes are a form of selected file commit.
+            if len(self.parents) > 1 and self.exclude:
+                raise errors.CannotCommitSelectedFileMerge(self.exclude)
 
             # Collect the changes
             self._set_progress_stage("Collecting changes",
@@ -365,7 +377,6 @@ class Commit(object):
 
                 # Prompt the user for a commit message if none provided
                 message = message_callback(self)
-                assert isinstance(message, unicode), type(message)
                 self.message = message
                 self._escape_commit_message()
 
@@ -649,28 +660,30 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
 
-        specific_files = self.specific_files
+        exclude = self.exclude
+        specific_files = self.specific_files or []
         mutter("Selecting files for commit with filter %s", specific_files)
 
         # Build the new inventory
-        self._populate_from_inventory(specific_files)
+        self._populate_from_inventory()
 
         # If specific files are selected, then all un-selected files must be
         # recorded in their previous state. For more details, see
         # https://lists.ubuntu.com/archives/bazaar/2007q3/028476.html.
-        if specific_files:
+        if specific_files or exclude:
             for path, old_ie in self.basis_inv.iter_entries():
                 if old_ie.file_id in self.builder.new_inventory:
                     # already added - skip.
                     continue
-                if is_inside_any(specific_files, path):
-                    # was inside the selected path, if not present it has been
-                    # deleted so skip.
+                if (is_inside_any(specific_files, path)
+                    and not is_inside_any(exclude, path)):
+                    # was inside the selected path, and not excluded - if not
+                    # present it has been deleted so skip.
                     continue
+                # From here down it was either not selected, or was excluded:
                 if old_ie.kind == 'directory':
                     self._next_progress_entry()
-                # not in final inv yet, was not in the selected files, so is an
-                # entry to be preserved unaltered.
+                # We preserve the entry unaltered.
                 ie = old_ie.copy()
                 # Note: specific file commits after a merge are currently
                 # prohibited. This test is for sanity/safety in case it's
@@ -698,13 +711,15 @@ class Commit(object):
                 self._basis_delta.append((path, None, file_id, None))
                 self.reporter.deleted(path)
 
-    def _populate_from_inventory(self, specific_files):
+    def _populate_from_inventory(self):
         """Populate the CommitBuilder by walking the working tree inventory."""
         if self.strict:
             # raise an exception as soon as we find a single unknown.
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
-               
+        
+        specific_files = self.specific_files
+        exclude = self.exclude
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
         # A tree of paths that have been deleted. E.g. if foo/bar has been
@@ -713,6 +728,8 @@ class Commit(object):
         # XXX: Note that entries may have the wrong kind because the entry does
         # not reflect the status on disk.
         work_inv = self.work_tree.inventory
+        # NB: entries will include entries within the excluded ids/paths
+        # because iter_entries_by_dir has no 'exclude' facility today.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         for path, existing_ie in entries:
@@ -740,6 +757,10 @@ class Commit(object):
                 if deleted_dict is not None:
                     # the path has a deleted parent, do not add it.
                     continue
+            if exclude and is_inside_any(exclude, path):
+                # Skip excluded paths. Excluded paths are processed by
+                # _update_builder_with_changes.
+                continue
             content_summary = self.work_tree.path_content_summary(path)
             # Note that when a filter of specific files is given, we must only
             # skip/record deleted files matching that filter.

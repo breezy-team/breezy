@@ -85,7 +85,7 @@ class TestConflicts(TestCaseWithTransport):
         restore('hello.sploo')
         self.assertEqual(len(tree.conflicts()), 0)
         self.assertFileEqual('hello world2', 'hello')
-        assert not os.path.lexists('hello.sploo')
+        self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
 

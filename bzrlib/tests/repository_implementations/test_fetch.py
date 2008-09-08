@@ -48,7 +48,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_knit3(self):
         # create a repository of the sort we are testing.
-        tree_a = self.make_branch_and_tree('a', '')
+        tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
@@ -69,7 +69,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # disk.
         knit3_repo = b_bzrdir.open_repository()
         rev1_tree = knit3_repo.revision_tree('rev1')
-        lines = rev1_tree.get_file_lines(rev1_tree.get_root_id())
+        rev1_tree.lock_read()
+        try:
+            lines = rev1_tree.get_file_lines(rev1_tree.get_root_id())
+        finally:
+            rev1_tree.unlock()
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
         b_branch.pull(tree_a.branch)
@@ -127,7 +131,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             target_repo.get_signature_text('rev1'))
 
     def make_repository_with_one_revision(self):
-        wt = self.make_branch_and_tree('source', '')
+        wt = self.make_branch_and_tree('source')
         wt.commit('rev1', allow_pointless=True, rev_id='rev1')
         return wt.branch.repository
 
@@ -141,3 +145,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # without causing any errors.
         target_repo.fetch(source_repo, revision_id='rev1')
 
+    def test_fetch_all_same_revisions_twice(self):
+        # Blind-fetching all the same revisions twice should succeed and be a
+        # no-op the second time.
+        repo = self.make_repository('repo')
+        tree = self.make_branch_and_tree('tree')
+        revision_id = tree.commit('test')
+        repo.fetch(tree.branch.repository)
+        repo.fetch(tree.branch.repository)

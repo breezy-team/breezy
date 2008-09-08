@@ -52,11 +52,11 @@ from bzrlib import (
     )
 """)
 
+
 import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    one_zero,
     )
 
 
@@ -475,35 +475,6 @@ def normalizepath(f):
         return pathjoin(F(p), e)
 
 
-@deprecated_function(one_zero)
-def backup_file(fn):
-    """Copy a file to a backup.
-
-    Backups are named in GNU-style, with a ~ suffix.
-
-    If the file is already a backup, it's not copied.
-    """
-    if fn[-1] == '~':
-        return
-    bfn = fn + '~'
-
-    if has_symlinks() and os.path.islink(fn):
-        target = os.readlink(fn)
-        os.symlink(target, bfn)
-        return
-    inf = file(fn, 'rb')
-    try:
-        content = inf.read()
-    finally:
-        inf.close()
-    
-    outf = file(bfn, 'wb')
-    try:
-        outf.write(content)
-    finally:
-        outf.close()
-
-
 def isdir(f):
     """True if f is an accessible directory."""
     try:
@@ -566,20 +537,61 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(fromfile, tofile):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     """Copy contents of one file to another.
-    
+
+    The read_length can either be -1 to read to end-of-file (EOF) or
+    it can specify the maximum number of bytes to read.
+
+    The buff_size represents the maximum size for each read operation
+    performed on from_file.
+
     :return: The number of bytes copied.
     """
-    BUFSIZE = 32768
     length = 0
-    while True:
-        b = fromfile.read(BUFSIZE)
-        if not b:
-            break
-        tofile.write(b)
-        length += len(b)
+    if read_length >= 0:
+        # read specified number of bytes
+
+        while read_length > 0:
+            num_bytes_to_read = min(read_length, buff_size)
+
+            block = from_file.read(num_bytes_to_read)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+
+            actual_bytes_read = len(block)
+            read_length -= actual_bytes_read
+            length += actual_bytes_read
+    else:
+        # read to EOF
+        while True:
+            block = from_file.read(buff_size)
+            if not block:
+                # EOF reached
+                break
+            to_file.write(block)
+            length += len(block)
     return length
+
+
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
 
 
 def file_iterator(input_file, readsize=32768):
@@ -591,8 +603,10 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if getattr(f, 'tell', None) is not None:
-        assert f.tell() == 0
+    """Calculate the hexdigest of an open file.
+
+    The file cursor should be already at the start.
+    """
     s = sha.new()
     BUFSIZE = 128<<10
     while True:
@@ -653,6 +667,7 @@ def local_time_offset(t=None):
     offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
     return offset.days * 86400 + offset.seconds
 
+weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
@@ -684,6 +699,8 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
     else:
         offset_str = ''
+    # day of week depends on locale, so we do this ourself
+    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
     return (time.strftime(date_fmt, tt) +  offset_str)
 
 
@@ -786,8 +803,6 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
-    assert isinstance(p, basestring)
-
     # split on either delimiter because people might use either on
     # Windows
     ps = re.split(r'[\\/]', p)
@@ -803,7 +818,6 @@ def splitpath(p):
     return rps
 
 def joinpath(p):
-    assert isinstance(p, (list, tuple))
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
@@ -863,6 +877,11 @@ def has_hardlinks():
         return False
 
 
+def host_os_dereferences_symlinks():
+    return (has_symlinks()
+            and sys.platform not in ('cygwin', 'win32'))
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -903,9 +922,10 @@ def relpath(base, path):
     avoids that problem.
     """
 
-    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
-        ' exceed the platform minimum length (which is %d)' % 
-        MIN_ABS_PATHLENGTH)
+    if len(base) < MIN_ABS_PATHLENGTH:
+        # must have space for e.g. a drive letter
+        raise ValueError('%r is too short to calculate a relative path'
+            % (base,))
 
     rp = abspath(path)
 
@@ -1124,6 +1144,34 @@ def check_legal_path(path):
         raise errors.IllegalPath(path)
 
 
+_WIN32_ERROR_DIRECTORY = 267 # Similar to errno.ENOTDIR
+
+def _is_error_enotdir(e):
+    """Check if this exception represents ENOTDIR.
+
+    Unfortunately, python is very inconsistent about the exception
+    here. The cases are:
+      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
+      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
+         which is the windows error code.
+      3) Windows, Python2.5 uses errno == EINVAL and
+         winerror == ERROR_DIRECTORY
+
+    :param e: An Exception object (expected to be OSError with an errno
+        attribute, but we should be able to cope with anything)
+    :return: True if this represents an ENOTDIR error. False otherwise.
+    """
+    en = getattr(e, 'errno', None)
+    if (en == errno.ENOTDIR
+        or (sys.platform == 'win32'
+            and (en == _WIN32_ERROR_DIRECTORY
+                 or (en == errno.EINVAL
+                     and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+        ))):
+        return True
+    return False
+
+
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
@@ -1173,16 +1221,24 @@ def walkdirs(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
+        try:
+            names = sorted(_listdir(top))
+        except OSError, e:
+            if not _is_error_enotdir(e):
+                raise
+        else:
+            for name in names:
+                abspath = top_slash + name
+                statvalue = _lstat(abspath)
+                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
+
+_real_walkdirs_utf8 = None
 
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
@@ -1198,12 +1254,27 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32' or
-        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
-        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
-    else:
-        return _walkdirs_fs_utf8(top, prefix=prefix)
+    global _real_walkdirs_utf8
+    if _real_walkdirs_utf8 is None:
+        fs_encoding = _fs_enc.upper()
+        if win32utils.winver == 'Windows NT':
+            # Win98 doesn't have unicode apis like FindFirstFileW
+            # TODO: We possibly could support Win98 by falling back to the
+            #       original FindFirstFile, and using TCHAR instead of WCHAR,
+            #       but that gets a bit tricky, and requires custom compiling
+            #       for win98 anyway.
+            try:
+                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+            except ImportError:
+                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            else:
+                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            # ANSI_X3.4-1968 is a form of ASCII
+            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+        else:
+            _real_walkdirs_utf8 = _walkdirs_fs_utf8
+    return _real_walkdirs_utf8(top, prefix=prefix)
 
 
 def _walkdirs_fs_utf8(top, prefix=""):
@@ -1214,7 +1285,8 @@ def _walkdirs_fs_utf8(top, prefix=""):
     """
     _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
+    # Use C accelerated directory listing.
+    _listdir = _read_dir
     _kind_from_mode = _formats.get
 
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1230,11 +1302,13 @@ def _walkdirs_fs_utf8(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        # read_dir supplies in should-stat order.
+        for _, name in sorted(_listdir(top)):
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1381,7 +1455,9 @@ def get_user_encoding(use_cache=True):
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if user_encoding in (None, 'cp0'):
+    #
+    # For python scripts run under vim, we get '', so also treat that as ASCII
+    if user_encoding in (None, 'cp0', ''):
         user_encoding = 'ascii'
     else:
         # check encoding
@@ -1399,6 +1475,20 @@ def get_user_encoding(use_cache=True):
         _cached_user_encoding = user_encoding
 
     return user_encoding
+
+
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
 
 
 def recv_all(socket, bytes):
@@ -1477,3 +1567,9 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+try:
+    from bzrlib._readdir_pyx import read_dir as _read_dir
+except ImportError:
+    from bzrlib._readdir_py import read_dir as _read_dir

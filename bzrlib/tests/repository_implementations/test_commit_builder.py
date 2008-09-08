@@ -26,8 +26,10 @@ from bzrlib import (
     inventory,
     osutils,
     repository,
+    revision as _mod_revision,
     tests,
     )
+from bzrlib.graph import Graph
 from bzrlib.tests.repository_implementations import test_repository
 
 
@@ -50,7 +52,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 ie = tree.inventory.root
             finally:
                 tree.unlock()
-            parent_tree = tree.branch.repository.revision_tree(None)
+            parent_tree = tree.branch.repository.revision_tree(
+                              _mod_revision.NULL_REVISION)
             parent_invs = []
             builder.record_entry_contents(ie, parent_invs, '', tree,
                 tree.path_content_summary(''))
@@ -243,7 +246,10 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
         self.assertEqual(rev1, tree2.inventory[name + 'id'].revision)
-        self.assertFileAncestry([rev1], tree, name)
+        file_id = name + 'id'
+        expected_graph = {}
+        expected_graph[(file_id, rev1)] = ()
+        self.assertFileGraph(expected_graph, tree, (file_id, rev1))
 
     def test_last_modified_revision_after_commit_dir_unchanged(self):
         # committing without changing a dir does not change the last modified.
@@ -264,7 +270,10 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory['dirid'].revision)
         self.assertEqual(rev1, tree2.inventory['dirid'].revision)
-        self.assertFileAncestry([rev1], tree, 'dir')
+        file_id = 'dirid'
+        expected_graph = {}
+        expected_graph[(file_id, rev1)] = ()
+        self.assertFileGraph(expected_graph, tree, (file_id, rev1))
 
     def test_last_modified_revision_after_commit_file_unchanged(self):
         # committing without changing a file does not change the last modified.
@@ -337,7 +346,11 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
         self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
-        self.assertFileAncestry([rev1, rev2], tree, name)
+        file_id = name + 'id'
+        expected_graph = {}
+        expected_graph[(file_id, rev1)] = ()
+        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+        self.assertFileGraph(expected_graph, tree, (file_id, rev2))
 
     def mini_commit(self, tree, name, new_name, records_version=True,
         delta_against_basis=True):
@@ -407,19 +420,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             tree.unlock()
         return rev2
 
-    def assertFileAncestry(self, ancestry, tree, name, alt_ancestry=None):
+    def assertFileGraph(self, expected_graph, tree, tip):
         # all the changes that have occured should be in the ancestry
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        vw = tree.branch.repository.weave_store.get_weave(name + 'id',
-            tree.branch.repository.get_transaction())
-        result = vw.get_ancestry([ancestry[-1]])
-        if alt_ancestry is None:
-            self.assertEqual(ancestry, result)
-        else:
-            self.assertSubset([tuple(result)],
-                [tuple(ancestry), tuple(alt_ancestry)])
+        graph = dict(Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        self.assertEqual(expected_graph, graph)
 
     def test_last_modified_revision_after_content_file_changes(self):
         # altering a file changes the last modified.
@@ -457,10 +464,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         rev4 = self.mini_commit(tree1, 'new_' + name, 'new_' + name)
         tree3, = self._get_revtrees(tree1, [rev4])
         self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
-        # TODO: change this to an assertFileGraph call to check the
-        # parent order of rev4: it should be rev2, rev3
-        self.assertFileAncestry([rev1, rev2, rev3, rev4], tree1, name,
-            [rev1, rev3, rev2, rev4])
+        file_id = name + 'id'
+        expected_graph = {}
+        expected_graph[(file_id, rev1)] = ()
+        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+        expected_graph[(file_id, rev3)] = ((file_id, rev1),)
+        expected_graph[(file_id, rev4)] = ((file_id, rev2), (file_id, rev3),)
+        self.assertFileGraph(expected_graph, tree1, (file_id, rev4))
 
     def test_last_modified_revision_after_merge_dir_changes(self):
         # merge a dir changes the last modified.
@@ -489,7 +499,11 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         rev3 = self.mini_commit(tree1, name, 'new_' + name, False)
         tree3, = self._get_revtrees(tree1, [rev2])
         self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
-        self.assertFileAncestry([rev1, rev2], tree1, name)
+        file_id = name + 'id'
+        expected_graph = {}
+        expected_graph[(file_id, rev1)] = ()
+        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+        self.assertFileGraph(expected_graph, tree1, (file_id, rev2))
 
     def test_last_modified_revision_after_converged_merge_dir_changes(self):
         # merge a dir changes the last modified.

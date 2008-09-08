@@ -17,7 +17,7 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib import log
+from bzrlib import log, registry
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.log import (show_log,
                         get_view_revisions,
@@ -36,6 +36,23 @@ from bzrlib.revisionspec import (
     RevisionInfo,
     RevisionSpec,
     )
+
+
+class TestCaseWithoutPropsHandler(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithoutPropsHandler, self).setUp()
+        # keep a reference to the "current" custom prop. handler registry
+        self.properties_handler_registry = \
+            log.properties_handler_registry
+        # clean up the registry in log
+        log.properties_handler_registry = registry.Registry()
+        
+    def _cleanup(self):
+        super(TestCaseWithoutPropsHandler, self)._cleanup()
+        # restore the custom properties handler registry
+        log.properties_handler_registry = \
+            self.properties_handler_registry
 
 
 class LogCatcher(LogFormatter):
@@ -355,7 +372,7 @@ class TestShortLogFormatter(TestCaseWithTransport):
             wt.unlock()
 
 
-class TestLongLogFormatter(TestCaseWithTransport):
+class TestLongLogFormatter(TestCaseWithoutPropsHandler):
 
     def test_verbose_log(self):
         """Verbose log includes changed files
@@ -561,6 +578,106 @@ message:
   add a
 ''')
 
+    def test_properties_in_log(self):
+        """Log includes the custom properties returned by the registered 
+        handlers.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_properties_in_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>')
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        try:
+            def trivial_custom_prop_handler(revision):
+                return {'test_prop':'test_value'}
+            
+            log.properties_handler_registry.register(
+                'trivial_custom_prop_handler', 
+                trivial_custom_prop_handler)
+            show_log(b, formatter)
+        finally:
+            log.properties_handler_registry.remove(
+                'trivial_custom_prop_handler')
+            self.assertEqualDiff(sio.getvalue(), '''\
+------------------------------------------------------------
+revno: 1
+test_prop: test_value
+author: John Doe <jdoe@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: test_properties_in_log
+timestamp: Wed 2005-11-23 12:08:27 +1000
+message:
+  add a
+''')
+
+    def test_error_in_properties_handler(self):
+        """Log includes the custom properties returned by the registered 
+        handlers.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_author_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>',
+                  revprops={'first_prop':'first_value'})
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        try:
+            def trivial_custom_prop_handler(revision):
+                raise StandardError("a test error")
+            
+            log.properties_handler_registry.register(
+                'trivial_custom_prop_handler', 
+                trivial_custom_prop_handler)
+            self.assertRaises(StandardError, show_log, b, formatter,)
+        finally:
+            log.properties_handler_registry.remove(
+                'trivial_custom_prop_handler')
+                
+    def test_properties_handler_bad_argument(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_author_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>',
+                  revprops={'a_prop':'test_value'})
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        try:
+            def bad_argument_prop_handler(revision):
+                return {'custom_prop_name':revision.properties['a_prop']}
+                
+            log.properties_handler_registry.register(
+                'bad_argument_prop_handler', 
+                bad_argument_prop_handler)
+            
+            self.assertRaises(AttributeError, formatter.show_properties, 
+                'a revision', '')
+            
+            revision = b.repository.get_revision(b.last_revision())
+            formatter.show_properties(revision, '')
+            self.assertEqualDiff(sio.getvalue(),
+                '''custom_prop_name: test_value\n''')
+        finally:
+            log.properties_handler_registry.remove(
+                'bad_argument_prop_handler')
 
 
 class TestLineLogFormatter(TestCaseWithTransport):
@@ -575,8 +692,8 @@ class TestLineLogFormatter(TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add('a')
         b.nick = 'test-line-log'
-        wt.commit(message='add a', 
-                  timestamp=1132711707, 
+        wt.commit(message='add a',
+                  timestamp=1132711707,
                   timezone=36000,
                   committer='Line-Log-Formatter Tester <test@line.log>')
         logfile = file('out.tmp', 'w+')
@@ -889,6 +1006,20 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
     def test_file_id_f3(self):
         tree = self.create_tree_with_single_merge()
         # f3 should be marked as modified by revisions A, B, C, and D
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_file_id_with_ghosts(self):
+        # This is testing bug #209948, where having a ghost would cause
+        # _filter_revisions_touching_file_id() to fail.
+        tree = self.create_tree_with_single_merge()
+        # We need to add a revision, so switch back to a write-locked tree
+        tree.unlock()
+        tree.lock_write()
+        first_parent = tree.last_revision()
+        tree.set_parent_ids([first_parent, 'ghost-revision-id'])
+        self.build_tree_contents([('tree/f1', 'A\nB\nXX\n')])
+        tree.commit('commit with a ghost', rev_id='XX')
+        self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
 
 

@@ -135,6 +135,7 @@ class RevisionSpec(object):
     """
 
     prefix = None
+    wants_revision_history = True
 
     def __new__(cls, spec, _internal=False):
         if _internal:
@@ -160,10 +161,6 @@ class RevisionSpec(object):
 
         if spec is None:
             return RevisionSpec(None, _internal=True)
-
-        assert isinstance(spec, basestring), \
-            "You should only supply strings not %s" % (type(spec),)
-
         for spectype in SPEC_TYPES:
             if spec.startswith(spectype.prefix):
                 trace.mutter('Returning RevisionSpec %s for %s',
@@ -219,7 +216,10 @@ class RevisionSpec(object):
 
     def in_history(self, branch):
         if branch:
-            revs = branch.revision_history()
+            if self.wants_revision_history:
+                revs = branch.revision_history()
+            else:
+                revs = None
         else:
             # this should never trigger.
             # TODO: make it a deprecated code path. RBC 20060928
@@ -296,6 +296,7 @@ class RevisionSpec_revno(RevisionSpec):
                                    your history is very long.
     """
     prefix = 'revno:'
+    wants_revision_history = False
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
@@ -521,7 +522,7 @@ class RevisionSpec_before(RevisionSpec):
         base_revspec = RevisionSpec.from_string(self.spec)
         base_revision_id = base_revspec.as_revision_id(context_branch)
         if base_revision_id == revision.NULL_REVISION:
-            raise errors.InvalidRevisionSpec(self.user_spec, branch,
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
                                          'cannot go before the null: revision')
         context_repo = context_branch.repository
         context_repo.lock_read()
@@ -595,7 +596,7 @@ class RevisionSpec_date(RevisionSpec):
 
     One way to display all the changes since yesterday would be::
 
-        bzr log -r date:yesterday..-1
+        bzr log -r date:yesterday..
 
     Examples::
 
@@ -771,6 +772,7 @@ class RevisionSpec_branch(RevisionSpec):
         other_branch = Branch.open(self.spec)
         last_revision = other_branch.last_revision()
         last_revision = revision.ensure_null(last_revision)
+        context_branch.fetch(other_branch, last_revision)
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
         return last_revision
@@ -785,7 +787,7 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
 
     Diffing against this shows all the changes that were made in this branch,
     and is a good predictor of what merge will do.  The submit branch is
-    used by the bundle and merge directive comands.  If no submit branch
+    used by the bundle and merge directive commands.  If no submit branch
     is specified, the parent branch is used instead.
 
     The common ancestor is the last revision that existed in both

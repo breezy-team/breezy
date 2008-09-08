@@ -36,8 +36,8 @@ from bzrlib import (
     symbol_versioning,
     transactions,
     )
-
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.knit import KnitVersionedFiles, _KndxIndex, _KnitKeyAccess
 from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
@@ -49,6 +49,7 @@ import bzrlib.revision as _mod_revision
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, mutter_callsite
 from bzrlib.util import bencode
+from bzrlib.versionedfile import ConstantMapper, HashEscapedPrefixMapper
 
 
 class _KnitParentsProvider(object):
@@ -69,6 +70,8 @@ class _KnitParentsProvider(object):
         """See graph._StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
+            if revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
             else:
@@ -84,6 +87,34 @@ class _KnitParentsProvider(object):
         return parent_map
 
 
+class _KnitsParentsProvider(object):
+
+    def __init__(self, knit, prefix=()):
+        """Create a parent provider for string keys mapped to tuple keys."""
+        self._knit = knit
+        self._prefix = prefix
+
+    def __repr__(self):
+        return 'KnitsParentsProvider(%r)' % self._knit
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = self._knit.get_parent_map(
+            [self._prefix + (key,) for key in keys])
+        result = {}
+        for key, parents in parent_map.items():
+            revid = key[-1]
+            if len(parents) == 0:
+                parents = (_mod_revision.NULL_REVISION,)
+            else:
+                parents = tuple(parent[-1] for parent in parents)
+            result[revid] = parents
+        for revision_id in keys:
+            if revision_id == _mod_revision.NULL_REVISION:
+                result[revision_id] = ()
+        return result
+
+
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
@@ -94,28 +125,71 @@ class KnitRepository(MetaDirRepository):
     _commit_builder_class = None
     _serializer = None
 
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-        control_store, text_store, _commit_builder_class, _serializer):
-        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files,
-            _revision_store, control_store, text_store)
+    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+        _serializer):
+        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
-
-    def _warn_if_deprecated(self):
-        # This class isn't deprecated
-        pass
-
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines, check_content):
-        return inv_vf.add_lines_with_ghosts(revid, parents, lines,
-            check_content=check_content)[0]
+        self._fetch_uses_deltas = True
+        self._fetch_order = 'topological'
 
     @needs_read_lock
     def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
-        # Knits get the revision graph from the index of the revision knit, so
-        # it's always possible even if they're on an unlistable transport.
-        return self._revision_store.all_revision_ids(self.get_transaction())
+        return [key[0] for key in self.revisions.keys()]
+
+    def _activate_new_inventory(self):
+        """Put a replacement inventory.new into use as inventories."""
+        # Copy the content across
+        t = self._transport
+        t.copy('inventory.new.kndx', 'inventory.kndx')
+        try:
+            t.copy('inventory.new.knit', 'inventory.knit')
+        except errors.NoSuchFile:
+            # empty inventories knit
+            t.delete('inventory.knit')
+        # delete the temp inventory
+        t.delete('inventory.new.kndx')
+        try:
+            t.delete('inventory.new.knit')
+        except errors.NoSuchFile:
+            # empty inventories knit
+            pass
+        # Force index reload (sanity check)
+        self.inventories._index._reset_cache()
+        self.inventories.keys()
+
+    def _backup_inventory(self):
+        t = self._transport
+        t.copy('inventory.kndx', 'inventory.backup.kndx')
+        t.copy('inventory.knit', 'inventory.backup.knit')
+
+    def _move_file_id(self, from_id, to_id):
+        t = self._transport.clone('knits')
+        from_rel_url = self.texts._index._mapper.map((from_id, None))
+        to_rel_url = self.texts._index._mapper.map((to_id, None))
+        # We expect both files to always exist in this case.
+        for suffix in ('.knit', '.kndx'):
+            t.rename(from_rel_url + suffix, to_rel_url + suffix)
+
+    def _remove_file_id(self, file_id):
+        t = self._transport.clone('knits')
+        rel_url = self.texts._index._mapper.map((file_id, None))
+        for suffix in ('.kndx', '.knit'):
+            try:
+                t.delete(rel_url + suffix)
+            except errors.NoSuchFile:
+                pass
+
+    def _temp_inventories(self):
+        result = self._format._get_inventories(self._transport, self,
+            'inventory.new')
+        # Reconciling when the output has no revisions would result in no
+        # writes - but we want to ensure there is an inventory for
+        # compatibility with older clients that don't lazy-load.
+        result.get_parent_map([('A',)])
+        return result
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
         """Find file_id(s) which are involved in the changes between revisions.
@@ -143,141 +217,10 @@ class KnitRepository(MetaDirRepository):
         return self._fileid_involved_by_set(changed)
 
     @needs_read_lock
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        """Return a list of revision-ids integrated by a revision.
-        
-        This is topologically sorted, unless 'topo_sorted' is specified as
-        False.
-        """
-        if _mod_revision.is_null(revision_id):
-            return [None]
-        vf = self._get_revision_vf()
-        try:
-            return [None] + vf.get_ancestry(revision_id, topo_sorted)
-        except errors.RevisionNotPresent:
-            raise errors.NoSuchRevision(self, revision_id)
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_two)
-    @needs_read_lock
-    def get_data_stream(self, revision_ids):
-        """See Repository.get_data_stream.
-        
-        Deprecated in 1.2 for get_data_stream_for_search.
-        """
-        search_result = self.revision_ids_to_search_result(set(revision_ids))
-        return self.get_data_stream_for_search(search_result)
-
-    @needs_read_lock
-    def get_data_stream_for_search(self, search):
-        """See Repository.get_data_stream_for_search."""
-        item_keys = self.item_keys_introduced_by(search.get_keys())
-        for knit_kind, file_id, versions in item_keys:
-            name = (knit_kind,)
-            if knit_kind == 'file':
-                name = ('file', file_id)
-                knit = self.weave_store.get_weave_or_empty(
-                    file_id, self.get_transaction())
-            elif knit_kind == 'inventory':
-                knit = self.get_inventory_weave()
-            elif knit_kind == 'revisions':
-                knit = self._revision_store.get_revision_file(
-                    self.get_transaction())
-            elif knit_kind == 'signatures':
-                knit = self._revision_store.get_signature_file(
-                    self.get_transaction())
-            else:
-                raise AssertionError('Unknown knit kind %r' % (knit_kind,))
-            yield name, _get_stream_as_bytes(knit, versions)
-
-    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision_reconcile(revision_id)
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self._get_revision_vf()
-        if revision_id is None:
-            return a_weave.get_graph()
-        if revision_id not in a_weave:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            return a_weave.get_graph([revision_id])
-
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        """Return a graph of the revisions with ghosts marked as applicable.
-
-        :param revision_ids: an iterable of revisions to graph or None for all.
-        :return: a Graph object with the graph reachable from revision_ids.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph_with_ghosts scales with size of history.")
-        result = deprecated_graph.Graph()
-        vf = self._get_revision_vf()
-        versions = set(vf.versions())
-        if not revision_ids:
-            pending = set(self.all_revision_ids())
-            required = set([])
-        else:
-            pending = set(revision_ids)
-            # special case NULL_REVISION
-            if _mod_revision.NULL_REVISION in pending:
-                pending.remove(_mod_revision.NULL_REVISION)
-            required = set(pending)
-        done = set([])
-        while len(pending):
-            revision_id = pending.pop()
-            if not revision_id in versions:
-                if revision_id in required:
-                    raise errors.NoSuchRevision(self, revision_id)
-                # a ghost
-                result.add_ghost(revision_id)
-                # mark it as done so we don't try for it again.
-                done.add(revision_id)
-                continue
-            parent_ids = vf.get_parents_with_ghosts(revision_id)
-            for parent_id in parent_ids:
-                # is this queued or done ?
-                if (parent_id not in pending and
-                    parent_id not in done):
-                    # no, queue it.
-                    pending.add(parent_id)
-            result.add_node(revision_id, parent_ids)
-            done.add(revision_id)
-        return result
-
-    def _get_revision_vf(self):
-        """:return: a versioned file containing the revisions."""
-        vf = self._revision_store.get_revision_file(self.get_transaction())
-        return vf
-
-    def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        result = set()
-        transaction = self.get_transaction()
-        for revision_id in revision_ids:
-            if self._revision_store.has_revision_id(revision_id, transaction):
-                result.add(revision_id)
-        return result
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -287,11 +230,8 @@ class KnitRepository(MetaDirRepository):
         reconciler.reconcile()
         return reconciler
     
-    def revision_parents(self, revision_id):
-        return self._get_revision_vf().get_parents(revision_id)
-
     def _make_parents_provider(self):
-        return _KnitParentsProvider(self._get_revision_vf())
+        return _KnitsParentsProvider(self.revisions)
 
     def _find_inconsistent_revision_parents(self):
         """Find revisions with different parent lists in the revision object
@@ -300,15 +240,17 @@ class KnitRepository(MetaDirRepository):
         :returns: an iterator yielding tuples of (revison-id, parents-in-index,
             parents-in-revision).
         """
-        assert self.is_locked()
-        vf = self._get_revision_vf()
-        for index_version in vf.versions():
-            parents_according_to_index = tuple(vf.get_parents_with_ghosts(
-                index_version))
-            revision = self.get_revision(index_version)
+        if not self.is_locked():
+            raise AssertionError()
+        vf = self.revisions
+        for index_version in vf.keys():
+            parent_map = vf.get_parent_map([index_version])
+            parents_according_to_index = tuple(parent[-1] for parent in
+                parent_map[index_version])
+            revision = self.get_revision(index_version[-1])
             parents_according_to_revision = tuple(revision.parent_ids)
             if parents_according_to_index != parents_according_to_revision:
-                yield (index_version, parents_according_to_index,
+                yield (index_version[-1], parents_according_to_index,
                     parents_according_to_revision)
 
     def _check_for_inconsistent_revision_parents(self):
@@ -354,43 +296,37 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     # External lookups are not supported in this format.
     supports_external_lookups = False
 
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        return VersionedFileStore(
-            repo_transport,
-            prefixed=False,
-            file_mode=control_files._file_mode,
-            versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'factory':knit.KnitPlainFactory()},
-            )
+    def _get_inventories(self, repo_transport, repo, name='inventory'):
+        mapper = ConstantMapper(name)
+        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
+            repo.is_write_locked, repo.is_locked)
+        access = _KnitKeyAccess(repo_transport, mapper)
+        return KnitVersionedFiles(index, access, annotated=False)
 
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        versioned_file_store = VersionedFileStore(
-            repo_transport,
-            file_mode=control_files._file_mode,
-            prefixed=False,
-            precious=True,
-            versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'delta':False,
-                                  'factory':knit.KnitPlainFactory(),
-                                 },
-            escaped=True,
-            )
-        return KnitRevisionStore(versioned_file_store)
+    def _get_revisions(self, repo_transport, repo):
+        mapper = ConstantMapper('revisions')
+        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
+            repo.is_write_locked, repo.is_locked)
+        access = _KnitKeyAccess(repo_transport, mapper)
+        return KnitVersionedFiles(index, access, max_delta_chain=0,
+            annotated=False)
 
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-        return self._get_versioned_file_store('knits',
-                                  transport,
-                                  control_files,
-                                  versionedfile_class=knit.KnitVersionedFile,
-                                  versionedfile_kwargs={
-                                      'create_parent_dir':True,
-                                      'delay_create':True,
-                                      'dir_mode':control_files._dir_mode,
-                                  },
-                                  escaped=True)
+    def _get_signatures(self, repo_transport, repo):
+        mapper = ConstantMapper('signatures')
+        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
+            repo.is_write_locked, repo.is_locked)
+        access = _KnitKeyAccess(repo_transport, mapper)
+        return KnitVersionedFiles(index, access, max_delta_chain=0,
+            annotated=False)
+
+    def _get_texts(self, repo_transport, repo):
+        mapper = HashEscapedPrefixMapper()
+        base_transport = repo_transport.clone('knits')
+        index = _KndxIndex(base_transport, mapper, repo.get_transaction,
+            repo.is_write_locked, repo.is_locked)
+        access = _KnitKeyAccess(base_transport, mapper)
+        return KnitVersionedFiles(index, access, max_delta_chain=200,
+            annotated=True)
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
@@ -409,16 +345,16 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
                                 'lock', lockdir.LockDir)
-        control_store = self._get_control_store(repo_transport, control_files)
         transaction = transactions.WriteTransaction()
-        # trigger a write of the inventory store.
-        control_store.get_weave_or_empty('inventory', transaction)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
+        result = self.open(a_bzrdir=a_bzrdir, _found=True)
+        result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
-        # already exist.
-        _revision_store.has_revision_id('A', transaction)
-        _revision_store.get_signature_file(transaction)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
+        # already exist, we do this to create files on disk for older clients.
+        result.inventories.get_parent_map([('A',)])
+        result.revisions.get_parent_map([('A',)])
+        result.signatures.get_parent_map([('A',)])
+        result.unlock()
+        return result
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
@@ -429,24 +365,23 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
                                 'lock', lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return self.repository_class(_format=self,
+        repo = self.repository_class(_format=self,
                               a_bzrdir=a_bzrdir,
                               control_files=control_files,
-                              _revision_store=_revision_store,
-                              control_store=control_store,
-                              text_store=text_store,
                               _commit_builder_class=self._commit_builder_class,
                               _serializer=self._serializer)
+        repo.revisions = self._get_revisions(repo_transport, repo)
+        repo.signatures = self._get_signatures(repo_transport, repo)
+        repo.inventories = self._get_inventories(repo_transport, repo)
+        repo.texts = self._get_texts(repo_transport, repo)
+        repo._transport = repo_transport
+        return repo
 
 
 class RepositoryFormatKnit1(RepositoryFormatKnit):
@@ -579,26 +514,3 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 4"
-
-
-def _get_stream_as_bytes(knit, required_versions):
-    """Generate a serialised data stream.
-
-    The format is a bencoding of a list.  The first element of the list is a
-    string of the format signature, then each subsequent element is a list
-    corresponding to a record.  Those lists contain:
-
-      * a version id
-      * a list of options
-      * a list of parents
-      * the bytes
-
-    :returns: a bencoded list.
-    """
-    knit_stream = knit.get_data_stream(required_versions)
-    format_signature, data_list, callable = knit_stream
-    data = []
-    data.append(format_signature)
-    for version, options, length, parents in data_list:
-        data.append([version, options, parents, callable(length)])
-    return bencode.bencode(data)

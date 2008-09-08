@@ -27,6 +27,7 @@ import urllib
 import sys
 
 from bzrlib import (
+    debug,
     errors,
     ui,
     urlutils,
@@ -34,7 +35,6 @@ from bzrlib import (
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_seventeen,
         )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
@@ -52,8 +52,9 @@ def extract_auth(url, password_manager):
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert re.match(r'^(https?)(\+\w+)?://', url), \
-            'invalid absolute url %r' % url
+    if not re.match(r'^(https?)(\+\w+)?://', url):
+        raise ValueError(
+            'invalid absolute url %r' % (url,))
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
 
     if '@' in netloc:
@@ -230,7 +231,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            mutter('http readv of %s  offsets => %s collapsed %s',
+            if 'http' in debug.debug_flags:
+                mutter('http readv of %s  offsets => %s collapsed %s',
                     relpath, len(offsets), len(coalesced))
 
             # Cache the data read, but only until it's been used
@@ -524,6 +526,18 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 
+    def should_probe(self):
+        return True
+
+    def remote_path_from_transport(self, transport):
+        # Strip the optional 'bzr+' prefix from transport so it will have the
+        # same scheme as self.
+        transport_base = transport.base
+        if transport_base.startswith('bzr+'):
+            transport_base = transport_base[4:]
+        rel_url = urlutils.relative_url(self.base, transport_base)
+        return urllib.unquote(rel_url)
+
 
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
@@ -540,7 +554,16 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         self._response_body = data
 
     def _read_bytes(self, count):
+        """See SmartClientMediumRequest._read_bytes."""
         return self._response_body.read(count)
+
+    def _read_line(self):
+        line, excess = medium._get_line(self._response_body.read)
+        if excess != '':
+            raise AssertionError(
+                '_get_line returned excess bytes, but this mediumrequest '
+                'cannot handle excess. (%r)' % (excess,))
+        return line
 
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading."""

@@ -32,7 +32,11 @@ import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
 from bzrlib.symbol_versioning import one_three
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestUtil,
+    )
 from bzrlib.osutils import pathjoin, abspath, normpath
 
 
@@ -282,6 +286,21 @@ class TestPlugins(TestCaseInTempDir):
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual('foo', plugin.test_suite())
 
+    def test_no_load_plugin_tests_gives_None_for_load_plugin_tests(self):
+        self.setup_plugin()
+        loader = TestUtil.TestLoader()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual(None, plugin.load_plugin_tests(loader))
+
+    def test_load_plugin_tests_gives_load_plugin_tests_result(self):
+        source = """
+def load_tests(standard_tests, module, loader):
+    return 'foo'"""
+        self.setup_plugin(source)
+        loader = TestUtil.TestLoader()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual('foo', plugin.load_plugin_tests(loader))
+
     def test_no_version_info(self):
         self.setup_plugin()
         plugin = bzrlib.plugin.plugins()['plugin']
@@ -418,7 +437,7 @@ class TestSetPluginsPath(TestCase):
 
     def test_set_plugins_path_with_trailing_slashes(self):
         """set_plugins_path should set the module __path__ based on
-        BZR_PLUGIN_PATH."""
+        BZR_PLUGIN_PATH after removing all trailing slashes."""
         old_path = bzrlib.plugins.__path__
         old_env = os.environ.get('BZR_PLUGIN_PATH')
         try:
@@ -426,15 +445,18 @@ class TestSetPluginsPath(TestCase):
             os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
                 "second/\\/\\/"
             bzrlib.plugin.set_plugins_path()
-            expected_path = ['first', 'second',
-                os.path.dirname(bzrlib.plugins.__file__)]
-            self.assertEqual(expected_path, bzrlib.plugins.__path__)
+            # We expect our nominated paths to have all path-seps removed,
+            # and this is testing only that.
+            expected_path = ['first', 'second']
+            self.assertEqual(expected_path,
+                bzrlib.plugins.__path__[:len(expected_path)])
         finally:
             bzrlib.plugins.__path__ = old_path
-            if old_env != None:
+            if old_env is not None:
                 os.environ['BZR_PLUGIN_PATH'] = old_env
             else:
                 del os.environ['BZR_PLUGIN_PATH']
+
 
 class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""

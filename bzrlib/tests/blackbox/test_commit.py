@@ -330,6 +330,35 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit -m checkin-merge-of-the-offline-work-from-u1 u1')
 
+    def test_commit_exclude_excludes_modified_files(self):
+        """Commit -x foo should ignore changes to foo."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added b' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertEqual('b\n', out)
+        self.assertEqual('', err)
+
+    def test_commit_exclude_twice_uses_both_rules(self):
+        """Commit -x foo -x bar should ignore changes to foo and bar."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b', '-x', 'c'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added c' in out)
+        self.assertFalse('added b' in err)
+        self.assertFalse('added c' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertTrue('b\n' in out)
+        self.assertTrue('c\n' in out)
+        self.assertEqual('', err)
+
     def test_commit_respects_spec_for_removals(self):
         """Commit with a file spec should only commit removals that match"""
         t = self.make_branch_and_tree('.')

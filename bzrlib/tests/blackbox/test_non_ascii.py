@@ -234,7 +234,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = self.run_bzr_decode('pull', working_dir=dirname2)
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
-        self.assertEqual(u'Using saved location: %s/\n'
+        self.assertEqual(u'Using saved parent location: %s/\n'
                 'No revisions to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(
@@ -361,7 +361,7 @@ class TestNonAscii(TestCaseWithTransport):
         self.build_tree_contents([(fname, 'modified\n')])
 
         txt = self.run_bzr_decode('modified')
-        self.assertEqual(fname+'\n', txt)
+        self.assertEqual('"'+fname+'"'+'\n', txt)
 
         self.run_bzr_decode('modified', encoding='ascii', fail=True)
 
@@ -371,7 +371,7 @@ class TestNonAscii(TestCaseWithTransport):
         self.wt.add(fname)
 
         txt = self.run_bzr_decode('added')
-        self.assertEqual(fname+'\n', txt)
+        self.assertEqual('"'+fname+'"'+'\n', txt)
 
         self.run_bzr_decode('added', encoding='ascii', fail=True)
 
@@ -438,6 +438,7 @@ class TestNonAscii(TestCaseWithTransport):
 
         # TODO: jam 20060112 bzr unknowns is the only one which 
         #       quotes paths do we really want it to?
+        #       awilkins 20080521 added and modified do it now as well
         txt = self.run_bzr_decode('unknowns')
         self.assertEqual(u'"%s"\n' % (fname,), txt)
 

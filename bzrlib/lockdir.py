@@ -128,7 +128,7 @@ from bzrlib.errors import (
         )
 from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars, format_delta
+from bzrlib.osutils import rand_chars, format_delta, get_host_name
 from bzrlib.rio import read_stanza, Stanza
 import bzrlib.ui
 
@@ -167,8 +167,6 @@ class LockDir(object):
         :param path: Path to the lock within the base directory of the 
             transport.
         """
-        assert isinstance(transport, Transport), \
-            ("not a transport: %r" % transport)
         self.transport = transport
         self.path = path
         self._lock_held = False
@@ -417,8 +415,6 @@ class LockDir(object):
         try:
             info = self._read_info_file(self._held_info_path)
             self._trace("peek -> held")
-            assert isinstance(info, dict), \
-                    "bad parse result %r" % info
             return info
         except NoSuchFile, e:
             self._trace("peek -> not held")
@@ -426,14 +422,13 @@ class LockDir(object):
     def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
-        import socket
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
             user = config.user_email()
         except errors.NoEmailInUsername:
             user = config.username()
-        s = Stanza(hostname=socket.gethostname(),
+        s = Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
@@ -510,15 +505,20 @@ class LockDir(object):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
+                lock_url = self.transport.abspath(self.path)
                 self._report_function('%s %s\n'
                                       '%s\n' # held by
                                       '%s\n' # locked ... ago
-                                      'Will continue to try until %s\n',
+                                      'Will continue to try until %s, unless '
+                                      'you press Ctrl-C\n'
+                                      'If you\'re sure that it\'s not being '
+                                      'modified, use bzr break-lock %s',
                                       start,
                                       formatted_info[0],
                                       formatted_info[1],
                                       formatted_info[2],
-                                      deadline_str)
+                                      deadline_str,
+                                      lock_url)
 
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")

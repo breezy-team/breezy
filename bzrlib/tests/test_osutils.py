@@ -16,15 +16,18 @@
 
 """Tests for the osutils wrapper."""
 
+from cStringIO import StringIO
 import errno
 import os
 import socket
 import stat
 import sys
+import time
 
 from bzrlib import (
     errors,
     osutils,
+    tests,
     win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
@@ -32,15 +35,54 @@ from bzrlib.osutils import (
         is_inside_any,
         is_inside_or_parent_of_any,
         pathjoin,
+        pumpfile,
+        pump_string_file,
         )
 from bzrlib.tests import (
+        adapt_tests,
+        Feature,
         probe_unicode_in_user_encoding,
+        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
+        TestScenarioApplier,
         TestSkipped,
         )
+from bzrlib.tests.file_utils import (
+    FakeReadFile,
+    )
+from bzrlib.tests.test__walkdirs_win32 import WalkdirsWin32Feature
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize readdir tests."""
+    to_adapt, result = split_suite_by_re(standard_tests, "readdir")
+    adapter = TestScenarioApplier()
+    from bzrlib import _readdir_py
+    adapter.scenarios = [('python', {'read_dir': _readdir_py.read_dir})]
+    if ReadDirFeature.available():
+        adapter.scenarios.append(('pyrex',
+            {'read_dir': ReadDirFeature.read_dir}))
+    adapt_tests(to_adapt, adapter, result)
+    return result
+
+
+class _ReadDirFeature(Feature):
+
+    def _probe(self):
+        try:
+            from bzrlib import _readdir_pyx
+            self.read_dir = _readdir_pyx.read_dir
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'bzrlib._readdir_pyx'
+
+ReadDirFeature = _ReadDirFeature()
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -316,6 +358,143 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
+
+    def test_host_os_dereferences_symlinks(self):
+        osutils.host_os_dereferences_symlinks()
+
+
+class TestPumpFile(TestCase):
+    """Test pumpfile method."""
+    def setUp(self):
+        # create a test datablock
+        self.block_size = 512
+        pattern = '0123456789ABCDEF'
+        self.test_data = pattern * (3 * self.block_size / len(pattern))
+        self.test_data_len = len(self.test_data)
+
+    def test_bracket_block_size(self):
+        """Read data in blocks with the requested read size bracketing the
+        block size."""
+        # make sure test data is larger than max read size
+        self.assertTrue(self.test_data_len > self.block_size)
+
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+
+        # read (max / 2) bytes and verify read size wasn't affected
+        num_bytes_to_read = self.block_size / 2
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
+        self.assertEqual(from_file.get_read_count(), 1)
+
+        # read (max) bytes and verify read size wasn't affected
+        num_bytes_to_read = self.block_size
+        from_file.reset_read_count()
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
+        self.assertEqual(from_file.get_read_count(), 1)
+
+        # read (max + 1) bytes and verify read size was limited
+        num_bytes_to_read = self.block_size + 1
+        from_file.reset_read_count()
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        self.assertEqual(from_file.get_max_read_size(), self.block_size)
+        self.assertEqual(from_file.get_read_count(), 2)
+
+        # finish reading the rest of the data
+        num_bytes_to_read = self.test_data_len - to_file.tell()
+        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_specified_size(self):
+        """Request a transfer larger than the maximum block size and verify
+        that the maximum read doesn't exceed the block_size."""
+        # make sure test data is larger than max read size
+        self.assertTrue(self.test_data_len > self.block_size)
+
+        # retrieve data in blocks
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file, self.test_data_len, self.block_size)
+
+        # verify read size was equal to the maximum read size
+        self.assertTrue(from_file.get_max_read_size() > 0)
+        self.assertEqual(from_file.get_max_read_size(), self.block_size)
+        self.assertEqual(from_file.get_read_count(), 3)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_to_eof(self):
+        """Read to end-of-file and verify that the reads are not larger than
+        the maximum read size."""
+        # make sure test data is larger than max read size
+        self.assertTrue(self.test_data_len > self.block_size)
+
+        # retrieve data to EOF
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file, -1, self.block_size)
+
+        # verify read size was equal to the maximum read size
+        self.assertEqual(from_file.get_max_read_size(), self.block_size)
+        self.assertEqual(from_file.get_read_count(), 4)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_defaults(self):
+        """Verifies that the default arguments will read to EOF -- this
+        test verifies that any existing usages of pumpfile will not be broken
+        with this new version."""
+        # retrieve data using default (old) pumpfile method
+        from_file = FakeReadFile(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        response_data = to_file.getvalue()
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+
+
+class TestPumpStringFile(TestCase):
+
+    def test_empty(self):
+        output = StringIO()
+        pump_string_file("", output)
+        self.assertEqual("", output.getvalue())
+
+    def test_more_than_segment_size(self):
+        output = StringIO()
+        pump_string_file("123456789", output, 2)
+        self.assertEqual("123456789", output.getvalue())
+
+    def test_segment_size(self):
+        output = StringIO()
+        pump_string_file("12", output, 2)
+        self.assertEqual("12", output.getvalue())
+
+    def test_segment_size_multiple(self):
+        output = StringIO()
+        pump_string_file("1234", output, 2)
+        self.assertEqual("1234", output.getvalue())
 
 
 class TestSafeUnicode(TestCase):
@@ -599,6 +778,38 @@ class TestSplitLines(TestCase):
 
 class TestWalkDirs(TestCaseInTempDir):
 
+    def test_readdir(self):
+        tree = [
+            '.bzr/',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '2file'
+            ]
+        self.build_tree(tree)
+        expected_names = ['.bzr', '0file', '1dir', '2file']
+        # read_dir returns pairs, which form a table with either None in all
+        # the first columns, or a sort key to get best on-disk-read order, 
+        # and the disk path name in utf-8 encoding in the second column.
+        read_result = self.read_dir('.')
+        # The second column is always the names, and every name except "." and
+        # ".." should be present.
+        names = sorted([row[1] for row in read_result])
+        self.assertEqual(expected_names, names)
+        expected_sort_key = None
+        if read_result[0][0] is None:
+            # No sort key returned - all keys must None
+            operator = self.assertEqual
+        else:
+            # A sort key in the first row implies sort keys in the other rows.
+            operator = self.assertNotEqual
+        for row in read_result:
+            operator(None, row[0])
+
+    def test_compiled_extension_exists(self):
+        self.requireFeature(ReadDirFeature)
+        
     def test_walkdirs(self):
         tree = [
             '.bzr',
@@ -699,6 +910,80 @@ class TestWalkDirs(TestCaseInTempDir):
                 # Ignore info[3] which is the stat
                 new_dirblock.append((info[0], info[1], info[2], info[4]))
             dirblock[:] = new_dirblock
+
+    def test__walkdirs_utf8_selection(self):
+        # Just trigger the function once, to make sure it has selected a real
+        # implementation.
+        list(osutils._walkdirs_utf8('.'))
+        if WalkdirsWin32Feature.available():
+            # If the compiled form is available, make sure it is used
+            from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+            self.assertIs(_walkdirs_utf8_win32_find_file,
+                          osutils._real_walkdirs_utf8)
+        elif sys.platform == 'win32':
+            self.assertIs(osutils._walkdirs_unicode_to_utf8,
+                          osutils._real_walkdirs_utf8)
+        elif osutils._fs_enc.upper() in ('UTF-8', 'ASCII', 'ANSI_X3.4-1968'): # ascii
+            self.assertIs(osutils._walkdirs_fs_utf8,
+                          osutils._real_walkdirs_utf8)
+        else:
+            self.assertIs(osutils._walkdirs_unicode_to_utf8,
+                          osutils._real_walkdirs_utf8)
+
+    def _save_platform_info(self):
+        cur_winver = win32utils.winver
+        cur_fs_enc = osutils._fs_enc
+        cur_real_walkdirs_utf8 = osutils._real_walkdirs_utf8
+        def restore():
+            win32utils.winver = cur_winver
+            osutils._fs_enc = cur_fs_enc
+            osutils._real_walkdirs_utf8 = cur_real_walkdirs_utf8
+        self.addCleanup(restore)
+
+    def assertWalkdirsUtf8Is(self, expected):
+        """Assert the right implementation for _walkdirs_utf8 is chosen."""
+        # Force it to redetect
+        osutils._real_walkdirs_utf8 = None
+        # Nothing to list, but should still trigger the selection logic
+        self.assertEqual([(('', '.'), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertIs(expected, osutils._real_walkdirs_utf8)
+
+    def test_force_walkdirs_utf8_fs_utf8(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+
+    def test_force_walkdirs_utf8_fs_ascii(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'US-ASCII'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+
+    def test_force_walkdirs_utf8_fs_ANSI(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'ANSI_X3.4-1968'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+
+    def test_force_walkdirs_utf8_fs_latin1(self):
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'latin1'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
+
+    def test_force_walkdirs_utf8_nt(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self._save_platform_info()
+        win32utils.winver = 'Windows NT'
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        self.assertWalkdirsUtf8Is(_walkdirs_utf8_win32_find_file)
+
+    def test_force_walkdirs_utf8_nt(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self._save_platform_info()
+        win32utils.winver = 'Windows 98'
+        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
@@ -855,6 +1140,99 @@ class TestWalkDirs(TestCaseInTempDir):
         result = list(osutils._walkdirs_unicode_to_utf8('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
+
+    def test__walkdirs_utf_win32_find_file(self):
+        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        name0u = u'0file-\xb6'
+        name1u = u'1dir-\u062c\u0648'
+        name2u = u'2file-\u0633'
+        tree = [
+            name0u,
+            name1u + '/',
+            name1u + '/' + name0u,
+            name1u + '/' + name1u + '/',
+            name2u,
+            ]
+        self.build_tree(tree)
+        name0 = name0u.encode('utf8')
+        name1 = name1u.encode('utf8')
+        name2 = name2u.encode('utf8')
+
+        # All of the abspaths should be in unicode, all of the relative paths
+        # should be in utf8
+        expected_dirblocks = [
+                (('', '.'),
+                 [(name0, name0, 'file', './' + name0u),
+                  (name1, name1, 'directory', './' + name1u),
+                  (name2, name2, 'file', './' + name2u),
+                 ]
+                ),
+                ((name1, './' + name1u),
+                 [(name1 + '/' + name0, name0, 'file', './' + name1u
+                                                        + '/' + name0u),
+                  (name1 + '/' + name1, name1, 'directory', './' + name1u
+                                                            + '/' + name1u),
+                 ]
+                ),
+                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+                 [
+                 ]
+                ),
+            ]
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        self._filter_out_stat(result)
+        self.assertEqual(expected_dirblocks, result)
+
+    def assertStatIsCorrect(self, path, win32stat):
+        os_stat = os.stat(path)
+        self.assertEqual(os_stat.st_size, win32stat.st_size)
+        self.assertAlmostEqual(os_stat.st_mtime, win32stat.st_mtime, places=4)
+        self.assertAlmostEqual(os_stat.st_ctime, win32stat.st_ctime, places=4)
+        self.assertAlmostEqual(os_stat.st_atime, win32stat.st_atime, places=4)
+        self.assertEqual(os_stat.st_dev, win32stat.st_dev)
+        self.assertEqual(os_stat.st_ino, win32stat.st_ino)
+        self.assertEqual(os_stat.st_mode, win32stat.st_mode)
+
+    def test__walkdirs_utf_win32_find_file_stat_file(self):
+        """make sure our Stat values are valid"""
+        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        name0u = u'0file-\xb6'
+        name0 = name0u.encode('utf8')
+        self.build_tree([name0u])
+        # I hate to sleep() here, but I'm trying to make the ctime different
+        # from the mtime
+        time.sleep(2)
+        f = open(name0u, 'ab')
+        try:
+            f.write('just a small update')
+        finally:
+            f.close()
+
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        entry = result[0][1][0]
+        self.assertEqual((name0, name0, 'file'), entry[:3])
+        self.assertEqual(u'./' + name0u, entry[4])
+        self.assertStatIsCorrect(entry[4], entry[3])
+        self.assertNotEqual(entry[3].st_mtime, entry[3].st_ctime)
+
+    def test__walkdirs_utf_win32_find_file_stat_directory(self):
+        """make sure our Stat values are valid"""
+        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        name0u = u'0dir-\u062c\u0648'
+        name0 = name0u.encode('utf8')
+        self.build_tree([name0u + '/'])
+
+        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        entry = result[0][1][0]
+        self.assertEqual((name0, name0, 'directory'), entry[:3])
+        self.assertEqual(u'./' + name0u, entry[4])
+        self.assertStatIsCorrect(entry[4], entry[3])
 
     def assertPathCompare(self, path_less, path_greater):
         """check that path_less and path_greater compare correctly."""
@@ -1108,6 +1486,7 @@ Options include:
  * error - show stack traces for all top level exceptions
  * evil - capture call sites that do expensive or badly-scaling operations.
  * fetch - trace history copying between repositories
+ * graph - trace graph traversal information
  * hashcache - log every time a working file is read to determine its hash
  * hooks - trace hook execution
  * hpss - trace smart protocol requests and responses
@@ -1117,7 +1496,6 @@ Options include:
  * lock - trace when lockdir locks are taken or released
  * merge - emit information for debugging merges
  * pack - emit information about pack operations
- * selftest_debug - do not disable all debug flags when running selftest
 
 """
 '''

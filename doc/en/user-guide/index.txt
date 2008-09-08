@@ -27,11 +27,11 @@ Getting started
 
 .. include:: installing_bazaar.txt
 .. include:: entering_commands.txt
-.. include:: revnos.txt
 .. include:: getting_help.txt
 .. include:: configuring_bazaar.txt
 .. include:: using_aliases.txt
 .. include:: plugins.txt
+.. include:: zen.txt
 
 
 Personal version control
@@ -76,16 +76,35 @@ Team collaboration, distributed style
 .. include:: sending_changes.txt
 
 
-Best practices
-##############
+Miscellaneous topics
+####################
 
-.. include:: best_practice_intro.txt
+.. include:: part2_intro.txt
 .. include:: adv_merging.txt
+.. include:: stacked.txt
 .. include:: server.txt
 .. include:: hooks.txt
 .. include:: version_info.txt
-.. include:: bug_trackers.txt
  
+
+A brief tour of some popular plugins
+####################################
+
+.. include:: bzrtools_plugin.txt
+.. include:: svn_plugin.txt
+.. include later looms_plugin.txt
+
+
+Integrating Bazaar into your environment
+########################################
+
+.. include:: web_browsing.txt
+.. include later - file_explorers.txt
+.. include later - desktop_integration.txt
+.. include later - editors_and_ides.txt
+.. include later - email.txt
+.. include:: bug_trackers.txt
+
 
 Appendices
 ##########

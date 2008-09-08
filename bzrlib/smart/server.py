@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 import errno
 import socket
+import sys
 import threading
 
 from bzrlib.hooks import Hooks
@@ -62,7 +63,14 @@ class SmartTCPServer(object):
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
         self._server_socket = socket.socket()
-        self._server_socket.bind((host, port))
+        # SO_REUSERADDR has a different meaning on Windows
+        if sys.platform != 'win32':
+            self._server_socket.setsockopt(socket.SOL_SOCKET,
+                socket.SO_REUSEADDR, 1)
+        try:
+            self._server_socket.bind((host, port))
+        except self._socket_error, message:
+            raise errors.CannotBindAddress(host, port, message)
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)
@@ -72,7 +80,7 @@ class SmartTCPServer(object):
         self._stopped = threading.Event()
         self.root_client_path = root_client_path
 
-    def serve(self):
+    def serve(self, thread_name_suffix=''):
         self._should_terminate = False
         # for hooks we are letting code know that a server has started (and
         # later stopped).
@@ -114,7 +122,7 @@ class SmartTCPServer(object):
                         if e.args[0] != errno.EBADF:
                             trace.warning("listening socket error: %s", e)
                     else:
-                        self.serve_conn(conn)
+                        self.serve_conn(conn, thread_name_suffix)
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
@@ -137,21 +145,23 @@ class SmartTCPServer(object):
         """Return the url of the server"""
         return "bzr://%s:%d/" % self._sockname
 
-    def serve_conn(self, conn):
+    def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
         # propogates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         handler = medium.SmartServerSocketStreamMedium(
             conn, self.backing_transport, self.root_client_path)
-        connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
+        thread_name = 'smart-server-child' + thread_name_suffix
+        connection_thread = threading.Thread(
+            None, handler.serve, name=thread_name)
         connection_thread.setDaemon(True)
         connection_thread.start()
 
-    def start_background_thread(self):
+    def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()
         self._server_thread = threading.Thread(None,
-                self.serve,
+                self.serve, args=(thread_name_suffix,),
                 name='server-' + self.get_url())
         self._server_thread.setDaemon(True)
         self._server_thread.start()
@@ -211,9 +221,10 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     This server is backed by the process's cwd.
     """
 
-    def __init__(self):
+    def __init__(self, thread_name_suffix=''):
         SmartTCPServer.__init__(self, None)
         self.client_path_extra = None
+        self.thread_name_suffix = thread_name_suffix
         
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
@@ -233,7 +244,8 @@ class SmartTCPServer_for_testing(SmartTCPServer):
             `bzr://127.0.0.1:nnnn/`.  Default value is `extra`, so that tests
             by default will fail unless they do the necessary path translation.
         """
-        assert client_path_extra.startswith('/')
+        if not client_path_extra.startswith('/'):
+            raise ValueError(client_path_extra)
         from bzrlib.transport.chroot import ChrootServer
         if backing_transport_server is None:
             from bzrlib.transport.local import LocalURLServer
@@ -244,7 +256,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
         self.root_client_path = self.client_path_extra = client_path_extra
-        self.start_background_thread()
+        self.start_background_thread(self.thread_name_suffix)
 
     def tearDown(self):
         self.stop_background_thread()
@@ -252,7 +264,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
 
     def get_url(self):
         url = super(SmartTCPServer_for_testing, self).get_url()
-        assert url.endswith('/')
         return url[:-1] + self.client_path_extra
 
     def get_bogus_url(self):
@@ -267,4 +278,25 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
+
+
+class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
+    """A variation of SmartTCPServer_for_testing that limits the client to
+    using RPCs in protocol v2 (i.e. bzr <= 1.5).
+    """
+
+    def get_url(self):
+        url = super(SmartTCPServer_for_testing_v2_only, self).get_url()
+        url = 'bzr-v2://' + url[len('bzr://'):]
+        return url
+
+
+class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_only):
+    """Get a readonly server for testing."""
+
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        url = 'readonly+' + backing_transport_server.get_url()
+        return transport.get_transport(url)
+
 

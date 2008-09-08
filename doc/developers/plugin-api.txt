@@ -1,0 +1,173 @@
+==========
+Plugin API
+==========
+
+Status
+======
+
+:Date: 2008-02-29
+
+bzrlib has a very flexible internal structure allowing plugins for many
+operations. Plugins can add commands, new storage formats, diff and merge
+features and more. This document provides an overview of the API and
+conventions for plugin authors.
+
+.. contents::
+
+
+Structure of a plugin
+=====================
+
+Plugins are Python modules under ``bzrlib.plugins``. They can be installed
+either into the PYTHONPATH in that location, or in ~/.bazaar/plugins.
+
+Plugins should have a setup.py.
+
+As for other Python modules, the name of the directory must match the
+expected name of the plugin.
+
+
+Plugin metadata before installation
+===================================
+
+Plugins can export a summary of what they provide, and what versions of bzrlib
+they are compatible with. This allows tools to be written to work with plugins,
+such as to generate a directory of plugins, or install them via a
+symlink/checkout to ~/.bazaar/plugins.
+
+This interface allows bzr to interrogate a plugin without actually loading
+it. This is useful because loading a plugin may have side effects such
+as registering or overriding commands, or the plugin may raise an error,
+if for example a prerequisite is not present.
+
+
+Metadata protocol
+-----------------
+
+A plugin that supports the bzr plugin metadata protocol will do two
+things. Firstly, the ``setup.py`` for the plugin will guard the call to
+``setup()``::
+
+  if __name__ == 'main':
+      setup(...)
+
+Secondly, the setup module will have one or more of the following variables
+present at module scope. Any variables that are missing will be given the
+defaults from the table. An example of every variable is provided after
+the full list.
+
++------------------------+---------+----------------------------------------+
+| Variable               | Default | Definition                             |
++========================+=========+========================================+
+| bzr_plugin_name        | None    | The name the plugin package should be  |
+|                        |         | given on disk. The plugin is then      |
+|                        |         | available to python at                 |
+|                        |         | bzrlib.plugins.NAME                    |
++------------------------+---------+----------------------------------------+
+| bzr_commands           | []      | A list of the commands that the plugin |
+|                        |         | provides. Commands that already exist  |
+|                        |         | in bzr and are decorated by the plugin |
+|                        |         | do not need to be listed (but it is not|
+|                        |         | harmful if you do list them).          |
++------------------------+---------+----------------------------------------+
+| bzr_plugin_version     | None    | A version_info 5-tuple with the plugins|
+|                        |         | version.                               |
++------------------------+---------+----------------------------------------+
+| bzr_minimum_version    | None    | A version_info 3-tuple for comparison  |
+|                        |         | with the bzrlib minimum and current    |
+|                        |         | version, for determining likely        |
+|                        |         | compatibility.                         |
++------------------------+---------+----------------------------------------+
+| bzr_maximum_version    | None    | A version_info 3-tuple like            |
+|                        |         | bzr_minimum_version but checking the   |
+|                        |         | upper limits supported.                |
++------------------------+---------+----------------------------------------+
+| bzr_control_formats    | {}      | A dictionary of descriptions of version|
+|                        |         | control directories. See               |
+|                        |         | `Control Formats` below.               |
++------------------------+---------+----------------------------------------+
+| bzr_checkout_formats   | {}      | A dictionary of tree_format_string ->  |
+|                        |         | human description strings, for tree    |
+|                        |         | formats that drop into the             |
+|                        |         | ``.bzr/checkout`` metadir system.      |
++------------------------+---------+----------------------------------------+
+| bzr_branch_formats     | {}      | As bzr_checkout_formats but for        |
+|                        |         | branches.                              |
++------------------------+---------+----------------------------------------+
+| bzr_repository_formats | {}      | As bzr_checkout_formats but for        |
+|                        |         | repositories.                          |
++------------------------+---------+----------------------------------------+
+
+Control Formats
+---------------
+
+Because disk format detection for formats that bzr does not understand at
+all can be useful, we allow a declarative description of the shape of a
+control directory. Each description has a name for showing to users, and a
+dictonary of relative paths, and the content needed at each path. Paths
+that end in '/' are required to be directories and the value for that key
+is ignored. Other paths are required to be regular files, and the value
+for that key is either None, in which case the file is statted but the
+content is ignored, or a literal string which is compared against for
+the content of the file. Thus::
+
+  # (look for a .hg directory)
+  bzr_control_formats = {"Mercurial":{'.hg/': None}}
+  
+  # (look for a file called .svn/format with contents 4\n).
+  bzr_control_formats = {"Subversion":{'.svn/format': '4\n'}}
+
+
+Example
+-------
+
+An example setup.py follows::
+  
+  #!/usr/bin/env python2.4
+  from distutils.core import setup
+  
+  bzr_plugin_name = 'demo'
+  bzr_commands = [
+      'new-command',
+      ]
+  
+  bzr_branch_formats = {
+      "Branch label on disk\n":"demo branch",
+      }
+
+  bzr_control_formats = {"Subversion":{'.svn/format': '4\n'}}
+  
+  bzr_plugin_version = (1, 3, 0, 'dev', 0)
+  bzr_minimum_version = (1, 0, 0)
+  
+  if __name__ == 'main':
+      setup(name="Demo",
+            version="1.3.0dev0",
+            description="Demo plugin for plugin metadata.",
+            author="Canonical Ltd",
+            author_email="bazaar@lists.canonical.com",
+            license = "GNU GPL v2",
+            url="https://launchpad.net/bzr-demo",
+            packages=['bzrlib.plugins.demo',
+                      'bzrlib.plugins.demo.tests',
+                      ],
+            package_dir={'bzrlib.plugins.demo': '.'})
+
+
+Plugin metadata after installation
+==================================
+
+After a plugin has been installed, metadata can be more easily obtained.
+Currently the only metadata used is for API versioning.
+
+API version
+-----------
+
+Please see `API versioning <api-versioning.html>`_ for details on the API
+metadata protocol used by bzrlib.
+
+
+..
+   vim: ft=rst tw=74 ai
+
+

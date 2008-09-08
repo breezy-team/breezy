@@ -18,6 +18,7 @@
 
 """Tests for the formatting and construction of errors."""
 
+import sys
 from bzrlib import (
     bzrdir,
     errors,
@@ -30,11 +31,25 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_bad_filename_encoding(self):
+        error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
+        self.assertEqualDiff(
+            "Filename 'bad/filen\\xe5me' is not valid in your current"
+            " filesystem encoding UTF-8",
+            str(error))
+
     def test_corrupt_dirstate(self):
         error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
         self.assertEqualDiff(
             "Inconsistency in dirstate file path/to/dirstate.\n"
             "Error: the reason why",
+            str(error))
+
+    def test_dirstate_corrupt(self):
+        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
+                                       'trailing garbage: "x"')
+        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
+            " appears to be corrupt: trailing garbage: \"x\"",
             str(error))
 
     def test_disabled_method(self):
@@ -51,6 +66,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.DuplicateHelpPrefix('foo')
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
+
+    def test_ghost_revisions_have_no_revno(self):
+        error = errors.GhostRevisionsHaveNoRevno('target', 'ghost_rev')
+        self.assertEqualDiff("Could not determine revno for {target} because"
+                             " its ancestry shows a ghost at {ghost_rev}",
+                             str(error))
 
     def test_incompatibleAPI(self):
         error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
@@ -186,12 +207,6 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
-    def test_read_only_lock_error(self):
-        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
-            errors.ReadOnlyLockError, 'filename', 'error message')
-        self.assertEqualDiff("Cannot acquire write lock on filename."
-                             " error message", str(error))
-
     def test_lock_failed(self):
         error = errors.LockFailed('http://canonical.com/', 'readonly transport')
         self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
@@ -203,6 +218,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
             "the currently open request.",
+            str(error))
+
+    def test_unavailable_representation(self):
+        error = errors.UnavailableRepresentation(('key',), "mpdiff", "fulltext")
+        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
+            "('key',) which is encoded as 'fulltext'.",
             str(error))
 
     def test_unknown_hook(self):
@@ -370,6 +391,15 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_target_not_branch(self):
+        """Test the formatting of TargetNotBranch."""
+        error = errors.TargetNotBranch('foo')
+        self.assertEqual(
+            "Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "foo.", str(error))
+
     def test_malformed_bug_identifier(self):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
@@ -492,6 +522,44 @@ class TestErrors(TestCaseWithTransport):
     def test_unknown_format(self):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEquals("Unknown foo format: 'bar'", str(err))
+
+    def test_unknown_rules(self):
+        err = errors.UnknownRules(['foo', 'bar'])
+        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+
+    def test_hook_failed(self):
+        # Create an exc_info tuple by raising and catching an exception.
+        try:
+            1/0
+        except ZeroDivisionError:
+            exc_info = sys.exc_info()
+        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        self.assertStartsWith(
+            str(err), 'Hook \'hook name\' during hook stage failed:\n')
+        self.assertEndsWith(
+            str(err), 'integer division or modulo by zero')
+
+    def test_tip_change_rejected(self):
+        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        self.assertEquals(
+            u'Tip change rejected: Unicode message\N{INTERROBANG}',
+            unicode(err))
+        self.assertEquals(
+            'Tip change rejected: Unicode message\xe2\x80\xbd',
+            str(err))
+
+    def test_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        err = errors.ErrorFromSmartServer(error_tuple)
+        self.assertEquals(
+            "Error received from smart server: ('error', 'tuple')", str(err))
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = errors.UnknownErrorFromSmartServer(orig_err)
+        self.assertEquals(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))
 
 
 class PassThroughError(errors.BzrError):

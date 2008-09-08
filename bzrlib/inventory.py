@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method
+from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -112,7 +112,6 @@ class InventoryEntry(object):
     InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
     >>> for path, entry in i.iter_entries():
     ...     print path
-    ...     assert i.path2id(path)
     ... 
     <BLANKLINE>
     src
@@ -142,24 +141,6 @@ class InventoryEntry(object):
         """
         return False, False
 
-    @deprecated_method(symbol_versioning.one_zero)
-    def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
-             output_to, reverse=False):
-        """Perform a diff from this to to_entry.
-
-        text_diff will be used for textual difference calculation.
-        This is a template method, override _diff in child classes.
-        """
-        self._read_tree_state(tree.id2path(self.file_id), tree)
-        if to_entry:
-            # cannot diff from one kind to another - you must do a removal
-            # and an addif they do not match.
-            assert self.kind == to_entry.kind
-            to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
-                                      to_tree)
-        self._diff(text_diff, from_label, tree, to_label, to_entry, to_tree,
-                   output_to, reverse)
-
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
@@ -179,7 +160,6 @@ class InventoryEntry(object):
         for inv in previous_inventories:
             if self.file_id in inv:
                 ie = inv[self.file_id]
-                assert ie.file_id == self.file_id
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
@@ -191,83 +171,12 @@ class InventoryEntry(object):
                             ie.executable = False
                     except AttributeError:
                         pass
-                    # must now be the same.
-                    assert candidates[ie.revision] == ie
                 else:
                     # add this revision as a candidate.
                     candidates[ie.revision] = ie
         return candidates
 
-    @deprecated_method(symbol_versioning.zero_ninetyone)
-    def find_previous_heads(self, previous_inventories,
-                            versioned_file_store,
-                            transaction,
-                            entry_vf=None):
-        """Return the revisions and entries that directly precede this.
-
-        Returned as a map from revision to inventory entry.
-
-        This is a map containing the file revisions in all parents
-        for which the file exists, and its revision is not a parent of
-        any other. If the file is new, the set will be empty.
-
-        :param versioned_file_store: A store where ancestry data on this
-                                     file id can be queried.
-        :param transaction: The transaction that queries to the versioned 
-                            file store should be completed under.
-        :param entry_vf: The entry versioned file, if its already available.
-        """
-        candidates = self.parent_candidates(previous_inventories)
-
-        # revision:ie mapping with one revision for each head.
-        heads = {}
-        # common case optimisation
-        if len(candidates) == 1:
-            # if there is only one candidate revision found
-            # then we can avoid opening the versioned file to access ancestry:
-            # there cannot be any ancestors to eliminate when there is 
-            # only one revision available.
-            return candidates
-        
-        # --- what follows is now encapsulated in repository.get_graph.heads(), 
-        #     but that is not accessible from here as we have no repository
-        #     pointer. Note that the repository.get_graph.heads() call can return
-        #     different results *at the moment* because of the kind-changing check
-        #     we have in parent_candidates().
-
-        # eliminate ancestors amongst the available candidates:
-        # heads are those that are not an ancestor of any other candidate
-        # - this provides convergence at a per-file level.
-        def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
-        # revision: ancestor list for each head
-        head_ancestors = {}
-        for ie in candidates.values():
-            # may be an ancestor of a known head:
-            already_present = 0 != len(
-                [head for head in heads 
-                 if ie.revision in head_ancestors[head]])
-            if already_present:
-                # an ancestor of an analyzed candidate.
-                continue
-            # not an ancestor of a known head:
-            # load the versioned file for this file id if needed
-            if entry_vf is None:
-                entry_vf = versioned_file_store.get_weave_or_empty(
-                    self.file_id, transaction)
-            ancestors = get_ancestors(entry_vf, ie)
-            # may knock something else out:
-            check_heads = list(heads.keys())
-            for head in check_heads:
-                if head in ancestors:
-                    # this previously discovered 'head' is not
-                    # really a head - its an ancestor of the newly 
-                    # found head,
-                    heads.pop(head)
-            head_ancestors[ie.revision] = ancestors
-            heads[ie.revision] = ie
-        return heads
-
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
         item = tarfile.TarInfo(osutils.pathjoin(root, dp).encode('utf8'))
@@ -303,7 +212,6 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         InvalidEntryName: Invalid entry name: src/hello.c
         """
-        assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
             raise errors.InvalidEntryName(name=name)
         self.executable = False
@@ -311,8 +219,6 @@ class InventoryEntry(object):
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
-        assert isinstance(file_id, (str, None.__class__)), \
-            'bad type %r for %r' % (type(file_id), file_id)
         self.name = name
         self.text_id = text_id
         self.parent_id = parent_id
@@ -333,6 +239,7 @@ class InventoryEntry(object):
         raise BzrError("don't know how to export {%s} of kind %r" %
                        (self.file_id, self.kind))
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_on_disk(self, dest, dp, tree):
         """Create a representation of self on disk in the prefix dest.
         
@@ -567,9 +474,9 @@ class InventoryFile(InventoryEntry):
 
     def _check(self, checker, tree_revision_id, tree):
         """See InventoryEntry._check"""
-        t = (self.file_id, self.revision)
-        if t in checker.checked_texts:
-            prev_sha = checker.checked_texts[t]
+        key = (self.file_id, self.revision)
+        if key in checker.checked_texts:
+            prev_sha = checker.checked_texts[key]
             if prev_sha != self.text_sha1:
                 raise BzrCheckError(
                     'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
@@ -579,26 +486,14 @@ class InventoryFile(InventoryEntry):
                 checker.repeated_text_cnt += 1
                 return
 
-        if self.file_id not in checker.checked_weaves:
-            mutter('check weave {%s}', self.file_id)
-            w = tree._get_weave(self.file_id)
-            # Not passing a progress bar, because it creates a new
-            # progress, which overwrites the current progress,
-            # and doesn't look nice
-            w.check()
-            checker.checked_weaves[self.file_id] = True
-        else:
-            w = tree._get_weave(self.file_id)
-
         mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
         checker.checked_text_cnt += 1
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.
-        if self.text_sha1 != w.get_sha1(self.revision):
-            raise BzrCheckError('text {%s} version {%s} wrong sha1' 
-                                % (self.file_id, self.revision))
-        checker.checked_texts[t] = self.text_sha1
+        if (self.text_sha1 != tree._repository.texts.get_sha1s([key])[key]):
+            raise BzrCheckError('text {%s} version {%s} wrong sha1' % key)
+        checker.checked_texts[key] = self.text_sha1
 
     def copy(self):
         other = InventoryFile(self.file_id, self.name, self.parent_id)
@@ -611,8 +506,6 @@ class InventoryFile(InventoryEntry):
 
     def detect_changes(self, old_entry):
         """See InventoryEntry.detect_changes."""
-        assert self.text_sha1 is not None
-        assert old_entry.text_sha1 is not None
         text_modified = (self.text_sha1 != old_entry.text_sha1)
         meta_modified = (self.executable != old_entry.executable)
         return text_modified, meta_modified
@@ -868,7 +761,6 @@ class Inventory(object):
         an id of None.
         """
         if root_id is not None:
-            assert root_id.__class__ == str
             self._set_root(InventoryDirectory(root_id, u'', None))
         else:
             self.root = None
@@ -923,7 +815,9 @@ class Inventory(object):
                 # adds come later
                 continue
             # Preserve unaltered children of file_id for later reinsertion.
-            children[file_id] = getattr(self[file_id], 'children', {})
+            file_id_children = getattr(self[file_id], 'children', {})
+            if len(file_id_children):
+                children[file_id] = file_id_children
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
             self.remove_recursive_id(file_id)
@@ -935,8 +829,16 @@ class Inventory(object):
         for new_path, new_entry in sorted((np, e) for op, np, f, e in
                                           delta if np is not None):
             if new_entry.kind == 'directory':
-                new_entry.children = children.get(new_entry.file_id, {})
+                # Pop the child which to allow detection of children whose
+                # parents were deleted and which were not reattached to a new
+                # parent.
+                new_entry.children = children.pop(new_entry.file_id, {})
             self.add(new_entry)
+        if len(children):
+            # Get the parent id that was deleted
+            parent_id, children = children.popitem()
+            raise errors.InconsistentDelta("<deleted>", parent_id,
+                "The file id was deleted but its children were not deleted.")
 
     def _set_root(self, ie):
         self.root = ie
@@ -948,6 +850,7 @@ class Inventory(object):
         if self.root is None:
             return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
         for path, entry in entries:
@@ -1173,7 +1076,6 @@ class Inventory(object):
                                          self._byid[entry.file_id])
 
         if entry.parent_id is None:
-            assert self.root is None and len(self._byid) == 0
             self.root = entry
         else:
             try:
@@ -1225,10 +1127,6 @@ class Inventory(object):
         False
         """
         ie = self[file_id]
-
-        assert ie.parent_id is None or \
-            self[ie.parent_id].children[ie.name] == ie
-        
         del self._byid[file_id]
         if ie.parent_id is not None:
             del self[ie.parent_id].children[ie.name]
@@ -1322,8 +1220,6 @@ class Inventory(object):
                 if children is None:
                     return None
                 cie = children[f]
-                assert cie.name == f
-                assert cie.parent_id == parent.file_id
                 parent = cie
             except KeyError:
                 # or raise an error?

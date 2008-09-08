@@ -179,12 +179,13 @@ class Option(object):
         self.type = type
         self._short_name = short_name
         if type is None:
-            assert argname is None
+            if argname:
+                raise ValueError('argname not valid for booleans')
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
         if param_name is None:
-            self._param_name = self.name
+            self._param_name = self.name.replace('-', '_')
         else:
             self._param_name = param_name
         self.custom_callback = custom_callback
@@ -209,22 +210,22 @@ class Option(object):
             option_strings.append('-%s' % short_name)
         optargfn = self.type
         if optargfn is None:
-            parser.add_option(action='callback', 
-                              callback=self._optparse_bool_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_bool_callback,
                               callback_args=(True,),
                               help=self.help,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
-            parser.add_option(action='callback', 
-                              callback=self._optparse_bool_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_bool_callback,
                               callback_args=(False,),
                               help=optparse.SUPPRESS_HELP, *negation_strings)
         else:
-            parser.add_option(action='callback', 
-                              callback=self._optparse_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_callback,
                               type='string', metavar=self.argname.upper(),
                               help=self.help,
-                              default=OptionParser.DEFAULT_VALUE, 
+                              default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
@@ -359,6 +360,10 @@ class RegistryOption(Option):
         for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
+            if not value_switches:
+                help = help + '  "' + name + '": ' + switch_help
+                if not help.endswith("."):
+                    help = help + "."
         return RegistryOption(name_, help, reg, title=title,
             value_switches=value_switches, enum_switch=enum_switch)
 

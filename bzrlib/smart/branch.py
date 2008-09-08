@@ -76,12 +76,17 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
     
     def do_with_branch(self, branch):
-        """Return the content of branch.control_files.get('branch.conf').
+        """Return the content of branch.conf
         
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
+        # This was at one time called by RemoteBranchLockableFiles
+        # intercepting access to this file; as of 1.5 it is not called by the
+        # client but retained for compatibility.  It may be called again to
+        # allow the client to get the configuration without needing vfs
+        # access.
         try:
-            content = branch.control_files.get('branch.conf').read()
+            content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
@@ -110,9 +115,24 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
 
 
-class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
+class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
+    """Base class for handling common branch request logic for requests that
+    update the branch tip.
+    """
+
+    def do_with_locked_branch(self, branch, *args):
+        try:
+            return self.do_tip_change_with_locked_branch(branch, *args)
+        except errors.TipChangeRejected, e:
+            msg = e.msg
+            if isinstance(msg, unicode):
+                msg = msg.encode('utf-8')
+            return FailedSmartServerResponse(('TipChangeRejected', msg))
+
+
+class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
     
-    def do_with_locked_branch(self, branch, new_last_revision_id):
+    def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
         if new_last_revision_id == 'null:':
             branch.set_revision_history([])
         else:
@@ -120,6 +140,71 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
                 return FailedSmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
             branch.generate_revision_history(new_last_revision_id)
+        return SuccessfulSmartServerResponse(('ok',))
+
+
+class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
+    
+    def do_tip_change_with_locked_branch(self, branch, new_last_revision_id,
+            allow_divergence, allow_overwrite_descendant):
+        """Set the last revision of the branch.
+
+        New in 1.6.
+        
+        :param new_last_revision_id: the revision ID to set as the last
+            revision of the branch.
+        :param allow_divergence: A flag.  If non-zero, change the revision ID
+            even if the new_last_revision_id's ancestry has diverged from the
+            current last revision.  If zero, a 'Diverged' error will be
+            returned if new_last_revision_id is not a descendant of the current
+            last revision.
+        :param allow_overwrite_descendant:  A flag.  If zero and
+            new_last_revision_id is not a descendant of the current last
+            revision, then the last revision will not be changed.  If non-zero
+            and there is no divergence, then the last revision is always
+            changed.
+
+        :returns: on success, a tuple of ('ok', revno, revision_id), where
+            revno and revision_id are the new values of the current last
+            revision info.  The revision_id might be different to the
+            new_last_revision_id if allow_overwrite_descendant was not set.
+        """
+        do_not_overwrite_descendant = not allow_overwrite_descendant
+        try:
+            last_revno, last_rev = branch.last_revision_info()
+            graph = branch.repository.get_graph()
+            if not allow_divergence or do_not_overwrite_descendant:
+                relation = branch._revision_relations(
+                    last_rev, new_last_revision_id, graph)
+                if relation == 'diverged' and not allow_divergence:
+                    return FailedSmartServerResponse(('Diverged',))
+                if relation == 'a_descends_from_b' and do_not_overwrite_descendant:
+                    return SuccessfulSmartServerResponse(
+                        ('ok', last_revno, last_rev))
+            new_revno = graph.find_distance_to_null(
+                new_last_revision_id, [(last_rev, last_revno)])
+            branch.set_last_revision_info(new_revno, new_last_revision_id)
+        except errors.GhostRevisionsHaveNoRevno:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', new_last_revision_id))
+        return SuccessfulSmartServerResponse(
+            ('ok', new_revno, new_last_revision_id))
+
+
+class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
+    """Branch.set_last_revision_info.  Sets the revno and the revision ID of
+    the specified branch.
+
+    New in bzrlib 1.4.
+    """
+    
+    def do_tip_change_with_locked_branch(self, branch, new_revno,
+            new_last_revision_id):
+        try:
+            branch.set_last_revision_info(int(new_revno), new_last_revision_id)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', new_last_revision_id))
         return SuccessfulSmartServerResponse(('ok',))
 
 

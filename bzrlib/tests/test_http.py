@@ -34,9 +34,11 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     osutils,
+    remote as _mod_remote,
     tests,
     transport,
     ui,
@@ -1667,6 +1669,13 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         return http_utils.HTTPServerWithSmarts(
             protocol_version=self._protocol_version)
 
+    def test_open_bzrdir(self):
+        branch = self.make_branch('relpath')
+        http_server = self.get_readonly_server()
+        url = http_server.get_url() + 'relpath'
+        bd = bzrdir.BzrDir.open(url)
+        self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
+
     def test_bulk_data(self):
         # We should be able to send and receive bulk data in a single message.
         # The 'readv' command in the smart protocol both sends and receives
@@ -1718,4 +1727,25 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         expected_end_of_response = '\r\n\r\nok\x012\n'
         self.assertEndsWith(response, expected_end_of_response)
 
+
+class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
+    """No smart server here request handler."""
+
+    def do_POST(self):
+        self.send_error(403, "Forbidden")
+
+
+class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
+    """Test smart client behaviour against an http server without smarts."""
+
+    _req_handler_class = ForbiddenRequestHandler
+
+    def test_probe_smart_server(self):
+        """Test error handling against server refusing smart requests."""
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # No need to build a valid smart request here, the server will not even
+        # try to interpret it.
+        self.assertRaises(errors.SmartProtocolError,
+                          t.send_http_smart_request, 'whatever')
 

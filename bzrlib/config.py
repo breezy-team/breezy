@@ -152,21 +152,9 @@ class Config(object):
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
+        _registry = mail_client.mail_client_registry
         try:
-            mail_client_class = {
-                None: mail_client.DefaultMail,
-                # Specific clients
-                'evolution': mail_client.Evolution,
-                'kmail': mail_client.KMail,
-                'mutt': mail_client.Mutt,
-                'thunderbird': mail_client.Thunderbird,
-                # Generic options
-                'default': mail_client.DefaultMail,
-                'editor': mail_client.Editor,
-                'mapi': mail_client.MAPIClient,
-                'emacs-mailmode': mail_client.EmacsMailMode,
-                'xdg-email': mail_client.XDGEmail,
-            }[selected_client]
+            mail_client_class = _registry.get(selected_client)
         except KeyError:
             raise errors.UnknownMailClient(selected_client)
         return mail_client_class(self)
@@ -445,13 +433,36 @@ class GlobalConfig(IniBasedConfig):
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
+        self._set_option(option, value, 'DEFAULT')
+
+    def get_aliases(self):
+        """Return the aliases section."""
+        if 'ALIASES' in self._get_parser():
+            return self._get_parser()['ALIASES']
+        else:
+            return {}
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the configuration."""
+        self._set_option(alias_name, alias_command, 'ALIASES')
+
+    def unset_alias(self, alias_name):
+        """Unset an existing alias."""
+        aliases = self._get_parser().get('ALIASES')
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
+        del aliases[alias_name]
+        self._write_config_file()
+
+    def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if 'DEFAULT' not in self._get_parser():
-            self._get_parser()['DEFAULT'] = {}
-        self._get_parser()['DEFAULT'][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
+        self._write_config_file()
+
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
@@ -575,9 +586,11 @@ class LocationConfig(IniBasedConfig):
 
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
-        assert store in [STORE_LOCATION,
+        if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
-                         STORE_LOCATION_APPENDPATH], 'bad storage policy'
+                         STORE_LOCATION_APPENDPATH]:
+            raise ValueError('bad storage policy %r for %r' %
+                (store, option))
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
@@ -644,12 +657,11 @@ class BranchConfig(Config):
     def _get_user_id(self):
         """Return the full user id for the branch.
     
-        e.g. "John Hacker <jhacker@foo.org>"
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email") 
-                    .read()
+            return (self.branch._transport.get_bytes("email")
                     .decode(osutils.get_user_encoding())
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -897,32 +909,24 @@ def extract_email_address(e):
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+
     def __init__(self, branch):
+        # XXX: Really this should be asking the branch for its configuration
+        # data, rather than relying on a Transport, so that it can work 
+        # more cleanly with a RemoteBranch that has no transport.
+        self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
         if file is not None:
             return IniBasedConfig._get_parser(file)
-        return self._get_config()
-
-    def _get_config(self):
-        try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
-                            encoding='utf-8')
-        except errors.NoSuchFile:
-            obj = ConfigObj(encoding='utf=8')
-        return obj
+        return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
         self.branch.lock_read()
         try:
-            obj = self._get_config()
-            try:
-                if section is not None:
-                    obj = obj[section]
-                result = obj[name]
-            except KeyError:
-                result = default
+            return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
         return result
@@ -931,20 +935,7 @@ class TreeConfig(IniBasedConfig):
         """Set a per-branch configuration option"""
         self.branch.lock_write()
         try:
-            cfg_obj = self._get_config()
-            if section is None:
-                obj = cfg_obj
-            else:
-                try:
-                    obj = cfg_obj[section]
-                except KeyError:
-                    cfg_obj[section] = {}
-                    obj = cfg_obj[section]
-            obj[name] = value
-            out_file = StringIO()
-            cfg_obj.write(out_file)
-            out_file.seek(0)
-            self.branch.control_files.put('branch.conf', out_file)
+            self._config.set_option(value, name, section)
         finally:
             self.branch.unlock()
 
@@ -1022,6 +1013,9 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
+            if type(auth_def) is not configobj.Section:
+                raise ValueError("%s defined outside a section" % auth_def_name)
+
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ['scheme', 'host', 'user', 'path'])
 
@@ -1059,7 +1053,8 @@ class AuthenticationConfig(object):
                 # Can't find a user
                 continue
             credentials = dict(name=auth_def_name,
-                               user=a_user, password=auth_def['password'],
+                               user=a_user,
+                               password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
@@ -1114,12 +1109,17 @@ class AuthenticationConfig(object):
         credentials = self.get_credentials(scheme, host, port, user, path)
         if credentials is not None:
             password = credentials['password']
+            if password is not None and scheme is 'ssh':
+                trace.warning('password ignored in section [%s],'
+                              ' use an ssh agent instead'
+                              % credentials['name'])
+                password = None
         else:
             password = None
         # Prompt user only if we could't find a password
         if password is None:
             if prompt is None:
-                # Create a default prompt suitable for most of the cases
+                # Create a default prompt suitable for most cases
                 prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
@@ -1132,3 +1132,93 @@ class AuthenticationConfig(object):
 
     def decode_password(self, credentials, encoding):
         return credentials
+
+
+class BzrDirConfig(object):
+
+    def __init__(self, transport):
+        self._config = TransportConfig(transport, 'control.conf')
+
+    def set_default_stack_on(self, value):
+        """Set the default stacking location.
+
+        It may be set to a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if value is None:
+            self._config.set_option('', 'default_stack_on')
+        else:
+            self._config.set_option(value, 'default_stack_on')
+
+    def get_default_stack_on(self):
+        """Return the default stacking location.
+
+        This will either be a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        value = self._config.get_option('default_stack_on')
+        if value == '':
+            value = None
+        return value
+
+
+class TransportConfig(object):
+    """A Config that reads/writes a config file on a Transport.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section.  Assigning meaning to the these
+    values is done at higher levels like TreeConfig.
+    """
+
+    def __init__(self, transport, filename):
+        self._transport = transport
+        self._filename = filename
+
+    def get_option(self, name, section=None, default=None):
+        """Return the value associated with a named option.
+
+        :param name: The name of the value
+        :param section: The section the option is in (if any)
+        :param default: The value to return if the value is not set
+        :return: The value or default value
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            section_obj = configobj
+        else:
+            try:
+                section_obj = configobj[section]
+            except KeyError:
+                return default
+        return section_obj.get(name, default)
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            configobj[name] = value
+        else:
+            configobj.setdefault(section, {})[name] = value
+        self._set_configobj(configobj)
+
+    def _get_configobj(self):
+        try:
+            return ConfigObj(self._transport.get(self._filename),
+                             encoding='utf-8')
+        except errors.NoSuchFile:
+            return ConfigObj(encoding='utf-8')
+
+    def _set_configobj(self, configobj):
+        out_file = StringIO()
+        configobj.write(out_file)
+        out_file.seek(0)
+        self._transport.put_file(self._filename, out_file)

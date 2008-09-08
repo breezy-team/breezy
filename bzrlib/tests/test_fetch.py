@@ -24,13 +24,11 @@ from bzrlib import (
     errors,
     merge,
     repository,
+    versionedfile,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -149,25 +147,35 @@ class TestFetch(TestCaseWithTransport):
         branch = self.make_branch('branch', format=knit2_format)
         branch.pull(tree.branch, stop_revision='rev1')
         repo = branch.repository
-        root_knit = repo.weave_store.get_weave('tree-root',
-                                                repo.get_transaction())
-        # Make sure fetch retrieved only what we requested
-        self.assertTrue('rev1' in root_knit)
-        self.assertTrue('rev2' not in root_knit)
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev1'):()},
+                repo.texts.get_parent_map(
+                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
         branch.pull(tree.branch)
-        root_knit = repo.weave_store.get_weave('tree-root',
-                                                repo.get_transaction())
         # Make sure that the next revision in the root knit was retrieved,
         # even though the text, name, parent_id, etc., were unchanged.
-        self.assertTrue('rev2' in root_knit)
+        repo.lock_read()
+        try:
+            # Make sure fetch retrieved only what we requested
+            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
+                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+        finally:
+            repo.unlock()
 
     def test_fetch_incompatible(self):
         knit_tree = self.make_branch_and_tree('knit', format='knit')
         knit3_tree = self.make_branch_and_tree('knit3',
             format='dirstate-with-subtree')
         knit3_tree.commit('blah')
-        self.assertRaises(errors.IncompatibleRepositories,
-                          knit_tree.branch.fetch, knit3_tree.branch)
+        e = self.assertRaises(errors.IncompatibleRepositories,
+                              knit_tree.branch.fetch, knit3_tree.branch)
+        self.assertContainsRe(str(e),
+            r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
+            r"different rich-root support")
 
 
 class TestMergeFetch(TestCaseWithTransport):
@@ -285,6 +293,8 @@ class TestHttpFetch(TestCaseWithWebserver):
         # unfortunately this log entry is branch format specific. We could 
         # factor out the 'what files does this format use' to a method on the 
         # repository, which would let us to this generically. RBC 20060419
+        # RBC 20080408: Or perhaps we can assert that no files are fully read
+        # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
         self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
@@ -311,9 +321,190 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.log('\n'.join(http_logs))
         self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
+        self.assertEqual(1, self._count_log_matches('repository/format',
+            http_logs))
         self.assertTrue(1 >= self._count_log_matches('revision-history',
                                                      http_logs))
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class TestKnitToPackFetch(TestCaseWithTransport):
+
+    def find_get_record_stream(self, calls):
+        """In a list of calls, find 'get_record_stream' calls.
+
+        This also ensures that there is only one get_record_stream call.
+        """
+        get_record_call = None
+        for call in calls:
+            if call[0] == 'get_record_stream':
+                self.assertIs(None, get_record_call,
+                              "there should only be one call to"
+                              " get_record_stream")
+                get_record_call = call
+        self.assertIsNot(None, get_record_call,
+                         "there should be exactly one call to "
+                         " get_record_stream")
+        return get_record_call
+
+    def test_fetch_with_deltas_no_delta_closure(self):
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        source = tree.branch.repository
+        source.texts = versionedfile.RecordingVersionedFilesDecorator(
+                        source.texts)
+        source.signatures = versionedfile.RecordingVersionedFilesDecorator(
+                        source.signatures)
+        source.revisions = versionedfile.RecordingVersionedFilesDecorator(
+                        source.revisions)
+        source.inventories = versionedfile.RecordingVersionedFilesDecorator(
+                        source.inventories)
+        # precondition
+        self.assertTrue(target._fetch_uses_deltas)
+        target.fetch(source, revision_id='rev-one')
+        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.texts.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.inventories.calls))
+        # Because of bugs in the old fetch code, revisions could accidentally
+        # have deltas present in knits. However, it was never intended, so we
+        # always for include_delta_closure=True, to make sure we get fulltexts.
+        # bug #261339
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.revisions.calls))
+        # XXX: Signatures is special, and slightly broken. The
+        # standard item_keys_introduced_by actually does a lookup for every
+        # signature to see if it exists, rather than waiting to do them all at
+        # once at the end. The fetch code then does an all-at-once and just
+        # allows for some of them to be missing.
+        # So we know there will be extra calls, but the *last* one is the one
+        # we care about.
+        signature_calls = source.signatures.calls[-1:]
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(signature_calls))
+
+    def test_fetch_no_deltas_with_delta_closure(self):
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        source = tree.branch.repository
+        source.texts = versionedfile.RecordingVersionedFilesDecorator(
+                        source.texts)
+        source.signatures = versionedfile.RecordingVersionedFilesDecorator(
+                        source.signatures)
+        source.revisions = versionedfile.RecordingVersionedFilesDecorator(
+                        source.revisions)
+        source.inventories = versionedfile.RecordingVersionedFilesDecorator(
+                        source.inventories)
+        target._fetch_uses_deltas = False
+        target.fetch(source, revision_id='rev-one')
+        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.texts.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.inventories.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.revisions.calls))
+        # XXX: Signatures is special, and slightly broken. The
+        # standard item_keys_introduced_by actually does a lookup for every
+        # signature to see if it exists, rather than waiting to do them all at
+        # once at the end. The fetch code then does an all-at-once and just
+        # allows for some of them to be missing.
+        # So we know there will be extra calls, but the *last* one is the one
+        # we care about.
+        signature_calls = source.signatures.calls[-1:]
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(signature_calls))
+
+
+class Test1To2Fetch(TestCaseWithTransport):
+    """Tests for Model1To2 failure modes"""
+
+    def make_tree_and_repo(self):
+        self.tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        self.repo = self.make_repository('rich-repo', format='rich-root-pack')
+        self.repo.lock_write()
+        self.addCleanup(self.repo.unlock)
+
+    def do_fetch_order_test(self, first, second):
+        """Test that fetch works no matter what the set order of revision is.
+
+        This test depends on the order of items in a set, which is
+        implementation-dependant, so we test A, B and then B, A.
+        """
+        self.make_tree_and_repo()
+        self.tree.commit('Commit 1', rev_id=first)
+        self.tree.commit('Commit 2', rev_id=second)
+        self.repo.fetch(self.tree.branch.repository, second)
+
+    def test_fetch_order_AB(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('A', 'B')
+
+    def test_fetch_order_BA(self):
+        """See do_fetch_order_test"""
+        self.do_fetch_order_test('B', 'A')
+
+    def get_parents(self, file_id, revision_id):
+        self.repo.lock_read()
+        try:
+            parent_map = self.repo.texts.get_parent_map([(file_id, revision_id)])
+            return parent_map[(file_id, revision_id)]
+        finally:
+            self.repo.unlock()
+
+    def test_fetch_ghosts(self):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='left-parent')
+        self.tree.add_parent_tree_id('ghost-parent')
+        fork = self.tree.bzrdir.sprout('fork', 'null:').open_workingtree()
+        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        self.tree.branch.repository.fetch(fork.branch.repository,
+                                     'not-ghost-parent')
+        self.tree.add_parent_tree_id('not-ghost-parent')
+        self.tree.commit('second commit', rev_id='second-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+        root_id = self.tree.get_root_id()
+        self.assertEqual(
+            ((root_id, 'left-parent'), (root_id, 'ghost-parent'),
+             (root_id, 'not-ghost-parent')),
+            self.get_parents(root_id, 'second-id'))
+
+    def make_two_commits(self, change_root, fetch_twice):
+        self.make_tree_and_repo()
+        self.tree.commit('first commit', rev_id='first-id')
+        if change_root:
+            self.tree.set_root_id('unique-id')
+        self.tree.commit('second commit', rev_id='second-id')
+        if fetch_twice:
+            self.repo.fetch(self.tree.branch.repository, 'first-id')
+        self.repo.fetch(self.tree.branch.repository, 'second-id')
+
+    def test_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=False)
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetch_changed_root(self):
+        self.make_two_commits(change_root=True, fetch_twice=True)
+        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+
+    def test_two_fetches(self):
+        self.make_two_commits(change_root=False, fetch_twice=True)
+        self.assertEqual((('TREE_ROOT', 'first-id'),),
+            self.get_parents('TREE_ROOT', 'second-id'))

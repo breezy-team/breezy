@@ -25,11 +25,9 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.deprecated_graph import Graph
-from bzrlib.revision import (find_present_ancestors, combined_graph,
-                             common_ancestor,
-                             is_ancestor, MultipleRevisionSources,
+from bzrlib.revision import (find_present_ancestors,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import one_zero, one_three
+from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -126,39 +124,6 @@ class TestIsAncestor(TestCaseWithTransport):
                 result = sorted(branch.repository.get_ancestry(rev_id))
                 self.assertEquals(result, [None] + sorted(anc))
     
-    
-    def test_is_ancestor(self):
-        """Test checking whether a revision is an ancestor of another revision"""
-        br1, br2 = make_branches(self)
-        revisions = br1.revision_history()
-        revisions_2 = br2.revision_history()
-        sources = br1
-
-        br1.lock_read()
-        br2.lock_read()
-        self.addCleanup(br1.unlock)
-        br2.lock_read()
-        self.addCleanup(br2.unlock)
-
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, revisions[0], revisions[0], br1))
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, revisions[1], revisions[0], sources))
-        self.assertFalse(self.applyDeprecated(one_zero,
-                         is_ancestor, revisions[0], revisions[1], sources))
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, revisions_2[3], revisions[0], sources))
-        # disabled mbp 20050914, doesn't seem to happen anymore
-        ## self.assertRaises(NoSuchRevision, is_ancestor, revisions_2[3],
-        ##                  revisions[0], br1)
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, revisions[3], revisions_2[4], sources))
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, revisions[3], revisions_2[4], br1))
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, revisions[3], revisions_2[3], sources))
-        ## self.assert_(not is_ancestor(revisions[3], revisions_2[3], br1))
-
 
 class TestIntermediateRevisions(TestCaseWithTransport):
 
@@ -176,12 +141,6 @@ class TestIntermediateRevisions(TestCaseWithTransport):
 
         wt2.merge_from_branch(self.br1)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
-
-        from bzrlib.revision import MultipleRevisionSources
-        self.sources = self.applyDeprecated(one_three,
-                        MultipleRevisionSources, self.br1.repository,
-                                                 self.br2.repository)
-
 
 
 class MockRevisionSource(object):
@@ -202,79 +161,6 @@ class MockRevisionSource(object):
 class TestCommonAncestor(TestCaseWithTransport):
     """Test checking whether a revision is an ancestor of another revision"""
 
-    def assertCommonAncestorEqual(self, expected, sources, rev_a, rev_b):
-        self.assertEqual(expected,
-                         self.applyDeprecated(one_three, 
-                         common_ancestor, rev_a, rev_b, sources))
-
-    def assertCommonAncestorIn(self, possible, sources, rev_a, rev_b):
-        """assert that we pick one among multiple possible common ancestors"""
-        self.assertTrue(self.applyDeprecated(one_three, 
-                            common_ancestor, rev_a, rev_b, sources)
-                        in possible)
-
-    def test_common_ancestor(self):
-        """Pick a reasonable merge base"""
-        br1, br2 = make_branches(self)
-        revisions = br1.revision_history()
-        revisions_2 = br2.revision_history()
-        sources = self.applyDeprecated(one_three, 
-                    MultipleRevisionSources, br1.repository, br2.repository)
-        expected_ancestors_list = {revisions[3]:(0, 0), 
-                                   revisions[2]:(1, 1),
-                                   revisions_2[4]:(2, 1), 
-                                   revisions[1]:(3, 2),
-                                   revisions_2[3]:(4, 2),
-                                   revisions[0]:(5, 3) }
-        ancestors_list = find_present_ancestors(revisions[3], sources)
-        self.assertEquals(len(expected_ancestors_list), len(ancestors_list))
-        for key, value in expected_ancestors_list.iteritems():
-            self.assertEqual(ancestors_list[key], value, 
-                              "key %r, %r != %r" % (key, ancestors_list[key],
-                                                    value))
-        self.assertCommonAncestorEqual(revisions[0], sources,
-                                       revisions[0], revisions[0])
-        self.assertCommonAncestorEqual(revisions[1], sources,
-                                       revisions[1], revisions[2])
-        self.assertCommonAncestorEqual(revisions[1], sources,
-                                       revisions[1], revisions[1])
-        self.assertCommonAncestorEqual(revisions[2], sources,
-                                       revisions[2], revisions_2[4])
-        self.assertCommonAncestorEqual(revisions_2[4], sources,
-                                       revisions[3], revisions_2[4])
-        self.assertCommonAncestorEqual(revisions_2[4], sources,
-                                       revisions[4], revisions_2[5])
-        self.assertCommonAncestorIn((revisions[4], revisions_2[5]), sources,
-                                     revisions[5], revisions_2[6])
-        self.assertCommonAncestorIn((revisions[4], revisions_2[5]), sources,
-                                     revisions_2[6], revisions[5])
-        self.assertCommonAncestorEqual(None, sources,
-                                       None, revisions[5])
-        self.assertCommonAncestorEqual(NULL_REVISION, sources,
-                                       NULL_REVISION, NULL_REVISION)
-        self.assertCommonAncestorEqual(NULL_REVISION, sources,
-                                       revisions[0], NULL_REVISION)
-        self.assertCommonAncestorEqual(NULL_REVISION, sources,
-                                       NULL_REVISION, revisions[0])
-
-    def test_combined(self):
-        """combined_graph
-        Ensure it's not order-sensitive
-        """
-        br1, br2 = make_branches(self)
-        source = self.applyDeprecated(one_three,
-                    MultipleRevisionSources, br1.repository, br2.repository)
-        combined_1 = self.applyDeprecated(one_three,
-                        combined_graph, br1.last_revision(),
-                                        br2.last_revision(), source)
-        combined_2 = self.applyDeprecated(one_three,
-                        combined_graph, br2.last_revision(),
-                                        br1.last_revision(), source)
-        self.assertEquals(combined_1[1], combined_2[1])
-        self.assertEquals(combined_1[2], combined_2[2])
-        self.assertEquals(combined_1[3], combined_2[3])
-        self.assertEquals(combined_1, combined_2)
-
     def test_get_history(self):
         # TODO: test ghosts on the left hand branch's impact
         # TODO: test ghosts on all parents, we should get some
@@ -293,48 +179,6 @@ class TestCommonAncestor(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision('3')
         history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, '1', '2' ,'3'], history)
-
-    def test_common_ancestor_rootless_graph(self):
-        # common_ancestor on a graph with no reachable roots - only
-        # ghosts - should still return a useful value.
-        graph = Graph()
-        # add a ghost node which would be a root if it wasn't a ghost.
-        graph.add_ghost('a_ghost')
-        # add a normal commit on top of that
-        graph.add_node('rev1', ['a_ghost'])
-        # add a left-branch revision
-        graph.add_node('left', ['rev1'])
-        # add a right-branch revision
-        graph.add_node('right', ['rev1'])
-        source = MockRevisionSource(graph)
-        self.assertCommonAncestorEqual('rev1', source, 'left', 'right')
-
-
-class TestMultipleRevisionSources(TestCaseWithTransport):
-    """Tests for the MultipleRevisionSources adapter."""
-
-    def test_get_revision_graph_merges_ghosts(self):
-        # when we ask for the revision graph for B, which
-        # is in repo 1 with a ghost of A, and which is not
-        # in repo 2, which has A, the revision_graph()
-        # should return A and B both.
-        tree_1 = self.make_branch_and_tree('1')
-        tree_1.set_parent_ids(['A'], allow_leftmost_as_ghost=True)
-        tree_1.commit('foo', rev_id='B', allow_pointless=True)
-        tree_2 = self.make_branch_and_tree('2')
-        tree_2.commit('bar', rev_id='A', allow_pointless=True)
-        source = self.applyDeprecated(one_three,
-                    MultipleRevisionSources, tree_1.branch.repository,
-                                             tree_2.branch.repository)
-        # get_revision_graph calls the deprecated
-        # get_revision_graph_with_ghosts once for each repository.
-        expected_warning = symbol_versioning.deprecation_string(
-            tree_1.branch.repository.get_revision_graph_with_ghosts,
-            one_three)
-        rev_graph = self.callDeprecated([expected_warning, expected_warning],
-                        source.get_revision_graph, 'B')
-        self.assertEqual({'B':['A'],
-                          'A':[]}, rev_graph)
 
 
 class TestReservedId(TestCase):

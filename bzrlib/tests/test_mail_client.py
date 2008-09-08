@@ -71,27 +71,34 @@ class TestThunderbird(tests.TestCase):
                 'Command-line item %r is unicode!' % item)
 
 
-class TestEmacsMailMode(tests.TestCase):
+class TestEmacsMail(tests.TestCase):
 
     def test_commandline(self):
-        eclient = mail_client.EmacsMailMode(None)
-        commandline = eclient._get_compose_commandline(None, None, 'file%')
-        self.assertEqual(['--eval', '(mail nil nil nil)',
-                          '(mail-text)', '(newline)',
-                          '(attach "file%")'], commandline)
+        eclient = mail_client.EmacsMail(None)
+
+        commandline = eclient._get_compose_commandline(None, 'Hi there!', None)
+        self.assertEqual(['--eval', '(compose-mail nil "Hi there!")'],
+                         commandline)
 
         commandline = eclient._get_compose_commandline('jrandom@example.org',
-                                                     'Hi there!', None)
-        self.assertEqual(['--eval', '(mail nil "jrandom@example.org" "Hi there!")',
-                          '(mail-text)', '(newline)'], commandline)
+                                                       'Hi there!', None)
+        self.assertEqual(['--eval',
+                          '(compose-mail "jrandom@example.org" "Hi there!")'],
+                         commandline)
+
+        # We won't be able to know the temporary file name at this stage
+        # so we can't raise an assertion with assertEqual
+        cmdline = eclient._get_compose_commandline(None, None, 'file%')
+        commandline = ' '.join(cmdline)
+        self.assertContainsRe(commandline, '--eval')
+        self.assertContainsRe(commandline, '(compose-mail nil nil)')
+        self.assertContainsRe(commandline, '(load .*)')
+        self.assertContainsRe(commandline, '(bzr-add-mime-att \"file%\")')
 
     def test_commandline_is_8bit(self):
-        eclient = mail_client.EmacsMailMode(None)
+        eclient = mail_client.EmacsMail(None)
         commandline = eclient._get_compose_commandline(u'jrandom@example.org',
             u'Hi there!', u'file%')
-        self.assertEqual(['--eval', '(mail nil "jrandom@example.org" "Hi there!")',
-                          '(mail-text)', '(newline)',
-                          '(attach "file%")'], commandline)
         for item in commandline:
             self.assertFalse(isinstance(item, unicode),
                 'Command-line item %r is unicode!' % item)
