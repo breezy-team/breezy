@@ -43,16 +43,12 @@ from bzrlib import (
     errors,
     option,
     osutils,
-    registry,
     trace,
     win32utils,
     )
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_method,
-    )
+from bzrlib import registry
 # Compatibility
 from bzrlib.option import Option
 
