@@ -18,7 +18,6 @@
 # across to run on the server.
 
 import bz2
-from cStringIO import StringIO
 
 from bzrlib import (
     branch,
@@ -32,19 +31,13 @@ from bzrlib import (
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
-from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
@@ -554,7 +547,7 @@ class RemoteRepository(object):
             if _skip_rpc:
                 if self._lock_token is not None:
                     if token != self._lock_token:
-                        raise TokenMismatch(token, self._lock_token)
+                        raise errors.TokenMismatch(token, self._lock_token)
                 self._lock_token = token
             else:
                 self._lock_token = self._remote_lock_write(token)
