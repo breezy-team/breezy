@@ -34,7 +34,6 @@ from bzrlib import (
     config,
     errors,
     globbing,
-    ignores,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -56,7 +55,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet, info
+from bzrlib.trace import mutter, note, warning, is_quiet
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -2679,7 +2678,6 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None):
-        import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
