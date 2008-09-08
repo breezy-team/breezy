@@ -918,6 +918,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 class TestIllegalPaths(TestCaseWithWorkingTree):
 
     def test_bad_fs_path(self):
+        if osutils.normalizes_filenames():
+            # You *can't* create an illegal filename on OSX.
+            raise tests.TestNotApplicable('OSX normalizes filenames')
         self.requireFeature(tests.UTF8Filesystem)
         # We require a UTF8 filesystem, because otherwise we would need to get
         # tricky to figure out how to create an illegal filename.
