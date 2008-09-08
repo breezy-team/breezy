@@ -27,7 +27,6 @@ objects returned.
 
 # TODO: Move old formats into a plugin to make this file smaller.
 
-from cStringIO import StringIO
 import os
 import sys
 
@@ -35,7 +34,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from stat import S_ISDIR
 import textwrap
-from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -45,10 +43,8 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
-    registry,
     remote,
     revision as _mod_revision,
-    symbol_versioning,
     ui,
     urlutils,
     versionedfile,
@@ -59,17 +55,15 @@ from bzrlib import (
     xml5,
     )
 from bzrlib.osutils import (
-    sha_strings,
     sha_string,
     )
-from bzrlib.repository import Repository
 from bzrlib.smart.client import _SmartClient
-from bzrlib.smart import protocol
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
+    local,
     )
 from bzrlib.weave import Weave
 """)
@@ -78,10 +72,10 @@ from bzrlib.trace import (
     mutter,
     note,
     )
-from bzrlib.transport.local import LocalTransport
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_method,
+
+from bzrlib import (
+    registry,
+    symbol_versioning,
     )
 
 
@@ -474,7 +468,7 @@ class BzrDir(object):
         if force_new_tree:
             # check for non local urls
             t = get_transport(base, possible_transports)
-            if not isinstance(t, LocalTransport):
+            if not isinstance(t, local.LocalTransport):
                 raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create(base, format, possible_transports)
         repo = bzrdir._find_or_create_repository(force_new_repo)
@@ -502,7 +496,7 @@ class BzrDir(object):
         :return: The WorkingTree object.
         """
         t = get_transport(base)
-        if not isinstance(t, LocalTransport):
+        if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create_branch_and_repo(base,
                                                force_new_repo=True,
@@ -1135,7 +1129,7 @@ class BzrDir(object):
             result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
-        if isinstance(target_transport, LocalTransport) and (
+        if isinstance(target_transport, local.LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink)
@@ -1696,7 +1690,7 @@ class BzrDirFormat(object):
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
-        if sys.platform == 'win32' and isinstance(transport, LocalTransport):
+        if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
@@ -2112,7 +2106,7 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir = to_convert
         self.pb = pb
         self.pb.note('starting upgrade from format 4 to 5')
-        if isinstance(self.bzrdir.transport, LocalTransport):
+        if isinstance(self.bzrdir.transport, local.LocalTransport):
             self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
         self._convert_to_weaves()
         return BzrDir.open(self.bzrdir.root_transport.base)
