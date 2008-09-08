@@ -216,13 +216,14 @@ class TestTreeShapes(TestCaseWithTree):
 
         revision_id = u'r\xe9v-1'.encode('utf8')
         root_id = 'TREE_ROOT'
-        bar_id = u'b\xe5r-id'.encode('utf8')
-        foo_id = u'f\xf6-id'.encode('utf8')
-        baz_id = u'b\xe1z-id'.encode('utf8')
-        path_and_ids = [(u'', root_id, None),
-                        (u'b\xe5r', bar_id, root_id),
-                        (u'f\xf6', foo_id, root_id),
-                        (u'b\xe5r/b\xe1z', baz_id, bar_id),
+        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
+        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
+        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
+        path_and_ids = [(u'', root_id, None, None),
+                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id),
+                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id),
+                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+                         baz_id, bar_id, revision_id),
                        ]
         tree.lock_read()
         try:
