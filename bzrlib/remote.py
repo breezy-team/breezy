@@ -18,7 +18,6 @@
 # across to run on the server.
 
 import bz2
-from cStringIO import StringIO
 
 from bzrlib import (
     branch,
@@ -32,19 +31,13 @@ from bzrlib import (
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
-from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
@@ -323,6 +316,10 @@ class RemoteRepository(object):
         self.base = self.bzrdir.transport.base
         # Additional places to query for data.
         self._fallback_repositories = []
+        self.texts = RemoteVersionedFiles(self, 'texts')
+        self.inventories = RemoteVersionedFiles(self, 'inventories')
+        self.signatures = RemoteVersionedFiles(self, 'signatures')
+        self.revisions = RemoteVersionedFiles(self, 'revisions')
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -554,7 +551,7 @@ class RemoteRepository(object):
             if _skip_rpc:
                 if self._lock_token is not None:
                     if token != self._lock_token:
-                        raise TokenMismatch(token, self._lock_token)
+                        raise errors.TokenMismatch(token, self._lock_token)
                 self._lock_token = token
             else:
                 self._lock_token = self._remote_lock_write(token)
@@ -1071,16 +1068,6 @@ class RemoteRepository(object):
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
 
-    @property
-    def inventories(self):
-        """Decorate the real repository for now.
-
-        In the long term a full blown network facility is needed to
-        avoid creating a real repository object locally.
-        """
-        self._ensure_real()
-        return self._real_repository.inventories
-
     @needs_write_lock
     def pack(self):
         """Compress the data within the repository.
@@ -1090,46 +1077,14 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.pack()
 
-    @property
-    def revisions(self):
-        """Decorate the real repository for now.
-
-        In the short term this should become a real object to intercept graph
-        lookups.
-
-        In the long term a full blown network facility is needed.
-        """
-        self._ensure_real()
-        return self._real_repository.revisions
-
     def set_make_working_trees(self, new_value):
         self._ensure_real()
         self._real_repository.set_make_working_trees(new_value)
-
-    @property
-    def signatures(self):
-        """Decorate the real repository for now.
-
-        In the long term a full blown network facility is needed to avoid
-        creating a real repository object locally.
-        """
-        self._ensure_real()
-        return self._real_repository.signatures
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
         self._ensure_real()
         return self._real_repository.sign_revision(revision_id, gpg_strategy)
-
-    @property
-    def texts(self):
-        """Decorate the real repository for now.
-
-        In the long term a full blown network facility is needed to avoid
-        creating a real repository object locally.
-        """
-        self._ensure_real()
-        return self._real_repository.texts
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
@@ -1193,6 +1148,68 @@ class RemoteRepository(object):
         stop_keys = ' '.join(recipe[1])
         count = str(recipe[2])
         return '\n'.join((start_keys, stop_keys, count))
+
+
+from bzrlib.versionedfile import VersionedFiles
+class RemoteVersionedFiles(VersionedFiles):
+
+    def __init__(self, remote_repo, vf_name):
+        self.remote_repo = remote_repo
+        self.vf_name = vf_name
+
+    def _get_real_vf(self):
+        self.remote_repo._ensure_real()
+        return getattr(self.remote_repo._real_repository, self.vf_name)
+
+    def add_lines(self, version_id, parents, lines, parent_texts=None,
+            left_matching_blocks=None, nostore_sha=None, random_id=False,
+            check_content=True):
+        real_vf = self._get_real_vf()
+        return real_vf.add_lines(version_id, parents, lines,
+            parent_texts=parent_texts,
+            left_matching_blocks=left_matching_blocks,
+            nostore_sha=nostore_sha, random_id=random_id,
+            check_content=check_content)
+
+    def add_mpdiffs(self, records):
+        real_vf = self._get_real_vf()
+        return real_vf.add_mpdiffs(records)
+
+    def annotate(self, key):
+        real_vf = self._get_real_vf()
+        return real_vf.annotate(key)
+
+    def check(self, progress_bar=None):
+        real_vf = self._get_real_vf()
+        return real_vf.check(progress_bar=progress_bar)
+
+    def get_parent_map(self, keys):
+        real_vf = self._get_real_vf()
+        return real_vf.get_parent_map(keys)
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        real_vf = self._get_real_vf()
+        return real_vf.get_record_stream(keys, ordering, include_delta_closure)
+
+    def get_sha1s(self, keys):
+        real_vf = self._get_real_vf()
+        return real_vf.get_sha1s(keys)
+
+    def insert_record_stream(self, stream):
+        real_vf = self._get_real_vf()
+        return real_vf.insert_record_stream(stream)
+
+    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        real_vf = self._get_real_vf()
+        return real_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
+
+    def keys(self):
+        real_vf = self._get_real_vf()
+        return real_vf.keys()
+
+    def make_mpdiffs(self, keys):
+        real_vf = self._get_real_vf()
+        return real_vf.make_mpdiffs(keys)
 
 
 class RemoteBranchLockableFiles(LockableFiles):
