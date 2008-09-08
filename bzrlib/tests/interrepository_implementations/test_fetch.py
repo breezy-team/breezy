@@ -36,6 +36,9 @@ from bzrlib.tests import (
 from bzrlib.tests.interrepository_implementations import (
     TestCaseWithInterRepository,
     )
+from bzrlib.tests.interrepository_implementations.test_interrepository import (
+    check_repo_format_for_funky_id_on_win32
+    )
 
 
 class TestInterRepository(TestCaseWithInterRepository):

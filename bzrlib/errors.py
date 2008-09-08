@@ -224,6 +224,16 @@ class BzrCheckError(InternalBzrError):
         self.message = message
 
 
+class DirstateCorrupt(BzrError):
+
+    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
+
+    def __init__(self, state, msg):
+        BzrError.__init__(self)
+        self.state = state
+        self.msg = msg
+
+
 class DisabledMethod(InternalBzrError):
 
     _fmt = "The smart server method '%(class_name)s' is disabled."
@@ -774,11 +784,15 @@ class IncompatibleFormat(BzrError):
 
 class IncompatibleRepositories(BzrError):
 
-    _fmt = "Repository %(target)s is not compatible with repository"\
-        " %(source)s"
+    _fmt = "%(target)s\n" \
+            "is not compatible with\n" \
+            "%(source)s\n" \
+            "%(details)s"
 
-    def __init__(self, source, target):
-        BzrError.__init__(self, target=target, source=source)
+    def __init__(self, source, target, details=None):
+        if details is None:
+            details = "(no details)"
+        BzrError.__init__(self, target=target, source=source, details=details)
 
 
 class IncompatibleRevision(BzrError):
@@ -2381,6 +2395,19 @@ class PatchMissing(BzrError):
         self.patch_type = patch_type
 
 
+class TargetNotBranch(BzrError):
+    """A merge directive's target branch is required, but isn't a branch"""
+
+    _fmt = ("Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "%(location)s.")
+
+    def __init__(self, location):
+        BzrError.__init__(self)
+        self.location = location
+
+
 class UnsupportedInventoryKind(BzrError):
     
     _fmt = """Unsupported entry kind %(kind)s"""
@@ -2429,7 +2456,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade --dirstate-tags.")
+            " you may be able to use bzr upgrade.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -2481,6 +2508,10 @@ class UnexpectedSmartServerResponse(BzrError):
 
 
 class ErrorFromSmartServer(BzrError):
+    """An error was received from a smart server.
+
+    :seealso: UnknownErrorFromSmartServer
+    """
 
     _fmt = "Error received from smart server: %(error_tuple)r"
 
@@ -2494,6 +2525,32 @@ class ErrorFromSmartServer(BzrError):
             self.error_verb = None
         self.error_args = error_tuple[1:]
 
+
+class UnknownErrorFromSmartServer(BzrError):
+    """An ErrorFromSmartServer could not be translated into a typical bzrlib
+    error.
+
+    This is distinct from ErrorFromSmartServer so that it is possible to
+    distinguish between the following two cases:
+      - ErrorFromSmartServer was uncaught.  This is logic error in the client
+        and so should provoke a traceback to the user.
+      - ErrorFromSmartServer was caught but its error_tuple could not be
+        translated.  This is probably because the server sent us garbage, and
+        should not provoke a traceback.
+    """
+
+    _fmt = "Server sent an unexpected error: %(error_tuple)r"
+
+    internal_error = False
+
+    def __init__(self, error_from_smart_server):
+        """Constructor.
+
+        :param error_from_smart_server: An ErrorFromSmartServer instance.
+        """
+        self.error_from_smart_server = error_from_smart_server
+        self.error_tuple = error_from_smart_server.error_tuple
+        
 
 class ContainerError(BzrError):
     """Base class of container errors."""

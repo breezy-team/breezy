@@ -231,15 +231,6 @@ class Branch(object):
         """
         self.control_files.dont_leave_in_place()
 
-    @deprecated_method(deprecated_in((0, 16, 0)))
-    def abspath(self, name):
-        """Return absolute filename for something in the branch
-        
-        XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method.
-        """
-        raise NotImplementedError(self.abspath)
-
     def bind(self, other):
         """Bind the local branch the other branch.
 
@@ -576,29 +567,6 @@ class Branch(object):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
 
-    def rename_one(self, from_rel, to_rel):
-        """Rename one file.
-
-        This can change the directory or the filename or both.
-        """
-        raise NotImplementedError(self.rename_one)
-
-    def move(self, from_paths, to_name):
-        """Rename files.
-
-        to_name must exist as a versioned directory.
-
-        If to_name exists and is a directory, the files are moved into
-        it, keeping their old names.  If it is a directory, 
-
-        Note that to_name is only the last component of the new name;
-        this doesn't change the directory.
-
-        This returns a list of (from_path, to_path) pairs for each
-        entry that is moved.
-        """
-        raise NotImplementedError(self.move)
-
     def get_parent(self):
         """Return the parent location of the branch.
 
@@ -704,18 +672,20 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a new line of development from the branch, into to_bzrdir.
-        
+
+        to_bzrdir controls the branch format.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -735,7 +705,8 @@ class Branch(object):
         """
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
-        new_history = self.revision_history()
+        else:
+            new_history = self.revision_history()
         if revision_id is not None and new_history != []:
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
@@ -1519,11 +1490,6 @@ class BzrBranch(Branch):
         return self._base
 
     base = property(_get_base, doc="The URL for the root of this branch.")
-
-    @deprecated_method(deprecated_in((0, 16, 0)))
-    def abspath(self, name):
-        """See Branch.abspath."""
-        return self._transport.abspath(name)
 
     def is_locked(self):
         return self.control_files.is_locked()

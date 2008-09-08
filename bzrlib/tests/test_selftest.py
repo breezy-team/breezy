@@ -26,6 +26,7 @@ import warnings
 
 import bzrlib
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     errors,
     memorytree,
@@ -421,7 +422,7 @@ class TestTreeProviderAdapter(TestCase):
         tests = list(iter(suite))
         # XXX We should not have tests fail as we add more scenarios
         # abentley 20080412
-        self.assertEqual(5, len(tests))
+        self.assertEqual(6, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = workingtree.WorkingTreeFormat3
@@ -547,6 +548,43 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
 
+    def test_make_branch_builder(self):
+        builder = self.make_branch_builder('dir')
+        self.assertIsInstance(builder, branchbuilder.BranchBuilder)
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+
+    def test_make_branch_builder_with_format(self):
+        # Use a repo layout that doesn't conform to a 'named' layout, to ensure
+        # that the format objects are used.
+        format = bzrdir.BzrDirMetaFormat1()
+        repo_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repo_format
+        builder = self.make_branch_builder('dir', format=format)
+        the_branch = builder.get_branch()
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+        self.assertEqual(format.repository_format.__class__,
+                         the_branch.repository._format.__class__)
+        self.assertEqual(repo_format.get_format_string(),
+                         self.get_transport().get_bytes(
+                            'dir/.bzr/repository/format'))
+
+    def test_make_branch_builder_with_format_name(self):
+        builder = self.make_branch_builder('dir', format='knit')
+        the_branch = builder.get_branch()
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
+        dir_format = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(dir_format.repository_format.__class__,
+                         the_branch.repository._format.__class__)
+        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+                         self.get_transport().get_bytes(
+                            'dir/.bzr/repository/format'))
+
     def test_safety_net(self):
         """No test should modify the safety .bzr directory.
 
@@ -604,6 +642,18 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertIsDirectory('a_dir', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
+
+    def test_make_branch_builder(self):
+        builder = self.make_branch_builder('dir')
+        rev_id = builder.build_commit()
+        self.failUnlessExists('dir')
+        a_dir = bzrdir.BzrDir.open('dir')
+        self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
+        a_branch = a_dir.open_branch()
+        builder_branch = builder.get_branch()
+        self.assertEqual(a_branch.base, builder_branch.base)
+        self.assertEqual((1, rev_id), builder_branch.last_revision_info())
+        self.assertEqual((1, rev_id), a_branch.last_revision_info())
 
 
 class TestTestCaseTransports(TestCaseWithTransport):
@@ -1734,13 +1784,14 @@ class TestSelftestFiltering(TestCase):
 
     def test_condition_id_startswith(self):
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        start = klass + 'test_condition_id_starts'
-        test_names = [klass + 'test_condition_id_startswith']
+        start1 = klass + 'test_condition_id_starts'
+        start2 = klass + 'test_condition_id_in'
+        test_names = [ klass + 'test_condition_id_in_list',
+                      klass + 'test_condition_id_startswith',
+                     ]
         filtered_suite = filter_suite_by_condition(
-            self.suite, tests.condition_id_startswith(start))
-        my_pattern = 'TestSelftestFiltering.*test_condition_id_startswith'
-        re_filtered = filter_suite_by_re(self.suite, my_pattern)
-        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
+            self.suite, tests.condition_id_startswith([start1, start2]))
+        self.assertEqual(test_names, _test_ids(filtered_suite))
 
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
@@ -1799,16 +1850,19 @@ class TestSelftestFiltering(TestCase):
 
     def test_filter_suite_by_id_startswith(self):
         # By design this test may fail if another test is added whose name also
-        # begins with the start value used.
+        # begins with one of the start value used.
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        start = klass + 'test_filter_suite_by_id_starts'
-        test_list = [klass + 'test_filter_suite_by_id_startswith']
-        filtered_suite = tests.filter_suite_by_id_startswith(self.suite, start)
-        filtered_names = _test_ids(filtered_suite)
+        start1 = klass + 'test_filter_suite_by_id_starts'
+        start2 = klass + 'test_filter_suite_by_id_li'
+        test_list = [klass + 'test_filter_suite_by_id_list',
+                     klass + 'test_filter_suite_by_id_startswith',
+                     ]
+        filtered_suite = tests.filter_suite_by_id_startswith(
+            self.suite, [start1, start2])
         self.assertEqual(
-            filtered_names,
-            ['bzrlib.tests.test_selftest.'
-             'TestSelftestFiltering.test_filter_suite_by_id_startswith'])
+            test_list,
+            _test_ids(filtered_suite),
+            )
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
@@ -2120,3 +2174,46 @@ class TestFilteredByNameStartTestLoader(tests.TestCase):
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))
+
+
+class TestTestPrefixRegistry(tests.TestCase):
+
+    def _get_registry(self):
+        tp_registry = tests.TestPrefixAliasRegistry()
+        return tp_registry
+
+    def test_register_new_prefix(self):
+        tpr = self._get_registry()
+        tpr.register('foo', 'fff.ooo.ooo')
+        self.assertEquals('fff.ooo.ooo', tpr.get('foo'))
+
+    def test_register_existing_prefix(self):
+        tpr = self._get_registry()
+        tpr.register('bar', 'bbb.aaa.rrr')
+        tpr.register('bar', 'bBB.aAA.rRR')
+        self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              r'.*bar.*bbb.aaa.rrr.*bBB.aAA.rRR')
+
+    def test_get_unknown_prefix(self):
+        tpr = self._get_registry()
+        self.assertRaises(KeyError, tpr.get, 'I am not a prefix')
+
+    def test_resolve_prefix(self):
+        tpr = self._get_registry()
+        tpr.register('bar', 'bb.aa.rr')
+        self.assertEquals('bb.aa.rr', tpr.resolve_alias('bar'))
+
+    def test_resolve_unknown_alias(self):
+        tpr = self._get_registry()
+        self.assertRaises(errors.BzrCommandError,
+                          tpr.resolve_alias, 'I am not a prefix')
+
+    def test_predefined_prefixes(self):
+        tpr = tests.test_prefix_alias_registry
+        self.assertEquals('bzrlib', tpr.resolve_alias('bzrlib'))
+        self.assertEquals('bzrlib.doc', tpr.resolve_alias('bd'))
+        self.assertEquals('bzrlib.utils', tpr.resolve_alias('bu'))
+        self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
+        self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
+        self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
