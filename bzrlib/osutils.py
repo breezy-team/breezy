@@ -19,7 +19,6 @@ import re
 import stat
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
-import sha
 import sys
 import time
 
@@ -35,6 +34,7 @@ from ntpath import (abspath as _nt_abspath,
                     splitdrive as _nt_splitdrive,
                     )
 import posixpath
+import sha
 import shutil
 from shutil import (
     rmtree,
@@ -627,15 +627,28 @@ def sha_file_by_name(fname):
         os.close(f)
 
 
-def sha_strings(strings, _factory=sha.new):
+def sha_strings(strings):
     """Return the sha-1 of concatenation of strings"""
-    s = _factory()
-    map(s.update, strings)
-    return s.hexdigest()
+    # Do some hackery here to install an optimised version of this function on
+    # the first invocation of this function.  (We don't define it like this
+    # initially so that we can avoid loading the sha module, which takes up to
+    # 2ms, unless we need to.)
+    global sha_strings
+    def sha_strings(strings, _factory=sha.new):
+        """Return the sha-1 of concatenation of strings"""
+        s = _factory()
+        map(s.update, strings)
+        return s.hexdigest()
+    # Now that we've installed the real version, call it.
+    return sha_strings(strings)
 
 
-def sha_string(f, _factory=sha.new):
-    return _factory(f).hexdigest()
+def sha_string(f):
+    global sha_string
+    def sha_string(f, _factory=sha.new):
+        return _factory(f).hexdigest()
+    return sha_string(f)
+
 
 
 def fingerprint_file(f):
