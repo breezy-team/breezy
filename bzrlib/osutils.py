@@ -19,6 +19,7 @@ import re
 import stat
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+import sha
 import sys
 import time
 
@@ -34,7 +35,6 @@ from ntpath import (abspath as _nt_abspath,
                     splitdrive as _nt_splitdrive,
                     )
 import posixpath
-import sha
 import shutil
 from shutil import (
     rmtree,
@@ -55,9 +55,6 @@ from bzrlib import (
 
 import bzrlib
 from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
 
 
 # On win32, O_BINARY is used to indicate the file should
@@ -201,7 +198,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
     """
 
     # sftp rename doesn't allow overwriting, so play tricks:
-    import random
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
     tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
