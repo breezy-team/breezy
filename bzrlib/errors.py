@@ -1531,11 +1531,15 @@ class UnknownSmartMethod(InternalBzrError):
 
 class SmartMessageHandlerError(InternalBzrError):
 
-    _fmt = "The message handler raised an exception: %(exc_value)s."
+    _fmt = ("The message handler raised an exception:\n"
+            "%(traceback_text)s%(exc_value)s")
 
     def __init__(self, exc_info):
-        self.exc_type, self.exc_value, self.tb = exc_info
-        
+        import traceback
+        self.exc_type, self.exc_value, self.exc_tb = exc_info
+        self.exc_info = exc_info
+        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
+
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):

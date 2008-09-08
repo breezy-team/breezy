@@ -759,6 +759,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             mutter('              %d body bytes read',
                    len(self._body_buffer.getvalue()))
+            mutter('              body %r...',
+                   repr(self._body_buffer.getvalue()[:40]))
         return self._body_buffer.read(count)
 
     def _recv_tuple(self):
@@ -1183,7 +1185,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         After calling this, call read_response_tuple to find the result out.
         """
         if 'hpss' in debug.debug_flags:
-            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
+            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:200])
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
                 mutter('                  (to %s)', path)

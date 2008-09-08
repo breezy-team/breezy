@@ -281,6 +281,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             body_bytes = ''.join(self._bytes_parts)
             if 'hpss' in debug.debug_flags:
                 mutter('              %d body bytes read', len(body_bytes))
+                mutter('              body %r...', repr(body_bytes[:40]))
             self._body = StringIO(body_bytes)
             self._bytes_parts = None
         return self._body.read(count)

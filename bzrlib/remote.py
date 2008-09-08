@@ -40,6 +40,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util.bencode import bdecode, bencode
 
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -320,6 +321,8 @@ class RemoteRepository(object):
         self.inventories = RemoteVersionedFiles(self, 'inventories')
         self.signatures = RemoteVersionedFiles(self, 'signatures')
         self.revisions = RemoteVersionedFiles(self, 'revisions')
+        self._vf_objs = [
+            self.texts, self.inventories, self.signatures, self.revisions]
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -524,6 +527,8 @@ class RemoteRepository(object):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._parents_map = {}
+            for vf in self._vf_objs:
+                vf._parents_map = {}
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
             if self._real_repository is not None:
@@ -568,6 +573,8 @@ class RemoteRepository(object):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._parents_map = {}
+            for vf in self._vf_objs:
+                vf._parents_map = {}
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
         elif self._lock_mode == 'r':
@@ -634,6 +641,8 @@ class RemoteRepository(object):
         if self._lock_count > 0:
             return
         self._parents_map = None
+        for vf in self._vf_objs:
+            vf._parents_map = None
         if 'hpss' in debug.debug_flags:
             self._requested_parents = None
         old_mode = self._lock_mode
@@ -937,7 +946,6 @@ class RemoteRepository(object):
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
         recipe = (start_set, stop_keys, len(parents_map))
-        body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
             if type(key) is not str:
@@ -947,7 +955,7 @@ class RemoteRepository(object):
         args = (path,) + tuple(keys)
         try:
             response = self._client.call_with_body_bytes_expecting_body(
-                verb, args, self._serialise_search_recipe(recipe))
+                verb, args, _serialise_search_recipe(recipe))
         except errors.UnknownSmartMethod:
             # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now
@@ -1138,16 +1146,27 @@ class RemoteRepository(object):
     def _make_parents_provider(self):
         return self
 
-    def _serialise_search_recipe(self, recipe):
-        """Serialise a graph search recipe.
+def _serialise_search_recipe(recipe):
+    """Serialise a graph search recipe.
 
-        :param recipe: A search recipe (start, stop, count).
-        :return: Serialised bytes.
-        """
-        start_keys = ' '.join(recipe[0])
-        stop_keys = ' '.join(recipe[1])
-        count = str(recipe[2])
-        return '\n'.join((start_keys, stop_keys, count))
+    :param recipe: A search recipe (start, stop, count).
+    :return: Serialised bytes.
+    """
+    start_keys = ' '.join(recipe[0])
+    stop_keys = ' '.join(recipe[1])
+    count = str(recipe[2])
+    return '\n'.join((start_keys, stop_keys, count))
+
+def _serialise_search_tuple_key_recipe((start, stop, count)):
+    """Serialise a graph search recipe.
+
+    :param recipe: A search recipe (start, stop, count).
+    :return: Serialised bytes.
+    """
+    from bzrlib.util.bencode import bencode
+    start = tuple(start)
+    stop = tuple(stop)
+    return bencode((start, stop, count))
 
 
 from bzrlib.versionedfile import VersionedFiles
@@ -1156,6 +1175,9 @@ class RemoteVersionedFiles(VersionedFiles):
     def __init__(self, remote_repo, vf_name):
         self.remote_repo = remote_repo
         self.vf_name = vf_name
+        self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
 
     def _get_real_vf(self):
         self.remote_repo._ensure_real()
@@ -1184,8 +1206,101 @@ class RemoteVersionedFiles(VersionedFiles):
         return real_vf.check(progress_bar=progress_bar)
 
     def get_parent_map(self, keys):
-        real_vf = self._get_real_vf()
-        return real_vf.get_parent_map(keys)
+        client = self.remote_repo._client
+        medium = client._medium
+        if medium._is_remote_before((1, 8)):
+            real_vf = self._get_real_vf()
+            return real_vf.get_parent_map(keys)
+        # Hack to build up the caching logic.
+        ancestry = self._parents_map
+        if ancestry is None:
+            # Repository is not locked, so there's no cache.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = self._get_parent_map(missing_revisions)
+            if 'hpss' in debug.debug_flags:
+                mutter('retransmitted revisions: %d of %d',
+                        len(set(ancestry).intersection(parent_map)),
+                        len(parent_map))
+            ancestry.update(parent_map)
+        present_keys = [k for k in keys if k in ancestry]
+        if 'hpss' in debug.debug_flags:
+            if self._requested_parents is not None and len(ancestry) != 0:
+                self._requested_parents.update(present_keys)
+                mutter('Current RemoteRepository graph hit rate: %d%%',
+                    100.0 * len(self._requested_parents) / len(ancestry))
+        return dict((k, ancestry[k]) for k in present_keys)
+        
+    def _get_parent_map(self, keys):
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
+        if NULL_REVISION in keys:
+            keys.discard(NULL_REVISION)
+            found_parents = {NULL_REVISION:()}
+            if not keys:
+                return found_parents
+        else:
+            found_parents = {}
+        # TODO(Needs analysis): We could assume that the keys being requested
+        # from get_parent_map are in a breadth first search, so typically they
+        # will all be depth N from some common parent, and we don't have to
+        # have the server iterate from the root parent, but rather from the
+        # keys we're searching; and just tell the server the keyspace we
+        # already have; but this may be more traffic again.
+
+        # Transform self._parents_map into a search request recipe.
+        # TODO: Manage this incrementally to avoid covering the same path
+        # repeatedly. (The server will have to on each request, but the less
+        # work done the better).
+        parents_map = self._parents_map
+        if parents_map is None:
+            # Repository is not locked, so there's no cache.
+            parents_map = {}
+        start_set = set(parents_map)
+        result_parents = set()
+        for parents in parents_map.itervalues():
+            result_parents.update(parents)
+        stop_keys = result_parents.difference(start_set)
+        included_keys = start_set.intersection(result_parents)
+        start_set.difference_update(included_keys)
+        recipe = (start_set, stop_keys, len(parents_map))
+        path = self.remote_repo.bzrdir._path_for_remote_call(client)
+        for key in keys:
+            if type(key) is not tuple:
+                raise ValueError(
+                    "key %r not a tuple of strs" % (key,))
+            for key_elem in key:
+                if type(key_elem) is not str:
+                    raise ValueError(
+                        "key %r not a tuple of strs" % (key,))
+        verb = 'VersionedFiles.get_parent_map'
+        args = (path, self.vf_name) + tuple(keys)
+        try:
+            response = client.call_with_body_bytes_expecting_body(
+                verb, args, _serialise_search_tuple_key_recipe(recipe))
+        except errors.UnknownSmartMethod:
+            # XXX:
+            raise
+        response_tuple, response_handler = response
+        if response_tuple[0] not in ['ok']:
+            response_handler.cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        if response_tuple[0] == 'ok':
+            coded = bz2.decompress(response_handler.read_body_bytes())
+            graph_entries = bdecode(coded)
+            mutter('coded: %r', coded)
+            mutter('graph_entries: %r', graph_entries)
+            revision_graph = {}
+            for key, parents in graph_entries:
+                key = tuple(key)
+                parents = tuple(tuple(parent) for parent in parents)
+#                if parents == ():
+#                    parents = (NULL_REVISION,)
+                revision_graph[key] = parents
+            return revision_graph
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         real_vf = self._get_real_vf()
