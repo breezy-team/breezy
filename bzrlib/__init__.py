@@ -23,6 +23,11 @@ import time
 # timestamps relative to program start in the log file kept by bzrlib.trace.
 _start_time = time.time()
 
+import sys
+if getattr(sys, '_bzr_lazy_regex', False):
+    del sys._bzr_lazy_regex
+    import bzrlib.lazy_regex
+    bzrlib.lazy_regex.install_lazy_compile()
 
 IGNORE_FILENAME = ".bzrignore"
 

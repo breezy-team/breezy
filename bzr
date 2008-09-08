@@ -89,6 +89,8 @@ except locale.Error, e:
                      '  of the locale(1p) tool available on POSIX systems.\n'
                      % e)
 
+# instruct bzrlib/__init__.py to install lazy_regex
+sys._bzr_lazy_regex = True
 try:
     import bzrlib
 except ImportError, e:
@@ -106,9 +108,6 @@ if bzrlib.version_info[:3] != _script_version:
 
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
-
-import bzrlib.lazy_regex
-bzrlib.lazy_regex.install_lazy_compile()
 
 import bzrlib.breakin
 bzrlib.breakin.hook_sigquit()
