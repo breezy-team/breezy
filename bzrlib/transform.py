@@ -17,7 +17,6 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
-import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1336,7 +1335,6 @@ class TreeTransform(TreeTransformBase):
         """
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
-        kind_changes = set()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, data in enumerate(tree_paths):
@@ -1357,7 +1355,6 @@ class TreeTransform(TreeTransformBase):
                         self.rename_count += 1
         finally:
             child_pb.finished()
-        return kind_changes
 
     def _apply_insertions(self, mover):
         """Perform tree operations that insert directory/inventory names.
@@ -1368,9 +1365,6 @@ class TreeTransform(TreeTransformBase):
 
         If inventory_delta is None, no inventory delta is calculated, and
         no list of modified paths is returned.
-
-        kind_changes is a set of trans ids where the entry has changed
-        kind, and so an inventory delta entry should be created for them.
         """
         new_paths = self.new_paths(filesystem_only=True)
         modified_paths = []
@@ -1413,7 +1407,7 @@ class TransformPreview(TreeTransformBase):
 
     def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
         tree.lock_read()
-        limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
+        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
         TreeTransformBase.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):

@@ -329,7 +329,7 @@ class SFTPTransport(ConnectedTransport):
         cur_offset_and_size = offset_stack.next()
 
         for data in fp.readv(requests):
-            cur_data += data
+            cur_data.append(data)
             cur_data_len += len(data)
 
             if cur_data_len < cur_coalesced.length:

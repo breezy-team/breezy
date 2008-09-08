@@ -1110,7 +1110,8 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id, tree))
             else:
                 real_trees.append((rev_id,
-                    self.branch.repository.revision_tree(None)))
+                    self.branch.repository.revision_tree(
+                        _mod_revision.NULL_REVISION)))
                 ghosts.append(rev_id)
             accepted_revisions.add(rev_id)
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)

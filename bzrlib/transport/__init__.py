@@ -254,7 +254,7 @@ class FileFileStream(FileStream):
         self.file_handle.close()
 
     def write(self, bytes):
-        self.file_handle.write(bytes)
+        osutils.pump_string_file(bytes, self.file_handle)
 
 
 class AppendBasedFileStream(FileStream):
@@ -1757,6 +1757,9 @@ register_lazy_transport('readonly+', 'bzrlib.transport.readonly',
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs',
                         'FakeNFSTransportDecorator')
+
+register_transport_proto('log+')
+register_lazy_transport('log+', 'bzrlib.transport.log', 'TransportLogDecorator')
 
 register_transport_proto('trace+')
 register_lazy_transport('trace+', 'bzrlib.transport.trace',

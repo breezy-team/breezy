@@ -230,7 +230,7 @@ def _show_log(branch,
             if limit:
                 log_count += 1
                 if log_count >= limit:
-                    break
+                    return
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,

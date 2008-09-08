@@ -128,7 +128,7 @@ from bzrlib.errors import (
         )
 from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars, format_delta
+from bzrlib.osutils import rand_chars, format_delta, get_host_name
 from bzrlib.rio import read_stanza, Stanza
 import bzrlib.ui
 
@@ -422,14 +422,13 @@ class LockDir(object):
     def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
-        import socket
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
             user = config.user_email()
         except errors.NoEmailInUsername:
             user = config.username()
-        s = Stanza(hostname=socket.gethostname(),
+        s = Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,

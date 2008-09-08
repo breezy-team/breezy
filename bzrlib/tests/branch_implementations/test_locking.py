@@ -515,3 +515,10 @@ class TestBranchLocking(TestCaseWithBranch):
             branch.repository.unlock()
         finally:
             branch.unlock()
+
+    def test_lock_and_unlock_leaves_repo_unlocked(self):
+        branch = self.make_branch('b')
+        branch.lock_write()
+        branch.unlock()
+        self.assertRaises(errors.LockNotHeld, branch.repository.unlock)
+

@@ -189,7 +189,7 @@ How to create a new development format
 
 1. Register two new formats with the next available sequence number.
    e.g. ``development1`` and ``development1-subtree``. (You can see the
-   ``development0`` format for an example.
+   current development format for an example.
    These should:
 
    * Use your new development repository/branch/tree classes
@@ -226,20 +226,17 @@ Format Details
 development
 -----------
 
-Currently an alias for Development0
+Currently an alias for Development1
 
 development-subtree
 -------------------
 
-Currently an alias for Development0Subtree
+Currently an alias for Development1Subtree
 
-Development0[Subtree]
+Development1[Subtree]
 ---------------------
 
-These formats exists solely to provide an actual new format for the
-feature of 'development formats' to be introduced. They are regular
-pack-0.92 style formats with no changes to the disk storage other than
-the version marker.
+These formats were introduced during the development of branch stacking.
 
 
 ..
