@@ -14,10 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import cStringIO
 import re
 import time
 
@@ -34,22 +33,19 @@ from bzrlib import (
     lockdir,
     lru_cache,
     osutils,
-    registry,
     remote,
     revision as _mod_revision,
     symbol_versioning,
-    transactions,
     tsort,
     ui,
     )
 from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
-from bzrlib.util import bencode
 """)
 
+from bzrlib import registry
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
@@ -57,10 +53,9 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         one_one,
         one_two,
-        one_three,
         one_six,
         )
-from bzrlib.trace import mutter, mutter_callsite, note, warning
+from bzrlib.trace import mutter, mutter_callsite, warning
 
 
 # Old formats display a warning, but only once
@@ -1145,7 +1140,7 @@ class Repository(object):
         #       would have already do it.
         # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
         rev = self.get_revision(revision_id)
-        rev_tmp = StringIO()
+        rev_tmp = cStringIO.StringIO()
         # the current serializer..
         self._serializer.write_revision(rev, rev_tmp)
         rev_tmp.seek(0)
