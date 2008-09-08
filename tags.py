@@ -18,7 +18,7 @@ from bzrlib.errors import NoSuchRevision, NoSuchTag
 from bzrlib.tag import BasicTags
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import commit, core, properties
+from bzrlib.plugins.svn import commit, core, errors as svn_errors, properties
 
 class SubversionTags(BasicTags):
     def __init__(self, branch):
@@ -35,7 +35,7 @@ class SubversionTags(BasicTags):
             return
         conn = self.repository.transport.get_connection()
         try:
-            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tags base directory."})
+            ci = svn_errors.convert_svn_error(conn.get_commit_editor)({properties.PROP_REVISION_LOG: "Add tags base directory."})
             try:
                 root = ci.open_root()
                 name = None
@@ -76,7 +76,7 @@ class SubversionTags(BasicTags):
         conn = self.repository.transport.get_connection(parent)
         deletefirst = (conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_NONE)
         try:
-            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Add tag %s" % tag_name.encode("utf-8")})
+            ci = svn_errors.convert_svn_error(conn.get_commit_editor)({properties.PROP_REVISION_LOG: "Add tag %s" % tag_name.encode("utf-8")})
             try:
                 root = ci.open_root()
                 if deletefirst:
@@ -120,7 +120,7 @@ class SubversionTags(BasicTags):
         try:
             if conn.check_path(urlutils.basename(path), self.repository.get_latest_revnum()) != core.NODE_DIR:
                 raise NoSuchTag(tag_name)
-            ci = conn.get_commit_editor({properties.PROP_REVISION_LOG: "Remove tag %s" % tag_name.encode("utf-8")})
+            ci = svn_errors.convert_svn_error(conn.get_commit_editor)({properties.PROP_REVISION_LOG: "Remove tag %s" % tag_name.encode("utf-8")})
             try:
                 root = ci.open_root()
                 root.delete_entry(urlutils.basename(path))

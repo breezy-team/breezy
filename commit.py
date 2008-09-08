@@ -30,7 +30,7 @@ from cStringIO import StringIO
 from bzrlib.plugins.svn import core, properties
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.delta import send_stream
-from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE
+from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed, ERR_FS_TXN_OUT_OF_DATE, convert_svn_error
 from bzrlib.plugins.svn.svk import (
     generate_svk_feature, serialize_svk_features, 
     parse_svk_features, SVN_PROP_SVK_MERGE)
@@ -499,7 +499,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             conn = self.repository.transport.get_connection()
             assert self.supports_custom_revprops or self._svn_revprops.keys() == [properties.PROP_REVISION_LOG], \
                     "revprops: %r" % self._svn_revprops.keys()
-            self.editor = conn.get_commit_editor(
+            self.editor = convert_svn_error(conn.get_commit_editor)(
                     self._svn_revprops, done, None, False)
             try:
                 root = self.editor.open_root(self.base_revnum)
