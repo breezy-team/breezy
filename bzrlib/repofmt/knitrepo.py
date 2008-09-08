@@ -48,7 +48,6 @@ from bzrlib.repository import (
 import bzrlib.revision as _mod_revision
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, mutter_callsite
-from bzrlib.util import bencode
 from bzrlib.versionedfile import ConstantMapper, HashEscapedPrefixMapper
 
 
