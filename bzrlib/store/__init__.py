@@ -25,24 +25,13 @@ unique ID.
 """
 
 import os
-from cStringIO import StringIO
-from zlib import adler32
 
-import bzrlib
 from bzrlib import (
     errors,
-    osutils,
-    symbol_versioning,
-    urlutils,
     versionedfile,
     )
-from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
+from bzrlib.errors import BzrError, UnlistableStore
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport
-from bzrlib.transport.local import LocalTransport
 
 ######################################################################
 # stores

@@ -17,27 +17,24 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    debug,
-    deprecated_graph,
+    bzrdir,
+    errors,
+    knit as _mod_knit,
+    lockable_files,
+    lockdir,
+    osutils,
+    revision as _mod_revision,
+    transactions,
+    versionedfile,
     xml5,
     xml6,
     xml7,
     )
-from bzrlib.store import revision
-from bzrlib.store.revision.knit import KnitRevisionStore
 """)
 from bzrlib import (
-    bzrdir,
-    errors,
-    knit,
-    lockable_files,
-    lockdir,
-    osutils,
     symbol_versioning,
-    transactions,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.knit import KnitVersionedFiles, _KndxIndex, _KnitKeyAccess
 from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
@@ -45,10 +42,7 @@ from bzrlib.repository import (
     RepositoryFormat,
     RootCommitBuilder,
     )
-import bzrlib.revision as _mod_revision
-from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, mutter_callsite
-from bzrlib.versionedfile import ConstantMapper, HashEscapedPrefixMapper
 
 
 class _KnitParentsProvider(object):
@@ -296,35 +290,35 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_external_lookups = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
-        mapper = ConstantMapper(name)
-        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(repo_transport, mapper)
-        return KnitVersionedFiles(index, access, annotated=False)
+        mapper = versionedfile.ConstantMapper(name)
+        index = _mod_knit._KndxIndex(repo_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, annotated=False)
 
     def _get_revisions(self, repo_transport, repo):
-        mapper = ConstantMapper('revisions')
-        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(repo_transport, mapper)
-        return KnitVersionedFiles(index, access, max_delta_chain=0,
+        mapper = versionedfile.ConstantMapper('revisions')
+        index = _mod_knit._KndxIndex(repo_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=0,
             annotated=False)
 
     def _get_signatures(self, repo_transport, repo):
-        mapper = ConstantMapper('signatures')
-        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(repo_transport, mapper)
-        return KnitVersionedFiles(index, access, max_delta_chain=0,
+        mapper = versionedfile.ConstantMapper('signatures')
+        index = _mod_knit._KndxIndex(repo_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=0,
             annotated=False)
 
     def _get_texts(self, repo_transport, repo):
-        mapper = HashEscapedPrefixMapper()
+        mapper = versionedfile.HashEscapedPrefixMapper()
         base_transport = repo_transport.clone('knits')
-        index = _KndxIndex(base_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(base_transport, mapper)
-        return KnitVersionedFiles(index, access, max_delta_chain=200,
+        index = _mod_knit._KndxIndex(base_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(base_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=200,
             annotated=True)
 
     def initialize(self, a_bzrdir, shared=False):
