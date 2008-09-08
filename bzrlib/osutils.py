@@ -1404,9 +1404,19 @@ def get_user_encoding(use_cache=True):
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
-        # work around egregious python 2.4 bug
+        # python locale.getpreferredencoding() always return
+        # 'mac-roman' on darwin. That's a lie.
         sys.platform = 'posix'
         try:
+            if os.environ.get('LANG', None) is None:
+                # If LANG is not set, we end up with 'ascii', which is bad
+                # ('mac-roman' is more than ascii), so we set a default which
+                # will give us UTF-8 (which appears to work in all cases on
+                # OSX). Users are still free to override LANG of course, as
+                # long as it give us something meaningful. This work-around
+                # *may* not be needed with python 3k and/or OSX 10.5, but will
+                # work with them too -- vila 20080908
+                os.environ['LANG'] = 'en_US.UTF-8'
             import locale
         finally:
             sys.platform = 'darwin'
