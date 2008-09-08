@@ -692,8 +692,8 @@ class TestLineLogFormatter(TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add('a')
         b.nick = 'test-line-log'
-        wt.commit(message='add a', 
-                  timestamp=1132711707, 
+        wt.commit(message='add a',
+                  timestamp=1132711707,
                   timezone=36000,
                   committer='Line-Log-Formatter Tester <test@line.log>')
         logfile = file('out.tmp', 'w+')

@@ -17,12 +17,12 @@
 from cStringIO import StringIO
 import os
 import sys
-import tempfile
 
 from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     repository,
     revision as _mod_revision,
     treebuilder,
@@ -455,7 +455,7 @@ class BundleTester(object):
         """
 
         if checkout_dir is None:
-            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
+            checkout_dir = osutils.mkdtemp(prefix='test-branch-', dir='.')
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)

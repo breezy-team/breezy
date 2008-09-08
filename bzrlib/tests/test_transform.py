@@ -1219,6 +1219,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         wt.add(['foo'])
+        wt.commit("one")
         tt = TreeTransform(wt)
         self.addCleanup(tt.finalize)
         foo_trans_id = tt.trans_id_tree_path("foo")
@@ -1229,6 +1230,81 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.version_file("bar-1", bar_trans_id)
         tt.apply()
         self.failUnlessExists("foo/bar")
+        wt.lock_read()
+        try:
+            self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                    "directory")
+        finally:
+            wt.unlock()
+        wt.commit("two")
+        changes = wt.changes_from(wt.basis_tree())
+        self.assertFalse(changes.has_changed(), changes)
+
+    def test_file_to_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add(['foo'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(foo_trans_id)
+        tt.create_symlink("bar", foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "symlink")
+
+    def test_dir_to_file(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.delete_contents(foo_trans_id)
+        tt.delete_versioned(bar_trans_id)
+        tt.create_file(["aa\n"], foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "file")
+
+    def test_dir_to_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.delete_contents(foo_trans_id)
+        tt.delete_versioned(bar_trans_id)
+        self.build_tree(['baz'])
+        tt.create_hardlink("baz", foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        self.failUnlessExists("baz")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "file")
+
+    def test_no_final_path(self):
+        transform, root = self.get_transform()
+        trans_id = transform.trans_id_file_id('foo')
+        transform.create_file('bar', trans_id)
+        transform.cancel_creation(trans_id)
+        transform.apply()
 
 
 class TransformGroup(object):

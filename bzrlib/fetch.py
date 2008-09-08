@@ -180,7 +180,7 @@ class RepoFetcher(object):
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
                         text_keys, self.to_repository._fetch_order,
-                        self.to_repository._fetch_uses_deltas))
+                        not self.to_repository._fetch_uses_deltas))
                     # Cause an error if a text occurs after we have done the
                     # copy.
                     text_keys = None
@@ -243,7 +243,7 @@ class RepoFetcher(object):
             to_weave.insert_record_stream(from_weave.get_record_stream(
                 [(rev_id,) for rev_id in revs],
                 self.to_repository._fetch_order,
-                self.to_repository._fetch_uses_deltas))
+                not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
 
@@ -255,7 +255,10 @@ class RepoFetcher(object):
         to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
             [(rev_id,) for rev_id in revs],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas)))
+            True)))
+        # Bug #261339, some knit repositories accidentally had deltas in their
+        # revision stream, when you weren't ever supposed to have deltas.
+        # So we now *force* fulltext copying for signatures and revisions
         self._fetch_just_revision_texts(revs)
 
     def _fetch_just_revision_texts(self, version_ids):
@@ -264,7 +267,10 @@ class RepoFetcher(object):
         to_rf.insert_record_stream(from_rf.get_record_stream(
             [(rev_id,) for rev_id in version_ids],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas))
+            True))
+        # Bug #261339, some knit repositories accidentally had deltas in their
+        # revision stream, when you weren't ever supposed to have deltas.
+        # So we now *force* fulltext copying for signatures and revisions
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
@@ -380,6 +386,8 @@ class Inter1and2Helper(object):
                                       parents)
 
     def fetch_revisions(self, revision_ids):
+        # TODO: should this batch them up rather than requesting 10,000
+        #       revisions at once?
         for revision in self.source.get_revisions(revision_ids):
             self.target.add_revision(revision.revision_id, revision)
 
