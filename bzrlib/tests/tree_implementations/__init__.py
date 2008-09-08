@@ -84,7 +84,6 @@ def preview_tree_pre(testcase, tree):
 def preview_tree_post(testcase, tree):
     basis = tree.basis_tree()
     tt = TransformPreview(basis)
-    basis.lock_read()
     testcase.addCleanup(tt.finalize)
     pp = progress.ProgressPhase('', 1, progress.DummyProgress())
     tree.lock_read()

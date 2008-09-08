@@ -646,6 +646,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         a_dir.open_branch()
         self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
 
+    def test_clone_respects_stacked(self):
+        branch = self.make_branch('parent')
+        child_transport = branch.bzrdir.root_transport.clone('../child')
+        child = branch.bzrdir.clone_on_transport(child_transport,
+                                                 stacked_on=branch.base)
+        self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
+
     def test_get_branch_reference_on_reference(self):
         """get_branch_reference should return the right url."""
         referenced_branch = self.make_branch('referenced')

@@ -243,19 +243,18 @@ class TestBranch67(object):
         self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
 
     def test_set_revision_history(self):
-        tree = self.make_branch_and_memory_tree('.',
-            format=self.get_format_name())
-        tree.lock_write()
-        try:
-            tree.add('.')
-            tree.commit('foo', rev_id='foo')
-            tree.commit('bar', rev_id='bar')
-            tree.branch.set_revision_history(['foo', 'bar'])
-            tree.branch.set_revision_history(['foo'])
-            self.assertRaises(errors.NotLefthandHistory,
-                              tree.branch.set_revision_history, ['bar'])
-        finally:
-            tree.unlock()
+        builder = self.make_branch_builder('.', format=self.get_format_name())
+        builder.build_snapshot('foo', None,
+            [('add', ('', None, 'directory', None))],
+            message='foo')
+        builder.build_snapshot('bar', None, [], message='bar')
+        branch = builder.get_branch()
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        branch.set_revision_history(['foo', 'bar'])
+        branch.set_revision_history(['foo'])
+        self.assertRaises(errors.NotLefthandHistory,
+                          branch.set_revision_history, ['bar'])
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',

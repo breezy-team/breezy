@@ -53,3 +53,10 @@ class TestCatRevision(blackbox.ExternalBase):
         self.check_output(revs[1], 'cat-revision -r revid:a@r-0-1')
         self.check_output(revs[2], 'cat-revision -r revid:a@r-0-2')
         self.check_output(revs[3], 'cat-revision -r revid:a@r-0-3')
+
+    def test_cat_no_such_revid(self):
+        tree = self.make_branch_and_tree('.')
+        err = self.run_bzr('cat-revision abcd', retcode=3)[1]
+        self.assertContainsRe(err, 'The repository .* contains no revision abcd.')
+
+

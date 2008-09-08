@@ -176,7 +176,7 @@ class TestMerge(ExternalBase):
         
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertStartsWith(err,
-                          'Merging from remembered location %s\n' % (base,))
+                          'Merging from remembered submit location %s\n' % (base,))
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_submit_branch()),
                           abspath(parent))
@@ -418,10 +418,10 @@ class TestMerge(ExternalBase):
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         tree_c = tree_a.bzrdir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(err, 'Merging from remembered location .*a\/')
+        self.assertContainsRe(err, 'Merging from remembered parent location .*a\/')
         tree_c.branch.set_submit_branch(tree_b.bzrdir.root_transport.base)
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(err, 'Merging from remembered location .*b\/')
+        self.assertContainsRe(err, 'Merging from remembered submit location .*b\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')
