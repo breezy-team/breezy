@@ -2075,8 +2075,11 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
     supports_external_lookups = True
+
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development1')
@@ -2111,8 +2114,11 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
-    _serializer = xml6.serializer_v6
     supports_external_lookups = True
+
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
@@ -2153,9 +2159,12 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
-    _serializer = xml7.serializer_v7
 
     supports_external_lookups = True
+
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
@@ -2191,8 +2200,11 @@ class RepositoryFormatPackDevelopment1(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
     supports_external_lookups = True
+
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development1')
@@ -2228,8 +2240,11 @@ class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
     supports_external_lookups = True
+
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
