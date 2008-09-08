@@ -177,11 +177,21 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'tags: tag1')
 
     def test_log_limit(self):
-        self._prepare()
+        tree = self.make_branch_and_tree('.')
+        # We want more commits than our batch size starts at
+        for pos in range(10):
+            tree.commit("%s" % pos)
         log = self.run_bzr("log --limit 2")[0]
         self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertContainsRe(log, r'revno: 2\n')
-        self.assertContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 2\n')
+        self.assertNotContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 4\n')
+        self.assertNotContainsRe(log, r'revno: 5\n')
+        self.assertNotContainsRe(log, r'revno: 6\n')
+        self.assertNotContainsRe(log, r'revno: 7\n')
+        self.assertNotContainsRe(log, r'revno: 8\n')
+        self.assertContainsRe(log, r'revno: 9\n')
+        self.assertContainsRe(log, r'revno: 10\n')
 
     def test_log_limit_short(self):
         self._prepare()

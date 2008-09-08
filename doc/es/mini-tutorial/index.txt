@@ -228,7 +228,7 @@ Para asegurarse de que su branch está al dia debería integrar los cambios
 desde el principal dentro de su branch personal::
 
   $ bzr merge
-  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+  Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
             
 Compruebe qué ha cambiado::
@@ -256,7 +256,7 @@ revisiones necesarias, o proporciona un branch donde pueden encontrarse.
 Sustituyendo ``mycode.patch``, cree su instrucción merge::
 
  $ bzr send -o mycode.patch
- Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+ Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
  
 Ahora puede enviar por email la instruccion merge al proyecto bzr-gtk
 quien, si así lo quieren, pueden utilizarla para integrar su trabajo

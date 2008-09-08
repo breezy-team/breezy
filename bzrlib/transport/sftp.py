@@ -329,7 +329,7 @@ class SFTPTransport(ConnectedTransport):
         cur_offset_and_size = offset_stack.next()
 
         for data in fp.readv(requests):
-            cur_data += data
+            cur_data.append(data)
             cur_data_len += len(data)
 
             if cur_data_len < cur_coalesced.length:
@@ -584,7 +584,8 @@ class SFTPTransport(ConnectedTransport):
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
-            if (e.args == ('mkdir failed',)):
+            if (e.args == ('mkdir failed',) or
+                e.args[0].startswith('syserr: File exists')):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):

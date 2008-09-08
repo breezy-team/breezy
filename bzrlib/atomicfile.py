@@ -53,7 +53,7 @@ class AtomicFile(object):
         self._fd = None
 
         if _hostname is None:
-            _hostname = socket.gethostname()
+            _hostname = osutils.get_host_name()
 
         self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
 

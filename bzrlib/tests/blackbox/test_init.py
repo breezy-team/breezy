@@ -44,7 +44,10 @@ class TestInit(ExternalBase):
         # --format=weave should be accepted to allow interoperation with
         # old releases when desired.
         out, err = self.run_bzr('init --format=weave')
-        self.assertEqual('', out)
+        self.assertEqual("""Standalone tree (format: weave)
+Location:
+  branch root: .
+""", out)
         self.assertEqual('', err)
 
     def test_init_at_repository_root(self):
@@ -57,19 +60,32 @@ class TestInit(ExternalBase):
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(False)
         out, err = self.run_bzr('init repo')
-        self.assertEqual('', out)
+        self.assertEqual(
+"""Repository tree (format: pack-0.92)
+Location:
+  shared repository: repo
+  repository branch: repo
+""", out)
         self.assertEqual('', err)
         newdir.open_branch()
         newdir.open_workingtree()
         
     def test_init_branch(self):
         out, err = self.run_bzr('init')
-        self.assertEqual('', out)
+        self.assertEqual(
+"""Standalone tree (format: pack-0.92)
+Location:
+  branch root: .
+""", out)
         self.assertEqual('', err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr('init subdir1')
-        self.assertEqual('', out)
+        self.assertEqual(
+"""Standalone tree (format: pack-0.92)
+Location:
+  branch root: subdir1
+""", out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
         
@@ -80,12 +96,20 @@ class TestInit(ExternalBase):
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
-        self.assertEqual('', out)
+        self.assertEqual("""Standalone tree (format: pack-0.92)
+Location:
+  branch root: subdir2
+""", out)
         self.assertEqual('', err)
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
         self.failUnless(err.startswith('bzr: ERROR: Already a branch:'))
+
+    def test_init_branch_quiet(self):
+        out, err = self.run_bzr('init -q')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_init_existing_branch(self):
         self.run_bzr('init')
@@ -142,7 +166,9 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init(self):
         # init on a remote url should succeed.
         out, err = self.run_bzr(['init', self.get_url()])
-        self.assertEqual('', out)
+        self.assertStartsWith(out, """Standalone branch (format: pack-0.92)
+Location:
+  branch root: """)
         self.assertEqual('', err)
     
     def test_init_existing_branch(self):
