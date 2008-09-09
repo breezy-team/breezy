@@ -18,7 +18,10 @@
 
 import errno
 
-from bzrlib import tests
+from bzrlib import (
+    osutils,
+    tests,
+    )
 
 
 class _Win32ReadDirFeature(tests.Feature):
@@ -52,11 +55,17 @@ class TestWin32Finder(tests.TestCaseInTempDir):
         return [info[:3] + info[4:] for info in dirblock]
 
     def assertWalkdirs(self, expected, top, prefix=''):
-        finder = self.walkdirs_utf8(top, prefix=prefix)
-        result = []
-        for dirname, dirblock in finder:
-            result.append((dirname, self._remove_stat_from_dirblock(dirblock)))
-        self.assertEqual(expected, result)
+        old_selected_dir_reader = osutils._selected_dir_reader
+        try:
+            osutils._selected_dir_reader = self.reader
+            finder = osutils._walkdirs_utf8(top, prefix=prefix)
+            result = []
+            for dirname, dirblock in finder:
+                dirblock = self._remove_stat_from_dirblock(dirblock)
+                result.append((dirname, dirblock))
+            self.assertEqual(expected, result)
+        finally:
+            osutils._selected_dir_reader = old_selected_dir_reader
 
     def assertReadDir(self, expected, prefix, top_unicode):
         result = self._remove_stat_from_dirblock(
@@ -66,8 +75,8 @@ class TestWin32Finder(tests.TestCaseInTempDir):
     def test_top_prefix_to_starting_dir(self):
         # preparing an iteration should create a unicode native path.
         self.assertEqual(('prefix', None, None, None, u'\x12'),
-            self.reader.top_prefix_to_starting_dir('prefix',
-                u'\x12'.encode('utf8')))
+            self.reader.top_prefix_to_starting_dir(u'\x12'.encode('utf8'),
+                                                   'prefix'))
 
     def test_empty_directory(self):
         self.assertReadDir([], 'prefix', u'.')

@@ -163,7 +163,8 @@ cdef class Win32ReadDir:
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
         """See DirReader.top_prefix_to_starting_dir."""
-        return (osutils.safe_utf8(prefix), osutils.safe_unicode(top))
+        return (osutils.safe_utf8(prefix), None, None, None,
+                osutils.safe_unicode(top))
 
     cdef object _get_kind(self, WIN32_FIND_DATAW *data):
         if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
@@ -201,7 +202,7 @@ cdef class Win32ReadDir:
             relprefix = ''
         top_slash = top + '/'
 
-        top_star = top + '*'
+        top_star = top_slash + '*'
 
         dirblock = []
 
@@ -220,11 +221,11 @@ cdef class Win32ReadDir:
                     continue
                 name_unicode = _get_name(&search_data)
                 name_utf8 = PyUnicode_AsUTF8String(name_unicode)
-                PyList_Append(dirblock, 
-                    (relprefix + name_utf8, name_utf8, 
+                PyList_Append(dirblock,
+                    (relprefix + name_utf8, name_utf8,
                      self._get_kind(&search_data),
                      self._get_stat_value(&search_data),
-                     top + name_unicode))
+                     top_slash + name_unicode))
 
                 result = FindNextFileW(hFindFile, &search_data)
             # FindNextFileW sets GetLastError() == ERROR_NO_MORE_FILES when it
