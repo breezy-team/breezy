@@ -16,12 +16,11 @@
 """Upgrading revisions made with older versions of the mapping."""
 
 from bzrlib import ui
-from bzrlib.errors import BzrError, InvalidRevisionId
+from bzrlib.errors import BzrError, InvalidRevisionId, DependencyNotPresent
 from bzrlib.revision import Revision
 from bzrlib.trace import info
 
 import itertools
-from bzrlib.plugins.svn.mapping import mapping_registry
 
 
 class RebaseNotPresent(DependencyNotPresent):
