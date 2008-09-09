@@ -1338,6 +1338,22 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
 
+    def test_win32_abspath(self):
+        cur_platform = sys.platform
+        sys.platform = "win32"
+        def restore():
+            sys.platform = cur_platform
+        self.addCleanup(restore)
+
+        # smoke test for abspath on win32.
+        # a transport based on 'file:///' never fully qualifies the drive.
+        transport = get_transport("file:///")
+        self.failUnlessEqual(transport.abspath("/"), "file:///")
+
+        # but a transport that starts with a drive spec must keep it.
+        transport = get_transport("file:///C:/")
+        self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
+
     def test_local_abspath(self):
         transport = self.get_transport()
         try:
