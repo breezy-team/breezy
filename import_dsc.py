@@ -263,10 +263,10 @@ def import_archive(tree, archive_file, file_ids_from=None):
             for other_tree in file_ids_from:
                 if other_tree.has_filename(relative_path):
                     file_id = other_tree.path2id(relative_path)
-                    assert file_id is not None
-                    tt.version_file(file_id, trans_id)
-                    found = True
-                    break
+                    if file_id is not None:
+                        tt.version_file(file_id, trans_id)
+                        found = True
+                        break
             if not found:
                 name = basename(member.name.rstrip('/'))
                 file_id = generate_ids.gen_file_id(name)
@@ -283,10 +283,10 @@ def import_archive(tree, archive_file, file_ids_from=None):
             for other_tree in file_ids_from:
                 if other_tree.has_filename(relative_path):
                     file_id = other_tree.path2id(relative_path)
-                    assert file_id is not None
-                    tt.version_file(file_id, trans_id)
-                    found = True
-                    break
+                    if file_id is not None:
+                        tt.version_file(file_id, trans_id)
+                        found = True
+                        break
             if not found:
                 tt.version_file(trans_id, trans_id)
         added.add(relative_path)
