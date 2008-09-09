@@ -151,30 +151,19 @@ cdef int _should_skip(WIN32_FIND_DATAW *data):
     return 0
 
 
-cdef class Win32Finder:
-    """A class which encapsulates the search of files in a given directory"""
-
-    cdef object _top
-    cdef object _prefix
+cdef class Win32ReadDir:
+    """Read directories on win32."""
 
     cdef object _directory_kind
     cdef object _file_kind
 
-    cdef object _pending
-    cdef object _last_dirblock
-
-    def __init__(self, top, prefix=""):
-        self._top = top
-        self._prefix = prefix
-
+    def __init__(self):
         self._directory_kind = osutils._directory_kind
         self._file_kind = osutils._formats[stat.S_IFREG]
 
-        self._pending = [(osutils.safe_utf8(prefix), osutils.safe_unicode(top))]
-        self._last_dirblock = None
-
-    def __iter__(self):
-        return self
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """See DirReader.top_prefix_to_starting_dir."""
+        return (osutils.safe_utf8(prefix), osutils.safe_unicode(top))
 
     cdef object _get_kind(self, WIN32_FIND_DATAW *data):
         if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
@@ -195,16 +184,10 @@ cdef class Win32Finder:
         statvalue.st_dev = 0
         return statvalue
 
-    def _get_files_in(self, directory, relprefix):
-        """Return the dirblock for all files in the given directory.
+    def read_dir(self, prefix, top):
+        """Win32 implementation of DirReader.read_dir.
 
-        :param directory: A path that can directly access the files on disk.
-            Should be a Unicode object.
-        :param relprefix: A psuedo path for these files (as inherited from the
-            original 'prefix=XXX' when instantiating this class.)
-            It should be a UTF-8 string.
-        :return: A dirblock for all the files of the form
-            [(utf8_relpath, utf8_fname, kind, _Win32Stat, unicode_abspath)]
+        :seealso: DirReader.read_dir
         """
         cdef WIN32_FIND_DATAW search_data
         cdef HANDLE hFindFile
@@ -212,7 +195,13 @@ cdef class Win32Finder:
         cdef WCHAR *query
         cdef int result
 
-        top_star = directory + '*'
+        if prefix:
+            relprefix = prefix + '/'
+        else:
+            relprefix = ''
+        top_slash = top + '/'
+
+        top_star = top + '*'
 
         dirblock = []
 
@@ -235,7 +224,7 @@ cdef class Win32Finder:
                     (relprefix + name_utf8, name_utf8, 
                      self._get_kind(&search_data),
                      self._get_stat_value(&search_data),
-                     directory + name_unicode))
+                     top + name_unicode))
 
                 result = FindNextFileW(hFindFile, &search_data)
             # FindNextFileW sets GetLastError() == ERROR_NO_MORE_FILES when it
@@ -251,43 +240,5 @@ cdef class Win32Finder:
                 # TODO: We should probably raise an exception if FindClose
                 #       returns an error, however, I don't want to supress an
                 #       earlier Exception, so for now, I'm ignoring this
-        return dirblock
-
-    cdef _update_pending(self):
-        """If we had a result before, add the subdirs to pending."""
-        if self._last_dirblock is not None:
-            # push the entries left in the dirblock onto the pending queue
-            # we do this here, because we allow the user to modified the
-            # queue before the next iteration
-            for d in reversed(self._last_dirblock):
-                if d[2] == self._directory_kind:
-                    self._pending.append((d[0], d[-1]))
-            self._last_dirblock = None
-        
-    def __next__(self):
-        self._update_pending()
-        if not self._pending:
-            raise StopIteration()
-        relroot, top = self._pending.pop()
-        # NB: At the moment Pyrex doesn't support Unicode literals, which means
-        # that all of these string literals are going to be upcasted to Unicode
-        # at runtime... :(
-        # Maybe we could use unicode(x) during __init__?
-        if relroot:
-            relprefix = relroot + '/'
-        else:
-            relprefix = ''
-        top_slash = top + '/'
-
-        dirblock = self._get_files_in(top_slash, relprefix)
         dirblock.sort(key=operator.itemgetter(1))
-        self._last_dirblock = dirblock
-        return (relroot, top), dirblock
-
-
-def _walkdirs_utf8_win32_find_file(top, prefix=""):
-    """Implement a version of walkdirs_utf8 for win32.
-
-    This uses the find files api to both list the files and to stat them.
-    """
-    return Win32Finder(top, prefix=prefix)
+        return dirblock

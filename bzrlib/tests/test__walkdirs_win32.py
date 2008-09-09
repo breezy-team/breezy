@@ -21,7 +21,7 @@ import errno
 from bzrlib import tests
 
 
-class _WalkdirsWin32Feature(tests.Feature):
+class _Win32ReadDirFeature(tests.Feature):
 
     def _probe(self):
         try:
@@ -32,21 +32,21 @@ class _WalkdirsWin32Feature(tests.Feature):
             return True
 
     def feature_name(self):
-        return 'bzrlib._walkdirs_win32'
+        return 'bzrlib._Win32ReadDir'
 
-WalkdirsWin32Feature = _WalkdirsWin32Feature()
+Win32ReadDirFeature = _Win32ReadDirFeature()
 
 
 class TestWin32Finder(tests.TestCaseInTempDir):
 
-    _test_needs_features = [WalkdirsWin32Feature]
+    _test_needs_features = [Win32ReadDirFeature]
 
     def setUp(self):
         super(TestWin32Finder, self).setUp()
         from bzrlib._walkdirs_win32 import (
-            _walkdirs_utf8_win32_find_file
+            Win32ReadDir,
             )
-        self.walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+        self.reader = Win32ReadDir()
 
     def _remove_stat_from_dirblock(self, dirblock):
         return [info[:3] + info[4:] for info in dirblock]
@@ -58,65 +58,42 @@ class TestWin32Finder(tests.TestCaseInTempDir):
             result.append((dirname, self._remove_stat_from_dirblock(dirblock)))
         self.assertEqual(expected, result)
 
+    def assertReadDir(self, expected, prefix, top_unicode):
+        result = self._remove_stat_from_dirblock(
+            self.reader.read_dir(prefix, top_unicode))
+        self.assertEqual(expected, result)
+
+    def test_top_prefix_to_starting_dir(self):
+        # preparing an iteration should create a unicode native path.
+        self.assertEqual(('prefix', None, None, None, u'\x12'),
+            self.reader.top_prefix_to_starting_dir('prefix',
+                u'\x12'.encode('utf8')))
+
     def test_empty_directory(self):
+        self.assertReadDir([], 'prefix', u'.')
         self.assertWalkdirs([(('', u'.'), [])], u'.')
 
-    def test_file_in_dir(self):
+    def test_file(self):
         self.build_tree(['foo'])
-        self.assertWalkdirs([
-            (('', u'.'), [('foo', 'foo', 'file', u'./foo')])
-            ], u'.')
+        self.assertReadDir([('foo', 'foo', 'file', u'./foo')],
+            '', u'.')
 
-    def test_subdir(self):
-        self.build_tree(['foo', 'bar/', 'bar/baz'])
-        self.assertWalkdirs([
-            (('', u'.'), [('bar', 'bar', 'directory', u'./bar'),
-                          ('foo', 'foo', 'file', u'./foo'),
-                         ]),
-            (('bar', u'./bar'), [('bar/baz', 'baz', 'file', u'./bar/baz')]),
-            ], '.')
-        self.assertWalkdirs([
-            (('xxx', u'.'), [('xxx/bar', 'bar', 'directory', u'./bar'),
-                             ('xxx/foo', 'foo', 'file', u'./foo'),
-                            ]),
-            (('xxx/bar', u'./bar'), [('xxx/bar/baz', 'baz', 'file', u'./bar/baz')]),
-            ], '.', prefix='xxx')
-        self.assertWalkdirs([
-            (('', u'bar'), [('baz', 'baz', 'file', u'bar/baz')]),
-            ], 'bar')
+    def test_dir(self):
+        self.build_tree(['bar/'])
+        self.assertReadDir([('bar', 'bar', 'directory', u'./bar')],
+            '', u'.')
 
-    def test_skip_subdir(self): 
-        self.build_tree(['a/', 'b/', 'c/', 'a/aa', 'b/bb', 'c/cc'])
-        base_dirblock = [('a', 'a', 'directory', u'./a'),
-                          ('b', 'b', 'directory', u'./b'),
-                          ('c', 'c', 'directory', u'./c'),
-                         ]
-        self.assertWalkdirs([
-            (('', u'.'), base_dirblock),
-            (('a', u'./a'), [('a/aa', 'aa', 'file', u'./a/aa')]),
-            (('b', u'./b'), [('b/bb', 'bb', 'file', u'./b/bb')]),
-            (('c', u'./c'), [('c/cc', 'cc', 'file', u'./c/cc')]),
-            ], '.')
-
-        walker = self.walkdirs_utf8('.')
-        dir_info, first_dirblock = walker.next()
-        self.assertEqual(('', u'.'), dir_info)
-        self.assertEqual(base_dirblock,
-                         self._remove_stat_from_dirblock(first_dirblock))
-        # Now, remove 'b' and it should be skipped on the next round
-        del first_dirblock[1]
-        dir_info, second_dirblock = walker.next()
-        second_dirblock = self._remove_stat_from_dirblock(second_dirblock)
-        self.assertEqual(('a', u'./a'), dir_info)
-        self.assertEqual([('a/aa', 'aa', 'file', u'./a/aa')], second_dirblock)
-        dir_info, third_dirblock = walker.next()
-        third_dirblock = self._remove_stat_from_dirblock(third_dirblock)
-        self.assertEqual(('c', u'./c'), dir_info)
-        self.assertEqual([('c/cc', 'cc', 'file', u'./c/cc')], third_dirblock)
+    def test_prefix(self):
+        self.build_tree(['bar/', 'baf'])
+        self.assertReadDir([
+            ('xxx/baf', 'baf', 'file', u'./baf'),
+            ('xxx/bar', 'bar', 'directory', u'./bar'),
+            ],
+            'xxx', u'.')
 
     def test_missing_dir(self):
         e = self.assertRaises(WindowsError, list,
-                                self.walkdirs_utf8(u'no_such_dir'))
+            self.reader.read_dir('prefix', u'no_such_dir'))
         self.assertEqual(errno.ENOENT, e.errno)
         self.assertEqual(3, e.winerror)
         self.assertEqual((3, u'no_such_dir/*'), e.args)

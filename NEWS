@@ -166,6 +166,10 @@ IN DEVELOPMENT
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
 
+    * ``bzrlib.osutils._walkdirs_utf8`` has been refactored into common
+      tree walking, and modular directory listing code to aid future
+      performance optimisations and refactoring. (Robert Collins)
+
     * ``GraphIndexBuilder.add_node`` and ``BTreeBuilder`` have been
       streamlined a bit. This should make creating large indexes faster.
       (In benchmarking, it now takes less time to create a BTree index than

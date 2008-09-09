@@ -1231,7 +1231,33 @@ def walkdirs(top, prefix=""):
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
-_real_walkdirs_utf8 = None
+class DirReader(object):
+    """An interface for reading directories."""
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """Converts top and prefix to a starting dir entry
+
+        :param top: A utf8 path
+        :param prefix: An optional utf8 path to prefix output relative paths
+            with.
+        :return: A tuple starting with prefix, and ending with the native
+            encoding of top.
+        """
+        raise NotImplementedError(self.top_prefix_to_starting_dir)
+
+    def read_dir(self, prefix, top):
+        """Read a specific dir.
+
+        :param prefix: A utf8 prefix to be preprended to the path basenames.
+        :param top: A natively encoded path to read.
+        :return: A sorted list of the directories contents. Each item contains:
+            (utf8_relpath, utf8_name, kind, lstatvalue, native_abspath)
+        """
+        raise NotImplementedError(self.read_dir)
+
+
+_selected_dir_reader = None
+
 
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
@@ -1247,8 +1273,8 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    global _real_walkdirs_utf8
-    if _real_walkdirs_utf8 is None:
+    global _selected_dir_reader
+    if _selected_dir_reader is None:
         fs_encoding = _fs_enc.upper()
         if win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
@@ -1257,38 +1283,53 @@ def _walkdirs_utf8(top, prefix=""):
             #       but that gets a bit tricky, and requires custom compiling
             #       for win98 anyway.
             try:
-                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+                from bzrlib._walkdirs_win32 import Win32ReadDir
             except ImportError:
-                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+                _selected_dir_reader = UnicodeDirReader()
             else:
-                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+                _selected_dir_reader = Win32ReadDir()
         elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            _selected_dir_reader = UnicodeDirReader()
         else:
-            _real_walkdirs_utf8 = _walkdirs_fs_utf8
-    return _real_walkdirs_utf8(top, prefix=prefix)
-
-
-def _walkdirs_fs_utf8(top, prefix=""):
-    """See _walkdirs_utf8.
-
-    This sub-function is called when we know the filesystem is already in utf8
-    encoding. So we don't need to transcode filenames.
-    """
-    _lstat = os.lstat
-    _directory = _directory_kind
-    # Use C accelerated directory listing.
-    _listdir = _read_dir
-    _kind_from_mode = _formats.get
-
+            _selected_dir_reader = UTF8DirReader()
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
-    pending = [(safe_utf8(prefix), None, None, None, safe_utf8(top))]
+    pending = [_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]
+    read_dir = _selected_dir_reader.read_dir
+    _directory = _directory_kind
     while pending:
         relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
+        dirblock = read_dir(relroot, top)
+        yield (relroot, top), dirblock
+        # push the user specified dirs from dirblock
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+
+
+class UTF8DirReader(DirReader):
+    """A dir reader for utf8 file systems."""
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """See DirReader.top_prefix_to_starting_dir."""
+        return (safe_utf8(prefix), None, None, None, safe_utf8(top))
+
+    def read_dir(self, prefix, top):
+        """Read a single directory from a utf8 file system.
+
+        All paths in and out are utf8.
+
+        This sub-function is called when we know the filesystem is already in utf8
+        encoding. So we don't need to transcode filenames.
+
+        See DirReader.read_dir for details.
+        """
+        _lstat = os.lstat
+        # Use C accelerated directory listing.
+        _listdir = _read_dir
+        _kind_from_mode = _formats.get
+
+        if prefix:
+            relprefix = prefix + '/'
         else:
             relprefix = ''
         top_slash = top + '/'
@@ -1302,33 +1343,41 @@ def _walkdirs_fs_utf8(top, prefix=""):
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
         dirblock.sort()
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+        return dirblock
 
 
-def _walkdirs_unicode_to_utf8(top, prefix=""):
-    """See _walkdirs_utf8
+class UnicodeDirReader(DirReader):
+    """A dir reader for non-utf8 file systems, which transcodes."""
 
-    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
-    Unicode paths.
-    This is currently the fallback code path when the filesystem encoding is
-    not UTF-8. It may be better to implement an alternative so that we can
-    safely handle paths that are not properly decodable in the current
-    encoding.
-    """
-    _utf8_encode = codecs.getencoder('utf8')
-    _lstat = os.lstat
-    _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = _formats.get
+    __slots__ = ['_utf8_encode']
 
-    pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
-    while pending:
-        relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
+    def __init__(self):
+        self._utf8_encode = codecs.getencoder('utf8')
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """See DirReader.top_prefix_to_starting_dir."""
+        return (safe_utf8(prefix), None, None, None, safe_unicode(top))
+
+    def read_dir(self, prefix, top):
+        """Read a single directory from a non-utf8 file system.
+
+        top, and the abspath element in the output are unicode, all other paths
+        are utf8. Local disk IO is done via unicode calls to listdir etc.
+
+        This is currently the fallback code path when the filesystem encoding is
+        not UTF-8. It may be better to implement an alternative so that we can
+        safely handle paths that are not properly decodable in the current
+        encoding.
+
+        See DirReader.read_dir for details.
+        """
+        _utf8_encode = self._utf8_encode
+        _lstat = os.lstat
+        _listdir = os.listdir
+        _kind_from_mode = _formats.get
+
+        if prefix:
+            relprefix = prefix + '/'
         else:
             relprefix = ''
         top_slash = top + u'/'
@@ -1341,10 +1390,7 @@ def _walkdirs_unicode_to_utf8(top, prefix=""):
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+        return dirblock
 
 
 def copy_tree(from_path, to_path, handlers={}):
