@@ -1812,7 +1812,10 @@ class InterDirStateTree(InterTree):
 
     _matching_from_tree_format = WorkingTreeFormat4()
     _matching_to_tree_format = WorkingTreeFormat4()
-    _test_mutable_trees_to_test_trees = make_source_parent_tree
+
+    @classmethod
+    def _test_mutable_trees_to_test_trees(klass, test_case, source, target):
+        return klass.make_source_parent_tree(source, target)
 
     def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
