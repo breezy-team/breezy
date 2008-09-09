@@ -146,5 +146,12 @@ class cmd_dpush(Command):
                 source_branch.pull(target_branch, overwrite=True, 
                                    stop_revision=new_last_revid)
 
-
+def test_suite():
+    from unittest import TestSuite
+    from bzrlib.tests import TestUtil
+    loader = TestUtil.TestLoader()
+    suite = TestSuite()
+    testmod_names = ['test_versionedfiles',]
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+    return suite
 
