@@ -18,6 +18,7 @@
 # across to run on the server.
 
 import bz2
+from cStringIO import StringIO
 
 from bzrlib import (
     branch,
@@ -40,7 +41,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util.bencode import bdecode, bencode
+from bzrlib.versionedfile import VersionedFiles
 
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -1163,13 +1164,34 @@ def _serialise_search_tuple_key_recipe((start, stop, count)):
     :param recipe: A search recipe (start, stop, count).
     :return: Serialised bytes.
     """
-    from bzrlib.util.bencode import bencode
-    start = tuple(start)
-    stop = tuple(stop)
-    return bencode((start, stop, count))
+    # Format:
+    #  recipe = keys NEWLINE keys NEWLINE count
+    #  count = INTEGER
+    #  keys = key 0x00 key 0x00 key ...
+    #  key = key_elem SPACE key_elem SPACE key_elem ...
+    buf = StringIO()
+    start_keys = (' '.join(key) for key in start)
+    buf.write('\0'.join(start_keys))
+    buf.write('\n')
+    stop_keys = (' '.join(key) for key in stop)
+    buf.write('\0'.join(stop_keys))
+    buf.write('\n')
+    buf.write(str(count))
+    return buf.getvalue()
 
 
-from bzrlib.versionedfile import VersionedFiles
+def _deserialise_search_result(bytes):
+    graph_dict = {}
+    for line in bytes.split('\n'):
+        keys_bytes = line.split('\0')
+        keys = [tuple(key_bytes.split(' ')) for key_bytes in keys_bytes]
+        parents = tuple(keys[1:])
+        if parents == (('',),):
+            parents = ()
+        graph_dict[keys[0]] = parents
+    return graph_dict
+
+
 class RemoteVersionedFiles(VersionedFiles):
 
     def __init__(self, remote_repo, vf_name):
@@ -1267,6 +1289,7 @@ class RemoteVersionedFiles(VersionedFiles):
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
         recipe = (start_set, stop_keys, len(parents_map))
+        client = self.remote_repo._client
         path = self.remote_repo.bzrdir._path_for_remote_call(client)
         for key in keys:
             if type(key) is not tuple:
@@ -1290,16 +1313,7 @@ class RemoteVersionedFiles(VersionedFiles):
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         if response_tuple[0] == 'ok':
             coded = bz2.decompress(response_handler.read_body_bytes())
-            graph_entries = bdecode(coded)
-            mutter('coded: %r', coded)
-            mutter('graph_entries: %r', graph_entries)
-            revision_graph = {}
-            for key, parents in graph_entries:
-                key = tuple(key)
-                parents = tuple(tuple(parent) for parent in parents)
-#                if parents == ():
-#                    parents = (NULL_REVISION,)
-                revision_graph[key] = parents
+            revision_graph = _deserialise_search_result(coded)
             return revision_graph
 
     def get_record_stream(self, keys, ordering, include_delta_closure):

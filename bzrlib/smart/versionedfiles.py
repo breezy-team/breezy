@@ -17,6 +17,7 @@
 """Server-side versioned files related request implmentations."""
 
 import bz2
+from cStringIO import StringIO
 
 from bzrlib import (
     errors,
@@ -31,7 +32,6 @@ from bzrlib.smart.request import (
 from bzrlib.smart.repository import SmartServerRepositoryRequest
 from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib import revision as _mod_revision
-from bzrlib.util.bencode import bdecode, bencode
 
 
 class SmartServerVersionedFilesRequest(SmartServerRepositoryRequest):
@@ -99,8 +99,16 @@ class SmartServerVersionedFilesGetParentMap(SmartServerVersionedFilesRequest):
         finally:
             repository.unlock()
 
+    def _deserialise_search_tuple_key_recipe(self, bytes):
+        start_keys_bytes, stop_keys_bytes, count_bytes = bytes.split('\n')
+        start_keys = [tuple(k.split(' ')) for k in start_keys_bytes.split('\0')]
+        stop_keys = [tuple(k.split(' ')) for k in stop_keys_bytes.split('\0')]
+        count = int(count_bytes)
+        return tuple(start_keys), set(stop_keys), count
+
     def recreate_vf_search(self, vf_graph, recipe_bytes):
-        start_keys, exclude_keys, key_count = bdecode(recipe_bytes)
+        recipe = self._deserialise_search_tuple_key_recipe(recipe_bytes)
+        start_keys, exclude_keys, key_count = recipe
         # lock_read
         try:
             search = vf_graph._make_breadth_first_searcher(start_keys)
@@ -178,6 +186,19 @@ class SmartServerVersionedFilesGetParentMap(SmartServerVersionedFilesRequest):
         result = sorted(result.items())
 
         return SuccessfulSmartServerResponse(
-            ('ok', ), bz2.compress(bencode(result)))
+            ('ok', ), bz2.compress(_serialise_search_result(result)))
 
 
+def _serialise_search_result(result_items):
+    buf = StringIO()
+    first = True
+    for key, parents in result_items:
+        if first:
+            first = False
+        else:
+            buf.write('\n')
+        buf.write(' '.join(key))
+        buf.write('\0')
+        parents_iter = (' '.join(parent) for parent in parents)
+        buf.write('\0'.join(parents_iter))
+    return buf.getvalue()
