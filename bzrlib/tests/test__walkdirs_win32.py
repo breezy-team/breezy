@@ -101,8 +101,8 @@ class TestWin32Finder(tests.TestCaseInTempDir):
             'xxx', u'.')
 
     def test_missing_dir(self):
-        e = self.assertRaises(WindowsError, list,
-            self.reader.read_dir('prefix', u'no_such_dir'))
+        e = self.assertRaises(WindowsError,
+            self.reader.read_dir, 'prefix', u'no_such_dir')
         self.assertEqual(errno.ENOENT, e.errno)
         self.assertEqual(3, e.winerror)
         self.assertEqual((3, u'no_such_dir/*'), e.args)
