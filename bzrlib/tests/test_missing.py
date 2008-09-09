@@ -31,7 +31,8 @@ from bzrlib.workingtree import WorkingTree
 class TestMissing(TestCaseWithTransport):
 
     def assertUnmerged(self, expected, source, target, restrict='all'):
-        unmerged = missing.find_unmerged(source, target, restrict=restrict)
+        unmerged = missing.find_unmerged(source, target, restrict=restrict,
+                                         reverse=True)
         self.assertEqual(expected, unmerged)
 
     def test_find_unmerged(self):
@@ -84,7 +85,8 @@ class TestMissing(TestCaseWithTransport):
         child_tree.commit('rename b=>c', rev_id='c-5')
 
         base_extra, child_extra = missing.find_unmerged(base_tree.branch,
-                                                        child_tree.branch)
+                                                        child_tree.branch,
+                                                        reverse=True)
         results = list(iter_log_revisions(base_extra,
                             base_tree.branch.repository,
                             verbose=True))
@@ -97,10 +99,9 @@ class TestMissing(TestCaseWithTransport):
 
         r0,r1,r2,r3 = results
 
-        self.assertEqual(('2', 'c-2'), (r0.revno, r0.rev.revision_id))
-        self.assertEqual(('3', 'c-3'), (r1.revno, r1.rev.revision_id))
-        self.assertEqual(('4', 'c-4'), (r2.revno, r2.rev.revision_id))
-        self.assertEqual(('5', 'c-5'), (r3.revno, r3.rev.revision_id))
+        self.assertEqual([('2', 'c-2'), ('3', 'c-3'),
+                          ('4', 'c-4'), ('5', 'c-5'),],
+                         [(r.revno, r.rev.revision_id) for r in results])
 
         delta0 = r0.delta
         self.assertNotEqual(None, delta0)
@@ -194,7 +195,6 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         tree2.merge_from_branch(tree3.branch)
         rev6 = tree2.commit('six', rev_id='rev6')
 
-        import pdb; pdb.set_trace()
         self.assertUnmerged([], [('4', 'rev6'),
                                  ('3.1.2', 'rev5'), ('3.1.1', 'rev4'),
                                  ('3', 'rev3'), ('2', 'rev2'),
