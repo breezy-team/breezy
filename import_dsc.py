@@ -1526,6 +1526,7 @@ class DistributionBranch(object):
                 revprops={"deb-md5":md5})
         self.tag_upstream_version(version)
         self.branch.fetch(self.upstream_branch, last_revision=revid)
+        self.upstream_branch.tags.merge_to(self.branch.tags)
 
     def _get_commit_message_from_changelog(self):
         """Retrieves the messages from the last section of debian/changelog.
