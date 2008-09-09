@@ -73,6 +73,7 @@ from bzrlib.plugins.builddeb.errors import (ImportError,
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
                 )
+from bzrlib.plugins.builddeb.util import strip_changelog_message
 
 
 files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
@@ -599,7 +600,7 @@ class DscImporter(object):
         changelog = Changelog(file=changelog_contents, max_blocks=1)
         if changelog._blocks:
           author = changelog._blocks[0].author
-          changes = changelog._blocks[0].changes()
+          changes = strip_changelog_message(changelog._blocks[0].changes())
           message = ''
           sep = ''
           for change in reversed(changes):
@@ -1546,7 +1547,7 @@ class DistributionBranch(object):
           changelog = Changelog(file=changelog_contents, max_blocks=1)
           if changelog._blocks:
             author = changelog._blocks[0].author
-            changes = changelog._blocks[0].changes()
+            changes = strip_changelog_message(changelog._blocks[0].changes())
             message = ''
             sep = ''
             for change in reversed(changes):
