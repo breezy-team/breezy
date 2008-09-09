@@ -414,6 +414,8 @@ class cmd_merge_upstream(Command):
         if version is None:
             raise BzrCommandError("You must specify the version number using "
                     "--version.")
+        else:
+            version = Version(version)
         if distribution is None:
             raise BzrCommandError("You must specify the target distribution "
                     "using --distribution.")
@@ -454,7 +456,8 @@ class cmd_merge_upstream(Command):
 
             orig_dir = config.orig_dir or default_orig_dir
             orig_dir = os.path.join(tree.basedir, orig_dir)
-            dest_name = tarball_name(package, version)
+            version_str = version.upstream_version
+            dest_name = tarball_name(package, version_str)
             try:
                 repack_tarball(tarball, dest_name, target_dir=orig_dir)
             except FileExists:
