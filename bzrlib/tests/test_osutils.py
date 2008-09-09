@@ -1128,12 +1128,12 @@ class TestWalkDirs(TestCaseInTempDir):
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 
-    def test__walkdirs_utf_win32_find_file(self):
+    def test__walkdirs_utf8_win32readdir(self):
         self.requireFeature(Win32ReadDirFeature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
-        osutils._selected_dir_reader = osutils.Win32ReadDir()
+        osutils._selected_dir_reader = Win32ReadDir()
         name0u = u'0file-\xb6'
         name1u = u'1dir-\u062c\u0648'
         name2u = u'2file-\u0633'
@@ -1170,7 +1170,7 @@ class TestWalkDirs(TestCaseInTempDir):
                  ]
                 ),
             ]
-        result = list(_walkdirs_utf8(u'.'))
+        result = list(osutils._walkdirs_utf8(u'.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 
