@@ -74,7 +74,7 @@ from bzrlib.plugins.builddeb.version import version_info
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building")
-result_opt = Option('result',
+result_opt = Option('result-dir',
     help="Directory in which to place the resulting package files", type=str)
 builder_opt = Option('builder',
     help="Command to build the package", type=str)
@@ -152,9 +152,9 @@ class cmd_builddeb(Command):
   You can also specify directories to use for different things. --build-dir
   is the directory to build the packages beneath, which defaults to
   '../build-area'. '--orig-dir' specifies the directory that contains the
-  .orig.tar.gz files , which defaults to '..'. '--result' specifies where
+  .orig.tar.gz files , which defaults to '..'. '--result-dir' specifies where
   the resulting package files should be placed, which defaults to '..'.
-  --result will have problems if you use a build command that places
+  --result-dir will have problems if you use a build command that places
   the results in a different directory.
 
   The --reuse option will be useful if you are in merge mode, and the upstream
@@ -195,6 +195,8 @@ class cmd_builddeb(Command):
   source_opt = Option('source', help="Build a source package, uses "
                       +"source-builder, which defaults to \"dpkg-buildpackage "
                       +"-rfakeroot -uc -us -S\"", short_name='S')
+  result_compat_opt = Option('result', help="Present only for compatibility "
+          "with bzr-builddeb <= 2.0. Use --result-dir instead.")
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = [working_tree_opt, export_only_opt,
@@ -202,15 +204,15 @@ class cmd_builddeb(Command):
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
       export_upstream_revision_opt, source_opt, 'revision',
-      no_user_conf_opt]
+      no_user_conf_opt, result_compat_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
-          result=None, builder=None, merge=False, build_dir=None,
+          result_dir=None, builder=None, merge=False, build_dir=None,
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
           quick=False, reuse=False, native=False, split=False,
           export_upstream=None, export_upstream_revision=None,
-          source=False, revision=None, no_user_config=False):
+          source=False, revision=None, no_user_config=False, result=None):
 
     if branch is None:
       branch = "."
@@ -294,13 +296,16 @@ class cmd_builddeb(Command):
       if export_upstream_revision is None:
         export_upstream_revision = config.export_upstream_revision
 
-      if result is None:
+      if result_dir is None:
+        result_dir = result
+
+      if result_dir is None:
         if is_local:
-          result = config.result_dir
+          result_dir = config.result_dir
         else:
-          result = config.user_result_dir
-      if result is not None:
-        result = os.path.realpath(result)
+          result_dir = config.user_result_dir
+      if result_dir is not None:
+        result_dir = os.path.realpath(result_dir)
       
       if build_dir is None:
         if is_local:
@@ -362,8 +367,8 @@ class cmd_builddeb(Command):
         arch = None
         if source:
           arch = "source"
-        if result is not None:
-          build.move_result(result, arch=arch)
+        if result_dir is not None:
+          build.move_result(result_dir, arch=arch)
         else:
           build.move_result(default_result_dir, allow_missing=True, arch=arch)
     finally:
