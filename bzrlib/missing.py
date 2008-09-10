@@ -111,9 +111,11 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, reverse=False):
     return mainline
 
 
-def _enumerate_with_merges(ancestry, graph, tip_revno, tip, reverse=False):
+def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
+                           reverse=False):
     """Enumerate the revisions for the ancestry.
 
+    :param branch: The branch we care about
     :param ancestry: A set of revisions that we care about
     :param graph: A Graph which lets us find the parents for a revision
     :param tip_revno: The revision number for the tip revision
@@ -126,23 +128,37 @@ def _enumerate_with_merges(ancestry, graph, tip_revno, tip, reverse=False):
     if not ancestry: #Empty ancestry, no need to do any work
         return []
 
-    parent_map = graph.get_parent_map(ancestry)
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = log._get_mainline_revs(
+        branch, None, tip_revno)
+    if not mainline_revs:
+        return []
+
+    # This asks for all mainline revisions, which is size-of-history and
+    # should be addressed (but currently the only way to get correct
+    # revnos).
+
+    # mainline_revisions always includes an extra revision at the
+    # beginning, so don't request it.
+    parent_map = dict(((key, value) for key, value
+                       in graph.iter_ancestry(mainline_revs[1:])
+                       if value is not None))
     # filter out ghosts; merge_sort errors on ghosts. 
-    # XXX: is this needed here ? -- vila080903
+    # XXX: is this needed here ? -- vila080910
     rev_graph = _mod_repository._strip_NULL_ghosts(parent_map)
-    # XXX: what if rev_graph is empty now ?
+    # XXX: what if rev_graph is empty now ? -- vila080910
     merge_sorted_revisions = tsort.merge_sort(rev_graph, tip,
-                                              None, generate_revno=True)
-    # merge_sort calculate revno for the given graph, we have to recalculate
-    # the correct revno from the tip_revno.
-    ms_tip_revno = merge_sorted_revisions[0][3]
-    revno_delta = tip_revno - ms_tip_revno[0]
+                                              mainline_revs,
+                                              generate_revno=True)
+    # Now that we got the correct revnos, keep only the relevant
+    # revisions.
+    merge_sorted_revisions = [
+        (s, revid, n, d, e) for s, revid, n, d, e in merge_sorted_revisions
+        if revid in ancestry]
     if reverse:
         merge_sorted_revisions = log.reverse_by_depth(merge_sorted_revisions)
     revline = []
     for seq, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
-        real_revno = (revno[0] + revno_delta,) + revno[1:]
-        revline.append(('.'.join(map(str, real_revno)), rev_id))
+        revline.append(('.'.join(map(str, revno)), rev_id))
     return revline
 
 
@@ -173,10 +189,12 @@ def _find_unmerged(local_branch, remote_branch, restrict,
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
     if include_merges:
-        locals = _enumerate_with_merges(local_extra, graph, local_revno,
+        locals = _enumerate_with_merges(local_branch, local_extra,
+                                        graph, local_revno,
                                         local_revision_id, reverse)
-        remotes = _enumerate_with_merges(remote_extra, graph, remote_revno,
-                                      remote_revision_id, reverse)
+        remotes = _enumerate_with_merges(remote_branch, remote_extra,
+                                         graph, remote_revno,
+                                         remote_revision_id, reverse)
     else:
         # Now that we have unique ancestors, compute just the mainline, and
         # generate revnos for them.
