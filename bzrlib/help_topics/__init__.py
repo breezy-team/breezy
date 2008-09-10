@@ -241,6 +241,7 @@ Basic commands:
 
   bzr merge          pull in changes from another branch
   bzr commit         save some or all changes
+  bzr send           submit changes to another branch
 
   bzr log            show history of changes
   bzr check          validate storage
