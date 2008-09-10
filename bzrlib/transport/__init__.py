@@ -792,7 +792,7 @@ class Transport(object):
                 and (limit <= 0 or len(cur.ranges) < limit)
                 and (max_size <= 0 or end - cur.start <= max_size)):
                 if start < last_end:
-                    raise errors.ValueError('Overlapping range not allowed:'
+                    raise ValueError('Overlapping range not allowed:'
                         ' last range ended at %s, new one starts at %s'
                         % (last_end, start))
                 cur.length = end - cur.start
