@@ -123,37 +123,6 @@ def quotefn(f):
 
 _directory_kind = 'directory'
 
-_formats = {
-    stat.S_IFDIR:_directory_kind,
-    stat.S_IFCHR:'chardev',
-    stat.S_IFBLK:'block',
-    stat.S_IFREG:'file',
-    stat.S_IFIFO:'fifo',
-    stat.S_IFLNK:'symlink',
-    stat.S_IFSOCK:'socket',
-}
-
-
-def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
-    """Generate a file kind from a stat mode. This is used in walkdirs.
-
-    Its performance is critical: Do not mutate without careful benchmarking.
-    """
-    try:
-        return _formats[stat_mode & 0170000]
-    except KeyError:
-        return _unknown
-
-
-def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
-    try:
-        return _mapper(_lstat(f).st_mode)
-    except OSError, e:
-        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            raise errors.NoSuchFile(f)
-        raise
-
-
 def get_umask():
     """Return the current umask"""
     # Assume that people aren't messing with the umask while running
@@ -1201,7 +1170,7 @@ def walkdirs(top, prefix=""):
     _lstat = os.lstat
     _directory = _directory_kind
     _listdir = os.listdir
-    _kind_from_mode = _formats.get
+    _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1223,7 +1192,7 @@ def walkdirs(top, prefix=""):
             for name in names:
                 abspath = top_slash + name
                 statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                kind = _kind_from_mode(statvalue.st_mode)
                 append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
@@ -1292,58 +1261,28 @@ def _walkdirs_utf8(top, prefix=""):
             # ANSI_X3.4-1968 is a form of ASCII
             _selected_dir_reader = UnicodeDirReader()
         else:
-            _selected_dir_reader = UTF8DirReader()
+            try:
+                from bzrlib._readdir_pyx import UTF8DirReader
+            except ImportError:
+                # No optimised code path
+                _selected_dir_reader = UnicodeDirReader()
+            else:
+                _selected_dir_reader = UTF8DirReader()
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
-    pending = [_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]
+    pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
     read_dir = _selected_dir_reader.read_dir
     _directory = _directory_kind
     while pending:
-        relroot, _, _, _, top = pending.pop()
-        dirblock = read_dir(relroot, top)
+        relroot, _, _, _, top = pending[-1].pop()
+        if not pending[-1]:
+            pending.pop()
+        dirblock = sorted(read_dir(relroot, top))
         yield (relroot, top), dirblock
         # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
-
-
-class UTF8DirReader(DirReader):
-    """A dir reader for utf8 file systems."""
-
-    def top_prefix_to_starting_dir(self, top, prefix=""):
-        """See DirReader.top_prefix_to_starting_dir."""
-        return (safe_utf8(prefix), None, None, None, safe_utf8(top))
-
-    def read_dir(self, prefix, top):
-        """Read a single directory from a utf8 file system.
-
-        All paths in and out are utf8.
-
-        This sub-function is called when we know the filesystem is already in utf8
-        encoding. So we don't need to transcode filenames.
-
-        See DirReader.read_dir for details.
-        """
-        _lstat = os.lstat
-        # Use C accelerated directory listing.
-        _listdir = _read_dir
-        _kind_from_mode = _formats.get
-
-        if prefix:
-            relprefix = prefix + '/'
-        else:
-            relprefix = ''
-        top_slash = top + '/'
-
-        dirblock = []
-        append = dirblock.append
-        # read_dir supplies in should-stat order.
-        for _, name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
-        dirblock.sort()
-        return dirblock
+        next = [d for d in reversed(dirblock) if d[2] == _directory]
+        if next:
+            pending.append(next)
 
 
 class UnicodeDirReader(DirReader):
@@ -1374,7 +1313,7 @@ class UnicodeDirReader(DirReader):
         _utf8_encode = self._utf8_encode
         _lstat = os.lstat
         _listdir = os.listdir
-        _kind_from_mode = _formats.get
+        _kind_from_mode = file_kind_from_stat_mode
 
         if prefix:
             relprefix = prefix + '/'
@@ -1388,7 +1327,7 @@ class UnicodeDirReader(DirReader):
             name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
             statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
         return dirblock
 
@@ -1608,7 +1547,26 @@ def resource_string(package, resource_name):
     return open(filename, 'rU').read()
 
 
-try:
-    from bzrlib._readdir_pyx import read_dir as _read_dir
-except ImportError:
-    from bzrlib._readdir_py import read_dir as _read_dir
+def file_kind_from_stat_mode_thunk(mode):
+    global file_kind_from_stat_mode
+    if file_kind_from_stat_mode is file_kind_from_stat_mode_thunk:
+        try:
+            from bzrlib._readdir_pyx import UTF8DirReader
+            file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
+        except ImportError:
+            from bzrlib._readdir_py import (
+                _kind_from_mode as _file_kind_from_stat_mode
+                )
+    return file_kind_from_stat_mode(mode)
+file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
+
+
+def file_kind(f, _lstat=os.lstat):
+    try:
+        return file_kind_from_stat_mode(_lstat(f).st_mode)
+    except OSError, e:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
+            raise errors.NoSuchFile(f)
+        raise
+
+

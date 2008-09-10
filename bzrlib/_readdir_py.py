@@ -18,16 +18,35 @@
 
 
 import os
+import stat
 
 
-def read_dir(path):
-    """Like os.listdir, this reads the contents of a directory.
+_directory = 'directory'
+_chardev = 'chardev'
+_block = 'block'
+_file = 'file'
+_fifo = 'fifo'
+_symlink = 'symlink'
+_socket = 'socket'
+_unknown = 'unknown'
 
-    There is a C module which is recommended which will return
-    a sort key in the first element of the tuple to allow slightly
-    more efficient behaviour on the operating systems part.
+_formats = {
+    stat.S_IFDIR:'directory',
+    stat.S_IFCHR:'chardev',
+    stat.S_IFBLK:'block',
+    stat.S_IFREG:'file',
+    stat.S_IFIFO:'fifo',
+    stat.S_IFLNK:'symlink',
+    stat.S_IFSOCK:'socket',
+}
 
-    :param path: the directory to list.
-    :return: a list of (None, basename) tuples.
+
+def _kind_from_mode(stat_mode, _formats=_formats, _unknown='unknown'):
+    """Generate a file kind from a stat mode. This is used in walkdirs.
+
+    Its performance is critical: Do not mutate without careful benchmarking.
     """
-    return [(None, name) for name in os.listdir(path)]
+    try:
+        return _formats[stat_mode & 0170000]
+    except KeyError:
+        return _unknown

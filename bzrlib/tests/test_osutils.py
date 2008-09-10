@@ -57,25 +57,12 @@ from bzrlib.tests.file_utils import (
 from bzrlib.tests.test__walkdirs_win32 import Win32ReadDirFeature
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize readdir tests."""
-    to_adapt, result = split_suite_by_re(standard_tests, "readdir")
-    adapter = TestScenarioApplier()
-    from bzrlib import _readdir_py
-    adapter.scenarios = [('python', {'read_dir': _readdir_py.read_dir})]
-    if ReadDirFeature.available():
-        adapter.scenarios.append(('pyrex',
-            {'read_dir': ReadDirFeature.read_dir}))
-    adapt_tests(to_adapt, adapter, result)
-    return result
-
-
-class _ReadDirFeature(Feature):
+class _UTF8DirReaderFeature(Feature):
 
     def _probe(self):
         try:
             from bzrlib import _readdir_pyx
-            self.read_dir = _readdir_pyx.read_dir
+            self.reader = _readdir_pyx.UTF8DirReader
             return True
         except ImportError:
             return False
@@ -83,7 +70,7 @@ class _ReadDirFeature(Feature):
     def feature_name(self):
         return 'bzrlib._readdir_pyx'
 
-ReadDirFeature = _ReadDirFeature()
+UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -779,38 +766,6 @@ class TestSplitLines(TestCase):
 
 class TestWalkDirs(TestCaseInTempDir):
 
-    def test_readdir(self):
-        tree = [
-            '.bzr/',
-            '0file',
-            '1dir/',
-            '1dir/0file',
-            '1dir/1dir/',
-            '2file'
-            ]
-        self.build_tree(tree)
-        expected_names = ['.bzr', '0file', '1dir', '2file']
-        # read_dir returns pairs, which form a table with either None in all
-        # the first columns, or a sort key to get best on-disk-read order, 
-        # and the disk path name in utf-8 encoding in the second column.
-        read_result = self.read_dir('.')
-        # The second column is always the names, and every name except "." and
-        # ".." should be present.
-        names = sorted([row[1] for row in read_result])
-        self.assertEqual(expected_names, names)
-        expected_sort_key = None
-        if read_result[0][0] is None:
-            # No sort key returned - all keys must None
-            operator = self.assertEqual
-        else:
-            # A sort key in the first row implies sort keys in the other rows.
-            operator = self.assertNotEqual
-        for row in read_result:
-            operator(None, row[0])
-
-    def test_compiled_extension_exists(self):
-        self.requireFeature(ReadDirFeature)
-        
     def test_walkdirs(self):
         tree = [
             '.bzr',
@@ -931,22 +886,25 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
+        self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'UTF-8'
-        self.assertReadFSDirIs(osutils.UTF8DirReader)
+        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_ascii(self):
+        self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'US-ASCII'
-        self.assertReadFSDirIs(osutils.UTF8DirReader)
+        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_ANSI(self):
+        self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'ANSI_X3.4-1968'
-        self.assertReadFSDirIs(osutils.UTF8DirReader)
+        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()

@@ -45,6 +45,15 @@ IN DEVELOPMENT
       SFTP transport a little bit faster (~20%) and use a bit less memory.
       (John Arbash Meinel)
 
+    * ``status`` on large trees is now faster, due to optimisations in the
+      walkdirs code. Of particular note, the walkdirs code now performs
+      a temporary ``chdir()`` while reading a single directory; if your
+      platform has non thread-local current working directories (and is
+      not windows which has its own implementation), this may introduce a
+      race condition during concurrent uses of bzrlib. The bzrlib CLI
+      will not encounter this as it is single threaded for working tree
+      operations. (Robert Collins)
+
     * When reading index files, if we happen to read the whole file in a
       single request treat it as a ``_buffer_all`` request. This happens
       most often on small indexes over remote transports, where we default
