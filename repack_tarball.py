@@ -32,6 +32,10 @@ from bzrlib.errors import (
 from bzrlib.transport import get_transport
 from bzrlib import urlutils
 
+def _get_file_from_location(location):
+    base_dir, path = urlutils.split(location)
+    transport = get_transport(base_dir)
+    return transport.get(path)
 
 def repack_tarball(orig_name, new_name, target_dir=None):
   """Repack the file/dir named to a .tar.gz with the chosen name.
@@ -68,14 +72,20 @@ def repack_tarball(orig_name, new_name, target_dir=None):
       if not os.path.isdir(target_dir):
         raise NotADirectory(target_dir)
     new_name = os.path.join(target_dir, new_name)
+  old_contents = None
+  if isinstance(orig_name, unicode):
+    orig_name = orig_name.encode('utf-8')
+  if isinstance(new_name, unicode):
+    new_name = new_name.encode('utf-8')
   if os.path.exists(new_name):
     if not orig_name.endswith('.tar.gz'):
       raise FileExists(new_name)
-    f = open(orig_name)
+    trans_file = _get_file_from_location(orig_name)
     try:
-      orig_sha = sha.sha(f.read()).hexdigest()
+      old_contents = trans_file.read()
     finally:
-      f.close()
+      trans_file.close()
+    orig_sha = sha.sha(old_contents).hexdigest()
     f = open(new_name)
     try:
       new_sha = sha.sha(f.read()).hexdigest()
@@ -91,39 +101,34 @@ def repack_tarball(orig_name, new_name, target_dir=None):
     finally:
       tar.close()
   else:
-    if isinstance(orig_name, unicode):
-      orig_name = orig_name.encode('utf-8')
-    if isinstance(new_name, unicode):
-      new_name = new_name.encode('utf-8')
-    base_dir, path = urlutils.split(orig_name)
-    transport = get_transport(base_dir)
-    trans_file = transport.get(path)
-    try:
-      if orig_name.endswith('.tar.gz') or orig_name.endswith('.tgz'):
-        dest = open(new_name, 'wb')
-        try:
-          dest.write(trans_file.read())
-        finally:
-          dest.close()
-      elif orig_name.endswith('.tar'):
-        gz = gzip.GzipFile(new_name, 'w')
-        try:
-          gz.write(trans_file.read())
-        finally:
-          gz.close()
-      elif orig_name.endswith('.tar.bz2'):
-        old_tar_content = trans_file.read()
-        old_tar_content_decompressed = bz2.decompress(old_tar_content)
-        gz = gzip.GzipFile(new_name, 'w')
-        try:
-          gz.write(old_tar_content_decompressed)
-        finally:
-          gz.close()
-      else:
-        raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
-      # TODO: handle zip files.
-    finally:
-      trans_file.close()
+    if old_contents is None:
+      trans_file = _get_file_from_location(orig_name)
+      try:
+        old_contents = trans_file.read()
+      finally:
+        trans_file.close()
+    if orig_name.endswith('.tar.gz') or orig_name.endswith('.tgz'):
+      dest = open(new_name, 'wb')
+      try:
+        dest.write(old_contents)
+      finally:
+        dest.close()
+    elif orig_name.endswith('.tar'):
+      gz = gzip.GzipFile(new_name, 'w')
+      try:
+        gz.write(old_contents)
+      finally:
+        gz.close()
+    elif orig_name.endswith('.tar.bz2'):
+      old_tar_content_decompressed = bz2.decompress(old_contents)
+      gz = gzip.GzipFile(new_name, 'w')
+      try:
+        gz.write(old_tar_content_decompressed)
+      finally:
+        gz.close()
+    else:
+      raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
+    # TODO: handle zip files.
 
 # vim: ts=2 sts=2 sw=2
 
