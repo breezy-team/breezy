@@ -23,6 +23,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.trace.debug_memory`` can be used to get a quick memory dump
+      in the middle of processing. It only reports memory if
+      ``/proc/PID/status`` is available, and only if ``-Dmemory`` is being
+      run. (John Arbash Meinel)
+
 
 bzr 1.7rc1 2008-09-09
 ---------------------

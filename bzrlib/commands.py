@@ -795,17 +795,7 @@ def run_bzr(argv):
             ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
-        if 'memory' in debug.debug_flags:
-            try:
-                status_file = file('/proc/%s/status' % os.getpid(), 'rb')
-            except IOError:
-                pass
-            else:
-                status = status_file.read()
-                status_file.close()
-                trace.note("Process status after command:")
-                for line in status.splitlines():
-                    trace.note(line)
+        trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
