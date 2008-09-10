@@ -1252,7 +1252,7 @@ class TransportTests(TestTransportImplementation):
         self.failIf(t3.has('b/d'))
 
         if t1.is_readonly():
-            open('b/d', 'wb').write('newfile\n')
+            self.build_tree_contents([('b/d', 'newfile\n')])
         else:
             t2.put_bytes('d', 'newfile\n')
 
@@ -1546,7 +1546,7 @@ class TransportTests(TestTransportImplementation):
         content = osutils.rand_bytes(200*1024)
         content_size = len(content)
         if transport.is_readonly():
-            file('a', 'wb').write(content)
+            self.build_tree_contents([('a', content)])
         else:
             transport.put_bytes('a', content)
         def check_result_data(result_vector):
