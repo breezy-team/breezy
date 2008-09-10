@@ -1487,6 +1487,31 @@ class DistributionBranch(object):
                 real_parents = [parent_revid]
         return real_parents
 
+    def _fetch_upstream_to_branch(self, revid):
+        """Fetch the revision from the upstream branch in to the pacakging one.
+
+        This will unlock self.tree, then re-lock it and fetch. This is
+        necessary as if the two branches share a repository the branch
+        won't see any revisions added by the upstream branch since self.tree
+        was locked.
+
+        It will check that the last revision is the same before and after,
+        and that there are no working tree changes, to prevent unexpected
+        things happening if say a commit was done in this time.
+        """
+        if self.tree.is_locked():
+            last_revision = self.branch.last_revision()
+            # Unlock the tree and lock it again
+            self.tree.unlock()
+            self.tree.lock_write()
+            assert self.branch.last_revision() == last_revision, \
+                    "Branch committed to while refreshing it. Not proceeding."
+            assert not self.tree.changes_from(
+                    self.tree.basis_tree()).has_changed(), \
+                    "Treee altered while refreshing it. Not proceeding."
+        self.branch.fetch(self.upstream_branch, last_revision=revid)
+        self.upstream_branch.tags.merge_to(self.branch.tags)
+
     def import_upstream(self, upstream_part, version, md5, upstream_parents):
         """Import an upstream part on to the upstream branch.
 
@@ -1526,8 +1551,7 @@ class DistributionBranch(object):
                 % (str(version.upstream_version),),
                 revprops={"deb-md5":md5})
         self.tag_upstream_version(version)
-        self.branch.fetch(self.upstream_branch, last_revision=revid)
-        self.upstream_branch.tags.merge_to(self.branch.tags)
+        return revid
 
     def _get_commit_message_from_changelog(self):
         """Retrieves the messages from the last section of debian/changelog.
@@ -1783,8 +1807,9 @@ class DistributionBranch(object):
                     # Check whether we should pull first if this initialises
                     # from another branch:
                     upstream_parents = self.upstream_parents(versions)
-                    self.import_upstream(upstream_part, version,
+                    new_revid = self.import_upstream(upstream_part, version,
                             upstream_md5, upstream_parents)
+                    self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(version, versions,
@@ -1939,13 +1964,16 @@ class DistributionBranch(object):
                 parents = []
                 if self.upstream_branch.last_revision() != NULL_REVISION:
                     parents = [self.upstream_branch.last_revision()]
-                self.import_upstream(tarball_dir, version, md5sum,
-                        parents)
+                new_revid = self.import_upstream(tarball_dir, version,
+                        md5sum, parents)
+                self._fetch_upstream_to_branch(new_revid)
             finally:
                 shutil.rmtree(tarball_dir)
             if self.branch.last_revision() != NULL_REVISION:
                 conflicts = self.tree.merge_from_branch(self.upstream_branch)
             else:
+                # Pull so that merge-upstream allows you to start a branch
+                # from upstream tarball.
                 conflicts = 0
                 self.tree.pull(self.upstream_branch)
             self.upstream_branch.tags.merge_to(self.branch.tags)
