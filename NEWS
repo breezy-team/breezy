@@ -4,8 +4,16 @@ Bazaar Release Notes
 
 .. contents::
 
-bzr 1.7 2008-09-09
-------------------
+bzr 1.7rc1 2008-09-09
+---------------------
+
+This release candidate for bzr 1.7 has several bug fixes and a few
+performance and feature improvements.  ``bzr rm`` will now scan for
+missing files and remove them, like how ``bzr add`` scans for unknown
+files and adds them. A bit more polish has been applied to the stacking
+code. The b-tree indexing code has been brought in, with an eye on using
+it in a future repository format.
+
 
   CHANGES:
 
