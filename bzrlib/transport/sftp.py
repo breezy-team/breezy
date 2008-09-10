@@ -246,6 +246,9 @@ class _SFTPReadvHelper(object):
                 # when there is only one string ''.join([x]) == x, so there is
                 # no data copying.
                 buffered = ''.join(buffered_data)
+                # Clean out buffered data so that we keep memory
+                # consumption low
+                del buffered_data[:]
                 buffered_offset = 0
                 # TODO: We *could* also consider the case where cur_offset is in
                 #       in the buffered range, even though it doesn't *start*
@@ -276,6 +279,7 @@ class _SFTPReadvHelper(object):
                     buffered_len = len(buffered)
         if buffered_len:
             buffered = ''.join(buffered_data)
+            del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
             mutter('SFTP readv left with %d out-of-order bytes',
