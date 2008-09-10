@@ -21,6 +21,10 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * ``bzrlib.tests.repository_implementations`` has been renamed to
+      ``bzrlib.tests.per_repository`` so that we have a common structure
+      (and it is shorter). (John Arbash Meinel, #239343)
+
   INTERNALS:
 
 
