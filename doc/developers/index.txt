@@ -10,6 +10,9 @@ Overall developer documentation
 
 * `Developer Guide <../en/developer-guide/HACKING.html>`_
 
+* `Architectural Overview <overview.html>`_ |--| describes some of the
+  most important classes and concepts.
+
 * `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
   (external link)
   |--| automatically generated API reference information
