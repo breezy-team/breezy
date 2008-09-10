@@ -80,8 +80,9 @@ class GraphIndexBuilder(object):
         """
         self.reference_lists = reference_lists
         self._keys = set()
+        # A dict of {key: (absent, ref_lists, value)}
         self._nodes = {}
-        self._nodes_by_key = {}
+        self._nodes_by_key = None
         self._key_length = key_elements
 
     def _check_key(self, key):
@@ -94,6 +95,79 @@ class GraphIndexBuilder(object):
             if not element or _whitespace_re.search(element) is not None:
                 raise errors.BadIndexKey(element)
 
+    def _get_nodes_by_key(self):
+        if self._nodes_by_key is None:
+            nodes_by_key = {}
+            if self.reference_lists:
+                for key, (absent, references, value) in self._nodes.iteritems():
+                    if absent:
+                        continue
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value, references
+            else:
+                for key, (absent, references, value) in self._nodes.iteritems():
+                    if absent:
+                        continue
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value
+            self._nodes_by_key = nodes_by_key
+        return self._nodes_by_key
+
+    def _update_nodes_by_key(self, key, value, node_refs):
+        """Update the _nodes_by_key dict with a new key.
+
+        For a key of (foo, bar, baz) create
+        _nodes_by_key[foo][bar][baz] = key_value
+        """
+        if self._nodes_by_key is None:
+            return
+        key_dict = self._nodes_by_key
+        if self.reference_lists:
+            key_value = key, value, node_refs
+        else:
+            key_value = key, value
+        for subkey in key[:-1]:
+            key_dict = key_dict.setdefault(subkey, {})
+        key_dict[key[-1]] = key_value
+
+    def _check_key_ref_value(self, key, references, value):
+        """Check that 'key' and 'references' are all valid.
+
+        :param key: A key tuple. Must conform to the key interface (be a tuple,
+            be of the right length, not have any whitespace or nulls in any key
+            element.)
+        :param references: An iterable of reference lists. Something like
+            [[(ref, key)], [(ref, key), (other, key)]]
+        :param value: The value associate with this key. Must not contain
+            newlines or null characters.
+        :return: (node_refs, absent_references)
+            node_refs   basically a packed form of 'references' where all
+                        iterables are tuples
+            absent_references   reference keys that are not in self._nodes.
+                                This may contain duplicates if the same key is
+                                referenced in multiple lists.
+        """
+        self._check_key(key)
+        if _newline_null_re.search(value) is not None:
+            raise errors.BadIndexValue(value)
+        if len(references) != self.reference_lists:
+            raise errors.BadIndexValue(references)
+        node_refs = []
+        absent_references = []
+        for reference_list in references:
+            for reference in reference_list:
+                # If reference *is* in self._nodes, then we know it has already
+                # been checked.
+                if reference not in self._nodes:
+                    self._check_key(reference)
+                    absent_references.append(reference)
+            node_refs.append(tuple(reference_list))
+        return tuple(node_refs), absent_references
+
     def add_node(self, key, value, references=()):
         """Add a node to the index.
 
@@ -105,35 +179,18 @@ class GraphIndexBuilder(object):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
-        self._check_key(key)
-        if _newline_null_re.search(value) is not None:
-            raise errors.BadIndexValue(value)
-        if len(references) != self.reference_lists:
-            raise errors.BadIndexValue(references)
-        node_refs = []
-        for reference_list in references:
-            for reference in reference_list:
-                self._check_key(reference)
-                if reference not in self._nodes:
-                    self._nodes[reference] = ('a', (), '')
-            node_refs.append(tuple(reference_list))
-        if key in self._nodes and self._nodes[key][0] == '':
+        (node_refs,
+         absent_references) = self._check_key_ref_value(key, references, value)
+        if key in self._nodes and self._nodes[key][0] != 'a':
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = ('', tuple(node_refs), value)
+        for reference in absent_references:
+            # There may be duplicates, but I don't think it is worth worrying
+            # about
+            self._nodes[reference] = ('a', (), '')
+        self._nodes[key] = ('', node_refs, value)
         self._keys.add(key)
-        if self._key_length > 1:
-            key_dict = self._nodes_by_key
-            if self.reference_lists:
-                key_value = key, value, tuple(node_refs)
-            else:
-                key_value = key, value
-            # possibly should do this on-demand, but it seems likely it is 
-            # always wanted
-            # For a key of (foo, bar, baz) create
-            # _nodes_by_key[foo][bar][baz] = key_value
-            for subkey in key[:-1]:
-                key_dict = key_dict.setdefault(subkey, {})
-            key_dict[key[-1]] = key_value
+        if self._nodes_by_key is not None and self._key_length > 1:
+            self._update_nodes_by_key(key, value, node_refs)
 
     def finish(self):
         lines = [_SIGNATURE]
@@ -142,7 +199,7 @@ class GraphIndexBuilder(object):
         lines.append(_OPTION_LEN + str(len(self._keys)) + '\n')
         prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
-        # polynomial work to resolve offsets (references to later in the 
+        # polynomial work to resolve offsets (references to later in the
         # file cannot be determined until all the inbetween references have
         # been calculated too) we pad the offsets with 0's to make them be
         # of consistent length. Using binary offsets would break the trivial
@@ -325,14 +382,14 @@ class GraphIndex(object):
                 node_value = value
             self._nodes[key] = node_value
             if self._key_length > 1:
-                subkey = list(reversed(key[:-1]))
+                # TODO: We may want to do this lazily, but if we are calling
+                #       _buffer_all, we are likely to be doing
+                #       iter_entries_prefix
                 key_dict = self._nodes_by_key
                 if self.node_ref_lists:
                     key_value = key, node_value[0], node_value[1]
                 else:
                     key_value = key, node_value
-                # possibly should do this on-demand, but it seems likely it is 
-                # always wanted
                 # For a key of (foo, bar, baz) create
                 # _nodes_by_key[foo][bar][baz] = key_value
                 for subkey in key[:-1]:
@@ -1275,6 +1332,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 else:
                     yield self, key, node[2]
             return
+        nodes_by_key = self._get_nodes_by_key()
         for key in keys:
             # sanity check
             if key[0] is None:
@@ -1282,7 +1340,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             if len(key) != self._key_length:
                 raise errors.BadIndexKey(key)
             # find what it refers to:
-            key_dict = self._nodes_by_key
+            key_dict = nodes_by_key
             elements = list(key)
             # find the subdict to return
             try:
