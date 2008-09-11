@@ -1887,29 +1887,11 @@ class DistributionBranch(object):
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
         to_location = os.path.join(basedir, self.name + "-upstream")
-        to_transport = transport.get_transport(to_location)
-        br_to = dir_to = repository_to = None
-        try:
-            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
-        except NotBranchError:
-            pass
-        else:
-            try:
-                repository_to = dir_to.find_repository()
-            except NoRepositoryPresent:
-                pass
-        if dir_to is None:
-            dir_to = self.branch.bzrdir.clone_on_transport(to_transport,
-                    revision_id=upstream_tip)
-            br_to = dir_to.open_branch()
-        elif repository_to is None:
-            assert False, "Strange situation to be in"
-        else:
-            repository_to.fetch(self.branch.repository,
-                    revision_id=upstream_tip)
-            br_to = br_from.clone(dir_to, revision_id=revision_id)
+        dir_to = self.branch.bzrdir.sprout(to_location,
+                revision_id=upstream_tip,
+                accelerator_tree=self.tree)
         self.upstream_tree = dir_to.open_workingtree()
-        self.upstream_branch = br_to
+        self.upstream_branch = self.upstream_tree.branch
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir,
