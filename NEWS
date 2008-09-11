@@ -4,6 +4,15 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.7rc2 IN DEVELOPMENT
+-------------------------
+
+  BUG FIXES:
+
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
+
+
 bzr 1.7rc1 2008-09-09
 ---------------------
 
