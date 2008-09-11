@@ -1503,7 +1503,7 @@ class cmd_diff(Command):
 
         old_tree, new_tree, specific_files, extra_trees = \
                 _get_trees_to_diff(file_list, revision, old, new)
-        return show_diff_trees(old_tree, new_tree, sys.stdout, 
+        return show_diff_trees(old_tree, new_tree, self.outf, 
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
@@ -3513,9 +3513,9 @@ class cmd_testament(Command):
                 rev_id = revision[0].as_revision_id(b)
             t = testament_class.from_revision(b.repository, rev_id)
             if long:
-                sys.stdout.writelines(t.as_text_lines())
+                self.outf.writelines(t.as_text_lines())
             else:
-                sys.stdout.write(t.as_short_text())
+                self.outf.write(t.as_short_text())
         finally:
             b.unlock()
 
@@ -3837,8 +3837,8 @@ class cmd_wait_until_signalled(Command):
     hidden = True
 
     def run(self):
-        sys.stdout.write("running\n")
-        sys.stdout.flush()
+        self.outf.write("running\n")
+        self.outf.flush()
         sys.stdin.readline()
 
 
@@ -3881,7 +3881,7 @@ class cmd_serve(Command):
         t = get_transport(chroot_server.get_url())
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, t)
+                sys.stdin, self.outf, t)
         else:
             host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
@@ -3892,7 +3892,7 @@ class cmd_serve(Command):
                 port = int(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port
-            sys.stdout.flush()
+            self.outf.flush()
         # for the duration of this server, no UI output is permitted.
         # note that this may cause problems with blackbox tests. This should
         # be changed with care though, as we dont want to use bandwidth sending
