@@ -65,14 +65,18 @@ cdef extern from 'sys/types.h':
 cdef extern from 'Python.h':
     char * PyString_AS_STRING(object)
     ctypedef int Py_ssize_t # Required for older pyrex versions
+    ctypedef struct PyObject:
+        pass
     Py_ssize_t PyString_Size(object s)
     object PyList_GetItem(object lst, Py_ssize_t index)
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
     int PyList_Append(object lst, object item) except -1
     void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
     int PyTuple_SetItem(void *, Py_ssize_t pos, object item) except -1
+    int PyTuple_SetItem_obj "PyTuple_SetItem" (void *, Py_ssize_t pos, PyObject * item) except -1
     void Py_INCREF(object o)
     void Py_DECREF(object o)
+    void PyString_Concat(PyObject **string, object newpart)
 
 
 cdef extern from 'dirent.h':
@@ -94,8 +98,6 @@ _symlink = 'symlink'
 _socket = 'socket'
 _unknown = 'unknown'
 _missing = 'missing'
-
-dot = ord('.')
 
 # add a typedef struct dirent dirent to workaround pyrex
 cdef extern from 'readdir.h':
@@ -198,6 +200,7 @@ cdef class UTF8DirReader:
         cdef int length
         cdef void * atuple
         cdef object name
+        cdef PyObject * new_val_obj
 
         if PyString_Size(prefix):
             relprefix = prefix + '/'
@@ -215,18 +218,30 @@ cdef class UTF8DirReader:
             name = <object>PyTuple_GetItem_void_void(atuple, 1)
             # We have inode, name, None, statvalue, None
             # inode -> path_from_top
-            newval = relprefix + name
-            Py_INCREF(newval)
-            PyTuple_SetItem(atuple, 0, newval)
+            # direct concat - faster than operator +.
+            new_val_obj = <PyObject *>relprefix
+            Py_INCREF(relprefix)
+            PyString_Concat(&new_val_obj, name)
+            if NULL == new_val_obj:
+                # PyString_Concat will have setup an exception, but how to get
+                # at it?
+                raise Exception("failed to strcat")
+            PyTuple_SetItem_obj(atuple, 0, new_val_obj)
             # None -> kind
             newval = self._kind_from_mode(
                 (<_Stat>PyTuple_GetItem_void_void(atuple, 3)).st_mode)
             Py_INCREF(newval)
             PyTuple_SetItem(atuple, 2, newval)
             # none -> abspath # perhaps only do if its a dir?
-            newval = top_slash + name
-            Py_INCREF(newval)
-            PyTuple_SetItem(atuple, 4, newval)
+            # direct concat - faster than operator +.
+            new_val_obj = <PyObject *>top_slash
+            Py_INCREF(top_slash)
+            PyString_Concat(&new_val_obj, name)
+            if NULL == new_val_obj:
+                # PyString_Concat will have setup an exception, but how to get
+                # at it?
+                raise Exception("failed to strcat")
+            PyTuple_SetItem_obj(atuple, 4, new_val_obj)
         return result
 
 
