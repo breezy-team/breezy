@@ -15,6 +15,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr missing`` now accepts an ``--include-merges`` option.
+      (Vincent Ladeuil, #233817)
+
   DOCUMENTATION:
 
   API CHANGES:
