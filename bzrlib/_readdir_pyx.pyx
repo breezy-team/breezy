@@ -59,11 +59,11 @@ cdef extern from 'sys/types.h':
     ctypedef long ssize_t
     ctypedef unsigned long size_t
     ctypedef long time_t
+    ctypedef unsigned long ino_t
 
 
 cdef extern from 'Python.h':
     char * PyString_AS_STRING(object)
-    int PyOS_snprintf(char *str, size_t size, char *format, ...)
     ctypedef int Py_ssize_t # Required for older pyrex versions
     Py_ssize_t PyString_Size(object s)
     object PyList_GetItem(object lst, Py_ssize_t index)
@@ -76,19 +76,9 @@ cdef extern from 'Python.h':
 
 
 cdef extern from 'dirent.h':
-    int DT_UNKNOWN
-    int DT_REG
-    int DT_DIR
-    int DT_FIFO
-    int DT_SOCK
-    int DT_CHR
-    int DT_BLK
     ctypedef struct dirent:
         char d_name[256]
-        # this will fail to compile if d_type is not defined.
-        # if this module fails to compile, use the .py version.
-        unsigned char d_type
-        int d_ino
+        ino_t d_ino
     ctypedef struct DIR
     # should be DIR *, pyrex barfs.
     DIR * opendir(char * name)
@@ -116,11 +106,10 @@ cdef class _Stat:
     """Represent a 'stat' result."""
 
     cdef readonly int st_mode
-    # nanosecond time definitions use MACROS, fucking up te ability to have a
-    # variable called st_mtime. Yay Ulrich, thanks a lot.
+    # nanosecond time definitions use MACROS, due to an "interesting" glibc
+    # design decision. The result is that we cannot have a C symbol of st_*time.
     cdef readonly time_t _ctime
     cdef readonly time_t _mtime
-    # cdef readonly double st_atime
     cdef readonly int st_size
 
     cdef readonly int st_dev
@@ -137,10 +126,8 @@ cdef class _Stat:
     def __repr__(self):
         """Repr is the same as a Stat object.
 
-        (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+        (mode, ino, dev, nlink, uid, gid, size, None(atime), mtime, ctime)
         """
-        #return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, self.st_atime,
-        #             self.st_mtime, self.st_ctime))
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, None,
                      self._mtime, self._ctime))
 
@@ -212,7 +199,6 @@ cdef class UTF8DirReader:
         cdef void * atuple
         cdef object name
 
-
         if PyString_Size(prefix):
             relprefix = prefix + '/'
         else:
@@ -259,10 +245,6 @@ cdef _read_dir(path):
     cdef int stat_result
     cdef stat st
     cdef _Stat statvalue
-    cdef char * abspath
-    cdef char * pathstart
-    cdef int pathlen
-    cdef int snprintf_result
     cdef char *cwd
 
     cwd = getcwd(NULL, 0)
@@ -271,13 +253,6 @@ cdef _read_dir(path):
     the_dir = opendir(".")
     if NULL == the_dir:
         raise OSError(errno, strerror(errno))
-    pathlen = len(path)
-    # allow 1024 bytes of name. (+ '/' + '\x00' to terminate).
-    abspath = <char *>malloc(pathlen + 1026)
-    snprintf_result = PyOS_snprintf(abspath, pathlen + 2, "%s/", PyString_AS_STRING(path))
-    if snprintf_result < 0:
-        raise OSError(errno, strerror(errno))
-    pathstart = abspath + pathlen + 1
     result = []
     try:
         entry = &sentinel
@@ -298,15 +273,11 @@ cdef _read_dir(path):
                     # done
                     continue
             name = entry.d_name
-            if not (name[0] == dot and (
+            if not (name[0] == c"." and (
                 (name[1] == 0) or 
-                (name[1] == dot and name[2] == 0))
+                (name[1] == c"." and name[2] == 0))
                 ):
-                snprintf_result = PyOS_snprintf(pathstart, 1025, "%s", name)
-                if snprintf_result < 0:
-                    raise OSError(errno, strerror(errno))
                 stat_result = lstat(entry.d_name, &st)
-                # stat_result = lstat(abspath, &st)
                 if stat_result != 0:
                     if errno != ENOENT:
                         raise OSError(errno, strerror(errno))
@@ -318,21 +289,19 @@ cdef _read_dir(path):
                     statvalue.st_mode = st.st_mode
                     statvalue._ctime = st.st_ctime
                     statvalue._mtime = st.st_mtime
-                    # statvalue.st_atime = st.st_atime
                     statvalue.st_size = st.st_size
                     statvalue.st_ino = st.st_ino
                     statvalue.st_dev = st.st_dev
                 # We append a 5-tuple that can be modified in-place by the C
                 # api:
-                # inode to sort on and replace with top_path
-                # name to keep
-                # kind 
-                # statvalue
-                # abspath
+                # inode to sort on (to replace with top_path)
+                # name (to keep)
+                # kind (None, to set)
+                # statvalue (to keep)
+                # abspath (None, to set)
                 PyList_Append(result, (entry.d_ino, entry.d_name, None,
                     statvalue, None))
     finally:
-        free(abspath)
         if -1 == chdir(cwd):
             free(cwd)
             raise OSError(errno, strerror(errno))
