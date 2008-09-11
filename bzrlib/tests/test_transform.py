@@ -1163,9 +1163,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
 
     def test_rollback_on_directory_clash(self):
-        wt = self.make_branch_and_tree('.')
-        wt.add
         def tt_helper():
+            wt = self.make_branch_and_tree('.')
             tt = TreeTransform(wt)  # TreeTransform obtains write lock
             try:
                 foo = tt.new_directory('foo', tt.root)
@@ -1179,8 +1178,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             except:
                 wt.unlock()
                 raise
-        # It will fail the renaming because the target directory is not empty
-        # (but raise FileExists anyway).
+        # The rename will fail because the target directory is not empty (but
+        # raises FileExists anyway).
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
             "^File exists: .+/baz")
