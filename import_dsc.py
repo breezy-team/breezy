@@ -1024,9 +1024,16 @@ class DistributionBranch(object):
 
     def _has_version(self, branch, tag_name, md5=None):
         if branch.tags.has_tag(tag_name):
+            revid = branch.tags.lookup_tag(tag_name)
+            branch.lock_read()
+            try:
+                graph = branch.repository.get_graph()
+                if not graph.is_ancestor(revid, branch.last_revision()):
+                    return False
+            finally:
+                branch.unlock()
             if md5 is None:
                 return True
-            revid = branch.tags.lookup_tag(tag_name)
             rev = branch.repository.get_revision(revid)
             try:
                 return rev.properties['deb-md5'] == md5
