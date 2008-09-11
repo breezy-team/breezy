@@ -224,6 +224,16 @@ class BzrCheckError(InternalBzrError):
         self.message = message
 
 
+class DirstateCorrupt(BzrError):
+
+    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
+
+    def __init__(self, state, msg):
+        BzrError.__init__(self)
+        self.state = state
+        self.msg = msg
+
+
 class DisabledMethod(InternalBzrError):
 
     _fmt = "The smart server method '%(class_name)s' is disabled."
@@ -2498,6 +2508,10 @@ class UnexpectedSmartServerResponse(BzrError):
 
 
 class ErrorFromSmartServer(BzrError):
+    """An error was received from a smart server.
+
+    :seealso: UnknownErrorFromSmartServer
+    """
 
     _fmt = "Error received from smart server: %(error_tuple)r"
 
@@ -2511,6 +2525,32 @@ class ErrorFromSmartServer(BzrError):
             self.error_verb = None
         self.error_args = error_tuple[1:]
 
+
+class UnknownErrorFromSmartServer(BzrError):
+    """An ErrorFromSmartServer could not be translated into a typical bzrlib
+    error.
+
+    This is distinct from ErrorFromSmartServer so that it is possible to
+    distinguish between the following two cases:
+      - ErrorFromSmartServer was uncaught.  This is logic error in the client
+        and so should provoke a traceback to the user.
+      - ErrorFromSmartServer was caught but its error_tuple could not be
+        translated.  This is probably because the server sent us garbage, and
+        should not provoke a traceback.
+    """
+
+    _fmt = "Server sent an unexpected error: %(error_tuple)r"
+
+    internal_error = False
+
+    def __init__(self, error_from_smart_server):
+        """Constructor.
+
+        :param error_from_smart_server: An ErrorFromSmartServer instance.
+        """
+        self.error_from_smart_server = error_from_smart_server
+        self.error_tuple = error_from_smart_server.error_tuple
+        
 
 class ContainerError(BzrError):
     """Base class of container errors."""

@@ -21,10 +21,11 @@ from bzrlib import (
     repository as _mod_repository,
     tsort,
     )
+import bzrlib.revision as _mod_revision
 
 
 def iter_log_revisions(revisions, revision_source, verbose):
-    last_tree = revision_source.revision_tree(None)
+    last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
     last_rev_id = None
     for rev in revisions:
         # We need the following for backward compatibilty (hopefully

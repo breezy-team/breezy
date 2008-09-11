@@ -120,7 +120,7 @@ class ConventionalRequestHandler(MessageHandler):
         self.request_handler.accept_body(bytes)
         self.request_handler.end_of_body()
         if not self.request_handler.finished_reading:
-            raise SmartProtocolError(
+            raise errors.SmartProtocolError(
                 "Conventional request body was received, but request handler "
                 "has not finished reading.")
         self.responder.send_response(self.request_handler.response)

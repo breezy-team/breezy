@@ -9,6 +9,38 @@ IN DEVELOPMENT
 
   CHANGES:
 
+  FEATURES
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+    * ``bzrlib.tests.repository_implementations`` has been renamed to
+      ``bzrlib.tests.per_repository`` so that we have a common structure
+      (and it is shorter). (John Arbash Meinel, #239343)
+
+  INTERNALS:
+
+
+bzr 1.7rc1 2008-09-09
+---------------------
+
+This release candidate for bzr 1.7 has several bug fixes and a few
+performance and feature improvements.  ``bzr rm`` will now scan for
+missing files and remove them, like how ``bzr add`` scans for unknown
+files and adds them. A bit more polish has been applied to the stacking
+code. The b-tree indexing code has been brought in, with an eye on using
+it in a future repository format.
+
+
+  CHANGES:
+
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
@@ -23,8 +55,12 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * ``bzr branch`` uses the default stacking policy if the branch format
-      supports it. (Aaron Bentley)
+    * A url like ``log+file:///tmp`` will log all access to that Transport 
+      to ``.bzr.log``, which may help in debugging or profiling.
+      (Martin Pool)
+
+    * ``bzr branch`` and ``bzr push`` use the default stacking policy if the
+      branch format supports it. (Aaron Bentley)
 
     * ``bzr init`` and ``bzr init-repo`` will now print out the same as
       ``bzr info`` if it completed successfully.
@@ -35,6 +71,23 @@ IN DEVELOPMENT
       to recover if you realize you uncommitted the wrong thing.
       (John Arbash Meinel)
 
+    * ``SFTPTransport.readv()`` was accidentally using ``list += string``,
+      which 'works', but adds each character separately to the list,
+      rather than using ``list.append(string)``. Fixing this makes the
+      SFTP transport a little bit faster (~20%) and use a bit less memory.
+      (John Arbash Meinel)
+
+    * When reading index files, if we happen to read the whole file in a
+      single request treat it as a ``_buffer_all`` request. This happens
+      most often on small indexes over remote transports, where we default
+      to reading 64kB. It saves a round trip for each small index during
+      fetch operations. Also, if we have read more than 50% of an index
+      file, trigger a ``_buffer_all`` on the next request. This works
+      around some inefficiencies because reads don't fall neatly on page
+      boundaries, so we would ignore those bytes, but request them again
+      later. This could trigger a total read size of more than the whole
+      file. (John Arbash Meinel)
+
   BUG FIXES:
 
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
@@ -43,6 +96,10 @@ IN DEVELOPMENT
     * Catch the infamous "select/poll returned error" which occurs when
       pycurl try to send a body request to an HTTP/1.0 server which has
       already refused to handle the request. (Vincent Ladeuil, #225020)
+
+    * Fix ``ObjectNotLocked`` errors when using various commands
+      (including ``bzr cat`` and ``bzr annotate``) in combination with a
+      smart server URL.  (Andrew Bennetts, #237067)
 
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
@@ -70,8 +127,24 @@ IN DEVELOPMENT
     * Show proper error rather than traceback when an unknown revision 
       id is specified to ``bzr cat-revision``. (Jelmer Vernooij, #175569)
 
+    * Trailing text in the dirstate file could cause the C dirstate parser
+      to try to allocate an invalid amount of memory. We now properly
+      check and test for parsing a dirstate with invalid trailing data.
+      (John Arbash Meinel, #186014)
+
+    * Unexpected error responses from a smart server no longer cause the
+      client to traceback.  (Andrew Bennetts, #263527)
+      
+    * Use a Windows api function to get a Unicode host name, rather than
+      assuming the host name is ascii.
+      (Mark Hammond, John Arbash Meinel, #256550)
+
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
+
+  DOCUMENTATION:
+
+    * Updated developer documentation.  (Martin Pool)
 
   API CHANGES:
 
@@ -85,6 +158,9 @@ IN DEVELOPMENT
     * The deprecated ``Branch.abspath`` and unimplemented 
       ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
 
+    * BzrDir.clone_on_transport implementations must now accept a stacked_on
+      parameter.  (Aaron Bentley)
+
     * BzrDir.cloning_metadir implementations must now take a require_stacking
       parameter.  (Aaron Bentley)
 
@@ -94,6 +170,10 @@ IN DEVELOPMENT
       which are then passed to the cleanup callable as it is run. In
       addition, addCleanup no longer requires that the callables passed to
       it be unique. (Jonathan Lange)
+
+    * Fix some tests that fail on Windows because files are deleted while 
+      still in use. 
+      (Mark Hammond)
 
     * ``selftest``'s ``--starting-with`` option can now use predefined
       prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
@@ -118,10 +198,34 @@ IN DEVELOPMENT
       is unknown in both source and target.
       (Robert Collins, Aaron Bentley)
 
+    * ``GraphIndexBuilder.add_node`` and ``BTreeBuilder`` have been
+      streamlined a bit. This should make creating large indexes faster.
+      (In benchmarking, it now takes less time to create a BTree index than
+      it takes to read the GraphIndex one.) (John Arbash Meinel)
+
     * Mail clients for `bzr send` are now listed in a registry.  This
       allows plugins to add new clients by registering them with
       ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
       clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+bzr 1.6.1 2008-09-05
+--------------------
+
+A couple regressions were found in the 1.6 release. There was a
+performance issue when using ``bzr+ssh`` to branch large repositories,
+and some problems with stacking and ``rich-root`` capable repositories.
+
+
+bzr 1.6.1rc2 2008-09-03
+-----------------------
+
+  BUG FIXES:
+
+    * Copying between ``rich-root`` and ``rich-root-pack`` (and vice
+      versa) was accidentally using the inter-model fetcher, instead of
+      recognizing that both were 'rich root' formats.
+      (John Arbash Meinel, #264321)
 
 
 bzr 1.6.1rc1 2008-08-29

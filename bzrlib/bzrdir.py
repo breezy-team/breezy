@@ -177,7 +177,8 @@ class BzrDir(object):
                                        preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
-                           force_new_repo=False, preserve_stacking=False):
+                           force_new_repo=False, preserve_stacking=False,
+                           stacked_on=None):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -191,9 +192,10 @@ class BzrDir(object):
             new branch on top of the other branch's stacked-on branch.
         """
         transport.ensure_base()
-        result = self.cloning_metadir().initialize_on_transport(transport)
+        require_stacking = (stacked_on is not None)
+        metadir = self.cloning_metadir(require_stacking)
+        result = metadir.initialize_on_transport(transport)
         repository_policy = None
-        stack_on = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
@@ -208,7 +210,7 @@ class BzrDir(object):
                 local_repo = local_branch.repository
             if preserve_stacking:
                 try:
-                    stack_on = local_branch.get_stacked_on_url()
+                    stacked_on = local_branch.get_stacked_on_url()
                 except (errors.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -217,7 +219,8 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
-                force_new_repo, stack_on, self.root_transport.base)
+                force_new_repo, stacked_on, self.root_transport.base,
+                require_stacking=require_stacking)
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
@@ -1046,9 +1049,14 @@ class BzrDir(object):
             mutter("using %r for stacking" % (format._branch_format,))
             from bzrlib.repofmt import pack_repo
             if format.repository_format.rich_root_data:
+                bzrdir_format_name = '1.6.1-rich-root'
                 repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
             else:
+                bzrdir_format_name = '1.6'
                 repo_format = pack_repo.RepositoryFormatKnitPack5()
+            note('Source format does not support stacking, using format:'
+                 ' \'%s\'\n  %s\n',
+                 bzrdir_format_name, repo_format.get_format_description())
             format.repository_format = repo_format
         return format
 
@@ -1198,22 +1206,18 @@ class BzrDirPreSplitOut(BzrDir):
         preserve_stacking has no effect, since no source branch using this
         family of formats can be stacked, so there is no stacking to preserve.
         """
-        from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
         self.open_repository().clone(result, revision_id=revision_id)
         from_branch = self.open_branch()
         from_branch.clone(result, revision_id=revision_id)
         try:
-            self.open_workingtree().clone(result)
+            tree = self.open_workingtree()
         except errors.NotLocalUrl:
             # make a new one, this format always has to have one.
-            try:
-                WorkingTreeFormat2().initialize(result)
-            except errors.NotLocalUrl:
-                # but we cannot do it for remote trees.
-                to_branch = result.open_branch()
-                WorkingTreeFormat2()._stub_initialize_remote(to_branch)
+            result._init_workingtree()
+        else:
+            tree.clone(result)
         return result
 
     def create_branch(self):
@@ -1237,6 +1241,9 @@ class BzrDirPreSplitOut(BzrDir):
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
         """See BzrDir.create_workingtree."""
+        # The workingtree is sometimes created when the bzrdir is created,
+        # but not when cloning.
+
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
         # created
@@ -1246,13 +1253,26 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be 
         # done on this format anyway. So - acceptable wart.
-        result = self.open_workingtree(recommend_upgrade=False)
+        try:
+            result = self.open_workingtree(recommend_upgrade=False)
+        except errors.NoSuchFile:
+            result = self._init_workingtree()
         if revision_id is not None:
             if revision_id == _mod_revision.NULL_REVISION:
                 result.set_parent_ids([])
             else:
                 result.set_parent_ids([revision_id])
         return result
+
+    def _init_workingtree(self):
+        from bzrlib.workingtree import WorkingTreeFormat2
+        try:
+            return WorkingTreeFormat2().initialize(self)
+        except errors.NotLocalUrl:
+            # Even though we can't access the working tree, we need to
+            # create its control files.
+            return WorkingTreeFormat2()._stub_initialize_on_transport(
+                self.transport, self._control_files._file_mode)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
@@ -1889,17 +1909,11 @@ class BzrDirFormat5(BzrDirFormat):
         """
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
-        from bzrlib.workingtree import WorkingTreeFormat2
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
-            try:
-                WorkingTreeFormat2().initialize(result)
-            except errors.NotLocalUrl:
-                # Even though we can't access the working tree, we need to
-                # create its control files.
-                WorkingTreeFormat2()._stub_initialize_remote(branch)
+            result._init_workingtree()
         return result
 
     def _open(self, transport):
@@ -1952,17 +1966,11 @@ class BzrDirFormat6(BzrDirFormat):
         """
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repofmt.weaverepo import RepositoryFormat6
-        from bzrlib.workingtree import WorkingTreeFormat2
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
-            try:
-                WorkingTreeFormat2().initialize(result)
-            except errors.NotLocalUrl:
-                # Even though we can't access the working tree, we need to
-                # create its control files.
-                WorkingTreeFormat2()._stub_initialize_remote(branch)
+            result._init_workingtree()
         return result
 
     def _open(self, transport):
