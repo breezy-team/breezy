@@ -3365,7 +3365,7 @@ class cmd_missing(Command):
             try:
                 local_extra, remote_extra = find_unmerged(
                     local_branch, remote_branch, restrict,
-                    reverse=reverse,
+                    backward=not reverse,
                     include_merges=include_merges)
 
                 if log_format is None:

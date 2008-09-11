@@ -31,8 +31,7 @@ from bzrlib.workingtree import WorkingTree
 class TestMissing(TestCaseWithTransport):
 
     def assertUnmerged(self, expected, source, target, restrict='all'):
-        unmerged = missing.find_unmerged(source, target, restrict=restrict,
-                                         reverse=True)
+        unmerged = missing.find_unmerged(source, target, restrict=restrict)
         self.assertEqual(expected, unmerged)
 
     def test_find_unmerged(self):
@@ -85,8 +84,7 @@ class TestMissing(TestCaseWithTransport):
         child_tree.commit('rename b=>c', rev_id='c-5')
 
         base_extra, child_extra = missing.find_unmerged(base_tree.branch,
-                                                        child_tree.branch,
-                                                        reverse=True)
+                                                        child_tree.branch)
         results = list(iter_log_revisions(base_extra,
                             base_tree.branch.repository,
                             verbose=True))
@@ -195,9 +193,9 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         tree2.merge_from_branch(tree3.branch)
         rev6 = tree2.commit('six', rev_id='rev6')
 
-        self.assertUnmerged([], [('4', 'rev6'),
-                                 ('3.1.2', 'rev5'), ('3.1.1', 'rev4'),
-                                 ('3', 'rev3'), ('2', 'rev2'),
+        self.assertUnmerged([], [('2', 'rev2'), ('3', 'rev3'),
+                                 ('4', 'rev6'),
+                                 ('3.1.1', 'rev4'), ('3.1.2', 'rev5'),
                                  ],
                             tree.branch, tree2.branch, 'all',
                             include_merges=True)
