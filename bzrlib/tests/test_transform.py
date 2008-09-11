@@ -1162,22 +1162,27 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.cancel_creation(parent)
         transform.finalize()
 
-    def test_case_insensitive_clash(self):
-        self.requireFeature(CaseInsensitiveFilesystemFeature)
+    def test_rollback_on_directory_clash(self):
         def tt_helper():
             wt = self.make_branch_and_tree('.')
             tt = TreeTransform(wt)  # TreeTransform obtains write lock
             try:
-                tt.new_file('foo', tt.root, 'bar')
-                tt.new_file('Foo', tt.root, 'spam')
+                foo = tt.new_directory('foo', tt.root)
+                tt.new_file('bar', foo, 'foobar')
+                baz = tt.new_directory('baz', tt.root)
+                tt.new_file('qux', baz, 'quux')
+                # Ask for a rename 'foo' -> 'baz'
+                tt.adjust_path('baz', tt.root, foo)
                 # Lie to tt that we've already resolved all conflicts.
                 tt.apply(no_conflicts=True)
             except:
                 wt.unlock()
                 raise
+        # The rename will fail because the target directory is not empty (but
+        # raises FileExists anyway).
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
-            "^File exists: .+/foo")
+            "^File exists: .+/baz")
 
     def test_two_directories_clash(self):
         def tt_helper():
@@ -1186,6 +1191,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             try:
                 foo_1 = tt.new_directory('foo', tt.root)
                 tt.new_directory('bar', foo_1)
+                # Adding the same directory with a different content
                 foo_2 = tt.new_directory('foo', tt.root)
                 tt.new_directory('baz', foo_2)
                 # Lie to tt that we've already resolved all conflicts.
@@ -1204,6 +1210,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             try:
                 foo_1 = tt.new_directory('foo', tt.root)
                 tt.new_directory('bar', foo_1)
+                # Adding the same directory with a different content
                 foo_2 = tt.new_directory('foo', tt.root)
                 tt.new_directory('baz', foo_2)
                 # Lie to tt that we've already resolved all conflicts.
