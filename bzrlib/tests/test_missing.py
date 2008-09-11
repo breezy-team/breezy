@@ -193,9 +193,9 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         tree2.merge_from_branch(tree3.branch)
         rev6 = tree2.commit('six', rev_id='rev6')
 
-        self.assertUnmerged([], [('2', 'rev2'), ('3', 'rev3'),
-                                 ('4', 'rev6'),
-                                 ('3.1.1', 'rev4'), ('3.1.2', 'rev5'),
+        self.assertUnmerged([], [('2', 'rev2', 0), ('3', 'rev3',0 ),
+                                 ('4', 'rev6', 0),
+                                 ('3.1.1', 'rev4', 1), ('3.1.2', 'rev5', 1),
                                  ],
                             tree.branch, tree2.branch, 'all',
                             include_merges=True)

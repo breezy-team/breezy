@@ -26,7 +26,14 @@ from bzrlib import (
 def iter_log_revisions(revisions, revision_source, verbose):
     last_tree = revision_source.revision_tree(None)
     last_rev_id = None
-    for revno, rev_id in revisions:
+    for rev in revisions:
+        # We need the following for backward compatibilty (hopefully
+        # this will be deprecated soon :-/) -- vila 080911
+        if len(rev) == 2:
+            revno, rev_id = rev
+            merge_depth = 0
+        else:
+            revno, rev_id, merge_depth = rev
         rev = revision_source.get_revision(rev_id)
         if verbose:
             remote_tree = revision_source.revision_tree(rev_id)
@@ -41,7 +48,7 @@ def iter_log_revisions(revisions, revision_source, verbose):
             delta = revision_tree.changes_from(parent_tree)
         else:
             delta = None
-        yield log.LogRevision(rev, revno, delta=delta)
+        yield log.LogRevision(rev, revno, merge_depth, delta=delta)
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
@@ -162,7 +169,7 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
         merge_sorted_revisions = log.reverse_by_depth(merge_sorted_revisions)
     revline = []
     for seq, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
-        revline.append(('.'.join(map(str, revno)), rev_id))
+        revline.append(('.'.join(map(str, revno)), rev_id, merge_depth))
     return revline
 
 
