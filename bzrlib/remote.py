@@ -1228,6 +1228,7 @@ class RemoteVersionedFiles(VersionedFiles):
         return real_vf.check(progress_bar=progress_bar)
 
     def get_parent_map(self, keys):
+        # XXX: lots of duplication with RemoteRepository.get_parent_map.
         client = self.remote_repo._client
         medium = client._medium
         if medium._is_remote_before((1, 8)):
@@ -1242,7 +1243,12 @@ class RemoteVersionedFiles(VersionedFiles):
         else:
             missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
-            parent_map = self._get_parent_map(missing_revisions)
+            try:
+                parent_map = self._get_parent_map(missing_revisions)
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before((1, 8))
+                real_vf = self._get_real_vf()
+                return real_vf.get_parent_map(keys)
             if 'hpss' in debug.debug_flags:
                 mutter('retransmitted revisions: %d of %d',
                         len(set(ancestry).intersection(parent_map)),
@@ -1257,6 +1263,7 @@ class RemoteVersionedFiles(VersionedFiles):
         return dict((k, ancestry[k]) for k in present_keys)
         
     def _get_parent_map(self, keys):
+        # XXX: lots of duplication with RemoteRepository._get_parent_map.
         if None in keys:
             raise ValueError('get_parent_map(None) is not valid')
         if NULL_REVISION in keys:
@@ -1301,12 +1308,8 @@ class RemoteVersionedFiles(VersionedFiles):
                         "key %r not a tuple of strs" % (key,))
         verb = 'VersionedFiles.get_parent_map'
         args = (path, self.vf_name) + tuple(keys)
-        try:
-            response = client.call_with_body_bytes_expecting_body(
-                verb, args, _serialise_search_tuple_key_recipe(recipe))
-        except errors.UnknownSmartMethod:
-            # XXX:
-            raise
+        response = client.call_with_body_bytes_expecting_body(
+            verb, args, _serialise_search_tuple_key_recipe(recipe))
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
             response_handler.cancel_read_body()

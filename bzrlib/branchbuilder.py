@@ -33,7 +33,8 @@ class BranchBuilder(object):
       builder = BranchBuilder(self.get_transport().clone('relpath'))
       builder.start_series()
       builder.build_snapshot('rev-id', [],
-        [('add', ('filename', 'f-id', 'file', 'content\n'))])
+        [('add', ('', 'a-root-id', 'directory', None)),
+         ('add', ('filename', 'f-id', 'file', 'content\n'))])
       builder.build_snapshot('rev2-id', ['rev-id'],
         [('modify', ('f-id', 'new-content\n'))])
       builder.finish_series()
