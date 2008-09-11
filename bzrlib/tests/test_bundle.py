@@ -795,7 +795,7 @@ class BundleTester(object):
         # Handle international characters
         os.mkdir('b1')
         try:
-            f = open(u'b1/foo', 'wb')
+            f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
         except UnicodeEncodeError:
             raise TestSkipped("Filesystem doesn't support unicode")
 
@@ -807,7 +807,7 @@ class BundleTester(object):
             u'William Dod\xe9\n').encode('utf-8'))
         f.close()
 
-        self.tree1.add([u'foo'], ['withdod-id'])
+        self.tree1.add([u'with Dod\N{Euro Sign}'], ['withdod-id'])
         self.tree1.commit(u'i18n commit from William Dod\xe9',
                           rev_id='i18n-1', committer=u'William Dod\xe9')
 
@@ -815,7 +815,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'i18n-1')
 
         # Modified
-        f = open(u'b1/foo', 'wb')
+        f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
         f.write(u'Modified \xb5\n'.encode('utf8'))
         f.close()
         self.tree1.commit(u'modified', rev_id='i18n-2')
@@ -823,14 +823,14 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('i18n-1', 'i18n-2')
 
         # Renamed
-        self.tree1.rename_one(u'foo', u'bar')
+        self.tree1.rename_one(u'with Dod\N{Euro Sign}', u'B\N{Euro Sign}gfors')
         self.tree1.commit(u'renamed, the new i18n man', rev_id='i18n-3',
                           committer=u'Erik B\xe5gfors')
 
         bundle = self.get_valid_bundle('i18n-2', 'i18n-3')
 
         # Removed
-        self.tree1.remove([u'bar'])
+        self.tree1.remove([u'B\N{Euro Sign}gfors'])
         self.tree1.commit(u'removed', rev_id='i18n-4')
 
         bundle = self.get_valid_bundle('i18n-3', 'i18n-4')
