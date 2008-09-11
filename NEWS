@@ -25,6 +25,9 @@ IN DEVELOPMENT
       ``bzrlib.tests.per_repository`` so that we have a common structure
       (and it is shorter). (John Arbash Meinel, #239343)
 
+    * The full test suite is passing again on OSX.
+      (Guillermo Gonzalez, Vincent Ladeuil)
+
   INTERNALS:
 
 
