@@ -16,7 +16,7 @@
 
 """Tests for the Repository facility that are not interface tests.
 
-For interface tests see tests/repository_implementations/*.py.
+For interface tests see tests/per_repository/*.py.
 
 For concrete class tests see this file, and for storage formats tests
 also see this file.

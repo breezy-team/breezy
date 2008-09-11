@@ -625,14 +625,6 @@ def load_tests(basic_tests, module, test_loader):
               format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
                   "(bzr 1.6.1)\n",
               format_supports_external_lookups=True),
-         dict(format_name='development0',
-              format_string="Bazaar development format 0 "
-                  "(needs bzr.dev from before 1.3)\n",
-              format_supports_external_lookups=False),
-         dict(format_name='development0-subtree',
-              format_string="Bazaar development format 0 "
-                  "with subtree support (needs bzr.dev from before 1.3)\n",
-              format_supports_external_lookups=False),
          dict(format_name='development',
               format_string="Bazaar development format 1 "
                   "(needs bzr.dev from before 1.6)\n",

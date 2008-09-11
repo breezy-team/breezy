@@ -17,7 +17,7 @@
 """Tests for repository write groups."""
 
 from bzrlib import errors
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestWriteGroup(TestCaseWithRepository):

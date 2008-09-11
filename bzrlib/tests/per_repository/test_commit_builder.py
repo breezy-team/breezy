@@ -26,10 +26,11 @@ from bzrlib import (
     inventory,
     osutils,
     repository,
+    revision as _mod_revision,
     tests,
     )
 from bzrlib.graph import Graph
-from bzrlib.tests.repository_implementations import test_repository
+from bzrlib.tests.per_repository import test_repository
 
 
 class TestCommitBuilder(test_repository.TestCaseWithRepository):
@@ -51,7 +52,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 ie = tree.inventory.root
             finally:
                 tree.unlock()
-            parent_tree = tree.branch.repository.revision_tree(None)
+            parent_tree = tree.branch.repository.revision_tree(
+                              _mod_revision.NULL_REVISION)
             parent_invs = []
             builder.record_entry_contents(ie, parent_invs, '', tree,
                 tree.path_content_summary(''))
