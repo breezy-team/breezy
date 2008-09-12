@@ -30,8 +30,10 @@ from bzrlib.workingtree import WorkingTree
 
 class TestMissing(TestCaseWithTransport):
 
-    def assertUnmerged(self, expected, source, target, restrict='all'):
-        unmerged = missing.find_unmerged(source, target, restrict=restrict)
+    def assertUnmerged(self, expected, source, target, restrict='all',
+                       backward=False):
+        unmerged = missing.find_unmerged(source, target, restrict=restrict,
+                                         backward=backward)
         self.assertEqual(expected, unmerged)
 
     def test_find_unmerged(self):
@@ -51,6 +53,8 @@ class TestMissing(TestCaseWithTransport):
         original_tree.commit('c', rev_id='c')
         self.assertUnmerged(([('2', 'b'), ('3', 'c')], []),
                             original, puller)
+        self.assertUnmerged(([('3', 'c'), ('2', 'b')], []),
+                            original, puller, backward=True)
 
         puller_tree.pull(original)
         self.assertUnmerged(([], []), original, puller)
@@ -134,11 +138,13 @@ class TestMissing(TestCaseWithTransport):
 class TestFindUnmerged(tests.TestCaseWithTransport):
 
     def assertUnmerged(self, local, remote, local_branch, remote_branch,
-                       restrict, include_merges=False):
+                       restrict, include_merges=False,
+                       backward=False):
         """Check the output of find_unmerged_mainline_revisions"""
         local_extra, remote_extra = missing.find_unmerged(
                                         local_branch, remote_branch, restrict,
-                                        include_merges=include_merges)
+                                        include_merges=include_merges,
+                                        backward=backward)
         self.assertEqual(local, local_extra)
         self.assertEqual(remote, remote_extra)
 
@@ -200,4 +206,10 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
                             tree.branch, tree2.branch, 'all',
                             include_merges=True)
 
-    # TODO: test_dont_include_already_merged_merges ?
+        self.assertUnmerged([], [('4', 'rev6', 0),
+                                 ('3.1.2', 'rev5', 1), ('3.1.1', 'rev4', 1),
+                                 ('3', 'rev3',0 ), ('2', 'rev2', 0),
+                                 ],
+                            tree.branch, tree2.branch, 'all',
+                            include_merges=True,
+                            backward=True)
