@@ -16,7 +16,9 @@
 
 from cStringIO import StringIO
 import os
+import socket
 import sys
+import threading
 
 from bzrlib import (
     bzrdir,
@@ -1602,3 +1604,49 @@ class TestReadMergeableFromUrl(TestCaseWithTransport):
         self.build_tree_contents([('./foo:bar', out.getvalue())])
         self.assertRaises(errors.NotABundle, read_mergeable_from_url,
                           'foo:bar')
+
+    def test_smart_server_connection_reset(self):
+        """If a smart server connection fails during the attempt to read a
+        bundle, then the ConnectionReset error should be propagated.
+        """
+        # Instantiate a server that will provoke a ConnectionReset
+        sock_server = _DisconnectingTCPServer()
+        sock_server.setUp()
+        self.addCleanup(sock_server.tearDown)
+        url = sock_server.get_url()
+        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
+
+
+class _DisconnectingTCPServer(object):
+    """A TCP server that immediately closes any connection made to it."""
+
+    def setUp(self):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind(('127.0.0.1', 0))
+        self.sock.listen(1)
+        self.port = self.sock.getsockname()[1]
+        self.thread = threading.Thread(
+            name='%s (port %d)' % (self.__class__.__name__, self.port),
+            target=self.accept_and_close)
+        self.thread.start()
+
+    def accept_and_close(self):
+        conn, addr = self.sock.accept()
+        conn.shutdown(socket.SHUT_RDWR)
+        conn.close()
+
+    def get_url(self):
+        return 'bzr://127.0.0.1:%d/' % (self.port,)
+
+    def tearDown(self):
+        try:
+            # make sure the thread dies by connecting to the listening socket,
+            # just in case the test failed to do so.
+            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            conn.connect(self.sock.getsockname())
+            conn.close()
+        except socket.error:
+            pass
+        self.sock.close()
+        self.thread.join()
+
