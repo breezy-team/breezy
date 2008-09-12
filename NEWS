@@ -15,6 +15,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr missing`` now accepts an ``--include-merges`` option.
+      (Vincent Ladeuil, #233817)
+
     * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
       (Andrew Bennetts)
 
