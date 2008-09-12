@@ -16,7 +16,6 @@
 
 """bzr library"""
 
-#from bzrlib.osutils import get_user_encoding
 import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough
@@ -25,15 +24,14 @@ _start_time = time.time()
 
 import sys
 if getattr(sys, '_bzr_lazy_regex', False):
+    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
+    # hack as soon as possible so that as much of the standard library can
+    # benefit, including the 'string' module.
     del sys._bzr_lazy_regex
     import bzrlib.lazy_regex
     bzrlib.lazy_regex.install_lazy_compile()
 
 IGNORE_FILENAME = ".bzrignore"
-
-
-# XXX: Compatibility. This should probably be deprecated
-#user_encoding = get_user_encoding()
 
 
 __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
