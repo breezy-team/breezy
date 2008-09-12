@@ -15,9 +15,12 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-   * Fix TooManyConcurrentRequests errors caused by a connection failure
-     when doing ``bzr pull`` or ``bzr merge`` from a ``bzr+ssh`` URL.
-     (Andrew Bennetts, #246233)
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
+
+    * Fix TooManyConcurrentRequests errors caused by a connection failure
+      when doing ``bzr pull`` or ``bzr merge`` from a ``bzr+ssh`` URL.
+      (Andrew Bennetts, #246233)
 
   DOCUMENTATION:
 
@@ -28,6 +31,9 @@ IN DEVELOPMENT
     * ``bzrlib.tests.repository_implementations`` has been renamed to
       ``bzrlib.tests.per_repository`` so that we have a common structure
       (and it is shorter). (John Arbash Meinel, #239343)
+
+    * The full test suite is passing again on OSX.
+      (Guillermo Gonzalez, Vincent Ladeuil)
 
   INTERNALS:
 

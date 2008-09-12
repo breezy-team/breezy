@@ -40,8 +40,6 @@ from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
-                           NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
 from bzrlib.osutils import sha_file, sha_string
@@ -108,7 +106,7 @@ class MockTree(object):
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
-            raise BzrError('unknown kind %r' % kind)
+            raise errors.BzrError('unknown kind %r' % kind)
         ie.text_sha1 = text_sha_1
         ie.text_size = text_size
         return ie
@@ -437,16 +435,17 @@ class BundleTester(object):
         return bundle 
 
     def test_non_bundle(self):
-        self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
+        self.assertRaises(errors.NotABundle,
+                          read_bundle, StringIO('#!/bin/sh\n'))
 
     def test_malformed(self):
-        self.assertRaises(BadBundle, read_bundle, 
+        self.assertRaises(errors.BadBundle, read_bundle,
                           StringIO('# Bazaar revision bundle v'))
 
     def test_crlf_bundle(self):
         try:
             read_bundle(StringIO('# Bazaar revision bundle v0.8\r\n'))
-        except BadBundle:
+        except errors.BadBundle:
             # It is currently permitted for bundles with crlf line endings to
             # make read_bundle raise a BadBundle, but this should be fixed.
             # Anything else, especially NotABundle, is an error.
@@ -484,7 +483,7 @@ class BundleTester(object):
                 for inventory_id in old:
                     try:
                         old_file = old.get_file(inventory_id)
-                    except NoSuchFile:
+                    except errors.NoSuchFile:
                         continue
                     if old_file is None:
                         continue
@@ -620,7 +619,7 @@ class BundleTester(object):
         self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         bundle = self.get_valid_bundle('a@cset-0-2', 'a@cset-0-3')
-        self.assertRaises((TestamentMismatch,
+        self.assertRaises((errors.TestamentMismatch,
             errors.VersionedFileInvalidChecksum), self.get_invalid_bundle,
             'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup bundle 
@@ -798,7 +797,7 @@ class BundleTester(object):
         # Handle international characters
         os.mkdir('b1')
         try:
-            f = open(u'b1/with Dod\xe9', 'wb')
+            f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
         except UnicodeEncodeError:
             raise TestSkipped("Filesystem doesn't support unicode")
 
@@ -810,44 +809,30 @@ class BundleTester(object):
             u'William Dod\xe9\n').encode('utf-8'))
         f.close()
 
-        self.tree1.add([u'with Dod\xe9'], ['withdod-id'])
+        self.tree1.add([u'with Dod\N{Euro Sign}'], ['withdod-id'])
         self.tree1.commit(u'i18n commit from William Dod\xe9',
                           rev_id='i18n-1', committer=u'William Dod\xe9')
-
-        if sys.platform == 'darwin':
-            from bzrlib.workingtree import WorkingTree3
-            if type(self.tree1) is WorkingTree3:
-                self.knownFailure("Bug #141438: fails for WorkingTree3 on OSX")
-
-            # On Mac the '\xe9' gets changed to 'e\u0301'
-            self.assertEqual([u'.bzr', u'with Dode\u0301'],
-                             sorted(os.listdir(u'b1')))
-            delta = self.tree1.changes_from(self.tree1.basis_tree())
-            self.assertEqual([(u'with Dod\xe9', 'withdod-id', 'file')],
-                             delta.removed)
-            self.knownFailure("Mac OSX doesn't preserve unicode"
-                              " combining characters.")
 
         # Add
         bundle = self.get_valid_bundle('null:', 'i18n-1')
 
         # Modified
-        f = open(u'b1/with Dod\xe9', 'wb')
+        f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
         f.write(u'Modified \xb5\n'.encode('utf8'))
         f.close()
         self.tree1.commit(u'modified', rev_id='i18n-2')
 
         bundle = self.get_valid_bundle('i18n-1', 'i18n-2')
-        
+
         # Renamed
-        self.tree1.rename_one(u'with Dod\xe9', u'B\xe5gfors')
+        self.tree1.rename_one(u'with Dod\N{Euro Sign}', u'B\N{Euro Sign}gfors')
         self.tree1.commit(u'renamed, the new i18n man', rev_id='i18n-3',
                           committer=u'Erik B\xe5gfors')
 
         bundle = self.get_valid_bundle('i18n-2', 'i18n-3')
 
         # Removed
-        self.tree1.remove([u'B\xe5gfors'])
+        self.tree1.remove([u'B\N{Euro Sign}gfors'])
         self.tree1.commit(u'removed', rev_id='i18n-4')
 
         bundle = self.get_valid_bundle('i18n-3', 'i18n-4')
@@ -1585,7 +1570,7 @@ class TestBundleWriterReader(TestCase):
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
-        self.assertRaises(BadBundle, record_iter.next)
+        self.assertRaises(errors.BadBundle, record_iter.next)
 
 
 class TestReadMergeableFromUrl(TestCaseWithTransport):
