@@ -15,6 +15,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
+
   DOCUMENTATION:
 
   API CHANGES:
