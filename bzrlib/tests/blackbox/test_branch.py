@@ -19,11 +19,12 @@
 
 import os
 
-from bzrlib import (branch, bzrdir, errors, repository, urlutils)
+from bzrlib import (branch, bzrdir, errors, repository)
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import HardlinkFeature
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
@@ -103,8 +104,8 @@ class TestBranch(ExternalBase):
         self.run_bzr('branch --standalone source repo/target')
         b = branch.Branch.open('repo/target')
         expected_repo_path = os.path.abspath('repo/target/.bzr/repository')
-        self.assertEqual(b.repository.base,
-                         urlutils.local_path_to_url(expected_repo_path))
+        self.assertEqual(strip_trailing_slash(b.repository.base),
+            strip_trailing_slash(local_path_to_url(expected_repo_path)))
 
 
 class TestBranchStacked(ExternalBase):
