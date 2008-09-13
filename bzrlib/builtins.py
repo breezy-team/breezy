@@ -837,11 +837,13 @@ class cmd_branch(Command):
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
                 'branch for all operations.'),
+        Option('standalone',
+               help='Do not use a shared repository, even if available.'),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, stacked=False):
+            hardlink=False, stacked=False, standalone=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -876,7 +878,8 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, stacked=stacked)
+                                            hardlink=hardlink, stacked=stacked,
+                                            force_new_repo=standalone)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
