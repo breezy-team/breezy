@@ -3891,7 +3891,7 @@ class cmd_serve(Command):
                     host, port = port.split(':')
                 port = int(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
-            print 'listening on port: ', smart_server.port
+            print >>self.outf, 'listening on port: ', smart_server.port
             self.outf.flush()
         # for the duration of this server, no UI output is permitted.
         # note that this may cause problems with blackbox tests. This should
