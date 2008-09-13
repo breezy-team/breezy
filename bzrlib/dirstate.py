@@ -222,7 +222,10 @@ from bzrlib import (
     )
 
 
-def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
+# compile the struct compiler we need, so as to only do it once
+from _struct import Struct
+_compiled_pack = Struct('>LLLLLL').pack
+def pack_stat(st, _encode=binascii.b2a_base64, _pack=_compiled_pack):
     """Convert stat values into a packed representation."""
     # jam 20060614 it isn't really worth removing more entries if we
     # are going to leave it in packed form.
@@ -232,8 +235,7 @@ def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
 
     # base64 encoding always adds a final newline, so strip it off
     # The current version
-    return _encode(_pack('>LLLLLL'
-        , st.st_size, int(st.st_mtime), int(st.st_ctime)
+    return _encode(_pack(st.st_size, int(st.st_mtime), int(st.st_ctime)
         , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
     # This is 0.060s / 1.520s faster by not encoding as much information
     # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
