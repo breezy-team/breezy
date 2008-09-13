@@ -14,25 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for Repository.is_write_locked()."""
 
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+"""Tests for the _generate_text_key_index API."""
 
 
-class TestIsWriteLocked(TestCaseWithRepository):
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
-    def test_not_locked(self):
-        repo = self.make_repository('.')
-        self.assertFalse(repo.is_write_locked())
 
-    def test_read_locked(self):
+class TestGenerateTextKeyIndex(TestCaseWithRepository):
+
+    def test_empty(self):
         repo = self.make_repository('.')
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertFalse(repo.is_write_locked())
-
-    def test_write_locked(self):
-        repo = self.make_repository('.')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        self.assertTrue(repo.is_write_locked())
+        self.assertEqual({}, repo._generate_text_key_index())

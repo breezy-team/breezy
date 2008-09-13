@@ -9,6 +9,51 @@ IN DEVELOPMENT
 
   CHANGES:
 
+  FEATURES
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+    * ``bzr missing`` now accepts an ``--include-merges`` option.
+      (Vincent Ladeuil, #233817)
+
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
+
+    * Fix TooManyConcurrentRequests errors caused by a connection failure
+      when doing ``bzr pull`` or ``bzr merge`` from a ``bzr+ssh`` URL.
+      (Andrew Bennetts, #246233)
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+    * ``bzrlib.tests.repository_implementations`` has been renamed to
+      ``bzrlib.tests.per_repository`` so that we have a common structure
+      (and it is shorter). (John Arbash Meinel, #239343)
+
+    * The full test suite is passing again on OSX.
+      (Guillermo Gonzalez, Vincent Ladeuil)
+
+  INTERNALS:
+
+
+bzr 1.7rc1 2008-09-09
+---------------------
+
+This release candidate for bzr 1.7 has several bug fixes and a few
+performance and feature improvements.  ``bzr rm`` will now scan for
+missing files and remove them, like how ``bzr add`` scans for unknown
+files and adds them. A bit more polish has been applied to the stacking
+code. The b-tree indexing code has been brought in, with an eye on using
+it in a future repository format.
+
+
+  CHANGES:
+
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
