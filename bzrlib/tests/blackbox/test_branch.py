@@ -97,6 +97,15 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+    def test_branch_standalone(self):
+        shared_repo = self.make_repository('repo', shared=True)
+        self.example_branch('source')
+        self.run_bzr('branch --standalone source repo/target')
+        b = branch.Branch.open('repo/target')
+        expected_repo_path = os.path.abspath('repo/target/.bzr/repository')
+        self.assertEqual(b.repository.base,
+                         urlutils.local_path_to_url(expected_repo_path))
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
