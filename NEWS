@@ -13,6 +13,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr branch`` now accepts a ``--standalone`` option, which creates a
+      standalone branch regardless of the presence of shared repositories.
+      (Daniel Watkins)
+
   BUG FIXES:
 
     * ``bzr missing`` now accepts an ``--include-merges`` option.
