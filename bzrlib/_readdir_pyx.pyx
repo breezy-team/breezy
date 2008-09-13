@@ -107,23 +107,31 @@ cdef extern from 'readdir.h':
 cdef class _Stat:
     """Represent a 'stat' result."""
 
-    cdef readonly int st_mode
-    # nanosecond time definitions use MACROS, due to an "interesting" glibc
-    # design decision. The result is that we cannot have a C symbol of st_*time.
-    cdef readonly time_t _ctime
-    cdef readonly time_t _mtime
-    cdef readonly int st_size
+    cdef stat _st
 
-    cdef readonly int st_dev
-    cdef readonly int st_ino
-
-    property st_mtime:
+    property st_dev:
         def __get__(self):
-            return self._mtime
+            return self._st.st_dev
+
+    property st_ino:
+        def __get__(self):
+            return self._st.st_ino
+
+    property st_mode:
+        def __get__(self):
+            return self._st.st_mode
 
     property st_ctime:
         def __get__(self):
-            return self._ctime
+            return self._st.st_ctime
+
+    property st_mtime:
+        def __get__(self):
+            return self._st.st_mtime
+
+    property st_size:
+        def __get__(self):
+            return self._st.st_size
 
     def __repr__(self):
         """Repr is the same as a Stat object.
@@ -258,7 +266,6 @@ cdef _read_dir(path):
     cdef dirent sentinel
     cdef char *name
     cdef int stat_result
-    cdef stat st
     cdef _Stat statvalue
     cdef char *cwd
 
@@ -292,21 +299,14 @@ cdef _read_dir(path):
                 (name[1] == 0) or 
                 (name[1] == c"." and name[2] == 0))
                 ):
-                stat_result = lstat(entry.d_name, &st)
+                statvalue = _Stat()
+                stat_result = lstat(entry.d_name, &statvalue._st)
                 if stat_result != 0:
                     if errno != ENOENT:
                         raise OSError(errno, strerror(errno))
                     else:
                         kind = _missing
                         statvalue = None
-                else:
-                    statvalue = _Stat()
-                    statvalue.st_mode = st.st_mode
-                    statvalue._ctime = st.st_ctime
-                    statvalue._mtime = st.st_mtime
-                    statvalue.st_size = st.st_size
-                    statvalue.st_ino = st.st_ino
-                    statvalue.st_dev = st.st_dev
                 # We append a 5-tuple that can be modified in-place by the C
                 # api:
                 # inode to sort on (to replace with top_path)
