@@ -19,7 +19,7 @@
 
 import os
 
-from bzrlib import (branch, bzrdir, errors, repository)
+from bzrlib import (branch, bzrdir, errors, repository, urlutils)
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import HardlinkFeature
