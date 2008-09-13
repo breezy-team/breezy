@@ -1472,79 +1472,6 @@ class DirState(object):
                     # it is being resurrected here, so blank it out temporarily.
                     self._dirblocks[block_index][1][entry_index][1][1] = null
 
-    def update_entry(self, entry, abspath, stat_value,
-                     _stat_to_minikind=_stat_to_minikind,
-                     _pack_stat=pack_stat):
-        """Update the entry based on what is actually on disk.
-
-        :param entry: This is the dirblock entry for the file in question.
-        :param abspath: The path on disk for this file.
-        :param stat_value: (optional) if we already have done a stat on the
-            file, re-use it.
-        :return: The sha1 hexdigest of the file (40 bytes) or link target of a
-                symlink.
-        """
-        try:
-            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
-        except KeyError:
-            # Unhandled kind
-            return None
-        packed_stat = _pack_stat(stat_value)
-        (saved_minikind, saved_link_or_sha1, saved_file_size,
-         saved_executable, saved_packed_stat) = entry[1][0]
-
-        if (minikind == saved_minikind
-            and packed_stat == saved_packed_stat):
-            # The stat hasn't changed since we saved, so we can re-use the
-            # saved sha hash.
-            if minikind == 'd':
-                return None
-
-            # size should also be in packed_stat
-            if saved_file_size == stat_value.st_size:
-                return saved_link_or_sha1
-
-        # If we have gotten this far, that means that we need to actually
-        # process this entry.
-        link_or_sha1 = None
-        if minikind == 'f':
-            link_or_sha1 = self._sha1_file(abspath)
-            executable = self._is_executable(stat_value.st_mode,
-                                             saved_executable)
-            if self._cutoff_time is None:
-                self._sha_cutoff_time()
-            if (stat_value.st_mtime < self._cutoff_time
-                and stat_value.st_ctime < self._cutoff_time):
-                entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
-                               executable, packed_stat)
-            else:
-                entry[1][0] = ('f', '', stat_value.st_size,
-                               executable, DirState.NULLSTAT)
-        elif minikind == 'd':
-            link_or_sha1 = None
-            entry[1][0] = ('d', '', 0, False, packed_stat)
-            if saved_minikind != 'd':
-                # This changed from something into a directory. Make sure we
-                # have a directory block for it. This doesn't happen very
-                # often, so this doesn't have to be super fast.
-                block_index, entry_index, dir_present, file_present = \
-                    self._get_block_entry_index(entry[0][0], entry[0][1], 0)
-                self._ensure_block(block_index, entry_index,
-                                   osutils.pathjoin(entry[0][0], entry[0][1]))
-        elif minikind == 'l':
-            link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
-            if self._cutoff_time is None:
-                self._sha_cutoff_time()
-            if (stat_value.st_mtime < self._cutoff_time
-                and stat_value.st_ctime < self._cutoff_time):
-                entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
-                               False, packed_stat)
-            else:
-                entry[1][0] = ('l', '', stat_value.st_size,
-                               False, DirState.NULLSTAT)
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        return link_or_sha1
-
     def _sha_cutoff_time(self):
         """Return cutoff time.
 
@@ -2774,6 +2701,82 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
+def py_update_entry(self, entry, abspath, stat_value,
+                 _stat_to_minikind=DirState._stat_to_minikind,
+                 _pack_stat=pack_stat):
+    """Update the entry based on what is actually on disk.
+
+    :param entry: This is the dirblock entry for the file in question.
+    :param abspath: The path on disk for this file.
+    :param stat_value: (optional) if we already have done a stat on the
+        file, re-use it.
+    :return: The sha1 hexdigest of the file (40 bytes) or link target of a
+            symlink.
+    """
+    try:
+        minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+    except KeyError:
+        # Unhandled kind
+        return None
+    packed_stat = _pack_stat(stat_value)
+    (saved_minikind, saved_link_or_sha1, saved_file_size,
+     saved_executable, saved_packed_stat) = entry[1][0]
+
+    if (minikind == saved_minikind
+        and packed_stat == saved_packed_stat):
+        # The stat hasn't changed since we saved, so we can re-use the
+        # saved sha hash.
+        if minikind == 'd':
+            return None
+
+        # size should also be in packed_stat
+        if saved_file_size == stat_value.st_size:
+            return saved_link_or_sha1
+
+    # If we have gotten this far, that means that we need to actually
+    # process this entry.
+    link_or_sha1 = None
+    if minikind == 'f':
+        link_or_sha1 = self._sha1_file(abspath)
+        executable = self._is_executable(stat_value.st_mode,
+                                         saved_executable)
+        if self._cutoff_time is None:
+            self._sha_cutoff_time()
+        if (stat_value.st_mtime < self._cutoff_time
+            and stat_value.st_ctime < self._cutoff_time):
+            entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
+                           executable, packed_stat)
+        else:
+            entry[1][0] = ('f', '', stat_value.st_size,
+                           executable, DirState.NULLSTAT)
+    elif minikind == 'd':
+        link_or_sha1 = None
+        entry[1][0] = ('d', '', 0, False, packed_stat)
+        if saved_minikind != 'd':
+            # This changed from something into a directory. Make sure we
+            # have a directory block for it. This doesn't happen very
+            # often, so this doesn't have to be super fast.
+            block_index, entry_index, dir_present, file_present = \
+                self._get_block_entry_index(entry[0][0], entry[0][1], 0)
+            self._ensure_block(block_index, entry_index,
+                               osutils.pathjoin(entry[0][0], entry[0][1]))
+    elif minikind == 'l':
+        link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
+        if self._cutoff_time is None:
+            self._sha_cutoff_time()
+        if (stat_value.st_mtime < self._cutoff_time
+            and stat_value.st_ctime < self._cutoff_time):
+            entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
+                           False, packed_stat)
+        else:
+            entry[1][0] = ('l', '', stat_value.st_size,
+                           False, DirState.NULLSTAT)
+    self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    return link_or_sha1
+
+update_entry = py_update_entry
+
+
 # Try to load the compiled form if possible
 try:
     from bzrlib._dirstate_helpers_c import (
@@ -2782,6 +2785,7 @@ try:
         _bisect_path_left_c as _bisect_path_left,
         _bisect_path_right_c as _bisect_path_right,
         cmp_by_dirs_c as cmp_by_dirs,
+        update_entry as update_entry,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (

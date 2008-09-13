@@ -409,8 +409,8 @@ class WorkingTree4(WorkingTree3):
                     return None
                 else:
                     raise
-        link_or_sha1 = state.update_entry(entry, file_abspath,
-                                          stat_value=stat_value)
+        link_or_sha1 = dirstate.update_entry(state, entry, file_abspath,
+            stat_value=stat_value)
         if entry[1][0][0] == 'f':
             return link_or_sha1
         return None
@@ -1856,6 +1856,7 @@ class InterDirStateTree(InterTree):
                 "revision {%s} is not stored in {%s}, but %s "
                 "can only be used for trees stored in the dirstate"
                 % (self.source._revision_id, self.target, self.iter_changes))
+        update_entry = dirstate.update_entry
         target_index = 0
         if self.source._revision_id == NULL_REVISION:
             source_index = None
@@ -2009,8 +2010,8 @@ class InterDirStateTree(InterTree):
             if path_info is not None and target_minikind in 'fdlt':
                 if not (target_index == 0):
                     raise AssertionError()
-                link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
-                                                  stat_value=path_info[3])
+                link_or_sha1 = update_entry(state, entry,
+                    abspath=path_info[4], stat_value=path_info[3])
                 # The entry may have been modified by update_entry
                 target_details = entry[1][target_index]
                 target_minikind = target_details[0]
