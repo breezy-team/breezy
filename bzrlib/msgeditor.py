@@ -23,10 +23,12 @@ import os
 from subprocess import call
 import sys
 
-import bzrlib.config as config
-from bzrlib import osutils
+from bzrlib import (
+    config,
+    osutils,
+    )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
-from bzrlib.trace import warning, mutter
+from bzrlib.trace import warning
 
 
 def _get_editor():
