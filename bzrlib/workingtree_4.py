@@ -1974,7 +1974,6 @@ class InterDirStateTree(InterTree):
         # relocated path as one to search if its not searched already. If the
         # detail is not relocated, add the id.
         searched_specific_files = set()
-        NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
 
         # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
         #       keeping a cache of directories that we have seen.

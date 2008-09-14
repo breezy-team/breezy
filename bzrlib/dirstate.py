@@ -2784,7 +2784,7 @@ class ProcessEntryPython(object):
 
     __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id", "uninteresting",
         "last_source_parent", "last_target_parent", "include_unchanged",
-        "use_filesystem_for_exec"]
+        "use_filesystem_for_exec", "utf8_decode"]
 
     def __init__(self, include_unchanged, use_filesystem_for_exec):
         self.old_dirname_to_file_id = {}
@@ -2798,6 +2798,7 @@ class ProcessEntryPython(object):
         self.last_target_parent = [None, None]
         self.include_unchanged = include_unchanged
         self.use_filesystem_for_exec = use_filesystem_for_exec
+        self.utf8_decode = cache_utf8._utf8_decode
 
     def _process_entry(self, entry, path_info, source_index, target_index, state):
         """Compare an entry and real disk to generate delta information.
@@ -2814,7 +2815,7 @@ class ProcessEntryPython(object):
                  basically identical.
         """
         if source_index is None:
-            source_details = NULL_PARENT_DETAILS
+            source_details = DirState.NULL_PARENT_DETAILS
         else:
             source_details = entry[1][source_index]
         target_details = entry[1][target_index]
@@ -2961,21 +2962,21 @@ class ProcessEntryPython(object):
                 ):
                 if old_path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
-                    old_path_u = utf8_decode(old_path)[0]
+                    old_path_u = self.utf8_decode(old_path)[0]
                     path_u = old_path_u
                 else:
-                    old_path_u = utf8_decode(old_path)[0]
+                    old_path_u = self.utf8_decode(old_path)[0]
                     if old_path == path:
                         path_u = old_path_u
                     else:
-                        path_u = utf8_decode(path)[0]
-                source_kind = _minikind_to_kind[source_minikind]
+                        path_u = self.utf8_decode(path)[0]
+                source_kind = DirState._minikind_to_kind[source_minikind]
                 return (entry[0][2],
                        (old_path_u, path_u),
                        content_change,
                        (True, True),
                        (source_parent_id, target_parent_id),
-                       (utf8_decode(old_basename)[0], utf8_decode(entry[0][1])[0]),
+                       (self.utf8_decode(old_basename)[0], self.utf8_decode(entry[0][1])[0]),
                        (source_kind, target_kind),
                        (source_exec, target_exec))
             else:
@@ -3000,21 +3001,21 @@ class ProcessEntryPython(object):
                 else:
                     target_exec = target_details[3]
                 return (entry[0][2],
-                       (None, utf8_decode(path)[0]),
+                       (None, self.utf8_decode(path)[0]),
                        True,
                        (False, True),
                        (None, parent_id),
-                       (None, utf8_decode(entry[0][1])[0]),
+                       (None, self.utf8_decode(entry[0][1])[0]),
                        (None, path_info[2]),
                        (None, target_exec))
             else:
                 # Its a missing file, report it as such.
                 return (entry[0][2],
-                       (None, utf8_decode(path)[0]),
+                       (None, self.utf8_decode(path)[0]),
                        False,
                        (False, True),
                        (None, parent_id),
-                       (None, utf8_decode(entry[0][1])[0]),
+                       (None, self.utf8_decode(entry[0][1])[0]),
                        (None, None),
                        (None, False))
         elif source_minikind in 'fdlt' and target_minikind in 'a':
@@ -3028,12 +3029,12 @@ class ProcessEntryPython(object):
             if parent_id == entry[0][2]:
                 parent_id = None
             return (entry[0][2],
-                   (utf8_decode(old_path)[0], None),
+                   (self.utf8_decode(old_path)[0], None),
                    True,
                    (True, False),
                    (parent_id, None),
-                   (utf8_decode(entry[0][1])[0], None),
-                   (_minikind_to_kind[source_minikind], None),
+                   (self.utf8_decode(entry[0][1])[0], None),
+                   (DirState._minikind_to_kind[source_minikind], None),
                    (source_details[3], None))
         elif source_minikind in 'fdlt' and target_minikind in 'r':
             # a rename; could be a true rename, or a rename inherited from
