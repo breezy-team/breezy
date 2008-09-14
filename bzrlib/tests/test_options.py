@@ -151,6 +151,15 @@ class OptionTests(TestCase):
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
 
+    def test_lazy_registry(self):
+        options = [option.RegistryOption('format', '',
+                   lazy_registry=('bzrlib.bzrdir','format_registry'),
+                   converter=str)]
+        opts, args = self.parse(options, ['--format', 'knit'])
+        self.assertEqual({'format': 'knit'}, opts)
+        self.assertRaises(
+            errors.BadOptionValue, self.parse, options, ['--format', 'BAD'])
+
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',
             help='test option', short='be short', be_long='go long')

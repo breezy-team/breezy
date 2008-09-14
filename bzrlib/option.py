@@ -328,10 +328,14 @@ class RegistryOption(Option):
         Option.__init__(self, name, help, type=self.convert)
         self._registry = registry
         if registry is None:
-            assert lazy_registry is not None, (
-                'One of registry or lazy_registry must be given.')
+            if lazy_registry is None:
+                raise AssertionError(
+                    'One of registry or lazy_registry must be given.')
             self._lazy_registry = _mod_registry._LazyObjectGetter(
                 *lazy_registry)
+        if registry is not None and lazy_registry is not None:
+            raise AssertionError(
+                'registry and lazy_registry are mutually exclusive')
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
@@ -342,10 +346,9 @@ class RegistryOption(Option):
 
     @property
     def registry(self):
-        if self._registry is not None:
-            return self._registry
-        else:
-            return self._lazy_registry.get_obj()
+        if self._registry is None:
+            self._registry = self._lazy_registry.get_obj()
+        return self._registry
     
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
