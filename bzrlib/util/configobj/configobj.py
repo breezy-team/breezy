@@ -25,6 +25,15 @@ if INTP_VER < (2, 2):
 
 import os, re
 compiler = None
+# Bzr modification: Disabled import of 'compiler' module
+# bzr doesn't use the 'unrepr' feature of configobj, so importing compiler just
+# wastes several milliseconds on every single bzr invocation.
+#   -- Andrew Bennetts, 2008-10-14
+#try:
+#    import compiler
+#except ImportError:
+#    # for IronPython
+#    pass
 from types import StringTypes
 from warnings import warn
 try:

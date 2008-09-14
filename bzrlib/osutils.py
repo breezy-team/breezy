@@ -280,15 +280,6 @@ def _win32_fixdrive(path):
 
 
 def _win32_abspath(path):
-    global _win32_abspath
-    if win32utils.winver == 'Windows 98':
-        _win32_abspath = _win98_abspath
-    else:
-        _win32_abspath = _real_win32_abspath
-    return _win32_abspath(path)
-
-
-def _real_win32_abspath(path):
     # Real _nt_abspath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
@@ -383,7 +374,10 @@ MIN_ABS_PATHLENGTH = 1
 
 
 if sys.platform == 'win32':
-    abspath = _win32_abspath
+    if win32utils.winver == 'Windows 98':
+        abspath = _win98_abspath
+    else:
+        abspath = _win32_abspath
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
@@ -634,11 +628,12 @@ def sha_strings(strings):
     # initially so that we can avoid loading the sha module, which takes up to
     # 2ms, unless we need to.)
     global sha_strings
-    def sha_strings(strings, _factory=sha.new):
+    def _sha_strings(strings, _factory=sha.new):
         """Return the sha-1 of concatenation of strings"""
         s = _factory()
         map(s.update, strings)
         return s.hexdigest()
+    sha_strings = _sha_strings
     # Now that we've installed the real version, call it.
     return sha_strings(strings)
 
