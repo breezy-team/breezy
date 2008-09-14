@@ -105,7 +105,6 @@ Example usage:
 
 import os
 import time
-from cStringIO import StringIO
 
 from bzrlib import (
     debug,
@@ -124,14 +123,15 @@ from bzrlib.errors import (
         PathError,
         ResourceBusy,
         TransportError,
-        UnlockableTransport,
         )
 from bzrlib.trace import mutter, note
-from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars, format_delta, get_host_name
-from bzrlib.rio import read_stanza, Stanza
+from bzrlib.osutils import rand_chars, get_host_name
 import bzrlib.ui
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.rio import read_stanza, Stanza
+""")
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
