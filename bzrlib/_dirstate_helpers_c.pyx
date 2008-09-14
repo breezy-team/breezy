@@ -23,6 +23,7 @@ import binascii
 
 from bzrlib import errors, osutils
 from bzrlib.dirstate import DirState, pack_stat
+from bzrlib.osutils import pathjoin
 
 
 # Give Pyrex some function definitions for it to understand.
@@ -53,6 +54,7 @@ cdef extern from 'sys/stat.h':
     int S_ISDIR(int mode)
     int S_ISREG(int mode)
     int S_ISLNK(int mode)
+    int S_IXUSR
 
 # These functions allow us access to a bit of the 'bare metal' of python
 # objects, rather than going through the object abstraction. (For example,
@@ -819,8 +821,6 @@ def update_entry(self, entry, abspath, stat_value):
         # size should also be in packed_stat
         if saved_file_size == stat_value.st_size:
             return saved_link_or_sha1
-    else:
-        print "gararar", packed_stat, saved_packed_stat
 
     # If we have gotten this far, that means that we need to actually
     # process this entry.
@@ -862,3 +862,282 @@ def update_entry(self, entry, abspath, stat_value):
                            False, DirState.NULLSTAT)
     self._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
+
+
+cdef class ProcessEntryC:
+
+    cdef object old_dirname_to_file_id # dict
+    cdef object new_dirname_to_file_id # dict
+    cdef readonly object uninteresting
+    cdef object last_source_parent
+    cdef object last_target_parent
+    cdef object include_unchanged
+    cdef object use_filesystem_for_exec
+
+    def __init__(self, include_unchanged, use_filesystem_for_exec):
+        self.old_dirname_to_file_id = {}
+        self.new_dirname_to_file_id = {}
+        # Just a sentry, so that _process_entry can say that this
+        # record is handled, but isn't interesting to process (unchanged)
+        self.uninteresting = object()
+        # Using a list so that we can access the values and change them in
+        # nested scope. Each one is [path, file_id, entry]
+        self.last_source_parent = [None, None]
+        self.last_target_parent = [None, None]
+        self.include_unchanged = include_unchanged
+        self.use_filesystem_for_exec = use_filesystem_for_exec
+
+    def _process_entry(self, entry, path_info, source_index, target_index, state):
+        """Compare an entry and real disk to generate delta information.
+
+        :param path_info: top_relpath, basename, kind, lstat, abspath for
+            the path of entry. If None, then the path is considered absent.
+            (Perhaps we should pass in a concrete entry for this ?)
+            Basename is returned as a utf8 string because we expect this
+            tuple will be ignored, and don't want to take the time to
+            decode.
+        :return: None if these don't match
+                 A tuple of information about the change, or
+                 the object 'uninteresting' if these match, but are
+                 basically identical.
+        """
+        if source_index is None:
+            source_details = NULL_PARENT_DETAILS
+        else:
+            source_details = entry[1][source_index]
+        target_details = entry[1][target_index]
+        target_minikind = target_details[0]
+        if path_info is not None and target_minikind in 'fdlt':
+            if not (target_index == 0):
+                raise AssertionError()
+            link_or_sha1 = update_entry(state, entry,
+                abspath=path_info[4], stat_value=path_info[3])
+            # The entry may have been modified by update_entry
+            target_details = entry[1][target_index]
+            target_minikind = target_details[0]
+        else:
+            link_or_sha1 = None
+        file_id = entry[0][2]
+        source_minikind = source_details[0]
+        if source_minikind in 'fdltr' and target_minikind in 'fdlt':
+            # claimed content in both: diff
+            #   r    | fdlt   |      | add source to search, add id path move and perform
+            #        |        |      | diff check on source-target
+            #   r    | fdlt   |  a   | dangling file that was present in the basis.
+            #        |        |      | ???
+            if source_minikind in 'r':
+                # add the source to the search path to find any children it
+                # has.  TODO ? : only add if it is a container ?
+                if not osutils.is_inside_any(searched_specific_files,
+                                             source_details[1]):
+                    search_specific_files.add(source_details[1])
+                # generate the old path; this is needed for stating later
+                # as well.
+                old_path = source_details[1]
+                old_dirname, old_basename = os.path.split(old_path)
+                path = pathjoin(entry[0][0], entry[0][1])
+                old_entry = state._get_entry(source_index,
+                                             path_utf8=old_path)
+                # update the source details variable to be the real
+                # location.
+                if old_entry == (None, None):
+                    raise errors.CorruptDirstate(state._filename,
+                        "entry '%s/%s' is considered renamed from %r"
+                        " but source does not exist\n"
+                        "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
+                source_details = old_entry[1][source_index]
+                source_minikind = source_details[0]
+            else:
+                old_dirname = entry[0][0]
+                old_basename = entry[0][1]
+                old_path = path = None
+            if path_info is None:
+                # the file is missing on disk, show as removed.
+                content_change = True
+                target_kind = None
+                target_exec = False
+            else:
+                # source and target are both versioned and disk file is present.
+                target_kind = path_info[2]
+                if target_kind == 'directory':
+                    if path is None:
+                        old_path = path = pathjoin(old_dirname, old_basename)
+                    self.new_dirname_to_file_id[path] = file_id
+                    if source_minikind != 'd':
+                        content_change = True
+                    else:
+                        # directories have no fingerprint
+                        content_change = False
+                    target_exec = False
+                elif target_kind == 'file':
+                    if source_minikind != 'f':
+                        content_change = True
+                    else:
+                        # We could check the size, but we already have the
+                        # sha1 hash.
+                        content_change = (link_or_sha1 != source_details[1])
+                    # Target details is updated at update_entry time
+                    if self.use_filesystem_for_exec:
+                        # We don't need S_ISREG here, because we are sure
+                        # we are dealing with a file.
+                        target_exec = bool(S_IXUSR & path_info[3].st_mode)
+                    else:
+                        target_exec = target_details[3]
+                elif target_kind == 'symlink':
+                    if source_minikind != 'l':
+                        content_change = True
+                    else:
+                        content_change = (link_or_sha1 != source_details[1])
+                    target_exec = False
+                elif target_kind == 'tree-reference':
+                    if source_minikind != 't':
+                        content_change = True
+                    else:
+                        content_change = False
+                    target_exec = False
+                else:
+                    raise Exception, "unknown kind %s" % path_info[2]
+            if source_minikind == 'd':
+                if path is None:
+                    old_path = path = pathjoin(old_dirname, old_basename)
+                self.old_dirname_to_file_id[old_path] = file_id
+            # parent id is the entry for the path in the target tree
+            if old_dirname == self.last_source_parent[0]:
+                source_parent_id = self.last_source_parent[1]
+            else:
+                try:
+                    source_parent_id = self.old_dirname_to_file_id[old_dirname]
+                except KeyError:
+                    source_parent_entry = state._get_entry(source_index,
+                                                           path_utf8=old_dirname)
+                    source_parent_id = source_parent_entry[0][2]
+                if source_parent_id == entry[0][2]:
+                    # This is the root, so the parent is None
+                    source_parent_id = None
+                else:
+                    self.last_source_parent[0] = old_dirname
+                    self.last_source_parent[1] = source_parent_id
+            new_dirname = entry[0][0]
+            if new_dirname == self.last_target_parent[0]:
+                target_parent_id = self.last_target_parent[1]
+            else:
+                try:
+                    target_parent_id = self.new_dirname_to_file_id[new_dirname]
+                except KeyError:
+                    # TODO: We don't always need to do the lookup, because the
+                    #       parent entry will be the same as the source entry.
+                    target_parent_entry = state._get_entry(target_index,
+                                                           path_utf8=new_dirname)
+                    if target_parent_entry == (None, None):
+                        raise AssertionError(
+                            "Could not find target parent in wt: %s\nparent of: %s"
+                            % (new_dirname, entry))
+                    target_parent_id = target_parent_entry[0][2]
+                if target_parent_id == entry[0][2]:
+                    # This is the root, so the parent is None
+                    target_parent_id = None
+                else:
+                    self.last_target_parent[0] = new_dirname
+                    self.last_target_parent[1] = target_parent_id
+
+            source_exec = source_details[3]
+            if (self.include_unchanged
+                or content_change
+                or source_parent_id != target_parent_id
+                or old_basename != entry[0][1]
+                or source_exec != target_exec
+                ):
+                if old_path is None:
+                    old_path = path = pathjoin(old_dirname, old_basename)
+                    old_path_u = utf8_decode(old_path)[0]
+                    path_u = old_path_u
+                else:
+                    old_path_u = utf8_decode(old_path)[0]
+                    if old_path == path:
+                        path_u = old_path_u
+                    else:
+                        path_u = utf8_decode(path)[0]
+                source_kind = _minikind_to_kind[source_minikind]
+                return (entry[0][2],
+                       (old_path_u, path_u),
+                       content_change,
+                       (True, True),
+                       (source_parent_id, target_parent_id),
+                       (utf8_decode(old_basename)[0], utf8_decode(entry[0][1])[0]),
+                       (source_kind, target_kind),
+                       (source_exec, target_exec))
+            else:
+                return self.uninteresting
+        elif source_minikind in 'a' and target_minikind in 'fdlt':
+            # looks like a new file
+            path = pathjoin(entry[0][0], entry[0][1])
+            # parent id is the entry for the path in the target tree
+            # TODO: these are the same for an entire directory: cache em.
+            parent_id = state._get_entry(target_index,
+                                         path_utf8=entry[0][0])[0][2]
+            if parent_id == entry[0][2]:
+                parent_id = None
+            if path_info is not None:
+                # Present on disk:
+                if self.use_filesystem_for_exec:
+                    # We need S_ISREG here, because we aren't sure if this
+                    # is a file or not.
+                    target_exec = bool(
+                        S_ISREG(path_info[3].st_mode)
+                        and S_IXUSR & path_info[3].st_mode)
+                else:
+                    target_exec = target_details[3]
+                return (entry[0][2],
+                       (None, utf8_decode(path)[0]),
+                       True,
+                       (False, True),
+                       (None, parent_id),
+                       (None, utf8_decode(entry[0][1])[0]),
+                       (None, path_info[2]),
+                       (None, target_exec))
+            else:
+                # Its a missing file, report it as such.
+                return (entry[0][2],
+                       (None, utf8_decode(path)[0]),
+                       False,
+                       (False, True),
+                       (None, parent_id),
+                       (None, utf8_decode(entry[0][1])[0]),
+                       (None, None),
+                       (None, False))
+        elif source_minikind in 'fdlt' and target_minikind in 'a':
+            # unversioned, possibly, or possibly not deleted: we dont care.
+            # if its still on disk, *and* theres no other entry at this
+            # path [we dont know this in this routine at the moment -
+            # perhaps we should change this - then it would be an unknown.
+            old_path = pathjoin(entry[0][0], entry[0][1])
+            # parent id is the entry for the path in the target tree
+            parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
+            if parent_id == entry[0][2]:
+                parent_id = None
+            return (entry[0][2],
+                   (utf8_decode(old_path)[0], None),
+                   True,
+                   (True, False),
+                   (parent_id, None),
+                   (utf8_decode(entry[0][1])[0], None),
+                   (_minikind_to_kind[source_minikind], None),
+                   (source_details[3], None))
+        elif source_minikind in 'fdlt' and target_minikind in 'r':
+            # a rename; could be a true rename, or a rename inherited from
+            # a renamed parent. TODO: handle this efficiently. Its not
+            # common case to rename dirs though, so a correct but slow
+            # implementation will do.
+            if not osutils.is_inside_any(searched_specific_files, target_details[1]):
+                search_specific_files.add(target_details[1])
+        elif source_minikind in 'ra' and target_minikind in 'ra':
+            # neither of the selected trees contain this file,
+            # so skip over it. This is not currently directly tested, but
+            # is indirectly via test_too_much.TestCommands.test_conflicts.
+            pass
+        else:
+            raise AssertionError("don't know how to compare "
+                "source_minikind=%r, target_minikind=%r"
+                % (source_minikind, target_minikind))
+            ## import pdb;pdb.set_trace()
+        return None

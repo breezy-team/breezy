@@ -776,6 +776,14 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
             from bzrlib.dirstate import py_update_entry
             self.assertIs(py_update_entry, dirstate.py_update_entry)
 
+    def test_process_entry(self):
+        if CompiledDirstateHelpersFeature.available():
+            from bzrlib._dirstate_helpers_c import ProcessEntryC
+            self.assertIs(ProcessEntryC, dirstate._process_entry)
+        else:
+            from bzrlib.dirstate import ProcessEntryPython
+            self.assertIs(ProcessEntryPython, dirstate._process_entry)
+
 
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     """Test the DirState.update_entry functions"""

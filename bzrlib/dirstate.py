@@ -3065,6 +3065,7 @@ try:
         _bisect_path_right_c as _bisect_path_right,
         cmp_by_dirs_c as cmp_by_dirs,
         update_entry as update_entry,
+        ProcessEntryC as _process_entry,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (
