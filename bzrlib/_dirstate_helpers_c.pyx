@@ -19,6 +19,8 @@
 This is the python implementation for DirState functions.
 """
 
+import binascii
+
 from bzrlib import errors, osutils
 from bzrlib.dirstate import DirState, pack_stat
 
@@ -37,9 +39,20 @@ cdef extern from "_dirstate_helpers_c.h":
     ctypedef int intptr_t
 
 
+cdef extern from "arpa/inet.h":
+    unsigned long htonl(unsigned long)
+
+
 cdef extern from "stdlib.h":
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
+cdef extern from "stdio.h":
+    void printf(char *format, ...)
+
+cdef extern from 'sys/stat.h':
+    int S_ISDIR(int mode)
+    int S_ISREG(int mode)
+    int S_ISLNK(int mode)
 
 # These functions allow us access to a bit of the 'bare metal' of python
 # objects, rather than going through the object abstraction. (For example,
@@ -52,19 +65,26 @@ cdef extern from "stdlib.h":
 # a very short time.
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t
+    ctypedef struct PyObject:
+        pass
     int PyList_Append(object lst, object item) except -1
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
+    void *PyList_GetItem_void_void "PyList_GET_ITEM" (void * lst, int index)
     int PyList_CheckExact(object)
 
     void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
+    object PyTuple_GetItem_void_object "PyTuple_GET_ITEM" (void* tpl, int index)
 
     char *PyString_AsString(object p)
+    char *PyString_AsString_obj "PyString_AsString" (PyObject *string)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
     object PyString_FromString(char *)
     object PyString_FromStringAndSize(char *, Py_ssize_t)
     int PyString_Size(object p)
     int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
     int PyString_CheckExact(object p)
+    void Py_INCREF(object o)
+    void Py_DECREF(object o)
 
 
 cdef extern from "string.h":
@@ -721,12 +741,41 @@ def _read_dirblocks_c(state):
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
 
-_stat_to_minikind = DirState._stat_to_minikind
+cdef int minikind_from_mode(int mode):
+    # in order of frequency:
+    if S_ISREG(mode):
+        return c"f"
+    if S_ISDIR(mode):
+        return c"d"
+    if S_ISLNK(mode):
+        return c"l"
+    return 0
 
 
-def update_entry(self, entry, abspath, stat_value,
-                 _stat_to_minikind=_stat_to_minikind,
-                 _pack_stat=pack_stat):
+#cdef object _encode
+_encode = binascii.b2a_base64
+
+from struct import pack
+cdef _pack_stat(stat_value):
+    """return a string representing the stat value's key fields.
+
+    :param stat_value: A stat oject with st_size, st_mtime, st_ctime, st_dev,
+        st_ino and st_mode fields.
+    """
+    cdef char result[6*4] # 6 long ints
+    cdef int *aliased
+    aliased = <int *>result
+    aliased[0] = htonl(stat_value.st_size)
+    aliased[1] = htonl(int(stat_value.st_mtime))
+    aliased[2] = htonl(int(stat_value.st_ctime))
+    aliased[3] = htonl(stat_value.st_dev)
+    aliased[4] = htonl(stat_value.st_ino & 0xFFFFFFFF)
+    aliased[5] = htonl(stat_value.st_mode)
+    packed = PyString_FromStringAndSize(result, 6*4)
+    return _encode(packed)[:-1]
+
+
+def update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 
     :param entry: This is the dirblock entry for the file in question.
@@ -736,30 +785,47 @@ def update_entry(self, entry, abspath, stat_value,
     :return: The sha1 hexdigest of the file (40 bytes) or link target of a
             symlink.
     """
-    try:
-        minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
-    except KeyError:
-        # Unhandled kind
+    # TODO - require pyrex 0.8, then use a pyd file to define access to the _st
+    # mode of the compiled stat objects.
+    cdef int minikind, saved_minikind
+    cdef void * details
+    # pyrex 0.9.7 would allow cdef list details_list, and direct access rather
+    # than PyList_GetItem_void_void below
+    minikind = minikind_from_mode(stat_value.st_mode)
+    if 0 == minikind:
         return None
     packed_stat = _pack_stat(stat_value)
-    (saved_minikind, saved_link_or_sha1, saved_file_size,
-     saved_executable, saved_packed_stat) = entry[1][0]
+    details = PyList_GetItem_void_void(PyTuple_GetItem_void_void(<void *>entry, 1), 0)
+    saved_minikind = PyString_AsString_obj(<PyObject *>PyTuple_GetItem_void_void(details, 0))[0]
+    saved_link_or_sha1 = PyTuple_GetItem_void_object(details, 1)
+    saved_file_size = PyTuple_GetItem_void_object(details, 2)
+    saved_executable = PyTuple_GetItem_void_object(details, 3)
+    saved_packed_stat = PyTuple_GetItem_void_object(details, 4)
+    # Deal with pyrex decrefing the objects
+    Py_INCREF(saved_link_or_sha1)
+    Py_INCREF(saved_file_size)
+    Py_INCREF(saved_executable)
+    Py_INCREF(saved_packed_stat)
+    #(saved_minikind, saved_link_or_sha1, saved_file_size,
+    # saved_executable, saved_packed_stat) = entry[1][0]
 
     if (minikind == saved_minikind
         and packed_stat == saved_packed_stat):
         # The stat hasn't changed since we saved, so we can re-use the
         # saved sha hash.
-        if minikind == 'd':
+        if minikind == c'd':
             return None
 
         # size should also be in packed_stat
         if saved_file_size == stat_value.st_size:
             return saved_link_or_sha1
+    else:
+        print "gararar", packed_stat, saved_packed_stat
 
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
-    if minikind == 'f':
+    if minikind == c'f':
         link_or_sha1 = self._sha1_file(abspath)
         executable = self._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -772,10 +838,10 @@ def update_entry(self, entry, abspath, stat_value,
         else:
             entry[1][0] = ('f', '', stat_value.st_size,
                            executable, DirState.NULLSTAT)
-    elif minikind == 'd':
+    elif minikind == c'd':
         link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
-        if saved_minikind != 'd':
+        if saved_minikind != c'd':
             # This changed from something into a directory. Make sure we
             # have a directory block for it. This doesn't happen very
             # often, so this doesn't have to be super fast.
@@ -783,7 +849,7 @@ def update_entry(self, entry, abspath, stat_value,
                 self._get_block_entry_index(entry[0][0], entry[0][1], 0)
             self._ensure_block(block_index, entry_index,
                                osutils.pathjoin(entry[0][0], entry[0][1]))
-    elif minikind == 'l':
+    elif minikind == c'l':
         link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
         if self._cutoff_time is None:
             self._sha_cutoff_time()
