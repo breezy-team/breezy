@@ -9,6 +9,10 @@ bzr 1.7rc2 IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Branching from a shared repository on a smart server into a new
+      repository now preserves the repository format.
+      (Andrew Bennetts, #269214)
+
     * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
       (Andrew Bennetts)
 
