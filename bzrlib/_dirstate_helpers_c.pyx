@@ -876,6 +876,26 @@ cdef _update_entry(self, entry, abspath, stat_value):
     return link_or_sha1
 
 
+cdef char _minikind_from_string(object string):
+    """Convert a python string to a char."""
+    return PyString_AsString(string)[0]
+
+
+cdef object _minikind_to_kind(char minikind):
+    """Create a string kind for minikind."""
+    cdef char _minikind[1]
+    _minikind[0] = minikind
+    return DirState._minikind_to_kind[PyString_FromStringAndSize(_minikind, 1)]
+
+
+cdef int _versioned_minikind(char minikind):
+    """Return non-zero if minikind is in fltd"""
+    return (minikind == c'f' or
+            minikind == c'd' or
+            minikind == c'l' or
+            minikind == c't')
+
+
 cdef class ProcessEntryC:
 
     cdef object old_dirname_to_file_id # dict
@@ -901,7 +921,7 @@ cdef class ProcessEntryC:
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
 
-    def _process_entry(self, entry, path_info, source_index, target_index, state):
+    def _process_entry(self, entry, path_info, source_index, int target_index, state):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
@@ -916,40 +936,34 @@ cdef class ProcessEntryC:
                  basically identical.
         """
         cdef char target_minikind
+        cdef char source_minikind
         if source_index is None:
             source_details = DirState.NULL_PARENT_DETAILS
         else:
             source_details = entry[1][source_index]
         target_details = entry[1][target_index]
-        target_minikind_str = target_details[0]
-        target_minikind = PyString_AsString(target_minikind_str)[0]
-        if (path_info is not None and (
-            target_minikind == c'f' or
-            target_minikind == c'd' or
-            target_minikind == c'l' or
-            target_minikind == c't')):
-            if not (target_index == 0):
-                raise AssertionError()
+        target_minikind = _minikind_from_string(target_details[0])
+        if path_info is not None and _versioned_minikind(target_minikind):
+            if target_index != 0:
+                raise AssertionError("Unsupported target index %d" % target_index)
             link_or_sha1 = _update_entry(state, entry, path_info[4], path_info[3])
             # The entry may have been modified by update_entry
             target_details = entry[1][target_index]
-            target_minikind_str = target_details[0]
-            target_minikind = PyString_AsString(target_minikind_str)[0]
+            target_minikind = _minikind_from_string(target_details[0])
         else:
             link_or_sha1 = None
+        # the rest of this function is 0.3 seconds on 50K paths, or
+        # 0.000006 seconds per call.
         file_id = entry[0][2]
-        source_minikind = source_details[0]
-        if (source_minikind in 'fdltr' and (
-            target_minikind == c'f' or
-            target_minikind == c'd' or
-            target_minikind == c'l' or
-            target_minikind == c't')):
+        source_minikind = _minikind_from_string(source_details[0])
+        if ((_versioned_minikind(source_minikind) or source_minikind == c'r')
+            and _versioned_minikind(target_minikind)):
             # claimed content in both: diff
             #   r    | fdlt   |      | add source to search, add id path move and perform
             #        |        |      | diff check on source-target
             #   r    | fdlt   |  a   | dangling file that was present in the basis.
             #        |        |      | ???
-            if source_minikind in 'r':
+            if source_minikind == c'r':
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
                 if not osutils.is_inside_any(searched_specific_files,
@@ -970,7 +984,7 @@ cdef class ProcessEntryC:
                         " but source does not exist\n"
                         "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
                 source_details = old_entry[1][source_index]
-                source_minikind = source_details[0]
+                source_minikind = _minikind_from_string(source_details[0])
             else:
                 old_dirname = entry[0][0]
                 old_basename = entry[0][1]
@@ -987,14 +1001,14 @@ cdef class ProcessEntryC:
                     if path is None:
                         old_path = path = pathjoin(old_dirname, old_basename)
                     self.new_dirname_to_file_id[path] = file_id
-                    if source_minikind != 'd':
+                    if source_minikind != c'd':
                         content_change = True
                     else:
                         # directories have no fingerprint
                         content_change = False
                     target_exec = False
                 elif target_kind == 'file':
-                    if source_minikind != 'f':
+                    if source_minikind != c'f':
                         content_change = True
                     else:
                         # We could check the size, but we already have the
@@ -1008,20 +1022,20 @@ cdef class ProcessEntryC:
                     else:
                         target_exec = target_details[3]
                 elif target_kind == 'symlink':
-                    if source_minikind != 'l':
+                    if source_minikind != c'l':
                         content_change = True
                     else:
                         content_change = (link_or_sha1 != source_details[1])
                     target_exec = False
                 elif target_kind == 'tree-reference':
-                    if source_minikind != 't':
+                    if source_minikind != c't':
                         content_change = True
                     else:
                         content_change = False
                     target_exec = False
                 else:
                     raise Exception, "unknown kind %s" % path_info[2]
-            if source_minikind == 'd':
+            if source_minikind == c'd':
                 if path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
                 self.old_dirname_to_file_id[old_path] = file_id
@@ -1081,7 +1095,7 @@ cdef class ProcessEntryC:
                         path_u = old_path_u
                     else:
                         path_u = self.utf8_decode(path)[0]
-                source_kind = DirState._minikind_to_kind[source_minikind]
+                source_kind = _minikind_to_kind(source_minikind)
                 return (entry[0][2],
                        (old_path_u, path_u),
                        content_change,
@@ -1092,11 +1106,7 @@ cdef class ProcessEntryC:
                        (source_exec, target_exec))
             else:
                 return self.uninteresting
-        elif (source_minikind in 'a' and (
-            target_minikind == c'f' or
-            target_minikind == c'd' or
-            target_minikind == c'l' or
-            target_minikind == c't')):
+        elif source_minikind == c'a' and _versioned_minikind(target_minikind):
             # looks like a new file
             path = pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
@@ -1133,7 +1143,7 @@ cdef class ProcessEntryC:
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, None),
                        (None, False))
-        elif source_minikind in 'fdlt' and target_minikind == c'a':
+        elif _versioned_minikind(source_minikind) and target_minikind == c'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
             # path [we dont know this in this routine at the moment -
@@ -1149,18 +1159,17 @@ cdef class ProcessEntryC:
                    (True, False),
                    (parent_id, None),
                    (self.utf8_decode(entry[0][1])[0], None),
-                   (DirState._minikind_to_kind[source_minikind], None),
+                   (_minikind_to_kind(source_minikind), None),
                    (source_details[3], None))
-        elif source_minikind in 'fdlt' and target_minikind == c'r':
+        elif _versioned_minikind(source_minikind) and target_minikind == c'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
             if not osutils.is_inside_any(searched_specific_files, target_details[1]):
                 search_specific_files.add(target_details[1])
-        elif (source_minikind in 'ra' and (
-            target_minikind == c'r' or
-            target_minikind == c'a')):
+        elif ((source_minikind == c'r' or source_minikind == c'a') and
+              (target_minikind == c'r' or target_minikind == c'a')):
             # neither of the selected trees contain this file,
             # so skip over it. This is not currently directly tested, but
             # is indirectly via test_too_much.TestCommands.test_conflicts.
