@@ -1289,16 +1289,19 @@ class RemoteBranch(branch.Branch):
 
     def _setup_stacking(self):
         # configure stacking into the remote repository, by reading it from
-        # the vfs branch.  note that this currently implicitly creates a
-        # _real_branch so will block getting rid of vfs until the operation is
-        # done at a higher level.
+        # the vfs branch.
+        return
         try:
             fallback_url = self.get_stacked_on_url()
+            if fallback_url is None:
+                return
             # it's relative to this branch...
             fallback_url = urlutils.join(self.base, fallback_url)
-            fallback_repo = BzrDir.open(fallback_url,
-                [self.bzrdir.root_transport,
-                 self._real_branch._transport]).open_repository()
+            transports = [self.bzrdir.root_transport]
+            if self._real_branch is not None:
+                transports.append(self._real_branch._transport)
+            fallback_bzrdir = BzrDir.open(fallback_url, transports)
+            fallback_repo = fallback_bzrdir.open_repository()
             self.repository.add_fallback_repository(fallback_repo)
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
@@ -1387,8 +1390,15 @@ class RemoteBranch(branch.Branch):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        self._ensure_real()
-        return self._real_branch.get_stacked_on_url()
+        if True:
+            self._ensure_real()
+            return self._real_branch.get_stacked_on_url()
+        else:
+            response = self._client.call('Branch.get_stacked_on_url',
+                self._remote_path())
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
+            return response[1]
 
     def lock_read(self):
         if not self._lock_mode:
@@ -1406,10 +1416,10 @@ class RemoteBranch(branch.Branch):
             branch_token = token
             repo_token = self.repository.lock_write()
             self.repository.unlock()
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call(
-                'Branch.lock_write', path, branch_token, repo_token or '')
+                'Branch.lock_write', self._remote_path(),
+                branch_token, repo_token or '')
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, token=token)
         if response[0] != 'ok':
@@ -1457,9 +1467,8 @@ class RemoteBranch(branch.Branch):
         return self._lock_token or None
 
     def _unlock(self, branch_token, repo_token):
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            response = self._client.call('Branch.unlock', path, branch_token,
+            response = self._client.call('Branch.unlock', self._remote_path(), branch_token,
                                          repo_token or '')
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, token=str((branch_token, repo_token)))
@@ -1510,8 +1519,7 @@ class RemoteBranch(branch.Branch):
         self._leave_lock = False
 
     def _last_revision_info(self):
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Branch.last_revision_info', path)
+        response = self._client.call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
             raise SmartProtocolError('unexpected response code %s' % (response,))
         revno = int(response[1])
@@ -1520,9 +1528,8 @@ class RemoteBranch(branch.Branch):
 
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
-        path = self.bzrdir._path_for_remote_call(self._client)
         response_tuple, response_handler = self._client.call_expecting_body(
-            'Branch.revision_history', path)
+            'Branch.revision_history', self._remote_path())
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         result = response_handler.read_body_bytes().split('\x00')
@@ -1530,12 +1537,14 @@ class RemoteBranch(branch.Branch):
             return []
         return result
 
+    def _remote_path(self):
+        return self.bzrdir._path_for_remote_call(self._client)
+
     def _set_last_revision_descendant(self, revision_id, other_branch,
             allow_diverged=False, allow_overwrite_descendant=False):
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call('Branch.set_last_revision_ex',
-                path, self._lock_token, self._repo_lock_token, revision_id,
+                self._remote_path(), self._lock_token, self._repo_lock_token, revision_id,
                 int(allow_diverged), int(allow_overwrite_descendant))
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, other_branch=other_branch)
@@ -1547,11 +1556,10 @@ class RemoteBranch(branch.Branch):
         self._real_branch._last_revision_info_cache = new_revno, new_revision_id
 
     def _set_last_revision(self, revision_id):
-        path = self.bzrdir._path_for_remote_call(self._client)
         self._clear_cached_state()
         try:
             response = self._client.call('Branch.set_last_revision',
-                path, self._lock_token, self._repo_lock_token, revision_id)
+                self._remote_path(), self._lock_token, self._repo_lock_token, revision_id)
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err)
         if response != ('ok',):
@@ -1626,10 +1634,9 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         revision_id = ensure_null(revision_id)
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call('Branch.set_last_revision_info',
-                path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+                self._remote_path(), self._lock_token, self._repo_lock_token, str(revno), revision_id)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             self._clear_cached_state_of_remote_branch_only()
