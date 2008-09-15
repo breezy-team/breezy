@@ -2784,9 +2784,11 @@ class ProcessEntryPython(object):
 
     __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id", "uninteresting",
         "last_source_parent", "last_target_parent", "include_unchanged",
-        "use_filesystem_for_exec", "utf8_decode"]
+        "use_filesystem_for_exec", "utf8_decode", "searched_specific_files",
+        "search_specific_files"]
 
-    def __init__(self, include_unchanged, use_filesystem_for_exec):
+    def __init__(self, include_unchanged, use_filesystem_for_exec,
+        search_specific_files):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Just a sentry, so that _process_entry can say that this
@@ -2799,6 +2801,12 @@ class ProcessEntryPython(object):
         self.include_unchanged = include_unchanged
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
+        # for all search_indexs in each path at or under each element of
+        # search_specific_files, if the detail is relocated: add the id, and add the
+        # relocated path as one to search if its not searched already. If the
+        # detail is not relocated, add the id.
+        self.searched_specific_files = set()
+        self.search_specific_files = search_specific_files
 
     def _process_entry(self, entry, path_info, source_index, target_index, state):
         """Compare an entry and real disk to generate delta information.
@@ -2841,7 +2849,7 @@ class ProcessEntryPython(object):
             if source_minikind in 'r':
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
-                if not osutils.is_inside_any(searched_specific_files,
+                if not osutils.is_inside_any(self.searched_specific_files,
                                              source_details[1]):
                     search_specific_files.add(source_details[1])
                 # generate the old path; this is needed for stating later
@@ -3041,7 +3049,7 @@ class ProcessEntryPython(object):
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
-            if not osutils.is_inside_any(searched_specific_files, target_details[1]):
+            if not osutils.is_inside_any(self.searched_specific_files, target_details[1]):
                 search_specific_files.add(target_details[1])
         elif source_minikind in 'ra' and target_minikind in 'ra':
             # neither of the selected trees contain this file,

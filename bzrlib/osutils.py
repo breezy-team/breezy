@@ -1555,7 +1555,7 @@ def file_kind_from_stat_mode_thunk(mode):
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
         except ImportError:
             from bzrlib._readdir_py import (
-                _kind_from_mode as _file_kind_from_stat_mode
+                _kind_from_mode as file_kind_from_stat_mode
                 )
     return file_kind_from_stat_mode(mode)
 file_kind_from_stat_mode = file_kind_from_stat_mode_thunk

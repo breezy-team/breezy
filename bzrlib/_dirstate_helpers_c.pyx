@@ -20,6 +20,7 @@ This is the python implementation for DirState functions.
 """
 
 import binascii
+import os
 
 from bzrlib import cache_utf8, errors, osutils
 from bzrlib.dirstate import DirState, pack_stat
@@ -881,11 +882,37 @@ cdef char _minikind_from_string(object string):
     return PyString_AsString(string)[0]
 
 
+cdef object _kind_absent
+cdef object _kind_file
+cdef object _kind_directory
+cdef object _kind_symlink
+cdef object _kind_relocated
+cdef object _kind_tree_reference
+_kind_absent = "absent"
+_kind_file = "file"
+_kind_directory = "directory"
+_kind_symlink = "symlink"
+_kind_relocated = "relocated"
+_kind_tree_reference = "tree-reference"
+
+
 cdef object _minikind_to_kind(char minikind):
     """Create a string kind for minikind."""
     cdef char _minikind[1]
+    if minikind == c'f':
+        return _kind_file
+    elif minikind == c'd':
+        return _kind_directory
+    elif minikind == c'a':
+        return _kind_absent
+    elif minikind == c'r':
+        return _kind_relocated
+    elif minikind == c'l':
+        return _kind_symlink
+    elif minikind == c't':
+        return _kind_tree_reference
     _minikind[0] = minikind
-    return DirState._minikind_to_kind[PyString_FromStringAndSize(_minikind, 1)]
+    raise KeyError(PyString_FromStringAndSize(_minikind, 1))
 
 
 cdef int _versioned_minikind(char minikind):
@@ -906,8 +933,10 @@ cdef class ProcessEntryC:
     cdef object include_unchanged
     cdef object use_filesystem_for_exec
     cdef object utf8_decode
+    cdef readonly object searched_specific_files
+    cdef object search_specific_files
 
-    def __init__(self, include_unchanged, use_filesystem_for_exec):
+    def __init__(self, include_unchanged, use_filesystem_for_exec, search_specific_files):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Just a sentry, so that _process_entry can say that this
@@ -920,6 +949,12 @@ cdef class ProcessEntryC:
         self.include_unchanged = include_unchanged
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
+        # for all search_indexs in each path at or under each element of
+        # search_specific_files, if the detail is relocated: add the id, and add the
+        # relocated path as one to search if its not searched already. If the
+        # detail is not relocated, add the id.
+        self.searched_specific_files = set()
+        self.search_specific_files = search_specific_files
 
     def _process_entry(self, entry, path_info, source_index, int target_index, state):
         """Compare an entry and real disk to generate delta information.
@@ -937,6 +972,9 @@ cdef class ProcessEntryC:
         """
         cdef char target_minikind
         cdef char source_minikind
+        cdef object file_id
+        cdef int content_change
+        file_id = None
         if source_index is None:
             source_details = DirState.NULL_PARENT_DETAILS
         else:
@@ -954,7 +992,6 @@ cdef class ProcessEntryC:
             link_or_sha1 = None
         # the rest of this function is 0.3 seconds on 50K paths, or
         # 0.000006 seconds per call.
-        file_id = entry[0][2]
         source_minikind = _minikind_from_string(source_details[0])
         if ((_versioned_minikind(source_minikind) or source_minikind == c'r')
             and _versioned_minikind(target_minikind)):
@@ -963,12 +1000,16 @@ cdef class ProcessEntryC:
             #        |        |      | diff check on source-target
             #   r    | fdlt   |  a   | dangling file that was present in the basis.
             #        |        |      | ???
-            if source_minikind == c'r':
+            if source_minikind != c'r':
+                old_dirname = entry[0][0]
+                old_basename = entry[0][1]
+                old_path = path = None
+            else:
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
-                if not osutils.is_inside_any(searched_specific_files,
+                if not osutils.is_inside_any(self.searched_specific_files,
                                              source_details[1]):
-                    search_specific_files.add(source_details[1])
+                    self.search_specific_files.add(source_details[1])
                 # generate the old path; this is needed for stating later
                 # as well.
                 old_path = source_details[1]
@@ -985,13 +1026,9 @@ cdef class ProcessEntryC:
                         "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
                 source_details = old_entry[1][source_index]
                 source_minikind = _minikind_from_string(source_details[0])
-            else:
-                old_dirname = entry[0][0]
-                old_basename = entry[0][1]
-                old_path = path = None
             if path_info is None:
                 # the file is missing on disk, show as removed.
-                content_change = True
+                content_change = 1
                 target_kind = None
                 target_exec = False
             else:
@@ -1000,16 +1037,17 @@ cdef class ProcessEntryC:
                 if target_kind == 'directory':
                     if path is None:
                         old_path = path = pathjoin(old_dirname, old_basename)
+                    file_id = entry[0][2]
                     self.new_dirname_to_file_id[path] = file_id
                     if source_minikind != c'd':
-                        content_change = True
+                        content_change = 1
                     else:
                         # directories have no fingerprint
-                        content_change = False
+                        content_change = 0
                     target_exec = False
                 elif target_kind == 'file':
                     if source_minikind != c'f':
-                        content_change = True
+                        content_change = 1
                     else:
                         # We could check the size, but we already have the
                         # sha1 hash.
@@ -1023,21 +1061,23 @@ cdef class ProcessEntryC:
                         target_exec = target_details[3]
                 elif target_kind == 'symlink':
                     if source_minikind != c'l':
-                        content_change = True
+                        content_change = 1
                     else:
                         content_change = (link_or_sha1 != source_details[1])
                     target_exec = False
                 elif target_kind == 'tree-reference':
                     if source_minikind != c't':
-                        content_change = True
+                        content_change = 1
                     else:
-                        content_change = False
+                        content_change = 0
                     target_exec = False
                 else:
                     raise Exception, "unknown kind %s" % path_info[2]
             if source_minikind == c'd':
                 if path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
+                if file_id is None:
+                    file_id = entry[0][2]
                 self.old_dirname_to_file_id[old_path] = file_id
             # parent id is the entry for the path in the target tree
             if old_dirname == self.last_source_parent[0]:
@@ -1166,8 +1206,8 @@ cdef class ProcessEntryC:
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
-            if not osutils.is_inside_any(searched_specific_files, target_details[1]):
-                search_specific_files.add(target_details[1])
+            if not osutils.is_inside_any(self.searched_specific_files, target_details[1]):
+                self.search_specific_files.add(target_details[1])
         elif ((source_minikind == c'r' or source_minikind == c'a') and
               (target_minikind == c'r' or target_minikind == c'a')):
             # neither of the selected trees contain this file,

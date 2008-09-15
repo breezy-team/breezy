@@ -1858,9 +1858,12 @@ class InterDirStateTree(InterTree):
                 % (self.source._revision_id, self.target, self.iter_changes))
         update_entry = dirstate.update_entry
         use_filesystem_for_exec = (sys.platform != 'win32')
-        process_entry = dirstate._process_entry(include_unchanged, use_filesystem_for_exec)
+        search_specific_files = set()
+        process_entry = dirstate._process_entry(include_unchanged,
+            use_filesystem_for_exec, search_specific_files)
         _process_entry = process_entry._process_entry
         uninteresting = process_entry.uninteresting
+        searched_specific_files = process_entry.searched_specific_files
         target_index = 0
         if self.source._revision_id == NULL_REVISION:
             source_index = None
@@ -1928,7 +1931,6 @@ class InterDirStateTree(InterTree):
             if not all_versioned:
                 raise errors.PathsNotVersionedError(specific_files)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
-        search_specific_files = set()
         for path in specific_files:
             other_specific_files = specific_files.difference(set([path]))
             if not osutils.is_inside_any(other_specific_files, path):
@@ -1968,12 +1970,6 @@ class InterDirStateTree(InterTree):
         #  fdlt  |  r     |  a   | relocated in this tree, so add target to search.
         #        |        |      | Dont diff, we will see an r,fd; pair when we reach
         #        |        |      | this id at the other path.
-
-        # for all search_indexs in each path at or under each element of
-        # search_specific_files, if the detail is relocated: add the id, and add the
-        # relocated path as one to search if its not searched already. If the
-        # detail is not relocated, add the id.
-        searched_specific_files = set()
 
         # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
         #       keeping a cache of directories that we have seen.
