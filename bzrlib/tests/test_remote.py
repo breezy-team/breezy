@@ -228,7 +228,7 @@ class FakeClient(_SmartClient):
         except IndexError:
             raise AssertionError("%r didn't expect any more calls "
                 "but got %r%r"
-                % (method, args,))
+                % (self, method, args,))
         if method != next_call[0] or args != next_call[1]:
             raise AssertionError("%r expected %r%r "
                 "but got %r%r"
@@ -547,7 +547,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         self.assertEqual((2, revid), result)
 
 
-class TestBranch_get_stacked_on_url(tests.TestCase):
+class TestBranch_get_stacked_on_url(tests.TestCaseWithMemoryTransport):
     """Test Branch._get_stacked_on_url rpc"""
 
     def test_get_stacked_on_invalid_url(self):
@@ -562,6 +562,35 @@ class TestBranch_get_stacked_on_url(tests.TestCase):
         result = branch.get_stacked_on_url()
         self.assertEqual(
             'file:///stacked/on', result)
+
+    def test_get_stacked_on_real_branch(self):
+        base_branch = self.make_branch('base', format='1.6')
+        stacked_branch = self.make_branch('stacked', format='1.6')
+        stacked_branch.set_stacked_on_url('../base')
+        client = FakeClient(self.get_url())
+        client.add_expected_call(
+            'BzrDir.open_branch', ('stacked/',),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'BzrDir.find_repositoryV2', ('stacked/',),
+            'success', ('ok', '', 'no', 'no', 'no'))
+        # called twice, once from constructor and then again by us
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('stacked/',),
+            'success', ('ok', '../base'))
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('stacked/',),
+            'success', ('ok', '../base'))
+        bzrdir = RemoteBzrDir(self.get_transport('stacked'), _client=client)
+        branch = bzrdir.open_branch()
+        result = branch.get_stacked_on_url()
+        self.assertEqual('../base', result)
+        client.finished_test()
+        # it's in the fallback list both for the RemoteRepository and its vfs
+        # repository
+        self.assertEqual(1, len(branch.repository._fallback_repositories))
+        self.assertEqual(1,
+            len(branch.repository._real_repository._fallback_repositories))
 
 
 class TestBranchSetLastRevision(tests.TestCase):
@@ -1531,7 +1560,6 @@ class TestStacking(tests.TestCaseWithTransport):
         # make a branch stacked on another repository containing an empty
         # revision, then open it over hpss - we should be able to see that
         # revision.
-        raise tests.KnownFailure('bug 261315')
         base_transport = self.get_transport()
         base_builder = self.make_branch_builder('base', format='1.6')
         base_builder.start_series()

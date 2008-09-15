@@ -723,15 +723,19 @@ class RemoteRepository(object):
         
         :param repository: A repository.
         """
-        if not self._format.supports_external_lookups:
-            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # XXX: At the moment the RemoteRepository will allow fallbacks
+        # unconditionally - however, a _real_repository will usually exist,
+        # and may raise an error if it's not accommodated by the underlying
+        # format.  Eventually we should check when opening the repository
+        # whether it's willing to allow them or not.
+        #
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         self._fallback_repositories.append(repository)
         # They are also seen by the fallback repository.  If it doesn't exist
         # yet they'll be added then.
-##        if self._real_repository is not None:
-##            self._real_repository.add_fallback_repository(repository)
+        self._ensure_real()
+        self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
