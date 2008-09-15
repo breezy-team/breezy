@@ -974,19 +974,21 @@ cdef class ProcessEntryC:
         cdef char source_minikind
         cdef object file_id
         cdef int content_change
+        cdef object details_list
         file_id = None
+        details_list = entry[1]
         if source_index is None:
             source_details = DirState.NULL_PARENT_DETAILS
         else:
-            source_details = entry[1][source_index]
-        target_details = entry[1][target_index]
+            source_details = details_list[source_index]
+        target_details = details_list[target_index]
         target_minikind = _minikind_from_string(target_details[0])
         if path_info is not None and _versioned_minikind(target_minikind):
             if target_index != 0:
                 raise AssertionError("Unsupported target index %d" % target_index)
             link_or_sha1 = _update_entry(state, entry, path_info[4], path_info[3])
             # The entry may have been modified by update_entry
-            target_details = entry[1][target_index]
+            target_details = details_list[target_index]
             target_minikind = _minikind_from_string(target_details[0])
         else:
             link_or_sha1 = None
