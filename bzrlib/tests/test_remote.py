@@ -621,23 +621,28 @@ class TestBranchSetLastRevision(tests.TestCase):
         transport = transport.clone('branch')
         # A response of 'NoSuchRevision' is translated into an exception.
         client = FakeClient(transport.base)
-        # lock_write
-        client.add_success_response('ok', 'branch token', 'repo token')
-        # set_last_revision
-        client.add_error_response('NoSuchRevision', 'rev-id')
-        # unlock
-        client.add_success_response('ok')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('branch/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.lock_write', ('branch/', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.set_last_revision', ('branch/', 'branch token', 'repo token', 'rev-id',),
+            'error', ('NoSuchRevision', 'rev-id'))
+        client.add_expected_call(
+            'Branch.unlock', ('branch/', 'branch token', 'repo token'),
+            'success', ('ok',))
 
         bzrdir = RemoteBzrDir(transport, _client=False)
         repo = RemoteRepository(bzrdir, None, _client=client)
         branch = RemoteBranch(bzrdir, repo, _client=client)
         branch._ensure_real = lambda: None
         branch.lock_write()
-        client._calls = []
-
         self.assertRaises(
             errors.NoSuchRevision, branch.set_revision_history, ['rev-id'])
         branch.unlock()
+        client.finished_test()
 
     def test_tip_change_rejected(self):
         """TipChangeRejected responses cause a TipChangeRejected exception to
@@ -876,7 +881,12 @@ class TestBranchLockWrite(tests.TestCase):
     def test_lock_write_unlockable(self):
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        client.add_error_response('UnlockableTransport')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.lock_write', ('quack/', '', ''),
+            'error', ('UnlockableTransport',))
         transport.mkdir('quack')
         transport = transport.clone('quack')
         # we do not want bzrdir to make any remote calls
@@ -884,9 +894,7 @@ class TestBranchLockWrite(tests.TestCase):
         repo = RemoteRepository(bzrdir, None, _client=client)
         branch = RemoteBranch(bzrdir, repo, _client=client)
         self.assertRaises(errors.UnlockableTransport, branch.lock_write)
-        self.assertEqual(
-            [('call', 'Branch.lock_write', ('quack/', '', ''))],
-            client._calls)
+        client.finished_test()
 
 
 class TestTransportIsReadonly(tests.TestCase):
