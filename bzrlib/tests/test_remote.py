@@ -33,6 +33,7 @@ from bzrlib import (
     remote,
     repository,
     tests,
+    urlutils,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
@@ -104,6 +105,34 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_branch_repr(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()
         self.assertStartsWith(str(b), 'RemoteBranch(')
+
+
+class FakeRemoteTransport(object):
+    """This class provides the minimum support for use in place of a RemoteTransport.
+    
+    It doesn't actually transmit requests, but rather expects them to be handled
+    by a FakeClient which holds canned responses.  It does not allow any 
+    vfs access.
+    """
+
+    _default_url = 'fakeremotetransport://host/path/'
+
+    def __init__(self, url=None):
+        if url is None:
+            url = self._default_url
+        self.base = url
+
+    def __repr__(self):
+        return "%r(%r)" % (self.__class__.__name__,
+            self.base)
+
+    def clone(self, relpath):
+        return FakeRemoteTransport(urlutils.join(self.base, relpath))
+
+    def get(self, relpath):
+        raise AssertionError("%r doesn't support file access to %r"
+            % (self, relpath))
+
 
 
 class FakeProtocol(object):
