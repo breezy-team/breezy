@@ -179,8 +179,7 @@ class SmartServerResponse(object):
                 other.body_stream is self.body_stream)
 
     def __repr__(self):
-        status = {True: 'OK', False: 'ERR'}[self.is_successful()]
-        return "<SmartServerResponse status=%s args=%r body=%r>" % (status,
+        return "<%r args=%r body=%r>" % (self.__class__.__name__,
             self.args, self.body)
 
 
@@ -374,6 +373,8 @@ request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
+    'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(

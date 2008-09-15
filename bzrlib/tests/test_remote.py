@@ -110,9 +110,11 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 class FakeRemoteTransport(object):
     """This class provides the minimum support for use in place of a RemoteTransport.
     
-    It doesn't actually transmit requests, but rather expects them to be handled
-    by a FakeClient which holds canned responses.  It does not allow any 
-    vfs access.
+    It doesn't actually transmit requests, but rather expects them to be
+    handled by a FakeClient which holds canned responses.  It does not allow
+    any vfs access, therefore is not suitable for testing any operation that
+    will fallback to vfs access.  Backing the test by an instance of this
+    class guarantees that it's - done using non-vfs operations.
     """
 
     _default_url = 'fakeremotetransport://host/path/'
@@ -130,6 +132,8 @@ class FakeRemoteTransport(object):
         return FakeRemoteTransport(urlutils.join(self.base, relpath))
 
     def get(self, relpath):
+        # only get is specifically stubbed out, because it's usually the first
+        # thing we do.  anything else will fail with an AttributeError.
         raise AssertionError("%r doesn't support file access to %r"
             % (self, relpath))
 
@@ -492,6 +496,20 @@ class TestBranchLastRevisionInfo(tests.TestCase):
             [('call', 'Branch.last_revision_info', ('kwaak/',))],
             client._calls)
         self.assertEqual((2, revid), result)
+
+
+class TestBranch_get_stacked_on_url(tests.TestCase):
+    """Test Branch._get_stacked_on_url rpc"""
+
+    def test_get_stacked_on_url(self):
+        transport = FakeRemoteTransport()
+        client = FakeClient(transport.base)
+        client.add_success_response('ok', 'file:///stacked/on')
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        result = branch.get_stacked_on_url()
+        self.assertEqual(
+            'file:///stacked/on', result)
 
 
 class TestBranchSetLastRevision(tests.TestCase):

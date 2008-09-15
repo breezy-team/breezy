@@ -1290,7 +1290,6 @@ class RemoteBranch(branch.Branch):
     def _setup_stacking(self):
         # configure stacking into the remote repository, by reading it from
         # the vfs branch.
-        return
         try:
             fallback_url = self.get_stacked_on_url()
             if fallback_url is None:
@@ -1390,7 +1389,7 @@ class RemoteBranch(branch.Branch):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        if True:
+        if False:
             self._ensure_real()
             return self._real_branch.get_stacked_on_url()
         else:
