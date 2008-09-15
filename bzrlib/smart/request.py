@@ -179,7 +179,7 @@ class SmartServerResponse(object):
                 other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<%r args=%r body=%r>" % (self.__class__.__name__,
+        return "<%s args=%r body=%r>" % (self.__class__.__name__,
             self.args, self.body)
 
 
@@ -287,6 +287,14 @@ class SmartServerRequestHandler(object):
         except errors.ShortReadvError, e:
             return FailedSmartServerResponse(('ShortReadvError',
                 e.path, str(e.offset), str(e.length), str(e.actual)))
+        except errors.UnstackableRepositoryFormat, e:
+            return FailedSmartServerResponse(('UnstackableRepositoryFormat',
+                str(e.format), e.url))
+        except errors.UnstackableBranchFormat, e:
+            return FailedSmartServerResponse(('UnstackableBranchFormat',
+                str(e.format), e.url))
+        except errors.NotStacked, e:
+            return FailedSmartServerResponse(('NotStacked',))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
             # with a plain string

@@ -600,6 +600,8 @@ class RemoteRepository(object):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
+#        for fb in self._fallback_repositories:
+#            self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
             # if we are already locked, the real repository must be able to
             # acquire the lock with our token.
@@ -726,6 +728,10 @@ class RemoteRepository(object):
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         self._fallback_repositories.append(repository)
+        # They are also seen by the fallback repository.  If it doesn't exist
+        # yet they'll be added then.
+##        if self._real_repository is not None:
+##            self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1285,7 +1291,7 @@ class RemoteBranch(branch.Branch):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
-        self._setup_stacking()
+        ## self._setup_stacking()
 
     def _setup_stacking(self):
         # configure stacking into the remote repository, by reading it from
@@ -1393,8 +1399,11 @@ class RemoteBranch(branch.Branch):
             self._ensure_real()
             return self._real_branch.get_stacked_on_url()
         else:
-            response = self._client.call('Branch.get_stacked_on_url',
-                self._remote_path())
+            try:
+                response = self._client.call('Branch.get_stacked_on_url',
+                    self._remote_path())
+            except errors.ErrorFromSmartServer, err:
+                self._translate_error(err)
             if response[0] != 'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
             return response[1]
@@ -1764,5 +1773,11 @@ def _translate_error(err, **context):
         raise errors.DivergedBranches(find('branch'), find('other_branch'))
     elif err.error_verb == 'TipChangeRejected':
         raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
+    elif err.error_verb == 'UnstackableBranchFormat':
+        raise errors.UnstackableBranchFormat(*err.error_args)
+    elif err.error_verb == 'UnstackableRepositoryFormat':
+        raise errors.UnstackableRepositoryFormat(*err.error_args)
+    elif err.error_verb == 'NotStacked':
+        raise errors.NotStacked(branch=find('branch'))
     raise
 

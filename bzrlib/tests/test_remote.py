@@ -1452,6 +1452,7 @@ class TestStacking(tests.TestCaseWithTransport):
         # make a branch stacked on another repository containing an empty
         # revision, then open it over hpss - we should be able to see that
         # revision.
+        raise tests.KnownFailure('bug 261315')
         base_transport = self.get_transport()
         base_builder = self.make_branch_builder('base', format='1.6')
         base_builder.start_series()
@@ -1469,14 +1470,18 @@ class TestStacking(tests.TestCaseWithTransport):
         # can get its branch and repository
         remote_branch = remote_bzrdir.open_branch()
         remote_repo = remote_branch.repository
-        # it should have an appropriate fallback repository, which should also
-        # be a RemoteRepository
-        self.assertEquals(len(remote_repo._fallback_repositories), 1)
-        self.assertIsInstance(remote_repo._fallback_repositories[0],
-            RemoteRepository)
-        # and it has the revision committed to the underlying repository;
-        # these have varying implementations so we try several of them
-        self.assertTrue(remote_repo.has_revisions([base_revid]))
-        self.assertTrue(remote_repo.has_revision(base_revid))
-        self.assertEqual(remote_repo.get_revision(base_revid).message,
-            'message')
+        remote_repo.lock_read()
+        try:
+            # it should have an appropriate fallback repository, which should also
+            # be a RemoteRepository
+            self.assertEquals(len(remote_repo._fallback_repositories), 1)
+            self.assertIsInstance(remote_repo._fallback_repositories[0],
+                RemoteRepository)
+            # and it has the revision committed to the underlying repository;
+            # these have varying implementations so we try several of them
+            self.assertTrue(remote_repo.has_revisions([base_revid]))
+            self.assertTrue(remote_repo.has_revision(base_revid))
+            self.assertEqual(remote_repo.get_revision(base_revid).message,
+                'message')
+        finally:
+            remote_repo.unlock()

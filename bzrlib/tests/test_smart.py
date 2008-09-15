@@ -131,10 +131,10 @@ class TestSmartServerResponse(tests.TestCase):
     def test__str__(self):
         """SmartServerResponses can be stringified."""
         self.assertEqual(
-            "<SmartServerResponse status=OK args=('args',) body='body'>",
+            "<SuccessfulSmartServerResponse args=('args',) body='body'>",
             str(SuccessfulSmartServerResponse(('args',), 'body')))
         self.assertEqual(
-            "<SmartServerResponse status=ERR args=('args',) body='body'>",
+            "<FailedSmartServerResponse args=('args',) body='body'>",
             str(FailedSmartServerResponse(('args',), 'body')))
 
 
