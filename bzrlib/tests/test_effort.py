@@ -22,7 +22,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.branch import Branch
-from bzrlib.smart import server
+from bzrlib.smart import client, server
 from bzrlib.transport import get_transport
 
 
@@ -39,13 +39,25 @@ class EmptyPushEffortTests(tests.TestCaseWithMemoryTransport):
         self.addCleanup(self.smart_server.tearDown)
         self.empty_branch = self.make_branch('empty')
         self.make_branch('target')
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
 
     def test_empty_branch_api(self):
         transport = get_transport(self.smart_server.get_url()).clone('target')
         target = Branch.open_from_transport(transport)
         self.empty_branch.push(target)
-        log = self._get_log(keep_log_file=True)
-        self.assertTrue(log.count('hpss call') <= 6)
+        self.assertEqual(
+            ['BzrDir.open',
+             'BzrDir.open_branch',
+             'BzrDir.find_repositoryV2',
+             'Branch.lock_write',
+             'Branch.last_revision_info',
+             'Branch.unlock'],
+            self.hpss_calls)
 
     def test_empty_branch_command(self):
         cmd = builtins.cmd_push()
@@ -53,7 +65,6 @@ class EmptyPushEffortTests(tests.TestCaseWithMemoryTransport):
         cmd.run(
             directory=self.get_url() + 'empty',
             location=self.smart_server.get_url() + 'target')
-        log = self._get_log(keep_log_file=True)
-        self.assertTrue(log.count('hpss call') <= 8)
+        self.assertTrue(len(self.hpss_calls) <= 8)
 
 

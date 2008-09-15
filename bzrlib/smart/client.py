@@ -17,7 +17,10 @@
 import bzrlib
 from bzrlib.smart import message, protocol
 from bzrlib.trace import warning
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    hooks,
+    )
 
 
 class _SmartClient(object):
@@ -50,8 +53,15 @@ class _SmartClient(object):
             encoder.call(method, *args)
         return response_handler
 
+    def _run_call_hooks(self, method, args, body, readv_body):
+        params = CallHookParams(method, args, body, readv_body)
+        for hook in _SmartClient.hooks['call']:
+            hook(params)
+            
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             expect_response_body=True):
+        if _SmartClient.hooks['call']:
+            self._run_call_hooks(method, args, body, readv_body)
         if self._medium._protocol_version is not None:
             response_handler = self._send_request(
                 self._medium._protocol_version, method, args, body=body,
@@ -163,3 +173,34 @@ class _SmartClient(object):
         """
         return self._medium.remote_path_from_transport(transport)
 
+
+class SmartClientHooks(hooks.Hooks):
+
+    def __init__(self):
+        hooks.Hooks.__init__(self)
+        self['call'] = []
+
+        
+_SmartClient.hooks = SmartClientHooks()
+
+
+class CallHookParams(object):
+    
+    def __init__(self, method, args, body, readv_body):
+        self.method = method
+        self.args = args
+        self.body = body
+        self.readv_body = readv_body
+
+    def __repr__(self):
+        attrs = dict((k, v) for (k, v) in self.__dict__.iteritems()
+                     if v is not None)
+        return '<%s %r>' % (self.__class__.__name__, attrs)
+
+    def __eq__(self, other):
+        if type(other) is not type(self):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self == other
