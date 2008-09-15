@@ -1401,7 +1401,9 @@ class RemoteBranch(branch.Branch):
                 response = self._client.call('Branch.get_stacked_on_url',
                     self._remote_path())
             except errors.ErrorFromSmartServer, err:
-                self._translate_error(err)
+                # there may not be a repository yet, so we can't call through
+                # its _translate_error
+                _translate_error(err, branch=self)
             if response[0] != 'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
             return response[1]

@@ -188,7 +188,7 @@ class FakeClient(_SmartClient):
         if self._expected_calls is None:
             self._expected_calls = []
         self._expected_calls.append((call_name, call_args))
-        self.responses.append((response_types, response_args, response_body))
+        self.responses.append((response_type, response_args, response_body))
 
     def add_success_response(self, *args):
         self.responses.append(('success', args, None))
@@ -201,6 +201,11 @@ class FakeClient(_SmartClient):
 
     def add_unknown_method_response(self, verb):
         self.responses.append(('unknown', verb))
+
+    def finished_test(self):
+        if self._expected_calls:
+            raise AssertionError("%r finished but was still expecting %r"
+                % (self, self._expected_calls[0]))
 
     def _get_next_response(self):
         try:
@@ -227,7 +232,7 @@ class FakeClient(_SmartClient):
         if method != next_call[0] or args != next_call[1]:
             raise AssertionError("%r expected %r%r "
                 "but got %r%r"
-                % (next_call[0], next_call[1], method, args,))
+                % (self, next_call[0], next_call[1], method, args,))
 
     def call(self, method, *args):
         self._check_call(method, args)
@@ -499,17 +504,19 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         # in an empty branch we decode the response properly
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        client.add_success_response('ok', '0', 'null:')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('quack/',),
+            'success', ('ok', '0', 'null:'))
         transport.mkdir('quack')
         transport = transport.clone('quack')
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
         result = branch.last_revision_info()
-
-        self.assertEqual(
-            [('call', 'Branch.last_revision_info', ('quack/',))],
-            client._calls)
+        client.finished_test()
         self.assertEqual((0, NULL_REVISION), result)
 
     def test_non_empty_branch(self):
@@ -517,17 +524,18 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         revid = u'\xc8'.encode('utf8')
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        client.add_success_response('ok', '2', revid)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('kwaak/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('kwaak/',),
+            'success', ('ok', '2', revid))
         transport.mkdir('kwaak')
         transport = transport.clone('kwaak')
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
         result = branch.last_revision_info()
-
-        self.assertEqual(
-            [('call', 'Branch.last_revision_info', ('kwaak/',))],
-            client._calls)
         self.assertEqual((2, revid), result)
 
 
