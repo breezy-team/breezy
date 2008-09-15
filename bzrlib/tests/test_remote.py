@@ -563,6 +563,38 @@ class TestBranch_get_stacked_on_url(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             'file:///stacked/on', result)
 
+    def test_backwards_compatible(self):
+        # like with bzr1.6 with no Branch.get_stacked_on_url rpc
+        base_branch = self.make_branch('base', format='1.6')
+        stacked_branch = self.make_branch('stacked', format='1.6')
+        stacked_branch.set_stacked_on_url('../base')
+        client = FakeClient(self.get_url())
+        client.add_expected_call(
+            'BzrDir.open_branch', ('stacked/',),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'BzrDir.find_repositoryV2', ('stacked/',),
+            'success', ('ok', '', 'no', 'no', 'no'))
+        # called twice, once from constructor and then again by us
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('stacked/',),
+            'unknown', ('Branch.get_stacked_on_url',))
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('stacked/',),
+            'unknown', ('Branch.get_stacked_on_url',))
+        # this will also do vfs access, but that goes direct to the transport
+        # and isn't seen by the FakeClient.
+        bzrdir = RemoteBzrDir(self.get_transport('stacked'), _client=client)
+        branch = bzrdir.open_branch()
+        result = branch.get_stacked_on_url()
+        self.assertEqual('../base', result)
+        client.finished_test()
+        # it's in the fallback list both for the RemoteRepository and its vfs
+        # repository
+        self.assertEqual(1, len(branch.repository._fallback_repositories))
+        self.assertEqual(1,
+            len(branch.repository._real_repository._fallback_repositories))
+
     def test_get_stacked_on_real_branch(self):
         base_branch = self.make_branch('base', format='1.6')
         stacked_branch = self.make_branch('stacked', format='1.6')

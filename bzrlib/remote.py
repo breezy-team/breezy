@@ -600,8 +600,8 @@ class RemoteRepository(object):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
-#        for fb in self._fallback_repositories:
-#            self._real_repository.add_fallback_repository(fb)
+        for fb in self._fallback_repositories:
+            self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
             # if we are already locked, the real repository must be able to
             # acquire the lock with our token.
@@ -733,9 +733,8 @@ class RemoteRepository(object):
         # on various RPC's.
         self._fallback_repositories.append(repository)
         # They are also seen by the fallback repository.  If it doesn't exist
-        # yet they'll be added then.
+        # yet they'll be added then.  This implicitly copies them.
         self._ensure_real()
-        self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1397,20 +1396,19 @@ class RemoteBranch(branch.Branch):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        if False:
-            self._ensure_real()
-            return self._real_branch.get_stacked_on_url()
-        else:
-            try:
-                response = self._client.call('Branch.get_stacked_on_url',
-                    self._remote_path())
-            except errors.ErrorFromSmartServer, err:
-                # there may not be a repository yet, so we can't call through
-                # its _translate_error
-                _translate_error(err, branch=self)
+        try:
+            response = self._client.call('Branch.get_stacked_on_url',
+                self._remote_path())
             if response[0] != 'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
             return response[1]
+        except errors.ErrorFromSmartServer, err:
+            # there may not be a repository yet, so we can't call through
+            # its _translate_error
+            _translate_error(err, branch=self)
+        except errors.UnknownSmartMethod, err:
+            self._ensure_real()
+            return self._real_branch.get_stacked_on_url()
 
     def lock_read(self):
         if not self._lock_mode:
