@@ -359,16 +359,20 @@ class TestBzrDirOpenBranch(tests.TestCase):
         transport.mkdir('quack')
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
-        client.add_success_response('ok', '')
-        client.add_success_response('ok', '', 'no', 'no', 'no')
+        client.add_expected_call(
+            'BzrDir.open_branch', ('quack/',),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'BzrDir.find_repositoryV2', ('quack/',),
+            'success', ('ok', '', 'no', 'no', 'no'))
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
         bzrdir = RemoteBzrDir(transport, _client=client)
         result = bzrdir.open_branch()
-        self.assertEqual(
-            [('call', 'BzrDir.open_branch', ('quack/',)),
-             ('call', 'BzrDir.find_repositoryV2', ('quack/',))],
-            client._calls)
         self.assertIsInstance(result, RemoteBranch)
         self.assertEqual(bzrdir, result.bzrdir)
+        client.finished_test()
 
     def test_branch_missing(self):
         transport = MemoryTransport()
@@ -404,14 +408,18 @@ class TestBzrDirOpenBranch(tests.TestCase):
         # transmitted as "~", not "%7E".
         transport = RemoteTCPTransport('bzr://localhost/~hello/')
         client = FakeClient(transport.base)
-        client.add_success_response('ok', '')
-        client.add_success_response('ok', '', 'no', 'no', 'no')
+        client.add_expected_call(
+            'BzrDir.open_branch', ('~hello/',),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'BzrDir.find_repositoryV2', ('~hello/',),
+            'success', ('ok', '', 'no', 'no', 'no'))
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('~hello/',),
+            'error', ('NotStacked',))
         bzrdir = RemoteBzrDir(transport, _client=client)
         result = bzrdir.open_branch()
-        self.assertEqual(
-            [('call', 'BzrDir.open_branch', ('~hello/',)),
-             ('call', 'BzrDir.find_repositoryV2', ('~hello/',))],
-            client._calls)
+        client.finished_test()
 
     def check_open_repository(self, rich_root, subtrees, external_lookup='no'):
         transport = MemoryTransport()
@@ -542,10 +550,13 @@ class TestBranchLastRevisionInfo(tests.TestCase):
 class TestBranch_get_stacked_on_url(tests.TestCase):
     """Test Branch._get_stacked_on_url rpc"""
 
-    def test_get_stacked_on_url(self):
-        transport = FakeRemoteTransport()
+    def test_get_stacked_on_invalid_url(self):
+        raise tests.KnownFailure('opening a branch requires the server to open the fallback repository')
+        transport = FakeRemoteTransport('fakeremotetransport:///')
         client = FakeClient(transport.base)
-        client.add_success_response('ok', 'file:///stacked/on')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('.',),
+            'success', ('ok', 'file:///stacked/on'))
         bzrdir = RemoteBzrDir(transport, _client=client)
         branch = RemoteBranch(bzrdir, None, _client=client)
         result = branch.get_stacked_on_url()
@@ -563,26 +574,28 @@ class TestBranchSetLastRevision(tests.TestCase):
         transport = transport.clone('branch')
 
         client = FakeClient(transport.base)
-        # lock_write
-        client.add_success_response('ok', 'branch token', 'repo token')
-        # set_last_revision
-        client.add_success_response('ok')
-        # unlock
-        client.add_success_response('ok')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('branch/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.lock_write', ('branch/', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.set_last_revision', ('branch/', 'branch token', 'repo token', 'null:',),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Branch.unlock', ('branch/', 'branch token', 'repo token'),
+            'success', ('ok',))
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
         # This is a hack to work around the problem that RemoteBranch currently
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
         branch.lock_write()
-        client._calls = []
         result = branch.set_revision_history([])
-        self.assertEqual(
-            [('call', 'Branch.set_last_revision',
-                ('branch/', 'branch token', 'repo token', 'null:'))],
-            client._calls)
         branch.unlock()
         self.assertEqual(None, result)
+        client.finished_test()
 
     def test_set_nonempty(self):
         # set_revision_history([rev-id1, ..., rev-idN]) is translated to calling
@@ -592,12 +605,18 @@ class TestBranchSetLastRevision(tests.TestCase):
         transport = transport.clone('branch')
 
         client = FakeClient(transport.base)
-        # lock_write
-        client.add_success_response('ok', 'branch token', 'repo token')
-        # set_last_revision
-        client.add_success_response('ok')
-        # unlock
-        client.add_success_response('ok')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('branch/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.lock_write', ('branch/', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.set_last_revision', ('branch/', 'branch token', 'repo token', 'rev-id2',),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Branch.unlock', ('branch/', 'branch token', 'repo token'),
+            'success', ('ok',))
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
         # This is a hack to work around the problem that RemoteBranch currently
@@ -605,15 +624,10 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
-        client._calls = []
-
         result = branch.set_revision_history(['rev-id1', 'rev-id2'])
-        self.assertEqual(
-            [('call', 'Branch.set_last_revision',
-                ('branch/', 'branch token', 'repo token', 'rev-id2'))],
-            client._calls)
         branch.unlock()
         self.assertEqual(None, result)
+        client.finished_test()
 
     def test_no_such_revision(self):
         transport = MemoryTransport()
@@ -652,23 +666,26 @@ class TestBranchSetLastRevision(tests.TestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
-        # lock_write
-        client.add_success_response('ok', 'branch token', 'repo token')
-        # set_last_revision
         rejection_msg_unicode = u'rejection message\N{INTERROBANG}'
         rejection_msg_utf8 = rejection_msg_unicode.encode('utf8')
-        client.add_error_response('TipChangeRejected', rejection_msg_utf8)
-        # unlock
-        client.add_success_response('ok')
-
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('branch/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.lock_write', ('branch/', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.set_last_revision', ('branch/', 'branch token', 'repo token', 'rev-id',),
+            'error', ('TipChangeRejected', rejection_msg_utf8))
+        client.add_expected_call(
+            'Branch.unlock', ('branch/', 'branch token', 'repo token'),
+            'success', ('ok',))
         bzrdir = RemoteBzrDir(transport, _client=False)
         repo = RemoteRepository(bzrdir, None, _client=client)
         branch = RemoteBranch(bzrdir, repo, _client=client)
         branch._ensure_real = lambda: None
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        client._calls = []
-
         # The 'TipChangeRejected' error response triggered by calling
         # set_revision_history causes a TipChangeRejected exception.
         err = self.assertRaises(
@@ -677,6 +694,8 @@ class TestBranchSetLastRevision(tests.TestCase):
         # object.
         self.assertIsInstance(err.msg, unicode)
         self.assertEqual(rejection_msg_unicode, err.msg)
+        branch.unlock()
+        client.finished_test()
 
 
 class TestBranchSetLastRevisionInfo(tests.TestCase):
@@ -688,6 +707,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
+        # get_stacked_on_url
+        client.add_error_response('NotStacked')
         # lock_write
         client.add_success_response('ok', 'branch token', 'repo token')
         # set_last_revision
@@ -717,6 +738,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
+        # get_stacked_on_url
+        client.add_error_response('NotStacked')
         # lock_write
         client.add_success_response('ok', 'branch token', 'repo token')
         # set_last_revision
@@ -761,7 +784,14 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
-        client.add_unknown_method_response('Branch.set_last_revision_info')
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('branch/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.set_last_revision_info',
+            ('branch/', 'branch token', 'repo token', '1234', 'a-revision-id',),
+            'unknown', 'Branch.set_last_revision_info')
+
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
         class StubRealBranch(object):
@@ -779,13 +809,9 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         # Call set_last_revision_info, and verify it behaved as expected.
         result = branch.set_last_revision_info(1234, 'a-revision-id')
         self.assertEqual(
-            [('call', 'Branch.set_last_revision_info',
-                ('branch/', 'branch token', 'repo token',
-                 '1234', 'a-revision-id')),],
-            client._calls)
-        self.assertEqual(
             [('set_last_revision_info', 1234, 'a-revision-id')],
             real_branch.calls)
+        client.finished_test()
 
     def test_unexpected_error(self):
         # A response of 'NoSuchRevision' is translated into an exception.
@@ -793,6 +819,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
+        # get_stacked_on_url
+        client.add_error_response('NotStacked')
         # lock_write
         client.add_success_response('ok', 'branch token', 'repo token')
         # set_last_revision
@@ -824,6 +852,8 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
+        # get_stacked_on_url
+        client.add_error_response('NotStacked')
         # lock_write
         client.add_success_response('ok', 'branch token', 'repo token')
         # set_last_revision
