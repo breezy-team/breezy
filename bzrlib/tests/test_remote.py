@@ -177,7 +177,18 @@ class FakeClient(_SmartClient):
         self.responses = []
         self._calls = []
         self.expecting_body = False
+        # if non-None, this is the list of expected calls, with only the
+        # method name and arguments included.  the body might be hard to
+        # compute so is not included
+        self._expected_calls = None
         _SmartClient.__init__(self, FakeMedium(self._calls, fake_medium_base))
+
+    def add_expected_call(self, call_name, call_args, response_type,
+        response_args, response_body=None):
+        if self._expected_calls is None:
+            self._expected_calls = []
+        self._expected_calls.append((call_name, call_args))
+        self.responses.append((response_types, response_args, response_body))
 
     def add_success_response(self, *args):
         self.responses.append(('success', args, None))
@@ -192,24 +203,46 @@ class FakeClient(_SmartClient):
         self.responses.append(('unknown', verb))
 
     def _get_next_response(self):
-        response_tuple = self.responses.pop(0)
+        try:
+            response_tuple = self.responses.pop(0)
+        except IndexError, e:
+            raise AssertionError("%r didn't expect any more calls"
+                % (self,))
         if response_tuple[0] == 'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == 'error':
             raise errors.ErrorFromSmartServer(response_tuple[1])
         return response_tuple
 
+    def _check_call(self, method, args):
+        if self._expected_calls is None:
+            # the test should be updated to say what it expects
+            return
+        try:
+            next_call = self._expected_calls.pop(0)
+        except IndexError:
+            raise AssertionError("%r didn't expect any more calls "
+                "but got %r%r"
+                % (method, args,))
+        if method != next_call[0] or args != next_call[1]:
+            raise AssertionError("%r expected %r%r "
+                "but got %r%r"
+                % (next_call[0], next_call[1], method, args,))
+
     def call(self, method, *args):
+        self._check_call(method, args)
         self._calls.append(('call', method, args))
         return self._get_next_response()[1]
 
     def call_expecting_body(self, method, *args):
+        self._check_call(method, args)
         self._calls.append(('call_expecting_body', method, args))
         result = self._get_next_response()
         self.expecting_body = True
         return result[1], FakeProtocol(result[2], self)
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
+        self._check_call(method, args)
         self._calls.append(('call_with_body_bytes_expecting_body', method,
             args, body))
         result = self._get_next_response()
