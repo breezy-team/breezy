@@ -1808,10 +1808,18 @@ class BzrBranch(Branch):
             graph = self.repository.get_graph(target.repository)
             target.update_revisions(self, stop_revision, overwrite=overwrite,
                                     graph=graph)
-        if self.tags.supports_tags() and self.tags.get_tag_dict():
+        if self._push_should_merge_tags():
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
+
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+        
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_parent(self):
         """See Branch.get_parent."""
