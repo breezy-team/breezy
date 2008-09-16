@@ -1007,8 +1007,10 @@ class BzrDir(object):
             # the fix recommended in bug # 103195 - to delegate this choice the
             # repository itself.
             repo_format = source_repository._format
-            if not isinstance(repo_format, remote.RemoteRepositoryFormat):
-                result_format.repository_format = repo_format
+            if isinstance(repo_format, remote.RemoteRepositoryFormat):
+                source_repository._ensure_real()
+                repo_format = source_repository._real_repository._format
+            result_format.repository_format = repo_format
         try:
             # TODO: Couldn't we just probe for the format in these cases,
             # rather than opening the whole tree?  It would be a little
