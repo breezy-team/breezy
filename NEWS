@@ -15,6 +15,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Branching from a shared repository on a smart server into a new
+      repository now preserves the repository format.
+      (Andrew Bennetts, #269214)
+
     * ``bzr missing`` now accepts an ``--include-merges`` option.
       (Vincent Ladeuil, #233817)
 
