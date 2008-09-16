@@ -9,11 +9,14 @@ bzr 1.7rc2 IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr branch bzr+ssh://`` will properly preserve the format when
+      branching from a non-default format. (Andrew Bennetts)
+
     * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
       (Andrew Bennetts)
 
-    * ``bzr branch bzr+ssh://`` will properly preserve the format when
-      branching from a non-default format. (Andrew Bennetts)
+    * ``bzr init`` no longer re-opens the BzrDir multiple times.
+      (Vincent Ladeuil)
 
 
 bzr 1.7rc1 2008-09-09
