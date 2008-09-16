@@ -301,6 +301,19 @@ class TestUploadMixin(object):
 
         self.assertUpFileEqual('foo', 'goodbye')
 
+    def test_rename_and_change_file(self):
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.do_full_upload()
+        self.rename_any('hello', 'goodbye')
+        self.modify_file('goodbye', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('bar', 'goodbye')
+
     def test_rename_two_files(self):
         self.make_local_branch()
         self.add_file('a', 'foo')

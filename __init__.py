@@ -58,7 +58,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0,1,0)
+version_info = (0, 1, 1)
 plugin_name = 'upload'
 
 
@@ -279,6 +279,10 @@ class BzrUploader(object):
 
             for (old_path, new_path, id, kind,
                  content_change, exec_change) in changes.renamed:
+                if content_change:
+                    # We update the old_path content because renames and
+                    # deletions are differed.
+                    self.upload_file(old_path, id)
                 self.rename_remote(old_path, new_path)
             self.finish_renames()
             self.finish_deletions()
