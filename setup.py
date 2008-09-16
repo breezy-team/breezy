@@ -231,7 +231,7 @@ class install_lib_with_dlls(install_lib):
             # Since 1.5.0 these libraries became shared
             apr_bins += """libsvn_client-1.dll libsvn_delta-1.dll libsvn_diff-1.dll
                            libsvn_fs-1.dll libsvn_ra-1.dll libsvn_repos-1.dll
-                           libsvn_subr-1.dll libsvn_wc-1.dll""".split()
+                           libsvn_subr-1.dll libsvn_wc-1.dll libsasl.dll""".split()
         apr_bins += """intl3_svn.dll libdb44.dll libeay32.dll ssleay32.dll""".split()
         look_dirs = os.environ.get("PATH","").split(os.pathsep)
         look_dirs.insert(0, os.path.join(os.environ["SVN_DEV"], "bin"))
