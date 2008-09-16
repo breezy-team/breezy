@@ -16,6 +16,9 @@ bzr 1.7rc2 IN DEVELOPMENT
     * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
       (Andrew Bennetts)
 
+    * ``bzr init`` no longer re-opens the BzrDir multiple times.
+      (Vincent Ladeuil)
+
 
 bzr 1.7rc1 2008-09-09
 ---------------------
