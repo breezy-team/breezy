@@ -19,9 +19,15 @@ IN DEVELOPMENT
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
 
+    * ``bzr missing`` now accepts an ``--include-merges`` option.
+      (Vincent Ladeuil, #233817)
+
     * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
       (Andrew Bennetts)
 
+    * Fix TooManyConcurrentRequests errors caused by a connection failure
+      when doing ``bzr pull`` or ``bzr merge`` from a ``bzr+ssh`` URL.
+      (Andrew Bennetts, #246233)
 
   DOCUMENTATION:
 

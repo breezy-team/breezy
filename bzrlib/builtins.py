@@ -3318,14 +3318,17 @@ class cmd_missing(Command):
             Option('other', 'Same as --theirs-only.'),
             'log-format',
             'show-ids',
-            'verbose'
+            'verbose',
+            Option('include-merges', 'Show merged revisions.'),
             ]
     encoding_type = 'replace'
 
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, log_format=None, long=False, short=False, line=False, 
-            show_ids=False, verbose=False, this=False, other=False):
+            theirs_only=False,
+            log_format=None, long=False, short=False, line=False,
+            show_ids=False, verbose=False, this=False, other=False,
+            include_merges=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
 
         if this:
@@ -3361,7 +3364,9 @@ class cmd_missing(Command):
             remote_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(
-                    local_branch, remote_branch, restrict)
+                    local_branch, remote_branch, restrict,
+                    backward=not reverse,
+                    include_merges=include_merges)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
@@ -3369,11 +3374,6 @@ class cmd_missing(Command):
                 lf = log_format(to_file=self.outf,
                                 show_ids=show_ids,
                                 show_timezone='original')
-                if reverse is False:
-                    if local_extra is not None:
-                        local_extra.reverse()
-                    if remote_extra is not None:
-                        remote_extra.reverse()
 
                 status_code = 0
                 if local_extra and not theirs_only:
