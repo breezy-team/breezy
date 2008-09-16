@@ -29,6 +29,9 @@ IN DEVELOPMENT
       when doing ``bzr pull`` or ``bzr merge`` from a ``bzr+ssh`` URL.
       (Andrew Bennetts, #246233)
 
+    * Make the first line of the manpage preamble a comment again.
+      (David Futcher, #242106)
+
   DOCUMENTATION:
 
   API CHANGES:
