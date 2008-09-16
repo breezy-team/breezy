@@ -12,6 +12,9 @@ bzr 1.7rc2 IN DEVELOPMENT
     * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
       (Andrew Bennetts)
 
+    * ``bzr branch bzr+ssh://`` will properly preserve the format when
+      branching from a non-default format. (Andrew Bennetts)
+
 
 bzr 1.7rc1 2008-09-09
 ---------------------
