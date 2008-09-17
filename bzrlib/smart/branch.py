@@ -92,6 +92,13 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse( ('ok', ), content)
 
 
+class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        stacked_on_url = branch.get_stacked_on_url()
+        return SuccessfulSmartServerResponse(('ok', stacked_on_url))
+
+
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):

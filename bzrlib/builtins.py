@@ -1312,22 +1312,22 @@ class cmd_init(Command):
             _create_prefix(to_transport)
 
         try:
-            existing_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
+            a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = bzrdir.BzrDir.create_branch_convenience
             branch = create_branch(to_transport.base, format=format,
                                    possible_transports=[to_transport])
+            a_bzrdir = branch.bzrdir
         else:
             from bzrlib.transport.local import LocalTransport
-            if existing_bzrdir.has_branch():
+            if a_bzrdir.has_branch():
                 if (isinstance(to_transport, LocalTransport)
-                    and not existing_bzrdir.has_workingtree()):
+                    and not a_bzrdir.has_workingtree()):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
-            else:
-                branch = existing_bzrdir.create_branch()
-                existing_bzrdir.create_workingtree()
+            branch = a_bzrdir.create_branch()
+            a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
@@ -1336,8 +1336,7 @@ class cmd_init(Command):
                     ' to append-revisions-only.  Try --experimental-branch6')
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
-                to_transport)[0], verbose=0, outfile=self.outf)
+            show_bzrdir_info(a_bzrdir, verbose=0, outfile=self.outf)
 
 
 class cmd_init_repository(Command):
@@ -1391,8 +1390,7 @@ class cmd_init_repository(Command):
         repo.set_make_working_trees(not no_trees)
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
-                to_transport)[0], verbose=0, outfile=self.outf)
+            show_bzrdir_info(repo.bzrdir, verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):

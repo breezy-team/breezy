@@ -45,6 +45,22 @@ IN DEVELOPMENT
   INTERNALS:
 
 
+bzr 1.7rc2 IN DEVELOPMENT
+-------------------------
+
+  BUG FIXES:
+
+    * Branching from a shared repository on a smart server into a new
+      repository now preserves the repository format.
+      (Andrew Bennetts, #269214)
+
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
+
+    * ``bzr init`` no longer re-opens the BzrDir multiple times.
+      (Vincent Ladeuil)
+
+
 bzr 1.7rc1 2008-09-09
 ---------------------
 
@@ -87,6 +103,9 @@ it in a future repository format.
       restore the branch to that tip using ``bzr pull``.  This allows you
       to recover if you realize you uncommitted the wrong thing.
       (John Arbash Meinel)
+
+    * Fix problems in accessing stacked repositories over ``bzr://``.
+      (Martin Pool, #261315)
 
     * ``SFTPTransport.readv()`` was accidentally using ``list += string``,
       which 'works', but adds each character separately to the list,
