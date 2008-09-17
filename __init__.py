@@ -49,6 +49,7 @@ lazy_import.lazy_import(globals(), """
 import stat
 
 from bzrlib import (
+    bzrdir,
     errors,
     revisionspec,
     transport,
@@ -352,14 +353,15 @@ class cmd_upload(commands.Command):
             ):
         if directory is None:
             directory = u'.'
-
-        wt = workingtree.WorkingTree.open_containing(directory)[0]
-        changes = wt.changes_from(wt.basis_tree())
-
-        if revision is None and  changes.has_changed():
-            raise errors.UncommittedChanges(wt)
-
-        branch = wt.branch
+        
+        wt, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+        
+        if wt:
+            changes = wt.changes_from(wt.basis_tree())
+    
+            if revision is None and  changes.has_changed():
+                raise errors.UncommittedChanges(wt)
 
         if location is None:
             stored_loc = get_upload_location(branch)
