@@ -2349,6 +2349,11 @@ class InterRepository(InterObject):
     _optimisers = []
     """The available optimised InterRepository types."""
 
+    def __init__(self, source, target):
+        InterObject.__init__(self, source, target)
+        self.target_get_graph = self.target.get_graph
+        self.target_get_parent_map = self.target.get_parent_map
+
     def copy_content(self, revision_id=None):
         raise NotImplementedError(self.copy_content)
 
@@ -2379,7 +2384,7 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        target_graph = self.target.get_graph()
+        target_graph = self.target_get_graph()
         revision_ids = frozenset(revision_ids)
         if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
             return graph.SearchResult(revision_ids, set(), 0, set())
@@ -2774,7 +2779,7 @@ class InterPackRepo(InterSameDataRepository):
             # till then:
             source_revision_ids = frozenset(self.source.all_revision_ids())
             revision_ids = source_revision_ids - \
-                frozenset(self.target.get_parent_map(source_revision_ids))
+                frozenset(self.target_get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
             index = self.target._pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
@@ -2823,7 +2828,7 @@ class InterPackRepo(InterSameDataRepository):
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
-            graph = self.target.get_graph(other_repository=self.source)
+            graph = self.target_get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()
             while True:
@@ -2839,7 +2844,7 @@ class InterPackRepo(InterSameDataRepository):
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(
-                self.target.get_parent_map(found_ids))
+                self.target_get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
             # source_ids is the worst possible case we may need to pull.
@@ -3030,6 +3035,9 @@ class InterOtherToRemote(InterRepository):
             self.target._ensure_real()
             real_target = self.target._real_repository
             self._real_inter = InterRepository.get(self.source, real_target)
+            # Make _real_inter use the RemoteRepository for get_parent_map
+            self._real_inter.target_get_graph = self.target.get_graph
+            self._real_inter.target_get_parent_map = self.target.get_parent_map
     
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()

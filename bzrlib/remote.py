@@ -303,6 +303,7 @@ class RemoteRepository(object):
         self._leave_lock = False
         # A cache of looked up revision parent data; reset at unlock time.
         self._parents_map = None
+        self._parents_map_absences = None
         if 'hpss' in debug.debug_flags:
             self._requested_parents = None
         # For tests:
@@ -520,6 +521,7 @@ class RemoteRepository(object):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._parents_map = {}
+            self._parents_map_absences = set()
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
             if self._real_repository is not None:
@@ -564,6 +566,7 @@ class RemoteRepository(object):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._parents_map = {}
+            self._parents_map_absences = set()
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
         elif self._lock_mode == 'r':
@@ -630,6 +633,7 @@ class RemoteRepository(object):
         if self._lock_count > 0:
             return
         self._parents_map = None
+        self._parents_map_absences = None
         if 'hpss' in debug.debug_flags:
             self._requested_parents = None
         old_mode = self._lock_mode
@@ -782,7 +786,7 @@ class RemoteRepository(object):
         return repository.InterRepository.get(
             other, self).search_missing_revision_ids(revision_id, find_ghosts)
 
-    def fetch(self, source, revision_id=None, pb=None):
+    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
         if self.has_same_location(source):
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -790,9 +794,11 @@ class RemoteRepository(object):
                 not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
-        self._ensure_real()
-        return self._real_repository.fetch(
-            source, revision_id=revision_id, pb=pb)
+        inter = repository.InterRepository.get(source, self)
+        try:
+            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
+        except NotImplementedError:
+            raise errors.IncompatibleRepositories(source, self)
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()
@@ -852,12 +858,16 @@ class RemoteRepository(object):
         """See bzrlib.Graph.get_parent_map()."""
         # Hack to build up the caching logic.
         ancestry = self._parents_map
+        known_missing = self._parents_map_absences
         if ancestry is None:
             # Repository is not locked, so there's no cache.
             missing_revisions = set(keys)
             ancestry = {}
+            known_missing = set()
         else:
-            missing_revisions = set(key for key in keys if key not in ancestry)
+            missing_revisions = set(
+                key for key in keys
+                if key not in ancestry and key not in known_missing)
         if missing_revisions:
             parent_map = self._get_parent_map(missing_revisions)
             if 'hpss' in debug.debug_flags:
@@ -865,6 +875,8 @@ class RemoteRepository(object):
                         len(set(ancestry).intersection(parent_map)),
                         len(parent_map))
             ancestry.update(parent_map)
+            still_missing = missing_revisions.difference(parent_map)
+            known_missing.update(still_missing)
         present_keys = [k for k in keys if k in ancestry]
         if 'hpss' in debug.debug_flags:
             if self._requested_parents is not None and len(ancestry) != 0:
