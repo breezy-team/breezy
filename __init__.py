@@ -65,6 +65,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscComp,
         )
 from bzrlib.plugins.builddeb.properties import BuildProperties
+from bzrlib.plugins.builddeb import revspec
 from bzrlib.plugins.builddeb.util import (find_changelog,
         lookup_distribution,
         tarball_name,
