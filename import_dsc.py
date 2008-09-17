@@ -37,7 +37,7 @@ import tarfile
 import tempfile
 
 from debian_bundle import deb822
-from debian_bundle.changelog import Version, Changelog
+from debian_bundle.changelog import Version, Changelog, VersionError
 
 from bzrlib import (bzrdir,
                     generate_ids,
@@ -1840,6 +1840,15 @@ class DistributionBranch(object):
             self.import_debian(debian_part, version, parents, md5,
                     native=True)
 
+    def _get_safe_versions_from_changelog(self, cl):
+        versions = []
+        for block in cl._blocks:
+            try:
+                versions.append(block.version)
+            except VersionError:
+                break
+        return versions
+
     def import_package(self, dsc_filename):
         """Import a source package.
 
@@ -1866,7 +1875,7 @@ class DistributionBranch(object):
                 (_, upstream_md5) = self.get_upstream_part(dsc)
                 (_, md5) = self.get_diff_part(dsc)
             cl = self.get_changelog_from_source(debian_part)
-            versions = cl.versions
+            versions = self._get_safe_versions_from_changelog(cl)
             assert not self.has_version(version), \
                 "Trying to import version %s again" % str(version)
             #TODO: check that the versions list is correctly ordered,
