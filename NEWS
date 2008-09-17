@@ -7,6 +7,11 @@ Bazaar Release Notes
 bzr 1.7rc2 2008-09-17
 ---------------------
 
+A few bug fixes from 1.7rc1. The biggest change is a new
+``RemoteBranch.get_stacked_on_url`` rpc. This allows clients that are
+trying to access a Stacked branch over the smart protocol, to properly
+connect to the stacked-on location.
+
   BUG FIXES:
 
     * Branching from a shared repository on a smart server into a new
