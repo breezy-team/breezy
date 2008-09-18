@@ -582,24 +582,27 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     tmodified_text_revisions = time.time()
     # Algorithms tried:
     #   a single dictionary mapping tree_revision_id => file_ancestry
-    #       file_ancestry_as_tuple
-    #       file_ancestry_as_frozenset
+    #       file_ancestry_as_tuple      50.3    272MB
+    #       file_ancestry_as_frozenset  42.1    409MB
     #       file_ancestry_as_mixed (this was bad, because it gets confused and
     #                               cannot match up revisions properly)
     #   a dictionary tree_revision_id => offset, and a list of offset =>
     #   file_ancestry
     #       file_ancestry_as_tuple      50.3s   272MB
-    #       file_ancestry_as_frozenset  42.1s   410MB
     #       file_ancestry_as_mixed      42.8s   399MB
+    #       file_ancestry_as_frozenset  42.1s   410MB
     #   a dictionary tree_revision_id => file_rev_id, and another dict
     #   file_rev_id => file_ancestry
+    #       file_ancestry_as_tuple      50.4s   272MB
+    #       file_ancestry_as_mixed      43.3s   399MB
+    #       file_ancestry_as_frozenset  41.6s   410MB
 
-    # ancestry_values contains a list of per-file ancestries. When we need a
-    # new one, we just append it to the list.
-    ancestry_values = [frozenset()]
+    # ancestry_values contains a pointer from a revision_id to either a tuple,
+    # or a frozenset() of a given per-file ancestry.
+    ancestry_values = {_mod_revision.NULL_REVISION: frozenset()}
     # ancestry_pointers maps from a whole-tree revision_id into the
-    # ancestry_values list. (So given a whole-tree revision_id, what is the
-    # offset to the per-file ancestry for that revision.)
+    # ancestry_values dictionary for the given revision. (So given a whole-tree
+    # revision_id, what is the per-file ancestry for that revision.)
     ancestry_pointers = {}
     _hits = [0, 0, 0, 0, 0, 0, 0]
     for rev in sorted_rev_list:
@@ -609,13 +612,13 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
         if rev in modified_text_revisions:
             # We know this will be a new node
             rev_ancestry = [rev]
-            rev_pointer = len(ancestry_values)
+            rev_pointer = rev
         for parent in parents:
             if parent not in ancestry_pointers:
                 # parent is a Ghost, which won't be present in
                 # sorted_rev_list, but we may access it later, so create an
                 # empty node for it
-                ancestry_pointers[parent] = 0
+                ancestry_pointers[parent] = _mod_revision.NULL_REVISION
             if rev_pointer is None:
                 # We don't have anything worked out yet, so just copy this
                 # parent's ancestry_pointer
@@ -645,19 +648,18 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                         rev_ancestry = list(rev_ancestry)
                     rev_ancestry.extend(new_revisions)
                     # We will be creating a new value
-                    rev_pointer = len(ancestry_values)
+                    rev_pointer = rev
         if rev_pointer is None:
-            # Point to the empty set
-            rev_pointer = 0
-        elif rev_pointer == len(ancestry_values):
+            rev_pointer = _mod_revision.NULL_REVISION
+        elif rev_pointer == rev:
             # We are creating a new node update the value cache.
             assert rev_ancestry is not None
             # we use 'tuple()' here to save memory (at the cost of re-computing
             # the ancestry set on demand). Alternatively, we can use
             # frozenset() because we know that we will need to compute it for
             # 99% of the revisions.
-            ancestry_values.append(frozenset(rev_ancestry))
-        assert rev_pointer < len(ancestry_values)
+            ancestry_values[rev] = frozenset(rev_ancestry)
+        assert rev_pointer in ancestry_values
         ancestry_pointers[rev] = rev_pointer
 
     trev_ancestry = time.time()
