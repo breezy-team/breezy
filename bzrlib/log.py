@@ -587,6 +587,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # ancestry_values dictionary for the given revision. (So given a whole-tree
     # revision_id, what is the per-file ancestry for that revision.)
     ancestry_pointers = {}
+    _hits = [0, 0, 0, 0, 0, 0, 0]
     for rev in sorted_rev_list:
         parents = parent_map[rev]
         rev_pointer = None
@@ -613,6 +614,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                 if parent_pointer == rev_pointer:
                     # They both point to the same ancestry value, so we know
                     # there is nothing new
+                    _hits[5] += 1
                     continue
                 if rev_ancestry is None:
                     rev_ancestry = ancestry_values[rev_pointer]
@@ -625,6 +627,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                     # list, because we are only adding the 'new_revisions', so
                     # we know that we won't have duplicates.
                     if not isinstance(rev_ancestry, list):
+                        _hits[6] += 1
                         rev_ancestry = list(rev_ancestry)
                     rev_ancestry.extend(new_revisions)
                     # We will be creating a new value
@@ -640,7 +643,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
 
     trev_ancestry = time.time()
 
-    _hits = [0, 0, 0, 0, 0]
     def is_merging_rev(r):
         _hits[0] = _hits[0] + 1
         parents = parent_map[r]
