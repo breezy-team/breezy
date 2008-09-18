@@ -1033,7 +1033,7 @@ cdef class ProcessEntryC:
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to
             decode.
-        :return: None if these don't match
+        :return: None if the these don't match
                  A tuple of information about the change, or
                  the object 'uninteresting' if these match, but are
                  basically identical.
@@ -1281,7 +1281,7 @@ cdef class ProcessEntryC:
                 self.search_specific_files.add(target_details[1])
         elif ((source_minikind == c'r' or source_minikind == c'a') and
               (target_minikind == c'r' or target_minikind == c'a')):
-            # neither of the selected trees contain this file,
+            # neither of the selected trees contain this path,
             # so skip over it. This is not currently directly tested, but
             # is indirectly via test_too_much.TestCommands.test_conflicts.
             pass
@@ -1600,6 +1600,8 @@ cdef class ProcessEntryC:
             cdef object current_entry
             cdef object current_path_info
             cdef int path_handled
+            cdef char minikind
+            cdef int cmp_result
             # cdef char * temp_str
             # cdef Py_ssize_t temp_str_length
             # PyString_AsStringAndSize(disk_kind, &temp_str, &temp_str_length)
@@ -1640,34 +1642,39 @@ cdef class ProcessEntryC:
                     if result is not None:
                         if result is self.uninteresting:
                             result = None
-                elif (current_entry[0][1] != current_path_info[1]
-                      or current_entry[1][self.target_index][0] in 'ar'):
-                    # The current path on disk doesn't match the dirblock
-                    # record. Either the dirblock is marked as absent, or
-                    # the file on disk is not present at all in the
-                    # dirblock. Either way, report about the dirblock
-                    # entry, and let other code handle the filesystem one.
+                else:
+                    minikind = _minikind_from_string(
+                        current_entry[1][self.target_index][0])
+                    cmp_result = cmp(current_path_info[1], current_entry[0][1])
+                    if (cmp_result or minikind == c'a' or minikind == c'r'):
+                        # The current path on disk doesn't match the dirblock
+                        # record. Either the dirblock record is marked as
+                        # absent/renamed, or the file on disk is not present at all
+                        # in the dirblock. Either way, report about the dirblock
+                        # entry, and let other code handle the filesystem one.
 
-                    # Compare the basename for these files to determine
-                    # which comes first
-                    if current_path_info[1] < current_entry[0][1]:
-                        # extra file on disk: pass for now, but only
-                        # increment the path, not the entry
-                        advance_entry = 0
+                        # Compare the basename for these files to determine
+                        # which comes first
+                        if cmp_result < 0:
+                            # extra file on disk: pass for now, but only
+                            # increment the path, not the entry
+                            advance_entry = 0
+                        else:
+                            # entry referring to file not present on disk.
+                            # advance the entry only, after processing.
+                            result = self._process_entry(current_entry, None)
+                            if result is not None:
+                                if result is self.uninteresting:
+                                    result = None
+                            advance_path = 0
                     else:
-                        # entry referring to file not present on disk.
-                        # advance the entry only, after processing.
-                        result = self._process_entry(current_entry, None)
+                        # paths are the same,and the dirstate entry is not
+                        # absent or renamed.
+                        result = self._process_entry(current_entry, current_path_info)
                         if result is not None:
+                            path_handled = -1
                             if result is self.uninteresting:
                                 result = None
-                        advance_path = 0
-                else:
-                    result = self._process_entry(current_entry, current_path_info)
-                    if result is not None:
-                        path_handled = -1
-                        if result is self.uninteresting:
-                            result = None
                 # >- loop control starts here:
                 # >- entry
                 if advance_entry and current_entry is not None:
