@@ -644,6 +644,17 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
         elif isinstance(rev_ancestry, list):
             # We can use "tuple()" here to save memory at the cost of CPU, or
             # use frozenset() which saves CPU but consumes RAM.
+            # We can also 'switch' based on the length of the ancestry.
+            # That gives the most direct control over memory versus CPU.
+            # For now, just going with the more performant frozenset()
+            # Also, note that both tuple and frozenset just reference the
+            # passed in object if they are of the same type. (Unlike list and
+            # set which create a new copy.)
+            #  if isinstance(x, tuple):
+            #    assert x is tuple(x)
+            # You have the same:
+            #  if isinstance(y, frozenset):
+            #    assert y is frozenset(y)
             rev_ancestry = frozenset(rev_ancestry)
         ancestry_values[rev] = rev_ancestry
 
