@@ -570,26 +570,42 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     sorted_rev_list = tsort.topo_sort(parent_map.items())
     text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
     modified_text_versions = branch.repository.texts.get_parent_map(text_keys)
+    # Ancestry will contain the set of all changes to the given file_id, for
+    # every revision in the whole tree.
     ancestry = {}
     for rev in sorted_rev_list:
         text_key = (file_id, rev)
         parents = parent_map[rev]
-        if text_key not in modified_text_versions and len(parents) == 1:
-            # We will not be adding anything new, so just use a reference to
-            # the parent ancestry.
-            rev_ancestry = ancestry[parents[0]]
+        rev_ancestry = None
+        if text_key in modified_text_versions:
+            rev_ancestry = set([rev])
+        for parent in parents:
+            if parent not in ancestry:
+                # parent is a Ghost, which won't be present in
+                # sorted_rev_list, but we may access it later, so create an
+                # empty node for it
+                ancestry[parent] = frozenset()
+            if rev_ancestry is None:
+                # We don't have anything worked out yet, so just copy this
+                # parent's ancestry
+                rev_ancestry = ancestry[parent]
+            else:
+                # Check to see if this other parent introduces any new
+                # revisions. If it doesn't then we don't need to create a new
+                # set.
+                parent_ancestry = ancestry[parent]
+                new_revisions = parent_ancestry.difference(rev_ancestry)
+                if new_revisions:
+                    # We need to create a non-frozen set so that we can
+                    # update it. If we already have a non-frozen set, then we
+                    # are free to modify it.
+                    if isinstance(rev_ancestry, frozenset):
+                        rev_ancestry = set(rev_ancestry)
+                    rev_ancestry.update(new_revisions)
+        if rev_ancestry is None:
+            ancestry[rev] = frozenset()
         else:
-            rev_ancestry = set()
-            if text_key in modified_text_versions:
-                rev_ancestry.add(rev)
-            for parent in parents:
-                if parent not in ancestry:
-                    # parent is a Ghost, which won't be present in
-                    # sorted_rev_list, but we may access it later, so create an
-                    # empty node for it
-                    ancestry[parent] = set()
-                rev_ancestry = rev_ancestry.union(ancestry[parent])
-        ancestry[rev] = rev_ancestry
+            ancestry[rev] = frozenset(rev_ancestry)
 
     def is_merging_rev(r):
         parents = parent_map[r]

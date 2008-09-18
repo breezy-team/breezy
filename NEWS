@@ -13,6 +13,12 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * The per-file log algorithm now uses a lighter-weight way of tracking
+      when changes to a file are merged into another revision. The old
+      method created a new set at every merge point, which was wasteful
+      when the merge did not introduce new revisions.
+      (John Arbash Meinel)
+
   BUG FIXES:
 
     * Branching from a shared repository on a smart server into a new
