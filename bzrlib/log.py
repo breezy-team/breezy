@@ -573,6 +573,8 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # are actually present, and then convert it back to revision_ids, since the
     # file_id prefix is shared by everything.
     text_parent_map = branch.repository.texts.get_parent_map(text_keys)
+    # Using a set of revisions instead of a set of keys saves about 1MB (out of
+    # say 400). Not a huge deal, but still "better".
     modified_text_revisions = set(key[1] for key in text_parent_map)
     del text_parent_map
     del text_keys
