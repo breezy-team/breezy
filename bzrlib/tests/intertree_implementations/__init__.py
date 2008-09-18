@@ -22,6 +22,7 @@ Specific tests for individual variations are in other places such as:
  - tests/test_workingtree.py
 """
 
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.transport import get_transport
 from bzrlib.tests import (
@@ -71,11 +72,11 @@ class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
              mutable_trees_to_test_trees)
         """
         result = []
-        for (intertree_class,
+        for (label, intertree_class,
             workingtree_format,
             workingtree_format_to,
             mutable_trees_to_test_trees) in formats:
-            scenario = (intertree_class.__name__, {
+            scenario = (label, {
                 "transport_server":self._transport_server,
                 "transport_readonly_server":self._transport_readonly_server,
                 "bzrdir_format":workingtree_format._matchingbzrdir,
@@ -104,14 +105,33 @@ def load_tests(basic_tests, module, loader):
         ]
     test_intertree_permutations = [
         # test InterTree with two default-format working trees.
-        (InterTree, default_tree_format, default_tree_format,
+        (InterTree.__name__, InterTree, default_tree_format, default_tree_format,
          return_provided_trees)]
     for optimiser in InterTree._optimisers:
-        test_intertree_permutations.append(
-            (optimiser,
-             optimiser._matching_from_tree_format,
-             optimiser._matching_to_tree_format,
-             optimiser._test_mutable_trees_to_test_trees))
+        if optimiser is bzrlib.workingtree_4.InterDirStateTree:
+            # Its a little ugly to be conditional here, but less so than having
+            # the optimiser listed twice.
+            # Add once, compiled version
+            test_intertree_permutations.append(
+                (optimiser.__name__ + "(C)",
+                 optimiser,
+                 optimiser._matching_from_tree_format,
+                 optimiser._matching_to_tree_format,
+                 optimiser.make_source_parent_tree_compiled_dirstate))
+            # python version
+            test_intertree_permutations.append(
+                (optimiser.__name__ + "(PY)",
+                 optimiser,
+                 optimiser._matching_from_tree_format,
+                 optimiser._matching_to_tree_format,
+                 optimiser.make_source_parent_tree_python_dirstate))
+        else:
+            test_intertree_permutations.append(
+                (optimiser.__name__,
+                 optimiser,
+                 optimiser._matching_from_tree_format,
+                 optimiser._matching_to_tree_format,
+                 optimiser._test_mutable_trees_to_test_trees))
     adapter = InterTreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
