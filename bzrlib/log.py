@@ -55,7 +55,6 @@ from itertools import (
     )
 import re
 import sys
-import time
 from warnings import (
     warn,
     )
@@ -557,7 +556,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
 
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
-    tstart = time.time()
     # find all the revisions that change the specific file
     # build the ancestry of each revision in the graph
     # - only listing the ancestors that change the specific file.
@@ -570,7 +568,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     parent_map = dict(((key, value) for key, value in
         graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
     sorted_rev_list = tsort.topo_sort(parent_map)
-    tparent_map = time.time()
     text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
     # Do a direct lookup of all possible text keys, and figure out which ones
     # are actually present, and then convert it back to revision_ids, since the
@@ -579,7 +576,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     modified_text_revisions = set(key[1] for key in text_parent_map)
     del text_parent_map
     del text_keys
-    tmodified_text_revisions = time.time()
     # Algorithms tried:
     #   a single dictionary mapping tree_revision_id => file_ancestry
     #       file_ancestry_as_tuple      50.3    272MB
@@ -600,7 +596,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # ancestry_values contains a pointer from a revision_id to either a tuple,
     # or a frozenset() of a given per-file ancestry.
     ancestry_values = {_mod_revision.NULL_REVISION: frozenset()}
-    _hits = [0, 0, 0, 0, 0, 0, 0]
     for rev in sorted_rev_list:
         parents = parent_map[rev]
         rev_ancestry = None
@@ -627,7 +622,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                 if parent_ancestry is rev_ancestry:
                     # They both point to the same ancestry value, so we know
                     # there is nothing new
-                    _hits[5] += 1
                     continue
                 parent_ancestry = frozenset(parent_ancestry)
                 new_revisions = parent_ancestry.difference(rev_ancestry)
@@ -636,7 +630,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                     # list, because we are only adding the 'new_revisions', so
                     # we know that we won't have duplicates.
                     if not isinstance(rev_ancestry, list):
-                        _hits[6] += 1
                         rev_ancestry = list(rev_ancestry)
                     rev_ancestry.extend(new_revisions)
         if rev_ancestry is None:
@@ -658,44 +651,24 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
             rev_ancestry = frozenset(rev_ancestry)
         ancestry_values[rev] = rev_ancestry
 
-    trev_ancestry = time.time()
-
     def is_merging_rev(r):
-        _hits[0] = _hits[0] + 1
         parents = parent_map[r]
         if len(parents) > 1:
-            _hits[1] += 1
             leftparent = parents[0]
             left_ancestry = ancestry_values[leftparent]
             for rightparent in parents[1:]:
                 right_ancestry = ancestry_values[rightparent]
                 if left_ancestry is right_ancestry:
-                    _hits[2] += 1
                     continue
-                _hits[3] += 1
                 left_ancestry = frozenset(left_ancestry)
                 if not left_ancestry.issuperset(right_ancestry):
-                    _hits[4] += 1
                     return True
         return False
 
-    trace.note('Found %s nodes, and %s unique values for %s view_revs'
-               ' modified_text_revisions: %s',
-               0, len(ancestry_values),
-               len(view_revs_iter), len(modified_text_revisions))
-
-    # filter from the view the revisions that did not change or merge 
+    # filter from the view the revisions that did not change or merge
     # the specific file
     result = [(r, n, d) for r, n, d in view_revs_iter
               if r in modified_text_revisions or is_merging_rev(r)]
-    tresult = time.time()
-    trace.note('Hits: %s', _hits)
-    trace.note('Timing: parent_map: %.3fs mod text revs: %.3fs'
-               ' rev_ancestry: %.3fs result: %.3fs',
-               tparent_map - tstart,
-               tmodified_text_revisions - tparent_map,
-               trev_ancestry - tmodified_text_revisions,
-               tresult - trev_ancestry)
     return result
 
 
