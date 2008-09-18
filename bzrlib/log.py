@@ -580,57 +580,85 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     del text_parent_map
     del text_keys
     tmodified_text_revisions = time.time()
-    # ancestry_values contains a pointer from a revision_id to either a tuple,
-    # or a frozenset() of a given per-file ancestry.
-    ancestry_values = {_mod_revision.NULL_REVISION: frozenset()}
-    _hits = [0, 0, 0, 0, 0, 0, 0, 0]
+    # Algorithms tried:
+    #   a single dictionary mapping tree_revision_id => file_ancestry
+    #       file_ancestry_as_tuple
+    #       file_ancestry_as_frozenset
+    #       file_ancestry_as_mixed (this was bad, because it gets confused and
+    #                               cannot match up revisions properly)
+    #   a dictionary tree_revision_id => offset, and a list of offset =>
+    #   file_ancestry
+    #       file_ancestry_as_tuple      50.3s   272MB
+    #       file_ancestry_as_frozenset  42.1s   410MB
+    #       file_ancestry_as_mixed      42.8s   399MB
+    #   a dictionary tree_revision_id => file_rev_id, and another dict
+    #   file_rev_id => file_ancestry
+
+    # ancestry_values contains a list of per-file ancestries. When we need a
+    # new one, we just append it to the list.
+    ancestry_values = [frozenset()]
+    # ancestry_pointers maps from a whole-tree revision_id into the
+    # ancestry_values list. (So given a whole-tree revision_id, what is the
+    # offset to the per-file ancestry for that revision.)
+    ancestry_pointers = {}
+    _hits = [0, 0, 0, 0, 0, 0, 0]
     for rev in sorted_rev_list:
         parents = parent_map[rev]
+        rev_pointer = None
         rev_ancestry = None
         if rev in modified_text_revisions:
             # We know this will be a new node
             rev_ancestry = [rev]
+            rev_pointer = len(ancestry_values)
         for parent in parents:
-            if parent not in ancestry_values:
+            if parent not in ancestry_pointers:
                 # parent is a Ghost, which won't be present in
                 # sorted_rev_list, but we may access it later, so create an
                 # empty node for it
-                ancestry_values[parent] = frozenset()
-            if rev_ancestry is None:
+                ancestry_pointers[parent] = 0
+            if rev_pointer is None:
                 # We don't have anything worked out yet, so just copy this
                 # parent's ancestry_pointer
-                rev_ancestry = ancestry_values[parent]
+                rev_pointer = ancestry_pointers[parent]
             else:
                 # Check to see if this other parent introduces any new
                 # revisions. If it doesn't then we don't need to create a new
                 # set.
-                parent_ancestry = ancestry_values[parent]
-                if rev_ancestry is None:
-                    rev_ancestry = ancestry_values[rev_pointer]
-                if parent_ancestry is rev_ancestry:
+                parent_pointer = ancestry_pointers[parent]
+                if parent_pointer == rev_pointer:
                     # They both point to the same ancestry value, so we know
                     # there is nothing new
                     _hits[5] += 1
                     continue
-                parent_ancestry = frozenset(parent_ancestry)
+                if rev_ancestry is None:
+                    rev_ancestry = ancestry_values[rev_pointer]
+                parent_ancestry = frozenset(ancestry_values[parent_pointer])
+                # We had to compute the frozenset, so just cache it
+                # ancestry_values[parent_pointer] = parent_ancestry
                 new_revisions = parent_ancestry.difference(rev_ancestry)
                 if new_revisions:
                     # We need something that we can modify. We can use a simple
                     # list, because we are only adding the 'new_revisions', so
                     # we know that we won't have duplicates.
                     if not isinstance(rev_ancestry, list):
+                        _hits[6] += 1
                         rev_ancestry = list(rev_ancestry)
                     rev_ancestry.extend(new_revisions)
-                    _hits[6] += 1
-                else:
-                    _hits[7] += 1
-        if rev_ancestry is None:
-            rev_ancestry = frozenset()
-        elif isinstance(rev_ancestry, list):
-            # We can use "tuple()" here to save memory at the cost of CPU, or
-            # use frozenset() which saves CPU but consumes RAM.
-            rev_ancestry = frozenset(rev_ancestry)
-        ancestry_values[rev] = rev_ancestry
+                    # We will be creating a new value
+                    rev_pointer = len(ancestry_values)
+        if rev_pointer is None:
+            # Point to the empty set
+            rev_pointer = 0
+        elif rev_pointer == len(ancestry_values):
+            # We are creating a new node update the value cache.
+            assert rev_ancestry is not None
+            # we use 'tuple()' here to save memory (at the cost of re-computing
+            # the ancestry set on demand). Alternatively, we can use
+            # frozenset() because we know that we will need to compute it for
+            # 99% of the revisions.
+            ancestry_values.append(frozenset(rev_ancestry))
+        assert rev_pointer < len(ancestry_values)
+        ancestry_pointers[rev] = rev_pointer
 
     trev_ancestry = time.time()
 
@@ -640,22 +668,26 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
         if len(parents) > 1:
             _hits[1] += 1
             leftparent = parents[0]
-            left_ancestry = ancestry_values[leftparent]
+            left_pointer = ancestry_pointers[leftparent]
+            left_ancestry = None
             for rightparent in parents[1:]:
-                right_ancestry = ancestry_values[rightparent]
-                if left_ancestry is right_ancestry:
+                right_pointer = ancestry_pointers[rightparent]
+                if right_pointer != left_pointer:
+                    _hits[3] += 1
+                    if left_ancestry is None:
+                        left_ancestry = ancestry_values[left_pointer]
+                        left_ancestry = frozenset(left_ancestry)
+                    right_ancestry = ancestry_values[right_pointer]
+                    if not left_ancestry.issuperset(right_ancestry):
+                        _hits[4] += 1
+                        return True
+                else:
                     _hits[2] += 1
-                    continue
-                _hits[3] += 1
-                left_ancestry = frozenset(left_ancestry)
-                if not left_ancestry.issuperset(right_ancestry):
-                    _hits[4] += 1
-                    return True
         return False
 
     trace.note('Found %s nodes, and %s unique values for %s view_revs'
                ' modified_text_revisions: %s',
-               0, len(ancestry_values),
+               len(ancestry_pointers), len(ancestry_values),
                len(view_revs_iter), len(modified_text_revisions))
 
     # filter from the view the revisions that did not change or merge 
