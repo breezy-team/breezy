@@ -584,7 +584,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                 # parent is a Ghost, which won't be present in
                 # sorted_rev_list, but we may access it later, so create an
                 # empty node for it
-                ancestry[parent] = frozenset()
+                ancestry[parent] = ()
             if rev_ancestry is None:
                 # We don't have anything worked out yet, so just copy this
                 # parent's ancestry
@@ -593,27 +593,28 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                 # Check to see if this other parent introduces any new
                 # revisions. If it doesn't then we don't need to create a new
                 # set.
-                parent_ancestry = ancestry[parent]
+                parent_ancestry = frozenset(ancestry[parent])
                 new_revisions = parent_ancestry.difference(rev_ancestry)
                 if new_revisions:
                     # We need to create a non-frozen set so that we can
                     # update it. If we already have a non-frozen set, then we
                     # are free to modify it.
-                    if isinstance(rev_ancestry, frozenset):
-                        rev_ancestry = set(rev_ancestry)
-                    rev_ancestry.update(new_revisions)
+                    if not isinstance(rev_ancestry, list):
+                        rev_ancestry = list(rev_ancestry)
+                    rev_ancestry.extend(new_revisions)
         if rev_ancestry is None:
-            ancestry[rev] = frozenset()
+            ancestry[rev] = ()
         else:
-            ancestry[rev] = frozenset(rev_ancestry)
+            ancestry[rev] = tuple(rev_ancestry)
 
     def is_merging_rev(r):
         parents = parent_map[r]
         if len(parents) > 1:
             leftparent = parents[0]
+            left_ancestry = frozenset(ancestry[leftparent])
             for rightparent in parents[1:]:
-                if not ancestry[leftparent].issuperset(
-                        ancestry[rightparent]):
+                right_ancestry = ancestry[rightparent]
+                if not left_ancestry.issuperset(right_ancestry):
                     return True
         return False
 
