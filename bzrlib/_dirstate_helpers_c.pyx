@@ -78,6 +78,9 @@ cdef extern from 'sys/stat.h':
 # will automatically Py_INCREF and Py_DECREF when appropriate. But for some
 # inner loops, we don't need to do that at all, as the reference only lasts for
 # a very short time.
+# Note that the C API GetItem calls borrow references, so pyrex does the wrong
+# thing if you declare e.g. object PyList_GetItem(object lst, int index) - you
+# need to manually Py_INCREF yourself.
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t
     ctypedef struct PyObject:
@@ -85,14 +88,19 @@ cdef extern from "Python.h":
     int PyList_Append(object lst, object item) except -1
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
     void *PyList_GetItem_void_void "PyList_GET_ITEM" (void * lst, int index)
+    object PyList_GET_ITEM(object lst, Py_ssize_t index)
     int PyList_CheckExact(object)
+    Py_ssize_t PyList_GET_SIZE (object p)
 
     void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
     object PyTuple_GetItem_void_object "PyTuple_GET_ITEM" (void* tpl, int index)
+    object PyTuple_GET_ITEM(object tpl, Py_ssize_t index)
+
 
     char *PyString_AsString(object p)
     char *PyString_AsString_obj "PyString_AsString" (PyObject *string)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
+    int PyString_AsStringAndSize(object str, char **buffer, Py_ssize_t *length) except -1
     object PyString_FromString(char *)
     object PyString_FromStringAndSize(char *, Py_ssize_t)
     int PyString_Size(object p)
@@ -956,7 +964,6 @@ cdef class ProcessEntryC:
     cdef object root_entries
     cdef int root_entries_pos, root_entries_len
     cdef object root_abspath
-    cdef int path_handled
     cdef int source_index, target_index
     cdef int want_unversioned
     cdef object tree
@@ -964,9 +971,11 @@ cdef class ProcessEntryC:
     cdef int block_index
     cdef object current_block
     cdef int current_block_pos
+    cdef object current_block_list
     cdef object current_dir_info
-    cdef object root_dir_info
+    cdef object current_dir_list
     cdef int path_index
+    cdef object root_dir_info
     cdef object bisect_left
 
     def __init__(self, include_unchanged, use_filesystem_for_exec,
@@ -1007,8 +1016,10 @@ cdef class ProcessEntryC:
         self.dir_iterator = None
         self.block_index = -1
         self.current_block = None
+        self.current_block_list = None
         self.current_block_pos = -1
         self.current_dir_info = None
+        self.current_dir_list = None
         self.path_index = 0
         self.root_dir_info = None
         self.bisect_left = bisect.bisect_left
@@ -1291,9 +1302,11 @@ cdef class ProcessEntryC:
         if (self.block_index < len(self.state._dirblocks) and
             osutils.is_inside(self.current_root, self.state._dirblocks[self.block_index][0])):
             self.current_block = self.state._dirblocks[self.block_index]
+            self.current_block_list = self.current_block[1]
             self.current_block_pos = 0
         else:
             self.current_block = None
+            self.current_block_list = None
 
     def __next__(self):
         # Simple thunk to allow tail recursion without pyrex confusion
@@ -1350,6 +1363,7 @@ cdef class ProcessEntryC:
         cdef object current_dirname, current_blockname
         cdef char * current_dirname_c, * current_blockname_c
         cdef int advance_entry, advance_path
+        cdef int path_handled
         uninteresting = self.uninteresting
         searched_specific_files = self.searched_specific_files
         # Are we walking a root?
@@ -1397,23 +1411,22 @@ cdef class ProcessEntryC:
                 # (tail recursion, can do a loop once the full structure is
                 # known).
                 return self._iter_next()
-            self.path_handled = 0
+            path_handled = 0
             self.root_entries_pos = 0
             # XXX Clarity: This loop is duplicated a out the self.current_root
             # is None guard above: if we return from it, it completes there
             # (and the following if block cannot trigger because
-            # self.path_handled must be true, so the if block is not
-            # duplicated.
+            # path_handled must be true, so the if block is not # duplicated.
             while self.root_entries_pos < self.root_entries_len:
                 entry = self.root_entries[self.root_entries_pos]
                 self.root_entries_pos = self.root_entries_pos + 1
                 result = self._process_entry(entry, self.root_dir_info)
                 if result is not None:
-                    self.path_handled = -1
+                    path_handled = -1
                     if result is not self.uninteresting:
                         return result
             # handle unversioned specified paths:
-            if self.want_unversioned and not self.path_handled and self.root_dir_info:
+            if self.want_unversioned and not path_handled and self.root_dir_info:
                 new_executable = bool(
                     stat.S_ISREG(self.root_dir_info[3].st_mode)
                     and stat.S_IEXEC & self.root_dir_info[3].st_mode)
@@ -1430,6 +1443,7 @@ cdef class ProcessEntryC:
             # per-root setup logic.
         if self.current_dir_info is None and self.current_block is None:
             # setup iteration of this root:
+            self.current_dir_list = None
             if self.root_dir_info and self.root_dir_info[2] == 'tree-reference':
                 self.current_dir_info = None
             else:
@@ -1438,6 +1452,7 @@ cdef class ProcessEntryC:
                 self.path_index = 0
                 try:
                     self.current_dir_info = self.dir_iterator.next()
+                    self.current_dir_list = self.current_dir_info[1]
                 except OSError, e:
                     # there may be directories in the inventory even though
                     # this path is not a file on disk: so mark it as end of
@@ -1463,10 +1478,10 @@ cdef class ProcessEntryC:
                 else:
                     if self.current_dir_info[0][0] == '':
                         # remove .bzr from iteration
-                        bzr_index = self.bisect_left(self.current_dir_info[1], ('.bzr',))
-                        if self.current_dir_info[1][bzr_index][0] != '.bzr':
+                        bzr_index = self.bisect_left(self.current_dir_list, ('.bzr',))
+                        if self.current_dir_list[bzr_index][0] != '.bzr':
                             raise AssertionError()
-                        del self.current_dir_info[1][bzr_index]
+                        del self.current_dir_list[bzr_index]
             initial_key = (self.current_root, '', '')
             self.block_index, _ = self.state._find_block_index_from_key(initial_key)
             if self.block_index == 0:
@@ -1478,6 +1493,7 @@ cdef class ProcessEntryC:
         # are exhausted. 
         while (self.current_dir_info is not None
             or self.current_block is not None):
+            # Uncommon case - a missing directory or an unversioned directory:
             if (self.current_dir_info and self.current_block
                 and self.current_dir_info[0][0] != self.current_block[0]):
                 # Work around pyrex broken heuristic - current_dirname has
@@ -1506,13 +1522,13 @@ cdef class ProcessEntryC:
                     # if (B) then we should ignore it, because we don't
                     # recurse into unknown directories.
                     # We are doing a loop
-                    while self.path_index < len(self.current_dir_info[1]):
-                        current_path_info = self.current_dir_info[1][self.path_index]
+                    while self.path_index < len(self.current_dir_list):
+                        current_path_info = self.current_dir_list[self.path_index]
                         # dont descend into this unversioned path if it is
                         # a dir
                         if current_path_info[2] in ('directory',
                                                     'tree-reference'):
-                            del self.current_dir_info[1][self.path_index]
+                            del self.current_dir_list[self.path_index]
                             self.path_index = self.path_index - 1
                         self.path_index = self.path_index + 1
                         if self.want_unversioned:
@@ -1534,8 +1550,10 @@ cdef class ProcessEntryC:
                                 (None, new_executable))
                     # This dir info has been handled, go to the next
                     self.path_index = 0
+                    self.current_dir_list = None
                     try:
                         self.current_dir_info = self.dir_iterator.next()
+                        self.current_dir_list = self.current_dir_info[1]
                     except StopIteration:
                         self.current_dir_info = None
                 else: #(dircmp > 0)
@@ -1546,8 +1564,8 @@ cdef class ProcessEntryC:
                     # because that should have already been handled, but we
                     # need to handle all of the files that are contained
                     # within.
-                    while self.current_block_pos < len(self.current_block[1]):
-                        current_entry = self.current_block[1][self.current_block_pos]
+                    while self.current_block_pos < len(self.current_block_list):
+                        current_entry = self.current_block_list[self.current_block_pos]
                         self.current_block_pos = self.current_block_pos + 1
                         # entry referring to file not present on disk.
                         # advance the entry only, after processing.
@@ -1558,29 +1576,60 @@ cdef class ProcessEntryC:
                     self.block_index = self.block_index + 1
                     self._update_current_block()
                 continue # next loop-on-block/dir
+            result = self._loop_one_block()
+            if result is not None:
+                return result
+        if len(self.search_specific_files):
+            # More supplied paths to process
+            self.current_root = None
+            return self._iter_next()
+        raise StopIteration()
+
+    cdef object _maybe_tree_ref(self, current_path_info):
+        if self.tree._directory_is_tree_reference(
+            self.utf8_decode(current_path_info[0])[0]):
+            return current_path_info[:2] + \
+                ('tree-reference',) + current_path_info[3:]
+        else:
+            return current_path_info
+
+    cdef object _loop_one_block(self):
             # current_dir_info and current_block refer to the same directory -
             # this is the common case code.
             # Assign local variables for current path and entry:
-            if (self.current_block and
-                self.current_block_pos < len(self.current_block[1])):
-                current_entry = self.current_block[1][self.current_block_pos]
+            cdef object current_entry
+            cdef object current_path_info
+            cdef int path_handled
+            # cdef char * temp_str
+            # cdef Py_ssize_t temp_str_length
+            # PyString_AsStringAndSize(disk_kind, &temp_str, &temp_str_length)
+            # if not strncmp(temp_str, "directory", temp_str_length):
+            if (self.current_block is not None and
+                self.current_block_pos < PyList_GET_SIZE(self.current_block_list)):
+                current_entry = PyList_GET_ITEM(self.current_block_list,
+                    self.current_block_pos)
+                # accomodate pyrex
+                Py_INCREF(current_entry)
             else:
                 current_entry = None
-            if (self.current_dir_info and
-                self.path_index < len(self.current_dir_info[1])):
-                current_path_info = self.current_dir_info[1][self.path_index]
-                if current_path_info[2] == 'directory':
-                    if self.tree._directory_is_tree_reference(
-                        self.utf8_decode(current_path_info[0])[0]):
-                        current_path_info = current_path_info[:2] + \
-                            ('tree-reference',) + current_path_info[3:]
+            if (self.current_dir_info is not None and
+                self.path_index < PyList_GET_SIZE(self.current_dir_list)):
+                current_path_info = PyList_GET_ITEM(self.current_dir_list,
+                    self.path_index)
+                # accomodate pyrex
+                Py_INCREF(current_path_info)
+                disk_kind = PyTuple_GET_ITEM(current_path_info, 2)
+                # accomodate pyrex
+                Py_INCREF(disk_kind)
+                if disk_kind == "directory":
+                    current_path_info = self._maybe_tree_ref(current_path_info)
             else:
                 current_path_info = None
-            self.path_handled = 0
             while (current_entry is not None or current_path_info is not None):
                 advance_entry = -1
                 advance_path = -1
                 result = None
+                path_handled = 0
                 if current_entry is None:
                     # unversioned -  the check for path_handled when the path
                     # is advanced will yield this path if needed.
@@ -1616,20 +1665,20 @@ cdef class ProcessEntryC:
                 else:
                     result = self._process_entry(current_entry, current_path_info)
                     if result is not None:
-                        self.path_handled = -1
+                        path_handled = -1
                         if result is self.uninteresting:
                             result = None
                 # >- loop control starts here:
                 # >- entry
                 if advance_entry and current_entry is not None:
                     self.current_block_pos = self.current_block_pos + 1
-                    if self.current_block_pos < len(self.current_block[1]):
-                        current_entry = self.current_block[1][self.current_block_pos]
+                    if self.current_block_pos < PyList_GET_SIZE(self.current_block_list):
+                        current_entry = self.current_block_list[self.current_block_pos]
                     else:
                         current_entry = None
                 # >- path
                 if advance_path and current_path_info is not None:
-                    if not self.path_handled:
+                    if not path_handled:
                         # unversioned in all regards
                         if self.want_unversioned:
                             new_executable = bool(
@@ -1654,24 +1703,21 @@ cdef class ProcessEntryC:
                         # dont descend into this unversioned path if it is
                         # a dir
                         if current_path_info[2] in ('directory'):
-                            del self.current_dir_info[1][self.path_index]
+                            del self.current_dir_list[self.path_index]
                             self.path_index = self.path_index - 1
                     # dont descend the disk iterator into any tree 
                     # paths.
                     if current_path_info[2] == 'tree-reference':
-                        del self.current_dir_info[1][self.path_index]
+                        del self.current_dir_list[self.path_index]
                         self.path_index = self.path_index - 1
                     self.path_index = self.path_index + 1
-                    if self.path_index < len(self.current_dir_info[1]):
-                        current_path_info = self.current_dir_info[1][self.path_index]
+                    if self.path_index < len(self.current_dir_list):
+                        current_path_info = self.current_dir_list[self.path_index]
                         if current_path_info[2] == 'directory':
-                            if self.tree._directory_is_tree_reference(
-                                current_path_info[0].decode('utf8')):
-                                current_path_info = current_path_info[:2] + \
-                                    ('tree-reference',) + current_path_info[3:]
+                            current_path_info = self._maybe_tree_ref(
+                                current_path_info)
                     else:
                         current_path_info = None
-                    self.path_handled = 0
                 if result is not None:
                     # Found a result on this pass, yield it
                     return result
@@ -1680,12 +1726,9 @@ cdef class ProcessEntryC:
                 self._update_current_block()
             if self.current_dir_info is not None:
                 self.path_index = 0
+                self.current_dir_list = None
                 try:
                     self.current_dir_info = self.dir_iterator.next()
+                    self.current_dir_list = self.current_dir_info[1]
                 except StopIteration:
                     self.current_dir_info = None
-        if len(self.search_specific_files):
-            # More supplied paths to process
-            self.current_root = None
-            return self._iter_next()
-        raise StopIteration()
