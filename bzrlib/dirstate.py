@@ -231,29 +231,37 @@ ERROR_PATH_NOT_FOUND = 3
 ERROR_DIRECTORY = 267
 
 
-# compile the struct compiler we need, so as to only do it once
-from _struct import Struct
-_compiled_pack = Struct('>LLLLLL').pack
-def pack_stat(st, _encode=binascii.b2a_base64, _pack=_compiled_pack):
-    """Convert stat values into a packed representation."""
-    # jam 20060614 it isn't really worth removing more entries if we
-    # are going to leave it in packed form.
-    # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
-    # With all entries, filesize is 5.9M and read time is maybe 280ms
-    # well within the noise margin
+if not getattr(struct, '_compile', None):
+    # Cannot pre-compile the dirstate pack_stat
+    def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
+        """Convert stat values into a packed representation."""
+        return _encode(_pack('>LLLLLL', st.st_size, int(st.st_mtime),
+            int(st.st_ctime), st.st_dev, st.st_ino & 0xFFFFFFFF,
+            st.st_mode))[:-1]
+else:
+    # compile the struct compiler we need, so as to only do it once
+    from _struct import Struct
+    _compiled_pack = Struct('>LLLLLL').pack
+    def pack_stat(st, _encode=binascii.b2a_base64, _pack=_compiled_pack):
+        """Convert stat values into a packed representation."""
+        # jam 20060614 it isn't really worth removing more entries if we
+        # are going to leave it in packed form.
+        # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
+        # With all entries, filesize is 5.9M and read time is maybe 280ms
+        # well within the noise margin
 
-    # base64 encoding always adds a final newline, so strip it off
-    # The current version
-    return _encode(_pack(st.st_size, int(st.st_mtime), int(st.st_ctime)
-        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
-    # This is 0.060s / 1.520s faster by not encoding as much information
-    # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
-    # This is not strictly faster than _encode(_pack())[:-1]
-    # return '%X.%X.%X.%X.%X.%X' % (
-    #      st.st_size, int(st.st_mtime), int(st.st_ctime),
-    #      st.st_dev, st.st_ino, st.st_mode)
-    # Similar to the _encode(_pack('>LL'))
-    # return '%X.%X' % (int(st.st_mtime), st.st_mode)
+        # base64 encoding always adds a final newline, so strip it off
+        # The current version
+        return _encode(_pack(st.st_size, int(st.st_mtime), int(st.st_ctime),
+            st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
+        # This is 0.060s / 1.520s faster by not encoding as much information
+        # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
+        # This is not strictly faster than _encode(_pack())[:-1]
+        # return '%X.%X.%X.%X.%X.%X' % (
+        #      st.st_size, int(st.st_mtime), int(st.st_ctime),
+        #      st.st_dev, st.st_ino, st.st_mode)
+        # Similar to the _encode(_pack('>LL'))
+        # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
 class DirState(object):
