@@ -578,7 +578,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
         parents = parent_map[rev]
         rev_ancestry = None
         if text_key in modified_text_versions:
-            rev_ancestry = set([rev])
+            rev_ancestry = [rev]
         for parent in parents:
             if parent not in ancestry:
                 # parent is a Ghost, which won't be present in
@@ -594,6 +594,8 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
                 # revisions. If it doesn't then we don't need to create a new
                 # set.
                 parent_ancestry = frozenset(ancestry[parent])
+                # We had to compute the frozenset, so just cache it
+                ancestry[parent] = parent_ancestry
                 new_revisions = parent_ancestry.difference(rev_ancestry)
                 if new_revisions:
                     # We need to create a non-frozen set so that we can
@@ -605,13 +607,19 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
         if rev_ancestry is None:
             ancestry[rev] = ()
         else:
-            ancestry[rev] = tuple(rev_ancestry)
+            if isinstance(rev_ancestry, list):
+                ancestry[rev] = tuple(rev_ancestry)
+            else:
+                ancestry[rev] = rev_ancestry
 
     def is_merging_rev(r):
         parents = parent_map[r]
         if len(parents) > 1:
             leftparent = parents[0]
-            left_ancestry = frozenset(ancestry[leftparent])
+            left_ancestry = ancestry[leftparent]
+            left_ancestry = frozenset(left_ancestry)
+            # It doesn't help to cache this left_ancestry set because we've
+            # won't be accessing it again.
             for rightparent in parents[1:]:
                 right_ancestry = ancestry[rightparent]
                 if not left_ancestry.issuperset(right_ancestry):
