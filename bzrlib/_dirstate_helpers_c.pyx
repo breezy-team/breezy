@@ -1013,7 +1013,7 @@ cdef class ProcessEntryC:
         self.root_dir_info = None
         self.bisect_left = bisect.bisect_left
 
-    def _process_entry(self, entry, path_info):
+    cdef _process_entry(self, entry, path_info):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
@@ -1349,14 +1349,14 @@ cdef class ProcessEntryC:
         #       keeping a cache of directories that we have seen.
         cdef object current_dirname, current_blockname
         cdef char * current_dirname_c, * current_blockname_c
-        _process_entry = self._process_entry
+        cdef int advance_entry, advance_path
         uninteresting = self.uninteresting
         searched_specific_files = self.searched_specific_files
         # Are we walking a root?
         while self.root_entries_pos < self.root_entries_len:
             entry = self.root_entries[self.root_entries_pos]
             self.root_entries_pos = self.root_entries_pos + 1
-            result = _process_entry(entry, self.root_dir_info)
+            result = self._process_entry(entry, self.root_dir_info)
             if result is not None and result is not self.uninteresting:
                 return result
         # Have we finished the prior root, or never started one ?
@@ -1407,7 +1407,7 @@ cdef class ProcessEntryC:
             while self.root_entries_pos < self.root_entries_len:
                 entry = self.root_entries[self.root_entries_pos]
                 self.root_entries_pos = self.root_entries_pos + 1
-                result = _process_entry(entry, self.root_dir_info)
+                result = self._process_entry(entry, self.root_dir_info)
                 if result is not None:
                     self.path_handled = -1
                     if result is not self.uninteresting:
@@ -1551,16 +1551,15 @@ cdef class ProcessEntryC:
                         self.current_block_pos = self.current_block_pos + 1
                         # entry referring to file not present on disk.
                         # advance the entry only, after processing.
-                        result = _process_entry(current_entry, None)
+                        result = self._process_entry(current_entry, None)
                         if result is not None:
                             if result is not self.uninteresting:
                                 return result
                     self.block_index = self.block_index + 1
                     self._update_current_block()
                 continue # next loop-on-block/dir
-            # current_dir_info and current_block refer to the same directory.
-            advance_entry = True
-            advance_path = True
+            # current_dir_info and current_block refer to the same directory -
+            # this is the common case code.
             # Assign local variables for current path and entry:
             if (self.current_block and
                 self.current_block_pos < len(self.current_block[1])):
@@ -1579,6 +1578,8 @@ cdef class ProcessEntryC:
                 current_path_info = None
             self.path_handled = 0
             while (current_entry is not None or current_path_info is not None):
+                advance_entry = -1
+                advance_path = -1
                 result = None
                 if current_entry is None:
                     # unversioned -  the check for path_handled when the path
@@ -1586,7 +1587,7 @@ cdef class ProcessEntryC:
                     pass
                 elif current_path_info is None:
                     # no path is fine: the per entry code will handle it.
-                    result = _process_entry(current_entry, current_path_info)
+                    result = self._process_entry(current_entry, current_path_info)
                     if result is not None:
                         if result is self.uninteresting:
                             result = None
@@ -1603,22 +1604,22 @@ cdef class ProcessEntryC:
                     if current_path_info[1] < current_entry[0][1]:
                         # extra file on disk: pass for now, but only
                         # increment the path, not the entry
-                        advance_entry = False
+                        advance_entry = 0
                     else:
                         # entry referring to file not present on disk.
                         # advance the entry only, after processing.
-                        result = _process_entry(current_entry, None)
+                        result = self._process_entry(current_entry, None)
                         if result is not None:
                             if result is self.uninteresting:
                                 result = None
-                        advance_path = False
+                        advance_path = 0
                 else:
-                    result = _process_entry(current_entry, current_path_info)
+                    result = self._process_entry(current_entry, current_path_info)
                     if result is not None:
                         self.path_handled = -1
                         if result is self.uninteresting:
                             result = None
-                # >- loop control
+                # >- loop control starts here:
                 # >- entry
                 if advance_entry and current_entry is not None:
                     self.current_block_pos = self.current_block_pos + 1
@@ -1626,8 +1627,6 @@ cdef class ProcessEntryC:
                         current_entry = self.current_block[1][self.current_block_pos]
                     else:
                         current_entry = None
-                else:
-                    advance_entry = True # reset the advance flaga
                 # >- path
                 if advance_path and current_path_info is not None:
                     if not self.path_handled:
@@ -1673,8 +1672,6 @@ cdef class ProcessEntryC:
                     else:
                         current_path_info = None
                     self.path_handled = 0
-                else:
-                    advance_path = True # reset the advance flag.
                 if result is not None:
                     # Found a result on this pass, yield it
                     return result

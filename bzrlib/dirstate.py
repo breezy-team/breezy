@@ -2730,7 +2730,7 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
-def _update_entry(self, entry, abspath, stat_value,
+def py_update_entry(self, entry, abspath, stat_value,
                  _stat_to_minikind=DirState._stat_to_minikind,
                  _pack_stat=pack_stat):
     """Update the entry based on what is actually on disk.
@@ -2802,6 +2802,7 @@ def _update_entry(self, entry, abspath, stat_value,
                            False, DirState.NULLSTAT)
     self._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
+update_entry = py_update_entry
 
 
 class ProcessEntryPython(object):
@@ -2862,7 +2863,7 @@ class ProcessEntryPython(object):
         if path_info is not None and target_minikind in 'fdlt':
             if not (self.target_index == 0):
                 raise AssertionError()
-            link_or_sha1 = _update_entry(self.state, entry,
+            link_or_sha1 = update_entry(self.state, entry,
                 abspath=path_info[4], stat_value=path_info[3])
             # The entry may have been modified by update_entry
             target_details = entry[1][self.target_index]
@@ -2882,7 +2883,7 @@ class ProcessEntryPython(object):
                 # has.  TODO ? : only add if it is a container ?
                 if not osutils.is_inside_any(self.searched_specific_files,
                                              source_details[1]):
-                    search_specific_files.add(source_details[1])
+                    self.search_specific_files.add(source_details[1])
                 # generate the old path; this is needed for stating later
                 # as well.
                 old_path = source_details[1]
@@ -3081,7 +3082,7 @@ class ProcessEntryPython(object):
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
             if not osutils.is_inside_any(self.searched_specific_files, target_details[1]):
-                search_specific_files.add(target_details[1])
+                self.search_specific_files.add(target_details[1])
         elif source_minikind in 'ra' and target_minikind in 'ra':
             # neither of the selected trees contain this file,
             # so skip over it. This is not currently directly tested, but
@@ -3227,7 +3228,7 @@ class ProcessEntryPython(object):
                 else:
                     if current_dir_info[0][0] == '':
                         # remove .bzr from iteration
-                        bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
+                        bzr_index = bisect.bisect_left(current_dir_info[1], ('.bzr',))
                         if current_dir_info[1][bzr_index][0] != '.bzr':
                             raise AssertionError()
                         del current_dir_info[1][bzr_index]
