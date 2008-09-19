@@ -989,7 +989,8 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
                             tree.branch, 
                             file_id,
                             mainline,
-                            list(view_revs_iter))
+                            list(view_revs_iter),
+                            'reverse')
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):
