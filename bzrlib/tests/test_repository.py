@@ -843,19 +843,22 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # rev count - 2010 -> 2x1000 + 1x10 (3)
         pack_operations = packs.plan_autopack_combinations(
             existing_packs, [1000, 1000, 10])
-        self.assertEqual([[2, ["single2", "single1"]], [0, []]], pack_operations)
+        self.assertEqual([[2, ["single2", "single1"]]], pack_operations)
 
-    def test_plan_pack_operations_110_doesnt_repack_single_entry(self):
+    def test_plan_pack_operations_creates_a_single_op(self):
         packs = self.get_packs()
-        existing_packs = [(55, "big"), (25, "medium"), (21, "medium2"),
-                          (9, "small")]
+        existing_packs = [(50, 'a'), (40, 'b'), (30, 'c'), (10, 'd'),
+                          (10, 'e'), (6, 'f'), (4, 'g')]
+        # rev count 150 -> 1x100 and 5x10
+        # The two size 10 packs do not need to be touched. The 50, 40, 30 would
+        # be combined into a single 120 size pack, and the 6 & 4 would
+        # becombined into a size 10 pack. However, if we have to rewrite them,
+        # we save a pack file with no increased I/O by putting them into the
+        # same file.
+        distribution = packs.pack_distribution(150)
         pack_operations = packs.plan_autopack_combinations(existing_packs,
-                                                           [100, 10])
-        # This initially wants to create a 100 size pack, and a 10 size pack.
-        # However, there is only a single pack with 1 entry to put into the
-        # final pack.
-        self.assertEqual([[101, ['big', 'medium', 'medium2']]],
-                         pack_operations)
+                                                           distribution)
+        self.assertEqual([[130, ['a', 'b', 'c', 'f', 'g']]], pack_operations)
 
     def test_all_packs_none(self):
         format = self.get_format()
