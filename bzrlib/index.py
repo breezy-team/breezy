@@ -366,7 +366,7 @@ class GraphIndex(object):
         self._keys_by_offset = {}
         # ready-to-return key:value or key:value, node_ref_lists
         self._nodes = {}
-        self._nodes_by_key = {}
+        self._nodes_by_key = None
         trailers = 0
         pos = stream.tell()
         lines = stream.read().split('\n')
@@ -381,20 +381,6 @@ class GraphIndex(object):
             else:
                 node_value = value
             self._nodes[key] = node_value
-            if self._key_length > 1:
-                # TODO: We may want to do this lazily, but if we are calling
-                #       _buffer_all, we are likely to be doing
-                #       iter_entries_prefix
-                key_dict = self._nodes_by_key
-                if self.node_ref_lists:
-                    key_value = key, node_value[0], node_value[1]
-                else:
-                    key_value = key, node_value
-                # For a key of (foo, bar, baz) create
-                # _nodes_by_key[foo][bar][baz] = key_value
-                for subkey in key[:-1]:
-                    key_dict = key_dict.setdefault(subkey, {})
-                key_dict[key[-1]] = key_value
         # cache the keys for quick set intersections
         self._keys = set(self._nodes)
         if trailers != 1:
@@ -973,7 +959,7 @@ class GraphIndex(object):
                 raise errors.BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple(intern(element) for element in elements[:self._key_length])
+            key = tuple([intern(element) for element in elements[:self._key_length]])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
