@@ -269,7 +269,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = _filter_revisions_touching_file_id(branch,
                                                          specific_fileid,
                                                          mainline_revs,
-                                                         view_revisions)
+                                                         view_revisions,
+                                                         direction)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -537,7 +538,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
 
 def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
-                                       view_revs_iter):
+                                       view_revs_iter, direction):
     """Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
@@ -557,18 +558,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # find all the revisions that change the specific file
-    # build the ancestry of each revision in the graph
-    # - only listing the ancestors that change the specific file.
-    graph = branch.repository.get_graph()
-    # This asks for all mainline revisions, which means we only have to spider
-    # sideways, rather than depth history. That said, its still size-of-history
-    # and should be addressed.
-    # mainline_revisions always includes an extra revision at the beginning, so
-    # don't request it.
-    parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
-    sorted_rev_list = tsort.topo_sort(parent_map)
-    text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
+    text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revs_iter]
     # Do a direct lookup of all possible text keys, and figure out which ones
     # are actually present, and then convert it back to revision_ids, since the
     # file_id prefix is shared by everything.
@@ -578,99 +568,31 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     modified_text_revisions = set(key[1] for key in text_parent_map)
     del text_parent_map
     del text_keys
-    # Algorithms tried:
-    #   a single dictionary mapping tree_revision_id => file_ancestry
-    #       file_ancestry_as_tuple      50.3    272MB
-    #       file_ancestry_as_frozenset  42.1    409MB
-    #       file_ancestry_as_mixed (this was bad, because it gets confused and
-    #                               cannot match up revisions properly)
-    #   a dictionary tree_revision_id => offset, and a list of offset =>
-    #   file_ancestry
-    #       file_ancestry_as_tuple      50.3s   272MB
-    #       file_ancestry_as_mixed      42.8s   399MB
-    #       file_ancestry_as_frozenset  42.1s   410MB
-    #   a dictionary tree_revision_id => file_rev_id, and another dict
-    #   file_rev_id => file_ancestry
-    #       file_ancestry_as_tuple      50.4s   272MB
-    #       file_ancestry_as_mixed      43.3s   399MB
-    #       file_ancestry_as_frozenset  41.6s   410MB
 
-    # ancestry_values contains a pointer from a revision_id to either a tuple,
-    # or a frozenset() of a given per-file ancestry.
-    ancestry_values = {_mod_revision.NULL_REVISION: frozenset()}
-    for rev in sorted_rev_list:
-        parents = parent_map[rev]
-        rev_ancestry = None
-        if rev in modified_text_revisions:
-            # We know this will be a new node
-            rev_ancestry = [rev]
-        for parent in parents:
-            if parent not in ancestry_values:
-                # parent is a Ghost, which won't be present in
-                # sorted_rev_list, but we may access it later, so create an
-                # empty node for it
-                ancestry_values[parent] = frozenset()
-            if rev_ancestry is None:
-                # We don't have anything worked out yet, so just copy this
-                # parent's ancestry_pointer
-                rev_ancestry = ancestry_values[parent]
-            else:
-                # Check to see if this other parent introduces any new
-                # revisions. If it doesn't then we don't need to create a new
-                # set.
-                parent_ancestry = ancestry_values[parent]
-                if rev_ancestry is None:
-                    rev_ancestry = ancestry_values[rev_pointer]
-                if parent_ancestry is rev_ancestry:
-                    # They both point to the same ancestry value, so we know
-                    # there is nothing new
-                    continue
-                parent_ancestry = frozenset(parent_ancestry)
-                new_revisions = parent_ancestry.difference(rev_ancestry)
-                if new_revisions:
-                    # We need something that we can modify. We can use a simple
-                    # list, because we are only adding the 'new_revisions', so
-                    # we know that we won't have duplicates.
-                    if not isinstance(rev_ancestry, list):
-                        rev_ancestry = list(rev_ancestry)
-                    rev_ancestry.extend(new_revisions)
-        if rev_ancestry is None:
-            rev_ancestry = frozenset()
-        elif isinstance(rev_ancestry, list):
-            # We can use "tuple()" here to save memory at the cost of CPU, or
-            # use frozenset() which saves CPU but consumes RAM.
-            # We can also 'switch' based on the length of the ancestry.
-            # That gives the most direct control over memory versus CPU.
-            # For now, just going with the more performant frozenset()
-            # Also, note that both tuple and frozenset just reference the
-            # passed in object if they are of the same type. (Unlike list and
-            # set which create a new copy.)
-            #  if isinstance(x, tuple):
-            #    assert x is tuple(x)
-            # You have the same:
-            #  if isinstance(y, frozenset):
-            #    assert y is frozenset(y)
-            rev_ancestry = frozenset(rev_ancestry)
-        ancestry_values[rev] = rev_ancestry
+    result = []
+    if direction == 'forward':
+        view_revs_iter = reverse_by_depth(view_revs_iter)
+    # Track what revisions will merge the current revision, replace entries
+    # with 'None' when they have been added to result
+    current_merge_stack = [None]
+    for info in view_revs_iter:
+        rev_id, revno, depth = info
+        assert depth <= len(current_merge_stack)
+        if depth == len(current_merge_stack):
+            current_merge_stack.append(info)
+        else:
+            del current_merge_stack[depth + 1:]
+            current_merge_stack[-1] = info
 
-    def is_merging_rev(r):
-        parents = parent_map[r]
-        if len(parents) > 1:
-            leftparent = parents[0]
-            left_ancestry = ancestry_values[leftparent]
-            for rightparent in parents[1:]:
-                right_ancestry = ancestry_values[rightparent]
-                if left_ancestry is right_ancestry:
-                    continue
-                left_ancestry = frozenset(left_ancestry)
-                if not left_ancestry.issuperset(right_ancestry):
-                    return True
-        return False
-
-    # filter from the view the revisions that did not change or merge
-    # the specific file
-    result = [(r, n, d) for r, n, d in view_revs_iter
-              if r in modified_text_revisions or is_merging_rev(r)]
+        if rev_id in modified_text_revisions:
+            # This needs to be logged, along with the extra revisions
+            for idx in xrange(len(current_merge_stack)):
+                node = current_merge_stack[idx]
+                if node is not None:
+                    result.append(node)
+                    current_merge_stack[idx] = None
+    if direction == 'forward':
+        result = reverse_by_depth(result)
     return result
 
 
