@@ -60,7 +60,7 @@ class SmartTCPServer(object):
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
         addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC, 
-            socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG|socket.AI_PASSIVE)[0]
+            socket.SOCK_STREAM, 0, socket.AI_PASSIVE)[0]
 
         (family, socktype, proto, canonname, sockaddr) = addrs
 

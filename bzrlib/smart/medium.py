@@ -740,8 +740,12 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
-        sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC, 
-            socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG)
+        try:
+            sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC, 
+                socket.SOCK_STREAM, 0, 0)
+        except socket.gaierror, (err_num, err_msg):
+            raise errors.ConnectionError("failed to lookup %s:%d: %s" %
+                    (self._host, port, err_msg))
         err = socket.error("no address found for %s" % self._host)
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
             try:
