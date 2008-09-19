@@ -562,8 +562,9 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # Do a direct lookup of all possible text keys, and figure out which ones
     # are actually present, and then convert it back to revision_ids, since the
     # file_id prefix is shared by everything.
-    # Using a set of revisions instead of a set of keys saves about 1MB (out of
-    # say 400). Not a huge deal, but still "better".
+    # Looking up keys in batches of 1000 can cut the time in half, as well as
+    # memory consumption. GraphIndex *does* like to look for a few keys in
+    # parallel, it just doesn't like looking for *lots* of keys in parallel.
     get_parent_map = branch.repository.texts.get_parent_map
     modified_text_revisions = set()
     chunk_size = 1000
