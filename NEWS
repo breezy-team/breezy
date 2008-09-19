@@ -44,6 +44,10 @@ IN DEVELOPMENT
       ``bzrlib.tests.per_repository`` so that we have a common structure
       (and it is shorter). (John Arbash Meinel, #239343)
 
+    * ``LocalTransport.abspath()`` now returns a drive letter if the
+      transport has one, fixing numerous tests on Windows.
+      (Mark Hammond)
+
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
