@@ -253,6 +253,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # win32com uses them.  Hook this in so win32com.shell is found.
     import modulefinder
     import win32com
+    import cPickle as pickle
     for p in win32com.__path__[1:]:
         modulefinder.AddPackagePath("win32com", p)
     for extra in ["win32com.shell"]:
@@ -271,6 +272,29 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
 
     packages.append("tbzrlib")
+
+    # collect up our icons.
+    cwd = os.getcwd()
+    ico_root = os.path.join(tbzr_root, 'tbzrlib', 'resources')
+    icos = [] # list of (path_root, relative_ico_path)
+    # First always bzr's icon and its in the root of the bzr tree.
+    icos.append(('', 'bzr.ico'))
+    for root, dirs, files in os.walk(ico_root):
+        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root)+1:])
+                     for f in files if f.endswith('.ico')])
+    # allocate an icon ID for each file and the full path to the ico
+    icon_resources = [(rid, os.path.join(ico_dir, ico_name))
+                      for rid, (ico_dir, ico_name) in enumerate(icos)]
+    # create a string resource with the mapping.  Might as well save the
+    # runtime some effort and write a pickle.
+    # Runtime expects unicode objects with forward-slash seps.
+    fse = sys.getfilesystemencoding()
+    map_items = [(f.replace('\\', '/').decode(fse), rid)
+                 for rid, (_, f) in enumerate(icos)]
+    ico_map = dict(map_items)
+    # Create a new resource type of 'ICON_MAP', and use ID=1
+    other_resources = [ ("ICON_MAP", 1, pickle.dumps(ico_map))]
+
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
 
@@ -284,7 +308,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # GUI version that is generally used.
     tbzrcache = dict(
         script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
-        icon_resources = [(0,'bzr.ico')],
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcache)
 

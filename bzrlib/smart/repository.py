@@ -17,7 +17,6 @@
 """Server-side repository related request implmentations."""
 
 import bz2
-from cStringIO import StringIO
 import os
 import sys
 import tempfile
@@ -28,7 +27,6 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.pack import ContainerSerialiser
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -351,7 +349,6 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, compression):
-        from bzrlib import osutils
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
             controldir_name = tmp_dirname + '/.bzr'

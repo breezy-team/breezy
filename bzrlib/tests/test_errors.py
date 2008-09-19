@@ -548,6 +548,19 @@ class TestErrors(TestCaseWithTransport):
             'Tip change rejected: Unicode message\xe2\x80\xbd',
             str(err))
 
+    def test_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        err = errors.ErrorFromSmartServer(error_tuple)
+        self.assertEquals(
+            "Error received from smart server: ('error', 'tuple')", str(err))
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = errors.UnknownErrorFromSmartServer(orig_err)
+        self.assertEquals(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))
+
 
 class PassThroughError(errors.BzrError):
     

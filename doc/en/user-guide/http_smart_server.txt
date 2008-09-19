@@ -132,7 +132,7 @@ Here's what it looks like::
     from bzrlib.transport.http import wsgi
 
     smart_server_app = wsgi.make_app(
-        root='/srv/example.com/code',
+        root='/srv/example.com/www/code',
         prefix='/code/',
         path_var='REQUEST_URI',
         readonly=True)
@@ -156,7 +156,7 @@ Here's what it looks like::
     from bzrlib.transport.http import wsgi
 
     smart_server_app = wsgi.make_app(
-        root='/srv/example.com/code',
+        root='/srv/example.com/www/code',
         prefix='/code/',
         path_var='REQUEST_URI',
         readonly=True)
@@ -166,12 +166,12 @@ Here's what it looks like::
         wsgi_server = modpywsgi.WSGIServer(smart_server_app)
         return wsgi_server.run(request)
         
-The `modpywsgi` module can be found at http://trac.pocoo.org/wiki/ModPyWsgi.  It
-is part of pocoo_.
-You sould make sure you place modpywsgi.py in the same directory as
-bzr-smart.py (ie. /srv/example.com/scripts/).
+The `modpywsgi` module can be found at
+http://dev.pocoo.org/projects/pocoo/browser/pocoo/wrappers/modpy.py. It is
+part of pocoo_. You sould make sure you place modpywsgi.py in the same
+directory as bzr-smart.py (ie. /srv/example.com/scripts/).
 
-.. _pocoo: http://trac.pocoo.org/wiki/
+.. _pocoo: http://dev.pocoo.org/projects/pocoo/
 
 Clients
 -------

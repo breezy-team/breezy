@@ -252,7 +252,7 @@ class TestRepositoryParameterisation(TestCase):
 
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
-        from bzrlib.tests.repository_implementations import formats_to_scenarios
+        from bzrlib.tests.per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
                         'Bazaar pack repository format 1 (needs bzr 0.92)\n'))]
@@ -293,7 +293,7 @@ class TestTestScenarioApplier(TestCase):
     """Tests for the test adaption facilities."""
 
     def test_adapt_applies_scenarios(self):
-        from bzrlib.tests.repository_implementations import TestScenarioApplier
+        from bzrlib.tests.per_repository import TestScenarioApplier
         input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
         adapter = TestScenarioApplier()
         adapter.scenarios = [("1", "dict"), ("2", "settings")]
@@ -307,7 +307,7 @@ class TestTestScenarioApplier(TestCase):
             (input_test, ("2", "settings"))], calls)
 
     def test_adapt_test_to_scenario(self):
-        from bzrlib.tests.repository_implementations import TestScenarioApplier
+        from bzrlib.tests.per_repository import TestScenarioApplier
         input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
         adapter = TestScenarioApplier()
         # setup two adapted tests

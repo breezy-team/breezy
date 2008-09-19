@@ -18,7 +18,6 @@
 # across to run on the server.
 
 import bz2
-from cStringIO import StringIO
 
 from bzrlib import (
     branch,
@@ -29,22 +28,17 @@ from bzrlib import (
     repository,
     revision,
     symbol_versioning,
+    urlutils,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
-from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
@@ -356,10 +350,10 @@ class RemoteRepository(object):
 
         Used before calls to self._real_repository.
         """
-        if not self._real_repository:
+        if self._real_repository is None:
             self.bzrdir._ensure_real()
-            #self._real_repository = self.bzrdir._real_bzrdir.open_repository()
-            self._set_real_repository(self.bzrdir._real_bzrdir.open_repository())
+            self._set_real_repository(
+                self.bzrdir._real_bzrdir.open_repository())
 
     def _translate_error(self, err, **context):
         self.bzrdir._translate_error(err, repository=self, **context)
@@ -432,10 +426,17 @@ class RemoteRepository(object):
             'Repository.has_revision', path, revision_id)
         if response[0] not in ('yes', 'no'):
             raise errors.UnexpectedSmartServerResponse(response)
-        return response[0] == 'yes'
+        if response[0] == 'yes':
+            return True
+        for fallback_repo in self._fallback_repositories:
+            if fallback_repo.has_revision(revision_id):
+                return True
+        return False
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
+        # FIXME: This does many roundtrips, particularly when there are
+        # fallback repositories.  -- mbp 20080905
         result = set()
         for revision_id in revision_ids:
             if self.has_revision(revision_id):
@@ -549,9 +550,15 @@ class RemoteRepository(object):
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
-    def lock_write(self, token=None):
+    def lock_write(self, token=None, _skip_rpc=False):
         if not self._lock_mode:
-            self._lock_token = self._remote_lock_write(token)
+            if _skip_rpc:
+                if self._lock_token is not None:
+                    if token != self._lock_token:
+                        raise errors.TokenMismatch(token, self._lock_token)
+                self._lock_token = token
+            else:
+                self._lock_token = self._remote_lock_write(token)
             # if self._lock_token is None, then this is something like packs or
             # svn where we don't get to lock the repo, or a weave style repository
             # where we cannot lock it over the wire and attempts to do so will
@@ -589,9 +596,13 @@ class RemoteRepository(object):
         :param repository: The repository to fallback to for non-hpss
             implemented operations.
         """
+        if self._real_repository is not None:
+            raise AssertionError('_real_repository is already set')
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
+        for fb in self._fallback_repositories:
+            self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
             # if we are already locked, the real repository must be able to
             # acquire the lock with our token.
@@ -703,7 +714,8 @@ class RemoteRepository(object):
         # FIXME: It ought to be possible to call this without immediately
         # triggering _ensure_real.  For now it's the easiest thing to do.
         self._ensure_real()
-        builder = self._real_repository.get_commit_builder(branch, parents,
+        real_repo = self._real_repository
+        builder = real_repo.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
         return builder
@@ -713,11 +725,18 @@ class RemoteRepository(object):
         
         :param repository: A repository.
         """
-        if not self._format.supports_external_lookups:
-            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # XXX: At the moment the RemoteRepository will allow fallbacks
+        # unconditionally - however, a _real_repository will usually exist,
+        # and may raise an error if it's not accommodated by the underlying
+        # format.  Eventually we should check when opening the repository
+        # whether it's willing to allow them or not.
+        #
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         self._fallback_repositories.append(repository)
+        # They are also seen by the fallback repository.  If it doesn't exist
+        # yet they'll be added then.  This implicitly copies them.
+        self._ensure_real()
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1277,6 +1296,24 @@ class RemoteBranch(branch.Branch):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        self._setup_stacking()
+
+    def _setup_stacking(self):
+        # configure stacking into the remote repository, by reading it from
+        # the vfs branch.
+        try:
+            fallback_url = self.get_stacked_on_url()
+        except (errors.NotStacked, errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            return
+        # it's relative to this branch...
+        fallback_url = urlutils.join(self.base, fallback_url)
+        transports = [self.bzrdir.root_transport]
+        if self._real_branch is not None:
+            transports.append(self._real_branch._transport)
+        fallback_bzrdir = BzrDir.open(fallback_url, transports)
+        fallback_repo = fallback_bzrdir.open_repository()
+        self.repository.add_fallback_repository(fallback_repo)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
@@ -1301,17 +1338,20 @@ class RemoteBranch(branch.Branch):
                     'to use vfs implementation')
             self.bzrdir._ensure_real()
             self._real_branch = self.bzrdir._real_bzrdir.open_branch()
-            # Give the remote repository the matching real repo.
-            real_repo = self._real_branch.repository
-            if isinstance(real_repo, RemoteRepository):
-                real_repo._ensure_real()
-                real_repo = real_repo._real_repository
-            self.repository._set_real_repository(real_repo)
-            # Give the branch the remote repository to let fast-pathing happen.
+            if self.repository._real_repository is None:
+                # Give the remote repository the matching real repo.
+                real_repo = self._real_branch.repository
+                if isinstance(real_repo, RemoteRepository):
+                    real_repo._ensure_real()
+                    real_repo = real_repo._real_repository
+                self.repository._set_real_repository(real_repo)
+            # Give the real branch the remote repository to let fast-pathing
+            # happen.
             self._real_branch.repository = self.repository
-            # XXX: deal with _lock_mode == 'w'
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
+            elif self._lock_mode == 'w':
+                self._real_branch.lock_write(token=self._lock_token)
 
     def _translate_error(self, err, **context):
         self.repository._translate_error(err, branch=self, **context)
@@ -1361,10 +1401,22 @@ class RemoteBranch(branch.Branch):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        self._ensure_real()
-        return self._real_branch.get_stacked_on_url()
+        try:
+            response = self._client.call('Branch.get_stacked_on_url',
+                self._remote_path())
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
+            return response[1]
+        except errors.ErrorFromSmartServer, err:
+            # there may not be a repository yet, so we can't call through
+            # its _translate_error
+            _translate_error(err, branch=self)
+        except errors.UnknownSmartMethod, err:
+            self._ensure_real()
+            return self._real_branch.get_stacked_on_url()
 
     def lock_read(self):
+        self.repository.lock_read()
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
@@ -1380,10 +1432,10 @@ class RemoteBranch(branch.Branch):
             branch_token = token
             repo_token = self.repository.lock_write()
             self.repository.unlock()
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call(
-                'Branch.lock_write', path, branch_token, repo_token or '')
+                'Branch.lock_write', self._remote_path(),
+                branch_token, repo_token or '')
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, token=token)
         if response[0] != 'ok':
@@ -1393,29 +1445,20 @@ class RemoteBranch(branch.Branch):
             
     def lock_write(self, token=None):
         if not self._lock_mode:
+            # Lock the branch and repo in one remote call.
             remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
             if not self._lock_token:
                 raise SmartProtocolError('Remote server did not return a token!')
-            # TODO: We really, really, really don't want to call _ensure_real
-            # here, but it's the easiest way to ensure coherency between the
-            # state of the RemoteBranch and RemoteRepository objects and the
-            # physical locks.  If we don't materialise the real objects here,
-            # then getting everything in the right state later is complex, so
-            # for now we just do it the lazy way.
-            #   -- Andrew Bennetts, 2007-02-22.
-            self._ensure_real()
+            # Tell the self.repository object that it is locked.
+            self.repository.lock_write(
+                self._repo_lock_token, _skip_rpc=True)
+
             if self._real_branch is not None:
-                self._real_branch.repository.lock_write(
-                    token=self._repo_lock_token)
-                try:
-                    self._real_branch.lock_write(token=self._lock_token)
-                finally:
-                    self._real_branch.repository.unlock()
+                self._real_branch.lock_write(token=self._lock_token)
             if token is not None:
                 self._leave_lock = True
             else:
-                # XXX: this case seems to be unreachable; token cannot be None.
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -1423,17 +1466,19 @@ class RemoteBranch(branch.Branch):
             raise errors.ReadOnlyTransaction
         else:
             if token is not None:
-                # A token was given to lock_write, and we're relocking, so check
-                # that the given token actually matches the one we already have.
+                # A token was given to lock_write, and we're relocking, so
+                # check that the given token actually matches the one we
+                # already have.
                 if token != self._lock_token:
                     raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
+            # Re-lock the repository too.
+            self.repository.lock_write(self._repo_lock_token)
         return self._lock_token or None
 
     def _unlock(self, branch_token, repo_token):
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            response = self._client.call('Branch.unlock', path, branch_token,
+            response = self._client.call('Branch.unlock', self._remote_path(), branch_token,
                                          repo_token or '')
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, token=str((branch_token, repo_token)))
@@ -1442,32 +1487,35 @@ class RemoteBranch(branch.Branch):
         raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
-        self._lock_count -= 1
-        if not self._lock_count:
-            self._clear_cached_state()
-            mode = self._lock_mode
-            self._lock_mode = None
-            if self._real_branch is not None:
-                if (not self._leave_lock and mode == 'w' and
-                    self._repo_lock_token):
-                    # If this RemoteBranch will remove the physical lock for the
-                    # repository, make sure the _real_branch doesn't do it
-                    # first.  (Because the _real_branch's repository is set to
-                    # be the RemoteRepository.)
-                    self._real_branch.repository.leave_lock_in_place()
-                self._real_branch.unlock()
-            if mode != 'w':
-                # Only write-locked branched need to make a remote method call
-                # to perfom the unlock.
-                return
-            if not self._lock_token:
-                raise AssertionError('Locked, but no token!')
-            branch_token = self._lock_token
-            repo_token = self._repo_lock_token
-            self._lock_token = None
-            self._repo_lock_token = None
-            if not self._leave_lock:
-                self._unlock(branch_token, repo_token)
+        try:
+            self._lock_count -= 1
+            if not self._lock_count:
+                self._clear_cached_state()
+                mode = self._lock_mode
+                self._lock_mode = None
+                if self._real_branch is not None:
+                    if (not self._leave_lock and mode == 'w' and
+                        self._repo_lock_token):
+                        # If this RemoteBranch will remove the physical lock
+                        # for the repository, make sure the _real_branch
+                        # doesn't do it first.  (Because the _real_branch's
+                        # repository is set to be the RemoteRepository.)
+                        self._real_branch.repository.leave_lock_in_place()
+                    self._real_branch.unlock()
+                if mode != 'w':
+                    # Only write-locked branched need to make a remote method
+                    # call to perfom the unlock.
+                    return
+                if not self._lock_token:
+                    raise AssertionError('Locked, but no token!')
+                branch_token = self._lock_token
+                repo_token = self._repo_lock_token
+                self._lock_token = None
+                self._repo_lock_token = None
+                if not self._leave_lock:
+                    self._unlock(branch_token, repo_token)
+        finally:
+            self.repository.unlock()
 
     def break_lock(self):
         self._ensure_real()
@@ -1484,8 +1532,7 @@ class RemoteBranch(branch.Branch):
         self._leave_lock = False
 
     def _last_revision_info(self):
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Branch.last_revision_info', path)
+        response = self._client.call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
             raise SmartProtocolError('unexpected response code %s' % (response,))
         revno = int(response[1])
@@ -1494,9 +1541,8 @@ class RemoteBranch(branch.Branch):
 
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
-        path = self.bzrdir._path_for_remote_call(self._client)
         response_tuple, response_handler = self._client.call_expecting_body(
-            'Branch.revision_history', path)
+            'Branch.revision_history', self._remote_path())
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         result = response_handler.read_body_bytes().split('\x00')
@@ -1504,12 +1550,14 @@ class RemoteBranch(branch.Branch):
             return []
         return result
 
+    def _remote_path(self):
+        return self.bzrdir._path_for_remote_call(self._client)
+
     def _set_last_revision_descendant(self, revision_id, other_branch,
             allow_diverged=False, allow_overwrite_descendant=False):
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call('Branch.set_last_revision_ex',
-                path, self._lock_token, self._repo_lock_token, revision_id,
+                self._remote_path(), self._lock_token, self._repo_lock_token, revision_id,
                 int(allow_diverged), int(allow_overwrite_descendant))
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, other_branch=other_branch)
@@ -1518,14 +1566,15 @@ class RemoteBranch(branch.Branch):
             raise errors.UnexpectedSmartServerResponse(response)
         new_revno, new_revision_id = response[1:]
         self._last_revision_info_cache = new_revno, new_revision_id
-        self._real_branch._last_revision_info_cache = new_revno, new_revision_id
+        if self._real_branch is not None:
+            cache = new_revno, new_revision_id
+            self._real_branch._last_revision_info_cache = cache
 
     def _set_last_revision(self, revision_id):
-        path = self.bzrdir._path_for_remote_call(self._client)
         self._clear_cached_state()
         try:
             response = self._client.call('Branch.set_last_revision',
-                path, self._lock_token, self._repo_lock_token, revision_id)
+                self._remote_path(), self._lock_token, self._repo_lock_token, revision_id)
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err)
         if response != ('ok',):
@@ -1600,10 +1649,9 @@ class RemoteBranch(branch.Branch):
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         revision_id = ensure_null(revision_id)
-        path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._client.call('Branch.set_last_revision_info',
-                path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+                self._remote_path(), self._lock_token, self._repo_lock_token, str(revno), revision_id)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             self._clear_cached_state_of_remote_branch_only()
@@ -1705,6 +1753,9 @@ def _translate_error(err, **context):
       - bzrdir
       - token
       - other_branch
+
+    If the error from the server doesn't match a known pattern, then
+    UnknownErrorFromSmartServer is raised.
     """
     def find(name):
         try:
@@ -1732,5 +1783,10 @@ def _translate_error(err, **context):
         raise errors.DivergedBranches(find('branch'), find('other_branch'))
     elif err.error_verb == 'TipChangeRejected':
         raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
-    raise
-
+    elif err.error_verb == 'UnstackableBranchFormat':
+        raise errors.UnstackableBranchFormat(*err.error_args)
+    elif err.error_verb == 'UnstackableRepositoryFormat':
+        raise errors.UnstackableRepositoryFormat(*err.error_args)
+    elif err.error_verb == 'NotStacked':
+        raise errors.NotStacked(branch=find('branch'))
+    raise errors.UnknownErrorFromSmartServer(err)

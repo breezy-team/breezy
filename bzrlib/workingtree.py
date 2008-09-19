@@ -379,7 +379,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Return RevisionTree for the current last revision.
         
         If the left most parent is a ghost then the returned tree will be an
-        empty tree - one obtained by calling repository.revision_tree(None).
+        empty tree - one obtained by calling 
+        repository.revision_tree(NULL_REVISION).
         """
         try:
             revision_id = self.get_parent_ids()[0]
@@ -387,7 +388,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # no parents, return an empty revision tree.
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
-            return self.branch.repository.revision_tree(None)
+            return self.branch.repository.revision_tree(
+                       _mod_revision.NULL_REVISION)
         try:
             return self.revision_tree(revision_id)
         except errors.NoSuchRevision:
@@ -404,7 +406,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if self.branch.repository.has_revision(revision_id):
                 raise
             # the basis tree is a ghost so return an empty tree.
-            return self.branch.repository.revision_tree(None)
+            return self.branch.repository.revision_tree(
+                       _mod_revision.NULL_REVISION)
 
     def _cleanup(self):
         self._flush_ignore_list_cache()
@@ -897,21 +900,24 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             hashfile = self._transport.get('merge-hashes')
         except errors.NoSuchFile:
             return {}
-        merge_hashes = {}
         try:
-            if hashfile.next() != MERGE_MODIFIED_HEADER_1 + '\n':
+            merge_hashes = {}
+            try:
+                if hashfile.next() != MERGE_MODIFIED_HEADER_1 + '\n':
+                    raise errors.MergeModifiedFormatError()
+            except StopIteration:
                 raise errors.MergeModifiedFormatError()
-        except StopIteration:
-            raise errors.MergeModifiedFormatError()
-        for s in RioReader(hashfile):
-            # RioReader reads in Unicode, so convert file_ids back to utf8
-            file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
-            if file_id not in self.inventory:
-                continue
-            text_hash = s.get("hash")
-            if text_hash == self.get_file_sha1(file_id):
-                merge_hashes[file_id] = text_hash
-        return merge_hashes
+            for s in RioReader(hashfile):
+                # RioReader reads in Unicode, so convert file_ids back to utf8
+                file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
+                if file_id not in self.inventory:
+                    continue
+                text_hash = s.get("hash")
+                if text_hash == self.get_file_sha1(file_id):
+                    merge_hashes[file_id] = text_hash
+            return merge_hashes
+        finally:
+            hashfile.close()
 
     @needs_write_lock
     def mkdir(self, path, file_id=None):
@@ -2593,11 +2599,14 @@ class WorkingTree3(WorkingTree):
         except errors.NoSuchFile:
             return _mod_conflicts.ConflictList()
         try:
-            if confile.next() != CONFLICT_HEADER_1 + '\n':
+            try:
+                if confile.next() != CONFLICT_HEADER_1 + '\n':
+                    raise errors.ConflictFormatError()
+            except StopIteration:
                 raise errors.ConflictFormatError()
-        except StopIteration:
-            raise errors.ConflictFormatError()
-        return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
+            return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
+        finally:
+            confile.close()
 
     def unlock(self):
         # do non-implementation specific cleanup
