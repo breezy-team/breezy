@@ -151,7 +151,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
-            delta, version_recorded = builder.record_entry_contents(
+            delta, version_recorded, fs_hash = builder.record_entry_contents(
                 ie, [parent_tree.inventory], '', tree,
                 tree.path_content_summary(''))
             self.assertFalse(version_recorded)
@@ -164,6 +164,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                     delta)
             else:
                 self.assertEqual(None, delta)
+            # Directories do not get hashed.
+            self.assertEqual(None, fs_hash)
             builder.abort()
         except:
             builder.abort()
@@ -288,10 +290,12 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link')
 
-    def _add_commit_renamed_check_changed(self, tree, name):
+    def _add_commit_renamed_check_changed(self, tree, name,
+        expect_fs_hash=False):
         def rename():
             tree.rename_one(name, 'new_' + name)
-        self._add_commit_change_check_changed(tree, name, rename)
+        self._add_commit_change_check_changed(tree, name, rename,
+            expect_fs_hash=expect_fs_hash)
 
     def test_last_modified_revision_after_rename_dir_changes(self):
         # renaming a dir changes the last modified.
@@ -303,7 +307,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # renaming a file changes the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
-        self._add_commit_renamed_check_changed(tree, 'file')
+        self._add_commit_renamed_check_changed(tree, 'file',
+            expect_fs_hash=True)
 
     def test_last_modified_revision_after_rename_link_changes(self):
         # renaming a link changes the last modified.
@@ -312,12 +317,14 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link')
 
-    def _add_commit_reparent_check_changed(self, tree, name):
+    def _add_commit_reparent_check_changed(self, tree, name,
+        expect_fs_hash=False):
         self.build_tree(['newparent/'])
         tree.add(['newparent'])
         def reparent():
             tree.rename_one(name, 'newparent/new_' + name)
-        self._add_commit_change_check_changed(tree, name, reparent)
+        self._add_commit_change_check_changed(tree, name, reparent,
+            expect_fs_hash=expect_fs_hash)
 
     def test_last_modified_revision_after_reparent_dir_changes(self):
         # reparenting a dir changes the last modified.
@@ -329,7 +336,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # reparenting a file changes the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
-        self._add_commit_reparent_check_changed(tree, 'file')
+        self._add_commit_reparent_check_changed(tree, 'file',
+            expect_fs_hash=True)
 
     def test_last_modified_revision_after_reparent_link_changes(self):
         # reparenting a link changes the last modified.
@@ -338,11 +346,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         os.symlink('target', 'link')
         self._add_commit_reparent_check_changed(tree, 'link')
 
-    def _add_commit_change_check_changed(self, tree, name, changer):
+    def _add_commit_change_check_changed(self, tree, name, changer,
+        expect_fs_hash=False):
         tree.add([name], [name + 'id'])
         rev1 = tree.commit('')
         changer()
-        rev2 = self.mini_commit(tree, name, tree.id2path(name + 'id'))
+        rev2 = self.mini_commit(tree, name, tree.id2path(name + 'id'),
+            expect_fs_hash=expect_fs_hash)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
         self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
@@ -353,7 +363,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertFileGraph(expected_graph, tree, (file_id, rev2))
 
     def mini_commit(self, tree, name, new_name, records_version=True,
-        delta_against_basis=True):
+        delta_against_basis=True, expect_fs_hash=False):
         """Perform a miniature commit looking for record entry results.
         
         :param tree: The tree to commit.
@@ -363,6 +373,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             record a new version.
         :param delta_against_basis: True of the commit of new_name is expected
             to have a delta against the basis.
+        :param expect_fs_hash: True or false to indicate whether we expect a
+            file hash to be returned from the record_entry_contents call.
         """
         tree.lock_write()
         try:
@@ -396,18 +408,20 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 commit_id(parent_id)
             # because a change of some sort is meant to have occurred,
             # recording the entry must return True.
-            delta, version_recorded = commit_id(file_id)
+            delta, version_recorded, fs_hash = commit_id(file_id)
             if records_version:
                 self.assertTrue(version_recorded)
             else:
                 self.assertFalse(version_recorded)
+            if expect_fs_hash:
+                self.assertEqual(tree.get_file_sha1(file_id), fs_hash)
+            else:
+                self.assertEqual(None, fs_hash)
             new_entry = builder.new_inventory[file_id]
             if delta_against_basis:
                 expected_delta = (name, new_name, file_id, new_entry)
             else:
                 expected_delta = None
-            if expected_delta != delta:
-                import pdb;pdb.set_trace()
             self.assertEqual(expected_delta, delta)
             builder.finish_inventory()
             rev2 = builder.commit('')
@@ -434,7 +448,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.build_tree(['file'])
         def change_file():
             tree.put_file_bytes_non_atomic('fileid', 'new content')
-        self._add_commit_change_check_changed(tree, 'file', change_file)
+        self._add_commit_change_check_changed(tree, 'file', change_file,
+            expect_fs_hash=True)
 
     def test_last_modified_revision_after_content_link_changes(self):
         # changing a link changes the last modified.
@@ -455,13 +470,14 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree.rename_one(name, 'new_' + name)
         return tree.commit('')
 
-    def _commit_sprout_rename_merge(self, tree1, name):
+    def _commit_sprout_rename_merge(self, tree1, name, expect_fs_hash=False):
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change both sides equally
         rev2 = self._rename_in_tree(tree1, name)
         rev3 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        rev4 = self.mini_commit(tree1, 'new_' + name, 'new_' + name)
+        rev4 = self.mini_commit(tree1, 'new_' + name, 'new_' + name,
+            expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
         self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
         file_id = name + 'id'
@@ -482,7 +498,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # merge a file changes the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/file'])
-        self._commit_sprout_rename_merge(tree1, 'file')
+        self._commit_sprout_rename_merge(tree1, 'file', expect_fs_hash=True)
 
     def test_last_modified_revision_after_merge_link_changes(self):
         # merge a link changes the last modified.
@@ -534,7 +550,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.requireFeature(tests.SymlinkFeature)
         os.symlink('target', name)
 
-    def _check_kind_change(self, make_before, make_after):
+    def _check_kind_change(self, make_before, make_after, expect_fs_hash=False):
         tree = self.make_branch_and_tree('.')
         path = 'name'
         make_before(path)
@@ -543,16 +559,19 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             osutils.delete_any(path)
             make_after(path)
 
-        self._add_commit_change_check_changed(tree, path, change_kind)
+        self._add_commit_change_check_changed(tree, path, change_kind,
+            expect_fs_hash=expect_fs_hash)
 
     def test_last_modified_dir_file(self):
-        self._check_kind_change(self.make_dir, self.make_file)
+        self._check_kind_change(self.make_dir, self.make_file,
+            expect_fs_hash=True)
 
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
 
     def test_last_modified_link_file(self):
-        self._check_kind_change(self.make_link, self.make_file)
+        self._check_kind_change(self.make_link, self.make_file,
+            expect_fs_hash=True)
 
     def test_last_modified_link_dir(self):
         self._check_kind_change(self.make_link, self.make_dir)

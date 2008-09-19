@@ -548,6 +548,13 @@ class WorkingTree4(WorkingTree3):
                 # path is missing on disk.
                 continue
 
+    def _observed_sha1(self, file_id, path, sha1):
+        """See MutableTree._observed_sha1."""
+        state = self.current_dirstate()
+        entry = self._get_entry(file_id=file_id, path=path)
+        statvalue = os.lstat(self.abspath(path))
+        state._observed_sha1(entry, sha1, statvalue)
+
     def kind(self, file_id):
         """Return the kind of a file.
 

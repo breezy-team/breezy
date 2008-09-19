@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * File changes during a commit will update the tree stat cache.
+      (Robert Collins)
+
   BUG FIXES:
 
     * Branching from a shared repository on a smart server into a new

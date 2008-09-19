@@ -1472,6 +1472,29 @@ class DirState(object):
                     # it is being resurrected here, so blank it out temporarily.
                     self._dirblocks[block_index][1][entry_index][1][1] = null
 
+    def _observed_sha1(self, entry, sha1, stat_value,
+        _stat_to_minikind=_stat_to_minikind, _pack_stat=pack_stat):
+        """Note the sha1 of a file.
+
+        :param entry: The entry the sha1 is for.
+        :param sha1: The observed sha1.
+        :param stat_value: The os.lstat for the file.
+        """
+        try:
+            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+        except KeyError:
+            # Unhandled kind
+            return None
+        packed_stat = _pack_stat(stat_value)
+        if minikind == 'f':
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
+                entry[1][0] = ('f', sha1, entry[1][0][2], entry[1][0][3],
+                    packed_stat)
+                self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
     def update_entry(self, entry, abspath, stat_value,
                      _stat_to_minikind=_stat_to_minikind,
                      _pack_stat=pack_stat):

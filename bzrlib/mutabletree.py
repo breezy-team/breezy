@@ -247,6 +247,26 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
+    def _observed_sha1(self, file_id, path, sha1):
+        """Tell the tree we have observed a paths sha1.
+
+        The intent of this function is to allow trees that have a hashcache to
+        update the hashcache during commit. If the observed file is too new to
+        be safely hash-cached the tree will ignore it; this will likewise mean
+        that a file changed subsequent to the file's being read and sha'd will
+        not lead to a false cache entry. A file move could cause this, and 
+        in future work it would be better to pass the cache fingerprint around
+        so that its never separated from the sha, and we can supply the
+        fingerprint back to the tree during this code path.
+
+        The default implementation does nothing.
+
+        :param file_id: The file id
+        :param path: The file path
+        :param sha1: The sha 1 that was observed.
+        :return: None
+        """
+
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.

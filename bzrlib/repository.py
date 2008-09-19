@@ -241,12 +241,16 @@ class CommitBuilder(object):
             content - stat, length, exec, sha/link target. This is only
             accessed when the entry has a revision of None - that is when it is
             a candidate to commit.
-        :return: A tuple (change_delta, version_recorded). change_delta is 
-            an inventory_delta change for this entry against the basis tree of
-            the commit, or None if no change occured against the basis tree.
+        :return: A tuple (change_delta, version_recorded, fs_hash).
+            change_delta is an inventory_delta change for this entry against
+            the basis tree of the commit, or None if no change occured against
+            the basis tree.
             version_recorded is True if a new version of the entry has been
             recorded. For instance, committing a merge where a file was only
             changed on the other side will return (delta, False).
+            fs_hash is either None, or the hash of the path. (Currently we 
+            use sha1 hashes of the entire file content, and only calculate
+            these for regular files).
         """
         if self.new_inventory.root is None:
             if ie.parent_id is not None:
@@ -287,7 +291,7 @@ class CommitBuilder(object):
                 else:
                     # add
                     delta = (None, path, ie.file_id, ie)
-                return delta, False
+                return delta, False, None
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
@@ -298,7 +302,7 @@ class CommitBuilder(object):
                     raise AssertionError("Impossible situation, a skipped "
                         "inventory entry (%r) claims to be modified in this "
                         "commit (%r).", (ie, self._new_revision_id))
-                return None, False
+                return None, False, None
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
@@ -350,7 +354,7 @@ class CommitBuilder(object):
                     ie.text_size = parent_entry.text_size
                     ie.text_sha1 = parent_entry.text_sha1
                     ie.executable = parent_entry.executable
-                    return self._get_delta(ie, basis_inv, path), False
+                    return self._get_delta(ie, basis_inv, path), False, None
                 else:
                     # Either there is only a hash change(no hash cache entry,
                     # or same size content change), or there is no change on
@@ -375,13 +379,13 @@ class CommitBuilder(object):
                 ie.text_size = parent_entry.text_size
                 ie.text_sha1 = parent_entry.text_sha1
                 ie.executable = parent_entry.executable
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
         elif kind == 'directory':
             if not store:
                 # all data is meta here, nothing specific to directory, so
                 # carry over:
                 ie.revision = parent_entry.revision
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         elif kind == 'symlink':
@@ -395,7 +399,7 @@ class CommitBuilder(object):
                 # unchanged, carry over.
                 ie.revision = parent_entry.revision
                 ie.symlink_target = parent_entry.symlink_target
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
             ie.symlink_target = current_link_target
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
@@ -407,14 +411,14 @@ class CommitBuilder(object):
                 # unchanged, carry over.
                 ie.reference_revision = parent_entry.reference_revision
                 ie.revision = parent_entry.revision
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
-        return self._get_delta(ie, basis_inv, path), True
+        return self._get_delta(ie, basis_inv, path), True, ie.text_sha1
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
