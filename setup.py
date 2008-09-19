@@ -351,6 +351,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
     excludes.append('PyQt4.elementtree.ElementTree')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
+    packages.append('docutils') # html formatting
     # but we can avoid many Qt4 Dlls.
     dll_excludes.extend(
         """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
