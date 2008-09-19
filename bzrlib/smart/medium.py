@@ -746,6 +746,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         except socket.gaierror, (err_num, err_msg):
             raise errors.ConnectionError("failed to lookup %s:%d: %s" %
                     (self._host, port, err_msg))
+        # Initialize err in case there are no addresses returned:
         err = socket.error("no address found for %s" % self._host)
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
             try:
