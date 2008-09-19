@@ -1078,6 +1078,10 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self._has_version(self.upstream_branch, tag_name, md5=md5)
 
+    def _has_upstream_version_in_packaging_branch(self, version, md5=None):
+        tag_name = self.upstream_tag_name(version)
+        return self._has_version(self.branch, tag_name, md5=md5)
+
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
 
@@ -1951,7 +1955,7 @@ class DistributionBranch(object):
                 self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
-            if self.has_upstream_version(version):
+            if self._has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
             m = md5.new()
             m.update(open(tarball_filename).read())
