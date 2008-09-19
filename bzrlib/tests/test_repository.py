@@ -744,13 +744,16 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
-    def test__max_pack_count(self):
-        """The maximum pack count is a function of the number of revisions."""
+    def get_packs(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        return repo._pack_collection
+
+    def test__max_pack_count(self):
+        """The maximum pack count is a function of the number of revisions."""
         # no revisions - one pack, so that we can have a revision free repo
         # without it blowing up
+        packs = self.get_packs()
         self.assertEqual(1, packs._max_pack_count(0))
         # after that the sum of the digits, - check the first 1-9
         self.assertEqual(1, packs._max_pack_count(1))
@@ -772,21 +775,16 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(25, packs._max_pack_count(112894))
 
     def test_pack_distribution_zero(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))
 
     def test_ensure_loaded_unlocked(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
+        packs = self.get_packs()
         self.assertRaises(errors.ObjectNotLocked,
-                          repo._pack_collection.ensure_loaded)
+                          packs.ensure_loaded)
 
     def test_pack_distribution_one_to_nine(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         self.assertEqual([1],
             packs.pack_distribution(1))
         self.assertEqual([1, 1],
@@ -808,9 +806,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_pack_distribution_stable_at_boundaries(self):
         """When there are multi-rev packs the counts are stable."""
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         # in 10s:
         self.assertEqual([10], packs.pack_distribution(10))
         self.assertEqual([10, 1], packs.pack_distribution(11))
@@ -825,9 +821,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([100, 100, 10, 1], packs.pack_distribution(211))
 
     def test_plan_pack_operations_2009_revisions_skip_all_packs(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(2000, "big"), (9, "medium")]
         # rev count - 2009 -> 2x1000 + 9x1
         pack_operations = packs.plan_autopack_combinations(
@@ -835,9 +829,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([], pack_operations)
 
     def test_plan_pack_operations_2010_revisions_skip_all_packs(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(2000, "big"), (9, "medium"), (1, "single")]
         # rev count - 2010 -> 2x1000 + 1x10
         pack_operations = packs.plan_autopack_combinations(
@@ -845,15 +837,25 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([], pack_operations)
 
     def test_plan_pack_operations_2010_combines_smallest_two(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(1999, "big"), (9, "medium"), (1, "single2"),
             (1, "single1")]
         # rev count - 2010 -> 2x1000 + 1x10 (3)
         pack_operations = packs.plan_autopack_combinations(
             existing_packs, [1000, 1000, 10])
         self.assertEqual([[2, ["single2", "single1"]], [0, []]], pack_operations)
+
+    def test_plan_pack_operations_110_doesnt_repack_single_entry(self):
+        packs = self.get_packs()
+        existing_packs = [(55, "big"), (25, "medium"), (21, "medium2"),
+                          (9, "small")]
+        pack_operations = packs.plan_autopack_combinations(existing_packs,
+                                                           [100, 10])
+        # This initially wants to create a 100 size pack, and a 10 size pack.
+        # However, there is only a single pack with 1 entry to put into the
+        # final pack.
+        self.assertEqual([[101, ['big', 'medium', 'medium2']]],
+                         pack_operations)
 
     def test_all_packs_none(self):
         format = self.get_format()

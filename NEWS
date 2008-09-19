@@ -32,6 +32,10 @@ IN DEVELOPMENT
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
 
+    * The autopacking logic will now avoid creating a new pack with
+      identical contents to an existing pack.
+      (John Arbash Meinel, #242510)
+
   DOCUMENTATION:
 
   API CHANGES:

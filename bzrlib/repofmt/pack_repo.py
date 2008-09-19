@@ -1276,8 +1276,8 @@ class RepositoryPackCollection(object):
         # plan out what packs to keep, and what to reorganise
         while len(existing_packs):
             # take the largest pack, and if its less than the head of the
-            # distribution chart we will include its contents in the new pack for
-            # that position. If its larger, we remove its size from the
+            # distribution chart we will include its contents in the new pack
+            # for that position. If its larger, we remove its size from the
             # distribution chart
             next_pack_rev_count, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
@@ -1300,7 +1300,12 @@ class RepositoryPackCollection(object):
                     # this pack is used up, shift left.
                     del pack_distribution[0]
                     pack_operations.append([0, []])
-        
+
+        if len(pack_operations) > 1:
+            # Check the last pack, it is possible that it has only a single
+            # entry, which would cause us to repack the node into itself
+            if len(pack_operations[-1][1]) == 1:
+                pack_operations.pop()
         return pack_operations
 
     def ensure_loaded(self):
