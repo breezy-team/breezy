@@ -392,5 +392,11 @@ if __name__=='__main__':
   if options.authorfile!=None:
     a=load_authors(options.authorfile)
 
+  try:
+    import msvcrt
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+  except ImportError:
+    pass
+
   sys.exit(hg2git(options.repourl,m,options.marksfile,options.headsfile,
     options.statusfile,authors=a,sob=options.sob,force=options.force))
