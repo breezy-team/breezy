@@ -1339,11 +1339,12 @@ class TransportTests(TestTransportImplementation):
                          transport.abspath("/foo"))
 
     def test_win32_abspath(self):
-        cur_platform = sys.platform
-        sys.platform = "win32"
-        def restore():
-            sys.platform = cur_platform
-        self.addCleanup(restore)
+        # Note we tried to set sys.platform='win32' so we could test on
+        # other platforms too, but the was osutils does platform specific
+        # things at import time defeated us...
+        if sys.platform != 'win32':
+            raise TestSkipped(
+                'Testing drive letters in abspath implemented only for win32')
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
