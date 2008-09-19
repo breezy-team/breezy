@@ -18,7 +18,7 @@ import os
 import sys
 
 from bzrlib import osutils
-from bzrlib.tests import TestCase, TestCaseInTempDir, Feature
+from bzrlib.tests import TestCase, TestCaseInTempDir, TestSkipped, Feature
 from bzrlib.win32utils import glob_expand, get_app_path
 from bzrlib import win32utils
 
@@ -191,8 +191,11 @@ class TestLocationsCtypes(TestCase):
         # get_appdata_location
         # XXX - See bug 262874, which asserts the correct encoding is 'mbcs',
         encoding = osutils.get_user_encoding()
+        env_val = os.environ.get("APPDATA", None)
+        if not env_val:
+            raise TestSkipped("No APPDATA environment variable exists")
         self.assertPathsEqual(win32utils.get_appdata_location(),
-                              os.environ["APPDATA"].decode(encoding))
+                              env_val.decode(encoding))
 
     def test_local_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
