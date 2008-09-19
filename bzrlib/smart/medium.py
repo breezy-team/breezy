@@ -704,7 +704,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
-BZR_DEFAULT_INTERFACE = '0.0.0.0'
+BZR_DEFAULT_INTERFACE = None
 BZR_DEFAULT_PORT = 4155
 
 
@@ -736,15 +736,26 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """Connect this medium if not already connected."""
         if self._connected:
             return
-        self._socket = socket.socket()
-        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         if self._port is None:
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
-        try:
-            self._socket.connect((self._host, port))
-        except socket.error, err:
+        sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC, 
+            socket.SOCK_STREAM, 0, socket.AI_ADDRCONFIG)
+        err = socket.error("no address found for %s" % self._host)
+        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+            try:
+                self._socket = socket.socket(family, socktype, proto)
+                self._socket.setsockopt(socket.IPPROTO_TCP, 
+                                        socket.TCP_NODELAY, 1)
+                self._socket.connect(sockaddr)
+            except socket.error, err:
+                if self._socket is not None:
+                    self._socket.close()
+                self._socket = None
+                continue
+            break
+        if self._socket is None:
             # socket errors either have a (string) or (errno, string) as their
             # args.
             if type(err.args) is str:
