@@ -562,12 +562,16 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # Do a direct lookup of all possible text keys, and figure out which ones
     # are actually present, and then convert it back to revision_ids, since the
     # file_id prefix is shared by everything.
-    text_parent_map = branch.repository.texts.get_parent_map(text_keys)
     # Using a set of revisions instead of a set of keys saves about 1MB (out of
     # say 400). Not a huge deal, but still "better".
-    modified_text_revisions = set(key[1] for key in text_parent_map)
-    del text_parent_map
-    del text_keys
+    get_parent_map = branch.repository.texts.get_parent_map
+    modified_text_revisions = set()
+    chunk_size = 1000
+    for start in xrange(0, len(text_keys), chunk_size):
+        next_keys = text_keys[start:start + chunk_size]
+        modified_text_revisions.update(
+            [k[1] for k in get_parent_map(next_keys)])
+    del text_keys, next_keys
 
     result = []
     if direction == 'forward':
