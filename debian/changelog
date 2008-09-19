@@ -5,7 +5,31 @@ bzr-builddeb (2.0.1) UNRELEASED; urgency=low
       report it as stored in the compatibility directory. (bug #262618)
   * Don't move the result if the source and destination are the same location.
     (bug #262621)
-  * Correct --result-dir -> --result in the help for "builddeb". (bug #262619)
+  * Use --result-dir rather than --result for concistency with the other
+    options and the configuration key. --result is still accepted, but
+    deprecated. (bug #263643)
+  * Add a revisionspec that allows you to specify a revision by the
+    package version number, e.g. -r package:0.1-1.
+    https://blueprints.launchpad.net/bzr-builddeb/+spec/package-revisionspec
+  * Use the upstream part of the version number when repacking the tarball.
+    (bug #263373)
+  * Merge the upstream tags in to the packaging ones after importing a new
+    upstream. (bug #263373)
+  * Strip the changelog message as debcommit does. Thanks to Colin Watson.
+    (bug #265045)
+  * "Fix" fetching between two locked branches which share a repository.
+    (bug #264705)
+  * Handle remote files in repack check that checksums match when target
+    exists. (bug #263371)
+  * Fix the README to mention bzrtools is required.
+  * Depend on at least 0.1.11 of python-debian for strict=False support. 
+  * Check that versions are in the ancestry of the current branch.
+    (bug #264701)
+  * Fix locking problems with merge_upstream in shared repository.
+  * Handle invalid version numbers in the changelog by ignoring them.
+    (bug #248447)
+  * During merge-upstream correctly check whether the new upstream is
+    already imported. (bug #272118)
 
  -- James Westby <james.westby@canonical.com>  Fri, 29 Aug 2008 14:02:42 +0100
 
