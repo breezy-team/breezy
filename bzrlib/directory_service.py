@@ -74,14 +74,14 @@ class AliasDirectory(object):
             'push': branch.get_push_location,
             'this': lambda: branch.base
         }
-        if '/' in url:
-            name = url[1:url.find('/')]
-            extra = url[url.find('/') + 1:]
+        parts = url.split('/', 1)
+        if len(parts) == 2:
+            name, extra = parts
         else:
-            name = url[1:]
+            (name,) = parts
             extra = None
         try:
-            method = lookups[name]
+            method = lookups[name[1:]]
         except KeyError:
             raise errors.InvalidLocationAlias(url)
         else:
