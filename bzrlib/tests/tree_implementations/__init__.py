@@ -272,17 +272,21 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
+        # We avoid combining characters in file names here, normalization
+        # checks (as performed by some file systems (OSX) are outside the scope
+        # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
+        # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
         paths = [u'',
-                 u'f\xf6',
-                 u'b\xe5r/',
-                 u'b\xe5r/b\xe1z',
+                 u'fo\N{Euro Sign}o',
+                 u'ba\N{Euro Sign}r/',
+                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
         file_ids = ['TREE_ROOT',
-                    'f\xc3\xb6-id',
-                    'b\xc3\xa5r-id',
-                    'b\xc3\xa1z-id',
+                    'fo\xe2\x82\xaco-id',
+                    'ba\xe2\x82\xacr-id',
+                    'ba\xe2\x82\xacz-id',
                    ]
         try:
             self.build_tree(paths[1:])
@@ -304,8 +308,9 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         """Generate a tree with utf8 ancestors."""
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'.encode('utf-8')])
+        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
+                  [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)
