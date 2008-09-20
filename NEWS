@@ -13,6 +13,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr branch`` now accepts a ``--standalone`` option, which creates a
+      standalone branch regardless of the presence of shared repositories.
+      (Daniel Watkins)
+
     * Switching in heavyweight checkouts uses the master branch's context, not
       the checkout's context.  (Adrian Wilkins)
 
