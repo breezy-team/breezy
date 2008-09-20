@@ -672,7 +672,7 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
     at least one tree.
     :return: a set of file ids for the specified filenames and their children.
     """
-    if filenames is None:
+    if not filenames:
         return None
     specified_path_ids = _find_ids_across_trees(filenames, trees,
         require_versioned)

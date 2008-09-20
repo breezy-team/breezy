@@ -17,7 +17,7 @@
 """Tests for implementations of Repository.has_revisions."""
 
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestHasRevisions(TestCaseWithRepository):
