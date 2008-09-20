@@ -374,8 +374,12 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._fetch_order, False),
                          self.find_get_record_stream(source.inventories.calls))
+        # Because of bugs in the old fetch code, revisions could accidentally
+        # have deltas present in knits. However, it was never intended, so we
+        # always for include_delta_closure=True, to make sure we get fulltexts.
+        # bug #261339
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, False),
+                          target._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
         # standard item_keys_introduced_by actually does a lookup for every
@@ -386,7 +390,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # we care about.
         signature_calls = source.signatures.calls[-1:]
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, False),
+                          target._fetch_order, True),
                          self.find_get_record_stream(signature_calls))
 
     def test_fetch_no_deltas_with_delta_closure(self):

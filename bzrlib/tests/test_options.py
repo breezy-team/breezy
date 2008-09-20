@@ -256,6 +256,12 @@ class TestListOptions(TestCase):
         opts, args = self.parse(options, ['--hello=world', '--hello=sailor'])
         self.assertEqual(['world', 'sailor'], opts.hello)
 
+    def test_list_option_with_dash(self):
+        options = [option.ListOption('with-dash', type=str)]
+        opts, args = self.parse(options, ['--with-dash=world',
+                                          '--with-dash=sailor'])
+        self.assertEqual(['world', 'sailor'], opts.with_dash)
+
     def test_list_option_no_arguments(self):
         options = [option.ListOption('hello', type=str)]
         opts, args = self.parse(options, [])

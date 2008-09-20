@@ -20,7 +20,7 @@ from bzrlib import bzrdir
 from bzrlib.tests import (
     TestNotApplicable,
     )
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
 
 

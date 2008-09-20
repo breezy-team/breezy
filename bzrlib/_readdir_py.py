@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,13 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for repository packing."""
-
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+"""Python implementation of readdir interface."""
 
 
-class TestPack(TestCaseWithRepository):
+import os
 
-    def test_pack_empty_does_not_error(self):
-        repo = self.make_repository('.')
-        repo.pack()
+
+def read_dir(path):
+    """Like os.listdir, this reads the contents of a directory.
+
+    There is a C module which is recommended which will return
+    a sort key in the first element of the tuple to allow slightly
+    more efficient behaviour on the operating systems part.
+
+    :param path: the directory to list.
+    :return: a list of (None, basename) tuples.
+    """
+    return [(None, name) for name in os.listdir(path)]

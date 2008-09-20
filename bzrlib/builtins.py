@@ -226,7 +226,12 @@ class cmd_cat_revision(Command):
         # TODO: jam 20060112 should cat-revision always output utf-8?
         if revision_id is not None:
             revision_id = osutils.safe_revision_id(revision_id, warn=False)
-            self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
+            try:
+                self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
+            except errors.NoSuchRevision:
+                msg = "The repository %s contains no revision %s." % (b.repository.base,
+                    revision_id)
+                raise errors.BzrCommandError(msg)
         elif revision is not None:
             for rev in revision:
                 if rev is None:
@@ -1307,22 +1312,22 @@ class cmd_init(Command):
             _create_prefix(to_transport)
 
         try:
-            existing_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
+            a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = bzrdir.BzrDir.create_branch_convenience
             branch = create_branch(to_transport.base, format=format,
                                    possible_transports=[to_transport])
+            a_bzrdir = branch.bzrdir
         else:
             from bzrlib.transport.local import LocalTransport
-            if existing_bzrdir.has_branch():
+            if a_bzrdir.has_branch():
                 if (isinstance(to_transport, LocalTransport)
-                    and not existing_bzrdir.has_workingtree()):
+                    and not a_bzrdir.has_workingtree()):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
-            else:
-                branch = existing_bzrdir.create_branch()
-                existing_bzrdir.create_workingtree()
+            branch = a_bzrdir.create_branch()
+            a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
@@ -1331,8 +1336,7 @@ class cmd_init(Command):
                     ' to append-revisions-only.  Try --experimental-branch6')
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
-                to_transport)[0], verbose=0, outfile=self.outf)
+            show_bzrdir_info(a_bzrdir, verbose=0, outfile=self.outf)
 
 
 class cmd_init_repository(Command):
@@ -1386,8 +1390,7 @@ class cmd_init_repository(Command):
         repo.set_make_working_trees(not no_trees)
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(bzrdir.BzrDir.open_containing_from_transport(
-                to_transport)[0], verbose=0, outfile=self.outf)
+            show_bzrdir_info(repo.bzrdir, verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):
@@ -2661,9 +2664,10 @@ class cmd_selftest(Command):
                             help='Load a test id list from a text file.'),
                      ListOption('debugflag', type=str, short_name='E',
                                 help='Turn on a selftest debug flag.'),
-                     Option('starting-with', type=str, argname='TESTID',
-                            short_name='s',
-                            help='Load only the tests starting with TESTID.'),
+                     ListOption('starting-with', type=str, argname='TESTID',
+                                param_name='starting_with', short_name='s',
+                                help=
+                                'Load only the tests starting with TESTID.'),
                      ]
     encoding_type = 'replace'
 
@@ -3312,14 +3316,17 @@ class cmd_missing(Command):
             Option('other', 'Same as --theirs-only.'),
             'log-format',
             'show-ids',
-            'verbose'
+            'verbose',
+            Option('include-merges', 'Show merged revisions.'),
             ]
     encoding_type = 'replace'
 
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, log_format=None, long=False, short=False, line=False, 
-            show_ids=False, verbose=False, this=False, other=False):
+            theirs_only=False,
+            log_format=None, long=False, short=False, line=False,
+            show_ids=False, verbose=False, this=False, other=False,
+            include_merges=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
 
         if this:
@@ -3355,7 +3362,9 @@ class cmd_missing(Command):
             remote_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(
-                    local_branch, remote_branch, restrict)
+                    local_branch, remote_branch, restrict,
+                    backward=not reverse,
+                    include_merges=include_merges)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
@@ -3363,11 +3372,6 @@ class cmd_missing(Command):
                 lf = log_format(to_file=self.outf,
                                 show_ids=show_ids,
                                 show_timezone='original')
-                if reverse is False:
-                    if local_extra is not None:
-                        local_extra.reverse()
-                    if remote_extra is not None:
-                        remote_extra.reverse()
 
                 status_code = 0
                 if local_extra and not theirs_only:
@@ -4555,8 +4559,14 @@ class cmd_switch(Command):
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
+            this_branch = control_dir.open_branch()
+            # This may be a heavy checkout, where we want the master branch
+            this_url = this_branch.get_bound_location()
+            # If not, use a local sibling
+            if this_url is None:
+                this_url = this_branch.base
             to_branch = Branch.open(
-                control_dir.open_branch().base + '../' + to_location)
+                urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))

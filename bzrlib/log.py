@@ -230,7 +230,7 @@ def _show_log(branch,
             if limit:
                 log_count += 1
                 if log_count >= limit:
-                    break
+                    return
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
@@ -865,7 +865,7 @@ class LineLogFormatter(LogFormatter):
 
     def log_string(self, revno, rev, max_chars):
         """Format log info into one string. Truncate tail of string
-        :param  revno:      revision number (int) or None.
+        :param  revno:      revision number or None.
                             Revision numbers counts from 1.
         :param  rev:        revision info object
         :param  max_chars:  maximum length of resulting string
