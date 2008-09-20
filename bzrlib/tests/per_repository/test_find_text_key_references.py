@@ -18,7 +18,7 @@
 """Test the find_text_key_references API."""
 
 
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestFindTextKeyReferences(TestCaseWithRepository):

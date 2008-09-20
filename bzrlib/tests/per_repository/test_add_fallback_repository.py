@@ -19,7 +19,7 @@
 from bzrlib import errors
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestNotApplicable
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestAddFallbackRepository(TestCaseWithRepository):

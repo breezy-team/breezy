@@ -16,7 +16,7 @@
 
 """Tests for revision properties."""
 
-from bzrlib.tests.repository_implementations.test_repository import (
+from bzrlib.tests.per_repository import (
     TestCaseWithRepository,
     )
 

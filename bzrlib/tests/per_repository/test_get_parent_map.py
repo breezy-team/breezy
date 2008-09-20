@@ -17,7 +17,7 @@
 """Tests for the get_parent_map API."""
 
 from bzrlib import revision
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestGetParentMap(TestCaseWithRepository):
