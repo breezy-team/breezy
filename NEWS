@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Switching in heavyweight checkouts uses the master branch's context, not
+      the checkout's context.  (Adrian Wilkins)
+
   BUG FIXES:
 
     * Branching from a shared repository on a smart server into a new
