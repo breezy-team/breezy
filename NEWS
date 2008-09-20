@@ -13,6 +13,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Location aliases can now accept a trailing path.  (Micheal Hudson)
+
     * Switching in heavyweight checkouts uses the master branch's context, not
       the checkout's context.  (Adrian Wilkins)
 
