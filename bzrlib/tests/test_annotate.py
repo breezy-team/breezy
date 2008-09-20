@@ -306,7 +306,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                  ''.join('\t'.join(l) for l in actual))
 
     def test_annotate_duplicate_lines(self):
-        # XXX: Should this be a repository_implementations test?
+        # XXX: Should this be a per_repository test?
         tree1 = self.create_duplicate_lines_tree()
         repo = tree1.branch.repository
         repo.lock_read()

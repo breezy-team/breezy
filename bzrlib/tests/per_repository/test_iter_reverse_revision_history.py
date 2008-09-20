@@ -21,7 +21,7 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestIterReverseRevisionHistory(TestCaseWithRepository):

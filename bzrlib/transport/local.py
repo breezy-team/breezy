@@ -109,6 +109,16 @@ class LocalTransport(Transport):
         #       proper handling of stuff like
         path = osutils.normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
+        # on windows, our _local_base may or may not have a drive specified
+        # (ie, it may be "/" or "c:/foo").
+        # If 'relpath' is '/' we *always* get back an abspath without
+        # the drive letter - but if our transport already has a drive letter,
+        # we want our abspaths to have a drive letter too - so handle that
+        # here.
+        if (sys.platform == "win32" and self._local_base[1:2] == ":"
+            and path == '/'):
+            path = self._local_base[:3]
+
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
