@@ -14,13 +14,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for repository packing."""
+"""Tests for Repository.is_write_locked()."""
 
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestPack(TestCaseWithRepository):
+class TestIsWriteLocked(TestCaseWithRepository):
 
-    def test_pack_empty_does_not_error(self):
+    def test_not_locked(self):
         repo = self.make_repository('.')
-        repo.pack()
+        self.assertFalse(repo.is_write_locked())
+
+    def test_read_locked(self):
+        repo = self.make_repository('.')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertFalse(repo.is_write_locked())
+
+    def test_write_locked(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.assertTrue(repo.is_write_locked())

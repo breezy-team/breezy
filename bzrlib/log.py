@@ -865,7 +865,7 @@ class LineLogFormatter(LogFormatter):
 
     def log_string(self, revno, rev, max_chars):
         """Format log info into one string. Truncate tail of string
-        :param  revno:      revision number (int) or None.
+        :param  revno:      revision number or None.
                             Revision numbers counts from 1.
         :param  rev:        revision info object
         :param  max_chars:  maximum length of resulting string
