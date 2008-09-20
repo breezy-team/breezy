@@ -17,6 +17,8 @@ IN DEVELOPMENT
       standalone branch regardless of the presence of shared repositories.
       (Daniel Watkins)
 
+    * Location aliases can now accept a trailing path.  (Micheal Hudson)
+
     * Switching in heavyweight checkouts uses the master branch's context, not
       the checkout's context.  (Adrian Wilkins)
 
