@@ -236,7 +236,6 @@ def SvnExtension(name, *args, **kwargs):
         kwargs["libraries"] = extra_libs
         # APR needs WIN32 defined.
         kwargs["define_macros"] = [("WIN32", None)]
-    is_keychain_provider_available()
     if sys.platform == 'darwin':
         # on Mac OS X, we need to check for Keychain availability
         if is_keychain_provider_available():
