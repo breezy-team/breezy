@@ -13,11 +13,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * The per-file log algorithm now uses a lighter-weight way of tracking
-      when changes to a file are merged into another revision. The old
-      method created a new set at every merge point, which was wasteful
-      when the merge did not introduce new revisions.
-      (John Arbash Meinel)
+    * ``bzr log file`` has been changed. It now uses a different method
+      for determining which revisions to show as merging the changes to
+      the file. It now only shows revisions which merged the change
+      towards your mainline. (The old one would also show revisions which
+      then merged your mainline back, and got the new change.) This
+      simplifies the output, makes it faster, and reduces memory
+      consumption.  (John Arbash Meinel)
 
   BUG FIXES:
 
