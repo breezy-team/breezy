@@ -108,7 +108,7 @@ def svn_build_data():
 
 def is_keychain_provider_available():
     """
-    Checks for the availability of the Keychain simple authentication provider in Subversion by compiler a simple test program.
+    Checks for the availability of the Keychain simple authentication provider in Subversion by compiling a simple test program.
     """
     abd = apr_build_data()
     sbd = svn_build_data()
