@@ -13,6 +13,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr branch`` now accepts a ``--standalone`` option, which creates a
+      standalone branch regardless of the presence of shared repositories.
+      (Daniel Watkins)
+
     * ``bzr log file`` has been changed. It now uses a different method
       for determining which revisions to show as merging the changes to
       the file. It now only shows revisions which merged the change
@@ -20,6 +24,11 @@ IN DEVELOPMENT
       then merged your mainline back, and got the new change.) This
       simplifies the output, makes it faster, and reduces memory
       consumption.  (John Arbash Meinel)
+
+    * Location aliases can now accept a trailing path.  (Micheal Hudson)
+
+    * Switching in heavyweight checkouts uses the master branch's context, not
+      the checkout's context.  (Adrian Wilkins)
 
   BUG FIXES:
 
@@ -42,6 +51,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Explain revision/range identifiers. (Daniel Clemente)
+
   API CHANGES:
 
   TESTING:
@@ -49,6 +60,10 @@ IN DEVELOPMENT
     * ``bzrlib.tests.repository_implementations`` has been renamed to
       ``bzrlib.tests.per_repository`` so that we have a common structure
       (and it is shorter). (John Arbash Meinel, #239343)
+
+    * ``LocalTransport.abspath()`` now returns a drive letter if the
+      transport has one, fixing numerous tests on Windows.
+      (Mark Hammond)
 
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
@@ -88,6 +103,10 @@ it in a future repository format.
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
 
+    * ``bzr remove-tree`` will now refuse to remove a tree with uncommitted
+      changes, unless the ``--force`` option is specified.
+      (Lukáš Lalinský, #74101)
+
     * ``bzr rm`` will now scan for files that are missing and remove just
       them automatically, much as ``bzr add`` scans for new files that
       are not ignored and adds them automatically. (Robert Collins)
@@ -96,6 +115,8 @@ it in a future repository format.
 
     * Support for GSSAPI authentication when using FTP as documented in 
       RFC2228. (Jelmer Vernooij, #49623)
+
+    * Add support for IPv6 in the smart server. (Jelmer Vernooij, #165014)
 
   IMPROVEMENTS:
 
