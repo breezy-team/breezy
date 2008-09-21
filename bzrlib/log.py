@@ -565,6 +565,10 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # Looking up keys in batches of 1000 can cut the time in half, as well as
     # memory consumption. GraphIndex *does* like to look for a few keys in
     # parallel, it just doesn't like looking for *lots* of keys in parallel.
+    # TODO: This code needs to be re-evaluated periodically as we tune the
+    #       indexing layer. We might consider passing in hints as to the known
+    #       access pattern (sparse/clustered, high success rate/low success
+    #       rate). This particular access is clustered with a low success rate.
     get_parent_map = branch.repository.texts.get_parent_map
     modified_text_revisions = set()
     chunk_size = 1000
