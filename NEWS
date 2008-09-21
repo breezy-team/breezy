@@ -12,6 +12,10 @@ bzr-svn 0.4.13	UNRELEASED
 
    * Properly convert errors raised when starting a commit. (#267899)
 
+  FEATURES
+
+   * Add support for using Apple keychain.
+
 bzr-svn 0.4.12	2008-09-01
 
   BUG FIXES

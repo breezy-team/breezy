@@ -2753,6 +2753,18 @@ static PyObject *get_windows_ssl_server_trust_provider(PyObject *self)
 #endif
 #endif
 
+#if defined(__APPLE__)
+static PyObject *get_keychain_simple_provider(PyObject* self)
+{
+	AuthProviderObject *auth = PyObject_New(AuthProviderObject, &AuthProvider_Type);
+	auth->pool = Pool(NULL);
+	if (auth->pool == NULL)
+		return NULL;
+	svn_auth_get_keychain_simple_provider(&auth->provider, auth->pool);
+	return (PyObject *)auth;
+}
+#endif
+
 static PyMethodDef ra_module_methods[] = {
 	{ "version", (PyCFunction)version, METH_NOARGS, NULL },
 	{ "get_ssl_client_cert_pw_file_provider", (PyCFunction)get_ssl_client_cert_pw_file_provider, METH_NOARGS, NULL },
@@ -2764,6 +2776,9 @@ static PyMethodDef ra_module_methods[] = {
 #if SVN_VER_MAJOR >= 1 && SVN_VER_MINOR >= 5
 	{ "get_windows_ssl_server_trust_provider", (PyCFunction)get_windows_ssl_server_trust_provider, METH_NOARGS, NULL },
 #endif
+#endif
+#if defined(__APPLE__)
+	{ "get_keychain_simple_provider", (PyCFunction)get_keychain_simple_provider, METH_NOARGS, NULL },
 #endif
 	{ "get_username_prompt_provider", (PyCFunction)get_username_prompt_provider, METH_VARARGS, NULL },
 	{ "get_simple_prompt_provider", (PyCFunction)get_simple_prompt_provider, METH_VARARGS, NULL },
