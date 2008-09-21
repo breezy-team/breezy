@@ -2753,7 +2753,7 @@ static PyObject *get_windows_ssl_server_trust_provider(PyObject *self)
 #endif
 #endif
 
-#if defined(DARWIN)
+#if defined(BZR_SVN_KEYCHAIN_PROVIDER_AVAILABLE)
 static PyObject *get_keychain_simple_provider(PyObject* self)
 {
 	AuthProviderObject *auth = PyObject_New(AuthProviderObject, &AuthProvider_Type);
@@ -2777,7 +2777,7 @@ static PyMethodDef ra_module_methods[] = {
 	{ "get_windows_ssl_server_trust_provider", (PyCFunction)get_windows_ssl_server_trust_provider, METH_NOARGS, NULL },
 #endif
 #endif
-#if defined(DARWIN)
+#if defined(BZR_SVN_KEYCHAIN_PROVIDER_AVAILABLE)
 	{ "get_keychain_simple_provider", (PyCFunction)get_keychain_simple_provider, METH_NOARGS, NULL },
 #endif
 	{ "get_username_prompt_provider", (PyCFunction)get_username_prompt_provider, METH_VARARGS, NULL },

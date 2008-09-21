@@ -106,6 +106,23 @@ def svn_build_data():
     raise Exception("Subversion development files not found. "
                     "Please set SVN_PREFIX or (SVN_LIBRARY_PATH and SVN_HEADER_PATH) environment variable. ")
 
+def is_keychain_provider_available():
+    """
+    Checks for the availability of the Keychain simple authentication provider in Subversion by compiler a simple test program.
+    """
+    abd = apr_build_data()
+    sbd = svn_build_data()
+    gcc_command_args = ['-I' + inc for inc in sbd[0]] + ['-L' + lib for lib in sbd[1]] + ['-I' + abd[0], '-lsvn_subr-1', '-o', 'keychain_provider_check', 'keychain_provider_check.c']
+    try:
+        run_cmd('gcc', ' '.join(gcc_command_args))
+    except:
+        return False
+    try:
+        os.unlink('keychain_provider_check')
+    except:
+        pass
+    return True
+
 class VersionQuery(object):
     def __init__(self, filename):
         self.filename = filename
@@ -218,6 +235,12 @@ def SvnExtension(name, *args, **kwargs):
         kwargs["libraries"] = extra_libs
         # APR needs WIN32 defined.
         kwargs["define_macros"] = [("WIN32", None)]
+    if sys.platform == 'darwin':
+        # on Mac OS X, we need to check for Keychain availability
+        if is_keychain_provider_available():
+            if "define_macros" not in kwargs:
+                kwargs["define_macros"] = []
+            kwargs["define_macros"].extend((('DARWIN', None), ('BZR_SVN_KEYCHAIN_PROVIDER_AVAILABLE', '1')))
     return Extension("bzrlib.plugins.svn.%s" % name, *args, **kwargs)
 
 
