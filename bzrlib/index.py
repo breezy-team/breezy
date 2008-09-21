@@ -387,6 +387,24 @@ class GraphIndex(object):
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
 
+    def _get_nodes_by_key(self):
+        if self._nodes_by_key is None:
+            nodes_by_key = {}
+            if self.node_ref_lists:
+                for key, (value, references) in self._nodes.iteritems():
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value, references
+            else:
+                for key, value in self._nodes.iteritems():
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value
+            self._nodes_by_key = nodes_by_key
+        return self._nodes_by_key
+
     def iter_all_entries(self):
         """Iterate over all keys within the index.
 
@@ -579,6 +597,7 @@ class GraphIndex(object):
                 else:
                     yield self, key, self._nodes[key]
             return
+        nodes_by_key = self._get_nodes_by_key()
         for key in keys:
             # sanity check
             if key[0] is None:
@@ -586,7 +605,7 @@ class GraphIndex(object):
             if len(key) != self._key_length:
                 raise errors.BadIndexKey(key)
             # find what it refers to:
-            key_dict = self._nodes_by_key
+            key_dict = nodes_by_key
             elements = list(key)
             # find the subdict whose contents should be returned.
             try:
