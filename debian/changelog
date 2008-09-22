@@ -1,4 +1,4 @@
-bzr-builddeb (2.0.1) UNRELEASED; urgency=low
+bzr-builddeb (2.0.1) experimental; urgency=low
 
   * Fix retrieval of the upstream source from a watch file of the archive.
     - It would download to the specified tarball directory, but then
@@ -31,7 +31,7 @@ bzr-builddeb (2.0.1) UNRELEASED; urgency=low
   * During merge-upstream correctly check whether the new upstream is
     already imported. (bug #272118)
 
- -- James Westby <james.westby@canonical.com>  Fri, 29 Aug 2008 14:02:42 +0100
+ -- James Westby <james.westby@canonical.com>  Mon, 22 Sep 2008 12:04:09 +0100
 
 bzr-builddeb (2.0) experimental; urgency=low
 
