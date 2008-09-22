@@ -1252,7 +1252,7 @@ class TransportTests(TestTransportImplementation):
         self.failIf(t3.has('b/d'))
 
         if t1.is_readonly():
-            open('b/d', 'wb').write('newfile\n')
+            self.build_tree_contents([('b/d', 'newfile\n')])
         else:
             t2.put_bytes('d', 'newfile\n')
 
@@ -1337,6 +1337,23 @@ class TransportTests(TestTransportImplementation):
 
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
+
+    def test_win32_abspath(self):
+        # Note: we tried to set sys.platform='win32' so we could test on
+        # other platforms too, but then osutils does platform specific
+        # things at import time which defeated us...
+        if sys.platform != 'win32':
+            raise TestSkipped(
+                'Testing drive letters in abspath implemented only for win32')
+
+        # smoke test for abspath on win32.
+        # a transport based on 'file:///' never fully qualifies the drive.
+        transport = get_transport("file:///")
+        self.failUnlessEqual(transport.abspath("/"), "file:///")
+
+        # but a transport that starts with a drive spec must keep it.
+        transport = get_transport("file:///C:/")
+        self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
         transport = self.get_transport()
@@ -1546,7 +1563,7 @@ class TransportTests(TestTransportImplementation):
         content = osutils.rand_bytes(200*1024)
         content_size = len(content)
         if transport.is_readonly():
-            file('a', 'w').write(content)
+            self.build_tree_contents([('a', content)])
         else:
             transport.put_bytes('a', content)
         def check_result_data(result_vector):

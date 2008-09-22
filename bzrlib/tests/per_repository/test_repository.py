@@ -44,7 +44,7 @@ from bzrlib.tests import (
     TestNotApplicable,
     TestSkipped,
     )
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -335,7 +335,9 @@ class TestRepository(TestCaseWithRepository):
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
                          list(tree.list_files(include_root=True)))
-        tree = wt.branch.repository.revision_tree(None)
+        tree = self.callDeprecated(['NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.'],
+            wt.branch.repository.revision_tree, None)
         self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
@@ -691,10 +693,10 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(signature, repo2.get_signature_text('A'))
 
     # XXX: this helper duplicated from tests.test_repository
-    def make_remote_repository(self, path):
+    def make_remote_repository(self, path, shared=False):
         """Make a RemoteRepository object backed by a real repository that will
         be created at the given path."""
-        repo = self.make_repository(path)
+        repo = self.make_repository(path, shared=shared)
         smart_server = server.SmartTCPServer_for_testing()
         smart_server.setUp(self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
@@ -737,6 +739,37 @@ class TestRepository(TestCaseWithRepository):
         local_repo = local_bzrdir.open_repository()
         remote_backing_repo = bzrdir.BzrDir.open(
             self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_sprout_branch_from_hpss_preserves_shared_repo_format(self):
+        """branch.sprout from a smart server preserves the repository format of
+        a branch from a shared repository.
+        """
+        weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
+                         RepositoryFormat7()]
+        if self.repository_format in weave_formats:
+            raise TestNotApplicable(
+                "Cannot fetch weaves over smart protocol.")
+        # Make a shared repo
+        remote_repo = self.make_remote_repository('remote', shared=True)
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        # Make a branch in that repo in an old format that isn't the default
+        # branch format for the repo.
+        from bzrlib.branch import BzrBranchFormat5
+        format = remote_backing_repo.bzrdir.cloning_metadir()
+        format._branch_format = BzrBranchFormat5()
+        remote_transport = remote_repo.bzrdir.root_transport.clone('branch')
+        remote_backing_repo.bzrdir.create_branch_convenience(
+            remote_transport.base, force_new_repo=False, format=format)
+        remote_branch = bzrdir.BzrDir.open_from_transport(
+            remote_transport).open_branch()
+        try:
+            local_bzrdir = remote_branch.bzrdir.sprout('local')
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
     def test__make_parents_provider(self):
