@@ -17,6 +17,10 @@ IN DEVELOPMENT
       standalone branch regardless of the presence of shared repositories.
       (Daniel Watkins)
 
+    * ``bzr push`` is faster in the case there are no new revisions to
+      push.  It is also faster if there are no tags in the local branch.
+      (Andrew Bennetts)
+
     * Location aliases can now accept a trailing path.  (Micheal Hudson)
 
     * Switching in heavyweight checkouts uses the master branch's context, not
