@@ -47,6 +47,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * New race-free method on MutableTree ``get_file_with_stat`` for use
+      when generating stat cache results. (Robert Collins)
+
 
 bzr 1.7rc1 2008-09-09
 ---------------------

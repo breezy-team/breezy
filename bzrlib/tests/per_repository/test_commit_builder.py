@@ -414,7 +414,11 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             else:
                 self.assertFalse(version_recorded)
             if expect_fs_hash:
-                self.assertEqual(tree.get_file_sha1(file_id), fs_hash)
+                tree_file_stat = tree.get_file_with_stat(file_id)
+                tree_file_stat[0].close()
+                self.assertEqual(2, len(fs_hash))
+                self.assertEqual(tree.get_file_sha1(file_id), fs_hash[0])
+                self.assertEqualStat(tree_file_stat[1], fs_hash[1])
             else:
                 self.assertEqual(None, fs_hash)
             new_entry = builder.new_inventory[file_id]

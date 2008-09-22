@@ -599,9 +599,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     def test_observed_sha1_cachable(self):
         tree = self.get_tree_with_cachable_file_foo()
         expected_sha1 = osutils.sha_file_by_name('foo')
+        statvalue = os.lstat("foo")
         tree.lock_write()
         try:
-            tree._observed_sha1("foo-id", "foo", expected_sha1)
+            tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
             self.assertEqual(expected_sha1,
                 tree._get_entry(path="foo")[1][0][1])
         finally:
@@ -623,9 +624,117 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.lock_write()
         try:
             tree._observed_sha1("foo-id", "foo",
-                osutils.sha_file_by_name('foo'))
+                (osutils.sha_file_by_name('foo'), os.lstat("foo")))
             # Must not have changed
             self.assertEqual(current_sha1,
                 tree._get_entry(path="foo")[1][0][1])
         finally:
             tree.unlock()
+
+    def test_get_file_with_stat_id_only(self):
+        # Explicit test to ensure we get a lstat value from WT4 trees.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        file_obj, statvalue = tree.get_file_with_stat('foo-id')
+        expected = os.lstat('foo')
+        self.assertEqualStat(expected, statvalue)
+        self.assertEqual(["contents of foo\n"], file_obj.readlines())
+
+
+class TestCorruptDirstate(TestCaseWithTransport):
+    """Tests for how we handle when the dirstate has been corrupted."""
+
+    def create_wt4(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree_4.WorkingTreeFormat4().initialize(control)
+        return tree
+
+    def test_invalid_rename(self):
+        tree = self.create_wt4()
+        # Create a corrupted dirstate
+        tree.lock_write()
+        try:
+            tree.commit('init') # We need a parent, or we always compare with NULL
+            state = tree.current_dirstate()
+            state._read_dirblocks_if_needed()
+            # Now add in an invalid entry, a rename with a dangling pointer
+            state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
+                                            [('f', '', 0, False, ''),
+                                             ('r', 'bar', 0 , False, '')]))
+            self.assertListRaises(errors.CorruptDirstate,
+                                  tree.iter_changes, tree.basis_tree())
+        finally:
+            tree.unlock()
+
+    def get_simple_dirblocks(self, state):
+        """Extract the simple information from the DirState.
+
+        This returns the dirblocks, only with the sha1sum and stat details
+        filtered out.
+        """
+        simple_blocks = []
+        for block in state._dirblocks:
+            simple_block = (block[0], [])
+            for entry in block[1]:
+                # Include the key for each entry, and for each parent include
+                # just the minikind, so we know if it was
+                # present/absent/renamed/etc
+                simple_block[1].append((entry[0], [i[0] for i in entry[1]]))
+            simple_blocks.append(simple_block)
+        return simple_blocks
+
+    def test_update_basis_with_invalid_delta(self):
+        """When given an invalid delta, it should abort, and not be saved."""
+        self.build_tree(['dir/', 'dir/file'])
+        tree = self.create_wt4()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        first_revision_id = tree.commit('init')
+
+        root_id = tree.path2id('')
+        state = tree.current_dirstate()
+        state._read_dirblocks_if_needed()
+        self.assertEqual([
+            ('', [(('', '', root_id), ['d', 'd'])]),
+            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', 'file-id'), ['f', 'f'])]),
+        ],  self.get_simple_dirblocks(state))
+
+        tree.remove(['dir/file'])
+        self.assertEqual([
+            ('', [(('', '', root_id), ['d', 'd'])]),
+            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
+        ],  self.get_simple_dirblocks(state))
+        # Make sure the removal is written to disk
+        tree.flush()
+
+        # self.assertRaises(Exception, tree.update_basis_by_delta,
+        new_dir = inventory.InventoryDirectory('dir-id', 'new-dir', root_id)
+        new_dir.revision = 'new-revision-id'
+        new_file = inventory.InventoryFile('file-id', 'new-file', root_id)
+        new_file.revision = 'new-revision-id'
+        self.assertRaises(errors.InconsistentDelta,
+            tree.update_basis_by_delta, 'new-revision-id',
+            [('dir', 'new-dir', 'dir-id', new_dir),
+             ('dir/file', 'new-dir/new-file', 'file-id', new_file),
+            ])
+        del state
+
+        # Now when we re-read the file it should not have been modified
+        tree.unlock()
+        tree.lock_read()
+        self.assertEqual(first_revision_id, tree.last_revision())
+        state = tree.current_dirstate()
+        state._read_dirblocks_if_needed()
+        self.assertEqual([
+            ('', [(('', '', root_id), ['d', 'd'])]),
+            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
+        ],  self.get_simple_dirblocks(state))

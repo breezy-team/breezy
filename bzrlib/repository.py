@@ -338,6 +338,9 @@ class CommitBuilder(object):
             # if the kind changed the content obviously has
             if kind != parent_entry.kind:
                 store = True
+        # Stat cache fingerprint feedback for the caller - None as we usually
+        # don't generate one.
+        fingerprint = None
         if kind == 'file':
             if content_summary[2] is None:
                 raise ValueError("Files must not have executable = None")
@@ -367,10 +370,16 @@ class CommitBuilder(object):
                 # absence of a content change in the file.
                 nostore_sha = None
             ie.executable = content_summary[2]
-            lines = tree.get_file(ie.file_id, path).readlines()
+            file_obj, stat_value = tree.get_file_with_stat(ie.file_id, path)
+            try:
+                lines = file_obj.readlines()
+            finally:
+                file_obj.close()
             try:
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
                     ie.file_id, lines, heads, nostore_sha)
+                # Let the caller know we generated a stat fingerprint.
+                fingerprint = (ie.text_sha1, stat_value)
             except errors.ExistingContent:
                 # Turns out that the file content was unchanged, and we were
                 # only going to store a new node if it was changed. Carry over
@@ -418,7 +427,7 @@ class CommitBuilder(object):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
-        return self._get_delta(ie, basis_inv, path), True, ie.text_sha1
+        return self._get_delta(ie, basis_inv, path), True, fingerprint
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
