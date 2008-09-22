@@ -148,19 +148,11 @@ class SmartServerVersionedFilesGetParentMap(SmartServerVersionedFilesRequest):
         size_so_far = 0
         next_keys = keys
         first_loop_done = False
-        #print 'next_keys:', next_keys
         while next_keys:
             queried_keys.update(next_keys)
             parent_map = vf_graph.get_parent_map(next_keys)
-            for key in next_keys:
-                if key not in parent_map:
-                    parent_map[key] = ()
-            #print 'parent_map:', parent_map
             next_keys = set()
             for key, parents in parent_map.iteritems():
-#                # adjust for the wire
-#                if parents == (_mod_revision.NULL_REVISION,):
-#                    parents = ()
                 # prepare the next query
                 next_keys.update(parents)
                 if key not in client_seen_keys:

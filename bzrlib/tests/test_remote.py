@@ -1282,6 +1282,23 @@ class TestVersionedFilesGetParentMap(tests.TestCaseWithTransport):
         self.assertTrue(client._medium._is_remote_before((1, 8)))
 
 
+class TestVersionedFilesGetParentMapSerialisation(tests.TestCase):
+
+    def test_serialise_search_recipe_empty(self):
+        recipe = ([], [], 0)
+        bytes = remote._serialise_search_tuple_key_recipe(recipe)
+        self.assertEqual('\n\n0', bytes)
+
+    def test_serialise_search_recipe(self):
+        start = [('start', 'key', 'one'), ('start', 'key', 'two')]
+        stop = [('stop', 'key', 'one'), ('stop', 'key', 'two')]
+        recipe = (start, stop, 123)
+        bytes = remote._serialise_search_tuple_key_recipe(recipe)
+        self.assertEqual(
+            'start key one\x00start key two\nstop key one\x00stop key two\n123',
+            bytes)
+
+
 class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
     """Base class for unit tests for bzrlib.remote._translate_error."""
 

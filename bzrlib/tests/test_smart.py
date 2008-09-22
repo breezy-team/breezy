@@ -40,6 +40,7 @@ from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
 import bzrlib.smart.bzrdir
 import bzrlib.smart.repository
+import bzrlib.smart.versionedfiles
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -1020,6 +1021,23 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
         response = request.execute()
         self.assertEqual(
             SmartServerResponse(('yes',)), response)
+
+
+class TestSmartServerVersionedFilesGetParentMap(tests.TestCaseWithMemoryTransport):
+
+    def test_trivial_bzipped(self):
+        # This tests that the wire encoding is actually bzipped
+        backing = self.get_transport()
+        request = smart.versionedfiles.SmartServerVersionedFilesGetParentMap(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(
+            None, request.execute('', 'revisions', ('missing-id',)))
+        # Note that it returns a body (of '' bzipped).
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
+            request.do_body('\n\n0'))
 
 
 class TestHandlers(tests.TestCase):

@@ -1317,6 +1317,12 @@ class RemoteVersionedFiles(VersionedFiles):
         if response_tuple[0] == 'ok':
             coded = bz2.decompress(response_handler.read_body_bytes())
             revision_graph = _deserialise_search_result(coded)
+            # The server doesn't return explicit results for keys it doesn't
+            # have, so add empty entries for the missing keys to the result
+            # dict.
+            missing = keys.difference(revision_graph)
+            for missing_key in missing:
+                revision_graph[missing_key] = ()
             return revision_graph
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
