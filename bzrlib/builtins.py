@@ -134,7 +134,7 @@ class cmd_status(Command):
     
     Note that --short or -S gives status flags for each item, similar
     to Subversion's status command. To get output similar to svn -q,
-    use bzr -SV.
+    use bzr status -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -4657,5 +4657,5 @@ from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, cmd_weave_join, \
+from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text

@@ -85,6 +85,7 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -361,6 +362,7 @@ class Branch(object):
         """
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -413,11 +415,17 @@ class Branch(object):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
+    @needs_read_lock
     def last_revision_info(self):
         """Return information about the last revision.
 
-        :return: A tuple (revno, last_revision_id).
+        :return: A tuple (revno, revision_id).
         """
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+
+    def _last_revision_info(self):
         rh = self.revision_history()
         revno = len(rh)
         if revno:
@@ -484,7 +492,7 @@ class Branch(object):
             if not overwrite:
                 if graph is None:
                     graph = self.repository.get_graph()
-                if self._ensure_not_diverged(
+                if self._check_if_descendant_or_diverged(
                         stop_revision, last_rev, graph, other):
                     # stop_revision is a descendant of last_rev, but we aren't
                     # overwriting, so we're done.
@@ -849,7 +857,8 @@ class Branch(object):
     def supports_tags(self):
         return self._format.supports_tags()
 
-    def _ensure_not_diverged(self, revision_a, revision_b, graph, other_branch):
+    def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
+                                         other_branch):
         """Ensure that revision_b is a descendant of revision_a.
 
         This is a helper function for update_revisions.
@@ -1494,6 +1503,9 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
+        for rev_id in rev_history:
+            check_not_reserved_id(rev_id)
         self._write_revision_history(rev_history)
         self._clear_cached_state()
         self._cache_revision_history(rev_history)
@@ -1557,9 +1569,11 @@ class BzrBranch(Branch):
             raise errors.NoSuchRevision(self, revision_id)
         current_rev_id = revision_id
         new_history = []
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
         # Do not include ghosts or graph origin in revision_history
         while (current_rev_id in parents_map and
                len(parents_map[current_rev_id]) > 0):
+            check_not_reserved_id(current_rev_id)
             new_history.append(current_rev_id)
             current_rev_id = parents_map[current_rev_id][0]
             parents_map = graph.get_parent_map([current_rev_id])
@@ -1911,23 +1925,11 @@ class BzrBranch6(BzrBranch5):
 
     def __init__(self, *args, **kwargs):
         super(BzrBranch6, self).__init__(*args, **kwargs)
-        self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
 
     def _clear_cached_state(self):
         super(BzrBranch6, self)._clear_cached_state()
-        self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
-
-    @needs_read_lock
-    def last_revision_info(self):
-        """Return information about the last revision.
-
-        :return: A tuple (revno, revision_id).
-        """
-        if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._last_revision_info()
-        return self._last_revision_info_cache
 
     def _last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
