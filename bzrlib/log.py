@@ -586,7 +586,6 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     current_merge_stack = [None]
     for info in view_revs_iter:
         rev_id, revno, depth = info
-        assert depth <= len(current_merge_stack)
         if depth == len(current_merge_stack):
             current_merge_stack.append(info)
         else:
