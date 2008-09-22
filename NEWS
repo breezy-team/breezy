@@ -9,6 +9,12 @@ IN DEVELOPMENT
 
   CHANGES:
 
+    * ``bzr log file`` has been changed. It now uses a different method
+      for determining which revisions to show as merging the changes to
+      the file. It now only shows revisions which merged the change
+      towards your mainline. This simplifies the output, makes it faster,
+      and reduces memory consumption.  (John Arbash Meinel)
+
   FEATURES
 
   IMPROVEMENTS:
@@ -16,14 +22,6 @@ IN DEVELOPMENT
     * ``bzr branch`` now accepts a ``--standalone`` option, which creates a
       standalone branch regardless of the presence of shared repositories.
       (Daniel Watkins)
-
-    * ``bzr log file`` has been changed. It now uses a different method
-      for determining which revisions to show as merging the changes to
-      the file. It now only shows revisions which merged the change
-      towards your mainline. (The old one would also show revisions which
-      then merged your mainline back, and got the new change.) This
-      simplifies the output, makes it faster, and reduces memory
-      consumption.  (John Arbash Meinel)
 
     * Location aliases can now accept a trailing path.  (Micheal Hudson)
 

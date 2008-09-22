@@ -268,7 +268,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
                                                          specific_fileid,
-                                                         mainline_revs,
                                                          view_revisions,
                                                          direction)
 
@@ -537,31 +536,44 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
-                                       view_revs_iter, direction):
-    """Return the list of revision ids which touch a given file id.
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
+                                       direction):
+    r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
     This includes the revisions which directly change the file id,
     and the revisions which merge these changes. So if the
     revision graph is::
-        A
-        |\
-        B C
+        A-.
+        |\ \
+        B C E
+        |/ /
+        D |
+        |\|
+        | F
         |/
-        D
+        G
 
-    And 'C' changes a file, then both C and D will be returned.
+    And 'C' changes a file, then both C and D will be returned. F will not be
+    returned even though it brings the changes to C into the branch starting
+    with E. (Note that if we were using F as the tip instead of G, then we
+    would see C, D, F.)
 
-    This will also can be restricted based on a subset of the mainline.
+    This will also be restricted based on a subset of the mainline.
 
+    :param branch: The branch where we can get text revision information.
+    :param file_id: Filter out revisions that do not touch file_id.
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
+        tuples. This is the list of revisions which will be filtered. It is
+        assumed that view_revisions is in merge_sort order (either forward or
+        reverse).
+    :param direction: The direction of view_revisions.  See also
+        reverse_by_depth, and get_view_revisions
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
-    # find all the revisions that change the specific file
-    text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revs_iter]
-    # Do a direct lookup of all possible text keys, and figure out which ones
-    # are actually present, and then convert it back to revision_ids, since the
-    # file_id prefix is shared by everything.
+    # Lookup all possible text keys to determine which ones actually modified
+    # the file.
+    text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
     # Looking up keys in batches of 1000 can cut the time in half, as well as
     # memory consumption. GraphIndex *does* like to look for a few keys in
     # parallel, it just doesn't like looking for *lots* of keys in parallel.
@@ -574,17 +586,21 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     chunk_size = 1000
     for start in xrange(0, len(text_keys), chunk_size):
         next_keys = text_keys[start:start + chunk_size]
+        # Only keep the revision_id portion of the key
         modified_text_revisions.update(
             [k[1] for k in get_parent_map(next_keys)])
     del text_keys, next_keys
 
     result = []
     if direction == 'forward':
-        view_revs_iter = reverse_by_depth(view_revs_iter)
+        # TODO: The algorithm for finding 'merges' of file changes expects
+        #       'reverse' order (the default from 'merge_sort()'). Instead of
+        #       forcing this, we could just use the reverse_by_depth order.
+        view_revisions = reverse_by_depth(view_revisions)
     # Track what revisions will merge the current revision, replace entries
     # with 'None' when they have been added to result
     current_merge_stack = [None]
-    for info in view_revs_iter:
+    for info in view_revisions:
         rev_id, revno, depth = info
         if depth == len(current_merge_stack):
             current_merge_stack.append(info)
