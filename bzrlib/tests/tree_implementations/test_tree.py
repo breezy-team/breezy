@@ -16,8 +16,10 @@
 
 from bzrlib import (
     errors,
-    tests,
     conflicts,
+    revisiontree,
+    tests,
+    workingtree_4,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -216,3 +218,23 @@ class TestHasId(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertTrue(tree.has_id('file-id'))
         self.assertFalse(tree.has_id('dir-id'))
+
+
+class TestExtras(TestCaseWithTree):
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/versioned-file'])
+        work_tree.add(['file', 'versioned-file'])
+        work_tree.commit('add files')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        if isinstance(tree,
+                      (revisiontree.RevisionTree,
+                       workingtree_4.DirStateRevisionTree)):
+            expected = []
+        else:
+            expected = ['file']
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(expected, list(tree.extras()))
