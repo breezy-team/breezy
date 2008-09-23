@@ -26,6 +26,8 @@ rather starts again from the run_bzr function.
 
 import os
 
+from bzrlib.branch import Branch
+from bzrlib.config import extract_email_address
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -199,12 +201,13 @@ class TestSimpleAnnotate(TestCaseWithTransport):
     def test_annotated_edited_merged_file_revnos(self):
         self._create_merged_file()
         out, err = self.run_bzr('annotate file')
+        email = extract_email_address(Branch.open('.').get_config().username())
         self.assertEqual(
-            '3?    robertc | local\n'
+            '3?    %-7s | local\n'
             '1     test@ho | foo\n'
             '1.1.1 test@ho | bar\n'
             '2     test@ho | baz\n'
-            '1     test@ho | gam\n',
+            '1     test@ho | gam\n' % email[:7],
             out)
 
     def test_annotated_edited_merged_file_ids(self):
