@@ -37,12 +37,21 @@ cdef extern from 'stdlib.h':
     void *malloc(int)
     void free(void *)
 
+
+cdef extern from 'sys/types.h':
+    ctypedef long ssize_t
+    ctypedef unsigned long size_t
+    ctypedef long time_t
+    ctypedef unsigned long ino_t
+    ctypedef unsigned long long off_t
+
+
 cdef extern from 'sys/stat.h':
     cdef struct stat:
         int st_mode
-        int st_size
+        off_t st_size
         int st_dev
-        int st_ino
+        ino_t st_ino
         int st_mtime
         int st_ctime
     int lstat(char *path, stat *buf)
@@ -53,13 +62,6 @@ cdef extern from 'sys/stat.h':
     int S_ISFIFO(int mode)
     int S_ISLNK(int mode)
     int S_ISSOCK(int mode)
-
-
-cdef extern from 'sys/types.h':
-    ctypedef long ssize_t
-    ctypedef unsigned long size_t
-    ctypedef long time_t
-    ctypedef unsigned long ino_t
 
 
 cdef extern from 'Python.h':
@@ -168,7 +170,7 @@ cdef class UTF8DirReader:
         return self._kind_from_mode(mode)
 
     cdef _kind_from_mode(self, int mode):
-        # in order of frequency:
+        # Files and directories are the most common - check them first.
         if S_ISREG(mode):
             return self._file
         if S_ISDIR(mode):
@@ -224,7 +226,8 @@ cdef class UTF8DirReader:
         for index from 0 <= index < length:
             atuple = PyList_GetItem_object_void(result, index)
             name = <object>PyTuple_GetItem_void_void(atuple, 1)
-            # We have inode, name, None, statvalue, None
+            # We have a tuple with (inode, name, None, statvalue, None)
+            # Now edit it:
             # inode -> path_from_top
             # direct concat - faster than operator +.
             new_val_obj = <PyObject *>relprefix
@@ -235,12 +238,13 @@ cdef class UTF8DirReader:
                 # at it?
                 raise Exception("failed to strcat")
             PyTuple_SetItem_obj(atuple, 0, new_val_obj)
-            # None -> kind
+            # 1st None -> kind
             newval = self._kind_from_mode(
                 (<_Stat>PyTuple_GetItem_void_void(atuple, 3)).st_mode)
             Py_INCREF(newval)
             PyTuple_SetItem(atuple, 2, newval)
-            # none -> abspath # perhaps only do if its a dir?
+            # 2nd None -> abspath # for all - the caller may need to stat files
+            # etc.
             # direct concat - faster than operator +.
             new_val_obj = <PyObject *>top_slash
             Py_INCREF(top_slash)
@@ -257,7 +261,9 @@ cdef _read_dir(path):
     """Like os.listdir, this reads the contents of a directory.
 
     :param path: the directory to list.
-    :return: a list of (sort_key, basename) tuples.
+    :return: a list of single-owner (the list) tuples ready for editing into
+        the result tuples walkdirs needs to yield. They contain (inode, name,
+        None, statvalue, None).
     """
     cdef DIR *the_dir
     # currently this needs a fixup - the C code says 'dirent' but should say

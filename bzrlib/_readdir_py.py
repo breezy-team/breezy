@@ -44,7 +44,7 @@ _formats = {
 def _kind_from_mode(stat_mode, _formats=_formats, _unknown='unknown'):
     """Generate a file kind from a stat mode. This is used in walkdirs.
 
-    Its performance is critical: Do not mutate without careful benchmarking.
+    It's performance is critical: Do not mutate without careful benchmarking.
     """
     try:
         return _formats[stat_mode & 0170000]

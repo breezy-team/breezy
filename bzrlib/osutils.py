@@ -1219,7 +1219,7 @@ class DirReader(object):
 
         :param prefix: A utf8 prefix to be preprended to the path basenames.
         :param top: A natively encoded path to read.
-        :return: A sorted list of the directories contents. Each item contains:
+        :return: A list of the directories contents. Each item contains:
             (utf8_relpath, utf8_name, kind, lstatvalue, native_abspath)
         """
         raise NotImplementedError(self.read_dir)
@@ -1565,7 +1565,7 @@ def file_kind_from_stat_mode_thunk(mode):
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
         except ImportError:
             from bzrlib._readdir_py import (
-                _kind_from_mode as _file_kind_from_stat_mode
+                _kind_from_mode as file_kind_from_stat_mode
                 )
     return file_kind_from_stat_mode(mode)
 file_kind_from_stat_mode = file_kind_from_stat_mode_thunk

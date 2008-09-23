@@ -71,7 +71,7 @@ cdef extern from "Python.h":
 import operator
 import stat
 
-from bzrlib import osutils
+from bzrlib import osutils, _readdir_py
 
 
 cdef class _Win32Stat:
@@ -158,8 +158,8 @@ cdef class Win32ReadDir:
     cdef object _file_kind
 
     def __init__(self):
-        self._directory_kind = osutils._directory_kind
-        self._file_kind = osutils._formats[stat.S_IFREG]
+        self._directory_kind = _readdir_py._directory
+        self._file_kind = _readdir_py._file
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
         """See DirReader.top_prefix_to_starting_dir."""
