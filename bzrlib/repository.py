@@ -248,9 +248,9 @@ class CommitBuilder(object):
             version_recorded is True if a new version of the entry has been
             recorded. For instance, committing a merge where a file was only
             changed on the other side will return (delta, False).
-            fs_hash is either None, or the hash of the path. (Currently we 
-            use sha1 hashes of the entire file content, and only calculate
-            these for regular files).
+            fs_hash is either None, or the hash details for the path (currently
+            a tuple of the contents sha1 and the statvalue returned by
+            tree.get_file_with_stat()).
         """
         if self.new_inventory.root is None:
             if ie.parent_id is not None:

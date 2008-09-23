@@ -36,6 +36,10 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``CommitBuilder.record_entry_contents`` returns one more element in
+      its result tuple - an optional file system hash for the hash cache
+      to use. (Robert Collins)
+
   TESTING:
 
     * ``bzrlib.tests.repository_implementations`` has been renamed to
