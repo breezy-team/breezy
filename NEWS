@@ -81,6 +81,9 @@ IN DEVELOPMENT
     * A new hook, ``Branch.open``, has been added, which is called when
       branch objects are opened. (Robert Collins)
 
+    * New win32utils.get_local_appdata_location() provides access to a local
+      directory for storing data.  (Mark Hammond)
+
 
 bzr 1.7rc2 IN DEVELOPMENT
 -------------------------
