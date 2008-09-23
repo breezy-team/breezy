@@ -49,6 +49,9 @@ IN DEVELOPMENT
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
 
+    * Trivial documentation fix.
+      (John Arbash Meinel, #270471)
+
   DOCUMENTATION:
 
     * Explain revision/range identifiers. (Daniel Clemente)
