@@ -71,8 +71,30 @@ IN DEVELOPMENT
   INTERNALS:
 
 
-bzr 1.7rc2 IN DEVELOPMENT
--------------------------
+bzr 1.7 2008-09-23
+------------------
+
+This release includes many bug fixes and a few performance and feature
+improvements.  ``bzr rm`` will now scan for missing files and remove them,
+like how ``bzr add`` scans for unknown files and adds them. A bit more
+polish has been applied to the stacking code. The b-tree indexing code has
+been brought in, with an eye on using it in a future repository format.
+There are only minor installer changes since bzr-1.7rc2.
+
+  FEATURES
+
+    * Some small updates to the win32 installer. Include localization
+      files found in plugins, and include the builtin distutils as part of
+      packaging qbzr. (Mark Hammond)
+
+
+bzr 1.7rc2 2008-09-17
+---------------------
+
+A few bug fixes from 1.7rc1. The biggest change is a new
+``RemoteBranch.get_stacked_on_url`` rpc. This allows clients that are
+trying to access a Stacked branch over the smart protocol, to properly
+connect to the stacked-on location.
 
   BUG FIXES:
 
@@ -80,11 +102,14 @@ bzr 1.7rc2 IN DEVELOPMENT
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
 
-    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
-      (Andrew Bennetts)
+   * Branching from a stacked branch via ``bzr+ssh`` can properly connect
+     to the stacked-on branch.  (Martin Pool, #261315)
 
     * ``bzr init`` no longer re-opens the BzrDir multiple times.
       (Vincent Ladeuil)
+
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
 
 
 bzr 1.7rc1 2008-09-09
