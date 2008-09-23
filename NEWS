@@ -4,6 +4,23 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.7 2008-09-23
+------------------
+
+This release includes many bug fixes and a few performance and feature
+improvements.  ``bzr rm`` will now scan for missing files and remove them,
+like how ``bzr add`` scans for unknown files and adds them. A bit more
+polish has been applied to the stacking code. The b-tree indexing code has
+been brought in, with an eye on using it in a future repository format.
+There are only minor installer changes since bzr-1.7rc2.
+
+  FEATURES
+
+    * Some small updates to the win32 installer. Include localization
+      files found in plugins, and include the builtin distutils as part of
+      packaging qbzr. (Mark Hammond)
+
+
 bzr 1.7rc2 2008-09-17
 ---------------------
 
