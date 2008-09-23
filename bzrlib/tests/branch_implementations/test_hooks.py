@@ -16,8 +16,9 @@
 
 """Tests that branch classes implement hook callouts correctly."""
 
-from bzrlib.errors import HookFailed, TipChangeRejected
 from bzrlib.branch import Branch, ChangeBranchTipParams
+from bzrlib.errors import HookFailed, TipChangeRejected
+from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
 
@@ -125,7 +126,18 @@ class TestOpen(TestCaseWithMemoryTransport):
         branch_url = self.make_branch('.').bzrdir.root_transport.base
         self.install_hook()
         b = Branch.open(branch_url)
-        self.assertEqual([b], self.hook_calls)
+        if isinstance(b, RemoteBranch):
+            # RemoteBranch open always opens the backing branch to get stacking
+            # details. As that is done remotely we can't see the branch object
+            # nor even compare base url's etc. So we just assert that the first
+            # branch returned is the RemoteBranch, and that the second is a
+            # Branch but not a RemoteBranch.
+            self.assertEqual(2, len(self.hook_calls))
+            self.assertEqual(b, self.hook_calls[0])
+            self.assertIsInstance(self.hook_calls[1], Branch)
+            self.assertFalse(isinstance(self.hook_calls[1], RemoteBranch))
+        else:
+            self.assertEqual([b], self.hook_calls)
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
