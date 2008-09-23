@@ -53,6 +53,7 @@ from bzrlib import (
     )
 """)
 
+
 import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -566,6 +567,24 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             to_file.write(block)
             length += len(block)
     return length
+
+
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
 
 
 def file_iterator(input_file, readsize=32768):
@@ -1123,6 +1142,34 @@ def check_legal_path(path):
         raise errors.IllegalPath(path)
 
 
+_WIN32_ERROR_DIRECTORY = 267 # Similar to errno.ENOTDIR
+
+def _is_error_enotdir(e):
+    """Check if this exception represents ENOTDIR.
+
+    Unfortunately, python is very inconsistent about the exception
+    here. The cases are:
+      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
+      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
+         which is the windows error code.
+      3) Windows, Python2.5 uses errno == EINVAL and
+         winerror == ERROR_DIRECTORY
+
+    :param e: An Exception object (expected to be OSError with an errno
+        attribute, but we should be able to cope with anything)
+    :return: True if this represents an ENOTDIR error. False otherwise.
+    """
+    en = getattr(e, 'errno', None)
+    if (en == errno.ENOTDIR
+        or (sys.platform == 'win32'
+            and (en == _WIN32_ERROR_DIRECTORY
+                 or (en == errno.EINVAL
+                     and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+        ))):
+        return True
+    return False
+
+
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
@@ -1172,16 +1219,24 @@ def walkdirs(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
+        try:
+            names = sorted(_listdir(top))
+        except OSError, e:
+            if not _is_error_enotdir(e):
+                raise
+        else:
+            for name in names:
+                abspath = top_slash + name
+                statvalue = _lstat(abspath)
+                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
+
+_real_walkdirs_utf8 = None
 
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
@@ -1197,12 +1252,27 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    fs_encoding = _fs_enc.upper()
-    if (sys.platform == 'win32' or
-        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
-        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
-    else:
-        return _walkdirs_fs_utf8(top, prefix=prefix)
+    global _real_walkdirs_utf8
+    if _real_walkdirs_utf8 is None:
+        fs_encoding = _fs_enc.upper()
+        if win32utils.winver == 'Windows NT':
+            # Win98 doesn't have unicode apis like FindFirstFileW
+            # TODO: We possibly could support Win98 by falling back to the
+            #       original FindFirstFile, and using TCHAR instead of WCHAR,
+            #       but that gets a bit tricky, and requires custom compiling
+            #       for win98 anyway.
+            try:
+                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+            except ImportError:
+                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            else:
+                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            # ANSI_X3.4-1968 is a form of ASCII
+            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+        else:
+            _real_walkdirs_utf8 = _walkdirs_fs_utf8
+    return _real_walkdirs_utf8(top, prefix=prefix)
 
 
 def _walkdirs_fs_utf8(top, prefix=""):
@@ -1213,7 +1283,8 @@ def _walkdirs_fs_utf8(top, prefix=""):
     """
     _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
+    # Use C accelerated directory listing.
+    _listdir = _read_dir
     _kind_from_mode = _formats.get
 
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1229,11 +1300,13 @@ def _walkdirs_fs_utf8(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        # read_dir supplies in should-stat order.
+        for _, name in sorted(_listdir(top)):
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1357,9 +1430,19 @@ def get_user_encoding(use_cache=True):
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
-        # work around egregious python 2.4 bug
+        # python locale.getpreferredencoding() always return
+        # 'mac-roman' on darwin. That's a lie.
         sys.platform = 'posix'
         try:
+            if os.environ.get('LANG', None) is None:
+                # If LANG is not set, we end up with 'ascii', which is bad
+                # ('mac-roman' is more than ascii), so we set a default which
+                # will give us UTF-8 (which appears to work in all cases on
+                # OSX). Users are still free to override LANG of course, as
+                # long as it give us something meaningful. This work-around
+                # *may* not be needed with python 3k and/or OSX 10.5, but will
+                # work with them too -- vila 20080908
+                os.environ['LANG'] = 'en_US.UTF-8'
             import locale
         finally:
             sys.platform = 'darwin'
@@ -1400,6 +1483,20 @@ def get_user_encoding(use_cache=True):
         _cached_user_encoding = user_encoding
 
     return user_encoding
+
+
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
 
 
 def recv_all(socket, bytes):
@@ -1478,3 +1575,9 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+try:
+    from bzrlib._readdir_pyx import read_dir as _read_dir
+except ImportError:
+    from bzrlib._readdir_py import read_dir as _read_dir

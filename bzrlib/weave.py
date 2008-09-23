@@ -214,9 +214,10 @@ class Weave(VersionedFile):
     """
 
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
-                 '_weave_name', '_matcher']
+                 '_weave_name', '_matcher', '_allow_reserved']
     
-    def __init__(self, weave_name=None, access_mode='w', matcher=None, get_scope=None):
+    def __init__(self, weave_name=None, access_mode='w', matcher=None,
+                 get_scope=None, allow_reserved=False):
         """Create a weave.
 
         :param get_scope: A callable that returns an opaque object to be used
@@ -239,6 +240,7 @@ class Weave(VersionedFile):
         self._get_scope = get_scope
         self._scope = get_scope()
         self._access_mode = access_mode
+        self._allow_reserved = allow_reserved
 
     def __repr__(self):
         return "Weave(%r)" % self._weave_name
@@ -278,7 +280,8 @@ class Weave(VersionedFile):
 
     def _lookup(self, name):
         """Convert symbolic version name to index."""
-        self.check_not_reserved_id(name)
+        if not self._allow_reserved:
+            self.check_not_reserved_id(name)
         try:
             return self._name_map[name]
         except KeyError:
@@ -653,8 +656,6 @@ class Weave(VersionedFile):
                 # not in either revision
                 yield 'irrelevant', line
 
-        yield 'unchanged', ''           # terminator
-
     def _extract(self, versions):
         """Yield annotation of lines in included set.
 
@@ -910,7 +911,8 @@ class WeaveFile(Weave):
         
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope)
+        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope,
+            allow_reserved=False)
         self._transport = transport
         self._filemode = filemode
         try:

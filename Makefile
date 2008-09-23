@@ -179,7 +179,7 @@ exe:
 # win32 installer for bzr.exe
 installer: exe copy-docs
 	@echo *** Make windows installer
-	cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
+	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer

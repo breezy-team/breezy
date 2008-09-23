@@ -36,7 +36,7 @@ from bzrlib import (
     tests,
     urlutils,
     )
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
 import bzrlib.smart.bzrdir
 import bzrlib.smart.repository
@@ -131,10 +131,10 @@ class TestSmartServerResponse(tests.TestCase):
     def test__str__(self):
         """SmartServerResponses can be stringified."""
         self.assertEqual(
-            "<SmartServerResponse status=OK args=('args',) body='body'>",
+            "<SuccessfulSmartServerResponse args=('args',) body='body'>",
             str(SuccessfulSmartServerResponse(('args',), 'body')))
         self.assertEqual(
-            "<SmartServerResponse status=ERR args=('args',) body='body'>",
+            "<FailedSmartServerResponse args=('args',) body='body'>",
             str(FailedSmartServerResponse(('args',), 'body')))
 
 
@@ -480,6 +480,20 @@ class TestSetLastRevisionVerbMixin(object):
         self.assertEqual(
             (1, rev_id_utf8), self.tree.branch.last_revision_info())
 
+    def test_TipChangeRejected(self):
+        """If a pre_change_branch_tip hook raises TipChangeRejected, the verb
+        returns TipChangeRejected.
+        """
+        rejection_message = u'rejection message\N{INTERROBANG}'
+        def hook_that_rejects(params):
+            raise errors.TipChangeRejected(rejection_message)
+        Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', hook_that_rejects, None)
+        self.assertEqual(
+            FailedSmartServerResponse(
+                ('TipChangeRejected', rejection_message.encode('utf-8'))),
+            self.set_last_revision('null:', 0))
+
 
 class TestSmartServerBranchRequestSetLastRevision(
         SetLastRevisionTestBase, TestSetLastRevisionVerbMixin):
@@ -599,6 +613,21 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.unlock_branch()
         # The branch tip was changed.
         self.assertEqual('child-1', self.tree.branch.last_revision())
+
+
+class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransport):
+
+    def test_get_stacked_on_url(self):
+        base_branch = self.make_branch('base', format='1.6')
+        stacked_branch = self.make_branch('stacked', format='1.6')
+        # typically should be relative
+        stacked_branch.set_stacked_on_url('../base')
+        request = smart.branch.SmartServerBranchRequestGetStackedOnURL(
+            self.get_transport())
+        response = request.execute('stacked')
+        self.assertEquals(
+            SmartServerResponse(('ok', '../base')),
+            response)
 
 
 class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
@@ -1010,6 +1039,13 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
+
+    def test_all_registrations_exist(self):
+        """All registered request_handlers can be found."""
+        # If there's a typo in a register_lazy call, this loop will fail with
+        # an AttributeError.
+        for key, item in smart.request.request_handlers.iteritems():
+            pass
 
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""

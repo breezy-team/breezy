@@ -81,6 +81,7 @@ Miscellaneous topics
 
 .. include:: part2_intro.txt
 .. include:: adv_merging.txt
+.. include:: stacked.txt
 .. include:: server.txt
 .. include:: hooks.txt
 .. include:: version_info.txt

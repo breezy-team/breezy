@@ -98,6 +98,13 @@ class MergeSortTests(TestCase):
     def assertSortAndIterate(self, graph, branch_tip, result_list,
             generate_revno, mainline_revisions=None):
         """Check that merge based sorting and iter_topo_order on graph works."""
+        value = merge_sort(graph, branch_tip,
+                           mainline_revisions=mainline_revisions,
+                           generate_revno=generate_revno)
+        if result_list != value:
+            import pprint
+            self.assertEqualDiff(pprint.pformat(result_list),
+                                 pprint.pformat(value))
         self.assertEquals(result_list,
             merge_sort(graph, branch_tip, mainline_revisions=mainline_revisions,
                 generate_revno=generate_revno))
@@ -533,6 +540,19 @@ class MergeSortTests(TestCase):
             mainline_revisions=[None, 'A']
             )
 
+    def test_mainline_revs_with_ghost(self):
+        # We have a mainline, but the end of it is actually a ghost
+        # The graph that is passed to tsort has had ghosts filtered out, but
+        # the mainline history has not.
+        self.assertSortAndIterate(
+            {'B':[],
+             'C':['B']}.items(),
+            'C',
+            [(0, 'C', 0, (2,), False),
+             (1, 'B', 0, (1,), True),
+             ],
+             True, mainline_revisions=['A', 'B', 'C'])
+
     def test_parallel_root_sequence_numbers_increase_with_merges(self):
         """When there are parallel roots, check their revnos."""
         self.assertSortAndIterate(
@@ -589,6 +609,65 @@ class MergeSortTests(TestCase):
              (7, 'C', 1, (1,1,2), False),
              (8, 'B', 1, (1,1,1), True),
              (9, 'A', 0, (1,), True),
+             ],
+            True
+            )
+
+    def test_roots_and_sub_branches_versus_ghosts(self):
+        """Extra roots and their mini branches use the same numbering.
+
+        All of them use the 0-node numbering.
+        """
+        #       A D   K
+        #       | |\  |\
+        #       B E F L M
+        #       | |/  |/
+        #       C G   N
+        #       |/    |\
+        #       H I   O P
+        #       |/    |/
+        #       J     Q
+        #       |.---'
+        #       R
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['B'],
+             'D': [],
+             'E': ['D'],
+             'F': ['D'],
+             'G': ['E', 'F'],
+             'H': ['C', 'G'],
+             'I': [],
+             'J': ['H', 'I'],
+             'K': [],
+             'L': ['K'],
+             'M': ['K'],
+             'N': ['L', 'M'],
+             'O': ['N'],
+             'P': ['N'],
+             'Q': ['O', 'P'],
+             'R': ['J', 'Q'],
+            }.items(),
+            'R',
+            [( 0, 'R', 0, (6,), False),
+             ( 1, 'Q', 1, (0,4,5), False),
+             ( 2, 'P', 2, (0,6,1), True),
+             ( 3, 'O', 1, (0,4,4), False),
+             ( 4, 'N', 1, (0,4,3), False),
+             ( 5, 'M', 2, (0,5,1), True),
+             ( 6, 'L', 1, (0,4,2), False),
+             ( 7, 'K', 1, (0,4,1), True),
+             ( 8, 'J', 0, (5,), False),
+             ( 9, 'I', 1, (0,3,1), True),
+             (10, 'H', 0, (4,), False),
+             (11, 'G', 1, (0,1,3), False),
+             (12, 'F', 2, (0,2,1), True),
+             (13, 'E', 1, (0,1,2), False),
+             (14, 'D', 1, (0,1,1), True),
+             (15, 'C', 0, (3,), False),
+             (16, 'B', 0, (2,), False),
+             (17, 'A', 0, (1,), True),
              ],
             True
             )

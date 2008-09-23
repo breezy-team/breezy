@@ -951,8 +951,8 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertIs(self.my_config.get_user_option('foo'), None)
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
-            self.my_config.branch.control_files.files['branch.conf'],
-            'foo = bar\n')
+            self.my_config.branch.control_files.files['branch.conf'].strip(),
+            'foo = bar')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
         self.my_config.set_user_option('foo', 'baz',
                                        store=config.STORE_LOCATION)
@@ -1204,6 +1204,17 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-top')
         value = bzrdir_config.get_option('key3', 'SECTION')
         self.assertEqual(value, 'value3-section')
+
+    def test_set_unset_default_stack_on(self):
+        my_dir = self.make_bzrdir('.')
+        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        self.assertIs(None, bzrdir_config.get_default_stack_on())
+        bzrdir_config.set_default_stack_on('Foo')
+        self.assertEqual('Foo', bzrdir_config._config.get_option(
+                         'default_stack_on'))
+        self.assertEqual('Foo', bzrdir_config.get_default_stack_on())
+        bzrdir_config.set_default_stack_on(None)
+        self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
 class TestAuthenticationConfigFile(tests.TestCase):

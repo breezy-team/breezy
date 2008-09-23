@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport import register_transport, unregister_transport
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
@@ -86,7 +87,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved location: %s\n' 
+                          'Using saved push location: %s\n' 
                           'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
@@ -265,6 +266,89 @@ class TestPush(ExternalBase):
         self.run_bzr_error(
             "bzr: ERROR: bzr push --revision takes one value.\n",
             'push -r0..2 ../to', working_dir='from')
+
+    def create_trunk_and_feature_branch(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and a branch from it
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.pull(trunk_tree.branch)
+        branch_tree.branch.set_parent(trunk_tree.branch.base)
+        # with some work on it
+        branch_tree.commit('moar work plz')
+        return trunk_tree, branch_tree
+
+    def assertPublished(self, branch_revid, stacked_on):
+        """Assert that the branch 'published' has been published correctly."""
+        published_branch = Branch.open('published')
+        # The published branch refers to the mainline
+        self.assertEqual(stacked_on, published_branch.get_stacked_on_url())
+        # and the branch's work was pushed
+        self.assertTrue(published_branch.repository.has_revision(branch_revid))
+
+    def test_push_new_branch_stacked_on(self):
+        """Pushing a new branch with --stacked-on creates a stacked branch."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        # we publish branch_tree with a reference to the mainline.
+        out, err = self.run_bzr(['push', '--stacked-on', trunk_tree.branch.base,
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        self.assertPublished(branch_tree.last_revision(),
+            trunk_tree.branch.base)
+
+    def test_push_new_branch_stacked_uses_parent_when_no_public_url(self):
+        """When the parent has no public url the parent is used as-is."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        # now we do a stacked push, which should determine the public location
+        # for us.
+        out, err = self.run_bzr(['push', '--stacked',
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
+
+    def test_push_new_branch_stacked_uses_parent_public(self):
+        """Pushing a new branch with --stacked creates a stacked branch."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        # the trunk is published on a web server
+        self.transport_readonly_server = HttpServer
+        trunk_public = self.make_branch('public_trunk', format='development')
+        trunk_public.pull(trunk_tree.branch)
+        trunk_public_url = self.get_readonly_url('public_trunk')
+        trunk_tree.branch.set_public_branch(trunk_public_url)
+        # now we do a stacked push, which should determine the public location
+        # for us.
+        out, err = self.run_bzr(['push', '--stacked',
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+            trunk_public_url, err)
+        self.assertPublished(branch_tree.last_revision(), trunk_public_url)
+
+    def test_push_new_branch_stacked_no_parent(self):
+        """Pushing with --stacked and no parent branch errors."""
+        branch = self.make_branch_and_tree('branch', format='development')
+        # now we do a stacked push, which should fail as the place to refer too
+        # cannot be determined.
+        out, err = self.run_bzr_error(
+            ['Could not determine branch to refer to\\.'], ['push', '--stacked',
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertFalse(self.get_transport('published').has('.'))
+
+    def test_push_notifies_default_stacking(self):
+        self.make_branch('stack_on', format='development1')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='development1')
+        out, err = self.run_bzr('push -d from to')
+        self.assertContainsRe(err,
+                              'Using default stacking branch stack_on at .*')
 
 
 class RedirectingMemoryTransport(MemoryTransport):

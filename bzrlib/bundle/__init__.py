@@ -82,6 +82,8 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             return directive, transport
         else:
             return _serializer.read_bundle(f), transport
+    except errors.ConnectionReset:
+        raise
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:

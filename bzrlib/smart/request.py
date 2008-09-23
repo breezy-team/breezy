@@ -179,8 +179,7 @@ class SmartServerResponse(object):
                 other.body_stream is self.body_stream)
 
     def __repr__(self):
-        status = {True: 'OK', False: 'ERR'}[self.is_successful()]
-        return "<SmartServerResponse status=%s args=%r body=%r>" % (status,
+        return "<%s args=%r body=%r>" % (self.__class__.__name__,
             self.args, self.body)
 
 
@@ -288,6 +287,14 @@ class SmartServerRequestHandler(object):
         except errors.ShortReadvError, e:
             return FailedSmartServerResponse(('ShortReadvError',
                 e.path, str(e.offset), str(e.length), str(e.actual)))
+        except errors.UnstackableRepositoryFormat, e:
+            return FailedSmartServerResponse(('UnstackableRepositoryFormat',
+                str(e.format), e.url))
+        except errors.UnstackableBranchFormat, e:
+            return FailedSmartServerResponse(('UnstackableBranchFormat',
+                str(e.format), e.url))
+        except errors.NotStacked, e:
+            return FailedSmartServerResponse(('NotStacked',))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
             # with a plain string
@@ -375,6 +382,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(
+    'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
+request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
@@ -430,14 +439,6 @@ request_handlers.register_lazy('Repository.gather_stats',
 request_handlers.register_lazy('Repository.get_parent_map',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGetParentMap')
-request_handlers.register_lazy(
-    'Repository.stream_knit_data_for_revisions',
-    'bzrlib.smart.repository',
-    'SmartServerRepositoryStreamKnitDataForRevisions')
-request_handlers.register_lazy(
-    'Repository.stream_revisions_chunked',
-    'bzrlib.smart.repository',
-    'SmartServerRepositoryStreamRevisionsChunked')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(

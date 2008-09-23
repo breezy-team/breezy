@@ -28,6 +28,7 @@ Specific tests for individual variations are in other places such as:
 from bzrlib import (
     errors,
     osutils,
+    progress,
     tests,
     transform,
     )
@@ -42,6 +43,7 @@ from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
     WorkingTreeTestProviderAdapter,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
@@ -74,7 +76,23 @@ def _dirstate_tree_from_workingtree(testcase, tree):
 def preview_tree_pre(testcase, tree):
     tt = TransformPreview(tree)
     testcase.addCleanup(tt.finalize)
-    return tt.get_preview_tree()
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
+
+
+def preview_tree_post(testcase, tree):
+    basis = tree.basis_tree()
+    tt = TransformPreview(basis)
+    testcase.addCleanup(tt.finalize)
+    pp = progress.ProgressPhase('', 1, progress.DummyProgress())
+    tree.lock_read()
+    testcase.addCleanup(tree.unlock)
+    transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
+                                        basis, {})
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
 
 
 class TestTreeImplementationSupport(TestCaseWithTransport):
@@ -254,17 +272,21 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
+        # We avoid combining characters in file names here, normalization
+        # checks (as performed by some file systems (OSX) are outside the scope
+        # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
+        # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
         paths = [u'',
-                 u'f\xf6',
-                 u'b\xe5r/',
-                 u'b\xe5r/b\xe1z',
+                 u'fo\N{Euro Sign}o',
+                 u'ba\N{Euro Sign}r/',
+                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
         file_ids = ['TREE_ROOT',
-                    'f\xc3\xb6-id',
-                    'b\xc3\xa5r-id',
-                    'b\xc3\xa1z-id',
+                    'fo\xe2\x82\xaco-id',
+                    'ba\xe2\x82\xacr-id',
+                    'ba\xe2\x82\xacz-id',
                    ]
         try:
             self.build_tree(paths[1:])
@@ -286,8 +308,9 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         """Generate a tree with utf8 ancestors."""
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'.encode('utf-8')])
+        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
+                  [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)
@@ -304,6 +327,10 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """
 
     def __init__(self, transport_server, transport_readonly_server, formats):
+        """Create a TreeTestProviderAdapter.
+
+        :param formats: [workingtree_format]
+        """
         super(TreeTestProviderAdapter, self).__init__(transport_server,
             transport_readonly_server, formats)
         # now adjust the scenarios and add the non-working-tree tree scenarios.
@@ -321,6 +348,8 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             WorkingTreeFormat4()))
         self.scenarios.append(self.create_tree_scenario('PreviewTree',
             preview_tree_pre))
+        self.scenarios.append(self.create_tree_scenario('PreviewTreePost',
+            preview_tree_post))
 
     def create_tree_scenario(self, name, converter, workingtree_format=None):
         """Create a scenario for the specified converter
@@ -336,7 +365,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         if workingtree_format is None:
             workingtree_format = WorkingTreeFormat._default_format
         scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
-            workingtree_format, workingtree_format._matchingbzrdir)[1]
+            workingtree_format)[1]
         scenario_options["_workingtree_to_test_tree"] = converter
         return name, scenario_options
 
@@ -366,8 +395,7 @@ def load_tests(basic_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in
-         WorkingTreeFormat._formats.values() + _legacy_formats])
+        WorkingTreeFormat._formats.values() + _legacy_formats)
 
     # add the tests for the sub modules
     adapt_modules(test_tree_implementations, adapter, loader, result)

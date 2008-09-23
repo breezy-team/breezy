@@ -27,7 +27,10 @@ from bzrlib import (
     msgeditor,
     osutils,
     urlutils,
+    registry
     )
+
+mail_client_registry = registry.Registry()
 
 
 class MailClient(object):
@@ -109,6 +112,8 @@ class Editor(MailClient):
                                         body,
                                         attachment,
                                         attachment_mime_subtype=mime_subtype)
+mail_client_registry.register('editor', Editor,
+                              help=Editor.__doc__)
 
 
 class ExternalMailClient(MailClient):
@@ -130,7 +135,7 @@ class ExternalMailClient(MailClient):
         """
         if basename is None:
             basename = 'attachment'
-        pathname = tempfile.mkdtemp(prefix='bzr-mail-')
+        pathname = osutils.mkdtemp(prefix='bzr-mail-')
         attach_path = osutils.pathjoin(pathname, basename + extension)
         outfile = open(attach_path, 'wb')
         try:
@@ -222,6 +227,8 @@ class Evolution(ExternalMailClient):
                         sorted(message_options.iteritems())]
         return ['mailto:%s?%s' % (self._encode_safe(to or ''),
             '&'.join(options_list))]
+mail_client_registry.register('evolution', Evolution,
+                              help=Evolution.__doc__)
 
 
 class Mutt(ExternalMailClient):
@@ -240,6 +247,8 @@ class Mutt(ExternalMailClient):
         if to is not None:
             message_options.append(self._encode_safe(to))
         return message_options
+mail_client_registry.register('mutt', Mutt,
+                              help=Mutt.__doc__)
 
 
 class Thunderbird(ExternalMailClient):
@@ -253,7 +262,8 @@ class Thunderbird(ExternalMailClient):
     """
 
     _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove',
-        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin']
+        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin',
+        '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
@@ -268,6 +278,8 @@ class Thunderbird(ExternalMailClient):
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
+mail_client_registry.register('thunderbird', Thunderbird,
+                              help=Thunderbird.__doc__)
 
 
 class KMail(ExternalMailClient):
@@ -286,6 +298,8 @@ class KMail(ExternalMailClient):
         if to is not None:
             message_options.extend([self._encode_safe(to)])
         return message_options
+mail_client_registry.register('kmail', KMail,
+                              help=KMail.__doc__)
 
 
 class XDGEmail(ExternalMailClient):
@@ -304,6 +318,8 @@ class XDGEmail(ExternalMailClient):
             commandline.extend(['--attach',
                 self._encode_path(attach_path, 'attachment')])
         return commandline
+mail_client_registry.register('xdg-email', XDGEmail,
+                              help=XDGEmail.__doc__)
 
 
 class EmacsMail(ExternalMailClient):
@@ -328,31 +344,40 @@ class EmacsMail(ExternalMailClient):
         This temporary file will be loaded at runtime in
         _get_compose_commandline function.
 
-        FIXME: this function does not remove the file. That's a wanted
+        This function does not remove the file.  That's a wanted
         behaviour since _get_compose_commandline won't run the send
         mail function directly but return the eligible command line.
         Removing our temporary file here would prevent our sendmail
-        function to work.
-
-        A possible workaround could be to load the function here with
-        emacsclient --eval '(load temp)' but this is not robust since
-        emacs could have been stopped between here and the call to
-        mail client.
+        function to work.  (The file is deleted by some elisp code
+        after being read by Emacs.)
         """
 
         _defun = r"""(defun bzr-add-mime-att (file)
-  "Attach FILe to a mail buffer as a MIME attachment."
+  "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
-    (mail-text)
-    (newline)
     (if (and file (file-exists-p file))
         (cond
          ((eq agent 'sendmail-user-agent)
-          (etach-attach file))
+          (progn
+            (mail-text)
+            (newline)
+            (if (functionp 'etach-attach)
+              (etach-attach file)
+              (mail-attach-file file))))
          ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
-          (mml-attach-file file "text/x-patch" "BZR merge" "attachment"))
+          (progn
+            (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
+         ((eq agent 'mew-user-agent)
+          (progn
+            (mew-draft-prepare-attachments)
+            (mew-attach-link file (file-name-nondirectory file))
+            (let* ((nums (mew-syntax-nums))
+                   (syntax (mew-syntax-get-entry mew-encode-syntax nums)))
+              (mew-syntax-set-cd syntax "BZR merge")
+              (mew-encode-syntax-print mew-encode-syntax))
+            (mew-header-goto-body)))
          (t
-          (message "Unhandled MUA")))
+          (message "Unhandled MUA, report it on bazaar@lists.canonical.com")))
       (error "File %s does not exist." file))))
 """
 
@@ -371,9 +396,10 @@ class EmacsMail(ExternalMailClient):
         _subject = "nil"
 
         if to is not None:
-            _to = ("\"%s\"" % self._encode_safe(to))
+            _to = ("\"%s\"" % self._encode_safe(to).replace('"', '\\"'))
         if subject is not None:
-            _subject = ("\"%s\"" % self._encode_safe(subject))
+            _subject = ("\"%s\"" %
+                        self._encode_safe(subject).replace('"', '\\"'))
 
         # Funcall the default mail composition function
         # This will work with any mail mode including default mail-mode
@@ -385,13 +411,18 @@ class EmacsMail(ExternalMailClient):
         # Try to attach a MIME attachment using our wrapper function
         if attach_path is not None:
             # Do not create a file if there is no attachment
-            lmmform = '(load "%s")' % self._prepare_send_function()
+            elisp = self._prepare_send_function()
+            lmmform = '(load "%s")' % elisp
             mmform  = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')
+            rmform = '(delete-file "%s")' % elisp
             commandline.append(lmmform)
             commandline.append(mmform)
+            commandline.append(rmform)
 
         return commandline
+mail_client_registry.register('emacsclient', EmacsMail,
+                              help=EmacsMail.__doc__)
 
 
 class MAPIClient(ExternalMailClient):
@@ -410,6 +441,8 @@ class MAPIClient(ExternalMailClient):
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise errors.MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])
+mail_client_registry.register('mapi', MAPIClient,
+                              help=MAPIClient.__doc__)
 
 
 class DefaultMail(MailClient):
@@ -442,3 +475,6 @@ class DefaultMail(MailClient):
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename)
+mail_client_registry.register('default', DefaultMail,
+                              help=DefaultMail.__doc__)
+mail_client_registry.default_key = 'default'

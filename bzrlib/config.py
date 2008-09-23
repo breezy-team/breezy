@@ -147,21 +147,9 @@ class Config(object):
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
+        _registry = mail_client.mail_client_registry
         try:
-            mail_client_class = {
-                None: mail_client.DefaultMail,
-                # Specific clients
-                'emacsclient': mail_client.EmacsMail,
-                'evolution': mail_client.Evolution,
-                'kmail': mail_client.KMail,
-                'mutt': mail_client.Mutt,
-                'thunderbird': mail_client.Thunderbird,
-                # Generic options
-                'default': mail_client.DefaultMail,
-                'editor': mail_client.Editor,
-                'mapi': mail_client.MAPIClient,
-                'xdg-email': mail_client.XDGEmail,
-            }[selected_client]
+            mail_client_class = _registry.get(selected_client)
         except KeyError:
             raise errors.UnknownMailClient(selected_client)
         return mail_client_class(self)
@@ -1138,6 +1126,38 @@ class AuthenticationConfig(object):
 
     def decode_password(self, credentials, encoding):
         return credentials
+
+
+class BzrDirConfig(object):
+
+    def __init__(self, transport):
+        self._config = TransportConfig(transport, 'control.conf')
+
+    def set_default_stack_on(self, value):
+        """Set the default stacking location.
+
+        It may be set to a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if value is None:
+            self._config.set_option('', 'default_stack_on')
+        else:
+            self._config.set_option(value, 'default_stack_on')
+
+    def get_default_stack_on(self):
+        """Return the default stacking location.
+
+        This will either be a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        value = self._config.get_option('default_stack_on')
+        if value == '':
+            value = None
+        return value
 
 
 class TransportConfig(object):

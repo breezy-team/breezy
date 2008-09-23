@@ -16,8 +16,10 @@
 
 from bzrlib import (
     errors,
-    tests,
     conflicts,
+    revisiontree,
+    tests,
+    workingtree_4,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -56,8 +58,8 @@ class TestPlanFileMerge(TestCaseWithTree):
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
         self.assertEqual([
-            ('killed-b', 'b\n'),
             ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
             ('unchanged', 'c\n'),
             ('unchanged', 'd\n'),
             ('new-a', 'e\n'),
@@ -203,3 +205,36 @@ class TestIterEntriesByDir(TestCaseWithTree):
         output_order = [p for p, e in tree.iter_entries_by_dir()]
         self.assertEqual(['', 'a', 'f', 'a/b', 'a/d', 'a/b/c', 'a/d/e', 'f/g'],
                          output_order)
+
+
+class TestHasId(TestCaseWithTree):
+
+    def test_has_id(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'file-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertTrue(tree.has_id('file-id'))
+        self.assertFalse(tree.has_id('dir-id'))
+
+
+class TestExtras(TestCaseWithTree):
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/versioned-file'])
+        work_tree.add(['file', 'versioned-file'])
+        work_tree.commit('add files')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        if isinstance(tree,
+                      (revisiontree.RevisionTree,
+                       workingtree_4.DirStateRevisionTree)):
+            expected = []
+        else:
+            expected = ['file']
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(expected, list(tree.extras()))

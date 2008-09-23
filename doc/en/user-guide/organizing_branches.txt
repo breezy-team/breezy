@@ -22,7 +22,7 @@ Task branches
 -------------
 
 Each new feature or fix is developed in its own branch.
-These branches or referred to as *feature branches * or
+These branches are referred to as *feature branches* or
 *task branches* - the terms are used interchangably.
 
 To create a task branch, use the ``branch`` command
