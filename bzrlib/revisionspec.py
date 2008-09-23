@@ -286,7 +286,7 @@ class RevisionSpec_revno(RevisionSpec):
     than the branch's history, the first revision is returned.
     Examples::
 
-      revno:1                   -> return the first revision
+      revno:1                   -> return the first revision of this branch
       revno:3:/path/to/branch   -> return the 3rd revision of
                                    the branch '/path/to/branch'
       revno:-1                  -> The last revision in a branch.
@@ -475,19 +475,21 @@ class RevisionSpec_before(RevisionSpec):
 
     help_txt = """Selects the parent of the revision specified.
 
-    Supply any revision spec to return the parent of that revision.
+    Supply any revision spec to return the parent of that revision.  This is
+    mostly useful when inspecting revisions that are not in the revision history
+    of a branch.
+
     It is an error to request the parent of the null revision (before:0).
-    This is mostly useful when inspecting revisions that are not in the
-    revision history of a branch.
 
     Examples::
 
       before:1913    -> Return the parent of revno 1913 (revno 1912)
       before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
                                             aaaa@bbbb-1234567890
-      bzr diff -r before:revid:aaaa..revid:aaaa
-            -> Find the changes between revision 'aaaa' and its parent.
-               (what changes did 'aaaa' introduce)
+      bzr diff -r before:1913..1913
+            -> Find the changes between revision 1913 and its parent (1912).
+               (What changes did revision 1913 introduce).
+               This is equivalent to:  bzr diff -c 1913
     """
 
     prefix = 'before:'

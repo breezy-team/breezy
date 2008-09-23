@@ -455,6 +455,11 @@ class Tree(object):
         """
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
+    def iter_children(self, file_id):
+        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        for child in getattr(entry, 'children', {}).itervalues():
+            yield child.file_id
+
     @symbol_versioning.deprecated_method(symbol_versioning.one_six)
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
@@ -719,10 +724,9 @@ def _find_children_across_trees(specified_ids, trees):
             for tree in trees:
                 if not tree.has_id(file_id):
                     continue
-                entry = tree.inventory[file_id]
-                for child in getattr(entry, 'children', {}).itervalues():
-                    if child.file_id not in interesting_ids:
-                        new_pending.add(child.file_id)
+                for child_id in tree.iter_children(file_id):
+                    if child_id not in interesting_ids:
+                        new_pending.add(child_id)
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids
@@ -831,10 +835,10 @@ class InterTree(InterObject):
         else:
             all_unversioned = deque()
         to_paths = {}
-        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
+        from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
+        to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
@@ -932,7 +936,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not file_id in self.target.inventory:
+            if not file_id in self.target.all_file_ids():
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None

@@ -14,17 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests for repository packing."""
 
-"""Tests for the _generate_text_key_index API."""
-
-
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestGenerateTextKeyIndex(TestCaseWithRepository):
+class TestPack(TestCaseWithRepository):
 
-    def test_empty(self):
+    def test_pack_empty_does_not_error(self):
         repo = self.make_repository('.')
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        self.assertEqual({}, repo._generate_text_key_index())
+        repo.pack()
