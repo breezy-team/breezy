@@ -801,15 +801,18 @@ class TestCase(unittest.TestCase):
     def _clear_hooks(self):
         # prevent hooks affecting tests
         import bzrlib.branch
+        import bzrlib.smart.client
         import bzrlib.smart.server
         self._preserved_hooks = {
             bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
             bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
+            bzrlib.smart.client._SmartClient: bzrlib.smart.client._SmartClient.hooks,
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
         # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.client._SmartClient.hooks = bzrlib.smart.client.SmartClientHooks()
         bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
 
     def _silenceUI(self):
