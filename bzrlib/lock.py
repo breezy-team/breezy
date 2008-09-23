@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +42,42 @@ from bzrlib import (
     osutils,
     trace,
     )
+from bzrlib.hooks import Hooks
+
+
+class LockHooks(Hooks):
+
+    def __init__(self):
+        Hooks.__init__(self)
+
+        # added in 1.8; called with a LockResult when a physical lock is
+        # acquired
+        self['lock_acquired'] = []
+
+        # added in 1.8; called with a LockResult when a physical lock is
+        # acquired
+        self['lock_released'] = []
+
+
+class Lock(object):
+    """Base class for locks.
+
+    :cvar hooks: Hook dictionary for operations on locks.
+    """
+
+    hooks = LockHooks()
+
+
+class LockResult(object):
+    """Result of an operation on a lock; passed to a hook"""
+
+    def __init__(self, lock_url, details=None):
+        """Create a lock result for lock with optional details about the lock."""
+        self.lock_url = lock_url
+        self.details = details
+
+    def __eq__(self, other):
+        return self.lock_url == other.lock_url and self.details == other.details
 
 
 class _OSLock(object):
