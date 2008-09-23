@@ -663,7 +663,7 @@ def local_time_offset(t=None):
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     
 def format_date(t, offset=0, timezone='original', date_fmt=None,
-                show_offset=True, local_weekday=False):
+                show_offset=True):
     """Return a formatted date string.
 
     :param t: Seconds since the epoch.
@@ -671,9 +671,35 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     :param timezone: How to display the time: 'utc', 'original' for the
          timezone specified by offset, or 'local' for the process's current
          timezone.
-    :param show_offset: Whether to append the timezone.
     :param date_fmt: strftime format.
+    :param show_offset: Whether to append the timezone.
     """
+    (date_fmt, tt, offset_str) = \
+               _format_date(t, offset, timezone, date_fmt, show_offset)
+    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
+    date_str = time.strftime(date_fmt, tt)
+    return date_str + offset_str
+
+def format_local_date(t, offset=0, timezone='original', date_fmt=None,
+                      show_offset=True):
+    """Return an unicode date string formatted according to the current locale.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    :param timezone: How to display the time: 'utc', 'original' for the
+         timezone specified by offset, or 'local' for the process's current
+         timezone.
+    :param date_fmt: strftime format.
+    :param show_offset: Whether to append the timezone.
+    """
+    (date_fmt, tt, offset_str) = \
+               _format_date(t, offset, timezone, date_fmt, show_offset)
+    date_str = time.strftime(date_fmt, tt)
+    if not isinstance(date_str, unicode):
+        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+    return date_str + offset_str
+
+def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
         tt = time.gmtime(t)
         offset = 0
@@ -692,14 +718,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
     else:
         offset_str = ''
-    if local_weekday:
-        date_str = time.strftime(date_fmt, tt)
-        if not isinstance(date_str, unicode):
-            date_str = date_str.decode(bzrlib.user_encoding, 'replace')
-    else:
-        date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
-        date_str = time.strftime(date_fmt, tt)
-    return date_str + offset_str
+    return (date_fmt, tt, offset_str)
 
 
 def compact_date(when):
