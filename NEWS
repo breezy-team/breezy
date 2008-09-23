@@ -75,6 +75,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * A new hook, ``Branch.open``, has been added, which is called when
+      branch objects are opened. (Robert Collins)
+
 
 bzr 1.7rc2 IN DEVELOPMENT
 -------------------------
