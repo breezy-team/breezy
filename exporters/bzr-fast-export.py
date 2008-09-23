@@ -193,6 +193,13 @@ class BzrFastExporter:
         # make "modified" have 3-tuples, as added does
         my_modified = [ x[0:3] for x in changes.modified ]
 
+        for path, id_, kind in changes.removed:
+            sys.stdout.write('D %s\n' % (self.my_quote(path),))
+
+        for path, id_, kind1, kind2 in changes.kind_changed:
+            sys.stdout.write('D %s\n' % (self.my_quote(path),))
+            my_modified.append((path, id_, kind2))
+
         # We have to keep track of previous renames in this commit
         renamed = {}
         for (oldpath, newpath, id_, kind,
@@ -215,13 +222,6 @@ class BzrFastExporter:
                                                     self.my_quote(newpath)))
             if text_modified or meta_modified:
                 my_modified.append((newpath, id_, kind))
-
-        for path, id_, kind in changes.removed:
-            sys.stdout.write('D %s\n' % (self.my_quote(path),))
-
-        for path, id_, kind1, kind2 in changes.kind_changed:
-            sys.stdout.write('D %s\n' % (self.my_quote(path),))
-            my_modified.append((path, id_, kind2))
 
         for path, id_, kind in changes.added + my_modified:
             if kind in ('file', 'symlink'):

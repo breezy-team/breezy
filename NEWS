@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * bzr-fast-export now exports rm+mv correctly.
+      (Jonas)
+
     * hg-fast-export should use binary mode on Windows.
       (Alexey Stukalov)
 
