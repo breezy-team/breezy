@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * hg-fast-export should use binary mode on Windows.
+      (Alexey Stukalov)
+
   COMPATIBILITY BREAKS:
 
   API BREAKS:
