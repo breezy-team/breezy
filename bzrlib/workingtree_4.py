@@ -412,7 +412,16 @@ class WorkingTree4(WorkingTree3):
         link_or_sha1 = state.update_entry(entry, file_abspath,
                                           stat_value=stat_value)
         if entry[1][0][0] == 'f':
-            return link_or_sha1
+            if link_or_sha1 is None:
+                file_obj, statvalue = self.get_file_with_stat(file_id, path)
+                try:
+                    sha1 = osutils.sha_file(file_obj)
+                finally:
+                    file_obj.close()
+                self._observed_sha1(file_id, path, (sha1, statvalue))
+                return sha1
+            else:
+                return link_or_sha1
         return None
 
     def _get_inventory(self):
@@ -1845,6 +1854,8 @@ class InterDirStateTree(InterTree):
         utf8_decode = cache_utf8._utf8_decode
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
         cmp_by_dirs = dirstate.cmp_by_dirs
+        fstat = os.fstat
+        sha_file = osutils.sha_file
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
         # TODO: handle extra trees in the dirstate.
@@ -2078,9 +2089,22 @@ class InterDirStateTree(InterTree):
                         if source_minikind != 'f':
                             content_change = True
                         else:
-                            # We could check the size, but we already have the
-                            # sha1 hash.
-                            content_change = (link_or_sha1 != source_details[1])
+                            # If the size is the same, check the sha:
+                            if target_details[2] == source_details[2]:
+                                if link_or_sha1 is None:
+                                    # Stat cache miss:
+                                    file_obj = file(path_info[4], 'rb')
+                                    try:
+                                        statvalue = fstat(file_obj.fileno())
+                                        link_or_sha1 = sha_file(file_obj)
+                                    finally:
+                                        file_obj.close()
+                                    state._observed_sha1(entry, link_or_sha1,
+                                        statvalue)
+                                content_change = (link_or_sha1 != source_details[1])
+                            else:
+                                # Size changed, so must be different
+                                content_change = True
                         # Target details is updated at update_entry time
                         if use_filesystem_for_exec:
                             # We don't need S_ISREG here, because we are sure

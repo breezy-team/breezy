@@ -1500,12 +1500,16 @@ class DirState(object):
                      _pack_stat=pack_stat):
         """Update the entry based on what is actually on disk.
 
+        This function only calculates the sha if it needs to - if the entry is
+        uncachable, or clearly different to the first parent's entry, no sha
+        is calculated, and None is returned.
+
         :param entry: This is the dirblock entry for the file in question.
         :param abspath: The path on disk for this file.
         :param stat_value: (optional) if we already have done a stat on the
             file, re-use it.
-        :return: The sha1 hexdigest of the file (40 bytes) or link target of a
-                symlink.
+        :return: None, or The sha1 hexdigest of the file (40 bytes) or link
+            target of a symlink.
         """
         try:
             minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
@@ -1531,13 +1535,18 @@ class DirState(object):
         # process this entry.
         link_or_sha1 = None
         if minikind == 'f':
-            link_or_sha1 = self._sha1_file(abspath)
             executable = self._is_executable(stat_value.st_mode,
                                              saved_executable)
             if self._cutoff_time is None:
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
-                and stat_value.st_ctime < self._cutoff_time):
+                and stat_value.st_ctime < self._cutoff_time
+                and len(entry[1]) > 1
+                and entry[1][1][0] != 'a'):
+                    # Could check for size changes for further optimised
+                    # avoidance of sha1's. However the most prominent case of
+                    # over-shaing is during initial add, which this catches.
+                link_or_sha1 = self._sha1_file(abspath)
                 entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                                executable, packed_stat)
             else:
