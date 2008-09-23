@@ -88,7 +88,7 @@ WIN32_STDERR_HANDLE = -12
 
 # CSIDL constants (from MSDN 2003)
 CSIDL_APPDATA = 0x001A      # Application Data folder
-CSIDL_LOCAL_APPDATA = 0x001c# <user name>\Local Settings\Applicaiton Data (non roaming)
+CSIDL_LOCAL_APPDATA = 0x001c# <user name>\Local Settings\Application Data (non roaming)
 CSIDL_PERSONAL = 0x0005     # My Documents folder
 
 # from winapi C headers
