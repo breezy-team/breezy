@@ -131,10 +131,10 @@ class TestSmartServerResponse(tests.TestCase):
     def test__str__(self):
         """SmartServerResponses can be stringified."""
         self.assertEqual(
-            "<SmartServerResponse status=OK args=('args',) body='body'>",
+            "<SuccessfulSmartServerResponse args=('args',) body='body'>",
             str(SuccessfulSmartServerResponse(('args',), 'body')))
         self.assertEqual(
-            "<SmartServerResponse status=ERR args=('args',) body='body'>",
+            "<FailedSmartServerResponse args=('args',) body='body'>",
             str(FailedSmartServerResponse(('args',), 'body')))
 
 
@@ -613,6 +613,21 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.unlock_branch()
         # The branch tip was changed.
         self.assertEqual('child-1', self.tree.branch.last_revision())
+
+
+class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransport):
+
+    def test_get_stacked_on_url(self):
+        base_branch = self.make_branch('base', format='1.6')
+        stacked_branch = self.make_branch('stacked', format='1.6')
+        # typically should be relative
+        stacked_branch.set_stacked_on_url('../base')
+        request = smart.branch.SmartServerBranchRequestGetStackedOnURL(
+            self.get_transport())
+        response = request.execute('stacked')
+        self.assertEquals(
+            SmartServerResponse(('ok', '../base')),
+            response)
 
 
 class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):

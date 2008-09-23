@@ -149,10 +149,33 @@ def _help_on_revisionspec(name):
     import bzrlib.revisionspec
 
     out = []
-    out.append("Revision Identifiers\n")
-    out.append("A revision, or a range bound, can be one of the following.\n")
+    out.append(
+"""Revision Identifiers
+
+A revision identifier refers to a specific state of a branch's history. It can
+be a revision number, or a keyword followed by ':' and often other
+parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
+and 'submit:'.
+
+If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
+revision range. Examples: '3647..3649', 'date:yesterday..-1' and
+'branch:/path/to/branch1/..branch:/branch2' (note that there are no quotes or
+spaces around the '..').
+
+Ranges are interpreted differently by different commands. To the "log" command,
+a range is a sequence of log messages, but to the "diff" command, the range
+denotes a change between revisions (and not a sequence of changes).  In
+addition, "log" considers a closed range whereas "diff" and "merge" consider it
+to be open-ended, that is, they include one end but not the other.  For example:
+"bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
+while "bzr diff -r 3647..3649" includes the changes done in revisions 3647 and
+3648, but not 3649.
+
+The keywords used as revision selection methods are the following:
+""")
     details = []
-    details.append("\nFurther details are given below.\n")
+    details.append("\nIn addition, plugins can provide other keywords.")
+    details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)

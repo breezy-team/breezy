@@ -1278,7 +1278,8 @@ def _walkdirs_fs_utf8(top, prefix=""):
     """
     _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
+    # Use C accelerated directory listing.
+    _listdir = _read_dir
     _kind_from_mode = _formats.get
 
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1294,11 +1295,13 @@ def _walkdirs_fs_utf8(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        # read_dir supplies in should-stat order.
+        for _, name in sorted(_listdir(top)):
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
             append((relprefix + name, name, kind, statvalue, abspath))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1422,9 +1425,19 @@ def get_user_encoding(use_cache=True):
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
-        # work around egregious python 2.4 bug
+        # python locale.getpreferredencoding() always return
+        # 'mac-roman' on darwin. That's a lie.
         sys.platform = 'posix'
         try:
+            if os.environ.get('LANG', None) is None:
+                # If LANG is not set, we end up with 'ascii', which is bad
+                # ('mac-roman' is more than ascii), so we set a default which
+                # will give us UTF-8 (which appears to work in all cases on
+                # OSX). Users are still free to override LANG of course, as
+                # long as it give us something meaningful. This work-around
+                # *may* not be needed with python 3k and/or OSX 10.5, but will
+                # work with them too -- vila 20080908
+                os.environ['LANG'] = 'en_US.UTF-8'
             import locale
         finally:
             sys.platform = 'darwin'
@@ -1465,6 +1478,20 @@ def get_user_encoding(use_cache=True):
         _cached_user_encoding = user_encoding
 
     return user_encoding
+
+
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
 
 
 def recv_all(socket, bytes):
@@ -1543,3 +1570,9 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+try:
+    from bzrlib._readdir_pyx import read_dir as _read_dir
+except ImportError:
+    from bzrlib._readdir_py import read_dir as _read_dir

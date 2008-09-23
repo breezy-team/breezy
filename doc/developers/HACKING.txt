@@ -82,7 +82,7 @@ TODO: Merge that Wiki page into this document.
 Understanding the Development Process
 =====================================
 
-The development team follows many best-practices including:
+The development team follows many practices including:
 
 * a public roadmap and planning process in which anyone can participate
 
@@ -108,79 +108,6 @@ The key tools we use to enable these practices are:
 For further information, see http://bazaar-vcs.org/BzrDevelopment.
 
 
-A Closer Look at the Merge & Review Process
-===========================================
-
-If you'd like to propose a change, please post to the
-bazaar@lists.canonical.com list with a bundle, patch, or link to a
-branch. Put '[PATCH]' or '[MERGE]' in the subject so Bundle Buggy
-can pick it out, and explain the change in the email message text.
-Remember to update the NEWS file as part of your change if it makes any
-changes visible to users or plugin developers. Please include a diff
-against mainline if you're giving a link to a branch.
-
-You can generate a bundle like this::
-
-  bzr bundle > mybundle.patch
-  
-A .patch extension is recommended instead of .bundle as many mail clients
-will send the latter as a binary file. If a bundle would be too long or your
-mailer mangles whitespace (e.g. implicitly converts Unix newlines to DOS
-newlines), use the merge-directive command instead like this::
-
-  bzr merge-directive http://bazaar-vcs.org http://example.org/my_branch > my_directive.patch
-
-See the help for details on the arguments to merge-directive.
-
-Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
-want it to be merged. If you want comments from developers rather than
-to be merged, you can put '[RFC]' in the subject line.
-
-Anyone is welcome to review code.  There are broadly three gates for
-code to get in:
-
- * Doesn't reduce test coverage: if it adds new methods or commands,
-   there should be tests for them.  There is a good test framework
-   and plenty of examples to crib from, but if you are having trouble
-   working out how to test something feel free to post a draft patch
-   and ask for help.
-
- * Doesn't reduce design clarity, such as by entangling objects
-   we're trying to separate.  This is mostly something the more
-   experienced reviewers need to help check.
-
- * Improves bugs, features, speed, or code simplicity.
-
-Code that goes in should pass all three. The core developers take care
-to keep the code quality high and understandable while recognising that
-perfect is sometimes the enemy of good. (It is easy for reviews to make
-people notice other things which should be fixed but those things should
-not hold up the original fix being accepted. New things can easily be
-recorded in the Bug Tracker instead.)
-
-Anyone can "vote" on the mailing list. Core developers can also vote using
-Bundle Buggy. Here are the voting codes and their explanations.
-
-:approve:  Reviewer wants this submission merged.
-:tweak:    Reviewer wants this submission merged with small changes. (No
-  re-review required.)
-:abstain:  Reviewer does not intend to vote on this patch.
-:resubmit: Please make changes and resubmit for review.
-:reject:   Reviewer doesn't want this kind of change merged.
-:comment:  Not really a vote. Reviewer just wants to comment, for now.
-
-If a change gets two approvals from core reviewers, and no rejections,
-then it's OK to come in.  Any of the core developers can bring it into the
-bzr.dev trunk and backport it to maintenance branches if required.  The
-Release Manager will merge the change into the branch for a pending
-release, if any. As a guideline, core developers usually merge their own
-changes and volunteer to merge other contributions if they were the second
-reviewer to agree to a change.
-
-To track the progress of proposed changes, use Bundle Buggy. See
-http://bundlebuggy.aaronbentley.com/help for a link to all the
-outstanding merge requests together with an explanation of the columns.
-Bundle Buggy will also mail you a link to track just your change.
 
 
 Preparing a Sandbox for Making Changes to Bazaar
@@ -264,78 +191,176 @@ Automatically-generated API reference information is available at
 <http://starship.python.net/crew/mwh/bzrlibapi/>.  
 (There is an experimental editable version at 
 <http://starship.python.net/crew/mwh/bzrlibapi-oe/>.)
-See also the `Essential Domain Classes`_
-section of this guide.
+
+See also the `Bazaar Architectural Overview  <../../developers/overview.html>`_.
 
 
-Essential Domain Classes
-########################
+The Code Review Process
+#######################
 
-Introducing the Object Model
-============================
+All code changes coming in to Bazaar are reviewed by someone else.
+Normally changes by core contributors are reviewed by one other core
+developer, and changes from other people are reviewed by two core
+developers.  Use intelligent discretion if the patch is trivial.
 
-The core domain objects within the bazaar model are:
+Good reviews do take time. They also regularly require a solid
+understanding of the overall code base. In practice, this means a small
+number of people often have a large review burden - with knowledge comes
+responsibility. No one like their merge requests sitting in a queue going
+nowhere, so reviewing sooner rather than later is strongly encouraged.
 
-* Transport
 
-* Branch
 
-* Repository
+Sending patches for review
+==========================
 
-* WorkingTree
+If you'd like to propose a change, please post to the
+bazaar@lists.canonical.com list with a bundle, patch, or link to a
+branch. Put ``[PATCH]`` or ``[MERGE]`` in the subject so Bundle Buggy
+can pick it out, and explain the change in the email message text.
+Remember to update the NEWS file as part of your change if it makes any
+changes visible to users or plugin developers. Please include a diff
+against mainline if you're giving a link to a branch.
 
-Transports are explained below. See http://bazaar-vcs.org/Classes/
-for an introduction to the other key classes.
+You can generate a merge request like this::
 
-Using Transports
-================
+  bzr send -o bug-1234.diff
+  
+A ``.diff`` extension is recommended instead of .bundle as many mail clients
+will send the latter as a binary file.
 
-The ``Transport`` layer handles access to local or remote directories.
-Each Transport object acts like a logical connection to a particular
-directory, and it allows various operations on files within it.  You can
-*clone* a transport to get a new Transport connected to a subdirectory or
-parent directory.
+``bzr send`` can also send mail directly if you prefer; see the help.
 
-Transports are not used for access to the working tree.  At present
-working trees are always local and they are accessed through the regular
-Python file io mechanisms.
+Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
+want it to be merged. If you want comments from developers rather than
+to be merged, you can put ``[RFC]`` in the subject line.
 
-Filenames vs URLs
------------------
+If this change addresses a bug, please put the bug number in the subject
+line too, in the form ``[#1]`` so that Bundle Buggy can recognize it.
 
-Transports work in URLs.  Take note that URLs are by definition only
-ASCII - the decision of how to encode a Unicode string into a URL must be
-taken at a higher level, typically in the Store.  (Note that Stores also
-escape filenames which cannot be safely stored on all filesystems, but
-this is a different level.)
+If the change is intended for a particular release mark that in the
+subject too, e.g. ``[1.6]``.
 
-The main reason for this is that it's not possible to safely roundtrip a
-URL into Unicode and then back into the same URL.  The URL standard
-gives a way to represent non-ASCII bytes in ASCII (as %-escapes), but
-doesn't say how those bytes represent non-ASCII characters.  (They're not
-guaranteed to be UTF-8 -- that is common but doesn't happen everywhere.)
 
-For example if the user enters the url ``http://example/%e0`` there's no
-way to tell whether that character represents "latin small letter a with
-grave" in iso-8859-1, or "latin small letter r with acute" in iso-8859-2
-or malformed UTF-8.  So we can't convert their URL to Unicode reliably.
+Review cover letters
+====================
 
-Equally problematic if we're given a url-like string containing non-ascii
-characters (such as the accented a) we can't be sure how to convert that
-to the correct URL, because we don't know what encoding the server expects
-for those characters.  (Although this is not totally reliable we might still
-accept these and assume they should be put into UTF-8.)
+Please put a "cover letter" on your merge request explaining:
 
-A similar edge case is that the url ``http://foo/sweet%2Fsour`` contains
-one directory component whose name is "sweet/sour".  The escaped slash is
-not a directory separator.  If we try to convert URLs to regular Unicode
-paths this information will be lost.
+* the reason **why** you're making this change
 
-This implies that Transports must natively deal with URLs; for simplicity
-they *only* deal with URLs and conversion of other strings to URLs is done
-elsewhere.  Information they return, such as from ``list_dir``, is also in
-the form of URL components.
+* **how** this change acheives this purpose
 
+* anything else you may have fixed in passing 
+
+* anything significant that you thought of doing, such as a more
+  extensive fix or a different approach, but didn't or couldn't do now
+
+A good cover letter makes reviewers' lives easier because they can decide
+from the letter whether they agree with the purpose and approach, and then
+assess whether the patch actually does what the cover letter says.
+Explaining any "drive-by fixes" or roads not taken may also avoid queries
+from the reviewer.  All in all this should give faster and better reviews.
+Sometimes writing the cover letter helps the submitter realize something
+else they need to do.  The size of the cover letter should be proportional
+to the size and complexity of the patch.
+
+
+Reviewing proposed changes
+==========================
+
+Anyone is welcome to review code, and reply to the thread with their
+opinion or comments.
+
+The simplest way to review a proposed change is to just read the patch on
+the list or in Bundle Buggy.  For more complex changes it may be useful
+to make a new working tree or branch from trunk, and merge the proposed
+change into it, so you can experiment with the code or look at a wider
+context.
+
+There are three main requirements for code to get in:
+
+* Doesn't reduce test coverage: if it adds new methods or commands,
+  there should be tests for them.  There is a good test framework
+  and plenty of examples to crib from, but if you are having trouble
+  working out how to test something feel free to post a draft patch
+  and ask for help.
+
+* Doesn't reduce design clarity, such as by entangling objects
+  we're trying to separate.  This is mostly something the more
+  experienced reviewers need to help check.
+
+* Improves bugs, features, speed, or code simplicity.
+
+Code that goes in should not degrade any of these aspects.  Patches are
+welcome that only cleanup the code without changing the external
+behaviour.  The core developers take care to keep the code quality high
+and understandable while recognising that perfect is sometimes the enemy
+of good. 
+
+It is easy for reviews to make people notice other things which should be
+fixed but those things should not hold up the original fix being accepted.
+New things can easily be recorded in the Bug Tracker instead.
+
+It's normally much easier to review several smaller patches than one large
+one.  You might want to use ``bzr-loom`` to maintain threads of related
+work, or submit a preparatory patch that will make your "real" change
+easier.
+
+
+Checklist for reviewers
+=======================
+
+* Do you understand what the code's doing and why?
+
+* Will it perform reasonably for large inputs, both in memory size and
+  run time?  Are there some scenarios where performance should be
+  measured?
+
+* Is it tested, and are the tests at the right level?  Are there both
+  blackbox (command-line level) and API-oriented tests?
+
+* If this change will be visible to end users or API users, is it
+  appropriately documented in NEWS?
+
+* Does it meet the coding standards below?
+
+* If it changes the user-visible behaviour, does it update the help
+  strings and user documentation?
+
+* If it adds a new major concept or standard practice, does it update the
+  developer documentation?
+
+* (your ideas here...)
+
+
+Bundle Buggy and review outcomes
+================================
+
+Anyone can "vote" on the mailing list by expressing an opinion. Core
+developers can also vote using Bundle Buggy. Here are the voting codes and
+their explanations.
+
+:approve:  Reviewer wants this submission merged.
+:tweak:    Reviewer wants this submission merged with small changes. (No
+  re-review required.)
+:abstain:  Reviewer does not intend to vote on this patch.
+:resubmit: Please make changes and resubmit for review.
+:reject:   Reviewer doesn't want this kind of change merged.
+:comment:  Not really a vote. Reviewer just wants to comment, for now.
+
+If a change gets two approvals from core reviewers, and no rejections,
+then it's OK to come in.  Any of the core developers can bring it into the
+bzr.dev trunk and backport it to maintenance branches if required.  The
+Release Manager will merge the change into the branch for a pending
+release, if any. As a guideline, core developers usually merge their own
+changes and volunteer to merge other contributions if they were the second
+reviewer to agree to a change.
+
+To track the progress of proposed changes, use Bundle Buggy. See
+http://bundlebuggy.aaronbentley.com/help for a link to all the
+outstanding merge requests together with an explanation of the columns.
+Bundle Buggy will also mail you a link to track just your change.
 
 Coding Style Guidelines
 #######################
@@ -1204,34 +1229,6 @@ Then add these lines for the relevant branches in ``locations.conf``::
 While attending a sprint, RobertCollins' Dbus plugin is useful for the
 same reason. See the documentation within the plugin for information on
 how to set it up and configure it.
-
-
-Reviewing Changes
-=================
-
-Setting Up Your Workspace for Reviews
--------------------------------------
-
-TODO: Incorporate John Arbash Meinel's detailed email to Ian C on the
-numerous ways of setting up integration branches.
-
-
-The Review Checklist
---------------------
-
-See `A Closer Look at the Merge & Review Process`_
-for information on the gates used to decide whether code can be merged
-or not and details on how review results are recorded and communicated.
-
-
-The Importance of Timely Reviews
---------------------------------
-
-Good reviews do take time. They also regularly require a solid
-understanding of the overall code base. In practice, this means a small
-number of people often have a large review burden - with knowledge comes
-responsibility. No one like their merge requests sitting in a queue going
-nowhere, so reviewing sooner rather than later is strongly encouraged.
 
 
 Submitting Changes

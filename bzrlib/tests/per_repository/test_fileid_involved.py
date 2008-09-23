@@ -19,7 +19,7 @@ import sys
 
 from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 

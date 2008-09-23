@@ -1807,15 +1807,24 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
-
-        # We assume that during 'push' this repository is closer than
-        # the target.
-        graph = self.repository.get_graph(target.repository)
-        target.update_revisions(self, stop_revision, overwrite=overwrite,
-                                graph=graph)
-        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+        if result.old_revid != self.last_revision():
+            # We assume that during 'push' this repository is closer than
+            # the target.
+            graph = self.repository.get_graph(target.repository)
+            target.update_revisions(self, stop_revision, overwrite=overwrite,
+                                    graph=graph)
+        if self._push_should_merge_tags():
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
+
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+        
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -2174,7 +2183,9 @@ class BzrBranch7(BzrBranch5):
         return self._get_bound_location(False)
 
     def get_stacked_on_url(self):
-        self._check_stackable_repo()
+        # you can always ask for the URL; but you might not be able to use it
+        # if the repo can't support stacking.
+        ## self._check_stackable_repo()
         stacked_url = self._get_config_location('stacked_on_location')
         if stacked_url is None:
             raise errors.NotStacked(self)
