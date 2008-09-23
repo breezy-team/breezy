@@ -28,6 +28,9 @@ IN DEVELOPMENT
 
     * Location aliases can now accept a trailing path.  (Micheal Hudson)
 
+    * New hooks ``Lock.hooks`` when LockDirs are acquired and released. 
+      (Robert Collins, MartinPool)
+
     * Switching in heavyweight checkouts uses the master branch's context, not
       the checkout's context.  (Adrian Wilkins)
 
