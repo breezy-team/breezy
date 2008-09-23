@@ -13,6 +13,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr annotate`` will now include uncommitted changes from the local
+      working tree by default. Such uncommitted changes are given the
+      revision number they would get if a commit was done, followed with a
+      ? to indicate that its not actually known. (Robert Collins, #3439)
+
     * ``bzr branch`` now accepts a ``--standalone`` option, which creates a
       standalone branch regardless of the presence of shared repositories.
       (Daniel Watkins)
@@ -68,7 +73,13 @@ IN DEVELOPMENT
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
+    * PreviewTree is now tested via intertree_implementations.
+      (Aaron Bentley)
+
   INTERNALS:
+
+    * A new hook, ``Branch.open``, has been added, which is called when
+      branch objects are opened. (Robert Collins)
 
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)

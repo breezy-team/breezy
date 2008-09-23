@@ -2053,12 +2053,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                           (False, False))],
                           list(preview_tree.iter_changes(revision_tree)))
 
-    def test_wrong_tree_value_error(self):
-        revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              preview_tree)
-        self.assertEqual('from_tree must be transform source tree.', str(e))
-
     def test_include_unchanged_value_error(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         e = self.assertRaises(ValueError, preview_tree.iter_changes,
