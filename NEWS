@@ -73,6 +73,9 @@ IN DEVELOPMENT
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
+    * PreviewTree is now tested via intertree_implementations.
+      (Aaron Bentley)
+
   INTERNALS:
 
     * A new hook, ``Branch.open``, has been added, which is called when

@@ -24,6 +24,7 @@ Specific tests for individual variations are in other places such as:
 
 import bzrlib.errors as errors
 from bzrlib.transport import get_transport
+from bzrlib.transform import TransformPreview
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
@@ -42,7 +43,7 @@ from bzrlib.workingtree import (
     )
 
 
-def return_provided_trees(source, target):
+def return_provided_trees(test_case, source, target):
     """Return the source and target tree unaltered."""
     return source, target
 
@@ -92,6 +93,10 @@ class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             result.append(scenario)
         return result
 
+def mutable_trees_to_preview_trees(test_case, source, target):
+    preview = TransformPreview(target)
+    test_case.addCleanup(preview.finalize)
+    return source, preview.get_preview_tree()
 
 def load_tests(basic_tests, module, loader):
     result = loader.suiteClass()
@@ -112,6 +117,13 @@ def load_tests(basic_tests, module, loader):
              optimiser._matching_from_tree_format,
              optimiser._matching_to_tree_format,
              optimiser._test_mutable_trees_to_test_trees))
+
+    # test PreviewTree
+    test_intertree_permutations.append(
+        (InterTree,
+         default_tree_format,
+         default_tree_format,
+         mutable_trees_to_preview_trees))
     adapter = InterTreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
