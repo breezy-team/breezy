@@ -192,3 +192,16 @@ server_stopped (SmartTCPServer)
 
 Invoked whenever the server stops serving a directory.
 The hook signature is the same as ``server_started``.
+
+
+lock_acquired (LockDir)
+----------------------------
+
+Called with a LockResult object when a lock has been successfully acquired.
+(New in 1.8.)
+
+lock_released (LockDir)
+----------------------------
+
+Called with a LockResult object when a lock has been successfully released.
+(New in 1.8.)
