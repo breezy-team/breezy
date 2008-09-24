@@ -813,9 +813,16 @@ class RemoteRepository(object):
             return 0, []
         inter = repository.InterRepository.get(source, self)
         try:
-            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
+            result = inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
+
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
+        else:
+            # fetching revisions invalidates the cache of revisions that this
+            # repo can't find parents for.
+            if self._parents_map_absences is not None:
+                self._parents_map_absences = set()
+            return result
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()
