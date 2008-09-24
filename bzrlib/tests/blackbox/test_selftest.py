@@ -572,9 +572,18 @@ class TestSelftestWithIdList(TestCaseInTempDir):
 
 class TestSelftestStartingWith(TestCase):
 
-    def test_starting_with(self):
+    def test_starting_with_single_argument(self):
         out, err = self.run_bzr(
             ['selftest', '--starting-with', self.id(), '--list'])
         self.assertContainsRe(out, "Listed 1 test in")
         self.assertContainsRe(out, self.id())
 
+    def test_starting_with_multiple_argument(self):
+        out, err = self.run_bzr(
+            ['selftest',
+             '--starting-with', self.id(),
+             '--starting-with', 'bzrlib.tests.test_sampler',
+             '--list'])
+        self.assertContainsRe(out, "Listed 2 tests in")
+        self.assertContainsRe(out, self.id())
+        self.assertContainsRe(out, 'bzrlib.tests.test_sampler')

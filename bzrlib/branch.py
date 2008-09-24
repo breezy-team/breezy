@@ -91,6 +91,9 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._open_hook()
+        hooks = Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
 
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
@@ -230,15 +233,6 @@ class Branch(object):
         If lock_write doesn't return a token, then this method is not supported.
         """
         self.control_files.dont_leave_in_place()
-
-    @deprecated_method(deprecated_in((0, 16, 0)))
-    def abspath(self, name):
-        """Return absolute filename for something in the branch
-        
-        XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method.
-        """
-        raise NotImplementedError(self.abspath)
 
     def bind(self, other):
         """Bind the local branch the other branch.
@@ -576,29 +570,6 @@ class Branch(object):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
 
-    def rename_one(self, from_rel, to_rel):
-        """Rename one file.
-
-        This can change the directory or the filename or both.
-        """
-        raise NotImplementedError(self.rename_one)
-
-    def move(self, from_paths, to_name):
-        """Rename files.
-
-        to_name must exist as a versioned directory.
-
-        If to_name exists and is a directory, the files are moved into
-        it, keeping their old names.  If it is a directory, 
-
-        Note that to_name is only the last component of the new name;
-        this doesn't change the directory.
-
-        This returns a list of (from_path, to_path) pairs for each
-        entry that is moved.
-        """
-        raise NotImplementedError(self.move)
-
     def get_parent(self):
         """Return the parent location of the branch.
 
@@ -704,18 +675,20 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a new line of development from the branch, into to_bzrdir.
-        
+
+        to_bzrdir controls the branch format.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -735,7 +708,8 @@ class Branch(object):
         """
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
-        new_history = self.revision_history()
+        else:
+            new_history = self.revision_history()
         if revision_id is not None and new_history != []:
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
@@ -1097,6 +1071,8 @@ class BranchHooks(Hooks):
         # (branch, revision_history), and the branch will
         # be write-locked.
         self['set_rh'] = []
+        # Invoked after a branch is opened. The api signature is (branch).
+        self['open'] = []
         # invoked after a push operation completes.
         # the api signature is
         # (push_result)
@@ -1520,11 +1496,6 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
-    @deprecated_method(deprecated_in((0, 16, 0)))
-    def abspath(self, name):
-        """See Branch.abspath."""
-        return self._transport.abspath(name)
-
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -1836,15 +1807,24 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
-
-        # We assume that during 'push' this repository is closer than
-        # the target.
-        graph = self.repository.get_graph(target.repository)
-        target.update_revisions(self, stop_revision, overwrite=overwrite,
-                                graph=graph)
-        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+        if result.old_revid != self.last_revision():
+            # We assume that during 'push' this repository is closer than
+            # the target.
+            graph = self.repository.get_graph(target.repository)
+            target.update_revisions(self, stop_revision, overwrite=overwrite,
+                                    graph=graph)
+        if self._push_should_merge_tags():
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
+
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+        
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -2203,7 +2183,9 @@ class BzrBranch7(BzrBranch5):
         return self._get_bound_location(False)
 
     def get_stacked_on_url(self):
-        self._check_stackable_repo()
+        # you can always ask for the URL; but you might not be able to use it
+        # if the repo can't support stacking.
+        ## self._check_stackable_repo()
         stacked_url = self._get_config_location('stacked_on_location')
         if stacked_url is None:
             raise errors.NotStacked(self)

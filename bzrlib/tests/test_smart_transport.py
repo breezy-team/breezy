@@ -2267,7 +2267,8 @@ class TestVersionOneFeaturesInProtocolThree(
     def test_construct_version_three_server_protocol(self):
         smart_protocol = protocol.ProtocolThreeDecoder(None)
         self.assertEqual('', smart_protocol.unused_data)
-        self.assertEqual('', smart_protocol._in_buffer)
+        self.assertEqual([], smart_protocol._in_buffer_list)
+        self.assertEqual(0, smart_protocol._in_buffer_len)
         self.assertFalse(smart_protocol._has_dispatched)
         # The protocol starts by expecting four bytes, a length prefix for the
         # headers.

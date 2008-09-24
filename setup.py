@@ -225,6 +225,7 @@ def add_pyrex_extension(module_name, **kwargs):
             ext_modules.append(Extension(module_name, [c_name], **kwargs))
 
 
+add_pyrex_extension('bzrlib._btree_serializer_c')
 add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 if sys.platform == 'win32':
@@ -233,6 +234,8 @@ if sys.platform == 'win32':
     # right value.
     add_pyrex_extension('bzrlib._walkdirs_win32',
                         define_macros=[('WIN32', None)])
+else:
+    add_pyrex_extension('bzrlib._readdir_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
 
@@ -251,6 +254,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # win32com uses them.  Hook this in so win32com.shell is found.
     import modulefinder
     import win32com
+    import cPickle as pickle
     for p in win32com.__path__[1:]:
         modulefinder.AddPackagePath("win32com", p)
     for extra in ["win32com.shell"]:
@@ -269,6 +273,29 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
 
     packages.append("tbzrlib")
+
+    # collect up our icons.
+    cwd = os.getcwd()
+    ico_root = os.path.join(tbzr_root, 'tbzrlib', 'resources')
+    icos = [] # list of (path_root, relative_ico_path)
+    # First always bzr's icon and its in the root of the bzr tree.
+    icos.append(('', 'bzr.ico'))
+    for root, dirs, files in os.walk(ico_root):
+        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root)+1:])
+                     for f in files if f.endswith('.ico')])
+    # allocate an icon ID for each file and the full path to the ico
+    icon_resources = [(rid, os.path.join(ico_dir, ico_name))
+                      for rid, (ico_dir, ico_name) in enumerate(icos)]
+    # create a string resource with the mapping.  Might as well save the
+    # runtime some effort and write a pickle.
+    # Runtime expects unicode objects with forward-slash seps.
+    fse = sys.getfilesystemencoding()
+    map_items = [(f.replace('\\', '/').decode(fse), rid)
+                 for rid, (_, f) in enumerate(icos)]
+    ico_map = dict(map_items)
+    # Create a new resource type of 'ICON_MAP', and use ID=1
+    other_resources = [ ("ICON_MAP", 1, pickle.dumps(ico_map))]
+
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
 
@@ -282,7 +309,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # GUI version that is generally used.
     tbzrcache = dict(
         script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
-        icon_resources = [(0,'bzr.ico')],
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcache)
 
@@ -324,6 +352,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
     excludes.append('PyQt4.elementtree.ElementTree')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
+    packages.append('docutils') # html formatting
     # but we can avoid many Qt4 Dlls.
     dll_excludes.extend(
         """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
@@ -482,7 +511,7 @@ elif 'py2exe' in sys.argv:
             plugins = set(dirs)
         x = []
         for i in files:
-            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll"]:
+            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue

@@ -235,7 +235,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = self.run_bzr_decode('pull', working_dir=dirname2)
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
-        self.assertEqual(u'Using saved location: %s/\n'
+        self.assertEqual(u'Using saved parent location: %s/\n'
                 'No revisions to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(

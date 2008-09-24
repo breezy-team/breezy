@@ -726,6 +726,12 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
 
+    def __repr__(self):
+        return "%s(%r, %r)" % (
+            self.__class__.__name__,
+            self._index,
+            self._access)
+
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
 
@@ -1195,6 +1201,10 @@ class KnitVersionedFiles(VersionedFiles):
                     current_source = key_source
                 source_keys[-1][1].append(key)
         else:
+            if ordering != 'unordered':
+                raise AssertionError('valid values for ordering are:'
+                    ' "unordered" or "topological" not: %r'
+                    % (ordering,))
             # Just group by source; remote sources first.
             present_keys = []
             source_keys = []
