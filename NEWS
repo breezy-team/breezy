@@ -1,4 +1,4 @@
-bzr-svn 0.4.13	UNRELEASED
+bzr-svn 0.4.13	2008-09-24
 
   BUG FIXES
 
@@ -11,6 +11,8 @@ bzr-svn 0.4.13	UNRELEASED
    * Avoid NoneType error when no revisions to push in "bzr dpush". (#267484)
 
    * Properly convert errors raised when starting a commit. (#267899)
+
+   * Fix compatibility with Bazaar 1.7.
 
   FEATURES
 
