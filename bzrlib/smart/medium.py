@@ -28,16 +28,18 @@ import os
 import socket
 import sys
 import urllib
+import weakref
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    debug,
     errors,
     osutils,
     symbol_versioning,
     urlutils,
     )
-from bzrlib.smart import protocol
+from bzrlib.smart import client, protocol
 from bzrlib.transport import ssh
 """)
 
@@ -468,6 +470,58 @@ class SmartClientMediumRequest(object):
         return self._medium._get_line()
 
 
+_atexit_registered = False
+
+
+class _HPSSCallCounter(object):
+    """An object that counts the HPSS calls made to a particular medium.
+
+    When the medium is garbage-collected, or failing that when atexit functions
+    are run, the total number of calls made on that medium are reported to
+    stderr.
+
+    It only keeps a weakref to the medium, so shouldn't affect the medium's
+    lifetime.
+    """
+
+    def __init__(self, medium):
+        self.count = 0
+        self._done = False
+        self.medium_ref = weakref.ref(medium, self.done)
+        self.medium_repr = repr(medium)
+        # Register an atexit handler if one hasn't already been registered.
+        # Usually the weakref callback is enough, but quite often if the
+        # program aborts with an exception the medium doesn't get
+        # garbage-collected, presumably because one of the traceback frames
+        # still references it.
+        global _atexit_registered, _atexit_counters
+        if not _atexit_registered:
+            import atexit
+            _atexit_counters = []
+            def finish_counters():
+                for counter in _atexit_counters:
+                    counter.done(None)
+            atexit.register(finish_counters)
+            _atexit_registered = True
+        _atexit_counters.append(self)
+
+    def increment(self, params):
+        """Install this method as a _SmartClient.hooks['call'] hook."""
+        if params.medium is self.medium_ref():
+            self.count += 1
+
+    def done(self, ref):
+        """This method is called when the medium is done."""
+        # TODO: remove hook
+        if self._done:
+            return
+        self._done = True
+        if self.count != 0:
+            print >> sys.stderr, 'HPSS calls: %d (%s)' % (
+                self.count, self.medium_repr)
+        _atexit_counters.remove(self)
+
+
 class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
@@ -482,6 +536,10 @@ class SmartClientMedium(SmartMedium):
         # _remote_version_is_before tracks the bzr version the remote side
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
+        if 'hpss' in debug.debug_flags:
+            counter = _HPSSCallCounter(self)
+            client._SmartClient.hooks.install_named_hook('call',
+                    counter.increment, 'hpss debug')
 
     def _is_remote_before(self, version_tuple):
         """Is it possible the remote side supports RPCs for a given version?
@@ -674,6 +732,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._write_to.close()
         self._ssh_connection.close()
         self._connected = False
+        super(SmartSSHClientMedium, self).disconnect()
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
@@ -731,6 +790,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         self._socket.close()
         self._socket = None
         self._connected = False
+        super(SmartTCPClientMedium, self).disconnect()
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
