@@ -34,6 +34,15 @@ IN DEVELOPMENT
     * Switching in heavyweight checkouts uses the master branch's context, not
       the checkout's context.  (Adrian Wilkins)
 
+    * ``status`` on large trees is now faster, due to optimisations in the
+      walkdirs code. Of particular note, the walkdirs code now performs
+      a temporary ``chdir()`` while reading a single directory; if your
+      platform has non thread-local current working directories (and is
+      not windows which has its own implementation), this may introduce a
+      race condition during concurrent uses of bzrlib. The bzrlib CLI
+      will not encounter this as it is single threaded for working tree
+      operations. (Robert Collins)
+
   BUG FIXES:
 
     * Branching from a shared repository on a smart server into a new
@@ -83,6 +92,10 @@ IN DEVELOPMENT
 
     * A new hook, ``Branch.open``, has been added, which is called when
       branch objects are opened. (Robert Collins)
+
+    * ``bzrlib.osutils._walkdirs_utf8`` has been refactored into common
+      tree walking, and modular directory listing code to aid future
+      performance optimisations and refactoring. (Robert Collins)
 
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
