@@ -4,6 +4,21 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.7.1rc1 2008-09-24
+-----------------------
+
+This release just includes an update to how the merge algorithm handles
+file paths when we encounter complex history.
+
+  FEATURES:
+
+    * If we encounter a criss-cross in history, use information from
+      direct Least Common Ancestors to resolve inventory shape (locations
+      of files, adds, deletes, etc). This is similar in concept to using
+      ``--lca`` for merging file texts, only applied to paths.
+      (John Arbash Meinel)
+
+
 bzr 1.7 2008-09-23
 ------------------
 
