@@ -20,6 +20,10 @@
 import os
 import sys
 
+#python2.4 support
+cdef extern from "python-compat.h":
+    pass
+
 
 # the opaque C library DIR type.
 cdef extern from 'errno.h':

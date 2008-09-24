@@ -23,6 +23,10 @@ from bzrlib import errors
 from bzrlib.dirstate import DirState
 
 
+#python2.4 support
+cdef extern from "python-compat.h":
+    pass
+
 # Give Pyrex some function definitions for it to understand.
 # All of these are just hints to Pyrex, so that it can try to convert python
 # objects into similar C objects. (such as PyInt => int).
