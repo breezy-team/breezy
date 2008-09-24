@@ -1324,7 +1324,11 @@ class UnicodeDirReader(DirReader):
         dirblock = []
         append = dirblock.append
         for name in sorted(_listdir(top)):
-            name_utf8 = _utf8_encode(name)[0]
+            try:
+                name_utf8 = _utf8_encode(name)[0]
+            except UnicodeDecodeError:
+                raise errors.BadFilenameEncoding(
+                    _utf8_encode(relprefix)[0] + name, _fs_enc)
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
