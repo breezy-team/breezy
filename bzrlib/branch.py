@@ -2169,7 +2169,9 @@ class BzrBranch7(BzrBranch5):
         return self._get_bound_location(False)
 
     def get_stacked_on_url(self):
-        self._check_stackable_repo()
+        # you can always ask for the URL; but you might not be able to use it
+        # if the repo can't support stacking.
+        ## self._check_stackable_repo()
         stacked_url = self._get_config_location('stacked_on_location')
         if stacked_url is None:
             raise errors.NotStacked(self)

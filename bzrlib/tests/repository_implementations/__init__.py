@@ -107,17 +107,18 @@ def all_repository_format_scenarios():
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
 
-    def make_repository(self, relpath, format=None):
+    def make_repository(self, relpath, shared=False, format=None):
         if format is None:
             # Create a repository of the type we are trying to test.
             made_control = self.make_bzrdir(relpath)
-            repo = self.repository_format.initialize(made_control)
+            repo = self.repository_format.initialize(made_control,
+                    shared=shared)
             if getattr(self, "repository_to_test_repository", None):
                 repo = self.repository_to_test_repository(repo)
             return repo
         else:
             return super(TestCaseWithRepository, self).make_repository(
-                relpath, format=format)
+                relpath, shared=shared, format=format)
 
 
 class BrokenRepoScenario(object):

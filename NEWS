@@ -4,8 +4,57 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.7 2008-09-23
+------------------
+
+This release includes many bug fixes and a few performance and feature
+improvements.  ``bzr rm`` will now scan for missing files and remove them,
+like how ``bzr add`` scans for unknown files and adds them. A bit more
+polish has been applied to the stacking code. The b-tree indexing code has
+been brought in, with an eye on using it in a future repository format.
+There are only minor installer changes since bzr-1.7rc2.
+
+  FEATURES
+
+    * Some small updates to the win32 installer. Include localization
+      files found in plugins, and include the builtin distutils as part of
+      packaging qbzr. (Mark Hammond)
+
+
+bzr 1.7rc2 2008-09-17
+---------------------
+
+A few bug fixes from 1.7rc1. The biggest change is a new
+``RemoteBranch.get_stacked_on_url`` rpc. This allows clients that are
+trying to access a Stacked branch over the smart protocol, to properly
+connect to the stacked-on location.
+
+  BUG FIXES:
+
+    * Branching from a shared repository on a smart server into a new
+      repository now preserves the repository format.
+      (Andrew Bennetts, #269214)
+
+   * Branching from a stacked branch via ``bzr+ssh`` can properly connect
+     to the stacked-on branch.  (Martin Pool, #261315)
+
+    * ``bzr init`` no longer re-opens the BzrDir multiple times.
+      (Vincent Ladeuil)
+
+    * Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+      (Andrew Bennetts)
+
+
+bzr 1.7rc1 2008-09-09
+---------------------
+
+This release candidate for bzr 1.7 has several bug fixes and a few
+performance and feature improvements.  ``bzr rm`` will now scan for
+missing files and remove them, like how ``bzr add`` scans for unknown
+files and adds them. A bit more polish has been applied to the stacking
+code. The b-tree indexing code has been brought in, with an eye on using
+it in a future repository format.
+
 
   CHANGES:
 
@@ -39,6 +88,9 @@ IN DEVELOPMENT
       to recover if you realize you uncommitted the wrong thing.
       (John Arbash Meinel)
 
+    * Fix problems in accessing stacked repositories over ``bzr://``.
+      (Martin Pool, #261315)
+
     * ``SFTPTransport.readv()`` was accidentally using ``list += string``,
       which 'works', but adds each character separately to the list,
       rather than using ``list.append(string)``. Fixing this makes the
@@ -64,6 +116,10 @@ IN DEVELOPMENT
     * Catch the infamous "select/poll returned error" which occurs when
       pycurl try to send a body request to an HTTP/1.0 server which has
       already refused to handle the request. (Vincent Ladeuil, #225020)
+
+    * Fix ``ObjectNotLocked`` errors when using various commands
+      (including ``bzr cat`` and ``bzr annotate``) in combination with a
+      smart server URL.  (Andrew Bennetts, #237067)
 
     * ``FTPTransport.stat()`` would return ``0000`` as the permission bits
       for the containing ``.bzr/`` directory (it does not implement
@@ -96,6 +152,9 @@ IN DEVELOPMENT
       check and test for parsing a dirstate with invalid trailing data.
       (John Arbash Meinel, #186014)
 
+    * Unexpected error responses from a smart server no longer cause the
+      client to traceback.  (Andrew Bennetts, #263527)
+      
     * Use a Windows api function to get a Unicode host name, rather than
       assuming the host name is ascii.
       (Mark Hammond, John Arbash Meinel, #256550)
@@ -132,6 +191,10 @@ IN DEVELOPMENT
       addition, addCleanup no longer requires that the callables passed to
       it be unique. (Jonathan Lange)
 
+    * Fix some tests that fail on Windows because files are deleted while 
+      still in use. 
+      (Mark Hammond)
+
     * ``selftest``'s ``--starting-with`` option can now use predefined
       prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
       ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
@@ -164,6 +227,14 @@ IN DEVELOPMENT
       allows plugins to add new clients by registering them with
       ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
       clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+bzr 1.6.1 2008-09-05
+--------------------
+
+A couple regressions were found in the 1.6 release. There was a
+performance issue when using ``bzr+ssh`` to branch large repositories,
+and some problems with stacking and ``rich-root`` capable repositories.
 
 
 bzr 1.6.1rc2 2008-09-03
