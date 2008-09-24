@@ -230,7 +230,9 @@ Issues
 Canonical form
 --------------
 
-There are three fragment types for the canonical form:
+There are three fragment types for the canonical form. Each fragment is
+addressed using a Content Hash Key (CHK) - for instance
+"sha1:12345678901234567890".
 
 root_node: (Perhaps this should be inlined into the revision object).
 HASH_INVENTORY_SIGNATURE
@@ -264,7 +266,6 @@ entry and inserting them into both the path map and the content map. The maps
 start with just a single leaf node with an empty prefix. 
 
 
-
 Apply
 -----
 
@@ -290,9 +291,10 @@ old and new file paths.
 To generate the list of altered file ids, we do an entry by entry comparison of
 the full contents of every leaf node that the two inventories do not have in
 common. To do this, we start at the root node, and follow every CHK pointer
-that is only in one tree. We can then bring in all the value from the leaf
+that is only in one tree. We can then bring in all the values from the leaf
 nodes and do a set difference to get the altered ones, which we would then
 parse.
+
 
 Radix tree based inventories
 ============================
