@@ -23,8 +23,8 @@ from bzrlib import (
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
-from bzrlib.tests.repository_implementations.helpers import (
+from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository.helpers import (
     TestCaseWithBrokenRevisionIndex,
     )
 

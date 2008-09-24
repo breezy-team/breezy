@@ -16,7 +16,7 @@
 
 """Tests for repository statistic-gathering apis."""
 
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestGatherStats(TestCaseWithRepository):

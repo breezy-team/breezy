@@ -15,6 +15,12 @@ See `Using hooks`_ in the User Guide for examples.
 The class of each hook is given immediately after each hook type below.
 
 
+open (Branch)
+-------------
+
+Called after a Branch object is opened, with the Branch object.
+
+
 post_push (Branch)
 ------------------
 

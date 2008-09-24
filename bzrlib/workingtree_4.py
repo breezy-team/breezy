@@ -1806,13 +1806,13 @@ class InterDirStateTree(InterTree):
         return target.basis_tree(), target
 
     @classmethod
-    def make_source_parent_tree_python_dirstate(klass, source, target):
+    def make_source_parent_tree_python_dirstate(klass, test_case, source, target):
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = dirstate.ProcessEntryPython
         return result
 
     @classmethod
-    def make_source_parent_tree_compiled_dirstate(klass, source, target):
+    def make_source_parent_tree_compiled_dirstate(klass, test_case, source, target):
         from bzrlib.tests.test__dirstate_helpers import \
             CompiledDirstateHelpersFeature
         if not CompiledDirstateHelpersFeature.available():
@@ -1825,7 +1825,12 @@ class InterDirStateTree(InterTree):
 
     _matching_from_tree_format = WorkingTreeFormat4()
     _matching_to_tree_format = WorkingTreeFormat4()
-    _test_mutable_trees_to_test_trees = make_source_parent_tree
+
+    @classmethod
+    def _test_mutable_trees_to_test_trees(klass, test_case, source, target):
+        # This method shouldn't be called, because we have python and C
+        # specific flavours.
+        raise NotImplementedError
 
     def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],

@@ -1500,6 +1500,16 @@ class _PreviewTree(tree.Tree):
             self.__by_parent = self._transform.by_parent()
         return self.__by_parent
 
+    def _comparison_data(self, entry, path):
+        kind, size, executable, link_or_sha1 = self.path_content_summary(path)
+        if kind == 'missing':
+            kind = None
+            executable = False
+        else:
+            file_id = self._transform.final_file_id(self._path2trans_id(path))
+            executable = self.is_executable(file_id, path)
+        return kind, executable, None
+
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
         pass
@@ -1525,18 +1535,13 @@ class _PreviewTree(tree.Tree):
     def __iter__(self):
         return iter(self.all_file_ids())
 
-    def paths2ids(self, specific_files, trees=None, require_versioned=False):
-        """See Tree.paths2ids"""
-        to_find = set(specific_files)
-        result = set()
-        for (file_id, paths, changed, versioned, parent, name, kind,
-             executable) in self._transform.iter_changes():
-            if paths[1] in to_find:
-                result.add(file_id)
-                to_find.remove(paths[1])
-        result.update(self._transform._tree.paths2ids(to_find,
-                      trees=[], require_versioned=require_versioned))
-        return result
+    def has_id(self, file_id):
+        if file_id in self._transform._r_new_id:
+            return True
+        elif file_id in self._transform._removed_id:
+            return False
+        else:
+            return self._transform._tree.has_id(file_id)
 
     def _path2trans_id(self, path):
         segments = splitpath(path)
@@ -1566,6 +1571,20 @@ class _PreviewTree(tree.Tree):
         children.difference_update(self._transform._new_parent.keys())
         children.update(self._by_parent.get(trans_id, []))
         return children
+
+    def iter_children(self, file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        for child_trans_id in self._all_children(trans_id):
+            yield self._transform.final_file_id(child_trans_id)
+
+    def extras(self):
+        possible_extras = set(self._transform.trans_id_tree_path(p) for p
+                              in self._transform._tree.extras())
+        possible_extras.update(self._transform._new_contents)
+        possible_extras.update(self._transform._removed_id)
+        for trans_id in possible_extras:
+            if self._transform.final_file_id(trans_id) is None:
+                yield self._final_paths._determine_path(trans_id)
 
     def _make_inv_entries(self, ordered_entries, specific_file_ids):
         for trans_id, parent_file_id in ordered_entries:
@@ -1636,6 +1655,9 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.get_file_mtime(file_id, path)
         return self._stat_limbo_file(file_id).st_mtime
 
+    def _file_size(self, entry, stat_value):
+        return self.get_file_size(entry.file_id)
+
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         if self.kind(file_id) == 'file':
@@ -1647,6 +1669,8 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree.get_file_sha1(file_id)
 
     def is_executable(self, file_id, path=None):
+        if file_id is None:
+            return False
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._transform._new_executability[trans_id]
@@ -1694,7 +1718,13 @@ class _PreviewTree(tree.Tree):
         ignored.
         """
         if from_tree is not self._transform._tree:
-            raise ValueError('from_tree must be transform source tree.')
+            return tree.InterTree(from_tree, self).iter_changes(
+                include_unchanged=include_unchanged,
+                specific_files=specific_files,
+                pb=pb,
+                extra_trees=extra_trees,
+                require_versioned=require_versioned,
+                want_unversioned=want_unversioned)
         if include_unchanged:
             raise ValueError('include_unchanged is not supported')
         if specific_files is not None:
