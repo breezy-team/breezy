@@ -30,7 +30,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.graph import Graph
-from bzrlib.tests.repository_implementations import test_repository
+from bzrlib.tests.per_repository import test_repository
 
 
 class TestCommitBuilder(test_repository.TestCaseWithRepository):

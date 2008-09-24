@@ -726,6 +726,12 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
 
+    def __repr__(self):
+        return "%s(%r, %r)" % (
+            self.__class__.__name__,
+            self._index,
+            self._access)
+
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
 

@@ -24,7 +24,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.tests import TestNotApplicable
 
 

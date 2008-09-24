@@ -456,7 +456,6 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
     def _finished(self):
         self.unused_data = self._get_in_buffer()
-        # self._in_buffer = None
         self._in_buffer_list = []
         self._in_buffer_len = 0
         self.state_accept = self._state_accept_reading_unused
