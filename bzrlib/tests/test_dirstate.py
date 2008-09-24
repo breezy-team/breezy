@@ -571,7 +571,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
             # Make sure everything is old enough
             state._sha_cutoff_time()
             state._cutoff_time += 10
-            sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
+            sha1sum = dirstate.update_entry(state, entry, 'a-file', os.lstat('a-file'))
             # We should have gotten a real sha1
             self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
                              sha1sum)
@@ -612,7 +612,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state.lock_read()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
-            sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
+            sha1sum = dirstate.update_entry(state, entry, 'a-file', os.lstat('a-file'))
             # We should have gotten a real sha1
             self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
                              sha1sum)

@@ -26,7 +26,7 @@ import os
 import stat
 
 from bzrlib import cache_utf8, errors, osutils
-from bzrlib.dirstate import DirState, pack_stat
+from bzrlib.dirstate import DirState
 from bzrlib.osutils import pathjoin, splitpath
 
 
@@ -60,8 +60,6 @@ cdef extern from "arpa/inet.h":
 cdef extern from "stdlib.h":
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
-cdef extern from "stdio.h":
-    void printf(char *format, ...)
 
 cdef extern from 'sys/stat.h':
     int S_ISDIR(int mode)
@@ -776,8 +774,8 @@ cdef int minikind_from_mode(int mode):
     return 0
 
 
-#cdef object _encode
 _encode = binascii.b2a_base64
+
 
 from struct import pack
 cdef _pack_stat(stat_value):
@@ -815,19 +813,17 @@ def update_entry(self, entry, abspath, stat_value):
 cdef _update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 
+    :param self: The dirstate object this is operating on.
     :param entry: This is the dirblock entry for the file in question.
     :param abspath: The path on disk for this file.
-    :param stat_value: (optional) if we already have done a stat on the
-        file, re-use it.
+    :param stat_value: The stat value done on the path.
     :return: The sha1 hexdigest of the file (40 bytes) or link target of a
             symlink.
     """
-    # TODO - require pyrex 0.8, then use a pyd file to define access to the _st
-    # mode of the compiled stat objects.
+    # TODO - require pyrex 0.9.8, then use a pyd file to define access to the
+    # _st mode of the compiled stat objects.
     cdef int minikind, saved_minikind
     cdef void * details
-    # pyrex 0.9.7 would allow cdef list details_list, and direct access rather
-    # than PyList_GetItem_void_void below
     minikind = minikind_from_mode(stat_value.st_mode)
     if 0 == minikind:
         return None
@@ -883,7 +879,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(entry[0][0], entry[0][1], 0)
             self._ensure_block(block_index, entry_index,
-                               osutils.pathjoin(entry[0][0], entry[0][1]))
+                               pathjoin(entry[0][0], entry[0][1]))
     elif minikind == c'l':
         link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
         if self._cutoff_time is None:
@@ -977,6 +973,7 @@ cdef class ProcessEntryC:
     cdef int path_index
     cdef object root_dir_info
     cdef object bisect_left
+    cdef object pathjoin
 
     def __init__(self, include_unchanged, use_filesystem_for_exec,
         search_specific_files, state, source_index, target_index,
@@ -1023,6 +1020,7 @@ cdef class ProcessEntryC:
         self.path_index = 0
         self.root_dir_info = None
         self.bisect_left = bisect.bisect_left
+        self.pathjoin = osutils.pathjoin
 
     cdef _process_entry(self, entry, path_info):
         """Compare an entry and real disk to generate delta information.
@@ -1084,7 +1082,7 @@ cdef class ProcessEntryC:
                 # as well.
                 old_path = source_details[1]
                 old_dirname, old_basename = os.path.split(old_path)
-                path = pathjoin(entry[0][0], entry[0][1])
+                path = self.pathjoin(entry[0][0], entry[0][1])
                 old_entry = self.state._get_entry(self.source_index,
                                              path_utf8=old_path)
                 # update the source details variable to be the real
@@ -1106,7 +1104,7 @@ cdef class ProcessEntryC:
                 target_kind = path_info[2]
                 if target_kind == 'directory':
                     if path is None:
-                        old_path = path = pathjoin(old_dirname, old_basename)
+                        old_path = path = self.pathjoin(old_dirname, old_basename)
                     file_id = entry[0][2]
                     self.new_dirname_to_file_id[path] = file_id
                     if source_minikind != c'd':
@@ -1145,7 +1143,7 @@ cdef class ProcessEntryC:
                     raise Exception, "unknown kind %s" % path_info[2]
             if source_minikind == c'd':
                 if path is None:
-                    old_path = path = pathjoin(old_dirname, old_basename)
+                    old_path = path = self.pathjoin(old_dirname, old_basename)
                 if file_id is None:
                     file_id = entry[0][2]
                 self.old_dirname_to_file_id[old_path] = file_id
@@ -1196,7 +1194,7 @@ cdef class ProcessEntryC:
                 or source_exec != target_exec
                 ):
                 if old_path is None:
-                    path = pathjoin(old_dirname, old_basename)
+                    path = self.pathjoin(old_dirname, old_basename)
                     old_path = path
                     old_path_u = self.utf8_decode(old_path)[0]
                     path_u = old_path_u
@@ -1219,7 +1217,7 @@ cdef class ProcessEntryC:
                 return self.uninteresting
         elif source_minikind == c'a' and _versioned_minikind(target_minikind):
             # looks like a new file
-            path = pathjoin(entry[0][0], entry[0][1])
+            path = self.pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
             # TODO: these are the same for an entire directory: cache em.
             parent_id = self.state._get_entry(self.target_index,
@@ -1259,7 +1257,7 @@ cdef class ProcessEntryC:
             # if its still on disk, *and* theres no other entry at this
             # path [we dont know this in this routine at the moment -
             # perhaps we should change this - then it would be an unknown.
-            old_path = pathjoin(entry[0][0], entry[0][1])
+            old_path = self.pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
             parent_id = self.state._get_entry(self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:

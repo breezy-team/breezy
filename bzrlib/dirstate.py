@@ -211,7 +211,6 @@ import sys
 import time
 import zlib
 
-import bzrlib
 from bzrlib import (
     cache_utf8,
     debug,
@@ -221,7 +220,6 @@ from bzrlib import (
     osutils,
     trace,
     )
-from bzrlib.osutils import pathjoin, splitpath
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -2738,15 +2736,15 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
-def py_update_entry(self, entry, abspath, stat_value,
+def py_update_entry(state, entry, abspath, stat_value,
                  _stat_to_minikind=DirState._stat_to_minikind,
                  _pack_stat=pack_stat):
     """Update the entry based on what is actually on disk.
 
+    :param state: The dirstate this entry is in.
     :param entry: This is the dirblock entry for the file in question.
     :param abspath: The path on disk for this file.
-    :param stat_value: (optional) if we already have done a stat on the
-        file, re-use it.
+    :param stat_value: The stat value done on the path.
     :return: The sha1 hexdigest of the file (40 bytes) or link target of a
             symlink.
     """
@@ -2774,13 +2772,13 @@ def py_update_entry(self, entry, abspath, stat_value,
     # process this entry.
     link_or_sha1 = None
     if minikind == 'f':
-        link_or_sha1 = self._sha1_file(abspath)
-        executable = self._is_executable(stat_value.st_mode,
+        link_or_sha1 = state._sha1_file(abspath)
+        executable = state._is_executable(stat_value.st_mode,
                                          saved_executable)
-        if self._cutoff_time is None:
-            self._sha_cutoff_time()
-        if (stat_value.st_mtime < self._cutoff_time
-            and stat_value.st_ctime < self._cutoff_time):
+        if state._cutoff_time is None:
+            state._sha_cutoff_time()
+        if (stat_value.st_mtime < state._cutoff_time
+            and stat_value.st_ctime < state._cutoff_time):
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
@@ -2794,21 +2792,21 @@ def py_update_entry(self, entry, abspath, stat_value,
             # have a directory block for it. This doesn't happen very
             # often, so this doesn't have to be super fast.
             block_index, entry_index, dir_present, file_present = \
-                self._get_block_entry_index(entry[0][0], entry[0][1], 0)
-            self._ensure_block(block_index, entry_index,
+                state._get_block_entry_index(entry[0][0], entry[0][1], 0)
+            state._ensure_block(block_index, entry_index,
                                osutils.pathjoin(entry[0][0], entry[0][1]))
     elif minikind == 'l':
-        link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
-        if self._cutoff_time is None:
-            self._sha_cutoff_time()
-        if (stat_value.st_mtime < self._cutoff_time
-            and stat_value.st_ctime < self._cutoff_time):
+        link_or_sha1 = state._read_link(abspath, saved_link_or_sha1)
+        if state._cutoff_time is None:
+            state._sha_cutoff_time()
+        if (stat_value.st_mtime < state._cutoff_time
+            and stat_value.st_ctime < state._cutoff_time):
             entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
                            False, packed_stat)
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    state._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
 update_entry = py_update_entry
 
@@ -2848,7 +2846,7 @@ class ProcessEntryPython(object):
         self.want_unversioned = want_unversioned
         self.tree = tree
 
-    def _process_entry(self, entry, path_info):
+    def _process_entry(self, entry, path_info, pathjoin=osutils.pathjoin):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
@@ -3109,11 +3107,12 @@ class ProcessEntryPython(object):
     def iter_changes(self):
         """Iterate over the changes."""
         utf8_decode = cache_utf8._utf8_decode
-        cmp_by_dirs = bzrlib.dirstate.cmp_by_dirs
+        _cmp_by_dirs = cmp_by_dirs
         _process_entry = self._process_entry
         uninteresting = self.uninteresting
         search_specific_files = self.search_specific_files
         searched_specific_files = self.searched_specific_files
+        splitpath = osutils.splitpath
         # sketch: 
         # compare source_index and target_index at or under each element of search_specific_files.
         # follow the following comparison table. Note that we only want to do diff operations when
@@ -3251,7 +3250,7 @@ class ProcessEntryPython(object):
                    current_block is not None):
                 if (current_dir_info and current_block
                     and current_dir_info[0][0] != current_block[0]):
-                    if cmp_by_dirs(current_dir_info[0][0], current_block[0]) < 0:
+                    if _cmp_by_dirs(current_dir_info[0][0], current_block[0]) < 0:
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
@@ -3450,6 +3449,7 @@ try:
         _bisect_path_right_c as _bisect_path_right,
         cmp_by_dirs_c as cmp_by_dirs,
         ProcessEntryC as _process_entry,
+        update_entry as update_entry,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (
