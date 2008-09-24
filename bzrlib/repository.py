@@ -2351,6 +2351,8 @@ class InterRepository(InterObject):
 
     def __init__(self, source, target):
         InterObject.__init__(self, source, target)
+        # These two attributes may be overridden by e.g. InterOtherToRemote to
+        # provide a faster implementation.
         self.target_get_graph = self.target.get_graph
         self.target_get_parent_map = self.target.get_parent_map
 
