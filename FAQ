@@ -95,7 +95,7 @@ For example::
  Pushed up to revision 1075.
 
 If you would like to forbid Bazaar from ever doing these replace operations, set the 
-``append-revisions-only`` setting to True for the repository you're 
+``append_revisions_only`` setting to True for the repository you're 
 pushing to.
 
 bzr-svn sets all kinds of file properties when pushing revisions into Subversion. Is this really necessary?

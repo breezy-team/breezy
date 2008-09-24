@@ -112,16 +112,17 @@ def is_keychain_provider_available():
     """
     abd = apr_build_data()
     sbd = svn_build_data()
-    gcc_command_args = ['-I' + inc for inc in sbd[0]] + ['-L' + lib for lib in sbd[1]] + ['-I' + abd[0], '-lsvn_subr-1', '-o', 'keychain_provider_check', 'keychain_provider_check.c']
-    try:
-        run_cmd('gcc', ' '.join(gcc_command_args))
-    except:
-        return False
-    try:
-        os.unlink('keychain_provider_check')
-    except:
-        pass
-    return True
+    gcc_command_args = ['gcc'] + ['-I' + inc for inc in sbd[0]] + ['-L' + lib for lib in sbd[1]] + ['-I' + abd[0], '-lsvn_subr-1', '-x', 'c', '-']
+    (gcc_in, gcc_out, gcc_err) = os.popen3(gcc_command_args)
+    gcc_in.write("""
+#include <svn_auth.h>
+int main(int argc, const char* arv[]) {
+    svn_auth_get_keychain_simple_provider(NULL, NULL);
+}
+""")
+    gcc_in.close()
+    gcc_out.read()
+    return (gcc_out.close() is None)
 
 class VersionQuery(object):
     def __init__(self, filename):
@@ -240,7 +241,7 @@ def SvnExtension(name, *args, **kwargs):
         if is_keychain_provider_available():
             if "define_macros" not in kwargs:
                 kwargs["define_macros"] = []
-            kwargs["define_macros"].extend((('DARWIN', None), ('BZR_SVN_KEYCHAIN_PROVIDER_AVAILABLE', '1')))
+            kwargs["define_macros"].extend((('DARWIN', None), ('SVN_KEYCHAIN_PROVIDER_AVAILABLE', '1')))
     return Extension("bzrlib.plugins.svn.%s" % name, *args, **kwargs)
 
 
@@ -289,7 +290,7 @@ class install_lib_with_dlls(install_lib):
 setup(name='bzr-svn',
       description='Support for Subversion branches in Bazaar',
       keywords='plugin bzr svn',
-      version='0.4.13',
+      version='0.4.14',
       url='http://bazaar-vcs.org/BzrForeignBranches/Subversion',
       download_url='http://bazaar-vcs.org/BzrSvn',
       license='GPL',
