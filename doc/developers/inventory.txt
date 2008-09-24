@@ -416,13 +416,13 @@ violated.
 Insertion
 ---------
 
-1. Hash the entry, and insert the entry in the leaf node with a matching
+#. Hash the entry, and insert the entry in the leaf node with a matching
    prefix, creating that node and linking it from the internal node containing
    that prefix if there is no appropriate leaf node.
-1. Starting at the highest node altered, for all altered nodes, check if it has
+#. Starting at the highest node altered, for all altered nodes, check if it has
    transitioned across either size boundary - 0 < min_size < max_size. If it
    has not, proceed to update the CHK pointers.
-1. If it increased above min_size, check the node above to see if it can be
+#. If it increased above min_size, check the node above to see if it can be
    more densely packed. To be below the min_size the node's parent must
    have hit the max size constraint and been forced to split even though this
    child did not have enough content to support a min_size node - so the prefix
@@ -431,7 +431,7 @@ Insertion
    parent node can support a deeper prefix without hitting max_size, and the
    count of under min_size nodes cannot be reduced, the parent should be given
    a deeper prefix.
-1. If it increased above max_size, shrink the prefix width used to split out
+#. If it increased above max_size, shrink the prefix width used to split out
    new nodes until the node is below max_size (unless the prefix width is
    already 1 - the minimum).
    To shrink the prefix of an internal node, create new internal nodes for each
@@ -444,7 +444,7 @@ Insertion
    The largest prefix possible should be chosen, to obey the
    higher-nodes-are-denser rule. That rule also gives room in leaf nodes for 
    growth without affecting the parent node packing.
-1. Update the CHK pointers - serialise every altered node to generate a CHK,
+#. Update the CHK pointers - serialise every altered node to generate a CHK,
    and update the CHK placeholder in the nodes parent; then reserialise the
    parent. CHK pointer propogation can be done lazily when many updates are
    expected.
