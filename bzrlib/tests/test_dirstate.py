@@ -18,7 +18,6 @@
 
 import bisect
 import os
-import time
 
 from bzrlib import (
     dirstate,

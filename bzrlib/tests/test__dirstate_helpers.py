@@ -18,6 +18,7 @@
 
 import bisect
 import os
+import time
 
 from bzrlib import (
     dirstate,
@@ -799,6 +800,28 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def set_update_entry(self):
         self.update_entry = dirstate.py_update_entry
+
+    def test_observed_sha1_cachable(self):
+        state, entry = self.get_state_with_a()
+        atime = time.time() - 10
+        self.build_tree(['a'])
+        statvalue = os.lstat('a')
+        statvalue = test_dirstate._FakeStat(statvalue.st_size, atime, atime,
+            statvalue.st_dev, statvalue.st_ino, statvalue.st_mode)
+        state._observed_sha1(entry, "foo", statvalue)
+        self.assertEqual('foo', entry[1][0][1])
+        packed_stat = dirstate.pack_stat(statvalue)
+        self.assertEqual(packed_stat, entry[1][0][4])
+
+    def test_observed_sha1_not_cachable(self):
+        state, entry = self.get_state_with_a()
+        oldval = entry[1][0][1]
+        oldstat = entry[1][0][4]
+        self.build_tree(['a'])
+        statvalue = os.lstat('a')
+        state._observed_sha1(entry, "foo", statvalue)
+        self.assertEqual(oldval, entry[1][0][1])
+        self.assertEqual(oldstat, entry[1][0][4])
 
     def test_update_entry(self):
         state, entry = self.get_state_with_a()
