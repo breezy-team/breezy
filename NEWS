@@ -57,6 +57,9 @@ IN DEVELOPMENT
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
 
+    * ``bzr log`` now accepts a ``--change`` option.
+      (Vincent Ladeuil, #248427)
+
     * ``bzr missing`` now accepts an ``--include-merges`` option.
       (Vincent Ladeuil, #233817)
 
