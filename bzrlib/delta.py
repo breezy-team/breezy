@@ -241,7 +241,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
                                   (executable[0] != executable[1])))
         elif kind[0] != kind[1]:
             delta.kind_changed.append((path[1], file_id, kind[0], kind[1]))
-        elif content_change is True or executable[0] != executable[1]:
+        elif content_change or executable[0] != executable[1]:
             delta.modified.append((path[1], file_id, kind[1],
                                    content_change,
                                    (executable[0] != executable[1])))

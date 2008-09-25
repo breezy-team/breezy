@@ -289,4 +289,3 @@ def _read_dirblocks_py(state):
     # To convert from format 3 => format 2
     # state._dirblocks = sorted(state._dirblocks)
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
-
