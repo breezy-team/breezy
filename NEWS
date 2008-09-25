@@ -79,6 +79,10 @@ IN DEVELOPMENT
       its result tuple - an optional file system hash for the hash cache
       to use. (Robert Collins)
 
+    * ``dirstate.DirState.update_entry`` will now only calculate the sha1
+      of a file if it is likely to be needed in determining the output
+      of iter_changes. (Robert Collins)
+
   TESTING:
 
     * ``bzrlib.tests.repository_implementations`` has been renamed to

@@ -407,7 +407,16 @@ class WorkingTree4(WorkingTree3):
         link_or_sha1 = dirstate.update_entry(state, entry, file_abspath,
             stat_value=stat_value)
         if entry[1][0][0] == 'f':
-            return link_or_sha1
+            if link_or_sha1 is None:
+                file_obj, statvalue = self.get_file_with_stat(file_id, path)
+                try:
+                    sha1 = osutils.sha_file(file_obj)
+                finally:
+                    file_obj.close()
+                self._observed_sha1(file_id, path, (sha1, statvalue))
+                return sha1
+            else:
+                return link_or_sha1
         return None
 
     def _get_inventory(self):

@@ -563,20 +563,22 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state.lock_read()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
-            # The current sha1 sum should be empty
-            self.assertEqual('', entry[1][0][1])
+            # The current size should be 0 (default)
+            self.assertEqual(0, entry[1][0][2])
             # We should have a real entry.
             self.assertNotEqual((None, None), entry)
             # Make sure everything is old enough
             state._sha_cutoff_time()
             state._cutoff_time += 10
-            sha1sum = dirstate.update_entry(state, entry, 'a-file', os.lstat('a-file'))
-            # We should have gotten a real sha1
-            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
-                             sha1sum)
+            # Change the file length
+            self.build_tree_contents([('a-file', 'shorter')])
+            sha1sum = dirstate.update_entry(state, entry, 'a-file',
+                os.lstat('a-file'))
+            # new file, no cached sha:
+            self.assertEqual(None, sha1sum)
 
             # The dirblock has been updated
-            self.assertEqual(sha1sum, entry[1][0][1])
+            self.assertEqual(7, entry[1][0][2])
             self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._dirblock_state)
 
@@ -592,7 +594,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state.lock_read()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
-            self.assertEqual(sha1sum, entry[1][0][1])
+            self.assertEqual(7, entry[1][0][2])
         finally:
             state.unlock()
 
@@ -611,10 +613,10 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state.lock_read()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
-            sha1sum = dirstate.update_entry(state, entry, 'a-file', os.lstat('a-file'))
-            # We should have gotten a real sha1
-            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
-                             sha1sum)
+            sha1sum = dirstate.update_entry(state, entry, 'a-file',
+                os.lstat('a-file'))
+            # No sha - too new
+            self.assertEqual(None, sha1sum)
             self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._dirblock_state)
 
