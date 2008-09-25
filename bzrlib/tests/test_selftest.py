@@ -1335,7 +1335,7 @@ class TestTestCase(TestCase):
         """The bzrlib debug flags should be sanitised by setUp."""
         if 'allow_debug' in tests.selftest_debug_flags:
             raise TestNotApplicable(
-                '-Eallow_debug option prevents debug flag santisation')
+                '-Eallow_debug option prevents debug flag sanitisation')
         # we could set something and run a test that will check
         # it gets santised, but this is probably sufficient for now:
         # if someone runs the test with -Dsomething it will error.
