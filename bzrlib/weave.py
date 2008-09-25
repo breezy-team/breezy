@@ -215,7 +215,7 @@ class Weave(VersionedFile):
 
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name', '_matcher', '_allow_reserved']
-    
+
     def __init__(self, weave_name=None, access_mode='w', matcher=None,
                  get_scope=None, allow_reserved=False):
         """Create a weave.
@@ -224,7 +224,7 @@ class Weave(VersionedFile):
             for detecting when this weave goes out of scope (should stop
             answering requests or allowing mutation).
         """
-        super(Weave, self).__init__(access_mode)
+        super(Weave, self).__init__()
         self._weave = []
         self._parents = []
         self._sha1s = []
