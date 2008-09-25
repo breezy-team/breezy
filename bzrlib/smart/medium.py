@@ -732,7 +732,6 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._write_to.close()
         self._ssh_connection.close()
         self._connected = False
-        super(SmartSSHClientMedium, self).disconnect()
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
@@ -790,7 +789,6 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         self._socket.close()
         self._socket = None
         self._connected = False
-        super(SmartTCPClientMedium, self).disconnect()
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
