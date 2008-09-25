@@ -256,6 +256,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_ghosts = False
     supports_external_lookups = False
+    supports_chks = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -301,6 +302,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
         result.texts = self._get_texts(repo_transport, result)
+        result.chk_bytes = None
         return result
 
     def check_conversion_target(self, target_format):
@@ -464,6 +466,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
+    supports_chks = False
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -539,6 +542,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
         result.texts = self._get_texts(repo_transport, result)
+        result.chk_bytes = None
         result._transport = repo_transport
         return result
 

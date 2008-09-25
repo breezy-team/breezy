@@ -456,16 +456,18 @@ class Repository(object):
     which views a particular line of development through that history.
 
     The Repository builds on top of some byte storage facilies (the revisions,
-    signatures, inventories and texts attributes) and a Transport, which
-    respectively provide byte storage and a means to access the (possibly
+    signatures, inventories, texts and chk_bytes attributes) and a Transport,
+    which respectively provide byte storage and a means to access the (possibly
     remote) disk.
 
     The byte storage facilities are addressed via tuples, which we refer to
     as 'keys' throughout the code base. Revision_keys, inventory_keys and
     signature_keys are all 1-tuples: (revision_id,). text_keys are two-tuples:
-    (file_id, revision_id). We use this interface because it allows low
-    friction with the underlying code that implements disk indices, network
-    encoding and other parts of bzrlib.
+    (file_id, revision_id). chk_bytes uses CHK keys - a 1-tuple with a single
+    byte string made up of a hash identifier and a hash value. 
+    We use this interface because it allows low friction with the underlying
+    code that implements disk indices, network encoding and other parts of
+    bzrlib.
 
     :ivar revisions: A bzrlib.versionedfile.VersionedFiles instance containing
         the serialised revisions for the repository. This can be used to obtain
@@ -487,6 +489,11 @@ class Repository(object):
         texts of files and directories for the repository. This can be used to
         obtain file texts or file graphs. Note that Repository.iter_file_bytes
         is usually a better interface for accessing file texts.
+        The result of trying to insert data into the repository via this store
+        is undefined: it should be considered read-only except for implementors
+        of repositories.
+    :ivar chk_bytes: A bzrlib.versionedfile.VersioedFiles instance containing
+        any data the repository chooses to store or have indexed by its hash.
         The result of trying to insert data into the repository via this store
         is undefined: it should be considered read-only except for implementors
         of repositories.
@@ -2105,6 +2112,9 @@ class RepositoryFormat(object):
     # Can this repository be given external locations to lookup additional
     # data. Set to True or False in derived classes.
     supports_external_lookups = None
+    # Does this format support CHK bytestring lookups. Set to True or False in
+    # derived classes.
+    supports_chks = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__

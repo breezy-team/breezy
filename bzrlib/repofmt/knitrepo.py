@@ -292,6 +292,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External lookups are not supported in this format.
     supports_external_lookups = False
+    # No CHK support.
+    supports_chks = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = ConstantMapper(name)
@@ -377,6 +379,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         repo.signatures = self._get_signatures(repo_transport, repo)
         repo.inventories = self._get_inventories(repo_transport, repo)
         repo.texts = self._get_texts(repo_transport, repo)
+        repo.chk_bytes = None
         repo._transport = repo_transport
         return repo
 
