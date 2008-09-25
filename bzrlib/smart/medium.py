@@ -28,10 +28,11 @@ import os
 import socket
 import sys
 import urllib
-import weakref
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import atexit
+import weakref
 from bzrlib import (
     debug,
     errors,
@@ -470,7 +471,7 @@ class SmartClientMediumRequest(object):
         return self._medium._get_line()
 
 
-_atexit_registered = False
+_atexit_counters = None
 
 
 class _HPSSCallCounter(object):
@@ -494,9 +495,8 @@ class _HPSSCallCounter(object):
         # program aborts with an exception the medium doesn't get
         # garbage-collected, presumably because one of the traceback frames
         # still references it.
-        global _atexit_registered, _atexit_counters
-        if not _atexit_registered:
-            import atexit
+        global _atexit_counters
+        if _atexit_counters is None:
             _atexit_counters = []
             def finish_counters():
                 for counter in list(_atexit_counters):
