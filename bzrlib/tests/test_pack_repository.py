@@ -630,16 +630,6 @@ def load_tests(basic_tests, module, test_loader):
                   "(bzr 1.6.1)\n",
               format_supports_external_lookups=True,
               index_class=GraphIndex),
-         dict(format_name='development1',
-              format_string="Bazaar development format 1 "
-                  "(needs bzr.dev from before 1.6)\n",
-              format_supports_external_lookups=True,
-              index_class=GraphIndex),
-         dict(format_name='development1-subtree',
-              format_string="Bazaar development format 1 "
-                  "with subtree support (needs bzr.dev from before 1.6)\n",
-              format_supports_external_lookups=True,
-              index_class=GraphIndex),
          dict(format_name='development2',
               format_string="Bazaar development format 2 "
                   "(needs bzr.dev from before 1.8)\n",
