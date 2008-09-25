@@ -499,7 +499,7 @@ class _HPSSCallCounter(object):
             import atexit
             _atexit_counters = []
             def finish_counters():
-                for counter in _atexit_counters:
+                for counter in list(_atexit_counters):
                     counter.done(None)
             atexit.register(finish_counters)
             _atexit_registered = True
