@@ -9,6 +9,12 @@ IN DEVELOPMENT
 
   CHANGES:
 
+    * ``bzr log file`` has been changed. It now uses a different method
+      for determining which revisions to show as merging the changes to
+      the file. It now only shows revisions which merged the change
+      towards your mainline. This simplifies the output, makes it faster,
+      and reduces memory consumption.  (John Arbash Meinel)
+
   FEATURES
 
   IMPROVEMENTS:
