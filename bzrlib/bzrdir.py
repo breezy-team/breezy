@@ -3051,7 +3051,7 @@ format_registry.register_metadir('1.6.1-rich-root',
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
         'Repositories and branches in this format can only be read by bzr.dev. '
@@ -3064,7 +3064,7 @@ format_registry.register_metadir('development',
     alias=True,
     )
 format_registry.register_metadir('development-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
     help='Current development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '
@@ -3076,7 +3076,7 @@ format_registry.register_metadir('development-subtree',
     experimental=True,
     alias=True,
     )
-# And the development formats which the will have aliased one of follow:
+# And the development formats above will have aliased one of the following:
 format_registry.register_metadir('development1',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
     help='A branch and pack based repository that supports stacking. '
@@ -3091,6 +3091,28 @@ format_registry.register_metadir('development1',
 format_registry.register_metadir('development1-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
     help='A branch and pack based repository that supports stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development2',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
+    help='pack-1.6.1 with B+Tree based index. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development2-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    help='pack-1.6.1-subtree with B+Tree based index. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',

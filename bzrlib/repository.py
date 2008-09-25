@@ -2331,7 +2331,18 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment1Subtree',
     )
-# 1.6->1.7 go below here
+# 1.7->1.8 go below here
+format_registry.register_lazy(
+    "Bazaar development format 2 (needs bzr.dev from before 1.8)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment2',
+    )
+format_registry.register_lazy(
+    ("Bazaar development format 2 with subtree support "
+        "(needs bzr.dev from before 1.8)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment2Subtree',
+    )
 
 
 class InterRepository(InterObject):

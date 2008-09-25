@@ -22,7 +22,8 @@ These tests are repeated for all pack-based repository formats.
 from cStringIO import StringIO
 from stat import S_ISDIR
 
-from bzrlib.index import GraphIndex, InMemoryGraphIndex
+from bzrlib.btree_index import BTreeGraphIndex
+from bzrlib.index import GraphIndex
 from bzrlib import (
     bzrdir,
     errors,
@@ -111,7 +112,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertFalse(t.has('knits'))
         # revision-indexes file-container directory
         self.assertEqual([],
-            list(GraphIndex(t, 'pack-names', None).iter_all_entries()))
+            list(self.index_class(t, 'pack-names', None).iter_all_entries()))
         self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
         self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
         self.assertTrue(S_ISDIR(t.stat('indices').st_mode))
@@ -152,9 +153,9 @@ class TestPackRepository(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
+            list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
         tree.commit('foobarbaz')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         index_nodes = list(index.iter_all_entries())
         self.assertEqual(1, len(index_nodes))
         node = index_nodes[0]
@@ -173,7 +174,7 @@ class TestPackRepository(TestCaseWithTransport):
         tree1.branch.repository.fetch(tree2.branch.repository)
         trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
         self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
+            list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
 
     def test_commit_across_pack_shape_boundary_autopacks(self):
         format = self.get_format()
@@ -187,14 +188,14 @@ class TestPackRepository(TestCaseWithTransport):
         for x in range(9):
             tree.commit('commit %s' % x)
         # there should be 9 packs:
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # insert some files in obsolete_packs which should be removed by pack.
         trans.put_bytes('obsolete_packs/foo', '123')
         trans.put_bytes('obsolete_packs/bar', '321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.bzrdir.open_workingtree()
@@ -210,7 +211,7 @@ class TestPackRepository(TestCaseWithTransport):
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
         tree.commit('commit not triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
@@ -239,7 +240,7 @@ class TestPackRepository(TestCaseWithTransport):
         tree.commit('more work')
         tree.branch.repository.pack()
         # there should be 1 pack:
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
@@ -581,11 +582,11 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         for x in range(9):
             tree.commit('commit %s' % x)
         # there should be 9 packs:
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.bzrdir.open_workingtree()
@@ -601,7 +602,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
         tree.commit('commit not triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
@@ -613,26 +614,42 @@ def load_tests(basic_tests, module, test_loader):
     scenarios_params = [
          dict(format_name='pack-0.92',
               format_string="Bazaar pack repository format 1 (needs bzr 0.92)\n",
-              format_supports_external_lookups=False),
+              format_supports_external_lookups=False,
+              index_class=GraphIndex),
          dict(format_name='pack-0.92-subtree',
               format_string="Bazaar pack repository format 1 "
               "with subtree support (needs bzr 0.92)\n",
-              format_supports_external_lookups=False),
+              format_supports_external_lookups=False,
+              index_class=GraphIndex),
          dict(format_name='1.6',
               format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
-              format_supports_external_lookups=True),
+              format_supports_external_lookups=True,
+              index_class=GraphIndex),
          dict(format_name='1.6.1-rich-root',
               format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
                   "(bzr 1.6.1)\n",
-              format_supports_external_lookups=True),
-         dict(format_name='development',
+              format_supports_external_lookups=True,
+              index_class=GraphIndex),
+         dict(format_name='development1',
               format_string="Bazaar development format 1 "
                   "(needs bzr.dev from before 1.6)\n",
-              format_supports_external_lookups=True),
-         dict(format_name='development-subtree',
+              format_supports_external_lookups=True,
+              index_class=GraphIndex),
+         dict(format_name='development1-subtree',
               format_string="Bazaar development format 1 "
                   "with subtree support (needs bzr.dev from before 1.6)\n",
-              format_supports_external_lookups=True),
+              format_supports_external_lookups=True,
+              index_class=GraphIndex),
+         dict(format_name='development2',
+              format_string="Bazaar development format 2 "
+                  "(needs bzr.dev from before 1.8)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='development2-subtree',
+              format_string="Bazaar development format 2 "
+                  "with subtree support (needs bzr.dev from before 1.8)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
          ]
     adapter = tests.TestScenarioApplier()
     # name of the scenario is the format name
