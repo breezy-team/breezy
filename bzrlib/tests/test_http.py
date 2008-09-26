@@ -1740,5 +1740,6 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(errors.SmartProtocolError,
-                          t.send_http_smart_request, 'whatever')
+                          t.get_smart_medium().send_http_smart_request,
+                          'whatever')
 
