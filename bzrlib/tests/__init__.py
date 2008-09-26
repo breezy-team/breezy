@@ -877,6 +877,21 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
 
+    def assertEqualStat(self, expected, actual):
+        """assert that expected and actual are the same stat result.
+
+        :param expected: A stat result.
+        :param actual: A stat result.
+        :raises AssertionError: If the expected and actual stat values differ
+            other than by atime.
+        """
+        self.assertEqual(expected.st_size, actual.st_size)
+        self.assertEqual(expected.st_mtime, actual.st_mtime)
+        self.assertEqual(expected.st_ctime, actual.st_ctime)
+        self.assertEqual(expected.st_dev, actual.st_dev)
+        self.assertEqual(expected.st_ino, actual.st_ino)
+        self.assertEqual(expected.st_mode, actual.st_mode)
+
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
         self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
@@ -1212,7 +1227,8 @@ class TestCase(unittest.TestCase):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
-            'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
+            # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
+            # tests do check our impls match APPDATA
             'BZR_EDITOR': None, # test_msgeditor manipulates this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment

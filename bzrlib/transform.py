@@ -41,6 +41,7 @@ from bzrlib.osutils import (
     has_symlinks,
     lexists,
     pathjoin,
+    sha_file,
     splitpath,
     supports_executable,
 )
@@ -1500,6 +1501,16 @@ class _PreviewTree(tree.Tree):
             self.__by_parent = self._transform.by_parent()
         return self.__by_parent
 
+    def _comparison_data(self, entry, path):
+        kind, size, executable, link_or_sha1 = self.path_content_summary(path)
+        if kind == 'missing':
+            kind = None
+            executable = False
+        else:
+            file_id = self._transform.final_file_id(self._path2trans_id(path))
+            executable = self.is_executable(file_id, path)
+        return kind, executable, None
+
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
         pass
@@ -1645,6 +1656,9 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.get_file_mtime(file_id, path)
         return self._stat_limbo_file(file_id).st_mtime
 
+    def _file_size(self, entry, stat_value):
+        return self.get_file_size(entry.file_id)
+
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         if self.kind(file_id) == 'file':
@@ -1653,9 +1667,20 @@ class _PreviewTree(tree.Tree):
             return None
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        return self._transform._tree.get_file_sha1(file_id)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        kind = self._transform._new_contents.get(trans_id)
+        if kind is None:
+            return self._transform._tree.get_file_sha1(file_id)
+        if kind == 'file':
+            fileobj = self.get_file(file_id)
+            try:
+                return sha_file(fileobj)
+            finally:
+                fileobj.close()
 
     def is_executable(self, file_id, path=None):
+        if file_id is None:
+            return False
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._transform._new_executability[trans_id]
@@ -1703,7 +1728,13 @@ class _PreviewTree(tree.Tree):
         ignored.
         """
         if from_tree is not self._transform._tree:
-            raise ValueError('from_tree must be transform source tree.')
+            return tree.InterTree(from_tree, self).iter_changes(
+                include_unchanged=include_unchanged,
+                specific_files=specific_files,
+                pb=pb,
+                extra_trees=extra_trees,
+                require_versioned=require_versioned,
+                want_unversioned=want_unversioned)
         if include_unchanged:
             raise ValueError('include_unchanged is not supported')
         if specific_files is not None:
