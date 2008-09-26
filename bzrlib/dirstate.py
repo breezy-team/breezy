@@ -2970,8 +2970,8 @@ class ProcessEntryPython(object):
                                 # Stat cache miss:
                                 file_obj = file(path_info[4], 'rb')
                                 try:
-                                    statvalue = fstat(file_obj.fileno())
-                                    link_or_sha1 = sha_file(file_obj)
+                                    statvalue = os.fstat(file_obj.fileno())
+                                    link_or_sha1 = osutils.sha_file(file_obj)
                                 finally:
                                     file_obj.close()
                                 self.state._observed_sha1(entry, link_or_sha1,
@@ -3153,8 +3153,6 @@ class ProcessEntryPython(object):
         """Iterate over the changes."""
         utf8_decode = cache_utf8._utf8_decode
         _cmp_by_dirs = cmp_by_dirs
-        fstat = os.fstat
-        sha_file = osutils.sha_file
         _process_entry = self._process_entry
         uninteresting = self.uninteresting
         search_specific_files = self.search_specific_files
