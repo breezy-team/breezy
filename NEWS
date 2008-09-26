@@ -92,6 +92,9 @@ IN DEVELOPMENT
       'repack a single pack' bug and should result in better packing
       overall.  (John Arbash Meinel, #242510, #172644)
 
+    * Trivial documentation fix.
+      (John Arbash Meinel, #270471)
+
   DOCUMENTATION:
 
     * Explain revision/range identifiers. (Daniel Clemente)
