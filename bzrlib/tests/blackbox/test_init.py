@@ -142,7 +142,7 @@ Location:
         except UnicodeError:
             raise TestSkipped("Unable to create Unicode filename")
         # try to init unicode dir
-        self.run_bzr(['init', u'mu-\xb5'])
+        self.run_bzr(['init', '-q', u'mu-\xb5'])
 
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')

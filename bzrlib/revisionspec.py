@@ -252,6 +252,25 @@ class RevisionSpec(object):
         """
         return self.in_history(context_branch).rev_id
 
+    def as_tree(self, context_branch):
+        """Return the tree object for this revisions spec.
+
+        Some revision specs require a context_branch to be able to determine
+        the revision id and access the repository. Not all specs will make
+        use of it.
+        """
+        return self._as_tree(context_branch)
+
+    def _as_tree(self, context_branch):
+        """Implementation of as_tree().
+
+        Classes should override this function to provide appropriate
+        functionality. The default is to just call '.as_revision_id()'
+        and get the revision tree from context_branch's repository.
+        """
+        revision_id = self.as_revision_id(context_branch)
+        return context_branch.repository.revision_tree(revision_id)
+
     def __repr__(self):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
@@ -286,7 +305,7 @@ class RevisionSpec_revno(RevisionSpec):
     than the branch's history, the first revision is returned.
     Examples::
 
-      revno:1                   -> return the first revision
+      revno:1                   -> return the first revision of this branch
       revno:3:/path/to/branch   -> return the 3rd revision of
                                    the branch '/path/to/branch'
       revno:-1                  -> The last revision in a branch.
@@ -475,19 +494,21 @@ class RevisionSpec_before(RevisionSpec):
 
     help_txt = """Selects the parent of the revision specified.
 
-    Supply any revision spec to return the parent of that revision.
+    Supply any revision spec to return the parent of that revision.  This is
+    mostly useful when inspecting revisions that are not in the revision history
+    of a branch.
+
     It is an error to request the parent of the null revision (before:0).
-    This is mostly useful when inspecting revisions that are not in the
-    revision history of a branch.
 
     Examples::
 
       before:1913    -> Return the parent of revno 1913 (revno 1912)
       before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
                                             aaaa@bbbb-1234567890
-      bzr diff -r before:revid:aaaa..revid:aaaa
-            -> Find the changes between revision 'aaaa' and its parent.
-               (what changes did 'aaaa' introduce)
+      bzr diff -r before:1913..1913
+            -> Find the changes between revision 1913 and its parent (1912).
+               (What changes did revision 1913 introduce).
+               This is equivalent to:  bzr diff -c 1913
     """
 
     prefix = 'before:'
@@ -776,6 +797,15 @@ class RevisionSpec_branch(RevisionSpec):
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
         return last_revision
+
+    def _as_tree(self, context_branch):
+        from bzrlib.branch import Branch
+        other_branch = Branch.open(self.spec)
+        last_revision = other_branch.last_revision()
+        last_revision = revision.ensure_null(last_revision)
+        if last_revision == revision.NULL_REVISION:
+            raise errors.NoCommits(other_branch)
+        return other_branch.repository.revision_tree(last_revision)
 
 SPEC_TYPES.append(RevisionSpec_branch)
 

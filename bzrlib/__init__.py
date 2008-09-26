@@ -65,6 +65,10 @@ def _format_version_tuple(version_info):
     1.1.1rc2
     >>> print _format_version_tuple((1, 4, 0))
     1.4
+    >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
+    Traceback (most recent call last):
+    ...
+    ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
     """
     if version_info[2] == 0:
         main_version = '%d.%d' % version_info[:2]
@@ -86,7 +90,7 @@ def _format_version_tuple(version_info):
     elif __release_type == 'candidate' and __sub != 0:
         __sub_string = 'rc' + str(__sub)
     else:
-        raise AssertionError("version_info %r not valid" % version_info)
+        raise ValueError("version_info %r not valid" % (version_info,))
 
     version_string = '%d.%d.%d.%s.%d' % version_info
     return main_version + __sub_string

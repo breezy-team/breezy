@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -424,9 +424,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id, path=None):
+        return self.get_file_with_stat(file_id, path)[0]
+
+    def get_file_with_stat(self, file_id, path=None, _fstat=os.fstat):
+        """See MutableTree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)
-        return self.get_file_byname(path)
+        file_obj = self.get_file_byname(path)
+        return (file_obj, _fstat(file_obj.fileno()))
 
     def get_file_text(self, file_id):
         return self.get_file(file_id).read()
@@ -2326,7 +2331,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     # value.
                     bzrdir_loc = bisect_left(cur_disk_dir_content,
                         ('.bzr', '.bzr'))
-                    if cur_disk_dir_content[bzrdir_loc][0] == '.bzr':
+                    if (bzrdir_loc < len(cur_disk_dir_content)
+                        and cur_disk_dir_content[bzrdir_loc][0] == '.bzr'):
                         # we dont yield the contents of, or, .bzr itself.
                         del cur_disk_dir_content[bzrdir_loc]
             if inv_finished:
