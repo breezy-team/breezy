@@ -39,9 +39,9 @@ ERROR_PATH_NOT_FOUND = 3
 cdef int ERROR_DIRECTORY
 ERROR_DIRECTORY = 267
 
-#python2.4 support
+#python2.4 support, and other platform-dependent includes
 cdef extern from "python-compat.h":
-    pass
+    unsigned long htonl(unsigned long)
 
 # Give Pyrex some function definitions for it to understand.
 # All of these are just hints to Pyrex, so that it can try to convert python
@@ -57,10 +57,6 @@ cdef extern from "_dirstate_helpers_c.h":
     ctypedef int intptr_t
 
 
-cdef extern from "arpa/inet.h":
-    unsigned long htonl(unsigned long)
-
-
 cdef extern from "stdlib.h":
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
@@ -68,6 +64,7 @@ cdef extern from "stdlib.h":
 cdef extern from 'sys/stat.h':
     int S_ISDIR(int mode)
     int S_ISREG(int mode)
+    # On win32, this actually comes from "python-compat.h"
     int S_ISLNK(int mode)
     int S_IXUSR
 

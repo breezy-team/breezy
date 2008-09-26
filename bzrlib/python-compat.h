@@ -33,4 +33,24 @@
     #define PyInt_AsSsize_t(o) PyInt_AsLong(o)
 #endif
 
+#if defined(_WIN32) || defined(WIN32)
+    /* Needed for htonl */
+    #include "Winsock.h"
+
+    /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit
+     * lighter weight.
+     */
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+
+    /* sys/stat.h doesn't have S_ISLNK on win32, so we fake it by just always
+     * returning False
+     */
+    #define S_ISLNK(mode) (0)
+#else /* Not win32 */
+    /* For htonl */
+    #include "arpa/inet.h"
 #endif
+
+
+#endif /* _BZR_PYTHON_COMPAT_H */
