@@ -1507,6 +1507,29 @@ class DirState(object):
                     # it is being resurrected here, so blank it out temporarily.
                     self._dirblocks[block_index][1][entry_index][1][1] = null
 
+    def _observed_sha1(self, entry, sha1, stat_value,
+        _stat_to_minikind=_stat_to_minikind, _pack_stat=pack_stat):
+        """Note the sha1 of a file.
+
+        :param entry: The entry the sha1 is for.
+        :param sha1: The observed sha1.
+        :param stat_value: The os.lstat for the file.
+        """
+        try:
+            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+        except KeyError:
+            # Unhandled kind
+            return None
+        packed_stat = _pack_stat(stat_value)
+        if minikind == 'f':
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
+                entry[1][0] = ('f', sha1, entry[1][0][2], entry[1][0][3],
+                    packed_stat)
+                self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
     def _sha_cutoff_time(self):
         """Return cutoff time.
 
@@ -2741,12 +2764,16 @@ def py_update_entry(state, entry, abspath, stat_value,
                  _pack_stat=pack_stat):
     """Update the entry based on what is actually on disk.
 
+    This function only calculates the sha if it needs to - if the entry is
+    uncachable, or clearly different to the first parent's entry, no sha
+    is calculated, and None is returned.
+
     :param state: The dirstate this entry is in.
     :param entry: This is the dirblock entry for the file in question.
     :param abspath: The path on disk for this file.
     :param stat_value: The stat value done on the path.
-    :return: The sha1 hexdigest of the file (40 bytes) or link target of a
-            symlink.
+    :return: None, or The sha1 hexdigest of the file (40 bytes) or link
+        target of a symlink.
     """
     try:
         minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
@@ -2772,13 +2799,18 @@ def py_update_entry(state, entry, abspath, stat_value,
     # process this entry.
     link_or_sha1 = None
     if minikind == 'f':
-        link_or_sha1 = state._sha1_file(abspath)
         executable = state._is_executable(stat_value.st_mode,
                                          saved_executable)
         if state._cutoff_time is None:
             state._sha_cutoff_time()
         if (stat_value.st_mtime < state._cutoff_time
-            and stat_value.st_ctime < state._cutoff_time):
+            and stat_value.st_ctime < state._cutoff_time
+            and len(entry[1]) > 1
+            and entry[1][1][0] != 'a'):
+                # Could check for size changes for further optimised
+                # avoidance of sha1's. However the most prominent case of
+                # over-shaing is during initial add, which this catches.
+            link_or_sha1 = state._sha1_file(abspath)
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
@@ -2932,9 +2964,22 @@ class ProcessEntryPython(object):
                     if source_minikind != 'f':
                         content_change = True
                     else:
-                        # We could check the size, but we already have the
-                        # sha1 hash.
-                        content_change = (link_or_sha1 != source_details[1])
+                        # If the size is the same, check the sha:
+                        if target_details[2] == source_details[2]:
+                            if link_or_sha1 is None:
+                                # Stat cache miss:
+                                file_obj = file(path_info[4], 'rb')
+                                try:
+                                    statvalue = os.fstat(file_obj.fileno())
+                                    link_or_sha1 = osutils.sha_file(file_obj)
+                                finally:
+                                    file_obj.close()
+                                self.state._observed_sha1(entry, link_or_sha1,
+                                    statvalue)
+                            content_change = (link_or_sha1 != source_details[1])
+                        else:
+                            # Size changed, so must be different
+                            content_change = True
                     # Target details is updated at update_entry time
                     if self.use_filesystem_for_exec:
                         # We don't need S_ISREG here, because we are sure

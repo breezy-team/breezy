@@ -407,7 +407,16 @@ class WorkingTree4(WorkingTree3):
         link_or_sha1 = dirstate.update_entry(state, entry, file_abspath,
             stat_value=stat_value)
         if entry[1][0][0] == 'f':
-            return link_or_sha1
+            if link_or_sha1 is None:
+                file_obj, statvalue = self.get_file_with_stat(file_id, path)
+                try:
+                    sha1 = osutils.sha_file(file_obj)
+                finally:
+                    file_obj.close()
+                self._observed_sha1(file_id, path, (sha1, statvalue))
+                return sha1
+            else:
+                return link_or_sha1
         return None
 
     def _get_inventory(self):
@@ -542,6 +551,12 @@ class WorkingTree4(WorkingTree3):
             except errors.NoSuchFile:
                 # path is missing on disk.
                 continue
+
+    def _observed_sha1(self, file_id, path, (sha1, statvalue)):
+        """See MutableTree._observed_sha1."""
+        state = self.current_dirstate()
+        entry = self._get_entry(file_id=file_id, path=path)
+        state._observed_sha1(entry, sha1, statvalue)
 
     def kind(self, file_id):
         """Return the kind of a file.

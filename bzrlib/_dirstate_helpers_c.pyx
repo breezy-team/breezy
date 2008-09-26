@@ -802,12 +802,16 @@ cdef _pack_stat(stat_value):
 def update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 
+    This function only calculates the sha if it needs to - if the entry is
+    uncachable, or clearly different to the first parent's entry, no sha
+    is calculated, and None is returned.
+
     :param entry: This is the dirblock entry for the file in question.
     :param abspath: The path on disk for this file.
     :param stat_value: (optional) if we already have done a stat on the
         file, re-use it.
-    :return: The sha1 hexdigest of the file (40 bytes) or link target of a
-            symlink.
+    :return: None, or The sha1 hexdigest of the file (40 bytes) or link
+        target of a symlink.
     """
     return _update_entry(self, entry, abspath, stat_value)
 
@@ -815,12 +819,16 @@ def update_entry(self, entry, abspath, stat_value):
 cdef _update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 
+    This function only calculates the sha if it needs to - if the entry is
+    uncachable, or clearly different to the first parent's entry, no sha
+    is calculated, and None is returned.
+
     :param self: The dirstate object this is operating on.
     :param entry: This is the dirblock entry for the file in question.
     :param abspath: The path on disk for this file.
     :param stat_value: The stat value done on the path.
-    :return: The sha1 hexdigest of the file (40 bytes) or link target of a
-            symlink.
+    :return: None, or The sha1 hexdigest of the file (40 bytes) or link
+        target of a symlink.
     """
     # TODO - require pyrex 0.9.8, then use a pyd file to define access to the
     # _st mode of the compiled stat objects.
@@ -859,13 +867,18 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # process this entry.
     link_or_sha1 = None
     if minikind == c'f':
-        link_or_sha1 = self._sha1_file(abspath)
         executable = self._is_executable(stat_value.st_mode,
                                          saved_executable)
         if self._cutoff_time is None:
             self._sha_cutoff_time()
         if (stat_value.st_mtime < self._cutoff_time
-            and stat_value.st_ctime < self._cutoff_time):
+            and stat_value.st_ctime < self._cutoff_time
+            and len(entry[1]) > 1
+            and entry[1][1][0] != 'a'):
+                # Could check for size changes for further optimised
+                # avoidance of sha1's. However the most prominent case of
+                # over-shaing is during initial add, which this catches.
+            link_or_sha1 = self._sha1_file(abspath)
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
@@ -976,6 +989,8 @@ cdef class ProcessEntryC:
     cdef object root_dir_info
     cdef object bisect_left
     cdef object pathjoin
+    cdef object fstat
+    cdef object sha_file
 
     def __init__(self, include_unchanged, use_filesystem_for_exec,
         search_specific_files, state, source_index, target_index,
@@ -1023,6 +1038,8 @@ cdef class ProcessEntryC:
         self.root_dir_info = None
         self.bisect_left = bisect.bisect_left
         self.pathjoin = osutils.pathjoin
+        self.fstat = os.fstat
+        self.sha_file = osutils.sha_file
 
     cdef _process_entry(self, entry, path_info):
         """Compare an entry and real disk to generate delta information.
@@ -1119,9 +1136,24 @@ cdef class ProcessEntryC:
                     if source_minikind != c'f':
                         content_change = 1
                     else:
-                        # We could check the size, but we already have the
-                        # sha1 hash.
-                        content_change = (link_or_sha1 != source_details[1])
+                        # If the size is the same, check the sha:
+                        if target_details[2] == source_details[2]:
+                            if link_or_sha1 is None:
+                                # Stat cache miss:
+                                file_obj = file(path_info[4], 'rb')
+                                try:
+                                    # XXX: TODO: Use lower level file IO rather
+                                    # than python objects for sha-misses.
+                                    statvalue = self.fstat(file_obj.fileno())
+                                    link_or_sha1 = self.sha_file(file_obj)
+                                finally:
+                                    file_obj.close()
+                                self.state._observed_sha1(entry, link_or_sha1,
+                                    statvalue)
+                            content_change = (link_or_sha1 != source_details[1])
+                        else:
+                            # Size changed, so must be different
+                            content_change = 1
                     # Target details is updated at update_entry time
                     if self.use_filesystem_for_exec:
                         # We don't need S_ISREG here, because we are sure

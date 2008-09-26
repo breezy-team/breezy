@@ -32,6 +32,9 @@ IN DEVELOPMENT
       push.  It is also faster if there are no tags in the local branch.
       (Andrew Bennetts)
 
+    * File changes during a commit will update the tree stat cache.
+      (Robert Collins)
+
     * Location aliases can now accept a trailing path.  (Micheal Hudson)
 
     * New hooks ``Lock.hooks`` when LockDirs are acquired and released. 
@@ -87,6 +90,14 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``CommitBuilder.record_entry_contents`` returns one more element in
+      its result tuple - an optional file system hash for the hash cache
+      to use. (Robert Collins)
+
+    * ``dirstate.DirState.update_entry`` will now only calculate the sha1
+      of a file if it is likely to be needed in determining the output
+      of iter_changes. (Robert Collins)
+
   TESTING:
 
     * ``bzrlib.tests.repository_implementations`` has been renamed to
@@ -114,6 +125,9 @@ IN DEVELOPMENT
 
     * New method ``RevisionSpec.as_tree`` for representing the revision
       specifier as a revision tree object. (Lukáš Lalinský)
+
+    * New race-free method on MutableTree ``get_file_with_stat`` for use
+      when generating stat cache results. (Robert Collins)
 
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)

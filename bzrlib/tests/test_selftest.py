@@ -502,6 +502,19 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
         self.assertIsSameRealPath(self.test_dir, cwd)
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
+    def test_assertEqualStat_equal(self):
+        from bzrlib.tests.test_dirstate import _FakeStat
+        self.build_tree(["foo"])
+        real = os.lstat("foo")
+        fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,
+            real.st_dev, real.st_ino, real.st_mode)
+        self.assertEqualStat(real, fake)
+
+    def test_assertEqualStat_notequal(self):
+        self.build_tree(["foo", "bar"])
+        self.assertRaises(AssertionError, self.assertEqualStat,
+            os.lstat("foo"), os.lstat("bar"))
+
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
 
