@@ -15,6 +15,9 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr+http//`` will now optionally load plugins and write logs on the
+      server. (Marius Kruger)
+
   FEATURES
 
   IMPROVEMENTS:
