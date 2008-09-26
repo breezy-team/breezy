@@ -16,10 +16,10 @@
 
 """Tests for repositories that do not support CHK indices."""
 
-from bzrlib.tests.per_repository_chk import TestCaseWithRepository
+from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
-class TestNoCHKSupport(TestCaseWithRepository):
+class TestNoCHKSupport(TestCaseWithRepositoryCHK):
 
     def test_chk_bytes_attribute_is_None(self):
         repo = self.make_repository('.')

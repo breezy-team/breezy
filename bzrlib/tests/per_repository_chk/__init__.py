@@ -28,6 +28,10 @@ from bzrlib import (
     remote,
     )
 from bzrlib.bzrdir import BzrDir
+from bzrlib.repofmt.pack_repo import (
+    RepositoryFormatKnitPack5,
+    RepositoryFormatPackDevelopment3,
+    )
 from bzrlib.tests import (
                           adapt_modules,
                           adapt_tests,
@@ -40,15 +44,32 @@ from bzrlib.tests.per_repository import (
     )
 
 
+class TestCaseWithRepositoryCHK(TestCaseWithRepository):
+
+    def make_repository(self, path):
+        TestCaseWithRepository.make_repository(self, path)
+        return repository.Repository.open(self.get_transport(path).base)
+
+
 def load_tests(standard_tests, module, loader):
     supported = []
     notsupported = []
     for test_name, scenario_info in all_repository_format_scenarios():
-        # For remote repositories, we need at least one chk
-        # capable format to test it:
-        # if isinstance(format, remote.RemoteRepositoryFormat):
-        #     scenario_info['bzrdir_format'].repository_format = 
-        if scenario_info['repository_format'].supports_chks:
+        format = scenario_info['repository_format']
+        # For remote repositories, we test both with, and without a backing chk
+        # capable format: change the format we use to create the repo to direct
+        # formats, and then the overridden make_repository in
+        # TestCaseWithRepositoryCHK will given a re-opened RemoteRepository
+        # with the chosen backing format.
+        if isinstance(format, remote.RemoteRepositoryFormat):
+            with_support = dict(scenario_info)
+            with_support['repository_format'] = \
+                RepositoryFormatPackDevelopment3()
+            supported.append((test_name + "(Supported)", with_support))
+            no_support = dict(scenario_info)
+            no_support['repository_format'] = RepositoryFormatKnitPack5()
+            notsupported.append((test_name + "(Not Supported)", no_support))
+        elif format.supports_chks:
             supported.append((test_name, scenario_info))
         else:
             notsupported.append((test_name, scenario_info))

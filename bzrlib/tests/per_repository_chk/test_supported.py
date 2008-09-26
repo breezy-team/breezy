@@ -17,10 +17,10 @@
 """Tests for repositories that support CHK indices."""
 
 from bzrlib.versionedfile import VersionedFiles
-from bzrlib.tests.per_repository_chk import TestCaseWithRepository
+from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
-class TestCHKSupport(TestCaseWithRepository):
+class TestCHKSupport(TestCaseWithRepositoryCHK):
 
     def test_chk_bytes_attribute_is_VersionedFiles(self):
         repo = self.make_repository('.')
