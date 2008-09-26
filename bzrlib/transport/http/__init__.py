@@ -104,6 +104,7 @@ class HttpTransportBase(ConnectedTransport):
         self._impl_name = impl_name
         super(HttpTransportBase, self).__init__(base,
                                                 _from_transport=_from_transport)
+        self._medium = None
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
         # requests and if the server returns bogus results, we
