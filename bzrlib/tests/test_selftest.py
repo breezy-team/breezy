@@ -472,23 +472,23 @@ class TestInterTreeProviderAdapter(TestCase):
         server2 = "b"
         format1 = WorkingTreeFormat2()
         format2 = WorkingTreeFormat3()
-        formats = [(str, format1, format2, "converter1"),
-            (int, format2, format1, "converter2")]
+        formats = [("1", str, format1, format2, "converter1"),
+            ("2", int, format2, format1, "converter2")]
         adapter = InterTreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].intertree_class, formats[0][0])
-        self.assertEqual(tests[0].workingtree_format, formats[0][1])
-        self.assertEqual(tests[0].workingtree_format_to, formats[0][2])
-        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][3])
+        self.assertEqual(tests[0].intertree_class, formats[0][1])
+        self.assertEqual(tests[0].workingtree_format, formats[0][2])
+        self.assertEqual(tests[0].workingtree_format_to, formats[0][3])
+        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][4])
         self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].intertree_class, formats[1][0])
-        self.assertEqual(tests[1].workingtree_format, formats[1][1])
-        self.assertEqual(tests[1].workingtree_format_to, formats[1][2])
-        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][3])
+        self.assertEqual(tests[1].intertree_class, formats[1][1])
+        self.assertEqual(tests[1].workingtree_format, formats[1][2])
+        self.assertEqual(tests[1].workingtree_format_to, formats[1][3])
+        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][4])
         self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
