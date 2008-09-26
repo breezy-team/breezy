@@ -22,7 +22,6 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
-import md5
 from stat import S_ISDIR
 from StringIO import StringIO
 
@@ -52,6 +51,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     progress,
     repository,
     revision as _mod_revision,
@@ -974,7 +974,7 @@ class TestNewPack(TestCaseWithTransport):
             pack_transport)
         self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
         self.assertIsInstance(pack.inventory_index, InMemoryGraphIndex)
-        self.assertIsInstance(pack._hash, type(md5.new()))
+        self.assertIsInstance(pack._hash, type(osutils.md5()))
         self.assertTrue(pack.upload_transport is upload_transport)
         self.assertTrue(pack.index_transport is index_transport)
         self.assertTrue(pack.pack_transport is pack_transport)
