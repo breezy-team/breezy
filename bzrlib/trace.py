@@ -390,10 +390,8 @@ def disable_default_logging():
 
 _short_fields = ('VmPeak', 'VmSize', 'VmRSS')
 
-def debug_memory(message, short=True):
+def debug_memory(message='', short=True):
     """Write out a memory dump."""
-    if 'memory' not in debug.debug_flags:
-        return
     try:
         status_file = file('/proc/%s/status' % os.getpid(), 'rb')
     except IOError:
@@ -402,7 +400,8 @@ def debug_memory(message, short=True):
         status = status_file.read()
     finally:
         status_file.close()
-    note(message)
+    if message:
+        note(message)
     for line in status.splitlines():
         if not short:
             note(line)
