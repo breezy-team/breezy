@@ -1138,7 +1138,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
+            self.assertEqual('proxied contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1147,7 +1147,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+            self.assertEqual('contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
