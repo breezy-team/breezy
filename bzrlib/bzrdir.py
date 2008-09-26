@@ -1157,6 +1157,10 @@ class BzrDir(object):
                 basis = wt.basis_tree()
                 basis.lock_read()
                 subtrees = basis.iter_references()
+            elif result_branch is not None:
+                basis = result_branch.basis_tree()
+                basis.lock_read()
+                subtrees = basis.iter_references()
             elif source_branch is not None:
                 basis = source_branch.basis_tree()
                 basis.lock_read()
