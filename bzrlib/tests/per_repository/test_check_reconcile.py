@@ -25,7 +25,7 @@ import sha
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.revision import Revision
 from bzrlib.tests import TestNotApplicable
-from bzrlib.tests.repository_implementations import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestFileParentReconciliation(TestCaseWithRepository):

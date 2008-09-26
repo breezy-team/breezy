@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib import (
     config,
     errors,
+    lock,
     osutils,
     tests,
     transport,
@@ -658,3 +659,74 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
+
+    def record_hook(self, result):
+        self._calls.append(result)
+
+    def reset_hooks(self):
+        self._old_hooks = lock.Lock.hooks
+        self.addCleanup(self.restore_hooks)
+        lock.Lock.hooks = lock.LockHooks()
+
+    def restore_hooks(self):
+        lock.Lock.hooks = self._old_hooks
+
+    def test_LockDir_acquired_success(self):
+        # the LockDir.lock_acquired hook fires when a lock is acquired.
+        self._calls = []
+        self.reset_hooks()
+        LockDir.hooks.install_named_hook('lock_acquired',
+            self.record_hook, 'record_hook')
+        ld = self.get_lock()
+        ld.create()
+        self.assertEqual([], self._calls)
+        result = ld.attempt_lock()
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
+        ld.unlock()
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
+
+    def test_LockDir_acquired_fail(self):
+        # the LockDir.lock_acquired hook does not fire on failure.
+        self._calls = []
+        self.reset_hooks()
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        ld2.attempt_lock()
+        # install a lock hook now, when the disk lock is locked
+        LockDir.hooks.install_named_hook('lock_acquired',
+            self.record_hook, 'record_hook')
+        self.assertRaises(errors.LockContention, ld.attempt_lock)
+        self.assertEqual([], self._calls)
+        ld2.unlock()
+        self.assertEqual([], self._calls)
+
+    def test_LockDir_released_success(self):
+        # the LockDir.lock_released hook fires when a lock is acquired.
+        self._calls = []
+        self.reset_hooks()
+        LockDir.hooks.install_named_hook('lock_released',
+            self.record_hook, 'record_hook')
+        ld = self.get_lock()
+        ld.create()
+        self.assertEqual([], self._calls)
+        result = ld.attempt_lock()
+        self.assertEqual([], self._calls)
+        ld.unlock()
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
+
+    def test_LockDir_released_fail(self):
+        # the LockDir.lock_released hook does not fire on failure.
+        self._calls = []
+        self.reset_hooks()
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        ld.attempt_lock()
+        ld2.force_break(ld2.peek())
+        LockDir.hooks.install_named_hook('lock_released',
+            self.record_hook, 'record_hook')
+        self.assertRaises(LockBroken, ld.unlock)
+        self.assertEqual([], self._calls)

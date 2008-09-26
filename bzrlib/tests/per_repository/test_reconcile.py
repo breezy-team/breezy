@@ -24,10 +24,10 @@ from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
 from bzrlib.revision import Revision
 from bzrlib.tests import TestSkipped, TestNotApplicable
-from bzrlib.tests.repository_implementations.helpers import (
+from bzrlib.tests.per_repository.helpers import (
     TestCaseWithBrokenRevisionIndex,
     )
-from bzrlib.tests.repository_implementations.test_repository import (
+from bzrlib.tests.per_repository import (
     TestCaseWithRepository,
     )
 from bzrlib.transport import get_transport

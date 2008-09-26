@@ -252,7 +252,7 @@ class TestRepositoryParameterisation(TestCase):
 
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
-        from bzrlib.tests.repository_implementations import formats_to_scenarios
+        from bzrlib.tests.per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
                         'Bazaar pack repository format 1 (needs bzr 0.92)\n'))]
@@ -293,7 +293,7 @@ class TestTestScenarioApplier(TestCase):
     """Tests for the test adaption facilities."""
 
     def test_adapt_applies_scenarios(self):
-        from bzrlib.tests.repository_implementations import TestScenarioApplier
+        from bzrlib.tests.per_repository import TestScenarioApplier
         input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
         adapter = TestScenarioApplier()
         adapter.scenarios = [("1", "dict"), ("2", "settings")]
@@ -307,7 +307,7 @@ class TestTestScenarioApplier(TestCase):
             (input_test, ("2", "settings"))], calls)
 
     def test_adapt_test_to_scenario(self):
-        from bzrlib.tests.repository_implementations import TestScenarioApplier
+        from bzrlib.tests.per_repository import TestScenarioApplier
         input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
         adapter = TestScenarioApplier()
         # setup two adapted tests
@@ -472,23 +472,23 @@ class TestInterTreeProviderAdapter(TestCase):
         server2 = "b"
         format1 = WorkingTreeFormat2()
         format2 = WorkingTreeFormat3()
-        formats = [(str, format1, format2, "converter1"),
-            (int, format2, format1, "converter2")]
+        formats = [("1", str, format1, format2, "converter1"),
+            ("2", int, format2, format1, "converter2")]
         adapter = InterTreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].intertree_class, formats[0][0])
-        self.assertEqual(tests[0].workingtree_format, formats[0][1])
-        self.assertEqual(tests[0].workingtree_format_to, formats[0][2])
-        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][3])
+        self.assertEqual(tests[0].intertree_class, formats[0][1])
+        self.assertEqual(tests[0].workingtree_format, formats[0][2])
+        self.assertEqual(tests[0].workingtree_format_to, formats[0][3])
+        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][4])
         self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].intertree_class, formats[1][0])
-        self.assertEqual(tests[1].workingtree_format, formats[1][1])
-        self.assertEqual(tests[1].workingtree_format_to, formats[1][2])
-        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][3])
+        self.assertEqual(tests[1].intertree_class, formats[1][1])
+        self.assertEqual(tests[1].workingtree_format, formats[1][2])
+        self.assertEqual(tests[1].workingtree_format_to, formats[1][3])
+        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][4])
         self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
@@ -501,6 +501,19 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
+
+    def test_assertEqualStat_equal(self):
+        from bzrlib.tests.test_dirstate import _FakeStat
+        self.build_tree(["foo"])
+        real = os.lstat("foo")
+        fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,
+            real.st_dev, real.st_ino, real.st_mode)
+        self.assertEqualStat(real, fake)
+
+    def test_assertEqualStat_notequal(self):
+        self.build_tree(["foo", "bar"])
+        self.assertRaises(AssertionError, self.assertEqualStat,
+            os.lstat("foo"), os.lstat("bar"))
 
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):

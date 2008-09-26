@@ -24,6 +24,7 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import HardlinkFeature
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
@@ -96,6 +97,15 @@ class TestBranch(ExternalBase):
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
+
+    def test_branch_standalone(self):
+        shared_repo = self.make_repository('repo', shared=True)
+        self.example_branch('source')
+        self.run_bzr('branch --standalone source repo/target')
+        b = branch.Branch.open('repo/target')
+        expected_repo_path = os.path.abspath('repo/target/.bzr/repository')
+        self.assertEqual(strip_trailing_slash(b.repository.base),
+            strip_trailing_slash(local_path_to_url(expected_repo_path)))
 
 
 class TestBranchStacked(ExternalBase):

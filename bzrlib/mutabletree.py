@@ -201,6 +201,20 @@ class MutableTree(tree.Tree):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
+    def get_file_with_stat(self, file_id, path=None):
+        """Get a file handle and stat object for file_id.
+
+        The default implementation returns (self.get_file, None) for backwards
+        compatibility.
+
+        :param file_id: The file id to read.
+        :param path: The path of the file, if it is known.
+        :return: A tuple (file_handle, stat_value_or_None). If the tree has
+            no stat facility, or need for a stat cache feedback during commit,
+            it may return None for the second element of the tuple.
+        """
+        return (self.get_file(file_id, path), None)
+
     @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.
@@ -246,6 +260,23 @@ class MutableTree(tree.Tree):
         :return: the file id of the new directory.
         """
         raise NotImplementedError(self.mkdir)
+
+    def _observed_sha1(self, file_id, path, (sha1, stat_value)):
+        """Tell the tree we have observed a paths sha1.
+
+        The intent of this function is to allow trees that have a hashcache to
+        update the hashcache during commit. If the observed file is too new
+        (based on the stat_value) to be safely hash-cached the tree will ignore
+        it. 
+
+        The default implementation does nothing.
+
+        :param file_id: The file id
+        :param path: The file path
+        :param sha1: The sha 1 that was observed.
+        :param stat_value: A stat result for the file the sha1 was read from.
+        :return: None
+        """
 
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
