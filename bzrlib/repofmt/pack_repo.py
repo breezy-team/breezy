@@ -1119,7 +1119,8 @@ class RepositoryPackCollection(object):
     """
 
     def __init__(self, repo, transport, index_transport, upload_transport,
-                 pack_transport, index_builder_class, index_class):
+                 pack_transport, index_builder_class, index_class,
+                 use_chk_index):
         """Create a new RepositoryPackCollection.
 
         :param transport: Addresses the repository base directory 
@@ -1130,6 +1131,7 @@ class RepositoryPackCollection(object):
         :param pack_transport: Addresses the directory of existing complete packs.
         :param index_builder_class: The index builder class to use.
         :param index_class: The index class to use.
+        :param use_chk_index: Whether to setup and manage a CHK index.
         """
         self.repo = repo
         self.transport = transport
@@ -1151,6 +1153,11 @@ class RepositoryPackCollection(object):
         self.inventory_index = AggregateIndex()
         self.text_index = AggregateIndex()
         self.signature_index = AggregateIndex()
+        if use_chk_index:
+            self.chk_index = AggregateIndex()
+        else:
+            # used to determine if we're using a chk_index elsewhere.
+            self.chk_index = None
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -1705,7 +1712,9 @@ class KnitPackRepository(KnitRepository):
             self._transport.clone('upload'),
             self._transport.clone('packs'),
             _format.index_builder_class,
-            _format.index_class)
+            _format.index_class,
+            use_chk_index=self._format.supports_chks,
+            )
         self.inventories = KnitVersionedFiles(
             _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
@@ -1730,7 +1739,18 @@ class KnitPackRepository(KnitRepository):
                 deltas=True, parents=True, is_locked=self.is_locked),
             data_access=self._pack_collection.text_index.data_access,
             max_delta_chain=200)
-        self.chk_bytes = None
+        if _format.supports_chks:
+            # No graph, no compression:- references from chks are between
+            # different objects not temporal versions of the same; and without
+            # some sort of temporal structure knit compression will just fail.
+            self.chk_bytes = KnitVersionedFiles(
+                _KnitGraphIndex(self._pack_collection.chk_index.combined_index,
+                    add_callback=self._pack_collection.chk_index.add_callback,
+                    deltas=False, parents=False, is_locked=self.is_locked),
+                data_access=self._pack_collection.chk_index.data_access,
+                max_delta_chain=0)
+        else:
+            self.chk_bytes = None
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.) 
         # Another way to represent this would be a decorator around the control
@@ -2301,3 +2321,88 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
             "1.6.1-subtree with B+Tree indices.\n")
+
+
+class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.7.
+
+    This is pack-1.6.1 with B+Tree indices and a chk index.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+    supports_chks = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development3')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 3 (needs bzr.dev from before 1.8)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "1.6.1 with B+Trees and chk support.\n")
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
+    """A subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.7.
+
+    1.6.1-subtree[as it might have been] with B+Tree indices and a chk index.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = True
+    _serializer = xml7.serializer_v7
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+    supports_chks = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development3-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar development format 3 with subtree support "
+            "(needs bzr.dev from before 1.8)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "1.6.1-subtree with B+Tree and chk support.\n")

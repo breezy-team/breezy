@@ -2341,6 +2341,17 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
+format_registry.register_lazy(
+    "Bazaar development format 3 (needs bzr.dev from before 1.8)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment3',
+    )
+format_registry.register_lazy(
+    ("Bazaar development format 3 with subtree support "
+        "(needs bzr.dev from before 1.8)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment3Subtree',
+    )
 
 
 class InterRepository(InterObject):
@@ -2926,11 +2937,14 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack5RichRoot,
                 RepositoryFormatPackDevelopment2,
                 RepositoryFormatPackDevelopment2Subtree,
+                RepositoryFormatPackDevelopment3,
+                RepositoryFormatPackDevelopment3Subtree,
                 )
             norichroot = (
                 RepositoryFormatKnit1,            # no rr, no subtree
                 RepositoryFormatKnitPack1,        # no rr, no subtree
                 RepositoryFormatPackDevelopment2, # no rr, no subtree
+                RepositoryFormatPackDevelopment3, # no rr, no subtree
                 RepositoryFormatKnitPack5,        # no rr, no subtree
                 )
             richroot = (
@@ -2939,6 +2953,7 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack4,        # rr, no subtree
                 RepositoryFormatKnitPack5RichRoot,# rr, no subtree
                 RepositoryFormatPackDevelopment2Subtree, # rr, subtree
+                RepositoryFormatPackDevelopment3Subtree, # rr, subtree
                 )
             for format in norichroot:
                 if format.rich_root_data:

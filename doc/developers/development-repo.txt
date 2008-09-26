@@ -226,18 +226,24 @@ Format Details
 development
 -----------
 
-Currently an alias for Development2
+Currently an alias for Development3
 
 development-subtree
 -------------------
 
-Currently an alias for Development2Subtree
+Currently an alias for Development3Subtree
 
 Development2[Subtree]
 ---------------------
 
 These formats use B+Tree indices which are considerably faster than
 the earlier indices in bzr.
+
+Development3[Subtree]
+---------------------
+
+These formats use B+Tree indices and also offer a CHK based byte store
+in addition to the revision/inventory/signatures and text stores.
 
 
 ..
