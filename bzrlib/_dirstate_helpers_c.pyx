@@ -57,6 +57,7 @@ cdef extern from "_dirstate_helpers_c.h":
     ctypedef int intptr_t
 
 
+
 cdef extern from "stdlib.h":
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
