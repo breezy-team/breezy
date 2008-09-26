@@ -1300,11 +1300,8 @@ class RepositoryPackCollection(object):
                     # this pack is used up, shift left.
                     del pack_distribution[0]
                     pack_operations.append([0, []])
-        # At this point, we have a bunch of pack files that we are recombining.
-        # This triggers a certain amount of I/O. However, we can just shove all
-        # of these modifications into a single larger pack. That triggers the
-        # same amount of I/O, but leaves us with fewer packs in the general
-        # case.
+        # Now that we know which pack files we want to move, shove them all
+        # into a single pack file.
         final_rev_count = 0
         final_pack_list = []
         for num_revs, pack_files in pack_operations:
@@ -1312,8 +1309,7 @@ class RepositoryPackCollection(object):
             final_pack_list.extend(pack_files)
         if len(final_pack_list) == 1:
             raise AssertionError('We somehow generated an autopack with a'
-                ' single pack file being moved.'
-                ' I couldnt find a way to do this')
+                ' single pack file being moved.')
             return []
         return [[final_rev_count, final_pack_list]]
 
