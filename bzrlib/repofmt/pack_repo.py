@@ -1294,8 +1294,8 @@ class RepositoryPackCollection(object):
         # plan out what packs to keep, and what to reorganise
         while len(existing_packs):
             # take the largest pack, and if its less than the head of the
-            # distribution chart we will include its contents in the new pack for
-            # that position. If its larger, we remove its size from the
+            # distribution chart we will include its contents in the new pack
+            # for that position. If its larger, we remove its size from the
             # distribution chart
             next_pack_rev_count, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
@@ -1318,8 +1318,18 @@ class RepositoryPackCollection(object):
                     # this pack is used up, shift left.
                     del pack_distribution[0]
                     pack_operations.append([0, []])
-        
-        return pack_operations
+        # Now that we know which pack files we want to move, shove them all
+        # into a single pack file.
+        final_rev_count = 0
+        final_pack_list = []
+        for num_revs, pack_files in pack_operations:
+            final_rev_count += num_revs
+            final_pack_list.extend(pack_files)
+        if len(final_pack_list) == 1:
+            raise AssertionError('We somehow generated an autopack with a'
+                ' single pack file being moved.')
+            return []
+        return [[final_rev_count, final_pack_list]]
 
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
