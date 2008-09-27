@@ -33,6 +33,7 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 from bzrlib import graph
+from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
@@ -976,9 +977,10 @@ class TestNewPack(TestCaseWithTransport):
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
         pack = pack_repo.NewPack(upload_transport, index_transport,
-            pack_transport)
-        self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
-        self.assertIsInstance(pack.inventory_index, InMemoryGraphIndex)
+            pack_transport, index_builder_class=BTreeBuilder,
+            index_class=BTreeGraphIndex)
+        self.assertIsInstance(pack.revision_index, BTreeBuilder)
+        self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(md5.new()))
         self.assertTrue(pack.upload_transport is upload_transport)
         self.assertTrue(pack.index_transport is index_transport)

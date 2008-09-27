@@ -109,6 +109,11 @@ IN DEVELOPMENT
       of a file if it is likely to be needed in determining the output
       of iter_changes. (Robert Collins)
 
+    * The PackRepository, RepositoryPackCollection, NewPack classes have a
+      slightly changed interface to support different index types; as a
+      result other users of these classes need to supply the index types
+      they want. (Robert Collins)
+
   TESTING:
 
     * ``bzrlib.tests.repository_implementations`` has been renamed to
