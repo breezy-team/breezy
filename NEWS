@@ -134,6 +134,10 @@ IN DEVELOPMENT
       tree walking, and modular directory listing code to aid future
       performance optimisations and refactoring. (Robert Collins)
 
+    * ``bzrlib.trace.debug_memory`` can be used to get a quick memory dump
+      in the middle of processing. It only reports memory if
+      ``/proc/PID/status`` is available. (John Arbash Meinel)
+
     * New method ``RevisionSpec.as_tree`` for representing the revision
       specifier as a revision tree object. (Lukáš Lalinský)
 
