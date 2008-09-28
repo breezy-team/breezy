@@ -1,3 +1,9 @@
+bzr-builddeb (2.0.2) UNRELEASED; urgency=low
+
+  * 
+
+ -- James Westby <james.westby@canonical.com>  Sun, 28 Sep 2008 14:33:54 +0100
+
 bzr-builddeb (2.0.1) experimental; urgency=low
 
   * Fix retrieval of the upstream source from a watch file of the archive.
