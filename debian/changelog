@@ -6,8 +6,9 @@ bzr-builddeb (2.0.2) UNRELEASED; urgency=low
     are a source package and binary package that are named the same, but
     the binary package isn't built from the source package, e.g. firefox,
     linux. (bug #275446)
+  * Add "squeeze" and "jaunty" to the list of known releases. (bug #275448)
 
- -- James Westby <james.westby@canonical.com>  Sun, 28 Sep 2008 14:38:09 +0100
+ -- James Westby <james.westby@canonical.com>  Sun, 28 Sep 2008 14:53:16 +0100
 
 bzr-builddeb (2.0.1) experimental; urgency=low
 
