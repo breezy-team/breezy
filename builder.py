@@ -221,7 +221,7 @@ class DebBuild(object):
         tarball_dir = self._properties.tarball_dir()
         if not os.path.exists(tarball_dir):
             os.makedirs(tarball_dir)
-        command = 'apt-get source -y --tar-only %s=%s' % \
+        command = 'apt-get source -y --only-source --tar-only %s=%s' % \
             (package, sources.Version)
         proc = subprocess.Popen(command, shell=True, cwd=tarball_dir)
         proc.wait()
