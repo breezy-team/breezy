@@ -124,7 +124,7 @@ class Pack(object):
     """
 
     def __init__(self, revision_index, inventory_index, text_index,
-        signature_index):
+        signature_index, chk_index=None):
         """Create a pack instance.
 
         :param revision_index: A GraphIndex for determining what revisions are
@@ -137,11 +137,14 @@ class Pack(object):
             texts/deltas (via (fileid, revisionid) tuples).
         :param signature_index: A GraphIndex for determining what signatures are
             present in the Pack and accessing the locations of their texts.
+        :param chk_index: A GraphIndex for accessing content by CHK, if the
+            pack has one.
         """
         self.revision_index = revision_index
         self.inventory_index = inventory_index
         self.text_index = text_index
         self.signature_index = signature_index
+        self.chk_index = chk_index
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
@@ -153,6 +156,10 @@ class Pack(object):
 
     def get_revision_count(self):
         return self.revision_index.key_count()
+
+    def chk_index_name(self, name):
+        """The chk index is the name + .cix."""
+        return self.index_name('chk', name)
 
     def inventory_index_name(self, name):
         """The inv index is the name + .iix."""
@@ -183,14 +190,14 @@ class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
 
     def __init__(self, pack_transport, name, revision_index, inventory_index,
-        text_index, signature_index):
+        text_index, signature_index, chk_index=None):
         """Create an ExistingPack object.
 
         :param pack_transport: The transport where the pack file resides.
         :param name: The name of the pack on disk in the pack_transport.
         """
         Pack.__init__(self, revision_index, inventory_index, text_index,
-            signature_index)
+            signature_index, chk_index)
         self.name = name
         self.pack_transport = pack_transport
         if None in (revision_index, inventory_index, text_index,
@@ -214,6 +221,7 @@ class NewPack(Pack):
     # A map of index 'type' to the file extension and position in the
     # index_sizes array.
     index_definitions = {
+        'chk': ('.cix', 4),
         'revision': ('.rix', 0),
         'inventory': ('.iix', 1),
         'text': ('.tix', 2),
@@ -222,7 +230,7 @@ class NewPack(Pack):
 
     def __init__(self, upload_transport, index_transport, pack_transport,
         upload_suffix='', file_mode=None, index_builder_class=None,
-        index_class=None):
+        index_class=None, use_chk_index=False):
         """Create a NewPack instance.
 
         :param upload_transport: A writable transport for the pack to be
@@ -239,9 +247,14 @@ class NewPack(Pack):
             index builder to use.
         :param index_class: Required keyword parameter - the class of index
             object to use.
+        :param use_chk_index: If True create a CHK index.
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
+        if use_chk_index:
+            chk_index = index_builder_class(reference_lists=0)
+        else:
+            chk_index = None
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             index_builder_class(reference_lists=1),
@@ -256,6 +269,8 @@ class NewPack(Pack):
             # Signatures: Just blobs to store, no compression, no parents
             # listing.
             index_builder_class(reference_lists=0),
+            # CHK based storage - just blobs, no compression or parents.
+            chk_index=chk_index
             )
         # When we make readonly indices, we need this.
         self.index_class = index_class
@@ -269,8 +284,8 @@ class NewPack(Pack):
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
         self._hash = md5.new()
-        # a four-tuple with the length in bytes of the indices, once the pack
-        # is finalised. (rev, inv, text, sigs)
+        # a tuple with the length in bytes of the indices, once the pack
+        # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None
         # How much data to cache when writing packs. Note that this is not
         # synchronised with reads, because it's not in the transport layer, so
@@ -337,7 +352,8 @@ class NewPack(Pack):
         return bool(self.get_revision_count() or
             self.inventory_index.key_count() or
             self.text_index.key_count() or
-            self.signature_index.key_count())
+            self.signature_index.key_count() or
+            (self.chk_index is not None and self.chk_index.key_count()))
 
     def finish(self):
         """Finish the new pack.
@@ -365,6 +381,10 @@ class NewPack(Pack):
         self._write_index('text', self.text_index, 'file texts')
         self._write_index('signature', self.signature_index,
             'revision signatures')
+        if self.chk_index is not None:
+            self.index_sizes.append(None)
+            self._write_index('chk', self.chk_index,
+                'content hash bytes')
         self.write_stream.close()
         # Note that this will clobber an existing pack with the same name,
         # without checking for hash collisions. While this is undesirable this
@@ -606,7 +626,8 @@ class Packer(object):
             self._pack_collection._pack_transport, upload_suffix=self.suffix,
             file_mode=self._pack_collection.repo.bzrdir._get_file_mode(),
             index_builder_class=self._pack_collection._index_builder_class,
-            index_class=self._pack_collection._index_class)
+            index_class=self._pack_collection._index_class,
+            use_chk_index=self._pack_collection.chk_index is not None)
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -745,6 +766,23 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
+        # copy chk contents
+        # NB XXX: how to check CHK references are present? perhaps by yielding
+        # the items? How should that interact with stacked repos?
+        if new_pack.chk_index is not None:
+            # XXX: Todo, recursive follow-pointers facility when fetching some
+            # revisions only.
+            chk_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+                self.packs, 'chk_index')[0]
+            chk_nodes = self._pack_collection._index_contents(chk_index_map, None)
+            self._copy_nodes(chk_nodes, chk_index_map, new_pack._writer,
+                new_pack.chk_index)
+            if 'pack' in debug.debug_flags:
+                mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
+                    time.ctime(), self._pack_collection._upload_transport.base,
+                    new_pack.random_name,
+                    new_pack.chk_index.key_count(),
+                    time.time() - new_pack.start_time)
         self._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
@@ -1140,7 +1178,8 @@ class RepositoryPackCollection(object):
         self._pack_transport = pack_transport
         self._index_builder_class = index_builder_class
         self._index_class = index_class
-        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3}
+        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3,
+            '.cix': 4}
         self.packs = []
         # name:Pack mapping
         self._packs_by_name = {}
@@ -1172,6 +1211,8 @@ class RepositoryPackCollection(object):
         self.inventory_index.add_index(pack.inventory_index, pack)
         self.text_index.add_index(pack.text_index, pack)
         self.signature_index.add_index(pack.signature_index, pack)
+        if self.chk_index is not None:
+            self.chk_index.add_index(pack.chk_index, pack)
         
     def all_packs(self):
         """Return a list of all the Pack objects this repository has.
@@ -1360,8 +1401,12 @@ class RepositoryPackCollection(object):
             inv_index = self._make_index(name, '.iix')
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
+            if self.chk_index is not None:
+                chk_index = self._make_index(name, '.cix')
+            else:
+                chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
-                inv_index, txt_index, sig_index)
+                inv_index, txt_index, sig_index, chk_index)
             self.add_pack_to_memory(result)
             return result
 
@@ -1471,6 +1516,8 @@ class RepositoryPackCollection(object):
         self.inventory_index.remove_index(pack.inventory_index, pack)
         self.text_index.remove_index(pack.text_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
+        if self.chk_index is not None:
+            self.chk_index.remove_index(pack.chk_index, pack)
 
     def reset(self):
         """Clear all cached data."""
@@ -1485,6 +1532,9 @@ class RepositoryPackCollection(object):
         self.repo._text_knit = None
         # cached inventory data
         self.inventory_index.clear()
+        # cached chk data
+        if self.chk_index is not None:
+            self.chk_index.clear()
         # remove the open pack
         self._new_pack = None
         # information about packs.
@@ -1635,7 +1685,8 @@ class RepositoryPackCollection(object):
             self._pack_transport, upload_suffix='.pack',
             file_mode=self.repo.bzrdir._get_file_mode(),
             index_builder_class=self._index_builder_class,
-            index_class=self._index_class)
+            index_class=self._index_class,
+            use_chk_index=self.chk_index is not None)
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1645,6 +1696,10 @@ class RepositoryPackCollection(object):
             self._new_pack)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
+        if self.chk_index is not None:
+            self.chk_index.add_writable_index(self._new_pack.chk_index,
+                self._new_pack)
+            self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
 
         self.repo.inventories._index._add_callback = self.inventory_index.add_callback
         self.repo.revisions._index._add_callback = self.revision_index.add_callback

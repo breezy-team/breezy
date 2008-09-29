@@ -25,3 +25,81 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
     def test_chk_bytes_attribute_is_VersionedFiles(self):
         repo = self.make_repository('.')
         self.assertIsInstance(repo.chk_bytes, VersionedFiles)
+
+    def test_add_bytes_to_chk_bytes_store(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                sha1, len, _ = repo.chk_bytes.add_lines((None,),
+                    None, ["foo\n", "bar\n"], random_id=True)
+                self.assertEqual('4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
+                    sha1)
+                self.assertEqual(
+                    set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                    repo.chk_bytes.keys())
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                repo.commit_write_group()
+        finally:
+            repo.unlock()
+        # And after an unlock/lock pair
+        repo.lock_read()
+        try:
+            self.assertEqual(
+                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                repo.chk_bytes.keys())
+        finally:
+            repo.unlock()
+        # and reopening
+        repo = repo.bzrdir.open_repository()
+        repo.lock_read()
+        try:
+            self.assertEqual(
+                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                repo.chk_bytes.keys())
+        finally:
+            repo.unlock()
+
+    def test_pack_preserves_chk_bytes_store(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                repo.chk_bytes.add_lines((None,), None, ["foo\n", "bar\n"],
+                    random_id=True)
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                repo.commit_write_group()
+            repo.start_write_group()
+            try:
+                repo.chk_bytes.add_lines((None,), None, ["foo\n"],
+                    random_id=True)
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                repo.commit_write_group()
+            repo.pack()
+            self.assertEqual(
+                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',),
+                    ('sha1:f1d2d2f924e986ac86fdf7b36c94bcdf32beec15',),]),
+                repo.chk_bytes.keys())
+        finally:
+            repo.unlock()
+        # and reopening
+        repo = repo.bzrdir.open_repository()
+        repo.lock_read()
+        try:
+            self.assertEqual(
+                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',),
+                    ('sha1:f1d2d2f924e986ac86fdf7b36c94bcdf32beec15',),]),
+                repo.chk_bytes.keys())
+        finally:
+            repo.unlock()
