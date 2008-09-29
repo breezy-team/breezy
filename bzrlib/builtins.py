@@ -3263,10 +3263,14 @@ class cmd_revert(Command):
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
         tree, file_list = tree_files(file_list)
-        if forget_merges:
-            tree.set_parent_ids(tree.get_parent_ids()[:1])
-        else:
-            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+        tree.lock_write()
+        try:
+            if forget_merges:
+                tree.set_parent_ids(tree.get_parent_ids()[:1])
+            else:
+                self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+        finally:
+            tree.unlock()
 
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
