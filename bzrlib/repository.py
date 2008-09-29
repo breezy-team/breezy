@@ -2332,19 +2332,18 @@ format_registry.register_lazy(
     )
 
 # Development formats. 
-# 1.5->1.6
+# 1.7->1.8 go below here
 format_registry.register_lazy(
-    "Bazaar development format 1 (needs bzr.dev from before 1.6)\n",
+    "Bazaar development format 2 (needs bzr.dev from before 1.8)\n",
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment1',
+    'RepositoryFormatPackDevelopment2',
     )
 format_registry.register_lazy(
-    ("Bazaar development format 1 with subtree support "
-        "(needs bzr.dev from before 1.6)\n"),
+    ("Bazaar development format 2 with subtree support "
+        "(needs bzr.dev from before 1.8)\n"),
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment1Subtree',
+    'RepositoryFormatPackDevelopment2Subtree',
     )
-# 1.6->1.7 go below here
 
 
 class InterRepository(InterObject):
@@ -2928,13 +2927,13 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack4,
                 RepositoryFormatKnitPack5,
                 RepositoryFormatKnitPack5RichRoot,
-                RepositoryFormatPackDevelopment1,
-                RepositoryFormatPackDevelopment1Subtree,
+                RepositoryFormatPackDevelopment2,
+                RepositoryFormatPackDevelopment2Subtree,
                 )
             norichroot = (
                 RepositoryFormatKnit1,            # no rr, no subtree
                 RepositoryFormatKnitPack1,        # no rr, no subtree
-                RepositoryFormatPackDevelopment1, # no rr, no subtree
+                RepositoryFormatPackDevelopment2, # no rr, no subtree
                 RepositoryFormatKnitPack5,        # no rr, no subtree
                 )
             richroot = (
@@ -2942,7 +2941,7 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack3,        # rr, subtree
                 RepositoryFormatKnitPack4,        # rr, no subtree
                 RepositoryFormatKnitPack5RichRoot,# rr, no subtree
-                RepositoryFormatPackDevelopment1Subtree, # rr, subtree
+                RepositoryFormatPackDevelopment2Subtree, # rr, subtree
                 )
             for format in norichroot:
                 if format.rich_root_data:

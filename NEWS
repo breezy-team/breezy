@@ -15,7 +15,16 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr+http//`` will now optionally load plugins and write logs on the
+      server. (Marius Kruger)
+
   FEATURES
+
+    * bzr is now compatible with python-2.6. python-2.6 is not yet officially
+      supported (nor released, tests were conducted with the dev version of
+      python-2.6rc2), but all known problems have been fixed . Feedback
+      welcome.
+      (Vincent Ladeuil, #269535)
 
   IMPROVEMENTS:
 
@@ -84,6 +93,14 @@ IN DEVELOPMENT
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
 
+    * The autopacking logic will now always create a single new pack from
+      all of the content which it deems is worth moving. This avoids the
+      'repack a single pack' bug and should result in better packing
+      overall.  (John Arbash Meinel, #242510, #172644)
+
+    * Trivial documentation fix.
+      (John Arbash Meinel, #270471)
+
   DOCUMENTATION:
 
     * Explain revision/range identifiers. (Daniel Clemente)
@@ -97,6 +114,11 @@ IN DEVELOPMENT
     * ``dirstate.DirState.update_entry`` will now only calculate the sha1
       of a file if it is likely to be needed in determining the output
       of iter_changes. (Robert Collins)
+
+    * The PackRepository, RepositoryPackCollection, NewPack classes have a
+      slightly changed interface to support different index types; as a
+      result other users of these classes need to supply the index types
+      they want. (Robert Collins)
 
   TESTING:
 
@@ -123,6 +145,10 @@ IN DEVELOPMENT
       tree walking, and modular directory listing code to aid future
       performance optimisations and refactoring. (Robert Collins)
 
+    * ``bzrlib.trace.debug_memory`` can be used to get a quick memory dump
+      in the middle of processing. It only reports memory if
+      ``/proc/PID/status`` is available. (John Arbash Meinel)
+
     * New method ``RevisionSpec.as_tree`` for representing the revision
       specifier as a revision tree object. (Lukáš Lalinský)
 
@@ -131,6 +157,27 @@ IN DEVELOPMENT
 
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
+
+    * To be compatible with python-2.6 a few new rules should be
+      observed. 'message' attribute can't be used anymore in exception
+      classes, 'sha' and 'md5' modules have been deprecated (use
+      osutils.[md5|sha]), object__init__ and object.__new__ don't accept
+      parameters anymore.
+      (Vincent Ladeuil)
+
+bzr 1.7.1rc1 2008-09-24
+-----------------------
+
+This release just includes an update to how the merge algorithm handles
+file paths when we encounter complex history.
+
+  FEATURES:
+
+    * If we encounter a criss-cross in history, use information from
+      direct Least Common Ancestors to resolve inventory shape (locations
+      of files, adds, deletes, etc). This is similar in concept to using
+      ``--lca`` for merging file texts, only applied to paths.
+      (John Arbash Meinel)
 
 
 bzr 1.7 2008-09-23
