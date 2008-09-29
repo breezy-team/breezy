@@ -1149,7 +1149,7 @@ class TestCase(unittest.TestCase):
         # warnings.  It's the easiest way to insulate ourselves from -Werror,
         # though.  -- Andrew, 20071062
         wlist = []
-        def _catcher(message, category, filename, lineno, file=None):
+        def _catcher(message, category, filename, lineno, file=None, line=None):
             # despite the name, 'message' is normally(?) a Warning subclass
             # instance
             wlist.append(message)

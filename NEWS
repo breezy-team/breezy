@@ -20,6 +20,12 @@ IN DEVELOPMENT
 
   FEATURES
 
+    * bzr is now compatible with python-2.6. python-2.6 is not yet officially
+      supported (nor released, tests were conducted with the dev version of
+      python-2.6rc2), but all known problems have been fixed . Feedback
+      welcome.
+      (Vincent Ladeuil, #269535)
+
   IMPROVEMENTS:
 
     * ``bzr annotate`` will now include uncommitted changes from the local
@@ -152,6 +158,12 @@ IN DEVELOPMENT
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
 
+    * To be compatible with python-2.6 a few new rules should be
+      observed. 'message' attribute can't be used anymore in exception
+      classes, 'sha' and 'md5' modules have been deprecated (use
+      osutils.[md5|sha]), object__init__ and object.__new__ don't accept
+      parameters anymore.
+      (Vincent Ladeuil)
 
 bzr 1.7.1rc1 2008-09-24
 -----------------------

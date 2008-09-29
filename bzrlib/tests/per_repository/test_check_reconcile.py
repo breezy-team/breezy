@@ -19,8 +19,7 @@
 That is, tests for reconcile and check.
 """
 
-
-import sha
+from bzrlib import osutils
 
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.revision import Revision
@@ -98,7 +97,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         entry.text_size = 0
         if file_contents is None:
             file_contents = '%sline\n' % entry.revision
-        entry.text_sha1 = sha.sha(file_contents).hexdigest()
+        entry.text_sha1 = osutils.sha(file_contents).hexdigest()
         inv.add(entry)
         if make_file_version:
             repo.texts.add_lines((file_id, revision),

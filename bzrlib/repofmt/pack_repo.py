@@ -17,19 +17,22 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from itertools import izip
-import md5
 import time
 
 from bzrlib import (
     debug,
     graph,
+    osutils,
     pack,
     transactions,
     ui,
     )
 from bzrlib.index import (
     CombinedGraphIndex,
+    GraphIndex,
+    GraphIndexBuilder,
     GraphIndexPrefixAdapter,
+    InMemoryGraphIndex,
     )
 from bzrlib.knit import (
     KnitPlainFactory,
@@ -37,7 +40,6 @@ from bzrlib.knit import (
     _KnitGraphIndex,
     _DirectPackAccess,
     )
-from bzrlib.osutils import rand_chars, split_lines
 from bzrlib import tsort
 """)
 from bzrlib import (
@@ -268,7 +270,7 @@ class NewPack(Pack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = md5.new()
+        self._hash = osutils.md5()
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
@@ -278,7 +280,7 @@ class NewPack(Pack):
         # under creation.
         self._cache_limit = 0
         # the temporary pack file name.
-        self.random_name = rand_chars(20) + upload_suffix
+        self.random_name = osutils.rand_chars(20) + upload_suffix
         # when was this pack started ?
         self.start_time = time.time()
         # open an output stream for the data added to the pack.
@@ -1086,7 +1088,7 @@ class ReconcilePacker(Packer):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                         (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = split_lines(repo.texts.get_record_stream(
+            text_lines = osutils.split_lines(repo.texts.get_record_stream(
                 [key], 'unordered', True).next().get_bytes_as('fulltext'))
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
