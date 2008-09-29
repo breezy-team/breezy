@@ -120,6 +120,10 @@ IN DEVELOPMENT
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
 
+    * Passing None in as the last element of a key tuple to
+      ``VersionedFiles.add`` will now cause a content-hash-key to be
+      allocated. (Robert Collins)
+
     * The Repository model has been extended to allow some formats to
       expose data via CHK based lookups (Though no formats support this as
       yet). (Robert Collins)

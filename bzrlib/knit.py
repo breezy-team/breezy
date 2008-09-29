@@ -795,8 +795,12 @@ class KnitVersionedFiles(VersionedFiles):
                 lines[-1] = lines[-1] + '\n'
                 line_bytes += '\n'
 
-        for element in key:
+        for element in key[:-1]:
             if type(element) != str:
+                raise TypeError("key contains non-strings: %r" % (key,))
+        if key[-1] is None:
+            key = key[:-1] + ('sha1:' + digest,)
+        elif type(key[-1]) != str:
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -862,9 +866,10 @@ class KnitVersionedFiles(VersionedFiles):
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
-        if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id, self)
-        self.check_not_reserved_id(version_id)
+        if version_id is not None:
+            if contains_whitespace(version_id):
+                raise InvalidRevisionId(version_id, self)
+            self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
         # being inserted, and otherwise raise an exception.  This would make

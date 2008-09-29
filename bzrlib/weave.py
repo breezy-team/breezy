@@ -399,6 +399,7 @@ class Weave(VersionedFile):
         version_id
             Symbolic name for this version.
             (Typically the revision-id of the revision that added it.)
+            If None, a name will be allocated based on the hash. (sha1:SHAHASH)
 
         parents
             List or set of direct parent version numbers.
@@ -414,6 +415,8 @@ class Weave(VersionedFile):
             sha1 = sha_strings(lines)
         if sha1 == nostore_sha:
             raise errors.ExistingContent
+        if version_id is None:
+            version_id = "sha1:" + sha1
         if version_id in self._name_map:
             return self._check_repeated_add(version_id, parents, lines, sha1)
 
