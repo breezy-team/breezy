@@ -172,7 +172,8 @@ class Merger(object):
 
     @staticmethod
     def from_revision_ids(pb, tree, other, base=None, other_branch=None,
-                          base_branch=None, revision_graph=None):
+                          base_branch=None, revision_graph=None,
+                          tree_branch=None):
         """Return a Merger for revision-ids.
 
         :param tree: The tree to merge changes into
@@ -187,7 +188,9 @@ class Merger(object):
             it in, otherwise it will be created for you.
         :param pb: A progress indicator
         """
-        merger = Merger(tree.branch, this_tree=tree, pb=pb,
+        if tree_branch is None:
+            tree_branch = tree.branch
+        merger = Merger(tree_branch, this_tree=tree, pb=pb,
                         revision_graph=revision_graph)
         if other_branch is None:
             other_branch = tree.branch
@@ -668,13 +671,16 @@ class Merge3Merger(object):
         iterator = self.other_tree.iter_changes(self.base_tree,
                 include_unchanged=True, specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
+        this_entries = dict((e.file_id, e) for p, e in
+                            self.this_tree.iter_entries_by_dir(
+                            self.interesting_ids))
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
             if (self.interesting_ids is not None and
                 file_id not in self.interesting_ids):
                 continue
-            if file_id in self.this_tree.inventory:
-                entry = self.this_tree.inventory[file_id]
+            entry = this_entries.get(file_id)
+            if entry is not None:
                 this_name = entry.name
                 this_parent = entry.parent_id
                 this_executable = entry.executable
@@ -1125,10 +1131,10 @@ class Merge3Merger(object):
                     self.tt.delete_contents(trans_id)
                 if file_id in self.other_tree:
                     # OTHER changed the file
-                    create_by_entry(self.tt, 
-                                    self.other_tree.inventory[file_id], 
+                    create_by_entry(self.tt,
+                                    self.other_tree.inventory[file_id],
                                     self.other_tree, trans_id)
-                    if file_id not in self.this_tree.inventory:
+                    if file_id not in self.this_tree:
                         self.tt.version_file(file_id, trans_id)
                     return "modified"
                 elif file_id in self.this_tree.inventory:
@@ -1144,7 +1150,7 @@ class Merge3Merger(object):
                     self.text_merge(file_id, trans_id)
                 except BinaryFile:
                     return contents_conflict()
-                if file_id not in self.this_tree.inventory:
+                if file_id not in self.this_tree:
                     self.tt.version_file(file_id, trans_id)
                 try:
                     self.tt.tree_kind(trans_id)
