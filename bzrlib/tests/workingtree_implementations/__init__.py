@@ -101,6 +101,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_commit',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
+        'bzrlib.tests.workingtree_implementations.test_get_file_with_stat',
         'bzrlib.tests.workingtree_implementations.test_get_file_mtime',
         'bzrlib.tests.workingtree_implementations.test_get_parent_ids',
         'bzrlib.tests.workingtree_implementations.test_inv',
