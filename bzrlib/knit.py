@@ -1433,7 +1433,9 @@ class KnitVersionedFiles(VersionedFiles):
                 yield line, key
             keys.difference_update(source_keys)
         if keys:
-            raise RevisionNotPresent(keys, self.filename)
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
