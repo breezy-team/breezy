@@ -17,7 +17,7 @@
 """Helper functions for Walkdirs on win32."""
 
 
-cdef extern from "_walkdirs_win32.h":
+cdef extern from "python-compat.h":
     struct _HANDLE:
         pass
     ctypedef _HANDLE *HANDLE
