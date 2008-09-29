@@ -226,17 +226,18 @@ Format Details
 development
 -----------
 
-Currently an alias for Development1
+Currently an alias for Development2
 
 development-subtree
 -------------------
 
-Currently an alias for Development1Subtree
+Currently an alias for Development2Subtree
 
-Development1[Subtree]
+Development2[Subtree]
 ---------------------
 
-These formats were introduced during the development of branch stacking.
+These formats use B+Tree indices which are considerably faster than
+the earlier indices in bzr.
 
 
 ..
