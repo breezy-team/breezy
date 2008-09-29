@@ -32,6 +32,7 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 from bzrlib import graph
+from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
@@ -744,13 +745,16 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
-    def test__max_pack_count(self):
-        """The maximum pack count is a function of the number of revisions."""
+    def get_packs(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        return repo._pack_collection
+
+    def test__max_pack_count(self):
+        """The maximum pack count is a function of the number of revisions."""
         # no revisions - one pack, so that we can have a revision free repo
         # without it blowing up
+        packs = self.get_packs()
         self.assertEqual(1, packs._max_pack_count(0))
         # after that the sum of the digits, - check the first 1-9
         self.assertEqual(1, packs._max_pack_count(1))
@@ -772,21 +776,16 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(25, packs._max_pack_count(112894))
 
     def test_pack_distribution_zero(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))
 
     def test_ensure_loaded_unlocked(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
+        packs = self.get_packs()
         self.assertRaises(errors.ObjectNotLocked,
-                          repo._pack_collection.ensure_loaded)
+                          packs.ensure_loaded)
 
     def test_pack_distribution_one_to_nine(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         self.assertEqual([1],
             packs.pack_distribution(1))
         self.assertEqual([1, 1],
@@ -808,9 +807,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_pack_distribution_stable_at_boundaries(self):
         """When there are multi-rev packs the counts are stable."""
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         # in 10s:
         self.assertEqual([10], packs.pack_distribution(10))
         self.assertEqual([10, 1], packs.pack_distribution(11))
@@ -825,9 +822,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([100, 100, 10, 1], packs.pack_distribution(211))
 
     def test_plan_pack_operations_2009_revisions_skip_all_packs(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(2000, "big"), (9, "medium")]
         # rev count - 2009 -> 2x1000 + 9x1
         pack_operations = packs.plan_autopack_combinations(
@@ -835,9 +830,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([], pack_operations)
 
     def test_plan_pack_operations_2010_revisions_skip_all_packs(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(2000, "big"), (9, "medium"), (1, "single")]
         # rev count - 2010 -> 2x1000 + 1x10
         pack_operations = packs.plan_autopack_combinations(
@@ -845,15 +838,28 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([], pack_operations)
 
     def test_plan_pack_operations_2010_combines_smallest_two(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(1999, "big"), (9, "medium"), (1, "single2"),
             (1, "single1")]
         # rev count - 2010 -> 2x1000 + 1x10 (3)
         pack_operations = packs.plan_autopack_combinations(
             existing_packs, [1000, 1000, 10])
-        self.assertEqual([[2, ["single2", "single1"]], [0, []]], pack_operations)
+        self.assertEqual([[2, ["single2", "single1"]]], pack_operations)
+
+    def test_plan_pack_operations_creates_a_single_op(self):
+        packs = self.get_packs()
+        existing_packs = [(50, 'a'), (40, 'b'), (30, 'c'), (10, 'd'),
+                          (10, 'e'), (6, 'f'), (4, 'g')]
+        # rev count 150 -> 1x100 and 5x10
+        # The two size 10 packs do not need to be touched. The 50, 40, 30 would
+        # be combined into a single 120 size pack, and the 6 & 4 would
+        # becombined into a size 10 pack. However, if we have to rewrite them,
+        # we save a pack file with no increased I/O by putting them into the
+        # same file.
+        distribution = packs.pack_distribution(150)
+        pack_operations = packs.plan_autopack_combinations(existing_packs,
+                                                           distribution)
+        self.assertEqual([[130, ['a', 'b', 'c', 'f', 'g']]], pack_operations)
 
     def test_all_packs_none(self):
         format = self.get_format()
@@ -971,9 +977,10 @@ class TestNewPack(TestCaseWithTransport):
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
         pack = pack_repo.NewPack(upload_transport, index_transport,
-            pack_transport)
-        self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
-        self.assertIsInstance(pack.inventory_index, InMemoryGraphIndex)
+            pack_transport, index_builder_class=BTreeBuilder,
+            index_class=BTreeGraphIndex)
+        self.assertIsInstance(pack.revision_index, BTreeBuilder)
+        self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
         self.assertTrue(pack.upload_transport is upload_transport)
         self.assertTrue(pack.index_transport is index_transport)

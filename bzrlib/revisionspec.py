@@ -137,17 +137,6 @@ class RevisionSpec(object):
     prefix = None
     wants_revision_history = True
 
-    def __new__(cls, spec, _internal=False):
-        if _internal:
-            return object.__new__(cls)
-
-        symbol_versioning.warn('Creating a RevisionSpec directly has'
-                               ' been deprecated in version 0.11. Use'
-                               ' RevisionSpec.from_string()'
-                               ' instead.',
-                               DeprecationWarning, stacklevel=2)
-        return RevisionSpec.from_string(spec)
-
     @staticmethod
     def from_string(spec):
         """Parse a revision spec string into a RevisionSpec object.

@@ -268,8 +268,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
                                                          specific_fileid,
-                                                         mainline_revs,
-                                                         view_revisions)
+                                                         view_revisions,
+                                                         direction)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -536,75 +536,88 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
-                                       view_revs_iter):
-    """Return the list of revision ids which touch a given file id.
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
+                                       direction):
+    r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
     This includes the revisions which directly change the file id,
     and the revisions which merge these changes. So if the
     revision graph is::
-        A
-        |\
-        B C
+        A-.
+        |\ \
+        B C E
+        |/ /
+        D |
+        |\|
+        | F
         |/
-        D
+        G
 
-    And 'C' changes a file, then both C and D will be returned.
+    And 'C' changes a file, then both C and D will be returned. F will not be
+    returned even though it brings the changes to C into the branch starting
+    with E. (Note that if we were using F as the tip instead of G, then we
+    would see C, D, F.)
 
-    This will also can be restricted based on a subset of the mainline.
+    This will also be restricted based on a subset of the mainline.
 
+    :param branch: The branch where we can get text revision information.
+    :param file_id: Filter out revisions that do not touch file_id.
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
+        tuples. This is the list of revisions which will be filtered. It is
+        assumed that view_revisions is in merge_sort order (either forward or
+        reverse).
+    :param direction: The direction of view_revisions.  See also
+        reverse_by_depth, and get_view_revisions
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
-    # find all the revisions that change the specific file
-    # build the ancestry of each revision in the graph
-    # - only listing the ancestors that change the specific file.
-    graph = branch.repository.get_graph()
-    # This asks for all mainline revisions, which means we only have to spider
-    # sideways, rather than depth history. That said, its still size-of-history
-    # and should be addressed.
-    # mainline_revisions always includes an extra revision at the beginning, so
-    # don't request it.
-    parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
-    sorted_rev_list = tsort.topo_sort(parent_map.items())
-    text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
-    modified_text_versions = branch.repository.texts.get_parent_map(text_keys)
-    ancestry = {}
-    for rev in sorted_rev_list:
-        text_key = (file_id, rev)
-        parents = parent_map[rev]
-        if text_key not in modified_text_versions and len(parents) == 1:
-            # We will not be adding anything new, so just use a reference to
-            # the parent ancestry.
-            rev_ancestry = ancestry[parents[0]]
+    # Lookup all possible text keys to determine which ones actually modified
+    # the file.
+    text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
+    # Looking up keys in batches of 1000 can cut the time in half, as well as
+    # memory consumption. GraphIndex *does* like to look for a few keys in
+    # parallel, it just doesn't like looking for *lots* of keys in parallel.
+    # TODO: This code needs to be re-evaluated periodically as we tune the
+    #       indexing layer. We might consider passing in hints as to the known
+    #       access pattern (sparse/clustered, high success rate/low success
+    #       rate). This particular access is clustered with a low success rate.
+    get_parent_map = branch.repository.texts.get_parent_map
+    modified_text_revisions = set()
+    chunk_size = 1000
+    for start in xrange(0, len(text_keys), chunk_size):
+        next_keys = text_keys[start:start + chunk_size]
+        # Only keep the revision_id portion of the key
+        modified_text_revisions.update(
+            [k[1] for k in get_parent_map(next_keys)])
+    del text_keys, next_keys
+
+    result = []
+    if direction == 'forward':
+        # TODO: The algorithm for finding 'merges' of file changes expects
+        #       'reverse' order (the default from 'merge_sort()'). Instead of
+        #       forcing this, we could just use the reverse_by_depth order.
+        view_revisions = reverse_by_depth(view_revisions)
+    # Track what revisions will merge the current revision, replace entries
+    # with 'None' when they have been added to result
+    current_merge_stack = [None]
+    for info in view_revisions:
+        rev_id, revno, depth = info
+        if depth == len(current_merge_stack):
+            current_merge_stack.append(info)
         else:
-            rev_ancestry = set()
-            if text_key in modified_text_versions:
-                rev_ancestry.add(rev)
-            for parent in parents:
-                if parent not in ancestry:
-                    # parent is a Ghost, which won't be present in
-                    # sorted_rev_list, but we may access it later, so create an
-                    # empty node for it
-                    ancestry[parent] = set()
-                rev_ancestry = rev_ancestry.union(ancestry[parent])
-        ancestry[rev] = rev_ancestry
+            del current_merge_stack[depth + 1:]
+            current_merge_stack[-1] = info
 
-    def is_merging_rev(r):
-        parents = parent_map[r]
-        if len(parents) > 1:
-            leftparent = parents[0]
-            for rightparent in parents[1:]:
-                if not ancestry[leftparent].issuperset(
-                        ancestry[rightparent]):
-                    return True
-        return False
-
-    # filter from the view the revisions that did not change or merge 
-    # the specific file
-    return [(r, n, d) for r, n, d in view_revs_iter
-            if (file_id, r) in modified_text_versions or is_merging_rev(r)]
+        if rev_id in modified_text_revisions:
+            # This needs to be logged, along with the extra revisions
+            for idx in xrange(len(current_merge_stack)):
+                node = current_merge_stack[idx]
+                if node is not None:
+                    result.append(node)
+                    current_merge_stack[idx] = None
+    if direction == 'forward':
+        result = reverse_by_depth(result)
+    return result
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,

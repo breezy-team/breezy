@@ -226,15 +226,18 @@ def add_pyrex_extension(module_name, **kwargs):
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
-add_pyrex_extension('bzrlib._dirstate_helpers_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 if sys.platform == 'win32':
+    add_pyrex_extension('bzrlib._dirstate_helpers_c',
+                         libraries=['Ws2_32']
+                       )
     # pyrex uses the macro WIN32 to detect the platform, even though it should
     # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
     # right value.
     add_pyrex_extension('bzrlib._walkdirs_win32',
                         define_macros=[('WIN32', None)])
 else:
+    add_pyrex_extension('bzrlib._dirstate_helpers_c')
     add_pyrex_extension('bzrlib._readdir_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
