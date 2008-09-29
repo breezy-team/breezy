@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Classify a commit based on the types of files it changed."""
 
+import os.path
+
 from bzrlib import urlutils
 from bzrlib.trace import mutter
 
