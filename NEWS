@@ -163,6 +163,7 @@ IN DEVELOPMENT
       classes, 'sha' and 'md5' modules have been deprecated (use
       osutils.[md5|sha]), object__init__ and object.__new__ don't accept
       parameters anymore.
+      (Vincent Ladeuil)
 
 bzr 1.7.1rc1 2008-09-24
 -----------------------
