@@ -176,6 +176,7 @@ class Merger(object):
                           tree_branch=None):
         """Return a Merger for revision-ids.
 
+        :param pb: A progress indicator
         :param tree: The tree to merge changes into
         :param other: The revision-id to use as OTHER
         :param base: The revision-id to use as BASE.  If not specified, will
@@ -186,7 +187,8 @@ class Merger(object):
             not supplied, other_branch or tree.branch will be used.
         :param revision_graph: If you have a revision_graph precomputed, pass
             it in, otherwise it will be created for you.
-        :param pb: A progress indicator
+        :param tree_branch: The branch associated with tree.  If not supplied,
+            tree.branch will be used.
         """
         if tree_branch is None:
             tree_branch = tree.branch
