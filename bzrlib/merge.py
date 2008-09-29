@@ -28,6 +28,7 @@ from bzrlib import (
     patiencediff,
     registry,
     revision as _mod_revision,
+    tree as _mod_tree,
     tsort,
     )
 from bzrlib.branch import Branch
@@ -96,6 +97,8 @@ class Merger(object):
         self._revision_graph = revision_graph
         self._base_is_ancestor = None
         self._base_is_other_ancestor = None
+        self._is_criss_cross = None
+        self._lca_trees = None
 
     @property
     def revision_graph(self):
@@ -356,15 +359,45 @@ class Merger(object):
                      ensure_null(self.other_basis)]
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
+            self.base_tree = self.revision_tree(self.base_rev_id)
+            self._is_criss_cross = False
         else:
-            self.base_rev_id, steps = self.revision_graph.find_unique_lca(
-                revisions[0], revisions[1], count_steps=True)
+            lcas = self.revision_graph.find_lca(revisions[0], revisions[1])
+            self._is_criss_cross = False
+            if len(lcas) == 0:
+                self.base_rev_id = NULL_REVISION
+            elif len(lcas) == 1:
+                self.base_rev_id = list(lcas)[0]
+            else: # len(lcas) > 1
+                if len(lcas) > 2:
+                    # find_unique_lca can only handle 2 nodes, so we have to
+                    # start back at the beginning. It is a shame to traverse
+                    # the graph again, but better than re-implementing
+                    # find_unique_lca.
+                    self.base_rev_id = self.revision_graph.find_unique_lca(
+                                            revisions[0], revisions[1])
+                else:
+                    self.base_rev_id = self.revision_graph.find_unique_lca(
+                                            *lcas)
+                self._is_criss_cross = True
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
-            if steps > 1:
+            if self._is_criss_cross:
                 warning('Warning: criss-cross merge encountered.  See bzr'
                         ' help criss-cross.')
-        self.base_tree = self.revision_tree(self.base_rev_id)
+                interesting_revision_ids = [self.base_rev_id]
+                interesting_revision_ids.extend(lcas)
+                interesting_trees = dict((t.get_revision_id(), t)
+                    for t in self.this_branch.repository.revision_trees(
+                        interesting_revision_ids))
+                self._cached_trees.update(interesting_trees)
+                self.base_tree = interesting_trees.pop(self.base_rev_id)
+                sorted_lca_keys = self.revision_graph.find_merge_order(
+                    revisions[0], lcas)
+                self._lca_trees = [interesting_trees[key]
+                                   for key in sorted_lca_keys]
+            else:
+                self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
 
@@ -412,6 +445,9 @@ class Merger(object):
         if self.merge_type.supports_cherrypick:
             kwargs['cherrypick'] = (not self.base_is_ancestor or
                                     not self.base_is_other_ancestor)
+        if self._is_criss_cross and getattr(self.merge_type,
+                                            'supports_lca_trees', False):
+            kwargs['lca_trees'] = self._lca_trees
         return self.merge_type(pb=self._pb,
                                change_reporter=self.change_reporter,
                                **kwargs)
@@ -463,6 +499,23 @@ class Merger(object):
         return len(merge.cooked_conflicts)
 
 
+class _InventoryNoneEntry(object):
+    """This represents an inventory entry which *isn't there*.
+
+    It simplifies the merging logic if we always have an InventoryEntry, even
+    if it isn't actually present
+    """
+    executable = None
+    kind = None
+    name = None
+    parent_id = None
+    revision = None
+    symlink_target = None
+    text_sha1 = None
+
+_none_entry = _InventoryNoneEntry()
+
+
 class Merge3Merger(object):
     """Three-way merger that uses the merge3 text merger"""
     requires_base = True
@@ -472,12 +525,13 @@ class Merge3Merger(object):
     supports_cherrypick = True
     supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
+    supports_lca_trees = True
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
-                 cherrypick=False):
+                 cherrypick=False, lca_trees=None):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -499,6 +553,9 @@ class Merge3Merger(object):
             be combined with interesting_ids.  If neither interesting_files nor
             interesting_ids is specified, all files may participate in the
             merge.
+        :param lca_trees: Can be set to a dictionary of {revision_id:rev_tree}
+            if the ancestry was found to include a criss-cross merge.
+            Otherwise should be None.
         """
         object.__init__(self)
         if interesting_files is not None and interesting_ids is not None:
@@ -513,6 +570,12 @@ class Merge3Merger(object):
         self.cooked_conflicts = []
         self.reprocess = reprocess
         self.show_base = show_base
+        self._lca_trees = lca_trees
+        # Uncommenting this will change the default algorithm to always use
+        # _entries_lca. This can be useful for running the test suite and
+        # making sure we haven't missed any corner cases.
+        # if lca_trees is None:
+        #     self._lca_trees = [self.base_tree]
         self.pb = pb
         self.pp = pp
         self.change_reporter = change_reporter
@@ -559,19 +622,24 @@ class Merge3Merger(object):
         return self.tt
 
     def _compute_transform(self):
-        entries = self._entries3()
+        if self._lca_trees is None:
+            entries = self._entries3()
+            resolver = self._three_way
+        else:
+            entries = self._entries_lca()
+            resolver = self._lca_multi_way
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
                 child_pb.update('Preparing file merge', num, len(entries))
-                self._merge_names(file_id, parents3, names3)
+                self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self.merge_contents(file_id)
                 else:
                     file_status = 'unmodified'
                 self._merge_executable(file_id,
-                    executable3, file_status)
+                    executable3, file_status, resolver=resolver)
         finally:
             child_pb.finished()
         self.fix_root()
@@ -625,6 +693,177 @@ class Merge3Merger(object):
             executable3 = executable + (this_executable,)
             result.append((file_id, changed, parents3, names3, executable3))
         return result
+
+    def _entries_lca(self):
+        """Gather data about files modified between multiple trees.
+
+        This compares OTHER versus all LCA trees, and for interesting entries,
+        it then compares with THIS and BASE.
+
+        For the multi-valued entries, the format will be (BASE, [lca1, lca2])
+        :return: [(file_id, changed, parents, names, executable)]
+            file_id     Simple file_id of the entry
+            changed     Boolean, True if the kind or contents changed
+                        else False
+            parents     ((base, [parent_id, in, lcas]), parent_id_other,
+                         parent_id_this)
+            names       ((base, [name, in, lcas]), name_in_other, name_in_this)
+            executable  ((base, [exec, in, lcas]), exec_in_other, exec_in_this)
+        """
+        if self.interesting_files is not None:
+            lookup_trees = [self.this_tree, self.base_tree]
+            lookup_trees.extend(self._lca_trees)
+            # I think we should include the lca trees as well
+            interesting_ids = self.other_tree.paths2ids(self.interesting_files,
+                                                        lookup_trees)
+        else:
+            interesting_ids = self.interesting_ids
+        result = []
+        walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
+
+        base_inventory = self.base_tree.inventory
+        this_inventory = self.this_tree.inventory
+        for path, file_id, other_ie, lca_values in walker.iter_all():
+            # Is this modified at all from any of the other trees?
+            if other_ie is None:
+                other_ie = _none_entry
+            if interesting_ids is not None and file_id not in interesting_ids:
+                continue
+
+            # If other_revision is found in any of the lcas, that means this
+            # node is uninteresting. This is because when merging, if there are
+            # multiple heads(), we have to create a new node. So if we didn't,
+            # we know that the ancestry is linear, and that OTHER did not
+            # modify anything
+            # See doc/developers/lca_merge_resolution.txt for details
+            other_revision = other_ie.revision
+            if other_revision is not None:
+                # We can't use this shortcut when other_revision is None,
+                # because it may be None because things are WorkingTrees, and
+                # not because it is *actually* None.
+                is_unmodified = False
+                for lca_path, ie in lca_values:
+                    if ie is not None and ie.revision == other_revision:
+                        is_unmodified = True
+                        break
+                if is_unmodified:
+                    continue
+
+            lca_entries = []
+            for lca_path, lca_ie in lca_values:
+                if lca_ie is None:
+                    lca_entries.append(_none_entry)
+                else:
+                    lca_entries.append(lca_ie)
+
+            if file_id in base_inventory:
+                base_ie = base_inventory[file_id]
+            else:
+                base_ie = _none_entry
+
+            if file_id in this_inventory:
+                this_ie = this_inventory[file_id]
+            else:
+                this_ie = _none_entry
+
+            lca_kinds = []
+            lca_parent_ids = []
+            lca_names = []
+            lca_executable = []
+            for lca_ie in lca_entries:
+                lca_kinds.append(lca_ie.kind)
+                lca_parent_ids.append(lca_ie.parent_id)
+                lca_names.append(lca_ie.name)
+                lca_executable.append(lca_ie.executable)
+
+            kind_winner = self._lca_multi_way(
+                (base_ie.kind, lca_kinds),
+                other_ie.kind, this_ie.kind)
+            parent_id_winner = self._lca_multi_way(
+                (base_ie.parent_id, lca_parent_ids),
+                other_ie.parent_id, this_ie.parent_id)
+            name_winner = self._lca_multi_way(
+                (base_ie.name, lca_names),
+                other_ie.name, this_ie.name)
+
+            content_changed = True
+            if kind_winner == 'this':
+                # No kind change in OTHER, see if there are *any* changes
+                if other_ie.kind == None:
+                    # No content and 'this' wins the kind, so skip this?
+                    # continue
+                    pass
+                elif other_ie.kind == 'directory':
+                    if parent_id_winner == 'this' and name_winner == 'this':
+                        # No change for this directory in OTHER, skip
+                        continue
+                    content_changed = False
+                elif other_ie.kind == 'file':
+                    def get_sha1(ie, tree):
+                        if ie.kind != 'file':
+                            return None
+                        return tree.get_file_sha1(file_id)
+                    base_sha1 = get_sha1(base_ie, self.base_tree)
+                    lca_sha1s = [get_sha1(ie, tree) for ie, tree
+                                 in zip(lca_entries, self._lca_trees)]
+                    this_sha1 = get_sha1(this_ie, self.this_tree)
+                    other_sha1 = get_sha1(other_ie, self.other_tree)
+                    sha1_winner = self._lca_multi_way(
+                        (base_sha1, lca_sha1s), other_sha1, this_sha1,
+                        allow_overriding_lca=False)
+                    exec_winner = self._lca_multi_way(
+                        (base_ie.executable, lca_executable),
+                        other_ie.executable, this_ie.executable)
+                    if (parent_id_winner == 'this' and name_winner == 'this'
+                        and sha1_winner == 'this' and exec_winner == 'this'):
+                        # No kind, parent, name, exec, or content change for
+                        # OTHER, so this node is not considered interesting
+                        continue
+                    if sha1_winner == 'this':
+                        content_changed = False
+                elif other_ie.kind == 'symlink':
+                    def get_target(ie, tree):
+                        if ie.kind != 'symlink':
+                            return None
+                        return tree.get_symlink_target(file_id)
+                    base_target = get_target(base_ie, self.base_tree)
+                    lca_targets = [get_target(ie, tree) for ie, tree
+                                   in zip(lca_entries, self._lca_trees)]
+                    this_target = get_target(this_ie, self.this_tree)
+                    other_target = get_target(other_ie, self.other_tree)
+                    target_winner = self._lca_multi_way(
+                        (base_target, lca_targets),
+                        other_target, this_target)
+                    if (parent_id_winner == 'this' and name_winner == 'this'
+                        and target_winner == 'this'):
+                        # No kind, parent, name, or symlink target change
+                        # not interesting
+                        continue
+                    if target_winner == 'this':
+                        content_changed = False
+                elif other_ie.kind == 'tree-reference':
+                    # The 'changed' information seems to be handled at a higher
+                    # level. At least, _entries3 returns False for content
+                    # changed, even when at a new revision_id.
+                    content_changed = False
+                    if (parent_id_winner == 'this' and name_winner == 'this'):
+                        # Nothing interesting
+                        continue
+                else:
+                    raise AssertionError('unhandled kind: %s' % other_ie.kind)
+                # XXX: We need to handle kind == 'symlink'
+
+            # If we have gotten this far, that means something has changed
+            result.append((file_id, content_changed,
+                           ((base_ie.parent_id, lca_parent_ids),
+                            other_ie.parent_id, this_ie.parent_id),
+                           ((base_ie.name, lca_names),
+                            other_ie.name, this_ie.name),
+                           ((base_ie.executable, lca_executable),
+                            other_ie.executable, this_ie.executable)
+                          ))
+        return result
+
 
     def fix_root(self):
         try:
@@ -720,6 +959,56 @@ class Merge3Merger(object):
             return "other"
 
     @staticmethod
+    def _lca_multi_way(bases, other, this, allow_overriding_lca=True):
+        """Consider LCAs when determining whether a change has occurred.
+
+        If LCAS are all identical, this is the same as a _three_way comparison.
+
+        :param bases: value in (BASE, [LCAS])
+        :param other: value in OTHER
+        :param this: value in THIS
+        :param allow_overriding_lca: If there is more than one unique lca
+            value, allow OTHER to override THIS if it has a new value, and
+            THIS only has an lca value, or vice versa. This is appropriate for
+            truly scalar values, not as much for non-scalars.
+        :return: 'this', 'other', or 'conflict' depending on whether an entry
+            changed or not.
+        """
+        # See doc/developers/lca_merge_resolution.txt for details about this
+        # algorithm.
+        if other == this:
+            # Either Ambiguously clean, or nothing was actually changed. We
+            # don't really care
+            return 'this'
+        base_val, lca_vals = bases
+        # Remove 'base_val' from the lca_vals, because it is not interesting
+        filtered_lca_vals = [lca_val for lca_val in lca_vals
+                                      if lca_val != base_val]
+        if len(filtered_lca_vals) == 0:
+            return Merge3Merger._three_way(base_val, other, this)
+
+        unique_lca_vals = set(filtered_lca_vals)
+        if len(unique_lca_vals) == 1:
+            return Merge3Merger._three_way(unique_lca_vals.pop(), other, this)
+
+        if allow_overriding_lca:
+            if other in unique_lca_vals:
+                if this in unique_lca_vals:
+                    # Each side picked a different lca, conflict
+                    return 'conflict'
+                else:
+                    # This has a value which supersedes both lca values, and
+                    # other only has an lca value
+                    return 'this'
+            elif this in unique_lca_vals:
+                # OTHER has a value which supersedes both lca values, and this
+                # only has an lca value
+                return 'other'
+
+        # At this point, the lcas disagree, and the tips disagree
+        return 'conflict'
+
+    @staticmethod
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -757,16 +1046,17 @@ class Merge3Merger(object):
             else:
                 names.append(entry.name)
                 parents.append(entry.parent_id)
-        return self._merge_names(file_id, parents, names)
+        return self._merge_names(file_id, parents, names,
+                                 resolver=self._three_way)
 
-    def _merge_names(self, file_id, parents, names):
+    def _merge_names(self, file_id, parents, names, resolver):
         """Perform a merge on file_id names and parents"""
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
 
-        name_winner = self._three_way(*names)
+        name_winner = resolver(*names)
 
-        parent_id_winner = self._three_way(*parents)
+        parent_id_winner = resolver(*parents)
         if this_name is None:
             if name_winner == "this":
                 name_winner = "other"
@@ -960,14 +1250,16 @@ class Merge3Merger(object):
         """Perform a merge on the execute bit."""
         executable = [self.executable(t, file_id) for t in (self.base_tree,
                       self.other_tree, self.this_tree)]
-        self._merge_executable(file_id, executable, file_status)
+        self._merge_executable(file_id, executable, file_status,
+                               resolver=self._three_way)
 
-    def _merge_executable(self, file_id, executable, file_status):
+    def _merge_executable(self, file_id, executable, file_status,
+                          resolver):
         """Perform a merge on the execute bit."""
         base_executable, other_executable, this_executable = executable
         if file_status == "deleted":
             return
-        winner = self._three_way(*executable)
+        winner = resolver(*executable)
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
