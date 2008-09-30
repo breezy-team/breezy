@@ -94,14 +94,6 @@ class MissingPrefix(BzrError):
         self.path = path
 
 
-class RaRequestFailed(BzrError):
-    _fmt = """A Subversion remote access command failed: %(message)"""
-
-    def __init__(self, message):
-        BzrError.__init__(self)
-        self.mesage = message
-
-
 class RevpropChangeFailed(BzrError):
     _fmt = """Unable to set revision property %(name)s."""
 
@@ -111,7 +103,7 @@ class RevpropChangeFailed(BzrError):
 
 
 class DavRequestFailed(BzrError):
-    _fmt = """%(msg)s"""
+    _fmt = """A Subversion remote access command failed: %(msg)s"""
 
     def __init__(self, msg):
         BzrError.__init__(self)
@@ -138,8 +130,6 @@ def convert_error(err):
         return TransportError("Malformed data", msg)
     elif num == ERR_RA_NOT_IMPLEMENTED:
         return NotImplementedError("Function not implemented in remote server")
-    elif num == ERR_RA_DAV_REQUEST_FAILED:
-        return RaRequestFailed(msg)
     elif num == ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
     elif num == ERR_RA_DAV_REQUEST_FAILED:

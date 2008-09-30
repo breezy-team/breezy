@@ -45,8 +45,8 @@ class TestConvertError(TestCase):
         self.assertIsInstance(convert_error(SubversionException("foo", -4)),
                 SubversionException)
 
-    def test_convert_ra_request_failed(self):
-        self.assertIsInstance(convert_error(SubversionException("foo", ERR_RA_DAV_REQUEST_FAILED)), RaRequestFailed)
+    def test_convert_dav_request_failed(self):
+        self.assertIsInstance(convert_error(SubversionException("foo", ERR_RA_DAV_REQUEST_FAILED)), DavRequestFailed)
 
     def test_convert_malformed(self):
         self.assertIsInstance(convert_error(SubversionException("foo", ERR_RA_SVN_MALFORMED_DATA)), TransportError)
