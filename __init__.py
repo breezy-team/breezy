@@ -17,7 +17,9 @@
 """Foreign branch utilities."""
 
 from bzrlib import errors, registry
+from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
+from bzrlib.trace import info
 
 
 class VcsMapping(object):
@@ -69,6 +71,16 @@ class VcsMappingRegistry(registry.Registry):
     def get_default(self):
         """Convenience function for obtaining the default mapping to use."""
         return self.get(self._get_default_key())
+
+
+class ForeignBranch(Branch):
+
+    def __init__(self, mapping):
+        super(ForeignBranch, self).__init__()
+        self.mapping = mapping
+
+    def dpull(self, source, stop_revision=None):
+        raise NotImplementedError(self.pull)
 
 
 class FakeControlFiles(object):
@@ -132,7 +144,12 @@ class cmd_dpush(Command):
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        revid_map = target_branch.dpull(source_branch)
+        if not isinstance(target_branch, ForeignBranch):
+            info("target branch is not a foreign branch, using regular push.")
+            target_branch.pull(source_branch)
+            no_rebase = True
+        else:
+            revid_map = target_branch.dpull(source_branch)
         # We successfully created the target, remember it
         if source_branch.get_push_location() is None or remember:
             source_branch.set_push_location(target_branch.base)
