@@ -59,7 +59,7 @@ def load_tests(standard_tests, module, loader):
         # For remote repositories, we test both with, and without a backing chk
         # capable format: change the format we use to create the repo to direct
         # formats, and then the overridden make_repository in
-        # TestCaseWithRepositoryCHK will given a re-opened RemoteRepository
+        # TestCaseWithRepositoryCHK will give a re-opened RemoteRepository
         # with the chosen backing format.
         if isinstance(format, remote.RemoteRepositoryFormat):
             with_support = dict(scenario_info)
