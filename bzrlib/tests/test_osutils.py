@@ -24,7 +24,6 @@ import stat
 import sys
 import time
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -1357,7 +1356,7 @@ class TestSetUnsetEnv(TestCase):
         uni_val, env_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (bzrlib.user_encoding,))
+                              ' encoding %s' % (osutils.get_user_encoding(),))
 
         old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', uni_val)
         self.assertEqual(env_val, os.environ.get('BZR_TEST_ENV_VAR'))

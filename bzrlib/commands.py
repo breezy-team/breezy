@@ -43,16 +43,12 @@ from bzrlib import (
     errors,
     option,
     osutils,
-    registry,
     trace,
     win32utils,
     )
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_method,
-    )
+from bzrlib import registry
 # Compatibility
 from bzrlib.option import Option
 
@@ -768,7 +764,8 @@ def run_bzr(argv):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            alias_argv = [a.decode(bzrlib.user_encoding) for a in alias_argv]
+            user_encoding = osutils.get_user_encoding()
+            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
@@ -832,7 +829,8 @@ def main(argv):
         from bzrlib import symbol_versioning
         symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
-        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+        user_encoding = osutils.get_user_encoding()
+        argv = [a.decode(user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
         raise errors.BzrError(("Parameter '%r' is unsupported by the current "
                                                             "encoding." % a))

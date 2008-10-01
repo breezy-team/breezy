@@ -74,6 +74,10 @@ import os
 import time
 import warnings
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import tsort
+""")
 from bzrlib import (
     progress,
     )
@@ -90,7 +94,6 @@ import bzrlib.patiencediff
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
-from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
@@ -312,7 +315,7 @@ class Weave(VersionedFile):
         versions = [version[-1] for version in versions]
         if ordering == 'topological':
             parents = self.get_parent_map(versions)
-            new_versions = topo_sort(parents)
+            new_versions = tsort.topo_sort(parents)
             new_versions.extend(set(versions).difference(set(parents)))
             versions = new_versions
         for version in versions:
@@ -994,7 +997,7 @@ def _reweave(wa, wb, pb=None, msg=None):
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
     mutter("combined parents: %r", combined_parents)
-    order = topo_sort(combined_parents.iteritems())
+    order = tsort.topo_sort(combined_parents.iteritems())
     mutter("order to reweave: %r", order)
 
     if pb and not msg:

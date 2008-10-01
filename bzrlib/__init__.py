@@ -22,6 +22,15 @@ import time
 # timestamps relative to program start in the log file kept by bzrlib.trace.
 _start_time = time.time()
 
+import sys
+if getattr(sys, '_bzr_lazy_regex', False):
+    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
+    # hack as soon as possible so that as much of the standard library can
+    # benefit, including the 'string' module.
+    del sys._bzr_lazy_regex
+    import bzrlib.lazy_regex
+    bzrlib.lazy_regex.install_lazy_compile()
+
 from bzrlib.osutils import get_user_encoding
 
 
