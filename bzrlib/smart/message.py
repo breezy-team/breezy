@@ -16,8 +16,6 @@
 
 import collections
 from cStringIO import StringIO
-import errno
-import socket
 
 from bzrlib import (
     debug,
@@ -236,13 +234,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             self.finished_reading = True
             self._medium_request.finished_reading()
             return
-        try:
-            bytes = self._medium_request.read_bytes(next_read_size)
-        except socket.error, e:
-            if len(e.args) and e.args[0] is errno.ECONNRESET:
-                bytes = ''
-            else:
-                raise
+        bytes = self._medium_request.read_bytes(next_read_size)
         if bytes == '':
             # end of file encountered reading from server
             if 'hpss' in debug.debug_flags:
