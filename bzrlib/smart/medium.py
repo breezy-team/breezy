@@ -31,13 +31,17 @@ import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import atexit
+import weakref
 from bzrlib import (
+    debug,
     errors,
     osutils,
     symbol_versioning,
+    trace,
     urlutils,
     )
-from bzrlib.smart import protocol
+from bzrlib.smart import client, protocol
 from bzrlib.transport import ssh
 """)
 
@@ -468,6 +472,57 @@ class SmartClientMediumRequest(object):
         return self._medium._get_line()
 
 
+class _DebugCounter(object):
+    """An object that counts the HPSS calls made to each client medium.
+
+    When a medium is garbage-collected, or failing that when atexit functions
+    are run, the total number of calls made on that medium are reported via
+    trace.note.
+    """
+
+    def __init__(self):
+        self.counts = weakref.WeakKeyDictionary()
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.increment_call_count, 'hpss call counter')
+        atexit.register(self.flush_all)
+
+    def track(self, medium):
+        """Start tracking calls made to a medium.
+
+        This only keeps a weakref to the medium, so shouldn't affect the
+        medium's lifetime.
+        """
+        medium_repr = repr(medium)
+        # Add this medium to the WeakKeyDictionary
+        self.counts[medium] = [0, medium_repr]
+        # Weakref callbacks are fired in reverse order of their association
+        # with the referenced object.  So we add a weakref *after* adding to
+        # the WeakKeyDict so that we can report the value from it before the
+        # entry is removed by the WeakKeyDict's own callback.
+        ref = weakref.ref(medium, self.done)
+
+    def increment_call_count(self, params):
+        # Increment the count in the WeakKeyDictionary
+        value = self.counts[params.medium]
+        value[0] += 1
+
+    def done(self, ref):
+        value = self.counts[ref]
+        count, medium_repr = value
+        # In case this callback is invoked for the same ref twice (by the
+        # weakref callback and by the atexit function), set the call count back
+        # to 0 so this item won't be reported twice.
+        value[0] = 0
+        if count != 0:
+            trace.note('HPSS calls: %d %s', count, medium_repr)
+        
+    def flush_all(self):
+        for ref in list(self.counts.keys()):
+            self.done(ref)
+
+_debug_counter = None
+  
+  
 class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
@@ -482,6 +537,12 @@ class SmartClientMedium(SmartMedium):
         # _remote_version_is_before tracks the bzr version the remote side
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
+        # Install debug hook function if debug flag is set.
+        if 'hpss' in debug.debug_flags:
+            global _debug_counter
+            if _debug_counter is None:
+                _debug_counter = _DebugCounter()
+            _debug_counter.track(self)
 
     def _is_remote_before(self, version_tuple):
         """Is it possible the remote side supports RPCs for a given version?
