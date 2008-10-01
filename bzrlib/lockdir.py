@@ -132,7 +132,7 @@ import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib.rio import read_stanza, Stanza
+from bzrlib import rio
 """)
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
@@ -436,7 +436,7 @@ class LockDir(lock.Lock):
             user = config.user_email()
         except errors.NoEmailInUsername:
             user = config.username()
-        s = Stanza(hostname=get_host_name(),
+        s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
@@ -445,7 +445,7 @@ class LockDir(lock.Lock):
         return s.to_string()
 
     def _parse_info(self, info_file):
-        return read_stanza(info_file.readlines()).as_dict()
+        return rio.read_stanza(info_file.readlines()).as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
