@@ -71,7 +71,6 @@
 from copy import copy
 from cStringIO import StringIO
 import os
-import sha
 import time
 import warnings
 
@@ -90,7 +89,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         WeaveRevisionNotPresent,
         )
 import bzrlib.errors as errors
-from bzrlib.osutils import dirname, sha_strings, split_lines
+from bzrlib.osutils import dirname, sha, sha_strings, split_lines
 import bzrlib.patiencediff
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
@@ -218,7 +217,7 @@ class Weave(VersionedFile):
 
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name', '_matcher', '_allow_reserved']
-    
+
     def __init__(self, weave_name=None, access_mode='w', matcher=None,
                  get_scope=None, allow_reserved=False):
         """Create a weave.
@@ -227,7 +226,7 @@ class Weave(VersionedFile):
             for detecting when this weave goes out of scope (should stop
             answering requests or allowing mutation).
         """
-        super(Weave, self).__init__(access_mode)
+        super(Weave, self).__init__()
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -802,7 +801,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = sha.new()
+            sha1s[name] = sha()
             texts[name] = []
             new_inc = set([name])
             for p in self._parents[i]:

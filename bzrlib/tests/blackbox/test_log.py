@@ -138,7 +138,25 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' not in log)
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
-        
+
+    def test_log_change_revno(self):
+        self._prepare()
+        expected_log = self.run_bzr("log -r 1")[0]
+        log = self.run_bzr("log -c 1")[0]
+        self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_single_revno(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Option --change does not'
+                           ' accept revision ranges',
+                           ['log', '--change', '2..3'])
+
+    def test_log_change_incompatible_with_revision(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: --revision and --change'
+                           ' are mutually exclusive',
+                           ['log', '--change', '2', '--revision', '3'])
+
     def test_log_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error

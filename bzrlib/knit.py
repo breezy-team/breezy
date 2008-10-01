@@ -726,6 +726,12 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
 
+    def __repr__(self):
+        return "%s(%r, %r)" % (
+            self.__class__.__name__,
+            self._index,
+            self._access)
+
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
 
@@ -1427,7 +1433,9 @@ class KnitVersionedFiles(VersionedFiles):
                 yield line, key
             keys.difference_update(source_keys)
         if keys:
-            raise RevisionNotPresent(keys, self.filename)
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):

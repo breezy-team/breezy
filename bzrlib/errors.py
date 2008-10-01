@@ -81,7 +81,8 @@ class BzrError(StandardError):
         parameters.
 
         :param msg: If given, this is the literal complete text for the error,
-        not subject to expansion.
+           not subject to expansion. 'msg' is used instead of 'message' because
+           python evolved and, in 2.6, forbids the use of 'message'.
         """
         StandardError.__init__(self)
         if msg is not None:
@@ -102,9 +103,6 @@ class BzrError(StandardError):
             fmt = self._get_format_string()
             if fmt:
                 d = dict(self.__dict__)
-                # special case: python2.5 puts the 'message' attribute in a
-                # slot, so it isn't seen in __dict__
-                d['message'] = getattr(self, 'message', 'no message')
                 s = fmt % d
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
@@ -126,7 +124,7 @@ class BzrError(StandardError):
             # return a unicode object.
             u = unicode(u)
         return u
-    
+
     def __str__(self):
         s = self._format()
         if isinstance(s, unicode):
@@ -204,7 +202,7 @@ class BzrNewError(BzrError):
 
 
 class AlreadyBuilding(BzrError):
-    
+
     _fmt = "The tree builder is already building a tree."
 
 
@@ -216,12 +214,12 @@ class BranchError(BzrError):
 
 
 class BzrCheckError(InternalBzrError):
-    
-    _fmt = "Internal check failed: %(message)s"
 
-    def __init__(self, message):
+    _fmt = "Internal check failed: %(msg)s"
+
+    def __init__(self, msg):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class DirstateCorrupt(BzrError):
@@ -1310,11 +1308,11 @@ class BoundBranchConnectionFailure(BzrError):
 
 class WeaveError(BzrError):
 
-    _fmt = "Error in processing weave: %(message)s"
+    _fmt = "Error in processing weave: %(msg)s"
 
-    def __init__(self, message=None):
+    def __init__(self, msg=None):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class WeaveRevisionAlreadyPresent(WeaveError):
@@ -1673,7 +1671,7 @@ class ParseConfigError(BzrError):
         if filename is None:
             filename = ""
         message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.message for e in errors)))
+            (filename, ('\n'.join(e.msg for e in errors)))
         BzrError.__init__(self, message)
 
 

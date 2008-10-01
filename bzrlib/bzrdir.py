@@ -1001,8 +1001,10 @@ class BzrDir(object):
             # the fix recommended in bug # 103195 - to delegate this choice the
             # repository itself.
             repo_format = source_repository._format
-            if not isinstance(repo_format, remote.RemoteRepositoryFormat):
-                result_format.repository_format = repo_format
+            if isinstance(repo_format, remote.RemoteRepositoryFormat):
+                source_repository._ensure_real()
+                repo_format = source_repository._real_repository._format
+            result_format.repository_format = repo_format
         try:
             # TODO: Couldn't we just probe for the format in these cases,
             # rather than opening the whole tree?  It would be a little
@@ -1147,6 +1149,10 @@ class BzrDir(object):
         if recurse == 'down':
             if wt is not None:
                 basis = wt.basis_tree()
+                basis.lock_read()
+                subtrees = basis.iter_references()
+            elif result_branch is not None:
+                basis = result_branch.basis_tree()
                 basis.lock_read()
                 subtrees = basis.iter_references()
             elif source_branch is not None:
@@ -3043,7 +3049,7 @@ format_registry.register_metadir('1.6.1-rich-root',
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
         'Repositories and branches in this format can only be read by bzr.dev. '
@@ -3056,7 +3062,7 @@ format_registry.register_metadir('development',
     alias=True,
     )
 format_registry.register_metadir('development-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
     help='Current development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '
@@ -3068,10 +3074,10 @@ format_registry.register_metadir('development-subtree',
     experimental=True,
     alias=True,
     )
-# And the development formats which the will have aliased one of follow:
-format_registry.register_metadir('development1',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
-    help='A branch and pack based repository that supports stacking. '
+# And the development formats above will have aliased one of the following:
+format_registry.register_metadir('development2',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
+    help='1.6.1 with B+Tree based index. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
@@ -3080,9 +3086,9 @@ format_registry.register_metadir('development1',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development1-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
-    help='A branch and pack based repository that supports stacking. '
+format_registry.register_metadir('development2-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    help='1.6.1-subtree with B+Tree based index. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',

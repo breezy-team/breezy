@@ -370,10 +370,7 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
                 return branch.basis_tree()
         else:
             return tree
-    if not spec.needs_branch():
-        branch = _mod_branch.Branch.open(spec.get_branch())
-    revision_id = spec.as_revision_id(branch)
-    return branch.repository.revision_tree(revision_id)
+    return spec.as_tree(branch)
 
 
 def _relative_paths_in_tree(tree, paths):

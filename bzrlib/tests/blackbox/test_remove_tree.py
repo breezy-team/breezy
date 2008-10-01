@@ -109,3 +109,16 @@ class TestRemoveTree(ExternalBase):
     def test_remove_tree_remote_path(self):
         # TODO: I can't think of a way to implement this...
         pass
+
+    def test_remove_tree_uncommitted_changes(self):
+        self.build_tree(['branch1/bar'])
+        self.tree.add('bar')
+        output = self.run_bzr_error(["Working tree .* has uncommitted changes"],
+                                    'remove-tree branch1', retcode=3)
+
+    def test_remove_tree_uncommitted_changes_force(self):
+        self.build_tree(['branch1/bar'])
+        self.tree.add('bar')
+        self.run_bzr('remove-tree branch1 --force')
+        self.failIfExists('branch1/foo')
+        self.failUnlessExists('branch1/bar')
