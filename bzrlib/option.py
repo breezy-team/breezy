@@ -438,11 +438,6 @@ def _global_registry_option(name, help, registry, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
-class MergeTypeRegistry(registry.Registry):
-
-    pass
-
-
 # This is the verbosity level detected during command line parsing.
 # Note that the final value is dependent on the order in which the
 # various flags (verbose, quiet, no-verbose, no-quiet) are given.
@@ -469,6 +464,11 @@ def _verbosity_level_callback(option, opt_str, value, parser):
             _verbosity_level -= 1
         else:
             _verbosity_level = -1
+
+
+class MergeTypeRegistry(registry.Registry):
+
+    pass
 
 
 _merge_type_registry = MergeTypeRegistry()
@@ -519,9 +519,9 @@ _global_option('change',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
 _global_option('show-ids',
                help='Show internal object ids.')
-_global_option('timezone', 
+_global_option('timezone',
                type=str,
-               help='display timezone as local, original, or utc')
+               help='Display timezone as local, original, or utc.')
 _global_option('unbound')
 _global_option('version')
 _global_option('email')
