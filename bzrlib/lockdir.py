@@ -127,7 +127,7 @@ from bzrlib.errors import (
         )
 from bzrlib.hooks import Hooks
 from bzrlib.trace import mutter, note
-from bzrlib.osutils import rand_chars, get_host_name
+from bzrlib.osutils import format_delta, rand_chars, get_host_name
 import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
