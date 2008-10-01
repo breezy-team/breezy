@@ -130,11 +130,14 @@ IN DEVELOPMENT
       transport has one, fixing numerous tests on Windows.
       (Mark Hammond)
 
+    * PreviewTree is now tested via intertree_implementations.
+      (Aaron Bentley)
+
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
-    * PreviewTree is now tested via intertree_implementations.
-      (Aaron Bentley)
+    * The full test suite passes when run with ``-Eallow_debug``.
+      (Andrew Bennetts)
 
   INTERNALS:
 
