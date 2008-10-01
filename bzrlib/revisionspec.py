@@ -137,17 +137,6 @@ class RevisionSpec(object):
     prefix = None
     wants_revision_history = True
 
-    def __new__(cls, spec, _internal=False):
-        if _internal:
-            return object.__new__(cls, spec, _internal=_internal)
-
-        symbol_versioning.warn('Creating a RevisionSpec directly has'
-                               ' been deprecated in version 0.11. Use'
-                               ' RevisionSpec.from_string()'
-                               ' instead.',
-                               DeprecationWarning, stacklevel=2)
-        return RevisionSpec.from_string(spec)
-
     @staticmethod
     def from_string(spec):
         """Parse a revision spec string into a RevisionSpec object.
@@ -251,6 +240,25 @@ class RevisionSpec(object):
         functionality. The default is to just call '.in_history().rev_id'
         """
         return self.in_history(context_branch).rev_id
+
+    def as_tree(self, context_branch):
+        """Return the tree object for this revisions spec.
+
+        Some revision specs require a context_branch to be able to determine
+        the revision id and access the repository. Not all specs will make
+        use of it.
+        """
+        return self._as_tree(context_branch)
+
+    def _as_tree(self, context_branch):
+        """Implementation of as_tree().
+
+        Classes should override this function to provide appropriate
+        functionality. The default is to just call '.as_revision_id()'
+        and get the revision tree from context_branch's repository.
+        """
+        revision_id = self.as_revision_id(context_branch)
+        return context_branch.repository.revision_tree(revision_id)
 
     def __repr__(self):
         # this is mostly for helping with testing
@@ -778,6 +786,15 @@ class RevisionSpec_branch(RevisionSpec):
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
         return last_revision
+
+    def _as_tree(self, context_branch):
+        from bzrlib.branch import Branch
+        other_branch = Branch.open(self.spec)
+        last_revision = other_branch.last_revision()
+        last_revision = revision.ensure_null(last_revision)
+        if last_revision == revision.NULL_REVISION:
+            raise errors.NoCommits(other_branch)
+        return other_branch.repository.revision_tree(last_revision)
 
 SPEC_TYPES.append(RevisionSpec_branch)
 

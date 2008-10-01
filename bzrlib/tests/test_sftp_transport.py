@@ -465,6 +465,8 @@ class TestSocketDelay(TestCase):
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
         self.assertEqual(expected_requests, helper._get_requests())
 
