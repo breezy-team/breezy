@@ -117,6 +117,13 @@ class UpstreamExporter(object):
     return True
 
 
+def move_file(src, dest):
+    base = os.path.basename(src)
+    target = os.path.join(dest, base)
+    if not (os.path.exists(target) and os.path.samefile(src, target)):
+        shutil.move(src, dest)
+
+
 class DebBuild(object):
   """The object that does the building work."""
 
@@ -338,18 +345,18 @@ class DebBuild(object):
     if not os.path.exists(result):
       os.makedirs(result)
     dir, base = os.path.split(changes.filename())
-    if dir == result:
+    if os.path.abspath(dir) == os.path.abspath(result):
       mutter("Not moving result as source and destination locations "
              "are the same")
       return
     mutter("Moving %s to %s", changes.filename(), result)
-    shutil.move(changes.filename(), result)
+    move_file(changes.filename(), result)
     mutter("Moving all files given in %s", changes.filename())
     for file in files:
       filename = os.path.join(self._properties.build_dir(), file['name'])
       mutter("Moving %s to %s", filename, result)
       try:
-        shutil.move(filename, result)
+        move_file(filename, result)
       except IOError, e:
         if e.errno <> 2:
           raise
