@@ -36,7 +36,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.config import BranchConfig
-from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment1Subtree
+from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -1346,7 +1346,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def __init__(self):
         super(BzrBranchFormat7, self).__init__()
         self._matchingbzrdir.repository_format = \
-            RepositoryFormatPackDevelopment1Subtree()
+            RepositoryFormatKnitPack5RichRoot()
 
     def supports_stacking(self):
         return True

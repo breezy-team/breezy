@@ -146,7 +146,7 @@ class TestAnnotate(TestCaseWithTransport):
                                 retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: bzr annotate --revision takes'
-                         ' exactly 1 argument\n',
+                         ' exactly one revision identifier\n',
                          err)
 
 

@@ -442,7 +442,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(parent_bzrdir.root_transport.base,
                          repo_policy._stack_on_pwd)
 
-    def prepare_default_stacking(self, child_format='development1'):
+    def prepare_default_stacking(self, child_format='1.6'):
         parent_bzrdir = self.make_bzrdir('.')
         child_branch = self.make_branch('child', format=child_format)
         parent_bzrdir.get_config().set_default_stack_on(child_branch.base)
@@ -507,28 +507,28 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertTrue(repo.supports_rich_root())
 
     def test_add_fallback_repo_handles_absolute_urls(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        repo = self.make_repository('repo', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        repo = self.make_repository('repo', format='1.6')
         policy = bzrdir.UseExistingRepository(repo, stack_on.base)
         policy._add_fallback(repo)
 
     def test_add_fallback_repo_handles_relative_urls(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        repo = self.make_repository('repo', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        repo = self.make_repository('repo', format='1.6')
         policy = bzrdir.UseExistingRepository(repo, '.', stack_on.base)
         policy._add_fallback(repo)
 
     def test_configure_relative_branch_stacking_url(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        stacked = self.make_branch('stack_on/stacked', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        stacked = self.make_branch('stack_on/stacked', format='1.6')
         policy = bzrdir.UseExistingRepository(stacked.repository,
             '.', stack_on.base)
         policy.configure_branch(stacked)
         self.assertEqual('..', stacked.get_stacked_on_url())
 
     def test_relative_branch_stacking_to_absolute(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        stacked = self.make_branch('stack_on/stacked', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        stacked = self.make_branch('stack_on/stacked', format='1.6')
         policy = bzrdir.UseExistingRepository(stacked.repository,
             '.', self.get_readonly_url('stack_on'))
         policy.configure_branch(stacked)
