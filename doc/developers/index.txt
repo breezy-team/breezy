@@ -10,12 +10,17 @@ Overall developer documentation
 
 * `Developer Guide <../en/developer-guide/HACKING.html>`_
 
+* `Architectural Overview <overview.html>`_ |--| describes some of the
+  most important classes and concepts.
+
 * `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
   (external link)
   |--| automatically generated API reference information
 
 * `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
   (wiki) |--| a guide for writing Python programs that work with Bazaar.
+
+* `Testing <testing.html>`_ |--| Testing bzr.
 
 * `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
   |--| specific advice on writing Bazaar plugins.
@@ -25,6 +30,8 @@ Process
 
 * `Releasing Bazaar <releasing.html>`_ |--| How to make a release of Bazaar,
   and how to coordinate the monthly development cycle.
+
+* `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
 
 * `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
   your changes to Bazaar integrated into a release.

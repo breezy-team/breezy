@@ -138,7 +138,25 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' not in log)
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
-        
+
+    def test_log_change_revno(self):
+        self._prepare()
+        expected_log = self.run_bzr("log -r 1")[0]
+        log = self.run_bzr("log -c 1")[0]
+        self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_single_revno(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Option --change does not'
+                           ' accept revision ranges',
+                           ['log', '--change', '2..3'])
+
+    def test_log_change_incompatible_with_revision(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: --revision and --change'
+                           ' are mutually exclusive',
+                           ['log', '--change', '2', '--revision', '3'])
+
     def test_log_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error
@@ -177,11 +195,21 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'tags: tag1')
 
     def test_log_limit(self):
-        self._prepare()
+        tree = self.make_branch_and_tree('.')
+        # We want more commits than our batch size starts at
+        for pos in range(10):
+            tree.commit("%s" % pos)
         log = self.run_bzr("log --limit 2")[0]
         self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertContainsRe(log, r'revno: 2\n')
-        self.assertContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 2\n')
+        self.assertNotContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 4\n')
+        self.assertNotContainsRe(log, r'revno: 5\n')
+        self.assertNotContainsRe(log, r'revno: 6\n')
+        self.assertNotContainsRe(log, r'revno: 7\n')
+        self.assertNotContainsRe(log, r'revno: 8\n')
+        self.assertContainsRe(log, r'revno: 9\n')
+        self.assertContainsRe(log, r'revno: 10\n')
 
     def test_log_limit_short(self):
         self._prepare()

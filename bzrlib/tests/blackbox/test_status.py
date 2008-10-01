@@ -298,6 +298,21 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqual("working tree is out of date, run 'bzr update'\n",
                          err)
 
+    def test_status_write_lock(self):
+        """Test that status works without fetching history and
+        having a write lock.
+
+        See https://bugs.launchpad.net/bzr/+bug/149270
+        """
+        mkdir('branch1')
+        wt = self.make_branch_and_tree('branch1')
+        b = wt.branch
+        wt.commit('Empty commit 1')
+        wt2 = b.bzrdir.sprout('branch2').open_workingtree()
+        wt2.commit('Empty commit 2')
+        out, err = self.run_bzr('status branch1 -rbranch:branch2')
+        self.assertEqual('', out)
+
 
 class CheckoutStatus(BranchStatus):
 
@@ -438,11 +453,25 @@ class TestStatus(TestCaseWithTransport):
         b_tree.add('b')
         b_tree.commit('b')
 
-        chdir('a')
-        self.run_bzr('merge ../b')
-        out, err = self.run_bzr('status --no-pending')
+        self.run_bzr('merge ../b', working_dir='a')
+        out, err = self.run_bzr('status --no-pending', working_dir='a')
         self.assertEquals(out, "added:\n  b\n")
 
+    def test_pending_specific_files(self):
+        """With a specific file list, pending merges are not shown."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a', 'content of a\n')])
+        tree.add('a')
+        r1_id = tree.commit('one')
+        alt = tree.bzrdir.sprout('alt').open_workingtree()
+        self.build_tree_contents([('alt/a', 'content of a\nfrom alt\n')])
+        alt_id = alt.commit('alt')
+        tree.merge_from_branch(alt.branch)
+        output = self.make_utf8_encoded_stringio()
+        show_tree_status(tree, to_file=output)
+        self.assertContainsRe(output.getvalue(), 'pending merges:')
+        out, err = self.run_bzr('status tree/a')
+        self.assertNotContainsRe(out, 'pending merges:')
 
 
 class TestStatusEncodings(TestCaseWithTransport):

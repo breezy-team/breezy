@@ -35,7 +35,6 @@ from ntpath import (abspath as _nt_abspath,
                     splitdrive as _nt_splitdrive,
                     )
 import posixpath
-import sha
 import shutil
 from shutil import (
     rmtree,
@@ -52,6 +51,19 @@ from bzrlib import (
     win32utils,
     )
 """)
+
+# sha and md5 modules are deprecated in python2.6 but hashlib is available as
+# of 2.5
+if sys.version_info < (2, 5):
+    import md5 as _mod_md5
+    md5 = _mod_md5.new
+    import sha as _mod_sha
+    sha = _mod_sha.new
+else:
+    from hashlib import (
+        md5,
+        sha1 as sha,
+        )
 
 
 import bzrlib
@@ -122,37 +134,6 @@ def quotefn(f):
 
 
 _directory_kind = 'directory'
-
-_formats = {
-    stat.S_IFDIR:_directory_kind,
-    stat.S_IFCHR:'chardev',
-    stat.S_IFBLK:'block',
-    stat.S_IFREG:'file',
-    stat.S_IFIFO:'fifo',
-    stat.S_IFLNK:'symlink',
-    stat.S_IFSOCK:'socket',
-}
-
-
-def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
-    """Generate a file kind from a stat mode. This is used in walkdirs.
-
-    Its performance is critical: Do not mutate without careful benchmarking.
-    """
-    try:
-        return _formats[stat_mode & 0170000]
-    except KeyError:
-        return _unknown
-
-
-def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
-    try:
-        return _mapper(_lstat(f).st_mode)
-    except OSError, e:
-        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            raise errors.NoSuchFile(f)
-        raise
-
 
 def get_umask():
     """Return the current umask"""
@@ -569,6 +550,24 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     return length
 
 
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
+
+
 def file_iterator(input_file, readsize=32768):
     while True:
         b = input_file.read(readsize)
@@ -582,7 +581,7 @@ def sha_file(f):
 
     The file cursor should be already at the start.
     """
-    s = sha.new()
+    s = sha()
     BUFSIZE = 128<<10
     while True:
         b = f.read(BUFSIZE)
@@ -594,7 +593,7 @@ def sha_file(f):
 
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    s = sha.new()
+    s = sha()
     f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
@@ -606,21 +605,21 @@ def sha_file_by_name(fname):
         os.close(f)
 
 
-def sha_strings(strings, _factory=sha.new):
+def sha_strings(strings, _factory=sha):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()
     map(s.update, strings)
     return s.hexdigest()
 
 
-def sha_string(f, _factory=sha.new):
+def sha_string(f, _factory=sha):
     return _factory(f).hexdigest()
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha.new(b).hexdigest()}
+            'sha1': sha(b).hexdigest()}
 
 
 def compare_files(a, b):
@@ -1119,6 +1118,34 @@ def check_legal_path(path):
         raise errors.IllegalPath(path)
 
 
+_WIN32_ERROR_DIRECTORY = 267 # Similar to errno.ENOTDIR
+
+def _is_error_enotdir(e):
+    """Check if this exception represents ENOTDIR.
+
+    Unfortunately, python is very inconsistent about the exception
+    here. The cases are:
+      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
+      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
+         which is the windows error code.
+      3) Windows, Python2.5 uses errno == EINVAL and
+         winerror == ERROR_DIRECTORY
+
+    :param e: An Exception object (expected to be OSError with an errno
+        attribute, but we should be able to cope with anything)
+    :return: True if this represents an ENOTDIR error. False otherwise.
+    """
+    en = getattr(e, 'errno', None)
+    if (en == errno.ENOTDIR
+        or (sys.platform == 'win32'
+            and (en == _WIN32_ERROR_DIRECTORY
+                 or (en == errno.EINVAL
+                     and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+        ))):
+        return True
+    return False
+
+
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
@@ -1155,7 +1182,7 @@ def walkdirs(top, prefix=""):
     _lstat = os.lstat
     _directory = _directory_kind
     _listdir = os.listdir
-    _kind_from_mode = _formats.get
+    _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1168,18 +1195,50 @@ def walkdirs(top, prefix=""):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
+        try:
+            names = sorted(_listdir(top))
+        except OSError, e:
+            if not _is_error_enotdir(e):
+                raise
+        else:
+            for name in names:
+                abspath = top_slash + name
+                statvalue = _lstat(abspath)
+                kind = _kind_from_mode(statvalue.st_mode)
+                append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
-_real_walkdirs_utf8 = None
+class DirReader(object):
+    """An interface for reading directories."""
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """Converts top and prefix to a starting dir entry
+
+        :param top: A utf8 path
+        :param prefix: An optional utf8 path to prefix output relative paths
+            with.
+        :return: A tuple starting with prefix, and ending with the native
+            encoding of top.
+        """
+        raise NotImplementedError(self.top_prefix_to_starting_dir)
+
+    def read_dir(self, prefix, top):
+        """Read a specific dir.
+
+        :param prefix: A utf8 prefix to be preprended to the path basenames.
+        :param top: A natively encoded path to read.
+        :return: A list of the directories contents. Each item contains:
+            (utf8_relpath, utf8_name, kind, lstatvalue, native_abspath)
+        """
+        raise NotImplementedError(self.read_dir)
+
+
+_selected_dir_reader = None
+
 
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
@@ -1195,8 +1254,8 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    global _real_walkdirs_utf8
-    if _real_walkdirs_utf8 is None:
+    global _selected_dir_reader
+    if _selected_dir_reader is None:
         fs_encoding = _fs_enc.upper()
         if win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
@@ -1205,75 +1264,71 @@ def _walkdirs_utf8(top, prefix=""):
             #       but that gets a bit tricky, and requires custom compiling
             #       for win98 anyway.
             try:
-                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+                from bzrlib._walkdirs_win32 import Win32ReadDir
             except ImportError:
-                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+                _selected_dir_reader = UnicodeDirReader()
             else:
-                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+                _selected_dir_reader = Win32ReadDir()
         elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            _selected_dir_reader = UnicodeDirReader()
         else:
-            _real_walkdirs_utf8 = _walkdirs_fs_utf8
-    return _real_walkdirs_utf8(top, prefix=prefix)
-
-
-def _walkdirs_fs_utf8(top, prefix=""):
-    """See _walkdirs_utf8.
-
-    This sub-function is called when we know the filesystem is already in utf8
-    encoding. So we don't need to transcode filenames.
-    """
-    _lstat = os.lstat
-    _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = _formats.get
-
+            try:
+                from bzrlib._readdir_pyx import UTF8DirReader
+            except ImportError:
+                # No optimised code path
+                _selected_dir_reader = UnicodeDirReader()
+            else:
+                _selected_dir_reader = UTF8DirReader()
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
-    pending = [(safe_utf8(prefix), None, None, None, safe_utf8(top))]
-    while pending:
-        relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
-        else:
-            relprefix = ''
-        top_slash = top + '/'
-
-        dirblock = []
-        append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
-
-
-def _walkdirs_unicode_to_utf8(top, prefix=""):
-    """See _walkdirs_utf8
-
-    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
-    Unicode paths.
-    This is currently the fallback code path when the filesystem encoding is
-    not UTF-8. It may be better to implement an alternative so that we can
-    safely handle paths that are not properly decodable in the current
-    encoding.
-    """
-    _utf8_encode = codecs.getencoder('utf8')
-    _lstat = os.lstat
+    pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
+    read_dir = _selected_dir_reader.read_dir
     _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = _formats.get
-
-    pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
     while pending:
-        relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
+        relroot, _, _, _, top = pending[-1].pop()
+        if not pending[-1]:
+            pending.pop()
+        dirblock = sorted(read_dir(relroot, top))
+        yield (relroot, top), dirblock
+        # push the user specified dirs from dirblock
+        next = [d for d in reversed(dirblock) if d[2] == _directory]
+        if next:
+            pending.append(next)
+
+
+class UnicodeDirReader(DirReader):
+    """A dir reader for non-utf8 file systems, which transcodes."""
+
+    __slots__ = ['_utf8_encode']
+
+    def __init__(self):
+        self._utf8_encode = codecs.getencoder('utf8')
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """See DirReader.top_prefix_to_starting_dir."""
+        return (safe_utf8(prefix), None, None, None, safe_unicode(top))
+
+    def read_dir(self, prefix, top):
+        """Read a single directory from a non-utf8 file system.
+
+        top, and the abspath element in the output are unicode, all other paths
+        are utf8. Local disk IO is done via unicode calls to listdir etc.
+
+        This is currently the fallback code path when the filesystem encoding is
+        not UTF-8. It may be better to implement an alternative so that we can
+        safely handle paths that are not properly decodable in the current
+        encoding.
+
+        See DirReader.read_dir for details.
+        """
+        _utf8_encode = self._utf8_encode
+        _lstat = os.lstat
+        _listdir = os.listdir
+        _kind_from_mode = file_kind_from_stat_mode
+
+        if prefix:
+            relprefix = prefix + '/'
         else:
             relprefix = ''
         top_slash = top + u'/'
@@ -1281,15 +1336,16 @@ def _walkdirs_unicode_to_utf8(top, prefix=""):
         dirblock = []
         append = dirblock.append
         for name in sorted(_listdir(top)):
-            name_utf8 = _utf8_encode(name)[0]
+            try:
+                name_utf8 = _utf8_encode(name)[0]
+            except UnicodeDecodeError:
+                raise errors.BadFilenameEncoding(
+                    _utf8_encode(relprefix)[0] + name, _fs_enc)
             abspath = top_slash + name
             statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+        return dirblock
 
 
 def copy_tree(from_path, to_path, handlers={}):
@@ -1370,9 +1426,19 @@ def get_user_encoding(use_cache=True):
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
-        # work around egregious python 2.4 bug
+        # python locale.getpreferredencoding() always return
+        # 'mac-roman' on darwin. That's a lie.
         sys.platform = 'posix'
         try:
+            if os.environ.get('LANG', None) is None:
+                # If LANG is not set, we end up with 'ascii', which is bad
+                # ('mac-roman' is more than ascii), so we set a default which
+                # will give us UTF-8 (which appears to work in all cases on
+                # OSX). Users are still free to override LANG of course, as
+                # long as it give us something meaningful. This work-around
+                # *may* not be needed with python 3k and/or OSX 10.5, but will
+                # work with them too -- vila 20080908
+                os.environ['LANG'] = 'en_US.UTF-8'
             import locale
         finally:
             sys.platform = 'darwin'
@@ -1413,6 +1479,20 @@ def get_user_encoding(use_cache=True):
         _cached_user_encoding = user_encoding
 
     return user_encoding
+
+
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
 
 
 def recv_all(socket, bytes):
@@ -1491,3 +1571,28 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+def file_kind_from_stat_mode_thunk(mode):
+    global file_kind_from_stat_mode
+    if file_kind_from_stat_mode is file_kind_from_stat_mode_thunk:
+        try:
+            from bzrlib._readdir_pyx import UTF8DirReader
+            file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
+        except ImportError:
+            from bzrlib._readdir_py import (
+                _kind_from_mode as file_kind_from_stat_mode
+                )
+    return file_kind_from_stat_mode(mode)
+file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
+
+
+def file_kind(f, _lstat=os.lstat):
+    try:
+        return file_kind_from_stat_mode(_lstat(f).st_mode)
+    except OSError, e:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
+            raise errors.NoSuchFile(f)
+        raise
+
+

@@ -87,7 +87,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved location: %s\n' 
+                          'Using saved push location: %s\n' 
                           'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
@@ -343,9 +343,9 @@ class TestPush(ExternalBase):
         self.assertFalse(self.get_transport('published').has('.'))
 
     def test_push_notifies_default_stacking(self):
-        self.make_branch('stack_on', format='development1')
+        self.make_branch('stack_on', format='1.6')
         self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
-        self.make_branch('from', format='development1')
+        self.make_branch('from', format='1.6')
         out, err = self.run_bzr('push -d from to')
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')

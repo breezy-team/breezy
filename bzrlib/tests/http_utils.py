@@ -16,22 +16,25 @@
 
 from cStringIO import StringIO
 import errno
-import md5
 import re
-import sha
 import socket
 import threading
 import time
 import urllib2
 import urlparse
 
+
 from bzrlib import (
     errors,
+    osutils,
     tests,
-    transport,
     )
 from bzrlib.smart import medium, protocol
 from bzrlib.tests import http_server
+from bzrlib.transport import (
+    chroot,
+    get_transport,
+    )
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):
@@ -46,13 +49,29 @@ class HTTPServerWithSmarts(http_server.HttpServer):
 
 
 class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
-    """Extend TestingHTTPRequestHandler to support smart client POSTs."""
+    """Extend TestingHTTPRequestHandler to support smart client POSTs.
+    
+    XXX: This duplicates a fair bit of the logic in bzrlib.transport.http.wsgi.
+    """
 
     def do_POST(self):
         """Hand the request off to a smart server instance."""
+        backing = get_transport(self.server.test_case_server._home_dir)
+        chroot_server = chroot.ChrootServer(backing)
+        chroot_server.setUp()
+        try:
+            t = get_transport(chroot_server.get_url())
+            self.do_POST_inner(t)
+        finally:
+            chroot_server.tearDown()
+
+    def do_POST_inner(self, chrooted_transport):
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
-        t = transport.get_transport(self.server.test_case_server._home_dir)
+        if not self.path.endswith('.bzr/smart'):
+            raise AssertionError(
+                'POST to path not ending in .bzr/smart: %r' % (self.path,))
+        t = chrooted_transport.clone(self.path[:-len('.bzr/smart')])
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
         data_length = int(self.headers['Content-Length'])
@@ -378,7 +397,7 @@ class DigestAuthServer(AuthServer):
         A1 = '%s:%s:%s' % (user, realm, password)
         A2 = '%s:%s' % (command, auth['uri'])
 
-        H = lambda x: md5.new(x).hexdigest()
+        H = lambda x: osutils.md5(x).hexdigest()
         KD = lambda secret, data: H("%s:%s" % (secret, data))
 
         nonce_count = int(auth['nc'], 16)

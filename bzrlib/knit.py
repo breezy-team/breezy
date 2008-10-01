@@ -698,6 +698,11 @@ class KnitVersionedFiles(VersionedFiles):
     """Storage for many versioned files using knit compression.
 
     Backend storage is managed by indices and data objects.
+
+    :ivar _index: A _KnitGraphIndex or similar that can describe the 
+        parents, graph, compression and data location of entries in this 
+        KnitVersionedFiles.  Note that this is only the index for 
+        *this* vfs; if there are fallbacks they must be queried separately.
     """
 
     def __init__(self, index, data_access, max_delta_chain=200,
@@ -720,6 +725,12 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (
+            self.__class__.__name__,
+            self._index,
+            self._access)
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -892,6 +903,10 @@ class KnitVersionedFiles(VersionedFiles):
         for count in xrange(self._max_delta_chain):
             # XXX: Collapse these two queries:
             try:
+                # Note that this only looks in the index of this particular
+                # KnitVersionedFiles, not in the fallbacks.  This ensures that
+                # we won't store a delta spanning physical repository
+                # boundaries.
                 method = self._index.get_method(parent)
             except RevisionNotPresent:
                 # Some basis is not locally present: always delta
@@ -1186,6 +1201,10 @@ class KnitVersionedFiles(VersionedFiles):
                     current_source = key_source
                 source_keys[-1][1].append(key)
         else:
+            if ordering != 'unordered':
+                raise AssertionError('valid values for ordering are:'
+                    ' "unordered" or "topological" not: %r'
+                    % (ordering,))
             # Just group by source; remote sources first.
             present_keys = []
             source_keys = []
@@ -1414,7 +1433,9 @@ class KnitVersionedFiles(VersionedFiles):
                 yield line, key
             keys.difference_update(source_keys)
         if keys:
-            raise RevisionNotPresent(keys, self.filename)
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):

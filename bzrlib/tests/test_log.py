@@ -692,8 +692,8 @@ class TestLineLogFormatter(TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add('a')
         b.nick = 'test-line-log'
-        wt.commit(message='add a', 
-                  timestamp=1132711707, 
+        wt.commit(message='add a',
+                  timestamp=1132711707,
                   timezone=36000,
                   committer='Line-Log-Formatter Tester <test@line.log>')
         logfile = file('out.tmp', 'w+')
@@ -986,10 +986,10 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
                                                 'reverse', True)
         actual_revs = log._filter_revisions_touching_file_id(
-                            tree.branch, 
+                            tree.branch,
                             file_id,
-                            mainline,
-                            list(view_revs_iter))
+                            list(view_revs_iter),
+                            'reverse')
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):

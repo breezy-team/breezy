@@ -388,6 +388,30 @@ def disable_default_logging():
     pass
 
 
+_short_fields = ('VmPeak', 'VmSize', 'VmRSS')
+
+def debug_memory(message='', short=True):
+    """Write out a memory dump."""
+    try:
+        status_file = file('/proc/%s/status' % os.getpid(), 'rb')
+    except IOError:
+        return
+    try:
+        status = status_file.read()
+    finally:
+        status_file.close()
+    if message:
+        note(message)
+    for line in status.splitlines():
+        if not short:
+            note(line)
+        else:
+            for field in _short_fields:
+                if line.startswith(field):
+                    note(line)
+                    break
+
+
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
 

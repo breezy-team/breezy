@@ -49,6 +49,7 @@ import warnings
 
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     debug,
     errors,
@@ -57,6 +58,7 @@ from bzrlib import (
     progress,
     ui,
     urlutils,
+    registry,
     workingtree,
     )
 import bzrlib.branch
@@ -799,15 +801,18 @@ class TestCase(unittest.TestCase):
     def _clear_hooks(self):
         # prevent hooks affecting tests
         import bzrlib.branch
+        import bzrlib.smart.client
         import bzrlib.smart.server
         self._preserved_hooks = {
             bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
             bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
+            bzrlib.smart.client._SmartClient: bzrlib.smart.client._SmartClient.hooks,
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
         # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.client._SmartClient.hooks = bzrlib.smart.client.SmartClientHooks()
         bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
 
     def _silenceUI(self):
@@ -871,6 +876,21 @@ class TestCase(unittest.TestCase):
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
+
+    def assertEqualStat(self, expected, actual):
+        """assert that expected and actual are the same stat result.
+
+        :param expected: A stat result.
+        :param actual: A stat result.
+        :raises AssertionError: If the expected and actual stat values differ
+            other than by atime.
+        """
+        self.assertEqual(expected.st_size, actual.st_size)
+        self.assertEqual(expected.st_mtime, actual.st_mtime)
+        self.assertEqual(expected.st_ctime, actual.st_ctime)
+        self.assertEqual(expected.st_dev, actual.st_dev)
+        self.assertEqual(expected.st_ino, actual.st_ino)
+        self.assertEqual(expected.st_mode, actual.st_mode)
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
@@ -1129,7 +1149,7 @@ class TestCase(unittest.TestCase):
         # warnings.  It's the easiest way to insulate ourselves from -Werror,
         # though.  -- Andrew, 20071062
         wlist = []
-        def _catcher(message, category, filename, lineno, file=None):
+        def _catcher(message, category, filename, lineno, file=None, line=None):
             # despite the name, 'message' is normally(?) a Warning subclass
             # instance
             wlist.append(message)
@@ -1195,22 +1215,20 @@ class TestCase(unittest.TestCase):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
 
-    def addCleanup(self, callable):
+    def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
 
         Callables are run in the reverse of the order they are registered, 
         ie last-in first-out.
         """
-        if callable in self._cleanups:
-            raise ValueError("cleanup function %r already registered on %s" 
-                    % (callable, self))
-        self._cleanups.append(callable)
+        self._cleanups.append((callable, args, kwargs))
 
     def _cleanEnvironment(self):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
-            'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
+            # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
+            # tests do check our impls match APPDATA
             'BZR_EDITOR': None, # test_msgeditor manipulates this variable
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
@@ -1319,7 +1337,8 @@ class TestCase(unittest.TestCase):
         # Actually pop the cleanups from the list so tearDown running
         # twice is safe (this happens for skipped tests).
         while self._cleanups:
-            self._cleanups.pop()()
+            cleanup, args, kwargs = self._cleanups.pop()
+            cleanup(*args, **kwargs)
 
     def log(self, *args):
         mutter(*args)
@@ -1590,7 +1609,10 @@ class TestCase(unittest.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            command = [sys.executable, bzr_path]
+            command = [sys.executable]
+            # frozen executables don't need the path to bzr
+            if getattr(sys, "frozen", None) is None:
+                command.append(bzr_path)
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -1993,6 +2015,11 @@ class TestCaseWithMemoryTransport(TestCase):
         b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
+    def make_branch_builder(self, relpath, format=None):
+        url = self.get_url(relpath)
+        tran = get_transport(url)
+        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
         os.environ['BZR_HOME'] = self.test_home_dir
@@ -2041,16 +2068,32 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected" % filename)
 
+    def _getTestDirPrefix(self):
+        # create a directory within the top level test directory
+        if sys.platform == 'win32':
+            name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
+            # windows is likely to have path-length limits so use a short name
+            name_prefix = name_prefix[-30:]
+        else:
+            name_prefix = re.sub('[/]', '_', self.id())
+        return name_prefix
+
     def makeAndChdirToTestDir(self):
         """See TestCaseWithMemoryTransport.makeAndChdirToTestDir().
         
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        # create a directory within the top level test directory
-        candidate_dir = osutils.mkdtemp(dir=self.TEST_ROOT)
+        name_prefix = osutils.pathjoin(self.TEST_ROOT, self._getTestDirPrefix())
+        name = name_prefix
+        for i in range(100):
+            if os.path.exists(name):
+                name = name_prefix + '_' + str(i)
+            else:
+                os.mkdir(name)
+                break
         # now create test and home directories within this dir
-        self.test_base_dir = candidate_dir
+        self.test_base_dir = name
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
         self.test_dir = self.test_base_dir + '/work'
@@ -2116,7 +2159,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, basestring):
             for p in path:
-                self.assertInWorkingTree(p,tree=tree)
+                self.assertInWorkingTree(p, tree=tree)
         else:
             self.assertIsNot(tree.path2id(path), None,
                 path+' not in working tree.')
@@ -2279,15 +2322,18 @@ def condition_id_in_list(id_list):
     return condition
 
 
-def condition_id_startswith(start):
+def condition_id_startswith(starts):
     """Create a condition filter verifying that test's id starts with a string.
     
-    :param start: A string.
-    :return: A callable that returns True if the test's id starts with the
-        given string.
+    :param starts: A list of string.
+    :return: A callable that returns True if the test's id starts with one of 
+        the given strings.
     """
     def condition(test):
-        return test.id().startswith(start)
+        for start in starts:
+            if test.id().startswith(start):
+                return True
+        return False
     return condition
 
 
@@ -2315,7 +2361,7 @@ def filter_suite_by_condition(suite, condition):
         test case which should be included in the result.
     :return: A suite which contains the tests found in suite that pass
         condition.
-    """ 
+    """
     result = []
     for test in iter_suite_tests(suite):
         if condition(test):
@@ -2329,7 +2375,7 @@ def filter_suite_by_re(suite, pattern):
     :param suite:           the source suite
     :param pattern:         pattern that names must match
     :returns: the newly created suite
-    """ 
+    """
     condition = condition_id_re(pattern)
     result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
@@ -2351,7 +2397,7 @@ def filter_suite_by_id_startswith(suite, start):
     """Create a test suite by filtering another one.
 
     :param suite: The source suite.
-    :param start: A string the test id must start with.
+    :param start: A list of string the test id must start with one of.
     :returns: the newly created suite
     """
     condition = condition_id_startswith(start)
@@ -2404,7 +2450,7 @@ def split_suite_by_condition(suite, condition):
         suite matching the condition, and the second contains the remainder
         from suite. The order within each output suite is the same as it was in
         suite.
-    """ 
+    """
     matched = []
     did_not_match = []
     for test in iter_suite_tests(suite):
@@ -2426,7 +2472,7 @@ def split_suite_by_re(suite, pattern):
         suite matching pattern, and the second contains the remainder from
         suite. The order within each output suite is the same as it was in
         suite.
-    """ 
+    """
     return split_suite_by_condition(suite, condition_id_re(pattern))
 
 
@@ -2648,6 +2694,59 @@ class TestIdList(object):
         return self.tests.has_key(test_id)
 
 
+class TestPrefixAliasRegistry(registry.Registry):
+    """A registry for test prefix aliases.
+
+    This helps implement shorcuts for the --starting-with selftest
+    option. Overriding existing prefixes is not allowed but not fatal (a
+    warning will be emitted).
+    """
+
+    def register(self, key, obj, help=None, info=None,
+                 override_existing=False):
+        """See Registry.register.
+
+        Trying to override an existing alias causes a warning to be emitted,
+        not a fatal execption.
+        """
+        try:
+            super(TestPrefixAliasRegistry, self).register(
+                key, obj, help=help, info=info, override_existing=False)
+        except KeyError:
+            actual = self.get(key)
+            note('Test prefix alias %s is already used for %s, ignoring %s'
+                 % (key, actual, obj))
+
+    def resolve_alias(self, id_start):
+        """Replace the alias by the prefix in the given string.
+
+        Using an unknown prefix is an error to help catching typos.
+        """
+        parts = id_start.split('.')
+        try:
+            parts[0] = self.get(parts[0])
+        except KeyError:
+            raise errors.BzrCommandError(
+                '%s is not a known test prefix alias' % parts[0])
+        return '.'.join(parts)
+
+
+test_prefix_alias_registry = TestPrefixAliasRegistry()
+"""Registry of test prefix aliases."""
+
+
+# This alias allows to detect typos ('bzrlin.') by making all valid test ids
+# appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
+test_prefix_alias_registry.register('bzrlib', 'bzrlib')
+
+# Obvious higest levels prefixes, feel free to add your own via a plugin
+test_prefix_alias_registry.register('bd', 'bzrlib.doc')
+test_prefix_alias_registry.register('bu', 'bzrlib.utils')
+test_prefix_alias_registry.register('bt', 'bzrlib.tests')
+test_prefix_alias_registry.register('bb', 'bzrlib.tests.blackbox')
+test_prefix_alias_registry.register('bp', 'bzrlib.plugins')
+
+
 def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
@@ -2670,7 +2769,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
                    'bzrlib.tests.per_lock',
-                   'bzrlib.tests.repository_implementations',
+                   'bzrlib.tests.per_repository',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -2680,10 +2779,12 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bisect_multi',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_branchbuilder',
+                   'bzrlib.tests.test_btree_index',
                    'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -2741,6 +2842,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_pack',
+                   'bzrlib.tests.test_pack_repository',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -2785,6 +2887,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_transport_implementations',
+                   'bzrlib.tests.test_transport_log',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
@@ -2792,6 +2895,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_upgrade_stacked',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
@@ -2810,16 +2914,21 @@ def test_suite(keep_only=None, starting_with=None):
 
     loader = TestUtil.TestLoader()
 
-    if starting_with is not None:
+    if starting_with:
+        starting_with = [test_prefix_alias_registry.resolve_alias(start)
+                         for start in starting_with]
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
-            return (
-                # Either the module name starts with the specified string
-                name.startswith(starting_with)
-                # or it may contain tests starting with the specified string
-                or starting_with.startswith(name)
-                )
+            for start in starting_with:
+                if (
+                    # Either the module name starts with the specified string
+                    name.startswith(start)
+                    # or it may contain tests starting with the specified string
+                    or start.startswith(name)
+                    ):
+                    return True
+            return False
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
@@ -2885,7 +2994,7 @@ def test_suite(keep_only=None, starting_with=None):
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
-    if starting_with is not None:
+    if starting_with:
         suite = filter_suite_by_id_startswith(suite, starting_with)
 
     if keep_only is not None:
@@ -2894,7 +3003,7 @@ def test_suite(keep_only=None, starting_with=None):
         suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
-        if starting_with is not None:
+        if starting_with:
             # The tester has used both keep_only and starting_with, so he is
             # already aware that some tests are excluded from the list, there
             # is no need to tell him which.
@@ -3207,7 +3316,7 @@ UTF8Filesystem = _UTF8Filesystem()
 
 
 class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlined filesystem is case-insensitive
+    """Check if underlying filesystem is case-insensitive
     (e.g. on Windows, Cygwin, MacOS)
     """
 

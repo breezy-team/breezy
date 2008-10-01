@@ -366,7 +366,7 @@ class Command(object):
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
 
-        # If this will be rendered as plan text, convert it
+        # If this will be rendered as plain text, convert it
         if plain:
             import bzrlib.help_topics
             result = bzrlib.help_topics.help_as_plain_text(result)
@@ -389,7 +389,7 @@ class Command(object):
                     sections[label] += '\n' + section
                 else:
                     sections[label] = section
-            
+
         lines = text.rstrip().splitlines()
         summary = lines.pop(0)
         sections = {}
@@ -497,7 +497,7 @@ class Command(object):
         self._setup_outf()
 
         return self.run(**all_cmd_args)
-    
+
     def run(self):
         """Actually run the command.
 
@@ -796,16 +796,7 @@ def run_bzr(argv):
         else:
             ret = run(*run_argv)
         if 'memory' in debug.debug_flags:
-            try:
-                status_file = file('/proc/%s/status' % os.getpid(), 'rb')
-            except IOError:
-                pass
-            else:
-                status = status_file.read()
-                status_file.close()
-                trace.note("Process status after command:")
-                for line in status.splitlines():
-                    trace.note(line)
+            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process

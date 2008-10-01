@@ -35,6 +35,7 @@ from bzrlib.diff import (
     )
 from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
+import bzrlib.revision as _mod_revision
 import bzrlib.transform as transform
 import bzrlib.patiencediff
 import bzrlib._patiencediff_py
@@ -356,7 +357,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
 ''')
         
     def test_diff_add_files(self):
-        tree1 = self.b.repository.revision_tree(None)
+        tree1 = self.b.repository.revision_tree(_mod_revision.NULL_REVISION)
         tree2 = self.b.repository.revision_tree('rev-1')
         output = self.get_diff(tree1, tree2)
         # the files have the epoch time stamp for the tree in which
@@ -768,6 +769,13 @@ class TestPatienceDiffLib(TestCase):
         self._recurse_matches = bzrlib._patiencediff_py.recurse_matches_py
         self._PatienceSequenceMatcher = \
             bzrlib._patiencediff_py.PatienceSequenceMatcher_py
+
+    def test_diff_unicode_string(self):
+        a = ''.join([unichr(i) for i in range(4000, 4500, 3)])
+        b = ''.join([unichr(i) for i in range(4300, 4800, 2)])
+        sm = self._PatienceSequenceMatcher(None, a, b)
+        mb = sm.get_matching_blocks()
+        self.assertEquals(35, len(mb))
 
     def test_unique_lcs(self):
         unique_lcs = self._unique_lcs
