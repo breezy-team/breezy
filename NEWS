@@ -43,6 +43,10 @@ IN DEVELOPMENT
       will not encounter this as it is single threaded for working tree
       operations. (Robert Collins)
 
+    * The ``-Dhpss`` debug flag now reports the number of smart server
+      calls per medium to stderr.  This is in addition to the existing
+      detailed logging to the .bzr.log trace file.  (Andrew Bennetts)
+
   BUG FIXES:
 
     * Branching from a shared repository on a smart server into a new
