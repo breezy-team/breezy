@@ -175,6 +175,8 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
+    from Pyrex.Compiler.Version import version as pyrex_version
+    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -237,7 +239,15 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._walkdirs_win32',
                         define_macros=[('WIN32', None)])
 else:
-    add_pyrex_extension('bzrlib._dirstate_helpers_c')
+    if have_pyrex and pyrex_version_info < (0, 9, 6, 0):
+        # Pyrex 0.9.4.1 fails to compile this extension correctly
+        print 'Cannot build extension "bzrlib._dirstate_helpers_c" using'
+        print 'your version of pyrex "%s". Please upgrade to a version' % (
+            pyrex_version,)
+        print '>= 0.9.6. For now, the non-compiled (python) version will'
+        print 'be used instead.'
+    else:
+        add_pyrex_extension('bzrlib._dirstate_helpers_c')
     add_pyrex_extension('bzrlib._readdir_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
