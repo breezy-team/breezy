@@ -117,6 +117,9 @@ IN DEVELOPMENT
     * New method ``RevisionSpec.as_tree`` for representing the revision
       specifier as a revision tree object. (Lukáš Lalinský)
 
+    * New module ``chk_map`` providing a persistent CHK store backed map.
+      (Robert Collins)
+
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
 

@@ -2771,6 +2771,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_chk_map',
                    'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
