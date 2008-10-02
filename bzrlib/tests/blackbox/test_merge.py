@@ -123,7 +123,8 @@ class TestMerge(ExternalBase):
         tree, other = self.create_conflicting_branches()
         # The default merge algorithm should enable 'reprocess' because
         # 'show-base' is not set
-        self.run_bzr('merge ../other', working_dir='tree')
+        self.run_bzr('merge ../other', working_dir='tree',
+                     retcode=1)
         self.assertEqualDiff('a\n'
                              'B\n'
                              '<<<<<<< TREE\n'
@@ -143,7 +144,8 @@ class TestMerge(ExternalBase):
     def test_merge_override_reprocess(self):
         tree, other = self.create_conflicting_branches()
         # Explicitly disable reprocess
-        self.run_bzr('merge ../other --no-reprocess', working_dir='tree')
+        self.run_bzr('merge ../other --no-reprocess', working_dir='tree',
+                     retcode=1)
         self.assertEqualDiff('a\n'
                              '<<<<<<< TREE\n'
                              'B\n'
@@ -157,7 +159,8 @@ class TestMerge(ExternalBase):
     def test_merge_override_show_base(self):
         tree, other = self.create_conflicting_branches()
         # Setting '--show-base' will auto-disable '--reprocess'
-        self.run_bzr('merge ../other --show-base', working_dir='tree')
+        self.run_bzr('merge ../other --show-base', working_dir='tree',
+                     retcode=1)
         self.assertEqualDiff('a\n'
                              '<<<<<<< TREE\n'
                              'B\n'
