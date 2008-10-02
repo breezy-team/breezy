@@ -1,3 +1,15 @@
+bzr (1.7.1-1) experimental; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@samba.org>  Thu, 02 Oct 2008 01:58:58 +0200
+
+bzr (1.7.1~rc1-1) experimental; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@samba.org>  Tue, 30 Sep 2008 23:14:23 +0200
+
 bzr (1.7-1) experimental; urgency=low
 
   * New upstream release.
