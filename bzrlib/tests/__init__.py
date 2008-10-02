@@ -793,10 +793,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
+        self._preserved_debug_flags = set(debug.debug_flags)
         if 'allow_debug' not in selftest_debug_flags:
-            self._preserved_debug_flags = set(debug.debug_flags)
             debug.debug_flags.clear()
-            self.addCleanup(self._restore_debug_flags)
+        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -1401,7 +1401,7 @@ class TestCase(unittest.TestCase):
     def _run_bzr_core(self, args, retcode, encoding, stdin,
             working_dir):
         if encoding is None:
-            encoding = bzrlib.user_encoding
+            encoding = osutils.get_user_encoding()
         stdout = StringIOWrapper()
         stderr = StringIOWrapper()
         stdout.encoding = encoding
@@ -3240,7 +3240,7 @@ def probe_unicode_in_user_encoding():
     possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
     for uni_val in possible_vals:
         try:
-            str_val = uni_val.encode(bzrlib.user_encoding)
+            str_val = uni_val.encode(osutils.get_user_encoding())
         except UnicodeEncodeError:
             # Try a different character
             pass

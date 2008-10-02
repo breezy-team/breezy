@@ -29,9 +29,9 @@ from bzrlib import (
 """)
 
 from bzrlib import (
-    log,
-    registry,
+    registry as _mod_registry,
     )
+
 
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
@@ -306,8 +306,9 @@ class RegistryOption(Option):
         else:
             return self.converter(value)
 
-    def __init__(self, name, help, registry, converter=None,
-        value_switches=False, title=None, enum_switch=True):
+    def __init__(self, name, help, registry=None, converter=None,
+        value_switches=False, title=None, enum_switch=True,
+        lazy_registry=None):
         """
         Constructor.
 
@@ -321,9 +322,20 @@ class RegistryOption(Option):
             '--knit' can be used interchangeably.
         :param enum_switch: If true, a switch is provided with the option name,
             which takes a value.
+        :param lazy_registry: A tuple of (module name, attribute name) for a
+            registry to be lazily loaded.
         """
         Option.__init__(self, name, help, type=self.convert)
-        self.registry = registry
+        self._registry = registry
+        if registry is None:
+            if lazy_registry is None:
+                raise AssertionError(
+                    'One of registry or lazy_registry must be given.')
+            self._lazy_registry = _mod_registry._LazyObjectGetter(
+                *lazy_registry)
+        if registry is not None and lazy_registry is not None:
+            raise AssertionError(
+                'registry and lazy_registry are mutually exclusive')
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
@@ -332,6 +344,12 @@ class RegistryOption(Option):
         if self.title is None:
             self.title = name
 
+    @property
+    def registry(self):
+        if self._registry is None:
+            self._registry = self._lazy_registry.get_obj()
+        return self._registry
+    
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
                     enum_switch=True, **kwargs):
@@ -341,7 +359,7 @@ class RegistryOption(Option):
         RegistryOption constructor.  Any other keyword arguments are treated
         as values for the option, and they value is treated as the help.
         """
-        reg = registry.Registry()
+        reg = _mod_registry.Registry()
         for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
@@ -434,7 +452,7 @@ def _global_option(name, **kwargs):
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 
-def _global_registry_option(name, help, registry, **kwargs):
+def _global_registry_option(name, help, registry=None, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
@@ -466,7 +484,7 @@ def _verbosity_level_callback(option, opt_str, value, parser):
             _verbosity_level = -1
 
 
-class MergeTypeRegistry(registry.Registry):
+class MergeTypeRegistry(_mod_registry.Registry):
 
     pass
 
@@ -527,8 +545,8 @@ _global_option('version')
 _global_option('email')
 _global_option('update')
 _global_registry_option('log-format', "Use specified log format.",
-                        log.log_formatter_registry, value_switches=True,
-                        title='Log format')
+                        lazy_registry=('bzrlib.log', 'log_formatter_registry'),
+                        value_switches=True, title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')

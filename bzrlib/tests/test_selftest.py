@@ -1346,10 +1346,52 @@ class TestTestCase(TestCase):
 
     def test_debug_flags_sanitised(self):
         """The bzrlib debug flags should be sanitised by setUp."""
+        if 'allow_debug' in tests.selftest_debug_flags:
+            raise TestNotApplicable(
+                '-Eallow_debug option prevents debug flag sanitisation')
         # we could set something and run a test that will check
         # it gets santised, but this is probably sufficient for now:
         # if someone runs the test with -Dsomething it will error.
         self.assertEqual(set(), bzrlib.debug.debug_flags)
+
+    def change_selftest_debug_flags(self, new_flags):
+        orig_selftest_flags = tests.selftest_debug_flags
+        self.addCleanup(self._restore_selftest_debug_flags, orig_selftest_flags)
+        tests.selftest_debug_flags = set(new_flags)
+        
+    def _restore_selftest_debug_flags(self, flags):
+        tests.selftest_debug_flags = flags
+
+    def test_allow_debug_flag(self):
+        """The -Eallow_debug flag prevents bzrlib.debug.debug_flags from being
+        sanitised (i.e. cleared) before running a test.
+        """
+        self.change_selftest_debug_flags(set(['allow_debug']))
+        bzrlib.debug.debug_flags = set(['a-flag'])
+        class TestThatRecordsFlags(TestCase):
+            def test_foo(nested_self):
+                self.flags = set(bzrlib.debug.debug_flags)
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertEqual(set(['a-flag']), self.flags)
+
+    def test_debug_flags_restored(self):
+        """The bzrlib debug flags should be restored to their original state
+        after the test was run, even if allow_debug is set.
+        """
+        self.change_selftest_debug_flags(set(['allow_debug']))
+        # Now run a test that modifies debug.debug_flags.
+        bzrlib.debug.debug_flags = set(['original-state'])
+        class TestThatModifiesFlags(TestCase):
+            def test_foo(self):
+                bzrlib.debug.debug_flags = set(['modified'])
+        test = TestThatModifiesFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertEqual(set(['original-state']), bzrlib.debug.debug_flags)
+
+    def make_test_result(self):
+        return bzrlib.tests.TextTestResult(
+            self._log_file, descriptions=0, verbosity=1)
 
     def inner_test(self):
         # the inner child test
@@ -1359,9 +1401,7 @@ class TestTestCase(TestCase):
         # the outer child test
         note("outer_start")
         self.inner_test = TestTestCase("inner_child")
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1)
+        result = self.make_test_result()
         self.inner_test.run(result)
         note("outer finish")
 
@@ -1379,9 +1419,7 @@ class TestTestCase(TestCase):
         # the outer child test
         original_trace = bzrlib.trace._trace_file
         outer_test = TestTestCase("outer_child")
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1)
+        result = self.make_test_result()
         outer_test.run(result)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
 
