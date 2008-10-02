@@ -176,7 +176,6 @@ except ImportError:
 else:
     have_pyrex = True
     from Pyrex.Compiler.Version import version as pyrex_version
-    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -239,12 +238,15 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._walkdirs_win32',
                         define_macros=[('WIN32', None)])
 else:
-    if have_pyrex and pyrex_version_info < (0, 9, 6, 0):
+    if have_pyrex and pyrex_version == '0.9.4.1':
         # Pyrex 0.9.4.1 fails to compile this extension correctly
+        # The code it generates re-uses a "local" pointer and
+        # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
+        # which is NULL safe with PY_DECREF which is not.)
         print 'Cannot build extension "bzrlib._dirstate_helpers_c" using'
-        print 'your version of pyrex "%s". Please upgrade to a version' % (
+        print 'your version of pyrex "%s". Please upgrade your pyrex' % (
             pyrex_version,)
-        print '>= 0.9.6. For now, the non-compiled (python) version will'
+        print 'install. For now, the non-compiled (python) version will'
         print 'be used instead.'
     else:
         add_pyrex_extension('bzrlib._dirstate_helpers_c')
