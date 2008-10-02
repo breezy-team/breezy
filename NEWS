@@ -15,6 +15,9 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr merge`` now defaults to having ``--reprocess`` set, whenever
+      ``--show-base`` is not supplied.  (John Arbash Meinel)
+
     * ``bzr+http//`` will now optionally load plugins and write logs on the
       server. (Marius Kruger)
 
