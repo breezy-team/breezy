@@ -105,7 +105,6 @@ Example usage:
 
 import os
 import time
-from cStringIO import StringIO
 
 from bzrlib import (
     debug,
@@ -125,15 +124,16 @@ from bzrlib.errors import (
         PathError,
         ResourceBusy,
         TransportError,
-        UnlockableTransport,
         )
 from bzrlib.hooks import Hooks
 from bzrlib.trace import mutter, note
-from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars, format_delta, get_host_name
-from bzrlib.rio import read_stanza, Stanza
+from bzrlib.osutils import format_delta, rand_chars, get_host_name
 import bzrlib.ui
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import rio
+""")
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -436,7 +436,7 @@ class LockDir(lock.Lock):
             user = config.user_email()
         except errors.NoEmailInUsername:
             user = config.username()
-        s = Stanza(hostname=get_host_name(),
+        s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
@@ -445,7 +445,7 @@ class LockDir(lock.Lock):
         return s.to_string()
 
     def _parse_info(self, info_file):
-        return read_stanza(info_file.readlines()).as_dict()
+        return rio.read_stanza(info_file.readlines()).as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.

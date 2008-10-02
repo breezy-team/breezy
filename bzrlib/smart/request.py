@@ -35,7 +35,10 @@ from bzrlib import (
     revision,
     urlutils,
     )
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.bundle import serializer
+""")
 
 
 class SmartServerRequest(object):
@@ -360,7 +363,7 @@ class GetBundleRequest(SmartServerRequest):
         repo = control.open_repository()
         tmpf = tempfile.TemporaryFile()
         base_revision = revision.NULL_REVISION
-        write_bundle(repo, revision_id, base_revision, tmpf)
+        serializer.write_bundle(repo, revision_id, base_revision, tmpf)
         tmpf.seek(0)
         return SuccessfulSmartServerResponse((), tmpf.read())
 

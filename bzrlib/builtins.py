@@ -17,11 +17,11 @@
 """builtin bzr commands"""
 
 import os
-from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
+import cStringIO
 import sys
 import time
 
@@ -34,7 +34,6 @@ from bzrlib import (
     config,
     errors,
     globbing,
-    ignores,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -56,7 +55,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet, info
+from bzrlib.trace import mutter, note, warning, is_quiet
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -1304,8 +1303,8 @@ class cmd_init(Command):
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
-                registry=bzrdir.format_registry,
-                converter=bzrdir.format_registry.make_bzrdir,
+                lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
                 title="Branch Format",
                 ),
@@ -1393,8 +1392,8 @@ class cmd_init_repository(Command):
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "bzr help formats" for details.',
-                            registry=bzrdir.format_registry,
-                            converter=bzrdir.format_registry.make_bzrdir,
+                            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
@@ -1682,9 +1681,7 @@ class cmd_log(Command):
     takes_options = [
             Option('forward',
                    help='Show from oldest to newest.'),
-            Option('timezone',
-                   type=str,
-                   help='Display timezone as local, original, or utc.'),
+            'timezone',
             custom_help('verbose',
                    help='Show files changed in each revision.'),
             'show-ids',
@@ -2328,7 +2325,7 @@ class cmd_commit(Command):
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
-                        output_encoding=bzrlib.user_encoding)
+                        output_encoding=osutils.get_user_encoding())
                 my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
@@ -2338,7 +2335,7 @@ class cmd_commit(Command):
                     "please specify either --message or --file")
             if file:
                 my_message = codecs.open(file, 'rt',
-                                         bzrlib.user_encoding).read()
+                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
@@ -2444,8 +2441,8 @@ class cmd_upgrade(Command):
                     RegistryOption('format',
                         help='Upgrade to a specific format.  See "bzr help'
                              ' formats" for details.',
-                        registry=bzrdir.format_registry,
-                        converter=bzrdir.format_registry.make_bzrdir,
+                        lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                        converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                         value_switches=True, title='Branch format'),
                     ]
 
@@ -2708,7 +2705,6 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None):
-        import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -4209,7 +4205,7 @@ class cmd_send(Command):
         from bzrlib.revision import NULL_REVISION
         branch = Branch.open_containing(from_)[0]
         if output is None:
-            outfile = StringIO()
+            outfile = cStringIO.StringIO()
         elif output == '-':
             outfile = self.outf
         else:

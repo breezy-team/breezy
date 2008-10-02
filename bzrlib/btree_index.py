@@ -22,7 +22,6 @@ import bisect
 from bisect import bisect_right
 from copy import deepcopy
 import math
-import sha
 import struct
 import tempfile
 import zlib

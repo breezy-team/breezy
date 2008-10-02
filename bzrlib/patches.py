@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-import re
 
 
 class PatchSyntax(Exception):
@@ -95,6 +94,7 @@ def parse_range(textrange):
 
  
 def hunk_from_header(line):
+    import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
     if matches is None:
         raise MalformedHunkHeader("Does not match format.", line)

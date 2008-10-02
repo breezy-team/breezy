@@ -22,11 +22,11 @@
 from copy import copy
 from cStringIO import StringIO
 import os
-import urllib
 from zlib import adler32
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import urllib
 
 from bzrlib import (
     errors,

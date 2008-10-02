@@ -25,11 +25,15 @@ if INTP_VER < (2, 2):
 
 import os, re
 compiler = None
-try:
-    import compiler
-except ImportError:
-    # for IronPython
-    pass
+# Bzr modification: Disabled import of 'compiler' module
+# bzr doesn't use the 'unrepr' feature of configobj, so importing compiler just
+# wastes several milliseconds on every single bzr invocation.
+#   -- Andrew Bennetts, 2008-10-14
+#try:
+#    import compiler
+#except ImportError:
+#    # for IronPython
+#    pass
 from types import StringTypes
 from warnings import warn
 try:
@@ -250,11 +254,11 @@ class ConfigObjError(SyntaxError):
     This is the base class for all errors that ConfigObj raises.
     It is a subclass of SyntaxError.
     """
-    def __init__(self, message='', line_number=None, line=''):
+    def __init__(self, msg='', line_number=None, line=''):
         self.line = line
         self.line_number = line_number
-        self.message = message
-        SyntaxError.__init__(self, message)
+        self.msg = msg
+        SyntaxError.__init__(self, msg)
 
 
 class NestingError(ConfigObjError):
