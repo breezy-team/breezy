@@ -2394,34 +2394,40 @@ class InterRepository(InterObject):
         # ensure we don't pay silly lookup costs.
         searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
-        run_out_of_next_revs = False
+        searcher_exhausted = False
         while True:
             next_revs = set()
+            ghosts = set()
+            # Iterate the searcher until we have enough next_revs
             while len(next_revs) < self._walk_to_common_revisions_batch_size:
                 try:
-                    next_revs_part, ghosts = searcher.next_with_ghosts()
+                    next_revs_part, ghosts_part = searcher.next_with_ghosts()
                     next_revs.update(next_revs_part)
+                    ghosts.update(ghosts_part)
                 except StopIteration:
-                    run_out_of_next_revs = True
+                    searcher_exhausted = True
                     break
-                if revision_ids.intersection(ghosts):
-                    absent_ids = set(revision_ids.intersection(ghosts))
-                    # If all absent_ids are present in target, no error is
-                    # needed.
-                    absent_ids.difference_update(
-                        set(target_graph.get_parent_map(absent_ids)))
-                    if absent_ids:
-                        raise errors.NoSuchRevision(
-                            self.source, absent_ids.pop())
-            if run_out_of_next_revs:
+            # If there are ghosts in the source graph, make sure that they are
+            # present in the target.
+            if revision_ids.intersection(ghosts):
+                absent_ids = set(revision_ids.intersection(ghosts))
+                # If all absent_ids are present in target, no error is
+                # needed.
+                absent_ids.difference_update(
+                    set(target_graph.get_parent_map(absent_ids)))
+                if absent_ids:
+                    raise errors.NoSuchRevision(
+                        self.source, absent_ids.pop())
+            if next_revs:
+                # we don't care about other ghosts as we can't fetch them and
+                # haven't been asked to.
+                next_revs = set(next_revs)
+                # we always have NULL_REVISION present.
+                have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
+                missing_revs.update(next_revs - have_revs)
+                searcher.stop_searching_any(have_revs)
+            if searcher_exhausted:
                 break
-            # we don't care about other ghosts as we can't fetch them and
-            # haven't been asked to.
-            next_revs = set(next_revs)
-            # we always have NULL_REVISION present.
-            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
-            missing_revs.update(next_revs - have_revs)
-            searcher.stop_searching_any(have_revs)
         return searcher.get_result()
    
     @deprecated_method(one_two)
