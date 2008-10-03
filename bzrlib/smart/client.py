@@ -56,7 +56,7 @@ class _SmartClient(object):
     def _run_call_hooks(self, method, args, body, readv_body):
         if not _SmartClient.hooks['call']:
             return
-        params = CallHookParams(method, args, body, readv_body)
+        params = CallHookParams(method, args, body, readv_body, self._medium)
         for hook in _SmartClient.hooks['call']:
             hook(params)
             
@@ -187,11 +187,12 @@ _SmartClient.hooks = SmartClientHooks()
 
 class CallHookParams(object):
     
-    def __init__(self, method, args, body, readv_body):
+    def __init__(self, method, args, body, readv_body, medium):
         self.method = method
         self.args = args
         self.body = body
         self.readv_body = readv_body
+        self.medium = medium
 
     def __repr__(self):
         attrs = dict((k, v) for (k, v) in self.__dict__.iteritems()

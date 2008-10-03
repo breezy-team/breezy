@@ -50,7 +50,6 @@ from bzrlib import plugins as _mod_plugins
 """)
 
 from bzrlib.symbol_versioning import deprecated_function, one_three
-from bzrlib.trace import mutter, warning, log_exception_quietly
 
 
 DEFAULT_PLUGIN_PATH = None
@@ -162,7 +161,7 @@ def load_from_path(dirs):
     for d in dirs:
         if not d:
             continue
-        mutter('looking for plugins in %s', d)
+        trace.mutter('looking for plugins in %s', d)
         if os.path.isdir(d):
             load_from_dir(d)
 
@@ -201,9 +200,9 @@ def load_from_dir(d):
             else:
                 continue
         if getattr(_mod_plugins, f, None):
-            mutter('Plugin name %s already loaded', f)
+            trace.mutter('Plugin name %s already loaded', f)
         else:
-            # mutter('add plugin name %s', f)
+            # trace.mutter('add plugin name %s', f)
             plugin_names.add(f)
     
     for name in plugin_names:
@@ -217,12 +216,12 @@ def load_from_dir(d):
                 sanitised_name = re.sub('[-. ]', '_', name)
                 if sanitised_name.startswith('bzr_'):
                     sanitised_name = sanitised_name[len('bzr_'):]
-                warning("Unable to load %r in %r as a plugin because the "
+                trace.warning("Unable to load %r in %r as a plugin because the "
                         "file path isn't a valid module name; try renaming "
                         "it to %r." % (name, d, sanitised_name))
             else:
-                warning('Unable to load plugin %r from %r' % (name, d))
-            log_exception_quietly()
+                trace.warning('Unable to load plugin %r from %r' % (name, d))
+            trace.log_exception_quietly()
             if 'error' in debug.debug_flags:
                 trace.print_exception(sys.exc_info(), sys.stderr)
 
@@ -239,7 +238,7 @@ def load_from_zip(zip_name):
     archive = zip_name[:index+4]
     prefix = zip_name[index+5:]
 
-    mutter('Looking for plugins in %r', zip_name)
+    trace.mutter('Looking for plugins in %r', zip_name)
 
     # use zipfile to get list of files/dirs inside zip
     try:
@@ -259,7 +258,7 @@ def load_from_zip(zip_name):
                     for name in namelist
                     if name.startswith(prefix)]
 
-    mutter('Names in archive: %r', namelist)
+    trace.mutter('Names in archive: %r', namelist)
     
     for name in namelist:
         if not name or name.endswith('/'):
@@ -291,19 +290,19 @@ def load_from_zip(zip_name):
         if not plugin_name:
             continue
         if getattr(_mod_plugins, plugin_name, None):
-            mutter('Plugin name %s already loaded', plugin_name)
+            trace.mutter('Plugin name %s already loaded', plugin_name)
             continue
     
         try:
             exec "import bzrlib.plugins.%s" % plugin_name in {}
-            mutter('Load plugin %s from zip %r', plugin_name, zip_name)
+            trace.mutter('Load plugin %s from zip %r', plugin_name, zip_name)
         except KeyboardInterrupt:
             raise
         except Exception, e:
             ## import pdb; pdb.set_trace()
-            warning('Unable to load plugin %r from %r'
+            trace.warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
-            log_exception_quietly()
+            trace.log_exception_quietly()
             if 'error' in debug.debug_flags:
                 trace.print_exception(sys.exc_info(), sys.stderr)
 

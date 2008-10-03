@@ -21,8 +21,11 @@ to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
 from bzrlib import errors, registry
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib.branch import Branch
 from bzrlib import urlutils
+""")
 
 
 class DirectoryServiceRegistry(registry.Registry):
