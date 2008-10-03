@@ -83,6 +83,10 @@ IN DEVELOPMENT
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
 
+    * ``bzr co`` uses less memory. It used to unpack the entire WT into
+      memory before writing it to disk. This was a little bit faster, but
+      consumed lots of memory. (John Arbash Meinel, #269456)
+
     * ``bzr log`` now accepts a ``--change`` option.
       (Vincent Ladeuil, #248427)
 
