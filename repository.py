@@ -200,7 +200,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _build_inventory(self, tree, ie, path):
         assert isinstance(path, str)
-        for b in tree.contents:
+        for key in tree:
+            b = tree.get(key)
             basename = b.name.decode("utf-8")
             if path == "":
                 child_path = b.name
