@@ -4599,7 +4599,9 @@ class cmd_switch(Command):
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
-        branch.nick = to_branch.nick
+        if branch.get_config().has_explicit_nickname():
+            branch = control_dir.open_branch() #get the new branch!
+            branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 

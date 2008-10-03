@@ -20,6 +20,7 @@
 
 import os
 
+from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -49,14 +50,55 @@ class TestSwitch(ExternalBase):
         self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
         self.assertEqual('', out)
 
-    def test_switch_nick(self):
+    def _test_switch_nick(self, lightweight):
         """Check that the nick gets switched too."""
         tree1 = self.make_branch_and_tree('branch1')
         tree2 = self.make_branch_and_tree('branch2')
         tree2.pull(tree1.branch)
-        checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
-        self.run_bzr(['switch', 'branch2'], working_dir='checkout')
-        self.assertEqual(tree1.branch.nick, tree2.branch.nick)
+        checkout =  tree1.branch.create_checkout('checkout',
+            lightweight=lightweight)
+        self.assertEqual(checkout.branch.nick, tree1.branch.nick)
+        self.assertEqual(checkout.branch.get_config().has_explicit_nickname(),
+            False)
+        self.run_bzr('switch branch2', working_dir='checkout')
+
+        # we need to get the tree again, otherwise we don't get the new branch
+        checkout = WorkingTree.open('checkout')
+        self.assertEqual(checkout.branch.nick, tree2.branch.nick)
+        self.assertEqual(checkout.branch.get_config().has_explicit_nickname(),
+            False)
+
+    def test_switch_nick(self):
+        self._test_switch_nick(lightweight=False)
+
+    def test_switch_nick_lightweight(self):
+        self._test_switch_nick(lightweight=True)
+
+    def _test_switch_explicit_nick(self, lightweight):
+        """Check that the nick gets switched too."""
+        tree1 = self.make_branch_and_tree('branch1')
+        tree2 = self.make_branch_and_tree('branch2')
+        tree2.pull(tree1.branch)
+        checkout =  tree1.branch.create_checkout('checkout',
+            lightweight=lightweight)
+        self.assertEqual(checkout.branch.nick, tree1.branch.nick)
+        checkout.branch.nick = "explicit_nick"
+        self.assertEqual(checkout.branch.nick, "explicit_nick")
+        self.assertEqual(checkout.branch.get_config()._get_explicit_nickname(),
+            "explicit_nick")
+        self.run_bzr('switch branch2', working_dir='checkout')
+
+        # we need to get the tree again, otherwise we don't get the new branch
+        checkout = WorkingTree.open('checkout')
+        self.assertEqual(checkout.branch.nick, tree2.branch.nick)
+        self.assertEqual(checkout.branch.get_config()._get_explicit_nickname(),
+            tree2.branch.nick)
+
+    def test_switch_explicit_nick(self):
+        self._test_switch_explicit_nick(lightweight=False)
+
+    def test_switch_explicit_nick_lightweight(self):
+        self._test_switch_explicit_nick(lightweight=True)
 
     def test_switch_finds_relative_branch(self):
         """Switch will find 'foo' relative to the branch the checkout is of."""

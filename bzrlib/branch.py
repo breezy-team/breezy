@@ -149,7 +149,13 @@ class Branch(object):
         return BranchConfig(self)
 
     def _get_nick(self):
-        return self.get_config().get_nickname()
+        config = self.get_config()
+        if not config.has_explicit_nickname(): # explicit overrides master
+            master = self.get_master_branch()
+            if master is not None:
+                # return the master branch value
+                config = master.get_config()
+        return config.get_nickname()
 
     def _set_nick(self, nick):
         self.get_config().set_user_option('nickname', nick, warn_masked=True)
