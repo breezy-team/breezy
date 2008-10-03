@@ -15,8 +15,18 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr merge`` now defaults to having ``--reprocess`` set, whenever
+      ``--show-base`` is not supplied.  (John Arbash Meinel)
+
     * ``bzr+http//`` will now optionally load plugins and write logs on the
       server. (Marius Kruger)
+
+    * ``bzrlib._dirstate_helpers_c.pyx`` does not compile correctly with
+      Pyrex 0.9.4.1 (it generates C code which causes segfaults). We
+      explicitly blacklist that version of the compiler for that
+      extension. Packaged versions will include .c files created with
+      pyrex >= 0.9.6 so it doesn't effect releases, only users running
+      from the source tree. (John Arbash Meinel, #276868)
 
   FEATURES
 
@@ -62,6 +72,10 @@ IN DEVELOPMENT
       operations. (Robert Collins)
 
     * The C extensions now build on python 2.4 (Robert Collins, #271939)
+
+    * The ``-Dhpss`` debug flag now reports the number of smart server
+      calls per medium to stderr.  This is in addition to the existing
+      detailed logging to the .bzr.log trace file.  (Andrew Bennetts)
 
   BUG FIXES:
 
@@ -130,11 +144,14 @@ IN DEVELOPMENT
       transport has one, fixing numerous tests on Windows.
       (Mark Hammond)
 
+    * PreviewTree is now tested via intertree_implementations.
+      (Aaron Bentley)
+
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
-    * PreviewTree is now tested via intertree_implementations.
-      (Aaron Bentley)
+    * The full test suite passes when run with ``-Eallow_debug``.
+      (Andrew Bennetts)
 
   INTERNALS:
 
@@ -164,6 +181,13 @@ IN DEVELOPMENT
       osutils.[md5|sha]), object__init__ and object.__new__ don't accept
       parameters anymore.
       (Vincent Ladeuil)
+
+
+bzr 1.7.1 2008-10-01
+--------------------
+
+  No changes from 1.7.1rc1.
+
 
 bzr 1.7.1rc1 2008-09-24
 -----------------------

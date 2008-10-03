@@ -151,6 +151,15 @@ class OptionTests(TestCase):
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
 
+    def test_lazy_registry(self):
+        options = [option.RegistryOption('format', '',
+                   lazy_registry=('bzrlib.bzrdir','format_registry'),
+                   converter=str)]
+        opts, args = self.parse(options, ['--format', 'knit'])
+        self.assertEqual({'format': 'knit'}, opts)
+        self.assertRaises(
+            errors.BadOptionValue, self.parse, options, ['--format', 'BAD'])
+
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',
             help='test option', short='be short', be_long='go long')
@@ -353,13 +362,13 @@ class TestOptionDefinitions(TestCase):
         # period and be all on a single line, because the display code will
         # wrap it.
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
-        for scope, option in self.get_builtin_command_options():
-            if not option.help:
+        for scope, opt in self.get_builtin_command_options():
+            if not opt.help:
                 msgs.append('%-16s %-16s %s' %
-                       ((scope or 'GLOBAL'), option.name, 'NO HELP'))
-            elif not option_re.match(option.help):
+                       ((scope or 'GLOBAL'), opt.name, 'NO HELP'))
+            elif not option_re.match(opt.help):
                 msgs.append('%-16s %-16s %s' %
-                        ((scope or 'GLOBAL'), option.name, option.help))
+                        ((scope or 'GLOBAL'), opt.name, opt.help))
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))

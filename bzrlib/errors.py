@@ -1862,6 +1862,7 @@ class BzrMoveFailedError(BzrError):
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
 
     def __init__(self, from_path='', to_path='', extra=None):
+        from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
             self.extra = ': ' + str(extra)
@@ -1871,12 +1872,12 @@ class BzrMoveFailedError(BzrError):
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
         if has_from:
-            self.from_path = osutils.splitpath(from_path)[-1]
+            self.from_path = splitpath(from_path)[-1]
         else:
             self.from_path = ''
 
         if has_to:
-            self.to_path = osutils.splitpath(to_path)[-1]
+            self.to_path = splitpath(to_path)[-1]
         else:
             self.to_path = ''
 
@@ -2807,6 +2808,7 @@ class UnableEncodePath(BzrError):
             'user encoding %(user_encoding)s')
 
     def __init__(self, path, kind):
+        from bzrlib.osutils import get_user_encoding
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
