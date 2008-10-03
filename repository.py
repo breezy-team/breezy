@@ -34,7 +34,7 @@ from bzrlib import (
     )
 from bzrlib.transport import get_transport
 
-from bzrlib.plugins.git import (
+from bzrlib.plugins.git.foreign import (
     versionedfiles
     )
 from bzrlib.plugins.git.mapping import default_mapping
