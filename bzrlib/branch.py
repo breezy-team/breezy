@@ -148,10 +148,10 @@ class Branch(object):
     def get_config(self):
         return BranchConfig(self)
 
-    def _get_nick(self):
+    def _get_nick(self, possible_transports=None):
         config = self.get_config()
         if not config.has_explicit_nickname(): # explicit overrides master
-            master = self.get_master_branch()
+            master = self.get_master_branch(possible_transports)
             if master is not None:
                 # return the master branch value
                 config = master.get_config()
