@@ -107,6 +107,9 @@ IN DEVELOPMENT
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
 
+    * Remove use of optional parameter in GSSAPI FTP support, since 
+      it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
+
     * The autopacking logic will now always create a single new pack from
       all of the content which it deems is worth moving. This avoids the
       'repack a single pack' bug and should result in better packing
