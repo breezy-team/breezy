@@ -3701,6 +3701,8 @@ class cmd_bind(Command):
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                          ' Try merging, and then bind again.')
+        if b.get_config().has_explicit_nickname():
+            b.nick = b_other.nick
 
 
 class cmd_unbind(Command):
