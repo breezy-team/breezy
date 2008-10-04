@@ -1,0 +1,232 @@
+=============================
+BTree Index Request Expansion
+=============================
+
+This document outlines how we decide to pre-read extra nodes in the btree
+index.
+
+
+Rationale
+=========
+
+Because of the latency involved in making a request, it is often better to make
+fewer large requests, rather than more small requests, even if some of the
+extra data will be wasted. 
+
+Example
+-------
+
+Using my connection as an example, I have a max bandwidth of 160kB/s, and a
+latency of between 100-400ms to London, I'll use 200ms for this example. With
+this connection, in 200ms you can download 32kB. So if you make 10 requests for
+4kB of data, you spend 10*.2s = 2s sending the requests, and 4*10/160 = .25s
+actually downloading the data.  If, instead, you made 3 requests for 32kB of
+data each, you would take 3*.2s = .6s for requests, and 32*3/160 = .6s for
+downloading the data. So you save 2.25 - 1.2 = 1.05s even though you downloaded
+32*3-4*10 = 56kB of data that you probably don't need.  On the other hand, if
+you made 1 request for 480kB, you would take .2s for the request, and
+480/160=3s for the data. So you end up taking 3.2s, because of the wasted
+440kB.
+
+
+BTree Structure
+===============
+
+This is meant to give a basic feeling for how the btree index is laid out on
+disk, not give a rigorous discussion. For that look elsewhere[ref?].
+
+The basic structure is that we have pages of 4kB. Each page is either a leaf,
+which holds the final information we are interested in, or is an internal node,
+which contains a list of references to the next layer of nodes. The layers are
+structured such that all nodes for the top layer come first, then the nodes for
+the next layer, linearly in the file.
+
+
+Example 1 layer
+---------------
+
+In the simplest example, all the data fits into a single page, the root node.
+This means the root node is a leaf node.
+
+
+Example 2 layer
+---------------
+
+As soon as the data cannot fit in a single node, we create a new internal node,
+make that the root, and start to create multiple leaf nodes. The root node then
+contains the keys which divide the leaf pages. (So if leaf node 1 ends with
+'foo' and leaf node 2 starts with 'foz', the root node would hold the key 'foz'
+at position 0).
+
+
+Example 3 layer
+---------------
+
+It is possible for enough leaf nodes to be created, that we cannot fit all
+there references in a single node. In this case, we again split, creating
+another layer, and setting that as the root. This layer then references the
+intermediate layer, which references the final leaf nodes.
+
+In all cases, the root node is a single page wide. The next layer can have 2-N
+nodes.
+
+
+Current Info
+------------
+
+Empirically, we've found that the number of references that can be stored on a
+page varies from about 60 to about 180, depending on how much we compress, and
+how similar the keys are. Internal nodes also achieve approximately the same
+compression, though they seem to be closer to 80-100 and not as variable. For
+most of this discussion, we will assume each page holds 100 entries, as that
+makes the math nice and clean.
+
+So the idea is that if you have <100 keys, they will probably all fit on the
+root page. If you have 100 - 10,000 keys, we will have a 2-layer structure, if
+you have 10,000 - 1,000,000 keys, you will have a 3-layer structure. 10^6-10^8
+will be 4-layer, etc.
+
+
+Data and Request
+================
+
+It is important to be aware of what sort of data requests will be made on these
+indexes, so that we know how to optimize them. This is still a work in
+progress, but generally we are searching through ancestry. The final
+information (in the leaf nodes) is stored in sorted order. Revision ids are
+generally of the form "prefix:committer@email-timestamp-randomtail".
+This means that revisions made by the same person around the same time will be
+clustered, but revisions made by different people at the same time will not be
+clustered.
+For files, the keys are ``(file-id, revision-id)`` tuples. And file-ids are
+generally ``basename-timestamp-random-count`` (depending on the converter).
+This means that all revisions for a given file-id will be grouped together, and
+that files with similar names will be grouped together. However, files
+committed in the same revisions will not be grouped together in the index.[1]_
+
+.. [1] One interesting possibility would be to change file-ids from being
+   'basename-...', to being 'containing-dirname-filename-...', which would
+   group files in the similarly named directories together.
+
+
+In general, we always start with a request for the root node of the index, as
+it tells us the final structure of the rest of the index. How many total pages,
+what pages are internal nodes and what layer, which ones are leaves. Before
+this point, we do know the *size* of the index, because that is stored in the
+``pack-names`` file.
+
+
+Thoughts on expansion
+=====================
+
+This is just a bullet list of things to consider when expanding a request.
+
+* We generally assume locality of reference. So if we are currently reading
+  page 10, we are more likely to read page 9 or 11 than we are page 20.
+  
+* However, locality of reference only really holds within a layer. If we are
+  reading the last node in a layer, we are unlikely to read the first node of
+  the next layer. In fact, we are most likely to read the *last* node of the
+  next layer.
+
+  More directly, we are probably equally likely to read any of the nodes in the
+  next layer, which could be referred to by this layer. So if we have a
+  structure of 1 root node, 100 intermediate nodes, and 10,000 leaf nodes.
+  They will have offsets: 0, 1-101, 102-10,102.
+
+  If we read the root node, we are likely to want any of the 1-101 nodes
+  (because we don't know where the key points). If we are reading node 90, then
+  we are likely to want a node somewhere around 9,100-9,200.
+
+* When expanding a request, we are considering that we probably want to read on
+  the order of 10 pages extra. (64kB / 4kB = 16 pages.) It is unlikely that we
+  want to expand the requests by 100.
+
+* At the moment, we assume that we don't have an idea of where in the next
+  layer the keys might fall. We *could* use a predictive algorithm assuming
+  homogenous distribution. When reading the root node, we could assume an even
+  distribution from 'a-z', so that a key starting with 'a' would tend to fall
+  in the first few pages of the next layer, while a key starting with 'z' would
+  fall at the end of the next layer.
+  However, this is quite likely to fail in many ways. Specific examples:
+
+    * Converters tend to use an identical prefix. So all revisions will start
+      with 'xxx:', leading us to think that the keys fall in the last half,
+      when in reality they fall evenly distributed.
+
+    * When looking in text indexes. In the short term, changes tend to be
+      clustered around a small set of files. Short term changes are unlikely to
+      cross many pages, but it is unclear what happens in the mid-term.
+      Obviously in the long term, changes have happened to all files.
+
+  A possibility, would be to use this after reading the root node. And then
+  using an algorithm that compares the keys before and after this record, to
+  find what a distribution would be, and estimate the next pages.
+
+  This is a lot of work for a potentially small benefit, though.
+
+* When checking for N keys, we do sequential lookups in each layer. So we look
+  at layer 1 for all N keys, then in layer 2 for all N keys, etc. So our
+  requests will be clustered by layer.
+
+* For projects with large history, we are probably more likely to end up with a
+  bi-modal distribution of pack files. Where we have 1 pack file with a large
+  index, and then several pack files with small indexes, several with tiny
+  indexes, but no pack files with medium sized indexes.
+  This is because a command like ``bzr pack`` will combine everything into a
+  single large file. Commands like ``bzr commit`` will create an index with a
+  single new record, though these will be packaged together by autopack.
+  Commands like ``bzr push`` and ``bzr pull`` will create indexes with more 
+  records, but these are unlikely to be a significant portion of the history.
+  Consider bzr has 20,000 revisions, a single push/pull is likely to only be
+  100-200 revisions, or 1% of the history.
+
+  Note that there will always be cases where things are evenly distributed, but
+  we probably shouldn't *optimize* for that case.
+
+* 64kB is 16 pages. 16 pages is approximately 1,600 keys.
+
+* We are considering an index with 1 million keys to be very large. 10M is
+  probably possible, and maybe 100M, but something like 1 billion keys is
+  unlikely. So a 3-layer index is fairly common (it exists already in bzr), but
+  a 4-layer is going to be quite rare, and we will probably never see a
+  5-layer.
+
+* There are times when the second layer is going to be incompletely filled out.
+  Consider an index with 101 keys. We found that we couldn't fit everything
+  into a single page, so we expanded the btree into a root page and a leaf
+  page, and started a new leaf page. However, the root node only has a single
+  entry. There are 3 pages, but only one of them is "full".
+  This happens again when we get near the 10,000 node barrier. We found we
+  couldn't fit the index in a single page, so we split it into a higher layer,
+  and 1 more sub-layer. So we have 1 root node, 2 layer-2 nodes, and N leaf
+  nodes (layer 3). If we read the first 3 nodes, we will have read all internal
+  nodes.
+
+  It is certainly possible to detect this for the first-split case (when things
+  no-longer fit into just the root node), as there will only be a few nodes
+  total. Is it possible to detect this from only the 'size' information for the
+  second-split case (when the index no longer fits in a single page, but still
+  fits in only a small handful of pages)?
+
+  This only really works for the root + layer 2. For layers 3+ they will always
+  be too big to read all at once. However, until we've read the root, we don't
+  know the layout, so all we have to go on is the size of the index, though
+  that also gives us the explicit total number of pages.
+
+
+Suggested Algorithm
+===================
+
+This is the basic outline of my suggested algorithm.
+
+1. Expand requests by requesting neighboring pages. (So if we read page 10, we
+   can expand to also read page 9 and 11.)
+
+2. Only expand within a layer. The problem is that with a 100:1 fan-out, but
+   only a 10:1 expansion policy, it is unlikely that we will happen to read the
+   next layer pages that we are interested in. Note that this doesn't hold true
+   when a layer has "recently split", so we may want to revisit this.
+
+3. Part (2) hints that when reading the root node, we never request any other
+   nodes, as the root is always a layer-unto-itself.
