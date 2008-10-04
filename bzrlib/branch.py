@@ -151,10 +151,16 @@ class Branch(object):
     def _get_nick(self, possible_transports=None):
         config = self.get_config()
         if not config.has_explicit_nickname(): # explicit overrides master
-            master = self.get_master_branch(possible_transports)
-            if master is not None:
-                # return the master branch value
-                config = master.get_config()
+            try:
+                master = self.get_master_branch(possible_transports)
+                if master is not None:
+                    # return the master branch value
+                    config = master.get_config()
+            except errors.BzrError, e:
+                # Silently fall back to local implicit nick if the master is
+                # unavailable
+                mutter("Could not connect to bound branch, "
+                    "falling back to local nick.\n " + str(e))
         return config.get_nickname()
 
     def _set_nick(self, nick):
