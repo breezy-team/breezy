@@ -115,6 +115,11 @@ IN DEVELOPMENT
     * Trivial documentation fix.
       (John Arbash Meinel, #270471)
 
+    * ``bzr switch`` and ``bzr bind`` will now update the branch nickname if
+      it was previously set. All checkouts will now refer to the bound branch
+      for a nickname if one was not explicitly set.
+      (Marius Kruger, #230903)
+
   DOCUMENTATION:
 
     * Explain revision/range identifiers. (Daniel Clemente)
@@ -628,10 +633,6 @@ other bugs and performance issues were fixed.
 
     * Give a more specific error when target branch is not reachable.
       (James Westby)
-
-    * ``bzr switch`` will now update the branch nickname for regular checkouts
-      too. It previously only did this for lightweight checkouts.
-      (Marius Kruger, #230903)
 
     * Implemented a custom ``walkdirs_utf8`` implementation for win32.
       This uses a pyrex extension to get direct access to the
