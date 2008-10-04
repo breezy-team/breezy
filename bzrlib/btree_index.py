@@ -631,9 +631,7 @@ class BTreeGraphIndex(object):
     def _get_root_node(self):
         if self._root_node is None:
             # We may not have a root node yet
-            nodes = list(self._read_nodes([0]))
-            if len(nodes):
-                self._root_node = nodes[0][1]
+            self._get_internal_nodes([0])
         return self._root_node
 
     def _cache_nodes(self, nodes, cache):
@@ -653,13 +651,107 @@ class BTreeGraphIndex(object):
             trace.mutter('Requesting %s > %s nodes, not all will be cached',
                          len(nodes), cache._max_cache)
         found = {}
+        start_of_leaves = None
         for node_pos, node in self._read_nodes(sorted(nodes)):
             if node_pos == 0: # Special case
                 self._root_node = node
             else:
+                if start_of_leaves is None:
+                    start_of_leaves = self._row_offsets[-2]
+                if node_pos < start_of_leaves:
+                    self._internal_node_cache.add(node_pos, node)
+                else:
+                    self._leaf_node_cache.add(node_pos, node)
                 cache.add(node_pos, node)
             found[node_pos] = node
         return found
+
+    def _expand_nodes(self, node_indexes):
+        """Find extra nodes to download.
+
+        The idea is that we always want to make big-enough requests (like 64kB
+        for http), so that we don't waste round trips. So given the entries
+        that we already have cached, and the new nodes being downloaded, figure
+        out what other pages we might want to read.
+
+        :param node_indexes: The nodes that have been requested to read.
+        # :param recommended_size: The size of download we want, this assumes
+        #     that readv() is accomplished in a single round trip (which is true
+        #     for http and bzr+ssh, and sftp uses async to get close
+        #     performance.)
+        # :param max_page: The last possible page to read, possibly max_size is
+        # better?
+        :return: A new list of nodes to download
+        """
+        trace.note('request: %s\tnodes: %s', self._name[-14:], node_indexes)
+        # return node_indexes
+
+        # TODO: This could be cached
+        recommended_read = self._transport.recommended_page_size() / 4
+        recommended_pages = int(math.ceil(recommended_read /
+                                          float(_PAGE_SIZE)))
+        if len(node_indexes) >= recommended_pages:
+            # Don't add more, we are already requesting more than enough
+            return node_indexes
+        if self._size is None:
+            # Don't try anything, because we don't know where the file ends
+            return node_indexes
+        # The idea here is to get nodes "next to" the ones we are already
+        # getting.
+        max_page = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        # XXX: Update the LRUCache interface to have a .keys() attribute
+        cached_nodes = set(self._internal_node_cache._cache.keys())
+        cached_nodes.update(self._leaf_node_cache._cache.keys())
+        if self._root_node is not None:
+            cached_nodes.add(0)
+
+        # If reading recommended_pages would read the rest of the index, just
+        # do so.
+        if max_page - len(cached_nodes) <= recommended_pages:
+            # Just read the whole thing
+            # NOTE: this breaks a little bit with the distinction between index
+            # nodes and leaf nodes (as they are cached separately). It is
+            # still worthwhile to read it all, but we need to figure out what
+            # cache we should really put things in when we are done.
+            # However, we may not have read the index header yet to know where
+            # the internal nodes break from where the leaf nodes. We are sure
+            # to know *after* we've done the read.
+            # This also does the wrong thing if there are bloom pages.
+
+            # Further, this gives the wrong results because we have 2 caches to
+            # worry about...
+            if cached_nodes:
+                return [x for x in xrange(max_page) if x not in cached_nodes]
+            return range(max_page)
+
+        needed_nodes = recommended_pages - len(node_indexes)
+        final_nodes = set(node_indexes)
+        if node_indexes == [0]:
+            # Special case when we are reading the root node, just read the
+            # first N pages along with the root node
+            final_nodes = node_indexes
+            # for index in xrange(1, max_page):
+            #     if index not in final_nodes and index not in cached_nodes:
+            #         final_nodes.add(index)
+            #         if len(final_nodes) >= recommended_pages:
+            #             break
+        else:
+            while len(final_nodes) < recommended_pages:
+                for pos in sorted(final_nodes):
+                    if pos > 0:
+                        previous = pos - 1
+                        if previous not in cached_nodes:
+                            final_nodes.add(previous)
+                    if pos < max_page:
+                        after = pos + 1
+                        if after not in cached_nodes:
+                            final_nodes.add(after)
+                    # if len(final_nodes) > recommended_pages:
+                    #     break
+
+        final_nodes = sorted(final_nodes)
+        trace.note('\t\t\t\t%s', final_nodes)
+        return final_nodes
 
     def _get_nodes(self, cache, node_indexes):
         found = {}
@@ -672,6 +764,9 @@ class BTreeGraphIndex(object):
                 found[idx] = cache[idx]
             except KeyError:
                 needed.append(idx)
+        if not needed:
+            return found
+        needed = self._expand_nodes(needed)
         found.update(self._cache_nodes(needed, cache))
         return found
 
