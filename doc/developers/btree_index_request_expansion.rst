@@ -213,6 +213,27 @@ This is just a bullet list of things to consider when expanding a request.
   be too big to read all at once. However, until we've read the root, we don't
   know the layout, so all we have to go on is the size of the index, though
   that also gives us the explicit total number of pages.
+  So it doesn't help to read the root page and then decide. However, on the
+  flip side, if we read *before* the split, then we don't gain much, as we are
+  reading pages we aren't likely to be interested in.
+
+  For example:
+
+    We have 100 keys, which fits onto 100 pages, with a single root node. At
+    1,100 keys, it would be 101 leaf pages, which would then cause us to need 2
+    index pages, triggering an extra layer. However, this is very sensitive to
+    the number of keys we fit per-page, which depends on the compression.
+    Although, we could consider 2,000 keys. Which would be 200 leaf nodes, and
+    2 intermediate nodes, and a single root node. It is unlikely that we would
+    ever be able to fit 200 references into a single root node.
+
+  So if we pretend that we split at 1 page, 100 pages, and 10,000 pages. We
+  might be able to say, at 1-5 pages, read all pages, for 5-100 pages, read
+  only the root. At 100 - 500 pages, read 1-5 pages, for 500-10,000 read only
+  the root. At 10,000-50,000 read 1-5 pages again, but above 50,000 read only
+  the root. We could bias this a bit smaller, say at powers of 80, instead of
+  powers of 100, etc. The basic idea is that if we are *close* to a layer
+  split, go ahead and read a small number of extra pages.
 
 
 Suggested Algorithm
@@ -229,4 +250,8 @@ This is the basic outline of my suggested algorithm.
    when a layer has "recently split", so we may want to revisit this.
 
 3. Part (2) hints that when reading the root node, we never request any other
-   nodes, as the root is always a layer-unto-itself.
+   nodes, as the root is always a layer-unto-itself. The only exception is when
+   all pages could fit in a single width request.
+
+4. When expanding, add nodes that are "next" to the node in question, which
+   have not been read yet.
