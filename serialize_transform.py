@@ -1,3 +1,5 @@
+import os
+
 from bzrlib import pack
 from bzrlib.util import bencode
 
@@ -30,6 +32,8 @@ def serialize(tt):
                 cur_file.close()
         if kind == 'directory':
             content = ''
+        if kind == 'symlink':
+            content = os.readlink(tt._limbo_name(trans_id))
         yield serializer.bytes_record(content, ((trans_id, kind),))
     yield serializer.end()
 
@@ -54,6 +58,8 @@ def deserialize(tt, input):
             tt.create_file(content, trans_id)
         if kind == 'directory':
             tt.create_directory(trans_id)
+        if kind == 'symlink':
+            tt.create_symlink(content, trans_id)
     tt._tree_path_ids = {}
     tt._tree_id_paths = {}
     for bytepath, trans_id in attribs['_tree_path_ids'].items():

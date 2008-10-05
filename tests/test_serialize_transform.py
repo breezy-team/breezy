@@ -52,6 +52,15 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             foo_limbo.close()
         self.assertEqual('bar', foo_content)
 
+    def test_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tt, tt2 = self.get_two_previews(tree)
+        tt.new_symlink('foo', tt.root, 'bar')
+        deserialize(tt2, serialize(tt))
+        foo_content = os.readlink(tt2._limbo_name('new-1'))
+        self.assertEqual('bar', foo_content)
+
     def test_roundtrip_destruction(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree([u'foo\u1234', 'bar'])
