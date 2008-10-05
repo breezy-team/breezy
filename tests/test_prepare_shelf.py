@@ -56,3 +56,23 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         shelf_bar = creator.shelf_transform.trans_id_file_id('bar-id')
         self.assertEqual(shelf_bar, creator.shelf_transform.final_parent(
                          shelf_trans_id))
+        creator.transform()
+        self.assertEqual('foo/baz', tree.id2path('baz-id'))
+
+    def test_shelve_content_change(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('foo', 'a\n')])
+        tree.add('foo', 'foo-id')
+        tree.commit('Committed foo')
+        self.build_tree_contents([('foo', 'b\na\nc\n')])
+        creator = prepare_shelf.ShelfCreator(tree)
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('modify text', 'foo-id')], list(creator))
+        creator.shelve_text('foo-id', 'a\nc\n')
+        creator.transform()
+        self.assertFileEqual('a\nc\n', 'foo')
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        shelf_file = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertFileEqual('b\na\n', shelf_file)
