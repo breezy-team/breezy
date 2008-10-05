@@ -33,7 +33,7 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import SymlinkFeature, UnicodeFilenameFeature, TestNotApplicable
+from bzrlib.tests import KnownFailure, SymlinkFeature, TestNotApplicable, UnicodeFilenameFeature
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -233,22 +233,18 @@ class TestSetParents(TestParents):
         self.requireFeature(SymlinkFeature)
         self.requireFeature(UnicodeFilenameFeature)
 
-        os.mkdir('branch1')
-        os.chdir('branch1')
-        self.run_bzr('init')
+        t = self.make_branch_and_tree('tree1')
+        first_revision = t.commit('first post')
 
-        file('hello', 'wt').write('foo')
-        self.run_bzr('add hello')
-        self.run_bzr('commit -m "added regular file"')
+        # 'adiós' ('goodbye' in Spanish) in utf-8
+        os.symlink(u'adi\xc3\xb3s','tree1/link_name')
+        t.add(['link_name'],['link-id'])
+        second_revision = t.commit('second post')
 
-        # encoded 'adiós' ('goodbye' in Spanish)
-        file(u'adi\xc3\xb3s', 'wt').write('this file has an utf-8 name')
-        os.symlink(u'adi\xc3\xb3s','link_to_utf8_file')
-        self.run_bzr('add link_to_utf8_file')
-        self.run_bzr('commit -m "added symlink to file with name in utf-8"')
-
-        os.chdir('..')
-        self.run_bzr('branch branch1 branch2')
+        try:
+            t.set_parent_ids([first_revision, second_revision])
+        except UnicodeEncodeError, e:
+            raise KnownFailure('there is no support for symlinks to non-ASCII targets')
 
 
 class TestAddParent(TestParents):
