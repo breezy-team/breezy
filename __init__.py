@@ -14,6 +14,20 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Reimplementation of shelf commands."""
+
+from bzrlib import commands
+
+
+class cmd_shelve2(commands.Command):
+
+    def run(self):
+        from bzrlib.plugins.shelf2.shelver import Shelver
+        Shelver.from_args().run()
+
+
+commands.register_command(cmd_shelve2)
+
 
 def test_suite():
     from bzrlib.plugins.shelf2 import tests
