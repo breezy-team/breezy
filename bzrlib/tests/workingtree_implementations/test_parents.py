@@ -1,4 +1,5 @@
 # Copyright (C) 2006 Canonical Ltd
+# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +33,7 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import SymlinkFeature, TestNotApplicable
+from bzrlib.tests import SymlinkFeature, UnicodeFilenameFeature, TestNotApplicable
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -226,6 +227,28 @@ class TestSetParents(TestParents):
         t.set_parent_trees([(rev2, rev_tree2), (rev1, rev_tree1),
                             (rev3, rev_tree3)])
         self.assertConsistentParents([rev2, rev3], t)
+
+    def test_utf8_symlink(self):
+        # this tests bug #272444
+        self.requireFeature(SymlinkFeature)
+        self.requireFeature(UnicodeFilenameFeature)
+
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self.run_bzr('init')
+
+        file('hello', 'wt').write('foo')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m "added regular file"')
+
+        # encoded 'adiós' ('goodbye' in Spanish)
+        file(u'adi\xc3\xb3s', 'wt').write('this file has an utf-8 name')
+        os.symlink(u'adi\xc3\xb3s','link_to_utf8_file')
+        self.run_bzr('add link_to_utf8_file')
+        self.run_bzr('commit -m "added symlink to file with name in utf-8"')
+
+        os.chdir('..')
+        self.run_bzr('branch branch1 branch2')
 
 
 class TestAddParent(TestParents):
