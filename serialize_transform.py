@@ -20,6 +20,8 @@ def serialize(tt):
                 content = cur_file.read()
             finally:
                 cur_file.close()
+        if kind == 'directory':
+            content = ''
         yield serializer.bytes_record(content, ((trans_id, kind),))
     yield serializer.end()
 
@@ -40,3 +42,5 @@ def deserialize(tt, input):
     for ((trans_id, kind),), content in iterator:
         if kind == 'file':
             tt.create_file(content, trans_id)
+        if kind == 'directory':
+            tt.create_directory(trans_id)
