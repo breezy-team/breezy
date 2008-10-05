@@ -35,3 +35,4 @@ class TestSerializeTransform(TestCaseWithTransport):
         self.assertEqual({'new-1': 'baz'}, tt2._new_id)
         self.assertEqual({'new-1': tt.root}, tt2._new_parent)
         self.assertEqual({'baz': 'new-1'}, tt2._r_new_id)
+        self.assertEqual({'new-1': 'file'}, tt2._new_contents)

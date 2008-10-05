@@ -13,6 +13,10 @@ def serialize(tt):
     serializer = pack.ContainerSerialiser()
     yield serializer.begin()
     yield serializer.bytes_record(bencode.bencode(attribs), (('attribs',),))
+    for trans_id, kind in tt._new_contents.items():
+        if kind == 'file':
+            content = open(tt._limbo_name(trans_id), 'rb').read()
+        yield serializer.bytes_record(content, ((trans_id, kind),))
     yield serializer.end()
 
 
@@ -29,3 +33,6 @@ def deserialize(tt, input):
     tt._new_parent = attribs['_new_parent']
     tt._new_id = attribs['_new_id']
     tt._r_new_id = dict((v, k) for k, v in tt._new_id.items())
+    for ((trans_id, kind),), content in iterator:
+        if kind == 'file':
+            tt.create_file(content, trans_id)
