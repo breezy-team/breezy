@@ -78,6 +78,7 @@ from bzrlib import (
     errors,
     mail_client,
     osutils,
+    registry,
     symbol_versioning,
     trace,
     ui,
@@ -1131,7 +1132,55 @@ class AuthenticationConfig(object):
         return password
 
     def decode_password(self, credentials, encoding):
+        try:
+            cs = credential_store_registry.get_credential_store(encoding)
+        except KeyError:
+            raise ValueError('%r is not a known password_encoding' % encoding)
+        credentials['password'] = cs.decode_password(credentials)
         return credentials
+
+
+class CredentialStoreRegistry(registry.Registry):
+    """A class that registers credential stores.
+
+    A credential store provides access to credentials via the password_encoding
+    field in authentication.conf sections.
+
+    Except for stores provided by bzr itself,most stores are expected to be
+    provided by plugins that will therefore use
+    register_lazy(password_encoding, module_name, member_name, help=help,
+    info=info) to install themselves.
+    """
+
+    def get_credential_store(self, encoding=None):
+        cs = self.get(encoding)
+        if callable(cs):
+            cs = cs()
+        return cs
+
+
+credential_store_registry = CredentialStoreRegistry()
+
+
+class CredentialStore(object):
+    """An abstract class to implement storage for credentials"""
+
+    def decode_password(self, credentials):
+        """Returns a password for the provided credentials in clear text."""
+        raise NotImplementedError(self.decode_password)
+
+
+class PlainTextCredentialStore(CredentialStore):
+    """Plain text credential store for the authentication.conf file."""
+
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        return credentials['password']
+
+
+credential_store_registry.register('plain', PlainTextCredentialStore,
+                                   help=PlainTextCredentialStore.__doc__)
+credential_store_registry.default_key = 'plain'
 
 
 class BzrDirConfig(object):
