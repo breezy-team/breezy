@@ -14,9 +14,15 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests.TestUtil import TestLoader
-from bzrlib.plugins.shelf2.tests import test_serialize_transform
+from bzrlib.tests.TestUtil import TestLoader, TestSuite
+from bzrlib.plugins.shelf2.tests import (
+    test_serialize_transform,
+    test_prepare_shelf,
+)
 
 
 def test_suite():
-    return TestLoader().loadTestsFromModule(test_serialize_transform)
+    suite = TestSuite()
+    suite.addTest(TestLoader().loadTestsFromModule(test_serialize_transform))
+    suite.addTest(TestLoader().loadTestsFromModule(test_prepare_shelf))
+    return suite
