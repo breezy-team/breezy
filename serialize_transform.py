@@ -6,12 +6,17 @@ def serialize(tt):
     new_name = dict((k, v.encode('utf-8')) for k, v in tt._new_name.items())
     new_executability = dict((k, int(v)) for k, v in
                              tt._new_executability.items())
+    tree_path_ids = dict((k.encode('utf-8'), v)
+                         for k, v in tt._tree_path_ids.items())
     attribs = {
         '_id_number': tt._id_number,
         '_new_name': new_name,
         '_new_parent': tt._new_parent,
         '_new_executability': new_executability,
         '_new_id': tt._new_id,
+        '_tree_path_ids': tree_path_ids,
+        '_removed_id': list(tt._removed_id),
+        '_removed_contents': list(tt._removed_contents),
         }
     serializer = pack.ContainerSerialiser()
     yield serializer.begin()
@@ -49,3 +54,11 @@ def deserialize(tt, input):
             tt.create_file(content, trans_id)
         if kind == 'directory':
             tt.create_directory(trans_id)
+    tt._tree_path_ids = {}
+    tt._tree_id_paths = {}
+    for bytepath, trans_id in attribs['_tree_path_ids'].items():
+        path = bytepath.decode('utf-8')
+        tt._tree_path_ids[path] = trans_id
+        tt._tree_id_paths[trans_id] = path
+    tt._removed_id = set(attribs['_removed_id'])
+    tt._removed_contents = set(attribs['_removed_contents'])

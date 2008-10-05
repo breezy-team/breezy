@@ -22,7 +22,7 @@ from bzrlib.tests import TestCaseWithTransport
 
 class TestSerializeTransform(TestCaseWithTransport):
 
-    def test_roundtrip(self):
+    def test_roundtrip_creation(self):
         tree = self.make_branch_and_tree('.')
         tt = transform.TransformPreview(tree)
         self.addCleanup(tt.finalize)
@@ -30,6 +30,7 @@ class TestSerializeTransform(TestCaseWithTransport):
         tt.new_directory('qux', tt.root, 'quxx')
         output = serialize(tt)
         tt2 = transform.TransformPreview(tree)
+        self.addCleanup(tt2.finalize)
         deserialize(tt2, output)
         self.assertEqual(3, tt2._id_number)
         self.assertEqual({'new-1': u'foo\u1234',
@@ -46,3 +47,25 @@ class TestSerializeTransform(TestCaseWithTransport):
         finally:
             foo_limbo.close()
         self.assertEqual('bar', foo_content)
+
+    def test_roundtrip_destruction(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([u'foo\u1234', 'bar'])
+        tree.add([u'foo\u1234', 'bar'], ['foo-id', 'bar-id'])
+        tt = transform.TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+        tt.unversion_file(foo_trans_id)
+        bar_trans_id = tt.trans_id_tree_file_id('bar-id')
+        tt.delete_contents(bar_trans_id)
+        tt2 = transform.TransformPreview(tree)
+        self.addCleanup(tt2.finalize)
+        deserialize(tt2, serialize(tt))
+        self.assertEqual({u'foo\u1234': foo_trans_id,
+                          'bar': bar_trans_id,
+                          '': tt.root}, tt2._tree_path_ids)
+        self.assertEqual({foo_trans_id: u'foo\u1234',
+                          bar_trans_id: 'bar',
+                          tt.root: ''}, tt2._tree_id_paths)
+        self.assertEqual(set([foo_trans_id]), tt2._removed_id)
+        self.assertEqual(set([bar_trans_id]), tt2._removed_contents)
