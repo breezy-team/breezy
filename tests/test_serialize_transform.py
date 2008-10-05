@@ -14,24 +14,28 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 
 from bzrlib import transform
 from bzrlib.plugins.shelf2.serialize_transform import (serialize, deserialize)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import tests
 
 
-class TestSerializeTransform(TestCaseWithTransport):
+class TestSerializeTransform(tests.TestCaseWithTransport):
+
+    def get_two_previews(self, tree):
+        tt = transform.TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        tt2 = transform.TransformPreview(tree)
+        self.addCleanup(tt2.finalize)
+        return tt, tt2
 
     def test_roundtrip_creation(self):
         tree = self.make_branch_and_tree('.')
-        tt = transform.TransformPreview(tree)
-        self.addCleanup(tt.finalize)
+        tt, tt2 = self.get_two_previews(tree)
         tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
         tt.new_directory('qux', tt.root, 'quxx')
-        output = serialize(tt)
-        tt2 = transform.TransformPreview(tree)
-        self.addCleanup(tt2.finalize)
-        deserialize(tt2, output)
+        deserialize(tt2, serialize(tt))
         self.assertEqual(3, tt2._id_number)
         self.assertEqual({'new-1': u'foo\u1234',
                           'new-2': 'qux'}, tt2._new_name)
@@ -52,14 +56,11 @@ class TestSerializeTransform(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree([u'foo\u1234', 'bar'])
         tree.add([u'foo\u1234', 'bar'], ['foo-id', 'bar-id'])
-        tt = transform.TransformPreview(tree)
-        self.addCleanup(tt.finalize)
+        tt, tt2 = self.get_two_previews(tree)
         foo_trans_id = tt.trans_id_tree_file_id('foo-id')
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_file_id('bar-id')
         tt.delete_contents(bar_trans_id)
-        tt2 = transform.TransformPreview(tree)
-        self.addCleanup(tt2.finalize)
         deserialize(tt2, serialize(tt))
         self.assertEqual({u'foo\u1234': foo_trans_id,
                           'bar': bar_trans_id,
