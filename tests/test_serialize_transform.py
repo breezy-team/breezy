@@ -79,3 +79,10 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
                           tt.root: ''}, tt2._tree_id_paths)
         self.assertEqual(set([foo_trans_id]), tt2._removed_id)
         self.assertEqual(set([bar_trans_id]), tt2._removed_contents)
+
+    def test_roundtrip_missing(self):
+        tree = self.make_branch_and_tree('.')
+        tt, tt2 = self.get_two_previews(tree)
+        boo_trans_id = tt.trans_id_file_id('boo')
+        deserialize(tt2, serialize(tt))
+        self.assertEqual({'boo': boo_trans_id}, tt2._non_present_ids)

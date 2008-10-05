@@ -19,6 +19,7 @@ def serialize(tt):
         '_tree_path_ids': tree_path_ids,
         '_removed_id': list(tt._removed_id),
         '_removed_contents': list(tt._removed_contents),
+        '_non_present_ids': tt._non_present_ids,
         }
     serializer = pack.ContainerSerialiser()
     yield serializer.begin()
@@ -53,13 +54,6 @@ def deserialize(tt, input):
         attribs['_new_executability'].items())
     tt._new_id = attribs['_new_id']
     tt._r_new_id = dict((v, k) for k, v in tt._new_id.items())
-    for ((trans_id, kind),), content in iterator:
-        if kind == 'file':
-            tt.create_file(content, trans_id)
-        if kind == 'directory':
-            tt.create_directory(trans_id)
-        if kind == 'symlink':
-            tt.create_symlink(content, trans_id)
     tt._tree_path_ids = {}
     tt._tree_id_paths = {}
     for bytepath, trans_id in attribs['_tree_path_ids'].items():
@@ -68,3 +62,11 @@ def deserialize(tt, input):
         tt._tree_id_paths[trans_id] = path
     tt._removed_id = set(attribs['_removed_id'])
     tt._removed_contents = set(attribs['_removed_contents'])
+    tt._non_present_ids = attribs['_non_present_ids']
+    for ((trans_id, kind),), content in iterator:
+        if kind == 'file':
+            tt.create_file(content, trans_id)
+        if kind == 'directory':
+            tt.create_directory(trans_id)
+        if kind == 'symlink':
+            tt.create_symlink(content, trans_id)
