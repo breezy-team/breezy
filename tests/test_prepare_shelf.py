@@ -59,6 +59,11 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.transform()
         self.assertEqual('foo/baz', tree.id2path('baz-id'))
 
+    def assertShelvedFileEqual(self, expected_content, creator, file_id):
+        s_trans_id = creator.shelf_transform.trans_id_file_id(file_id)
+        shelf_file = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertFileEqual(expected_content, shelf_file)
+
     def test_shelve_content_change(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
@@ -73,6 +78,19 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_text('foo-id', 'a\nc\n')
         creator.transform()
         self.assertFileEqual('a\nc\n', 'foo')
-        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
-        shelf_file = creator.shelf_transform._limbo_name(s_trans_id)
-        self.assertFileEqual('b\na\n', shelf_file)
+        self.assertShelvedFileEqual('b\na\n', creator, 'foo-id')
+
+    def test_shelve_creation(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('Empty tree')
+        self.build_tree_contents([('foo', 'a\n')])
+        tree.add('foo', 'foo-id')
+        creator = prepare_shelf.ShelfCreator(tree)
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('add file', 'foo-id', 'file')], list(creator))
+        creator.shelve_creation('foo-id', 'file')
+        creator.transform()
+        self.failIfExists('foo')
+        self.assertShelvedFileEqual('a\n', creator, 'foo-id')
