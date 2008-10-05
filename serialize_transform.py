@@ -1,3 +1,4 @@
+from bzrlib import pack
 from bzrlib.util import bencode
 
 
@@ -9,10 +10,19 @@ def serialize(tt):
         '_new_parent': tt._new_parent,
         '_new_id': tt._new_id,
         }
-    return bencode.bencode(attribs)
+    serializer = pack.ContainerSerialiser()
+    yield serializer.begin()
+    yield serializer.bytes_record(bencode.bencode(attribs), (('attribs',),))
+    yield serializer.end()
+
 
 def deserialize(tt, input):
-    attribs = bencode.bdecode(input)
+    parser = pack.ContainerPushParser()
+    for bytes in input:
+        parser.accept_bytes(bytes)
+    iterator = iter(parser.read_pending_records())
+    names, content = iterator.next()
+    attribs = bencode.bdecode(content)
     tt._id_number = attribs['_id_number']
     tt._new_name = dict((k, v.decode('utf-8'))
                         for k, v in attribs['_new_name'].items())
