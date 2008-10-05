@@ -36,3 +36,9 @@ class TestSerializeTransform(TestCaseWithTransport):
         self.assertEqual({'new-1': tt.root}, tt2._new_parent)
         self.assertEqual({'baz': 'new-1'}, tt2._r_new_id)
         self.assertEqual({'new-1': 'file'}, tt2._new_contents)
+        foo_limbo = open(tt2._limbo_name('new-1'), 'rb')
+        try:
+            foo_content = foo_limbo.read()
+        finally:
+            foo_limbo.close()
+        self.assertEqual('bar', foo_content)

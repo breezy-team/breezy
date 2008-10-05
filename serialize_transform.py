@@ -15,7 +15,11 @@ def serialize(tt):
     yield serializer.bytes_record(bencode.bencode(attribs), (('attribs',),))
     for trans_id, kind in tt._new_contents.items():
         if kind == 'file':
-            content = open(tt._limbo_name(trans_id), 'rb').read()
+            cur_file = open(tt._limbo_name(trans_id), 'rb')
+            try:
+                content = cur_file.read()
+            finally:
+                cur_file.close()
         yield serializer.bytes_record(content, ((trans_id, kind),))
     yield serializer.end()
 
