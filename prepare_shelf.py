@@ -17,24 +17,27 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge3
-from bzrlib import transform
+from bzrlib import merge3, pack, transform
+
+from bzrlib.plugins.shelf2 import serialize_transform
 
 
 class ShelfCreator(object):
 
-    def __init__(self, work_tree):
+    def __init__(self, work_tree, target_tree):
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
-        self.base_tree = work_tree.basis_tree()
-        self.shelf_transform = transform.TransformPreview(self.base_tree)
+        self.target_tree = target_tree
+        self.shelf_transform = transform.TransformPreview(self.target_tree)
         self.renames = {}
-        self.iter_changes = work_tree.iter_changes(self.base_tree)
+        self.creation = {}
+        self.iter_changes = work_tree.iter_changes(self.target_tree)
 
     def __iter__(self):
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in self.iter_changes:
             if kind[0] is None or versioned[0] == False:
+                self.creation[file_id] = (kind[1], names[1], parents[1])
                 yield ('add file', file_id, kind[1])
             else:
                 if names[0] != names[1] or parents[0] != parents[1]:
@@ -67,20 +70,25 @@ class ShelfCreator(object):
         inverse_lines = self._inverse_lines(new_lines, file_id)
         self.shelf_transform.create_file(inverse_lines, s_trans_id)
 
-    def shelve_creation(self, file_id, kind):
+    def shelve_creation(self, file_id):
+        kind, name, parent = self.creation[file_id]
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
-        self.work_transform.delete_contents(w_trans_id)
+        if parent is not None:
+            self.work_transform.delete_contents(w_trans_id)
         self.work_transform.unversion_file(w_trans_id)
 
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
-        if kind == 'file':
-            lines = self.read_tree_lines(file_id)
-            self.shelf_transform.create_file(lines, s_trans_id)
-        if kind == 'directory':
-            self.shelf_transform.create_directory(s_trans_id)
-        if kind == 'symlink':
-            target = self.work_tree.get_symlink_target(file_id)
-            self.shelf_transform.create_symlink(target, s_trans_id)
+        if parent is not None:
+            s_parent_id = self.shelf_transform.trans_id_file_id(parent)
+            self.shelf_transform.adjust_path(name, s_parent_id, s_trans_id)
+            if kind == 'file':
+                lines = self.read_tree_lines(file_id)
+                self.shelf_transform.create_file(lines, s_trans_id)
+            if kind == 'directory':
+                self.shelf_transform.create_directory(s_trans_id)
+            if kind == 'symlink':
+                target = self.work_tree.get_symlink_target(file_id)
+                self.shelf_transform.create_symlink(target, s_trans_id)
         self.shelf_transform.version_file(file_id, s_trans_id)
 
     def read_tree_lines(self, file_id):
@@ -92,9 +100,9 @@ class ShelfCreator(object):
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
-        base_lines = self.base_tree.get_file_lines(file_id)
-        tree_lines = self.read_tree_lines(file_id)
-        return merge3.Merge3(new_lines, base_lines, tree_lines).merge_lines()
+        target_lines = self.target_tree.get_file_lines(file_id)
+        work_lines = self.read_tree_lines(file_id)
+        return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):
         self.work_transform.finalize()
@@ -102,3 +110,45 @@ class ShelfCreator(object):
 
     def transform(self):
         self.work_transform.apply()
+
+    def make_shelf_filename(self):
+        transport = self.work_tree.bzrdir.root_transport.clone('.shelf2')
+        transport.ensure_base()
+        return transport.local_abspath('01')
+
+    def write_shelf(self):
+        filename = self.make_shelf_filename()
+        shelf_file = open(filename, 'wb')
+        try:
+            serializer = pack.ContainerSerialiser()
+            shelf_file.write(serializer.begin())
+            for bytes in serialize_transform.serialize(
+                self.shelf_transform, serializer):
+                shelf_file.write(bytes)
+            shelf_file.write(serializer.end())
+        finally:
+            shelf_file.close()
+        return filename
+
+
+class Unshelver(object):
+
+    def __init__(self, tree, base_tree, transform):
+        self.tree = tree
+        self.transform = transform
+
+    @classmethod
+    def from_tree_and_shelf(klass, tree, shelf_filename):
+        parser = pack.ContainerPushParser()
+        shelf_file = open(shelf_filename, 'rb')
+        try:
+            parser.accept_bytes(shelf_file.read())
+        finally:
+            shelf_file.close()
+        tt = transform.TreeTransform(tree)
+        records = iter(parser.read_pending_records())
+        serialize_transform.deserialize(tt, records)
+        return klass(tree, tree, tt)
+
+    def unshelve(self):
+        self.transform.apply()
