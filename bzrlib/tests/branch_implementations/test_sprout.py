@@ -1,4 +1,5 @@
 # Copyright (C) 2007 Canonical Ltd
+# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +17,13 @@
 
 """Tests for Branch.sprout()"""
 
+import os
 from bzrlib import (
     remote,
     revision as _mod_revision,
     tests,
     )
+from bzrlib.tests import KnownFailure, SymlinkFeature, UnicodeFilenameFeature
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -97,3 +100,21 @@ class TestSprout(TestCaseWithBranch):
             revision_id='rev1a').open_workingtree()
         self.assertEqual('rev1a', wt2.last_revision())
         self.failUnlessExists('target/a')
+
+    def test_sprout_with_utf8_symlink(self):
+        # this tests bug #272444 (also tested by TestSetParents.test_utf8_symlink at test_parents.py)
+        self.requireFeature(SymlinkFeature)
+        self.requireFeature(UnicodeFilenameFeature)
+
+        tree = self.make_branch_and_tree('tree1')
+
+        # 'adiós' ('goodbye' in Spanish) in utf-8
+        os.symlink(u'adi\xc3\xb3s','tree1/link_name')
+        tree.add(['link_name'],['link-id'])
+        revision = tree.commit('added a link to an utf-8 target')
+
+        try:
+            tree.bzrdir.sprout('target')
+        except UnicodeEncodeError, e:
+            raise KnownFailure('there is no support for symlinks to non-ASCII targets')
+
