@@ -233,16 +233,15 @@ class TestSetParents(TestParents):
         self.requireFeature(SymlinkFeature)
         self.requireFeature(UnicodeFilenameFeature)
 
-        t = self.make_branch_and_tree('tree1')
-        first_revision = t.commit('first post')
+        tree = self.make_branch_and_tree('tree1')
 
         # 'adiós' ('goodbye' in Spanish) in utf-8
         os.symlink(u'adi\xc3\xb3s','tree1/link_name')
-        t.add(['link_name'],['link-id'])
-        second_revision = t.commit('second post')
+        tree.add(['link_name'],['link-id'])
+        revision = tree.commit('added a link to an utf-8 target')
 
         try:
-            t.set_parent_ids([first_revision, second_revision])
+            tree.set_parent_ids([revision])
         except UnicodeEncodeError, e:
             raise KnownFailure('there is no support for symlinks to non-ASCII targets')
 
