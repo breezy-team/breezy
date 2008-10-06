@@ -1,10 +1,9 @@
 import os
 
-from bzrlib import pack
 from bzrlib.util import bencode
 
 
-def serialize(tt):
+def serialize(tt, serializer):
     new_name = dict((k, v.encode('utf-8')) for k, v in tt._new_name.items())
     new_executability = dict((k, int(v)) for k, v in
                              tt._new_executability.items())
@@ -21,8 +20,6 @@ def serialize(tt):
         '_removed_contents': list(tt._removed_contents),
         '_non_present_ids': tt._non_present_ids,
         }
-    serializer = pack.ContainerSerialiser()
-    yield serializer.begin()
     yield serializer.bytes_record(bencode.bencode(attribs), (('attribs',),))
     for trans_id, kind in tt._new_contents.items():
         if kind == 'file':
@@ -36,15 +33,10 @@ def serialize(tt):
         if kind == 'symlink':
             content = os.readlink(tt._limbo_name(trans_id))
         yield serializer.bytes_record(content, ((trans_id, kind),))
-    yield serializer.end()
 
 
-def deserialize(tt, input):
-    parser = pack.ContainerPushParser()
-    for bytes in input:
-        parser.accept_bytes(bytes)
-    iterator = iter(parser.read_pending_records())
-    names, content = iterator.next()
+def deserialize(tt, records):
+    names, content = records.next()
     attribs = bencode.bdecode(content)
     tt._id_number = attribs['_id_number']
     tt._new_name = dict((k, v.decode('utf-8'))
@@ -63,7 +55,7 @@ def deserialize(tt, input):
     tt._removed_id = set(attribs['_removed_id'])
     tt._removed_contents = set(attribs['_removed_contents'])
     tt._non_present_ids = attribs['_non_present_ids']
-    for ((trans_id, kind),), content in iterator:
+    for ((trans_id, kind),), content in records:
         if kind == 'file':
             tt.create_file(content, trans_id)
         if kind == 'directory':
