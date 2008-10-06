@@ -92,5 +92,10 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual([('add file', 'foo-id', 'file')], list(creator))
         creator.shelve_creation('foo-id', 'file')
         creator.transform()
+        self.assertRaises(StopIteration,
+                          tree.iter_entries_by_dir(['foo-id']).next)
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        self.assertEqual('foo-id',
+                         creator.shelf_transform.final_file_id(s_trans_id))
         self.failIfExists('foo')
         self.assertShelvedFileEqual('a\n', creator, 'foo-id')

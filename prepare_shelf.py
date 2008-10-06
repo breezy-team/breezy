@@ -70,11 +70,13 @@ class ShelfCreator(object):
     def shelve_creation(self, file_id, kind):
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
+        self.work_transform.unversion_file(w_trans_id)
 
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         if kind == 'file':
             lines = self.read_tree_lines(file_id)
             self.shelf_transform.create_file(lines, s_trans_id)
+        self.shelf_transform.version_file(file_id, s_trans_id)
 
     def read_tree_lines(self, file_id):
         tree_file = self.work_tree.get_file(file_id)
