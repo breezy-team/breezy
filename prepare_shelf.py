@@ -30,12 +30,14 @@ class ShelfCreator(object):
         self.target_tree = target_tree
         self.shelf_transform = transform.TransformPreview(self.target_tree)
         self.renames = {}
+        self.creation = {}
         self.iter_changes = work_tree.iter_changes(self.target_tree)
 
     def __iter__(self):
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in self.iter_changes:
             if kind[0] is None or versioned[0] == False:
+                self.creation[file_id] = (kind[1], names[1], parents[1])
                 yield ('add file', file_id, kind[1])
             else:
                 if names[0] != names[1] or parents[0] != parents[1]:
@@ -68,20 +70,25 @@ class ShelfCreator(object):
         inverse_lines = self._inverse_lines(new_lines, file_id)
         self.shelf_transform.create_file(inverse_lines, s_trans_id)
 
-    def shelve_creation(self, file_id, kind):
+    def shelve_creation(self, file_id):
+        kind, name, parent = self.creation[file_id]
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
-        self.work_transform.delete_contents(w_trans_id)
+        if parent is not None:
+            self.work_transform.delete_contents(w_trans_id)
         self.work_transform.unversion_file(w_trans_id)
 
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
-        if kind == 'file':
-            lines = self.read_tree_lines(file_id)
-            self.shelf_transform.create_file(lines, s_trans_id)
-        if kind == 'directory':
-            self.shelf_transform.create_directory(s_trans_id)
-        if kind == 'symlink':
-            target = self.work_tree.get_symlink_target(file_id)
-            self.shelf_transform.create_symlink(target, s_trans_id)
+        if parent is not None:
+            s_parent_id = self.shelf_transform.trans_id_file_id(parent)
+            self.shelf_transform.adjust_path(name, s_parent_id, s_trans_id)
+            if kind == 'file':
+                lines = self.read_tree_lines(file_id)
+                self.shelf_transform.create_file(lines, s_trans_id)
+            if kind == 'directory':
+                self.shelf_transform.create_directory(s_trans_id)
+            if kind == 'symlink':
+                target = self.work_tree.get_symlink_target(file_id)
+                self.shelf_transform.create_symlink(target, s_trans_id)
         self.shelf_transform.version_file(file_id, s_trans_id)
 
     def read_tree_lines(self, file_id):

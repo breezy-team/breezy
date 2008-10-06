@@ -94,8 +94,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual([('add file', 'bar-id', 'directory'),
                           ('add file', 'foo-id', 'file')],
                           sorted(list(creator)))
-        creator.shelve_creation('foo-id', 'file')
-        creator.shelve_creation('bar-id', 'directory')
+        creator.shelve_creation('foo-id')
+        creator.shelve_creation('bar-id')
         creator.transform()
         self.assertRaises(StopIteration,
                           tree.iter_entries_by_dir(['foo-id']).next)
@@ -120,7 +120,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('add file', 'foo-id', 'symlink')], list(creator))
-        creator.shelve_creation('foo-id', 'symlink')
+        creator.shelve_creation('foo-id')
         creator.transform()
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         self.failIfExists('foo')
@@ -133,7 +133,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
         list(creator)
-        creator.shelve_creation('foo-id', 'file')
+        creator.shelve_creation('foo-id')
         filename = creator.write_shelf()
         self.assertContainsRe(filename, 'tree/.shelf2/01$')
         self.failUnlessExists(filename)
