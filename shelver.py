@@ -23,7 +23,7 @@ import sys
 import tempfile
 
 from bzrlib import (diff, osutils, patches, workingtree)
-from bzrlib.plugins.bzrtools import hunk_selector
+from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
 from bzrlib.plugins.shelf2 import prepare_shelf
 
@@ -37,6 +37,7 @@ class Shelver(object):
         self.diff_file = StringIO()
         self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
                                          self.diff_file)
+        self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
 
     @classmethod
     def from_args(klass):
@@ -113,7 +114,7 @@ class Shelver(object):
         final_patch = copy.copy(parsed)
         final_patch.hunks = []
         for hunk in parsed.hunks:
-            print hunk
+            self.diff_writer.write(str(hunk))
             char = self.prompt('Shelve? [y/n]')
             if char == 'n':
                 final_patch.hunks.append(hunk)
