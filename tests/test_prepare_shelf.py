@@ -16,8 +16,8 @@
 
 import os
 
-from bzrlib import tests
-from bzrlib.plugins.shelf2 import prepare_shelf
+from bzrlib import pack, tests, transform
+from bzrlib.plugins.shelf2 import prepare_shelf, serialize_transform
 
 
 class TestPrepareShelf(tests.TestCaseWithTransport):
@@ -126,3 +126,23 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.failIfExists('foo')
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual('bar', os.readlink(limbo_name))
+
+    def test_write_shelf(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        creator = prepare_shelf.ShelfCreator(tree)
+        list(creator)
+        creator.shelve_creation('foo-id', 'file')
+        filename = creator.write_shelf()
+        self.assertContainsRe(filename, 'tree/.shelf2/01$')
+        self.failUnlessExists(filename)
+        parser = pack.ContainerPushParser()
+        shelf_file = open(filename, 'rb')
+        try:
+            parser.accept_bytes(shelf_file.read())
+        finally:
+            shelf_file.close()
+        tt = transform.TransformPreview(tree)
+        serialize_transform.deserialize(tt,
+            iter(parser.read_pending_records()))

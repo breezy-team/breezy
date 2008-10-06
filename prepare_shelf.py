@@ -17,8 +17,9 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge3
-from bzrlib import transform
+from bzrlib import merge3, pack, transform
+
+from bzrlib.plugins.shelf2 import serialize_transform
 
 
 class ShelfCreator(object):
@@ -102,3 +103,22 @@ class ShelfCreator(object):
 
     def transform(self):
         self.work_transform.apply()
+
+    def make_shelf_filename(self):
+        transport = self.work_tree.bzrdir.root_transport.clone('.shelf2')
+        transport.ensure_base()
+        return transport.local_abspath('01')
+
+    def write_shelf(self):
+        filename = self.make_shelf_filename()
+        shelf_file = open(filename, 'wb')
+        try:
+            serializer = pack.ContainerSerialiser()
+            shelf_file.write(serializer.begin())
+            for bytes in serialize_transform.serialize(
+                self.shelf_transform, serializer):
+                shelf_file.write(bytes)
+            shelf_file.write(serializer.end())
+        finally:
+            shelf_file.close()
+        return filename
