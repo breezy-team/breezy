@@ -23,7 +23,8 @@ import sys
 import tempfile
 
 from bzrlib import (diff, osutils, patches, workingtree)
-from bzrlib.plugins.bzrtools import hunk_selector, patch
+from bzrlib.plugins.bzrtools import hunk_selector
+from bzrlib.plugins.bzrtools.patch import run_patch
 from bzrlib.plugins.shelf2 import prepare_shelf
 
 
@@ -86,6 +87,26 @@ class Shelver(object):
         print ""
         return char
 
+    def get_patched_text(self, file_id, patch):
+        target_file = self.target_tree.get_file(file_id)
+        try:
+            if len(patch.hunks) == 0:
+                return target_file.read()
+            filename = os.path.join(self.tempdir, 'patch-target')
+            outfile = open(filename, 'w+b')
+            try:
+                osutils.pumpfile(target_file, outfile)
+            finally:
+                outfile.close()
+        finally:
+            target_file.close()
+        run_patch('.', [str(patch)], target_file=filename)
+        outfile = open(filename, 'rb')
+        try:
+            return outfile.read()
+        finally:
+            outfile.close()
+
     def handle_modify_text(self, creator, file_id):
         parsed = self.get_parsed_patch(file_id)
         selected_hunks = []
@@ -96,23 +117,5 @@ class Shelver(object):
             char = self.prompt('Shelve? [y/n]')
             if char == 'n':
                 final_patch.hunks.append(hunk)
-        target_file = self.target_tree.get_file(file_id)
-        try:
-            if len(final_patch.hunks) == 0:
-                creator.shelve_text(file_id, target_file.read())
-                return
-            filename = os.path.join(self.tempdir, 'patch-target')
-            outfile = open(filename, 'w+b')
-            try:
-                osutils.pumpfile(target_file, outfile)
-            finally:
-                outfile.close()
-        finally:
-            target_file.close()
-        patch.run_patch('.',
-            [str(final_patch)], target_file=filename)
-        outfile = open(filename, 'rb')
-        try:
-            creator.shelve_text(file_id, outfile.read())
-        finally:
-            outfile.close()
+        patched_text = self.get_patched_text(file_id, final_patch)
+        creator.shelve_text(file_id, patched_text)
