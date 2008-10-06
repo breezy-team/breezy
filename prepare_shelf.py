@@ -24,13 +24,13 @@ from bzrlib.plugins.shelf2 import serialize_transform
 
 class ShelfCreator(object):
 
-    def __init__(self, work_tree):
+    def __init__(self, work_tree, target_tree):
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
-        self.base_tree = work_tree.basis_tree()
-        self.shelf_transform = transform.TransformPreview(self.base_tree)
+        self.target_tree = target_tree
+        self.shelf_transform = transform.TransformPreview(self.target_tree)
         self.renames = {}
-        self.iter_changes = work_tree.iter_changes(self.base_tree)
+        self.iter_changes = work_tree.iter_changes(self.target_tree)
 
     def __iter__(self):
         for (file_id, paths, changed, versioned, parents, names, kind,
@@ -93,9 +93,9 @@ class ShelfCreator(object):
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
-        base_lines = self.base_tree.get_file_lines(file_id)
-        tree_lines = self.read_tree_lines(file_id)
-        return merge3.Merge3(new_lines, base_lines, tree_lines).merge_lines()
+        target_lines = self.target_tree.get_file_lines(file_id)
+        work_lines = self.read_tree_lines(file_id)
+        return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):
         self.work_transform.finalize()
