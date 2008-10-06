@@ -78,6 +78,9 @@ class ShelfCreator(object):
             self.shelf_transform.create_file(lines, s_trans_id)
         if kind == 'directory':
             self.shelf_transform.create_directory(s_trans_id)
+        if kind == 'symlink':
+            target = self.work_tree.get_symlink_target(file_id)
+            self.shelf_transform.create_symlink(target, s_trans_id)
         self.shelf_transform.version_file(file_id, s_trans_id)
 
     def read_tree_lines(self, file_id):

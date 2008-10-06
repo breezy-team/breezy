@@ -14,6 +14,8 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+
 from bzrlib import tests
 from bzrlib.plugins.shelf2 import prepare_shelf
 
@@ -106,3 +108,21 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         s_bar_trans_id = creator.shelf_transform.trans_id_file_id('bar-id')
         self.assertEqual('directory',
             creator.shelf_transform.final_kind(s_bar_trans_id))
+
+    def test_shelve_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('Empty tree')
+        os.symlink('bar', 'foo')
+        tree.add('foo', 'foo-id')
+        creator = prepare_shelf.ShelfCreator(tree)
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('add file', 'foo-id', 'symlink')], list(creator))
+        creator.shelve_creation('foo-id', 'symlink')
+        creator.transform()
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        self.failIfExists('foo')
+        limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertEqual('bar', os.readlink(limbo_name))
