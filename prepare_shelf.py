@@ -122,3 +122,26 @@ class ShelfCreator(object):
         finally:
             shelf_file.close()
         return filename
+
+
+class Unshelver(object):
+
+    def __init__(self, tree, base_tree, transform):
+        self.tree = tree
+        self.transform = transform
+
+    @classmethod
+    def from_tree_and_shelf(klass, tree, shelf_filename):
+        parser = pack.ContainerPushParser()
+        shelf_file = open(shelf_filename, 'rb')
+        try:
+            parser.accept_bytes(shelf_file.read())
+        finally:
+            shelf_file.close()
+        tt = transform.TreeTransform(tree)
+        records = iter(parser.read_pending_records())
+        serialize_transform.deserialize(tt, records)
+        return klass(tree, tree, tt)
+
+    def unshelve(self):
+        self.transform.apply()

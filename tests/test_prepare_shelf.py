@@ -146,3 +146,19 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tt = transform.TransformPreview(tree)
         serialize_transform.deserialize(tt,
             iter(parser.read_pending_records()))
+
+
+class TestUnshelver(tests.TestCaseWithTransport):
+
+    def test_unshelve(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo', 'bar')])
+        tree.add('foo', 'foo-id')
+        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        list(creator)
+        creator.shelve_creation('foo-id', 'file')
+        creator.transform()
+        filename = creator.write_shelf()
+        unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
+        unshelver.unshelve()
+        self.assertFileEqual('bar', 'tree/foo')
