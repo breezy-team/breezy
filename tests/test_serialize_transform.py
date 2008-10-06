@@ -16,7 +16,7 @@
 
 import os
 
-from bzrlib import transform
+from bzrlib import pack, transform
 from bzrlib.plugins.shelf2.serialize_transform import (serialize, deserialize)
 from bzrlib import tests
 
@@ -30,12 +30,22 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.addCleanup(tt2.finalize)
         return tt, tt2
 
+    @staticmethod
+    def reserialize(tt, tt2):
+        serializer = pack.ContainerSerialiser()
+        parser = pack.ContainerPushParser()
+        parser.accept_bytes(serializer.begin())
+        for bytes in serialize(tt, serializer):
+            parser.accept_bytes(bytes)
+        parser.accept_bytes(serializer.end())
+        deserialize(tt2, iter(parser.read_pending_records()))
+
     def test_roundtrip_creation(self):
         tree = self.make_branch_and_tree('.')
         tt, tt2 = self.get_two_previews(tree)
         tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
         tt.new_directory('qux', tt.root, 'quxx')
-        deserialize(tt2, serialize(tt))
+        self.reserialize(tt, tt2)
         self.assertEqual(3, tt2._id_number)
         self.assertEqual({'new-1': u'foo\u1234',
                           'new-2': 'qux'}, tt2._new_name)
@@ -57,7 +67,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tt, tt2 = self.get_two_previews(tree)
         tt.new_symlink('foo', tt.root, 'bar')
-        deserialize(tt2, serialize(tt))
+        self.reserialize(tt, tt2)
         foo_content = os.readlink(tt2._limbo_name('new-1'))
         self.assertEqual('bar', foo_content)
 
@@ -70,7 +80,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_file_id('bar-id')
         tt.delete_contents(bar_trans_id)
-        deserialize(tt2, serialize(tt))
+        self.reserialize(tt, tt2)
         self.assertEqual({u'foo\u1234': foo_trans_id,
                           'bar': bar_trans_id,
                           '': tt.root}, tt2._tree_path_ids)
@@ -84,5 +94,5 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tt, tt2 = self.get_two_previews(tree)
         boo_trans_id = tt.trans_id_file_id('boo')
-        deserialize(tt2, serialize(tt))
+        self.reserialize(tt, tt2)
         self.assertEqual({'boo': boo_trans_id}, tt2._non_present_ids)
