@@ -153,6 +153,8 @@ class TestUnshelver(tests.TestCaseWithTransport):
     def test_unshelve(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/foo', 'bar')])
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         tree.add('foo', 'foo-id')
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
         list(creator)
