@@ -2136,7 +2136,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
-            self.assert_(isinstance(name, basestring))
+            self.assertIsInstance(name, basestring)
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
