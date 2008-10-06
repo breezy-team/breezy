@@ -254,4 +254,7 @@ This is the basic outline of my suggested algorithm.
    all pages could fit in a single width request.
 
 4. When expanding, add nodes that are "next" to the node in question, which
-   have not been read yet.
+   have not been read yet. This also has another interesting property. When
+   searching in a given direction, on the first request, we will pre-read both
+   directions. Future requests will only pre-read in one direction, as the
+   other direction is cached.
