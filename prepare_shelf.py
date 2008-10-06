@@ -17,7 +17,7 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge3, pack, transform
+from bzrlib import merge, merge3, pack, transform
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
@@ -117,6 +117,7 @@ class ShelfCreator(object):
         return transport.local_abspath('01')
 
     def write_shelf(self):
+        transform.resolve_conflicts(self.shelf_transform)
         filename = self.make_shelf_filename()
         shelf_file = open(filename, 'wb')
         try:
@@ -135,6 +136,7 @@ class Unshelver(object):
 
     def __init__(self, tree, base_tree, transform):
         self.tree = tree
+        self.base_tree = base_tree
         self.transform = transform
 
     @classmethod
@@ -145,10 +147,17 @@ class Unshelver(object):
             parser.accept_bytes(shelf_file.read())
         finally:
             shelf_file.close()
-        tt = transform.TreeTransform(tree)
+        tt = transform.TransformPreview(tree)
         records = iter(parser.read_pending_records())
         serialize_transform.deserialize(tt, records)
-        return klass(tree, tree, tt)
+        return klass(tree, tree.basis_tree(), tt)
 
     def unshelve(self):
-        self.transform.apply()
+        target_tree = self.transform.get_preview_tree()
+        merger = merge.Merger(self.tree.branch, target_tree, self.base_tree,
+                              self.tree)
+        merger.base_rev_id = self.base_tree.get_revision_id()
+        merger.other_rev_id = None
+        merger.other_basis = merger.base_rev_id
+        merger.merge_type = merge.Merge3Merger
+        merger.do_merge()
