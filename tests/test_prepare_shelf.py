@@ -85,12 +85,15 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.commit('Empty tree')
-        self.build_tree_contents([('foo', 'a\n')])
-        tree.add('foo', 'foo-id')
+        self.build_tree_contents([('foo', 'a\n'), ('bar/',)])
+        tree.add(['foo', 'bar'], ['foo-id', 'bar-id'])
         creator = prepare_shelf.ShelfCreator(tree)
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', 'foo-id', 'file')], list(creator))
+        self.assertEqual([('add file', 'bar-id', 'directory'),
+                          ('add file', 'foo-id', 'file')],
+                          sorted(list(creator)))
         creator.shelve_creation('foo-id', 'file')
+        creator.shelve_creation('bar-id', 'directory')
         creator.transform()
         self.assertRaises(StopIteration,
                           tree.iter_entries_by_dir(['foo-id']).next)
@@ -98,4 +101,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual('foo-id',
                          creator.shelf_transform.final_file_id(s_trans_id))
         self.failIfExists('foo')
+        self.failIfExists('bar')
         self.assertShelvedFileEqual('a\n', creator, 'foo-id')
+        s_bar_trans_id = creator.shelf_transform.trans_id_file_id('bar-id')
+        self.assertEqual('directory',
+            creator.shelf_transform.final_kind(s_bar_trans_id))
