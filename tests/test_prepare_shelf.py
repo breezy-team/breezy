@@ -156,7 +156,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
         list(creator)
-        creator.shelve_creation('foo-id', 'file')
+        creator.shelve_creation('foo-id')
         creator.transform()
         filename = creator.write_shelf()
         unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
