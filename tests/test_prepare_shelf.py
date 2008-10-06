@@ -14,6 +14,8 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+
 from bzrlib import tests
 from bzrlib.plugins.shelf2 import prepare_shelf
 
@@ -59,6 +61,11 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.transform()
         self.assertEqual('foo/baz', tree.id2path('baz-id'))
 
+    def assertShelvedFileEqual(self, expected_content, creator, file_id):
+        s_trans_id = creator.shelf_transform.trans_id_file_id(file_id)
+        shelf_file = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertFileEqual(expected_content, shelf_file)
+
     def test_shelve_content_change(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
@@ -73,6 +80,49 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_text('foo-id', 'a\nc\n')
         creator.transform()
         self.assertFileEqual('a\nc\n', 'foo')
+        self.assertShelvedFileEqual('b\na\n', creator, 'foo-id')
+
+    def test_shelve_creation(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('Empty tree')
+        self.build_tree_contents([('foo', 'a\n'), ('bar/',)])
+        tree.add(['foo', 'bar'], ['foo-id', 'bar-id'])
+        creator = prepare_shelf.ShelfCreator(tree)
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('add file', 'bar-id', 'directory'),
+                          ('add file', 'foo-id', 'file')],
+                          sorted(list(creator)))
+        creator.shelve_creation('foo-id', 'file')
+        creator.shelve_creation('bar-id', 'directory')
+        creator.transform()
+        self.assertRaises(StopIteration,
+                          tree.iter_entries_by_dir(['foo-id']).next)
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
-        shelf_file = creator.shelf_transform._limbo_name(s_trans_id)
-        self.assertFileEqual('b\na\n', shelf_file)
+        self.assertEqual('foo-id',
+                         creator.shelf_transform.final_file_id(s_trans_id))
+        self.failIfExists('foo')
+        self.failIfExists('bar')
+        self.assertShelvedFileEqual('a\n', creator, 'foo-id')
+        s_bar_trans_id = creator.shelf_transform.trans_id_file_id('bar-id')
+        self.assertEqual('directory',
+            creator.shelf_transform.final_kind(s_bar_trans_id))
+
+    def test_shelve_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('Empty tree')
+        os.symlink('bar', 'foo')
+        tree.add('foo', 'foo-id')
+        creator = prepare_shelf.ShelfCreator(tree)
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('add file', 'foo-id', 'symlink')], list(creator))
+        creator.shelve_creation('foo-id', 'symlink')
+        creator.transform()
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        self.failIfExists('foo')
+        limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertEqual('bar', os.readlink(limbo_name))

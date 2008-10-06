@@ -34,11 +34,14 @@ class ShelfCreator(object):
     def __iter__(self):
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in self.iter_changes:
-            if names[0] != names[1] or parents[0] != parents[1]:
-                self.renames[file_id] = (names, parents)
-                yield ('rename', file_id) + paths
-            if changed:
-                yield ('modify text', file_id)
+            if kind[0] is None or versioned[0] == False:
+                yield ('add file', file_id, kind[1])
+            else:
+                if names[0] != names[1] or parents[0] != parents[1]:
+                    self.renames[file_id] = (names, parents)
+                    yield ('rename', file_id) + paths
+                if changed:
+                    yield ('modify text', file_id)
 
     def shelve_rename(self, file_id):
         names, parents = self.renames[file_id]
@@ -64,14 +67,33 @@ class ShelfCreator(object):
         inverse_lines = self._inverse_lines(new_lines, file_id)
         self.shelf_transform.create_file(inverse_lines, s_trans_id)
 
+    def shelve_creation(self, file_id, kind):
+        w_trans_id = self.work_transform.trans_id_file_id(file_id)
+        self.work_transform.delete_contents(w_trans_id)
+        self.work_transform.unversion_file(w_trans_id)
+
+        s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
+        if kind == 'file':
+            lines = self.read_tree_lines(file_id)
+            self.shelf_transform.create_file(lines, s_trans_id)
+        if kind == 'directory':
+            self.shelf_transform.create_directory(s_trans_id)
+        if kind == 'symlink':
+            target = self.work_tree.get_symlink_target(file_id)
+            self.shelf_transform.create_symlink(target, s_trans_id)
+        self.shelf_transform.version_file(file_id, s_trans_id)
+
+    def read_tree_lines(self, file_id):
+        tree_file = self.work_tree.get_file(file_id)
+        try:
+            return tree_file.readlines()
+        finally:
+            tree_file.close()
+
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
         base_lines = self.base_tree.get_file_lines(file_id)
-        tree_file = self.work_tree.get_file(file_id)
-        try:
-            tree_lines = tree_file.readlines()
-        finally:
-            tree_file.close()
+        tree_lines = self.read_tree_lines(file_id)
         return merge3.Merge3(new_lines, base_lines, tree_lines).merge_lines()
 
     def finalize(self):
