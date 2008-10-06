@@ -17,10 +17,13 @@
 
 import copy
 from cStringIO import StringIO
+import os.path
+import shutil
 import sys
+import tempfile
 
 from bzrlib import (diff, osutils, patches, workingtree)
-from bzrlib.plugins.bzrtools import hunk_selector
+from bzrlib.plugins.bzrtools import hunk_selector, patch
 from bzrlib.plugins.shelf2 import prepare_shelf
 
 
@@ -31,7 +34,7 @@ class Shelver(object):
         self.target_tree = target_tree
         self.path = path
         self.diff_file = StringIO()
-        self.text_differ = diff.DiffText(self.work_tree, self.target_tree,
+        self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
                                          self.diff_file)
 
     @classmethod
@@ -40,16 +43,18 @@ class Shelver(object):
         return klass(tree, tree.basis_tree(), path)
 
     def run(self):
-        creator = prepare_shelf.ShelfCreator(self.work_tree)
+        creator = prepare_shelf.ShelfCreator(self.work_tree, self.target_tree)
+        self.tempdir = tempfile.mkdtemp()
         try:
-            self.target_tree.lock_read()
-            try:
-                for change in creator:
-                    if change[0] == 'modify text':
-                        self.handle_modify_text(change[1])
-            finally:
-                self.target_tree.unlock()
+            for change in creator:
+                if change[0] == 'modify text':
+                    self.handle_modify_text(creator, change[1])
+            choice = self.prompt('Shelve changes? [y/n]')
+            if choice == 'y':
+                creator.write_shelf()
+                creator.transform()
         finally:
+            shutil.rmtree(self.tempdir)
             creator.finalize()
 
     def get_parsed_patch(self, file_id):
@@ -81,7 +86,7 @@ class Shelver(object):
         print ""
         return char
 
-    def handle_modify_text(self, file_id):
+    def handle_modify_text(self, creator, file_id):
         parsed = self.get_parsed_patch(file_id)
         selected_hunks = []
         final_patch = copy.copy(parsed)
@@ -89,5 +94,25 @@ class Shelver(object):
         for hunk in parsed.hunks:
             print hunk
             char = self.prompt('Shelve? [y/n]')
-            if char == 'y':
+            if char == 'n':
                 final_patch.hunks.append(hunk)
+        target_file = self.target_tree.get_file(file_id)
+        try:
+            if len(final_patch.hunks) == 0:
+                creator.shelve_text(file_id, target_file.read())
+                return
+            filename = os.path.join(self.tempdir, 'patch-target')
+            outfile = open(filename, 'w+b')
+            try:
+                osutils.pumpfile(target_file, outfile)
+            finally:
+                outfile.close()
+        finally:
+            target_file.close()
+        patch.run_patch('.',
+            [str(final_patch)], target_file=filename)
+        outfile = open(filename, 'rb')
+        try:
+            creator.shelve_text(file_id, outfile.read())
+        finally:
+            outfile.close()

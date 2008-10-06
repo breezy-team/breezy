@@ -20,6 +20,9 @@ from bzrlib import commands
 
 
 class cmd_shelve2(commands.Command):
+    """Put some changes to the side for a while."""
+
+    takes_options = ['revision']
 
     def run(self):
         from bzrlib.plugins.shelf2.shelver import Shelver
