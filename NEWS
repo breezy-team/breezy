@@ -4,8 +4,15 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.8rc1 2008-10-07
+---------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  We've also fixed, and the bzr
+testsuite now passes on OS X and Python 2.6, and almost completely passes
+on Windows.  The smartserver code has gained several bug fixes and
+performance improvements, and can now run server-side hooks within an http
+server.
 
   CHANGES:
 
@@ -32,7 +39,7 @@ IN DEVELOPMENT
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
-      python-2.6rc2), but all known problems have been fixed . Feedback
+      python-2.6rc2), but all known problems have been fixed.  Feedback
       welcome.
       (Vincent Ladeuil, #269535)
 
