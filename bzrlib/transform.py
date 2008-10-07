@@ -1696,6 +1696,8 @@ class _PreviewTree(tree.Tree):
                 if e.errno == errno.ENOENT:
                     return False
                 raise
+            except errors.NoSuchId:
+                return False
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)

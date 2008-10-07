@@ -2509,3 +2509,13 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                                          pb, tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
+
+    def test_is_executable(self):
+        tree = self.make_branch_and_tree('tree')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('foo', preview.root, 'bar', 'baz-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(False, preview_tree.is_executable('baz-id',
+                                                           'tree/foo'))
+        self.assertEqual(False, preview_tree.is_executable('baz-id'))
