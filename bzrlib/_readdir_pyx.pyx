@@ -295,7 +295,7 @@ cdef _read_dir(path):
             while True:
                 errno = 0;
                 entry = readdir(the_dir)
-                if errno == EAGAIN or errno == EINTR:
+                if entry == NULL and (errno == EAGAIN or errno == EINTR):
                     # try again
                     continue
                 else:
