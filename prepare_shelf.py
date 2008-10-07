@@ -17,7 +17,7 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge, merge3, pack, transform, ui
+from bzrlib import errors, merge, merge3, pack, transform, ui
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
@@ -123,6 +123,8 @@ class ShelfCreator(object):
         try:
             serializer = pack.ContainerSerialiser()
             shelf_file.write(serializer.begin())
+            shelf_file.write(serializer.bytes_record(
+                self.target_tree.get_revision_id(), (('revision-id',),)))
             for bytes in serialize_transform.serialize(
                 self.shelf_transform, serializer):
                 shelf_file.write(bytes)
@@ -149,8 +151,13 @@ class Unshelver(object):
             shelf_file.close()
         tt = transform.TransformPreview(tree)
         records = iter(parser.read_pending_records())
+        names, base_revision_id = records.next()
         serialize_transform.deserialize(tt, records)
-        return klass(tree, tree.basis_tree(), tt)
+        try:
+            base_tree = tree.revision_tree(base_revision_id)
+        except errors.NoSuchRevisionInTree:
+            base_tree = tree.branch.repository.revision_tree(base_revision_id)
+        return klass(tree, base_tree, tt)
 
     def unshelve(self):
         pb = ui.ui_factory.nested_progress_bar()

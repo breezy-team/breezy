@@ -164,3 +164,14 @@ class TestUnshelver(tests.TestCaseWithTransport):
         unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
         unshelver.unshelve()
         self.assertFileEqual('bar', 'tree/foo')
+
+    def test_unshelve_base(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('rev1', rev_id='rev1')
+        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        filename = creator.write_shelf()
+        tree.commit('rev2', rev_id='rev2')
+        unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
+        self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
