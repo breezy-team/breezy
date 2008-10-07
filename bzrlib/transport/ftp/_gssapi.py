@@ -44,8 +44,7 @@ class GSSAPIFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
 
     def mic_putcmd(self, line):
-        rc = kerberos.authGSSClientWrap(self.vc, 
-            base64.b64encode(line), kerberos.authGSSClientUserName(self.vc))
+        rc = kerberos.authGSSClientWrap(self.vc, base64.b64encode(line))
         wrapped = kerberos.authGSSClientResponse(self.vc)
         ftplib.FTP.putcmd(self, "MIC " + wrapped)
 

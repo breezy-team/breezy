@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
 import os
 import re
 import stat
@@ -35,7 +34,6 @@ from ntpath import (abspath as _nt_abspath,
                     splitdrive as _nt_splitdrive,
                     )
 import posixpath
-import sha
 import shutil
 from shutil import (
     rmtree,
@@ -53,13 +51,22 @@ from bzrlib import (
     )
 """)
 
+# sha and md5 modules are deprecated in python2.6 but hashlib is available as
+# of 2.5
+if sys.version_info < (2, 5):
+    import md5 as _mod_md5
+    md5 = _mod_md5.new
+    import sha as _mod_sha
+    sha = _mod_sha.new
+else:
+    from hashlib import (
+        md5,
+        sha1 as sha,
+        )
+
 
 import bzrlib
 from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
-from bzrlib.trace import mutter
 
 
 # On win32, O_BINARY is used to indicate the file should
@@ -172,7 +179,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
     """
 
     # sftp rename doesn't allow overwriting, so play tricks:
-    import random
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
     tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
@@ -285,9 +291,6 @@ def _win98_abspath(path):
         path = cwd + '\\' + path
     return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
 
-if win32utils.winver == 'Windows 98':
-    _win32_abspath = _win98_abspath
-
 
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
@@ -352,7 +355,10 @@ MIN_ABS_PATHLENGTH = 1
 
 
 if sys.platform == 'win32':
-    abspath = _win32_abspath
+    if win32utils.winver == 'Windows 98':
+        abspath = _win98_abspath
+    else:
+        abspath = _win32_abspath
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
@@ -387,7 +393,7 @@ def get_terminal_encoding():
 
     This attempts to check both sys.stdout and sys.stdin to see
     what encoding they are in, and if that fails it falls back to
-    bzrlib.user_encoding.
+    osutils.get_user_encoding().
     The problem is that on Windows, locale.getpreferredencoding()
     is not the same encoding as that used by the console:
     http://mail.python.org/pipermail/python-list/2003-May/162357.html
@@ -395,12 +401,14 @@ def get_terminal_encoding():
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
     """
+    from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
     if not output_encoding:
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+            output_encoding = get_user_encoding()
+            mutter('encoding stdout as osutils.get_user_encoding() %r',
+                   output_encoding)
         else:
             output_encoding = input_encoding
             mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
@@ -408,9 +416,10 @@ def get_terminal_encoding():
         mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
-        output_encoding = bzrlib.user_encoding
+        output_encoding = get_user_encoding()
         mutter('cp0 is invalid encoding.'
-               ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
+               ' encoding stdout as osutils.get_user_encoding() %r',
+               output_encoding)
     # check encoding
     try:
         codecs.lookup(output_encoding)
@@ -418,9 +427,9 @@ def get_terminal_encoding():
         sys.stderr.write('bzr: warning:'
                          ' unknown terminal encoding %s.\n'
                          '  Using encoding %s instead.\n'
-                         % (output_encoding, bzrlib.user_encoding)
+                         % (output_encoding, get_user_encoding())
                         )
-        output_encoding = bzrlib.user_encoding
+        output_encoding = get_user_encoding()
 
     return output_encoding
 
@@ -569,7 +578,7 @@ def sha_file(f):
 
     The file cursor should be already at the start.
     """
-    s = sha.new()
+    s = sha()
     BUFSIZE = 128<<10
     while True:
         b = f.read(BUFSIZE)
@@ -581,7 +590,7 @@ def sha_file(f):
 
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    s = sha.new()
+    s = sha()
     f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
@@ -593,21 +602,21 @@ def sha_file_by_name(fname):
         os.close(f)
 
 
-def sha_strings(strings, _factory=sha.new):
+def sha_strings(strings, _factory=sha):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()
     map(s.update, strings)
     return s.hexdigest()
 
 
-def sha_string(f, _factory=sha.new):
+def sha_string(f, _factory=sha):
     return _factory(f).hexdigest()
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha.new(b).hexdigest()}
+            'sha1': sha(b).hexdigest()}
 
 
 def compare_files(a, b):
@@ -640,9 +649,35 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     :param timezone: How to display the time: 'utc', 'original' for the
          timezone specified by offset, or 'local' for the process's current
          timezone.
-    :param show_offset: Whether to append the timezone.
     :param date_fmt: strftime format.
+    :param show_offset: Whether to append the timezone.
     """
+    (date_fmt, tt, offset_str) = \
+               _format_date(t, offset, timezone, date_fmt, show_offset)
+    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
+    date_str = time.strftime(date_fmt, tt)
+    return date_str + offset_str
+
+def format_local_date(t, offset=0, timezone='original', date_fmt=None,
+                      show_offset=True):
+    """Return an unicode date string formatted according to the current locale.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    :param timezone: How to display the time: 'utc', 'original' for the
+         timezone specified by offset, or 'local' for the process's current
+         timezone.
+    :param date_fmt: strftime format.
+    :param show_offset: Whether to append the timezone.
+    """
+    (date_fmt, tt, offset_str) = \
+               _format_date(t, offset, timezone, date_fmt, show_offset)
+    date_str = time.strftime(date_fmt, tt)
+    if not isinstance(date_str, unicode):
+        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+    return date_str + offset_str
+
+def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
         tt = time.gmtime(t)
         offset = 0
@@ -661,9 +696,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
     else:
         offset_str = ''
-    # day of week depends on locale, so we do this ourself
-    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
-    return (time.strftime(date_fmt, tt) +  offset_str)
+    return (date_fmt, tt, offset_str)
 
 
 def compact_date(when):
@@ -1087,7 +1120,7 @@ def set_or_unset_env(env_variable, value):
             del os.environ[env_variable]
     else:
         if isinstance(value, unicode):
-            value = value.encode(bzrlib.user_encoding)
+            value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val
 
@@ -1245,7 +1278,7 @@ def _walkdirs_utf8(top, prefix=""):
     global _selected_dir_reader
     if _selected_dir_reader is None:
         fs_encoding = _fs_enc.upper()
-        if win32utils.winver == 'Windows NT':
+        if sys.platform == "win32" and win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
             # TODO: We possibly could support Win98 by falling back to the
             #       original FindFirstFile, and using TCHAR instead of WCHAR,

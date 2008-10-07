@@ -100,7 +100,7 @@ def _get_transport_modules():
 class TransportListRegistry(registry.Registry):
     """A registry which simplifies tracking available Transports.
 
-    A registration of a new protocol requires two step:
+    A registration of a new protocol requires two steps:
     1) register the prefix with the function register_transport( )
     2) register the protocol provider with the function
     register_transport_provider( ) ( and the "lazy" variant )
@@ -293,7 +293,7 @@ class Transport(object):
     _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
-        super(Transport, self).__init__(base=base)
+        super(Transport, self).__init__()
         self.base = base
 
     def _translate_error(self, e, path, raise_generic=True):

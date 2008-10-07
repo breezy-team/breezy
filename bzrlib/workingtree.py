@@ -303,14 +303,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         """
         if path is None:
-            path = os.path.getcwdu()
+            path = osutils.getcwd()
         control = bzrdir.BzrDir.open(path, _unsupported)
         return control.open_workingtree(_unsupported)
-        
+
     @staticmethod
     def open_containing(path=None):
         """Open an existing working tree which has its root about path.
-        
+
         This probes for a working tree at path and searches upwards from there.
 
         Basically we keep looking up until we find the control directory or

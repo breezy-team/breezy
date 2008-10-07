@@ -7,6 +7,16 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+bzr 1.8rc1 2008-10-07
+---------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  We've also fixed, and the bzr
+testsuite now passes on OS X and Python 2.6, and almost completely passes
+on Windows.  The smartserver code has gained several bug fixes and
+performance improvements, and can now run server-side hooks within an http
+server.
+
   CHANGES:
 
     * ``bzr log file`` has been changed. It now uses a different method
@@ -15,10 +25,26 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr merge`` now defaults to having ``--reprocess`` set, whenever
+      ``--show-base`` is not supplied.  (John Arbash Meinel)
+
     * ``bzr+http//`` will now optionally load plugins and write logs on the
       server. (Marius Kruger)
 
+    * ``bzrlib._dirstate_helpers_c.pyx`` does not compile correctly with
+      Pyrex 0.9.4.1 (it generates C code which causes segfaults). We
+      explicitly blacklist that version of the compiler for that
+      extension. Packaged versions will include .c files created with
+      pyrex >= 0.9.6 so it doesn't effect releases, only users running
+      from the source tree. (John Arbash Meinel, #276868)
+
   FEATURES
+
+    * bzr is now compatible with python-2.6. python-2.6 is not yet officially
+      supported (nor released, tests were conducted with the dev version of
+      python-2.6rc2), but all known problems have been fixed.  Feedback
+      welcome.
+      (Vincent Ladeuil, #269535)
 
   IMPROVEMENTS:
 
@@ -57,7 +83,15 @@ IN DEVELOPMENT
 
     * The C extensions now build on python 2.4 (Robert Collins, #271939)
 
+    * The ``-Dhpss`` debug flag now reports the number of smart server
+      calls per medium to stderr.  This is in addition to the existing
+      detailed logging to the .bzr.log trace file.  (Andrew Bennetts)
+
   BUG FIXES:
+
+    * Avoid random failures arising from misinterpreted ``errno`` values
+      in ``_readdir_pyx.read_dir``.
+      (Martin Pool, #279381)
 
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
@@ -86,6 +120,9 @@ IN DEVELOPMENT
 
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
+
+    * Remove use of optional parameter in GSSAPI FTP support, since 
+      it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
 
     * The autopacking logic will now always create a single new pack from
       all of the content which it deems is worth moving. This avoids the
@@ -124,11 +161,14 @@ IN DEVELOPMENT
       transport has one, fixing numerous tests on Windows.
       (Mark Hammond)
 
+    * PreviewTree is now tested via intertree_implementations.
+      (Aaron Bentley)
+
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
-    * PreviewTree is now tested via intertree_implementations.
-      (Aaron Bentley)
+    * The full test suite passes when run with ``-Eallow_debug``.
+      (Andrew Bennetts)
 
   INTERNALS:
 
@@ -151,6 +191,19 @@ IN DEVELOPMENT
 
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
+
+    * To be compatible with python-2.6 a few new rules should be
+      observed. 'message' attribute can't be used anymore in exception
+      classes, 'sha' and 'md5' modules have been deprecated (use
+      osutils.[md5|sha]), object__init__ and object.__new__ don't accept
+      parameters anymore.
+      (Vincent Ladeuil)
+
+
+bzr 1.7.1 2008-10-01
+--------------------
+
+  No changes from 1.7.1rc1.
 
 
 bzr 1.7.1rc1 2008-09-24
