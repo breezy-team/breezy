@@ -1,0 +1,13 @@
+bzr-cvs
++++++++
+
+This is a small plugin that makes bzr aware of CVS control directories. This is
+mainly useful to make the error of running a bzr command in a CVS tree more
+clear.
+
+It is licensed under the GPL version 2 - see COPYING.
+
+The homepage is https://launchpad.net/bzr-cvs.
+
+Enjoy,
+Robert Collins
