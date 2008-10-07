@@ -1137,8 +1137,8 @@ class Merge3Merger(object):
                 if file_id in self.other_tree:
                     # OTHER changed the file
                     create_by_entry(self.tt,
-                                    self.other_tree.inventory[file_id],
-                                    self.other_tree, trans_id)
+                        self.other_tree.get_inventory_entry(file_id),
+                        self.other_tree, trans_id)
                     if file_id not in self.this_tree:
                         self.tt.version_file(file_id, trans_id)
                     return "modified"
