@@ -25,14 +25,14 @@ cdef extern from "python-compat.h":
     pass
 
 
-# the opaque C library DIR type.
 cdef extern from 'errno.h':
     int ENOENT
     int ENOTDIR
     int EAGAIN
     int EINTR
-    int errno
     char *strerror(int errno)
+    # not necessarily a real variable, but this should be close enough
+    int errno
 
 cdef extern from 'unistd.h':
     int chdir(char *path)
@@ -90,6 +90,7 @@ cdef extern from 'dirent.h':
     ctypedef struct dirent:
         char d_name[256]
         ino_t d_ino
+    # the opaque C library DIR type.
     ctypedef struct DIR
     # should be DIR *, pyrex barfs.
     DIR * opendir(char * name)
@@ -279,6 +280,7 @@ cdef _read_dir(path):
     cdef int stat_result
     cdef _Stat statvalue
     cdef char *cwd
+    global errno
 
     cwd = getcwd(NULL, 0)
     if -1 == chdir(path):
