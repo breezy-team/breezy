@@ -30,6 +30,7 @@ cdef extern from 'errno.h':
     int ENOENT
     int ENOTDIR
     int EAGAIN
+    int EINTR
     int errno
     char *strerror(int errno)
 
