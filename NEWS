@@ -7,6 +7,25 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  CHANGES:
+
+  FEATURES
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+    * Tree API implementations must now provide get_inventory_entry, but a
+      default implementation is provided by the Tree class.  (Aaron Bentley)
+
+  TESTING:
+
+  INTERNALS:
+
 bzr 1.8rc1 2008-10-07
 ---------------------
 
