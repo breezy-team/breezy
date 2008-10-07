@@ -4,8 +4,15 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.8rc1 2008-10-07
+---------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  We've also fixed, and the bzr
+testsuite now passes on OS X and Python 2.6, and almost completely passes
+on Windows.  The smartserver code has gained several bug fixes and
+performance improvements, and can now run server-side hooks within an http
+server.
 
   CHANGES:
 
@@ -32,7 +39,7 @@ IN DEVELOPMENT
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
-      python-2.6rc2), but all known problems have been fixed . Feedback
+      python-2.6rc2), but all known problems have been fixed.  Feedback
       welcome.
       (Vincent Ladeuil, #269535)
 
@@ -79,6 +86,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Avoid random failures arising from misinterpreted ``errno`` values
+      in ``_readdir_pyx.read_dir``.
+      (Martin Pool, #279381)
+
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
@@ -106,6 +117,9 @@ IN DEVELOPMENT
 
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
+
+    * Remove use of optional parameter in GSSAPI FTP support, since 
+      it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
 
     * The autopacking logic will now always create a single new pack from
       all of the content which it deems is worth moving. This avoids the
