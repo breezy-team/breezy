@@ -289,21 +289,28 @@ cdef _read_dir(path):
     try:
         entry = &sentinel
         while entry != NULL:
-            entry = readdir(the_dir)
-            if entry == NULL:
-                if errno == EAGAIN:
+            # Unlike most libc functions, readdir needs errno set to 0
+            # beforehand so that eof can be distinguished from errors.  See
+            # <https://bugs.launchpad.net/bzr/+bug/279381>
+            while True:
+                errno = 0;
+                entry = readdir(the_dir)
+                if errno == EAGAIN or errno == EINTR:
                     # try again
                     continue
-                elif errno != ENOTDIR and errno != ENOENT and errno != 0:
+                else:
+                    break
+            if entry == NULL:
+                if errno == ENOTDIR or errno == ENOENT or errno == 0:
                     # We see ENOTDIR at the end of a normal directory.
                     # As ENOTDIR for read_dir(file) is triggered on opendir,
                     # we consider ENOTDIR to be 'no error'.
                     # ENOENT is listed as 'invalid position in the dir stream' for
                     # readdir. We swallow this for now and just keep reading.
-                    raise OSError(errno, strerror(errno))
-                else:
                     # done
                     continue
+                else:
+                    raise OSError(errno, strerror(errno))
             name = entry.d_name
             if not (name[0] == c"." and (
                 (name[1] == 0) or 
