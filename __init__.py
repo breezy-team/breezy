@@ -54,7 +54,7 @@ class CVSDirFormat(bzrlib.bzrdir.BzrDirFormat):
         # try a manual probe first, its a little faster perhaps ?
         if transport.has('CVS'):
             return format
-        raise errors.NotBranchError(path=transport.base)
+        raise bzrlib.errors.NotBranchError(path=transport.base)
 
 
 bzrlib.bzrdir.BzrDirFormat.register_control_format(CVSDirFormat)
