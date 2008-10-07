@@ -305,9 +305,11 @@ cdef _read_dir(path):
                     # We see ENOTDIR at the end of a normal directory.
                     # As ENOTDIR for read_dir(file) is triggered on opendir,
                     # we consider ENOTDIR to be 'no error'.
-                    # ENOENT is listed as 'invalid position in the dir stream' for
-                    # readdir. We swallow this for now and just keep reading.
-                    # done
+                    #
+                    # XXX: ENOENT is listed as 'invalid position in the dir stream' for
+                    # readdir.  It's not clear what we should do about that
+                    # case; at the moment we treat it as the end of the
+                    # directory.
                     continue
                 else:
                     raise OSError(errno, strerror(errno))
