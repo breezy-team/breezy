@@ -17,7 +17,7 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge, merge3, pack, transform
+from bzrlib import merge, merge3, pack, transform, ui
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
@@ -153,11 +153,15 @@ class Unshelver(object):
         return klass(tree, tree.basis_tree(), tt)
 
     def unshelve(self):
-        target_tree = self.transform.get_preview_tree()
-        merger = merge.Merger(self.tree.branch, target_tree, self.base_tree,
-                              self.tree)
-        merger.base_rev_id = self.base_tree.get_revision_id()
-        merger.other_rev_id = None
-        merger.other_basis = merger.base_rev_id
-        merger.merge_type = merge.Merge3Merger
-        merger.do_merge()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            target_tree = self.transform.get_preview_tree()
+            merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
+                                                   self.base_tree)
+            merger.merge_type = merge.Merge3Merger
+            merger.do_merge()
+        finally:
+            pb.finished()
+
+    def finalize(self):
+        self.transform.finalize()
