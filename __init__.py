@@ -42,7 +42,9 @@ class CVSDirFormat(bzrlib.bzrdir.BzrDirFormat):
     def open(self, transport, _found=False):
         """Open this directory."""
         raise bzrlib.errors.BzrCommandError(
-            "CVS working trees are not supported.")
+            "CVS working trees are not supported. To convert CVS projects to "
+            "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
+            "https://edge.launchpad.net/launchpad-bazaar/+faq/26.")
 
     @classmethod
     def probe_transport(klass, transport):
