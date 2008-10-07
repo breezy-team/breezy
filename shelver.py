@@ -22,7 +22,7 @@ import shutil
 import sys
 import tempfile
 
-from bzrlib import (diff, osutils, patches, workingtree)
+from bzrlib import (builtins, diff, osutils, patches, workingtree)
 from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
 from bzrlib.plugins.shelf2 import prepare_shelf
@@ -40,9 +40,11 @@ class Shelver(object):
         self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
 
     @classmethod
-    def from_args(klass):
+    def from_args(klass, revision=None):
         tree, path = workingtree.WorkingTree.open_containing('.')
-        return klass(tree, tree.basis_tree(), path)
+        target_tree = builtins._get_one_revision_tree('shelf2', revision,
+            tree.branch, tree)
+        return klass(tree, target_tree, path)
 
     def run(self):
         creator = prepare_shelf.ShelfCreator(self.work_tree, self.target_tree)
@@ -120,3 +122,25 @@ class Shelver(object):
                 final_patch.hunks.append(hunk)
         patched_text = self.get_patched_text(file_id, final_patch)
         creator.shelve_text(file_id, patched_text)
+
+
+class Unshelver(object):
+
+    @classmethod
+    def from_args(klass):
+        tree, path = workingtree.WorkingTree.open_containing('.')
+        shelf_filename = tree.bzrdir.root_transport.local_abspath('.shelf2/01')
+        return klass(tree, shelf_filename)
+
+    def __init__(self, tree, shelf_filename):
+        self.tree = tree
+        self.shelf_filename = shelf_filename
+
+    def run(self):
+        self.tree.lock_write()
+        try:
+            unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(
+                self.tree, self.shelf_filename)
+            unshelver.unshelve()
+        finally:
+            self.tree.unlock()

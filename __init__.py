@@ -24,12 +24,20 @@ class cmd_shelve2(commands.Command):
 
     takes_options = ['revision']
 
-    def run(self):
+    def run(self, revision=None):
         from bzrlib.plugins.shelf2.shelver import Shelver
-        Shelver.from_args().run()
+        Shelver.from_args(revision).run()
+
+class cmd_unshelve2(commands.Command):
+    """Restore shelved changes."""
+
+    def run(self):
+        from bzrlib.plugins.shelf2.shelver import Unshelver
+        Unshelver.from_args().run()
 
 
 commands.register_command(cmd_shelve2)
+commands.register_command(cmd_unshelve2)
 
 
 def test_suite():
