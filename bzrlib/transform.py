@@ -1690,7 +1690,12 @@ class _PreviewTree(tree.Tree):
         try:
             return self._transform._new_executability[trans_id]
         except KeyError:
-            return self._transform._tree.is_executable(file_id, path)
+            try:
+                return self._transform._tree.is_executable(file_id, path)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    return False
+                raise
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)

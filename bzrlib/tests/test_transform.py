@@ -2497,3 +2497,15 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(tt.finalize)
         final_tree = tt.get_preview_tree()
         self.assertEqual('a\nb\nc\n', final_tree.get_file_text('file-id'))
+
+    def test_merge_preview_into_workingtree(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        tt.new_file('name', tt.root, 'content', 'file-id')
+        tree2 = self.make_branch_and_tree('tree2')
+        pb = progress.DummyProgress()
+        merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
+                                         pb, tree.basis_tree())
+        merger.merge_type = Merge3Merger
+        merger.do_merge()

@@ -132,15 +132,18 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb):
+    def from_uncommitted(tree, other_tree, pb, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into
         :param other_tree: The tree to get uncommitted changes from
         :param pb: A progress indicator
+        :param base_tree: The basis to use for the merge.  If unspecified,
+            other_tree.basis_tree() will be used.
         """
-        merger = Merger(tree.branch, other_tree, other_tree.basis_tree(), tree,
-                        pb)
+        if base_tree is None:
+            base_tree = other_tree.basis_tree()
+        merger = Merger(tree.branch, other_tree, base_tree, tree, pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
         merger.other_basis = merger.base_rev_id
@@ -875,9 +878,9 @@ class Merge3Merger(object):
         if self.tt.final_file_id(self.tt.root) is None:
             self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
                                  self.tt.root)
-        if self.other_tree.inventory.root is None:
-            return
         other_root_file_id = self.other_tree.get_root_id()
+        if other_root_file_id is None:
+            return
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
