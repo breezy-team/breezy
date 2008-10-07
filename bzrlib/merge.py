@@ -1242,12 +1242,12 @@ class Merge3Merger(object):
                     versioned = True
         return file_group
            
-    def _conflict_file(self, name, parent_id, tree, file_id, suffix, 
+    def _conflict_file(self, name, parent_id, tree, file_id, suffix,
                        lines=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        entry = tree.inventory[file_id]
+        entry = tree.get_inventory_entry(file_id)
         create_by_entry(self.tt, entry, tree, trans_id, lines)
         return trans_id
 

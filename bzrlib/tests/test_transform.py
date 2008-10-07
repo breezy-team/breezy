@@ -2510,6 +2510,24 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         merger.merge_type = Merge3Merger
         merger.do_merge()
 
+    def test_merge_preview_into_workingtree_handles_conflicts(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo', 'bar')])
+        tree.add('foo', 'foo-id')
+        tree.commit('foo')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        trans_id = tt.trans_id_file_id('foo-id')
+        tt.delete_contents(trans_id)
+        tt.create_file('baz', trans_id)
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        self.build_tree_contents([('tree2/foo', 'qux')])
+        pb = progress.DummyProgress()
+        merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
+                                         pb, tree.basis_tree())
+        merger.merge_type = Merge3Merger
+        merger.do_merge()
+
     def test_is_executable(self):
         tree = self.make_branch_and_tree('tree')
         preview = TransformPreview(tree)
