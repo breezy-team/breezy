@@ -79,6 +79,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Avoid random failures arising from misinterpreted ``errno`` values
+      in ``_readdir_pyx.read_dir``.
+      (Martin Pool, #279381)
+
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
