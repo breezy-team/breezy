@@ -258,3 +258,7 @@ This is the basic outline of my suggested algorithm.
    searching in a given direction, on the first request, we will pre-read both
    directions. Future requests will only pre-read in one direction, as the
    other direction is cached.
+
+
+..
+   vim: ft=rst tw=79 ai
