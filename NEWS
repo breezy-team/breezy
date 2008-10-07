@@ -79,6 +79,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * API versioning support now has a multiple-version checking api
+      ``require_any_api``. (Robert Collins, #279447)
+
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
