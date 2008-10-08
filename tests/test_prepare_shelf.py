@@ -134,18 +134,22 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
         list(creator)
         creator.shelve_creation('foo-id')
-        filename = creator.write_shelf()
-        self.assertContainsRe(filename, 'tree/.shelf2/01$')
-        self.failUnlessExists(filename)
+        shelf_file = open('shelf', 'wb')
+        try:
+            filename = creator.write_shelf(shelf_file)
+        finally:
+            shelf_file.close()
         parser = pack.ContainerPushParser()
-        shelf_file = open(filename, 'rb')
+        shelf_file = open('shelf', 'rb')
         try:
             parser.accept_bytes(shelf_file.read())
         finally:
             shelf_file.close()
         tt = transform.TransformPreview(tree)
-        serialize_transform.deserialize(tt,
-            iter(parser.read_pending_records()))
+        records = iter(parser.read_pending_records())
+        #skip revision-id
+        records.next()
+        serialize_transform.deserialize(tt, records)
 
 
 class TestUnshelver(tests.TestCaseWithTransport):
@@ -159,11 +163,18 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
         list(creator)
         creator.shelve_creation('foo-id')
-        creator.transform()
-        filename = creator.write_shelf()
-        unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
-        unshelver.unshelve()
-        self.assertFileEqual('bar', 'tree/foo')
+        shelf_file = open('shelf-file', 'w+b')
+        try:
+            import pdb; pdb.set_trace()
+            filename = creator.write_shelf(shelf_file)
+            creator.transform()
+            shelf_file.seek(0)
+            unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree,
+                                                                    shelf_file)
+            unshelver.unshelve()
+            self.assertFileEqual('bar', 'tree/foo')
+        finally:
+            shelf_file.close()
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')
@@ -171,9 +182,19 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         tree.commit('rev1', rev_id='rev1')
         creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
-        filename = creator.write_shelf()
+        manager = prepare_shelf.ShelfManager.for_tree(tree)
+        shelf_id, shelf_file = manager.new_shelf()
+        try:
+            filename = creator.write_shelf(shelf_file)
+        finally:
+            shelf_file.close()
         tree.commit('rev2', rev_id='rev2')
-        unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
+        shelf_file = manager.read_shelf(1)
+        try:
+            unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(
+                tree, shelf_file)
+        finally:
+            shelf_file.close()
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
 
 
