@@ -172,3 +172,39 @@ class Unshelver(object):
 
     def finalize(self):
         self.transform.finalize()
+
+
+class ShelfManager(object):
+
+    def __init__(self, transport):
+        self.transport = transport.clone('.shelf2')
+        self.transport.ensure_base()
+
+    @classmethod
+    def for_tree(klass, tree):
+        return klass(tree.bzrdir.root_transport)
+
+    def new_shelf(self):
+        last_shelf = self.last_shelf()
+        if last_shelf is None:
+            next_shelf = 1
+        else:
+            next_shelf = last_shelf + 1
+        shelf_file = open(self.transport.local_abspath(str(next_shelf)), 'wb')
+        return next_shelf, shelf_file
+
+    def read_shelf(self, shelf_id):
+        return open(self.transport.local_abspath(str(shelf_id)), 'rb')
+
+    def delete_shelf(self, shelf_id):
+        self.transport.delete(str(shelf_id))
+
+    def active_shelves(self):
+        return [int(f) for f in self.transport.list_dir('.')]
+
+    def last_shelf(self):
+        active = self.active_shelves()
+        if len(active) > 0:
+            return max(active)
+        else:
+            return None

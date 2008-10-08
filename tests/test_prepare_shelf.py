@@ -175,3 +175,74 @@ class TestUnshelver(tests.TestCaseWithTransport):
         tree.commit('rev2', rev_id='rev2')
         unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(tree, filename)
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
+
+
+class TestShelfManager(tests.TestCaseWithTransport):
+
+    def test_for_tree(self):
+        tree = self.make_branch_and_tree('.')
+        manager = prepare_shelf.ShelfManager.for_tree(tree)
+        self.assertEqual(tree.bzrdir.root_transport.base + '.shelf2/',
+                         manager.transport.base)
+
+    def get_manager(self):
+        tree = self.make_branch_and_tree('.')
+        return prepare_shelf.ShelfManager.for_tree(tree)
+
+    def test_new_shelf(self):
+        manager = self.get_manager()
+        shelf_id, shelf_file = manager.new_shelf()
+        shelf_file.close()
+        self.assertEqual(1, shelf_id)
+        shelf_id, shelf_file = manager.new_shelf()
+        shelf_file.close()
+        self.assertEqual(2, shelf_id)
+        manager.delete_shelf(1)
+        shelf_id, shelf_file = manager.new_shelf()
+        shelf_file.close()
+        self.assertEqual(3, shelf_id)
+
+    def test_active_shelves(self):
+        manager = self.get_manager()
+        self.assertEqual([], manager.active_shelves())
+        shelf_id, shelf_file = manager.new_shelf()
+        shelf_file.close()
+        self.assertEqual([1], manager.active_shelves())
+
+    def test_delete_shelf(self):
+        manager = self.get_manager()
+        shelf_id, shelf_file = manager.new_shelf()
+        shelf_file.close()
+        self.assertEqual([1], manager.active_shelves())
+        manager.delete_shelf(1)
+        self.assertEqual([], manager.active_shelves())
+
+    def test_last_shelf(self):
+        manager = self.get_manager()
+        self.assertIs(None, manager.last_shelf())
+        shelf_id, shelf_file = manager.new_shelf()
+        shelf_file.close()
+        self.assertEqual(1, manager.last_shelf())
+
+    def test_read_shelf(self):
+        manager = self.get_manager()
+        shelf_id, shelf_file = manager.new_shelf()
+        try:
+            shelf_file.write('foo')
+        finally:
+            shelf_file.close()
+        shelf_id, shelf_file = manager.new_shelf()
+        try:
+            shelf_file.write('bar')
+        finally:
+            shelf_file.close()
+        shelf_file = manager.read_shelf(1)
+        try:
+            self.assertEqual('foo', shelf_file.read())
+        finally:
+            shelf_file.close()
+        shelf_file = manager.read_shelf(2)
+        try:
+            self.assertEqual('bar', shelf_file.read())
+        finally:
+            shelf_file.close()
