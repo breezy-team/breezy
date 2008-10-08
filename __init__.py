@@ -24,7 +24,7 @@ class cmd_shelve2(commands.Command):
 
     takes_options = [
         'revision',
-        commands.Option('all', help='Shelve all changes')]
+        commands.Option('all', help='Shelve all changes.')]
 
     def run(self, revision=None, all=False):
         from bzrlib.plugins.shelf2.shelver import Shelver
