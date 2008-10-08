@@ -58,6 +58,9 @@ class Shelver(object):
                 if change[0] == 'add file':
                     if self.prompt('Shelve adding file?') == 'y':
                         creator.shelve_creation(change[1])
+                if change[0] == 'delete file':
+                    if self.prompt('Shelve deleting file?') == 'y':
+                        creator.shelve_deletion(change[1])
                 if change[0] == 'rename':
                     if self.prompt('Shelve renaming %s => %s?' %
                                    change[2:]) == 'y':
