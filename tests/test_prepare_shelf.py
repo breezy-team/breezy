@@ -156,6 +156,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
 
     def test_unshelve(self):
         tree = self.make_branch_and_tree('tree')
+        tree.commit('first commit')
         self.build_tree_contents([('tree/foo', 'bar')])
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -165,7 +166,6 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator.shelve_creation('foo-id')
         shelf_file = open('shelf-file', 'w+b')
         try:
-            import pdb; pdb.set_trace()
             filename = creator.write_shelf(shelf_file)
             creator.transform()
             shelf_file.seek(0)
