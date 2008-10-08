@@ -299,31 +299,19 @@ class cmd_dump_btree(Command):
         # This is because the first page of every row starts with an
         # uncompressed header.
         bt, bytes = self._get_index_and_bytes(trans, basename)
-        root_node = bt._get_root_node()
-        for row_idx, row_start in enumerate(bt._row_offsets[:-1]):
-            if row_idx == 0:
+        for page_idx, page_start in enumerate(xrange(0, len(bytes),
+                                                     btree_index._PAGE_SIZE)):
+            page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
+            page_bytes = bytes[page_start:page_end]
+            if page_idx == 0:
                 self.outf.write('Root node:\n')
-            elif row_idx < len(bt._row_lengths):
-                self.outf.write('\nInternal Row %d:\n' % (row_idx,))
-            else:
-                self.outf.write('\nLeaf Row %d:\n' % (row_idx,))
-            # Should we do something to ensure all pages are 'back-to-back'?
-            # And we aren't skipping data in the middle?
-            for page_idx in xrange(0, bt._row_lengths[row_idx]):
-                start_idx = bt._row_offsets[row_idx] + page_idx
-                start_offset = start_idx * btree_index._PAGE_SIZE
-                finish_offset = min(start_offset + btree_index._PAGE_SIZE,
-                                    len(bytes))
-                page_bytes = bytes[start_offset:finish_offset]
-                if row_idx == 0 and page_idx == 0:
-                    header_end, data = bt._parse_header_from_bytes(page_bytes)
-                    self.outf.write(page_bytes[:header_end])
-                    page_bytes = data
-                self.outf.write('\nPage %d (row: %d, offset: %d)\n'
-                                % (start_idx, row_idx, page_idx))
-                decomp_bytes = zlib.decompress(page_bytes)
-                self.outf.write(decomp_bytes)
-                self.outf.write('\n')
+                header_end, data = bt._parse_header_from_bytes(page_bytes)
+                self.outf.write(page_bytes[:header_end])
+                page_bytes = data
+            self.outf.write('\nPage %d\n' % (page_idx,))
+            decomp_bytes = zlib.decompress(page_bytes)
+            self.outf.write(decomp_bytes)
+            self.outf.write('\n')
 
     def _dump_entries(self, trans, basename):
         try:

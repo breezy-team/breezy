@@ -71,7 +71,7 @@ class TestDumpBtree(tests.TestCaseWithTransport):
             'len=3\n'
             'row_lengths=1\n'
             '\n'
-            'Page 0 (row: 0, offset: 0)\n'
+            'Page 0\n'
             'type=leaf\n'
             'test\0key1\0ref\0entry\0value\n'
             'test\0key2\0ref\0entry2\0value2\n'
