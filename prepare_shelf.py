@@ -31,6 +31,7 @@ class ShelfCreator(object):
         self.shelf_transform = transform.TransformPreview(self.target_tree)
         self.renames = {}
         self.creation = {}
+        self.deletion = {}
         self.iter_changes = work_tree.iter_changes(self.target_tree)
 
     def __iter__(self):
@@ -39,6 +40,9 @@ class ShelfCreator(object):
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1])
                 yield ('add file', file_id, kind[1])
+            elif kind[1] is None or versioned[0] == False:
+                self.deletion[file_id] = (kind[0], names[0], parents[0])
+                yield ('delete file', file_id)
             else:
                 if names[0] != names[1] or parents[0] != parents[1]:
                     self.renames[file_id] = (names, parents)
@@ -72,27 +76,37 @@ class ShelfCreator(object):
 
     def shelve_creation(self, file_id):
         kind, name, parent = self.creation[file_id]
-        w_trans_id = self.work_transform.trans_id_file_id(file_id)
-        if parent is not None:
-            self.work_transform.delete_contents(w_trans_id)
-        self.work_transform.unversion_file(w_trans_id)
+        self._shelve_creation(self.work_tree, file_id, self.work_transform,
+                              self.shelf_transform, kind, name, parent)
 
-        s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
+    def shelve_deletion(self, file_id):
+        kind, name, parent = self.deletion[file_id]
+        self._shelve_creation(self.target_tree, file_id, self.shelf_transform,
+                              self.work_transform, kind, name, parent)
+
+    def _shelve_creation(self, tree, file_id, from_transform, to_transform,
+                         kind, name, parent):
+        w_trans_id = from_transform.trans_id_file_id(file_id)
         if parent is not None:
-            s_parent_id = self.shelf_transform.trans_id_file_id(parent)
+            from_transform.delete_contents(w_trans_id)
+        from_transform.unversion_file(w_trans_id)
+
+        s_trans_id = to_transform.trans_id_file_id(file_id)
+        if parent is not None:
+            s_parent_id = to_transform.trans_id_file_id(parent)
             self.shelf_transform.adjust_path(name, s_parent_id, s_trans_id)
             if kind == 'file':
-                lines = self.read_tree_lines(file_id)
-                self.shelf_transform.create_file(lines, s_trans_id)
+                lines = self.read_tree_lines(tree, file_id)
+                to_transform.create_file(lines, s_trans_id)
             if kind == 'directory':
-                self.shelf_transform.create_directory(s_trans_id)
+                to_transform.create_directory(s_trans_id)
             if kind == 'symlink':
                 target = self.work_tree.get_symlink_target(file_id)
-                self.shelf_transform.create_symlink(target, s_trans_id)
+                to_transform.create_symlink(target, s_trans_id)
         self.shelf_transform.version_file(file_id, s_trans_id)
 
-    def read_tree_lines(self, file_id):
-        tree_file = self.work_tree.get_file(file_id)
+    def read_tree_lines(self, tree, file_id):
+        tree_file = tree.get_file(file_id)
         try:
             return tree_file.readlines()
         finally:

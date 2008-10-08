@@ -127,6 +127,23 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual('bar', os.readlink(limbo_name))
 
+    def test_shelve_deletion(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo/',), ('tree/foo/bar', 'baz')])
+        tree.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
+        tree.commit('Added file and directory')
+        os.unlink('tree/foo/bar')
+        os.rmdir('tree/foo')
+        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('delete file', 'bar-id'),
+                          ('delete file', 'foo-id')],
+                          sorted(list(creator)))
+        creator.shelve_deletion('foo-id')
+        creator.shelve_deletion('bar-id')
+        self.failUnlessExists('tree/foo')
+        self.assertFileEqual('baz', 'tree/foo/bar')
+
     def test_write_shelf(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
