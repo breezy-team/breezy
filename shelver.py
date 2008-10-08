@@ -22,7 +22,14 @@ import shutil
 import sys
 import tempfile
 
-from bzrlib import (builtins, diff, errors, osutils, patches, workingtree)
+from bzrlib import (
+    builtins,
+    delta,
+    diff,
+    errors,
+    osutils,
+    patches,
+    workingtree)
 from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
 from bzrlib.plugins.bzrtools.userinteractor import getchar
@@ -74,6 +81,10 @@ class Shelver(object):
                         creator.shelve_rename(change[1])
                         changes_shelved += 1
             if changes_shelved > 0:
+                print "Selected changes:"
+                changes = creator.work_transform.iter_changes()
+                reporter = delta._ChangeReporter(output_file=sys.stdout)
+                delta.report_changes(changes, reporter)
                 if (self.prompt_bool('Shelve %d change(s)?' %
                     changes_shelved, auto=self.auto_apply)):
                     shelf_id, shelf_file = self.manager.new_shelf()
