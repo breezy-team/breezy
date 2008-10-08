@@ -164,14 +164,17 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
             shelf_file.close()
         tt = transform.TransformPreview(tree)
         self.addCleanup(tt.finalize)
-        serialize_transform.deserialize(tt,
-            iter(parser.read_pending_records()))
+        records = iter(parser.read_pending_records())
+        #skip revision-id
+        records.next()
+        serialize_transform.deserialize(tt, records)
 
 
 class TestUnshelver(tests.TestCaseWithTransport):
 
     def test_unshelve(self):
         tree = self.make_branch_and_tree('tree')
+        tree.commit('first commit')
         self.build_tree_contents([('tree/foo', 'bar')])
         tree.lock_write()
         self.addCleanup(tree.unlock)
