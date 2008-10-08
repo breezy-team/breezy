@@ -115,9 +115,10 @@ class Shelver(object):
             auto = self.auto
         if auto:
             return True
-        print question + ' [yNfq]',
+        message = question + ' [yNfq]'
+        print message,
         char = getchar()
-        print ""
+        print "\r" + ' ' * len(message) + '\r',
         if char == 'y':
             return True
         elif char == 'f':
