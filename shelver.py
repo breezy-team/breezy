@@ -30,7 +30,7 @@ from bzrlib.plugins.shelf2 import prepare_shelf
 
 class Shelver(object):
 
-    def __init__(self, work_tree, target_tree, path):
+    def __init__(self, work_tree, target_tree, path, auto=False):
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.path = path
@@ -39,13 +39,14 @@ class Shelver(object):
                                          self.diff_file)
         self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
         self.manager = prepare_shelf.ShelfManager.for_tree(work_tree)
+        self.auto = auto
 
     @classmethod
-    def from_args(klass, revision=None):
+    def from_args(klass, revision=None, all=False):
         tree, path = workingtree.WorkingTree.open_containing('.')
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, path)
+        return klass(tree, target_tree, path, all)
 
     def run(self):
         creator = prepare_shelf.ShelfCreator(self.work_tree, self.target_tree)
@@ -90,6 +91,8 @@ class Shelver(object):
         return ch
 
     def prompt(self, question):
+        if self.auto:
+            return 'y'
         print question,
         char = self.__getchar()
         print ""
@@ -120,11 +123,12 @@ class Shelver(object):
         selected_hunks = []
         final_patch = copy.copy(parsed)
         final_patch.hunks = []
-        for hunk in parsed.hunks:
-            self.diff_writer.write(str(hunk))
-            char = self.prompt('Shelve? [y/n]')
-            if char == 'n':
-                final_patch.hunks.append(hunk)
+        if not self.auto:
+            for hunk in parsed.hunks:
+                self.diff_writer.write(str(hunk))
+                char = self.prompt('Shelve? [y/n]')
+                if char == 'n':
+                    final_patch.hunks.append(hunk)
         patched_text = self.get_patched_text(file_id, final_patch)
         creator.shelve_text(file_id, patched_text)
 
