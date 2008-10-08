@@ -201,7 +201,7 @@ command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, define_macros=[], **kwargs):
+def add_pyrex_extension(module_name, libraries=None):
     """Add a pyrex module to build.
 
     This will use Pyrex to auto-generate the .c file if it is available.
@@ -217,6 +217,7 @@ def add_pyrex_extension(module_name, define_macros=[], **kwargs):
     path = module_name.replace('.', '/')
     pyrex_name = path + '.pyx'
     c_name = path + '.c'
+    define_macros = []
     if sys.platform == 'win32':
         # pyrex uses the macro WIN32 to detect the platform, even though it should
         # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
@@ -224,13 +225,13 @@ def add_pyrex_extension(module_name, define_macros=[], **kwargs):
         define_macros.append(('WIN32', None))
     if have_pyrex:
         ext_modules.append(Extension(module_name, [pyrex_name],
-            define_macros=define_macros, **kwargs))
+            define_macros=define_macros, libraries=libraries))
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
         else:
             ext_modules.append(Extension(module_name, [c_name],
-                define_macros=define_macros,  **kwargs))
+                define_macros=define_macros, libraries=libraries))
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
