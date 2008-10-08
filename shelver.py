@@ -31,7 +31,8 @@ from bzrlib.plugins.shelf2 import prepare_shelf
 
 class Shelver(object):
 
-    def __init__(self, work_tree, target_tree, path, auto=False):
+    def __init__(self, work_tree, target_tree, path, auto=False,
+                 auto_apply=False):
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.path = path
@@ -41,13 +42,14 @@ class Shelver(object):
         self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
         self.manager = prepare_shelf.ShelfManager.for_tree(work_tree)
         self.auto = auto
+        self.auto_apply = auto_apply
 
     @classmethod
     def from_args(klass, revision=None, all=False):
         tree, path = workingtree.WorkingTree.open_containing('.')
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, path, all)
+        return klass(tree, target_tree, path, all, all)
 
     def run(self):
         creator = prepare_shelf.ShelfCreator(self.work_tree, self.target_tree)
@@ -59,22 +61,21 @@ class Shelver(object):
                     changes_shelved += self.handle_modify_text(creator,
                                                                change[1])
                 if change[0] == 'add file':
-                    if self.prompt('Shelve adding file?') == 'y':
+                    if self.prompt_bool('Shelve adding file?'):
                         creator.shelve_creation(change[1])
                         changes_shelved += 1
                 if change[0] == 'delete file':
-                    if self.prompt('Shelve deleting file?') == 'y':
+                    if self.prompt_bool('Shelve deleting file?'):
                         creator.shelve_deletion(change[1])
                         changes_shelved += 1
                 if change[0] == 'rename':
-                    if self.prompt('Shelve renaming %s => %s?' %
-                                   change[2:]) == 'y':
+                    if self.prompt_bool('Shelve renaming %s => %s?' %
+                                   change[2:]):
                         creator.shelve_rename(change[1])
                         changes_shelved += 1
             if changes_shelved > 0:
-                choice = self.prompt('Shelve %d change(s)? [y/n]' %
-                                     changes_shelved)
-                if choice == 'y':
+                if (self.prompt_bool('Shelve %d change(s)? [y/n]' %
+                    changes_shelved, auto=self.auto_apply)):
                     shelf_id, shelf_file = self.manager.new_shelf()
                     try:
                         creator.write_shelf(shelf_file)
@@ -98,13 +99,21 @@ class Shelver(object):
         finally:
             self.diff_file.truncate(0)
 
-    def prompt(self, question):
-        if self.auto:
-            return 'y'
+    def prompt_bool(self, question, auto=None):
+        if auto == None:
+            auto = self.auto
+        if auto:
+            return True
         print question,
         char = getchar()
-        print ""
-        return char
+        print "\r",
+        if char == 'y':
+            return True
+        elif char == 'f':
+            self.auto = True
+            return True
+        else:
+            return False
 
     def get_patched_text(self, file_id, patch):
         target_file = self.target_tree.get_file(file_id)
@@ -135,8 +144,7 @@ class Shelver(object):
         if not self.auto:
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                char = self.prompt('Shelve? [y/n]')
-                if char == 'n':
+                if not self.prompt_bool('Shelve? [y/n/f]'):
                     final_patch.hunks.append(hunk)
         patched_text = self.get_patched_text(file_id, final_patch)
         creator.shelve_text(file_id, patched_text)
