@@ -32,6 +32,7 @@ For more information about bzr-svn, see the bzr-svn FAQ.
 """
 import bzrlib
 from bzrlib import log
+import bzrlib.api, bzrlib.repository
 from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.errors import BzrError
 from bzrlib.commands import Command, register_command, display_command, Option
@@ -53,28 +54,8 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(1, 6), (1, 7)]
+COMPATIBLE_BZR_VERSIONS = [(1, 9, 0)]
 
-def check_bzrlib_version(desired):
-    """Check that bzrlib is compatible.
-
-    If version is < all compatible version, assume incompatible.
-    If version is compatible version + 1, assume compatible, with deprecations
-    Otherwise, assume incompatible.
-    """
-    bzrlib_version = bzrlib.version_info[:2]
-    if (bzrlib_version in desired or 
-        ((bzrlib_version[0], bzrlib_version[1]-1) in desired and 
-         bzrlib.version_info[3] in ('dev', 'exp'))):
-        return
-    if bzrlib_version < desired[0]:
-        raise BzrError('Installed bzr version %s is too old to be used with bzr-svn, at least %s.%s required' % (bzrlib.__version__, desired[0][0], desired[0][1]))
-    else:
-        warning('bzr-svn is not up to date with installed bzr version %s.'
-                ' \nThere should be a newer version of bzr-svn available.',
-                bzrlib.__version__)
-        if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
-            raise BzrError('Version mismatch')
 
 def check_subversion_version():
     """Check that Subversion is compatible.
@@ -170,7 +151,8 @@ def lazy_check_versions():
     if _versions_checked:
         return
     _versions_checked = True
-    check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
+    bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
+
 
 _optimizers_registered = False
 def lazy_register_optimizers():
