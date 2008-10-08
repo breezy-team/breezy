@@ -22,7 +22,7 @@ import shutil
 import sys
 import tempfile
 
-from bzrlib import (builtins, diff, osutils, patches, workingtree)
+from bzrlib import (builtins, diff, errors, osutils, patches, workingtree)
 from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
 from bzrlib.plugins.shelf2 import prepare_shelf
@@ -38,6 +38,7 @@ class Shelver(object):
         self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
                                          self.diff_file)
         self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
+        self.manager = prepare_shelf.ShelfManager.for_tree(work_tree)
 
     @classmethod
     def from_args(klass, revision=None):
@@ -55,7 +56,11 @@ class Shelver(object):
                     self.handle_modify_text(creator, change[1])
             choice = self.prompt('Shelve changes? [y/n]')
             if choice == 'y':
-                creator.write_shelf()
+                shelf_id, shelf_file = self.manager.new_shelf()
+                try:
+                    creator.write_shelf(shelf_file)
+                finally:
+                    shelf_file.close()
                 creator.transform()
         finally:
             shutil.rmtree(self.tempdir)
@@ -129,18 +134,28 @@ class Unshelver(object):
     @classmethod
     def from_args(klass):
         tree, path = workingtree.WorkingTree.open_containing('.')
-        shelf_filename = tree.bzrdir.root_transport.local_abspath('.shelf2/01')
-        return klass(tree, shelf_filename)
+        manager = prepare_shelf.ShelfManager.for_tree(tree)
+        shelf_id = manager.last_shelf()
+        if shelf_id is None:
+            raise errors.BzrCommandError('No changes are shelved.')
+        return klass(tree, manager, shelf_id)
 
-    def __init__(self, tree, shelf_filename):
+    def __init__(self, tree, manager, shelf_id):
         self.tree = tree
-        self.shelf_filename = shelf_filename
+        self.manager = manager
+        self.shelf_id = shelf_id
 
     def run(self):
         self.tree.lock_write()
         try:
-            unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(
-                self.tree, self.shelf_filename)
-            unshelver.unshelve()
+            shelf_file = self.manager.read_shelf(self.shelf_id)
+            try:
+                unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(
+                    self.tree, shelf_file)
+                unshelver.unshelve()
+                self.manager.delete_shelf(self.shelf_id)
+            finally:
+                unshelver.finalize()
+                shelf_file.close()
         finally:
             self.tree.unlock()
