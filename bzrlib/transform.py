@@ -1458,6 +1458,9 @@ class _PreviewTree(tree.Tree):
         self._final_paths = FinalPaths(transform)
         self.__by_parent = None
         self._parent_ids = []
+        self._all_children_cache = {}
+        self._path2trans_id_cache = {}
+        self._final_name_cache = {}
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
@@ -1550,15 +1553,25 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.has_id(file_id)
 
     def _path2trans_id(self, path):
+        # We must not use None here, because that is a valid value to store.
+        trans_id = self._path2trans_id_cache.get(path, object)
+        if trans_id is not object:
+            return trans_id
         segments = splitpath(path)
         cur_parent = self._transform.root
         for cur_segment in segments:
             for child in self._all_children(cur_parent):
-                if self._transform.final_name(child) == cur_segment:
+                final_name = self._final_name_cache.get(child)
+                if final_name is None:
+                    final_name = self._transform.final_name(child)
+                    self._final_name_cache[child] = final_name
+                if final_name == cur_segment:
                     cur_parent = child
                     break
             else:
+                self._path2trans_id_cache[path] = None
                 return None
+        self._path2trans_id_cache[path] = cur_parent
         return cur_parent
 
     def path2id(self, path):
@@ -1572,10 +1585,14 @@ class _PreviewTree(tree.Tree):
             raise errors.NoSuchId(self, file_id)
 
     def _all_children(self, trans_id):
+        children = self._all_children_cache.get(trans_id)
+        if children is not None:
+            return children
         children = set(self._transform.iter_tree_children(trans_id))
         # children in the _new_parent set are provided by _by_parent.
         children.difference_update(self._transform._new_parent.keys())
         children.update(self._by_parent.get(trans_id, []))
+        self._all_children_cache[trans_id] = children
         return children
 
     def iter_children(self, file_id):
