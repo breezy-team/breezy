@@ -52,28 +52,37 @@ class Shelver(object):
     def run(self):
         creator = prepare_shelf.ShelfCreator(self.work_tree, self.target_tree)
         self.tempdir = tempfile.mkdtemp()
+        changes_shelved = 0
         try:
             for change in creator:
                 if change[0] == 'modify text':
-                    self.handle_modify_text(creator, change[1])
+                    changes_shelved += self.handle_modify_text(creator,
+                                                               change[1])
                 if change[0] == 'add file':
                     if self.prompt('Shelve adding file?') == 'y':
                         creator.shelve_creation(change[1])
+                        changes_shelved += 1
                 if change[0] == 'delete file':
                     if self.prompt('Shelve deleting file?') == 'y':
                         creator.shelve_deletion(change[1])
+                        changes_shelved += 1
                 if change[0] == 'rename':
                     if self.prompt('Shelve renaming %s => %s?' %
                                    change[2:]) == 'y':
                         creator.shelve_rename(change[1])
-            choice = self.prompt('Shelve changes? [y/n]')
-            if choice == 'y':
-                shelf_id, shelf_file = self.manager.new_shelf()
-                try:
-                    creator.write_shelf(shelf_file)
-                finally:
-                    shelf_file.close()
-                creator.transform()
+                        changes_shelved += 1
+            if changes_shelved > 0:
+                choice = self.prompt('Shelve %d change(s)? [y/n]' %
+                                     changes_shelved)
+                if choice == 'y':
+                    shelf_id, shelf_file = self.manager.new_shelf()
+                    try:
+                        creator.write_shelf(shelf_file)
+                    finally:
+                        shelf_file.close()
+                    creator.transform()
+            else:
+                print 'No changes to shelve.'
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()
@@ -118,6 +127,7 @@ class Shelver(object):
             outfile.close()
 
     def handle_modify_text(self, creator, file_id):
+        shelved_hunks = 0
         parsed = self.get_parsed_patch(file_id)
         selected_hunks = []
         final_patch = copy.copy(parsed)
@@ -130,6 +140,7 @@ class Shelver(object):
                     final_patch.hunks.append(hunk)
         patched_text = self.get_patched_text(file_id, final_patch)
         creator.shelve_text(file_id, patched_text)
+        return len(parsed.hunks) - len(final_patch.hunks)
 
 
 class Unshelver(object):
