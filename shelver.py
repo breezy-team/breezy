@@ -55,6 +55,13 @@ class Shelver(object):
             for change in creator:
                 if change[0] == 'modify text':
                     self.handle_modify_text(creator, change[1])
+                if change[0] == 'add file':
+                    if self.prompt('Shelve adding file?') == 'y':
+                        creator.shelve_creation(change[1])
+                if change[0] == 'rename':
+                    if self.prompt('Shelve renaming %s => %s?' %
+                                   change[2:]) == 'y':
+                        creator.shelve_rename(change[1])
             choice = self.prompt('Shelve changes? [y/n]')
             if choice == 'y':
                 shelf_id, shelf_file = self.manager.new_shelf()
