@@ -7,6 +7,12 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  IMPROVEMENTS:
+
+    * ``bzr dump-btree`` is a hidden command introduced to allow dumping
+      the contents of a compressed btree file.  (John Arbash Meinel)
+
+
 bzr 1.8rc1 2008-10-07
 ---------------------
 

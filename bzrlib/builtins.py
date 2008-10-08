@@ -255,7 +255,43 @@ class cmd_cat_revision(Command):
                                                  ' revision.')
                 rev_id = rev.as_revision_id(b)
                 self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
-    
+
+
+class cmd_dump_btree(Command):
+    """Dump the contents of a btree index file to disk.
+
+    This is useful because the pages are compressed, so they cannot be read
+    directly anymore.
+    """
+
+    # TODO: Do we want to dump the internal nodes as well?
+    # TODO: It would be nice to be able to dump the un-parsed information,
+    #       rather than only going through iter_all_entries. However, this is
+    #       good enough for a start
+    hidden = True
+    takes_args = ['path']
+
+    def run(self, path):
+        from bzrlib import btree_index
+
+        dirname, basename = osutils.split(path)
+        t = transport.get_transport(dirname)
+        try:
+            st = t.stat(basename)
+        except errors.TransportNotPossible:
+            # We can't stat, so we'll fake it because we have to do the 'get()'
+            # anyway.
+            bt = btree_index.BTreeGraphIndex(t, basename, None)
+            bytes = t.get_bytes(basename)
+            bt._file = cStringIO.StringIO(bytes)
+            bt._size = len(bytes)
+        else:
+            bt = btree_index.BTreeGraphIndex(t, basename, st.st_size)
+        for node in bt.iter_all_entries():
+            # Node is made up of:
+            # (index, key, value, [references])
+            self.outf.write('%s\n' % (node[1:],))
+
 
 class cmd_remove_tree(Command):
     """Remove the working tree from a given branch/checkout.
