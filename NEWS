@@ -4,6 +4,14 @@ Bazaar Release Notes
 
 .. contents::
 
+IN DEVELOPMENT
+--------------
+
+  PORTABILITY:
+
+   * Some Pyrex versions require the WIN32 macro defined to compile on
+     that platform.  (Alexander Belchenko, Martin Pool, #277481)
+
 bzr 1.8rc1 2008-10-07
 ---------------------
 
