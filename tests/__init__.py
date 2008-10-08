@@ -17,12 +17,12 @@
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.plugins.shelf2.tests import (
     test_serialize_transform,
-    test_prepare_shelf,
+    test_shelf,
 )
 
 
 def test_suite():
     suite = TestSuite()
     suite.addTest(TestLoader().loadTestsFromModule(test_serialize_transform))
-    suite.addTest(TestLoader().loadTestsFromModule(test_prepare_shelf))
+    suite.addTest(TestLoader().loadTestsFromModule(test_shelf))
     return suite
