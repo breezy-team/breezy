@@ -17,7 +17,7 @@
 import os
 
 from bzrlib import pack, tests, transform
-from bzrlib.plugins.shelf2 import prepare_shelf, serialize_transform
+from bzrlib.plugins.shelf2 import shelf, serialize_transform
 
 
 class TestPrepareShelf(tests.TestCaseWithTransport):
@@ -28,7 +28,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo'], ['foo-id'])
         tree.commit('foo')
         tree.rename_one('foo', 'bar')
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('rename', 'foo-id', 'foo', 'bar')], list(creator))
         creator.shelve_rename('foo-id')
@@ -45,7 +45,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo', 'bar', 'foo/baz'], ['foo-id', 'bar-id', 'baz-id'])
         tree.commit('foo')
         tree.rename_one('foo/baz', 'bar/baz')
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('rename', 'baz-id', 'foo/baz', 'bar/baz')],
                          list(creator))
@@ -74,7 +74,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         tree.commit('Committed foo')
         self.build_tree_contents([('foo', 'b\na\nc\n')])
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('modify text', 'foo-id')], list(creator))
         creator.shelve_text('foo-id', 'a\nc\n')
@@ -89,7 +89,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.commit('Empty tree')
         self.build_tree_contents([('foo', 'a\n'), ('bar/',)])
         tree.add(['foo', 'bar'], ['foo-id', 'bar-id'])
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('add file', 'bar-id', 'directory'),
                           ('add file', 'foo-id', 'file')],
@@ -117,7 +117,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.commit('Empty tree')
         os.symlink('bar', 'foo')
         tree.add('foo', 'foo-id')
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('add file', 'foo-id', 'symlink')], list(creator))
         creator.shelve_creation('foo-id')
@@ -134,7 +134,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.commit('Added file and directory')
         os.unlink('tree/foo/bar')
         os.rmdir('tree/foo')
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('delete file', 'bar-id'),
                           ('delete file', 'foo-id')],
@@ -149,7 +149,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo', 'foo-id')
-        creator = prepare_shelf.ShelfCreator(tree, tree.basis_tree())
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
         list(creator)
         creator.shelve_creation('foo-id')
         filename = creator.write_shelf()
@@ -162,5 +163,6 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         finally:
             shelf_file.close()
         tt = transform.TransformPreview(tree)
+        self.addCleanup(tt.finalize)
         serialize_transform.deserialize(tt,
             iter(parser.read_pending_records()))
