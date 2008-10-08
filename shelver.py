@@ -25,6 +25,7 @@ import tempfile
 from bzrlib import (builtins, diff, errors, osutils, patches, workingtree)
 from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
+from bzrlib.plugins.bzrtools.userinteractor import getchar
 from bzrlib.plugins.shelf2 import prepare_shelf
 
 
@@ -88,23 +89,11 @@ class Shelver(object):
         finally:
             self.diff_file.truncate(0)
 
-    def __getchar(self):
-        import tty
-        import termios
-        fd = sys.stdin.fileno()
-        settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, settings)
-        return ch
-
     def prompt(self, question):
         if self.auto:
             return 'y'
         print question,
-        char = self.__getchar()
+        char = getchar()
         print ""
         return char
 
