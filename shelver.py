@@ -74,7 +74,7 @@ class Shelver(object):
                         creator.shelve_rename(change[1])
                         changes_shelved += 1
             if changes_shelved > 0:
-                if (self.prompt_bool('Shelve %d change(s)? [y/n]' %
+                if (self.prompt_bool('Shelve %d change(s)?' %
                     changes_shelved, auto=self.auto_apply)):
                     shelf_id, shelf_file = self.manager.new_shelf()
                     try:
@@ -104,14 +104,16 @@ class Shelver(object):
             auto = self.auto
         if auto:
             return True
-        print question,
+        print question + ' [yNfq]',
         char = getchar()
-        print "\r",
+        print ""
         if char == 'y':
             return True
         elif char == 'f':
             self.auto = True
             return True
+        if char == 'q':
+            sys.exit(0)
         else:
             return False
 
@@ -144,7 +146,7 @@ class Shelver(object):
         if not self.auto:
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                if not self.prompt_bool('Shelve? [y/n/f]'):
+                if not self.prompt_bool('Shelve?'):
                     final_patch.hunks.append(hunk)
         patched_text = self.get_patched_text(file_id, final_patch)
         creator.shelve_text(file_id, patched_text)
