@@ -59,3 +59,22 @@ class TestDumpBtree(tests.TestCaseWithTransport):
             "(('test', 'key2'), 'value2', ((('ref', 'entry2'),),))\n"
             "(('test2', 'key3'), 'value3', ((('ref', 'entry3'),),))\n",
             out)
+
+    def test_dump_btree_raw_smoke(self):
+        self.create_sample_btree_index()
+        out, err = self.run_bzr('dump-btree test.btree --raw')
+        self.assertEqualDiff(
+            'Root node:\n'
+            'B+Tree Graph Index 2\n'
+            'node_ref_lists=1\n'
+            'key_elements=2\n'
+            'len=3\n'
+            'row_lengths=1\n'
+            '\n'
+            'Page 0 (row: 0, offset: 0)\n'
+            'type=leaf\n'
+            'test\0key1\0ref\0entry\0value\n'
+            'test\0key2\0ref\0entry2\0value2\n'
+            'test2\0key3\0ref\0entry3\0value3\n'
+            '\n',
+            out)

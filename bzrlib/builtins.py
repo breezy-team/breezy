@@ -29,6 +29,7 @@ import bzrlib
 from bzrlib import (
     bugtracker,
     bundle,
+    btree_index,
     bzrdir,
     delta,
     config,
@@ -269,24 +270,70 @@ class cmd_dump_btree(Command):
     #       rather than only going through iter_all_entries. However, this is
     #       good enough for a start
     hidden = True
+    encoding_type = 'exact'
     takes_args = ['path']
+    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
+                                        ' rather than the parsed tuples'),
+                    ]
 
-    def run(self, path):
-        from bzrlib import btree_index
-
+    def run(self, path, raw=False):
         dirname, basename = osutils.split(path)
         t = transport.get_transport(dirname)
+        if raw:
+            self._dump_raw_bytes(t, basename)
+        else:
+            self._dump_entries(t, basename)
+
+    def _get_index_and_bytes(self, trans, basename):
+        """Create a BTreeGraphIndex and raw bytes."""
+        bt = btree_index.BTreeGraphIndex(trans, basename, None)
+        bytes = trans.get_bytes(basename)
+        bt._file = cStringIO.StringIO(bytes)
+        bt._size = len(bytes)
+        return bt, bytes
+
+    def _dump_raw_bytes(self, trans, basename):
+        import zlib
+
+        # We need to parse at least the root node.
+        # This is because the first page of every row starts with an
+        # uncompressed header.
+        bt, bytes = self._get_index_and_bytes(trans, basename)
+        root_node = bt._get_root_node()
+        for row_idx, row_start in enumerate(bt._row_offsets[:-1]):
+            if row_idx == 0:
+                self.outf.write('Root node:\n')
+            elif row_idx < len(bt._row_lengths):
+                self.outf.write('\nInternal Row %d:\n' % (row_idx,))
+            else:
+                self.outf.write('\nLeaf Row %d:\n' % (row_idx,))
+            # Should we do something to ensure all pages are 'back-to-back'?
+            # And we aren't skipping data in the middle?
+            for page_idx in xrange(0, bt._row_lengths[row_idx]):
+                start_idx = bt._row_offsets[row_idx] + page_idx
+                start_offset = start_idx * btree_index._PAGE_SIZE
+                finish_offset = min(start_offset + btree_index._PAGE_SIZE,
+                                    len(bytes))
+                page_bytes = bytes[start_offset:finish_offset]
+                if row_idx == 0 and page_idx == 0:
+                    header_end, data = bt._parse_header_from_bytes(page_bytes)
+                    self.outf.write(page_bytes[:header_end])
+                    page_bytes = data
+                self.outf.write('\nPage %d (row: %d, offset: %d)\n'
+                                % (start_idx, row_idx, page_idx))
+                decomp_bytes = zlib.decompress(page_bytes)
+                self.outf.write(decomp_bytes)
+                self.outf.write('\n')
+
+    def _dump_entries(self, trans, basename):
         try:
-            st = t.stat(basename)
+            st = trans.stat(basename)
         except errors.TransportNotPossible:
             # We can't stat, so we'll fake it because we have to do the 'get()'
             # anyway.
-            bt = btree_index.BTreeGraphIndex(t, basename, None)
-            bytes = t.get_bytes(basename)
-            bt._file = cStringIO.StringIO(bytes)
-            bt._size = len(bytes)
+            bt, _ = self._get_index_and_bytes(trans, basename)
         else:
-            bt = btree_index.BTreeGraphIndex(t, basename, st.st_size)
+            bt = btree_index.BTreeGraphIndex(trans, basename, st.st_size)
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
