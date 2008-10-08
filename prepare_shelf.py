@@ -116,22 +116,16 @@ class ShelfCreator(object):
         transport.ensure_base()
         return transport.local_abspath('01')
 
-    def write_shelf(self):
+    def write_shelf(self, shelf_file):
         transform.resolve_conflicts(self.shelf_transform)
-        filename = self.make_shelf_filename()
-        shelf_file = open(filename, 'wb')
-        try:
-            serializer = pack.ContainerSerialiser()
-            shelf_file.write(serializer.begin())
-            shelf_file.write(serializer.bytes_record(
-                self.target_tree.get_revision_id(), (('revision-id',),)))
-            for bytes in serialize_transform.serialize(
-                self.shelf_transform, serializer):
-                shelf_file.write(bytes)
-            shelf_file.write(serializer.end())
-        finally:
-            shelf_file.close()
-        return filename
+        serializer = pack.ContainerSerialiser()
+        shelf_file.write(serializer.begin())
+        shelf_file.write(serializer.bytes_record(
+            self.target_tree.get_revision_id(), (('revision-id',),)))
+        for bytes in serialize_transform.serialize(
+            self.shelf_transform, serializer):
+            shelf_file.write(bytes)
+        shelf_file.write(serializer.end())
 
 
 class Unshelver(object):
@@ -142,13 +136,9 @@ class Unshelver(object):
         self.transform = transform
 
     @classmethod
-    def from_tree_and_shelf(klass, tree, shelf_filename):
+    def from_tree_and_shelf(klass, tree, shelf_file):
         parser = pack.ContainerPushParser()
-        shelf_file = open(shelf_filename, 'rb')
-        try:
-            parser.accept_bytes(shelf_file.read())
-        finally:
-            shelf_file.close()
+        parser.accept_bytes(shelf_file.read())
         tt = transform.TransformPreview(tree)
         records = iter(parser.read_pending_records())
         names, base_revision_id = records.next()
