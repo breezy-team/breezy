@@ -141,6 +141,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
                           sorted(list(creator)))
         creator.shelve_deletion('foo-id')
         creator.shelve_deletion('bar-id')
+        creator.transform()
         self.failUnlessExists('tree/foo')
         self.assertFileEqual('baz', 'tree/foo/bar')
 
