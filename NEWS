@@ -89,9 +89,15 @@ server.
 
   BUG FIXES:
 
+    * API versioning support now has a multiple-version checking api
+      ``require_any_api``. (Robert Collins, #279447)
+
     * Avoid random failures arising from misinterpreted ``errno`` values
       in ``_readdir_pyx.read_dir``.
       (Martin Pool, #279381)
+
+    * A failure to load a plugin due to an IncompatibleAPI exception is
+      now correctly reported. (Robert Collins, #279451)
 
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
