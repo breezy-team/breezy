@@ -37,7 +37,7 @@ package version, e.g. ``bzr.1.3-1~bazaar1~dapper1``.
 Every package is first uploaded into the beta ppa.  For final release
 versions it is also copied to the main PPA.
 
-The packaging information is kept it branches of bzr on Launchpad, named
+The packaging information is kept in branches of bzr on Launchpad, named
 like 
 <https://code.launchpad.net/~bzr/bzr/packaging-hardy>.
 or
