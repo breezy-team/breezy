@@ -1126,6 +1126,13 @@ class BranchHooks(Hooks):
         # (params) where params is a ChangeBranchTipParams with the members
         # (branch, old_revno, new_revno, old_revid, new_revid)
         self['post_change_branch_tip'] = []
+        # Introduced in 1.9
+        # Invoked when a stacked branch activates its fallback locations and
+        # allows the transformation of the url of said location.
+        # the api signature is
+        # (url) where url is the url for the fallback location.
+        # The hook should return a url.
+        self['transform_fallback_location'] = []
 
 
 # install the default hooks into the Branch class.
@@ -2025,6 +2032,8 @@ class BzrBranch7(BzrBranch5):
             errors.UnstackableBranchFormat):
             pass
         else:
+            for hook in Branch.hooks['transform_fallback_location']:
+                url = hook(self, url)
             self._activate_fallback_location(url)
 
     def _check_stackable_repo(self):
