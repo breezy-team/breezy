@@ -68,11 +68,13 @@ class Shelver(object):
                     changes_shelved += self.handle_modify_text(creator,
                                                                change[1])
                 if change[0] == 'add file':
-                    if self.prompt_bool('Shelve adding file?'):
+                    if self.prompt_bool('Shelve adding file "%s"?'
+                                        % change[3]):
                         creator.shelve_creation(change[1])
                         changes_shelved += 1
                 if change[0] == 'delete file':
-                    if self.prompt_bool('Shelve deleting file?'):
+                    if self.prompt_bool('Shelve removing file "%s"? '
+                                        % change[3]):
                         creator.shelve_deletion(change[1])
                         changes_shelved += 1
                 if change[0] == 'rename':
