@@ -85,7 +85,6 @@ class ShelfCreator(object):
 
     def shelve_deletion(self, file_id):
         kind, name, parent, versioned = self.deletion[file_id]
-        versioned = list(reversed(versioned))
         existing_path = self.target_tree.id2path(file_id)
         if not self.work_tree.has_filename(existing_path):
             existing_path = None
