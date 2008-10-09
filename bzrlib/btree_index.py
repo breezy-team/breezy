@@ -687,9 +687,11 @@ class BTreeGraphIndex(object):
         # return node_indexes
 
         # TODO: This could be cached
-        recommended_read = self._transport.recommended_page_size() / 4
+        recommended_read = self._transport.recommended_page_size()
         recommended_pages = int(math.ceil(recommended_read /
                                           float(_PAGE_SIZE)))
+        # Disable the algorithm
+        # recommended_pages = 1
         if len(node_indexes) >= recommended_pages:
             # Don't add more, we are already requesting more than enough
             return node_indexes
@@ -704,6 +706,9 @@ class BTreeGraphIndex(object):
         cached_nodes.update(self._leaf_node_cache._cache.keys())
         if self._root_node is not None:
             cached_nodes.add(0)
+
+        # if len(cached_nodes) < 2: # We haven't read enough to justify expansion
+        #     return node_indexes
 
         # If reading recommended_pages would read the rest of the index, just
         # do so.
@@ -736,21 +741,28 @@ class BTreeGraphIndex(object):
             #         if len(final_nodes) >= recommended_pages:
             #             break
         else:
-            while len(final_nodes) < recommended_pages:
-                for pos in sorted(final_nodes):
+            new_tips = set(final_nodes)
+            while len(final_nodes) < recommended_pages and new_tips:
+                next_tips = set()
+                for pos in sorted(new_tips):
                     if pos > 0:
                         previous = pos - 1
-                        if previous not in cached_nodes:
+                        if (previous not in cached_nodes
+                            and previous not in final_nodes):
                             final_nodes.add(previous)
-                    if pos < max_page:
-                        after = pos + 1
-                        if after not in cached_nodes:
+                            next_tips.add(previous)
+                    after = pos + 1
+                    if after < max_page:
+                        if (after not in cached_nodes
+                            and after not in final_nodes):
                             final_nodes.add(after)
+                            next_tips.add(previous)
                     # if len(final_nodes) > recommended_pages:
                     #     break
+                new_tips = next_tips
 
         final_nodes = sorted(final_nodes)
-        trace.note('\t\t\t\t%s', final_nodes)
+        trace.note('\t\t%s', final_nodes)
         return final_nodes
 
     def _get_nodes(self, cache, node_indexes):
@@ -765,6 +777,7 @@ class BTreeGraphIndex(object):
             except KeyError:
                 needed.append(idx)
         if not needed:
+            # trace.note('cached: %s\tnodes: %s', self._name[-14:], node_indexes)
             return found
         needed = self._expand_nodes(needed)
         found.update(self._cache_nodes(needed, cache))
@@ -1182,6 +1195,10 @@ class BTreeGraphIndex(object):
                     self._size = len(start)
                     size = min(_PAGE_SIZE, self._size)
             else:
+                if offset > self._size:
+                    raise AssertionError('tried to read past the end'
+                                         ' of the file %s > %s'
+                                         % (offset, self._size))
                 size = min(size, self._size - offset)
             ranges.append((offset, size))
         if not ranges:
