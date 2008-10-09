@@ -96,7 +96,7 @@ class ShelfCreator(object):
     def _shelve_creation(self, tree, file_id, from_transform, to_transform,
                          kind, name, parent, version, existing_path=None):
         w_trans_id = from_transform.trans_id_file_id(file_id)
-        if parent is not None:
+        if parent is not None and kind is not None:
             from_transform.delete_contents(w_trans_id)
         from_transform.unversion_file(w_trans_id)
 
@@ -116,6 +116,8 @@ class ShelfCreator(object):
                 elif kind == 'symlink':
                     target = tree.get_symlink_target(file_id)
                     to_transform.create_symlink(target, s_trans_id)
+                elif kind is None:
+                    to_transform.create_file('', s_trans_id)
         if version:
             to_transform.version_file(file_id, s_trans_id)
 
