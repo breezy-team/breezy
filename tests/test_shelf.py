@@ -146,6 +146,32 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.failUnlessExists('tree/foo')
         self.assertFileEqual('baz', 'tree/foo/bar')
 
+    def test_shelve_delete_contents(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo',])
+        tree.add('foo', 'foo-id')
+        tree.commit('Added file and directory')
+        os.unlink('tree/foo')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('delete file', 'foo-id')], sorted(list(creator)))
+        creator.shelve_deletion('foo-id')
+        creator.transform()
+        self.failUnlessExists('tree/foo')
+
+    def test_shelve_unversion(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo',])
+        tree.add('foo', 'foo-id')
+        tree.commit('Added file and directory')
+        tree.unversion(['foo-id'])
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('delete file', 'foo-id')], sorted(list(creator)))
+        creator.shelve_deletion('foo-id')
+        creator.transform()
+        self.failUnlessExists('tree/foo')
+
     def test_write_shelf(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
