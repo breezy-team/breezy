@@ -132,6 +132,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo/',), ('tree/foo/bar', 'baz')])
         tree.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
         tree.commit('Added file and directory')
+        tree.unversion(['foo-id', 'bar-id'])
         os.unlink('tree/foo/bar')
         os.rmdir('tree/foo')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())

@@ -94,16 +94,16 @@ class ShelfCreator(object):
         s_trans_id = to_transform.trans_id_file_id(file_id)
         if parent is not None:
             s_parent_id = to_transform.trans_id_file_id(parent)
-            self.shelf_transform.adjust_path(name, s_parent_id, s_trans_id)
+            to_transform.adjust_path(name, s_parent_id, s_trans_id)
             if kind == 'file':
                 lines = self.read_tree_lines(tree, file_id)
                 to_transform.create_file(lines, s_trans_id)
             if kind == 'directory':
                 to_transform.create_directory(s_trans_id)
             if kind == 'symlink':
-                target = self.work_tree.get_symlink_target(file_id)
+                target = tree.get_symlink_target(file_id)
                 to_transform.create_symlink(target, s_trans_id)
-        self.shelf_transform.version_file(file_id, s_trans_id)
+        to_transform.version_file(file_id, s_trans_id)
 
     def read_tree_lines(self, tree, file_id):
         tree_file = tree.get_file(file_id)
