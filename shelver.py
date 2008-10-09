@@ -33,7 +33,7 @@ from bzrlib import (
 from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
 from bzrlib.plugins.bzrtools.userinteractor import getchar
-from bzrlib.plugins.shelf2 import prepare_shelf
+from bzrlib.plugins.shelf2 import shelf
 
 
 class Shelver(object):
@@ -47,7 +47,7 @@ class Shelver(object):
         self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
                                          self.diff_file)
         self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
-        self.manager = prepare_shelf.ShelfManager.for_tree(work_tree)
+        self.manager = shelf.ShelfManager.for_tree(work_tree)
         self.auto = auto
         self.auto_apply = auto_apply
 
@@ -59,7 +59,7 @@ class Shelver(object):
         return klass(tree, target_tree, path, all, all)
 
     def run(self):
-        creator = prepare_shelf.ShelfCreator(self.work_tree, self.target_tree)
+        creator = shelf.ShelfCreator(self.work_tree, self.target_tree)
         self.tempdir = tempfile.mkdtemp()
         changes_shelved = 0
         try:
@@ -170,7 +170,7 @@ class Unshelver(object):
     @classmethod
     def from_args(klass):
         tree, path = workingtree.WorkingTree.open_containing('.')
-        manager = prepare_shelf.ShelfManager.for_tree(tree)
+        manager = shelf.ShelfManager.for_tree(tree)
         shelf_id = manager.last_shelf()
         if shelf_id is None:
             raise errors.BzrCommandError('No changes are shelved.')
@@ -186,7 +186,7 @@ class Unshelver(object):
         try:
             shelf_file = self.manager.read_shelf(self.shelf_id)
             try:
-                unshelver = prepare_shelf.Unshelver.from_tree_and_shelf(
+                unshelver = shelf.Unshelver.from_tree_and_shelf(
                     self.tree, shelf_file)
                 unshelver.unshelve()
                 self.manager.delete_shelf(self.shelf_id)
