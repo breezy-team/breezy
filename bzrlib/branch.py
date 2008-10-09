@@ -2035,6 +2035,11 @@ class BzrBranch7(BzrBranch5):
         else:
             for hook in Branch.hooks['transform_fallback_location']:
                 url = hook(self, url)
+                if url is None:
+                    hook_name = Branch.hooks.get_hook_name(hook)
+                    raise AssertionError(
+                        "'transform_fallback_location' hook %s returned "
+                        "None, not a URL." % hook_name)
             self._activate_fallback_location(url)
 
     def _check_stackable_repo(self):
