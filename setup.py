@@ -201,7 +201,7 @@ command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, **kwargs):
+def add_pyrex_extension(module_name, libraries=None):
     """Add a pyrex module to build.
 
     This will use Pyrex to auto-generate the .c file if it is available.
@@ -217,26 +217,29 @@ def add_pyrex_extension(module_name, **kwargs):
     path = module_name.replace('.', '/')
     pyrex_name = path + '.pyx'
     c_name = path + '.c'
+    define_macros = []
+    if sys.platform == 'win32':
+        # pyrex uses the macro WIN32 to detect the platform, even though it should
+        # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
+        # right value.
+        define_macros.append(('WIN32', None))
     if have_pyrex:
-        ext_modules.append(Extension(module_name, [pyrex_name], **kwargs))
+        ext_modules.append(Extension(module_name, [pyrex_name],
+            define_macros=define_macros, libraries=libraries))
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
         else:
-            ext_modules.append(Extension(module_name, [c_name], **kwargs))
+            ext_modules.append(Extension(module_name, [c_name],
+                define_macros=define_macros, libraries=libraries))
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
-                         libraries=['Ws2_32']
-                       )
-    # pyrex uses the macro WIN32 to detect the platform, even though it should
-    # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
-    # right value.
-    add_pyrex_extension('bzrlib._walkdirs_win32',
-                        define_macros=[('WIN32', None)])
+                        libraries=['Ws2_32'])
+    add_pyrex_extension('bzrlib._walkdirs_win32')
 else:
     if have_pyrex and pyrex_version == '0.9.4.1':
         # Pyrex 0.9.4.1 fails to compile this extension correctly
