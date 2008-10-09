@@ -177,7 +177,22 @@ Please use the ``post_change_branch_tip`` hook instead.
 transform_fallback_location (Branch)
 ------------------------------------
 
+Invoked as a stacked branch activates its fallback locations.
 
+The hook signature is (branch, url) where:
+
+  branch
+    The branch being opened.  Note that as it does not yet have its
+    fallback locations activated, the branch should be treated as
+    half-built.
+
+  url
+    The URL that the branch specified for its fallback location.
+
+The hook must return a URL for the branch containing the fallback
+location.
+
+(New in 1.9)
 
 
 server_started (SmartTCPServer)

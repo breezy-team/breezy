@@ -1130,7 +1130,8 @@ class BranchHooks(Hooks):
         # Invoked when a stacked branch activates its fallback locations and
         # allows the transformation of the url of said location.
         # the api signature is
-        # (url) where url is the url for the fallback location.
+        # (branch, url) where branch is the branch having its fallback
+        # location activated and url is the url for the fallback location.
         # The hook should return a url.
         self['transform_fallback_location'] = []
 
