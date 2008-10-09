@@ -185,15 +185,15 @@ class Unshelver(object):
 
     def run(self):
         self.tree.lock_write()
+        cleanups = [self.tree.unlock]
         try:
             shelf_file = self.manager.read_shelf(self.shelf_id)
-            try:
-                unshelver = shelf.Unshelver.from_tree_and_shelf(
-                    self.tree, shelf_file)
-                unshelver.unshelve()
-                self.manager.delete_shelf(self.shelf_id)
-            finally:
-                unshelver.finalize()
-                shelf_file.close()
+            cleanups.append(shelf_file.close)
+            unshelver = shelf.Unshelver.from_tree_and_shelf(
+                self.tree, shelf_file)
+            cleanups.append(unshelver.finalize)
+            unshelver.unshelve()
+            self.manager.delete_shelf(self.shelf_id)
         finally:
-            self.tree.unlock()
+            for cleanup in reversed(cleanups):
+                cleanup()
