@@ -27,14 +27,14 @@ class cmd_shelve2(commands.Command):
         commands.Option('all', help='Shelve all changes.')]
 
     def run(self, revision=None, all=False):
-        from bzrlib.plugins.shelf2.shelver import Shelver
+        from bzrlib.plugins.shelf2.shelf_ui import Shelver
         Shelver.from_args(revision, all).run()
 
 class cmd_unshelve2(commands.Command):
     """Restore shelved changes."""
 
     def run(self):
-        from bzrlib.plugins.shelf2.shelver import Unshelver
+        from bzrlib.plugins.shelf2.shelf_ui import Unshelver
         Unshelver.from_args().run()
 
 
