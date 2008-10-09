@@ -106,6 +106,14 @@ class TestDumbMap(TestCaseWithTransport):
         self.assertEqual([("a", "content here"), ("b", "more content")],
             sorted(list(chkmap.iteritems())))
 
+    def test_iteritems_selected_one_of_two_items(self):
+        chk_bytes = self.get_chk_bytes()
+        root_key = CHKMap.from_dict(chk_bytes,
+            {"a":"content here", "b":"more content"})
+        chkmap = CHKMap(chk_bytes, root_key)
+        self.assertEqual([("a", "content here")],
+            sorted(list(chkmap.iteritems(["a"]))))
+
 
 class TestRootNode(TestCaseWithTransport):
 

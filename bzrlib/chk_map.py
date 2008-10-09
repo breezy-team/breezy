@@ -81,12 +81,18 @@ class CHKMap(object):
             result._map(key, value)
         return result._save()
 
-    def iteritems(self):
+    def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
-        for name, key, in self._root_node._nodes.iteritems():
-            bytes = self._read_bytes(key)
-            yield name, ValueNode.deserialise(bytes).value
+        if key_filter is not None:
+            for name, key, in self._root_node._nodes.iteritems():
+                if name in key_filter:
+                    bytes = self._read_bytes(key)
+                    yield name, ValueNode.deserialise(bytes).value
+        else:
+            for name, key, in self._root_node._nodes.iteritems():
+                bytes = self._read_bytes(key)
+                yield name, ValueNode.deserialise(bytes).value
 
     def _map(self, key, value):
         """Map key to value."""
@@ -151,6 +157,10 @@ class RootNode(object):
             nodes[name] = (value,)
         self._nodes = nodes
         self._key = key
+
+    def refs(self):
+        """Get the CHK key references this node holds."""
+        return self._nodes.values()
 
     def remove_child(self, name):
         """Remove name from the node.

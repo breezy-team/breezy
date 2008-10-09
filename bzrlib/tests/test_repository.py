@@ -657,6 +657,29 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
+class TestDevelopment3(TestCaseWithTransport):
+
+    def test_add_inventory_uses_chk_map(self):
+        repo = self.make_repository('repo', format="development3")
+        source = self.make_branch_and_tree("source", format="pack-0.92")
+        revid = source.commit("foo", rev_id="foo")
+        # get the inventory from the committed revision
+        basis = source.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        inv = basis.inventory
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        repo.add_inventory(revid, inv, [])
+        self.assertEqual(set([(revid,)]), repo.inventories.keys())
+        self.assertEqual(
+            set([('sha1:a521a815c343d72dffac50e316246f1fade1a4d3',),
+                ('sha1:a12ffb3c1810005e8ed9388d29602e1e9e8e06ac',)]),
+            repo.chk_bytes.keys())
+
+
 class TestWithBrokenRepo(TestCaseWithTransport):
     """These tests seem to be more appropriate as interface tests?"""
 

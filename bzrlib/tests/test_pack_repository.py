@@ -511,12 +511,18 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
-                matching_format_name = 'pack-0.92-subtree'
+                if repo._format.supports_chks:
+                    matching_format_name = 'development3-subtree'
+                else:
+                    matching_format_name = 'pack-0.92-subtree'
             else:
                 matching_format_name = 'rich-root-pack'
             mismatching_format_name = 'pack-0.92'
         else:
-            matching_format_name = 'pack-0.92'
+            if repo._format.supports_chks:
+                matching_format_name = 'development3'
+            else:
+                matching_format_name = 'pack-0.92'
             mismatching_format_name = 'pack-0.92-subtree'
         base = self.make_repository('base', format=matching_format_name)
         repo.add_fallback_repository(base)
@@ -527,7 +533,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             repo.add_fallback_repository, bad_repo)
         self.assertContainsRe(str(e),
             r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
-            r'KnitPackRepository.*/repo/.*\n'
+            r'.*Repository.*/repo/.*\n'
             r'different rich-root support')
 
     def test_stack_checks_serializers_compatibility(self):
@@ -535,7 +541,10 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if getattr(repo._format, 'supports_tree_reference', False):
             # can only stack on repositories that have compatible internal
             # metadata
-            matching_format_name = 'pack-0.92-subtree'
+            if repo._format.supports_chks:
+                matching_format_name = 'development3-subtree'
+            else:
+                matching_format_name = 'pack-0.92-subtree'
             mismatching_format_name = 'rich-root-pack'
         else:
             if repo.supports_rich_root():
@@ -553,7 +562,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             repo.add_fallback_repository, bad_repo)
         self.assertContainsRe(str(e),
             r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
-            r'KnitPackRepository.*/repo/.*\n'
+            r'.*Repository.*/repo/.*\n'
             r'different serializers')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):

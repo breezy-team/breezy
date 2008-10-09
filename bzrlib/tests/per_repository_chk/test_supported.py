@@ -70,7 +70,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         try:
             repo.start_write_group()
             try:
-                repo.chk_bytes.add_lines((None,), None, ["foo\n", "bar\n"],
+                repo.chk_bytes.add_lines((None,), None, ["chkroot:\n"],
                     random_id=True)
             except:
                 repo.abort_write_group()
@@ -79,7 +79,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
                 repo.commit_write_group()
             repo.start_write_group()
             try:
-                repo.chk_bytes.add_lines((None,), None, ["foo\n"],
+                repo.chk_bytes.add_lines((None,), None, ["chkvalue:\n"],
                     random_id=True)
             except:
                 repo.abort_write_group()
@@ -88,8 +88,8 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
                 repo.commit_write_group()
             repo.pack()
             self.assertEqual(
-                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',),
-                    ('sha1:f1d2d2f924e986ac86fdf7b36c94bcdf32beec15',),]),
+                set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
+                    ('sha1:572d8da882e1ebf0f50f1e2da2d7a9cadadf4db5',)]),
                 repo.chk_bytes.keys())
         finally:
             repo.unlock()
@@ -98,8 +98,8 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         repo.lock_read()
         try:
             self.assertEqual(
-                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',),
-                    ('sha1:f1d2d2f924e986ac86fdf7b36c94bcdf32beec15',),]),
+                set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
+                    ('sha1:572d8da882e1ebf0f50f1e2da2d7a9cadadf4db5',)]),
                 repo.chk_bytes.keys())
         finally:
             repo.unlock()

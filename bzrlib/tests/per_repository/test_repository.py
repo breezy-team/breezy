@@ -29,7 +29,7 @@ from bzrlib import (
     repository,
     )
 from bzrlib.delta import TreeDelta
-from bzrlib.inventory import Inventory, InventoryDirectory
+from bzrlib.inventory import CommonInventory, Inventory, InventoryDirectory
 from bzrlib.repofmt.weaverepo import (
     RepositoryFormat5,
     RepositoryFormat6,
@@ -242,13 +242,16 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs):
             self.assertEqual(rev_id, inv.revision_id)
-            self.assertIsInstance(inv, Inventory)
+            self.assertIsInstance(inv, CommonInventory)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
         tree.commit('')
         second_revision = tree.commit('')
-        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rev_tree = tree.branch.repository.revision_tree(second_revision)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        inv = rev_tree.inventory
         rich_root = (inv.root.revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
@@ -330,17 +333,29 @@ class TestRepository(TestCaseWithRepository):
         wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual('revision-1', tree.inventory.root.revision) 
-        expected = InventoryDirectory('fixed-root', '', None)
-        expected.revision = 'revision-1'
-        self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
-                         list(tree.list_files(include_root=True)))
+        tree.lock_read()
+        try:
+            self.assertEqual('revision-1', tree.inventory.root.revision)
+            expected = InventoryDirectory('fixed-root', '', None)
+            expected.revision = 'revision-1'
+            self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+                             list(tree.list_files(include_root=True)))
+        finally:
+            tree.unlock()
         tree = self.callDeprecated(['NULL_REVISION should be used for the null'
             ' revision instead of None, as of bzr 0.91.'],
             wt.branch.repository.revision_tree, None)
-        self.assertEqual([], list(tree.list_files(include_root=True)))
+        tree.lock_read()
+        try:
+            self.assertEqual([], list(tree.list_files(include_root=True)))
+        finally:
+            tree.unlock()
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files(include_root=True)))
+        tree.lock_read()
+        try:
+            self.assertEqual([], list(tree.list_files(include_root=True)))
+        finally:
+            tree.unlock()
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
@@ -487,6 +502,8 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('message', rev_id='rev_id')
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
     def test_upgrade_from_format4(self):
@@ -655,10 +672,20 @@ class TestRepository(TestCaseWithRepository):
                          repo.get_signature_text('A'))
 
     def test_add_revision_inventory_sha1(self):
-        repo = self.make_repository('repo')
         inv = Inventory(revision_id='A')
         inv.root.revision = 'A'
         inv.root.file_id = 'fixed-root'
+        # Insert the inventory on its own to an identical repository, to get
+        # its sha1.
+        reference_repo = self.make_repository('reference_repo')
+        reference_repo.lock_write()
+        reference_repo.start_write_group()
+        inv_sha1 = reference_repo.add_inventory('A', inv, [])
+        reference_repo.abort_write_group()
+        reference_repo.unlock()
+        # Now insert a revision with this inventory, and it should get the same
+        # sha1.
+        repo = self.make_repository('repo')
         repo.lock_write()
         repo.start_write_group()
         repo.add_revision('A', Revision('A', committer='B', timestamp=0,
@@ -666,9 +693,7 @@ class TestRepository(TestCaseWithRepository):
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
-        self.assertEquals(osutils.sha_string(
-            repo._serializer.write_inventory_to_string(inv)),
-            repo.get_revision('A').inventory_sha1)
+        self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
         repo.unlock()
 
     def test_install_revisions(self):

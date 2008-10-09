@@ -175,7 +175,9 @@ class RepoFetcher(object):
                     text_keys.extend([(file_id, revision) for revision in
                         revisions])
                 elif knit_kind == "inventory":
-                    # Now copy the file texts.
+                    # When the inventory keys start being reported, all text
+                    # keys have already been issued - and we want the text keys
+                    # inserted before inventory keys: copy the texts.
                     to_texts = self.to_repository.texts
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
@@ -240,10 +242,19 @@ class RepoFetcher(object):
             # know for unselected inventories whether all their required
             # texts are present in the other repository - it could be
             # corrupt.
-            to_weave.insert_record_stream(from_weave.get_record_stream(
-                [(rev_id,) for rev_id in revs],
-                self.to_repository._fetch_order,
-                not self.to_repository._fetch_uses_deltas))
+            if self.to_repository._format.supports_chks:
+                # Hack to make chk->chk fetch: copy the inventories as
+                # inventories.
+                total = len(revs)
+                for pos, inv in enumerate(
+                    self.from_repository.iter_inventories(revs)):
+                    pb.update("Copying inventories", pos, total)
+                    self.to_repository.add_inventory(inv.revision_id, inv, [])
+            else:
+                to_weave.insert_record_stream(from_weave.get_record_stream(
+                    [(rev_id,) for rev_id in revs],
+                    self.to_repository._fetch_order,
+                    not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
 

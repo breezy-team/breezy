@@ -16,9 +16,9 @@
 
 
 from bzrlib import errors, inventory, osutils
-from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
+from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry, TreeReference)
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestInventoryEntry(TestCase):
@@ -166,3 +166,167 @@ class TestDescribeChanges(TestCase):
     def assertChangeDescription(self, expected_change, old_ie, new_ie):
         change = InventoryEntry.describe_change(old_ie, new_ie)
         self.assertEqual(expected_change, change)
+
+
+class TestCHKInventory(TestCaseWithTransport):
+    
+    def get_chk_bytes(self):
+        # The eassiest way to get a CHK store is a development3 repository and
+        # then work with the chk_bytes attribute directly.
+        repo = self.make_repository(".", format="development3")
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        return repo.chk_bytes
+
+    def read_bytes(self, chk_bytes, key):
+        stream = chk_bytes.get_record_stream([key], 'unordered', True)
+        return stream.next().get_bytes_as("fulltext")
+
+    def test_deserialise_gives_CHKInventory(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual("revid", new_inv.revision_id)
+        self.assertEqual("directory", new_inv.root.kind)
+        self.assertEqual(inv.root.file_id, new_inv.root.file_id)
+        self.assertEqual(inv.root.parent_id, new_inv.root.parent_id)
+        self.assertEqual(inv.root.name, new_inv.root.name)
+        self.assertEqual("rootrev", new_inv.root.revision)
+
+    def test_deserialise_wrong_revid(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        self.assertRaises(ValueError, CHKInventory.deserialise, chk_bytes,
+            bytes, ("revid2",))
+
+    def test_captures_rev_root_byid(self):
+        inv = Inventory()
+        inv.revision_id = "foo"
+        inv.root.revision = "bar"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertEqual([
+            'chkinventory:\n',
+            'revision_id: foo\n',
+            'root_id: TREE_ROOT\n',
+            'id_to_entry: sha1:dc696b0cf291ac0d66bdcda3070f755494a586fc\n'
+            ],
+            chk_inv.to_lines())
+
+    def test_directory_children_on_demand(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        root_entry = new_inv[inv.root.file_id]
+        self.assertEqual(None, root_entry._children)
+        self.assertEqual(['file'], root_entry.children.keys())
+        file_direct = new_inv["fileid"]
+        file_found = root_entry.children['file']
+        self.assertEqual(file_direct.kind, file_found.kind)
+        self.assertEqual(file_direct.file_id, file_found.file_id)
+        self.assertEqual(file_direct.parent_id, file_found.parent_id)
+        self.assertEqual(file_direct.name, file_found.name)
+        self.assertEqual(file_direct.revision, file_found.revision)
+        self.assertEqual(file_direct.text_sha1, file_found.text_sha1)
+        self.assertEqual(file_direct.text_size, file_found.text_size)
+        self.assertEqual(file_direct.executable, file_found.executable)
+
+    def test___iter__(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        fileids = list(new_inv.__iter__())
+        fileids.sort()
+        self.assertEqual([inv.root.file_id, "fileid"], fileids)
+
+    def test__len__(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertEqual(2, len(chk_inv))
+
+    def test___getitem__(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        root_entry = new_inv[inv.root.file_id]
+        file_entry = new_inv["fileid"]
+        self.assertEqual("directory", root_entry.kind)
+        self.assertEqual(inv.root.file_id, root_entry.file_id)
+        self.assertEqual(inv.root.parent_id, root_entry.parent_id)
+        self.assertEqual(inv.root.name, root_entry.name)
+        self.assertEqual("rootrev", root_entry.revision)
+        self.assertEqual("file", file_entry.kind)
+        self.assertEqual("fileid", file_entry.file_id)
+        self.assertEqual(inv.root.file_id, file_entry.parent_id)
+        self.assertEqual("file", file_entry.name)
+        self.assertEqual("filerev", file_entry.revision)
+        self.assertEqual("ffff", file_entry.text_sha1)
+        self.assertEqual(1, file_entry.text_size)
+        self.assertEqual(True, file_entry.executable)
+
+    def test_has_id_true(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertTrue(chk_inv.has_id('fileid'))
+        self.assertTrue(chk_inv.has_id(inv.root.file_id))
+
+    def test_has_id_not(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertFalse(chk_inv.has_id('fileid'))

@@ -519,7 +519,9 @@ class Repository(object):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context and write group.')
+            raise errors.BzrError(
+                'mismatched lock context and write group. %r, %r' %
+                (self._write_group, self.get_transaction()))
         self._abort_write_group()
         self._write_group = None
 
@@ -549,6 +551,8 @@ class Repository(object):
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
+        if self.chk_bytes is not None:
+            self.chk_bytes.add_fallback_versioned_files(repository.chk_bytes)
 
     def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
@@ -578,6 +582,15 @@ class Repository(object):
                 % (inv.revision_id, revision_id))
         if inv.root is None:
             raise AssertionError()
+        return self._add_inventory_checked(revision_id, inv, parents)
+
+    def _add_inventory_checked(self, revision_id, inv, parents):
+        """Add inv to the repository after checking the inputs.
+
+        This function can be overridden to allow different inventory styles.
+
+        :seealso: add_inventory, for the contract.
+        """
         inv_lines = self._serialise_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
@@ -1201,9 +1214,6 @@ class Repository(object):
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
-        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
         :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
             revision_id that they contain. The inventory texts from all present
@@ -1458,7 +1468,10 @@ class Repository(object):
                             except KeyError:
                                 inv = self.revision_tree(parent_id).inventory
                                 inventory_cache[parent_id] = inv
-                            parent_entry = inv._byid.get(text_key[0], None)
+                            try:
+                                parent_entry = inv[text_key[0]]
+                            except (KeyError, errors.NoSuchId):
+                                parent_entry = None
                             if parent_entry is not None:
                                 parent_text_key = (
                                     text_key[0], parent_entry.revision)
@@ -2760,6 +2773,8 @@ class InterPackRepo(InterSameDataRepository):
         We don't test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
+
+        Do not support CHK based repositories at this point.
         """
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
         try:
@@ -2767,7 +2782,8 @@ class InterPackRepo(InterSameDataRepository):
                 isinstance(target._format, RepositoryFormatPack))
         except AttributeError:
             return False
-        return are_packs and InterRepository._same_model(source, target)
+        return (are_packs and InterRepository._same_model(source, target) and
+            not source._format.supports_chks)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):

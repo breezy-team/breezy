@@ -21,6 +21,7 @@ import md5
 import time
 
 from bzrlib import (
+    chk_map,
     debug,
     graph,
     pack,
@@ -31,6 +32,7 @@ from bzrlib.index import (
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
+from bzrlib.inventory import CHKInventory
 from bzrlib.knit import (
     KnitPlainFactory,
     KnitVersionedFiles,
@@ -42,6 +44,7 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
+    chk_serializer,
     errors,
     lockable_files,
     lockdir,
@@ -770,19 +773,13 @@ class Packer(object):
         # NB XXX: how to check CHK references are present? perhaps by yielding
         # the items? How should that interact with stacked repos?
         if new_pack.chk_index is not None:
-            # XXX: Todo, recursive follow-pointers facility when fetching some
-            # revisions only.
-            chk_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-                self.packs, 'chk_index')[0]
-            chk_nodes = self._pack_collection._index_contents(chk_index_map, None)
-            self._copy_nodes(chk_nodes, chk_index_map, new_pack._writer,
-                new_pack.chk_index)
-            if 'pack' in debug.debug_flags:
-                mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
-                    time.ctime(), self._pack_collection._upload_transport.base,
-                    new_pack.random_name,
-                    new_pack.chk_index.key_count(),
-                    time.time() - new_pack.start_time)
+            self._copy_chks()
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base,
+                new_pack.random_name,
+                new_pack.chk_index.key_count(),
+                time.time() - new_pack.start_time)
         self._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
@@ -792,16 +789,43 @@ class Packer(object):
         self._pack_collection.allocate(new_pack)
         return new_pack
 
-    def _copy_nodes(self, nodes, index_map, writer, write_index):
-        """Copy knit nodes between packs with no graph references."""
+    def _copy_chks(self, refs=None):
+        # XXX: Todo, recursive follow-pointers facility when fetching some
+        # revisions only.
+        chk_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'chk_index')[0]
+        chk_nodes = self._pack_collection._index_contents(chk_index_map, refs)
+        new_refs = set()
+        def accumlate_refs(lines):
+            # XXX: move to a generic location
+            kind = lines[0]
+            if kind == 'chkroot:\n':
+                node = chk_map.RootNode()
+                node.deserialise(''.join(lines),  None)
+                new_refs.update(node.refs())
+            elif kind == 'chkvalue:\n':
+                pass
+            else:
+                raise ValueError("unknown chk node %r" % lines[0])
+        self._copy_nodes(chk_nodes, chk_index_map, self.new_pack._writer,
+            self.new_pack.chk_index, output_lines=accumlate_refs)
+        return new_refs
+
+    def _copy_nodes(self, nodes, index_map, writer, write_index,
+        output_lines=None):
+        """Copy knit nodes between packs with no graph references.
+        
+        :param output_lines: Output full texts of copied items.
+        """
         pb = ui.ui_factory.nested_progress_bar()
         try:
             return self._do_copy_nodes(nodes, index_map, writer,
-                write_index, pb)
+                write_index, pb, output_lines=output_lines)
         finally:
             pb.finished()
 
-    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb):
+    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb,
+        output_lines=None):
         # for record verification
         knit = KnitVersionedFiles(None, None)
         # plan a readv on each source pack:
@@ -835,8 +859,11 @@ class Packer(object):
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
                 # check the header only
-                df, _ = knit._parse_record_header(key, raw_data)
-                df.close()
+                if output_lines is not None:
+                    output_lines(knit._parse_record(key[-1], raw_data)[0])
+                else:
+                    df, _ = knit._parse_record_header(key, raw_data)
+                    df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
@@ -1956,6 +1983,10 @@ class KnitPackRepository(KnitRepository):
         reconciler.reconcile()
         return reconciler
 
+    def _reconcile_pack(self, collection, packs, extension, revs, pb):
+        packer = ReconcilePacker(collection, packs, extension, revs)
+        return packer.pack(pb)
+
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
@@ -1976,6 +2007,131 @@ class KnitPackRepository(KnitRepository):
             self.control_files.unlock()
             for repo in self._fallback_repositories:
                 repo.unlock()
+
+
+class CHKInventoryRepository(KnitPackRepository):
+    """subclass of KnitPackRepository that uses CHK based inventories."""
+
+    def _add_inventory_checked(self, revision_id, inv, parents):
+        """Add inv to the repository after checking the inputs.
+
+        This function can be overridden to allow different inventory styles.
+
+        :seealso: add_inventory, for the contract.
+        """
+        # make inventory
+        result = CHKInventory.from_inventory(self.chk_bytes, inv)
+        inv_lines = result.to_lines()
+        return self._inventory_add_lines(revision_id, parents,
+            inv_lines, check_content=False)
+
+    def _iter_inventories(self, revision_ids):
+        """Iterate over many inventory objects."""
+        keys = [(revision_id,) for revision_id in revision_ids]
+        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        texts = {}
+        for record in stream:
+            if record.storage_kind != 'absent':
+                texts[record.key] = record.get_bytes_as('fulltext')
+            else:
+                raise errors.NoSuchRevision(self, record.key)
+        for key in keys:
+            yield CHKInventory.deserialise(self.chk_bytes, texts[key], key)
+
+    def _iter_inventory_xmls(self, revision_ids):
+        # Without a native 'xml' inventory, this method doesn't make sense, so
+        # make it raise to trap naughty direct users.
+        raise NotImplementedError(self._iter_inventory_xmls)
+
+    def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
+        """Find the file ids and versions affected by revisions.
+
+        :param revisions: an iterable containing revision ids.
+        :param _inv_weave: The inventory weave from this repository or None.
+            If None, the inventory weave will be opened automatically.
+        :return: a dictionary mapping altered file-ids to an iterable of
+            revision_ids. Each altered file-ids has the exact revision_ids that
+            altered it listed explicitly.
+        """
+        rich_roots = self.supports_rich_root()
+        result = {}
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            total = len(revision_ids)
+            for pos, inv in enumerate(self.iter_inventories(revision_ids)):
+                pb.update("Finding text references", pos, total)
+                for _, entry in inv.iter_entries():
+                    if entry.revision != inv.revision_id:
+                        continue
+                    if not rich_roots and entry.file_id == inv.root_id:
+                        continue
+                    alterations = result.setdefault(entry.file_id, set([]))
+                    alterations.add(entry.revision)
+            return result
+        finally:
+            pb.finished()
+
+    def find_text_key_references(self):
+        """Find the text key references within the repository.
+
+        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. The inventory texts from all present
+            revision ids are assessed to generate this report.
+        """
+        # XXX: Slow version but correct: rewrite as a series of delta
+        # examinations/direct tree traversal. Note that that will require care
+        # as a common node is reachable both from the inventory that added it,
+        # and others afterwards.
+        revision_keys = self.revisions.keys()
+        result = {}
+        rich_roots = self.supports_rich_root()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            all_revs = self.all_revision_ids()
+            total = len(all_revs)
+            for pos, inv in enumerate(self.iter_inventories(all_revs)):
+                pb.update("Finding text references", pos, total)
+                for _, entry in inv.iter_entries():
+                    if not rich_roots and entry.file_id == inv.root_id:
+                        continue
+                    key = (entry.file_id, entry.revision)
+                    result.setdefault(key, False)
+                    if entry.revision == inv.revision_id:
+                        result[key] = True
+            return result
+        finally:
+            pb.finished()
+
+    def _reconcile_pack(self, collection, packs, extension, revs, pb):
+        packer = CHKReconcilePacker(collection, packs, extension, revs)
+        return packer.pack(pb)
+
+
+class CHKReconcilePacker(ReconcilePacker):
+    """Subclass of ReconcilePacker for handling chk inventories."""
+
+    def _process_inventory_lines(self, inv_lines):
+        """Generate a text key reference map rather for reconciling with."""
+        repo = self._pack_collection.repo
+        # XXX: This double-reads the inventories; but it works.
+        refs = repo.find_text_key_references()
+        self._text_refs = refs
+        # during reconcile we:
+        #  - convert unreferenced texts to full texts
+        #  - correct texts which reference a text not copied to be full texts
+        #  - copy all others as-is but with corrected parents.
+        #  - so at this point we don't know enough to decide what becomes a full
+        #    text.
+        self._text_filter = None
+        # Copy the selected inventory roots, extracting the CHK references
+        # needed.
+        pending_refs = set()
+        for line, revid in inv_lines:
+            if line.startswith('id_to_entry: '):
+                pending_refs.add((line[13:],))
+        while pending_refs:
+            pending_refs = self._copy_chks(pending_refs)
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
@@ -2386,9 +2542,9 @@ class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
     This is pack-1.6.1 with B+Tree indices and a chk index.
     """
 
-    repository_class = KnitPackRepository
+    repository_class = CHKInventoryRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
+    _serializer = chk_serializer.chk_serializer
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = BTreeBuilder
@@ -2424,11 +2580,11 @@ class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
     1.6.1-subtree[as it might have been] with B+Tree indices and a chk index.
     """
 
-    repository_class = KnitPackRepository
+    repository_class = CHKInventoryRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
+    _serializer = chk_serializer.chk_serializer_subtree
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = BTreeBuilder

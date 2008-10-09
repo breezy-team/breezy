@@ -38,6 +38,7 @@ import tarfile
 
 import bzrlib
 from bzrlib import (
+    chk_map,
     errors,
     generate_ids,
     osutils,
@@ -90,16 +91,16 @@ class InventoryEntry(object):
     >>> i.add(InventoryDirectory('123', 'src', ROOT_ID))
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
-    InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None)
+    InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
     >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
     (True, InventoryDirectory('TREE_ROOT', u'', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
-    (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
+    (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None))
     >>> i.add(InventoryFile('2324', 'bye.c', '123'))
-    InventoryFile('2324', 'bye.c', parent_id='123', sha1=None, len=None)
+    InventoryFile('2324', 'bye.c', parent_id='123', sha1=None, len=None, revision=None)
     >>> i.add(InventoryDirectory('2325', 'wibble', '123'))
     InventoryDirectory('2325', 'wibble', parent_id='123', revision=None)
     >>> i.path2id('src/wibble')
@@ -107,9 +108,9 @@ class InventoryEntry(object):
     >>> '2325' in i
     True
     >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
-    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
+    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
     >>> i['2326']
-    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
+    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
     >>> for path, entry in i.iter_entries():
     ...     print path
     ... 
@@ -564,13 +565,14 @@ class InventoryFile(InventoryEntry):
         self.executable = work_tree.is_executable(self.file_id, path=path)
 
     def __repr__(self):
-        return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s)"
+        return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s, revision=%s)"
                 % (self.__class__.__name__,
                    self.file_id,
                    self.name,
                    self.parent_id,
                    self.text_sha1,
-                   self.text_size))
+                   self.text_size,
+                   self.revision))
 
     def _forget_tree_state(self):
         self.text_sha1 = None
@@ -709,7 +711,128 @@ class TreeReference(InventoryEntry):
         return compatible
 
 
-class Inventory(object):
+class CommonInventory(object):
+    """Basic inventory logic, defined in terms of primitives like has_id."""
+
+    def iter_entries(self, from_dir=None):
+        """Return (path, entry) pairs, in order by name."""
+        if from_dir is None:
+            if self.root is None:
+                return
+            from_dir = self.root
+            yield '', self.root
+        elif isinstance(from_dir, basestring):
+            from_dir = self[from_dir]
+            
+        # unrolling the recursive called changed the time from
+        # 440ms/663ms (inline/total) to 116ms/116ms
+        children = from_dir.children.items()
+        children.sort()
+        children = collections.deque(children)
+        stack = [(u'', children)]
+        while stack:
+            from_dir_relpath, children = stack[-1]
+
+            while children:
+                name, ie = children.popleft()
+
+                # we know that from_dir_relpath never ends in a slash
+                # and 'f' doesn't begin with one, we can do a string op, rather
+                # than the checks of pathjoin(), though this means that all paths
+                # start with a slash
+                path = from_dir_relpath + '/' + name
+
+                yield path[1:], ie
+
+                if ie.kind != 'directory':
+                    continue
+
+                # But do this child first
+                new_children = ie.children.items()
+                new_children.sort()
+                new_children = collections.deque(new_children)
+                stack.append((path, new_children))
+                # Break out of inner loop, so that we start outer loop with child
+                break
+            else:
+                # if we finished all children, pop it off the stack
+                stack.pop()
+
+    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
+        yield_parents=False):
+        """Iterate over the entries in a directory first order.
+
+        This returns all entries for a directory before returning
+        the entries for children of a directory. This is not
+        lexicographically sorted order, and is a hybrid between
+        depth-first and breadth-first.
+
+        :param yield_parents: If True, yield the parents from the root leading
+            down to specific_file_ids that have been requested. This has no
+            impact if specific_file_ids is None.
+        :return: This yields (path, entry) pairs
+        """
+        if specific_file_ids and not isinstance(specific_file_ids, set):
+            specific_file_ids = set(specific_file_ids)
+        # TODO? Perhaps this should return the from_dir so that the root is
+        # yielded? or maybe an option?
+        if from_dir is None:
+            if self.root is None:
+                return
+            # Optimize a common case
+            if (not yield_parents and specific_file_ids is not None and
+                len(specific_file_ids) == 1):
+                file_id = list(specific_file_ids)[0]
+                if file_id in self:
+                    yield self.id2path(file_id), self[file_id]
+                return 
+            from_dir = self.root
+            if (specific_file_ids is None or yield_parents or
+                self.root.file_id in specific_file_ids):
+                yield u'', self.root
+        elif isinstance(from_dir, basestring):
+            from_dir = self[from_dir]
+
+        if specific_file_ids is not None:
+            # TODO: jam 20070302 This could really be done as a loop rather
+            #       than a bunch of recursive calls.
+            parents = set()
+            byid = self
+            def add_ancestors(file_id):
+                if file_id not in byid:
+                    return
+                parent_id = byid[file_id].parent_id
+                if parent_id is None:
+                    return
+                if parent_id not in parents:
+                    parents.add(parent_id)
+                    add_ancestors(parent_id)
+            for file_id in specific_file_ids:
+                add_ancestors(file_id)
+        else:
+            parents = None
+            
+        stack = [(u'', from_dir)]
+        while stack:
+            cur_relpath, cur_dir = stack.pop()
+
+            child_dirs = []
+            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
+
+                child_relpath = cur_relpath + child_name
+
+                if (specific_file_ids is None or 
+                    child_ie.file_id in specific_file_ids or
+                    (yield_parents and child_ie.file_id in parents)):
+                    yield child_relpath, child_ie
+
+                if child_ie.kind == 'directory':
+                    if parents is None or child_ie.file_id in parents:
+                        child_dirs.append((child_relpath+'/', child_ie))
+            stack.extend(reversed(child_dirs))
+
+
+class Inventory(CommonInventory):
     """Inventory of versioned files in a tree.
 
     This describes which file_id is present at each point in the tree,
@@ -728,7 +851,7 @@ class Inventory(object):
 
     >>> inv = Inventory()
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None)
+    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
     >>> inv['123-123'].name
     'hello.c'
 
@@ -748,7 +871,7 @@ class Inventory(object):
     Traceback (most recent call last):
     BzrError: parent_id {TREE_ROOT} not in inventory
     >>> inv.add(InventoryFile('123-123', 'hello.c', 'TREE_ROOT-12345678-12345678'))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None)
+    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None, revision=None)
     """
     def __init__(self, root_id=ROOT_ID, revision_id=None):
         """Create or read an inventory.
@@ -864,123 +987,6 @@ class Inventory(object):
         """Returns number of entries."""
         return len(self._byid)
 
-    def iter_entries(self, from_dir=None):
-        """Return (path, entry) pairs, in order by name."""
-        if from_dir is None:
-            if self.root is None:
-                return
-            from_dir = self.root
-            yield '', self.root
-        elif isinstance(from_dir, basestring):
-            from_dir = self._byid[from_dir]
-            
-        # unrolling the recursive called changed the time from
-        # 440ms/663ms (inline/total) to 116ms/116ms
-        children = from_dir.children.items()
-        children.sort()
-        children = collections.deque(children)
-        stack = [(u'', children)]
-        while stack:
-            from_dir_relpath, children = stack[-1]
-
-            while children:
-                name, ie = children.popleft()
-
-                # we know that from_dir_relpath never ends in a slash
-                # and 'f' doesn't begin with one, we can do a string op, rather
-                # than the checks of pathjoin(), though this means that all paths
-                # start with a slash
-                path = from_dir_relpath + '/' + name
-
-                yield path[1:], ie
-
-                if ie.kind != 'directory':
-                    continue
-
-                # But do this child first
-                new_children = ie.children.items()
-                new_children.sort()
-                new_children = collections.deque(new_children)
-                stack.append((path, new_children))
-                # Break out of inner loop, so that we start outer loop with child
-                break
-            else:
-                # if we finished all children, pop it off the stack
-                stack.pop()
-
-    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
-        yield_parents=False):
-        """Iterate over the entries in a directory first order.
-
-        This returns all entries for a directory before returning
-        the entries for children of a directory. This is not
-        lexicographically sorted order, and is a hybrid between
-        depth-first and breadth-first.
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_file_ids that have been requested. This has no
-            impact if specific_file_ids is None.
-        :return: This yields (path, entry) pairs
-        """
-        if specific_file_ids and not isinstance(specific_file_ids, set):
-            specific_file_ids = set(specific_file_ids)
-        # TODO? Perhaps this should return the from_dir so that the root is
-        # yielded? or maybe an option?
-        if from_dir is None:
-            if self.root is None:
-                return
-            # Optimize a common case
-            if (not yield_parents and specific_file_ids is not None and
-                len(specific_file_ids) == 1):
-                file_id = list(specific_file_ids)[0]
-                if file_id in self:
-                    yield self.id2path(file_id), self[file_id]
-                return 
-            from_dir = self.root
-            if (specific_file_ids is None or yield_parents or
-                self.root.file_id in specific_file_ids):
-                yield u'', self.root
-        elif isinstance(from_dir, basestring):
-            from_dir = self._byid[from_dir]
-
-        if specific_file_ids is not None:
-            # TODO: jam 20070302 This could really be done as a loop rather
-            #       than a bunch of recursive calls.
-            parents = set()
-            byid = self._byid
-            def add_ancestors(file_id):
-                if file_id not in byid:
-                    return
-                parent_id = byid[file_id].parent_id
-                if parent_id is None:
-                    return
-                if parent_id not in parents:
-                    parents.add(parent_id)
-                    add_ancestors(parent_id)
-            for file_id in specific_file_ids:
-                add_ancestors(file_id)
-        else:
-            parents = None
-            
-        stack = [(u'', from_dir)]
-        while stack:
-            cur_relpath, cur_dir = stack.pop()
-
-            child_dirs = []
-            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
-
-                child_relpath = cur_relpath + child_name
-
-                if (specific_file_ids is None or 
-                    child_ie.file_id in specific_file_ids or
-                    (yield_parents and child_ie.file_id in parents)):
-                    yield child_relpath, child_ie
-
-                if child_ie.kind == 'directory':
-                    if parents is None or child_ie.file_id in parents:
-                        child_dirs.append((child_relpath+'/', child_ie))
-            stack.extend(reversed(child_dirs))
-
     def make_entry(self, kind, name, parent_id, file_id=None):
         """Simple thunk to bzrlib.inventory.make_entry."""
         return make_entry(kind, name, parent_id, file_id)
@@ -1024,7 +1030,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None)
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> '123' in inv
         True
         >>> '456' in inv
@@ -1037,7 +1043,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123123', 'hello.c', ROOT_ID))
-        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None)
+        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> inv['123123'].name
         'hello.c'
         """
@@ -1119,7 +1125,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None)
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> '123' in inv
         True
         >>> del inv['123']
@@ -1139,11 +1145,11 @@ class Inventory(object):
         >>> i1 == i2
         True
         >>> i1.add(InventoryFile('123', 'foo', ROOT_ID))
-        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None)
+        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         False
         >>> i2.add(InventoryFile('123', 'foo', ROOT_ID))
-        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None)
+        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         True
         """
@@ -1286,6 +1292,199 @@ class Inventory(object):
 
     def is_root(self, file_id):
         return self.root is not None and file_id == self.root.file_id
+
+
+class CHKInventory(CommonInventory):
+    """A inventory persisted in a CHK store.
+    
+    No caching is performed: every method call or item access will perform
+    requests to the storage layer. As such, keep references to objects you want
+    to reuse.
+    """
+
+    def _entry_to_bytes(self, entry):
+        """Serialise entry as a single bytestring.
+
+        :param Entry: An inventory entry.
+        :return: A bytestring for the entry.
+        
+        The BNF:
+        ENTRY ::= FILE | DIR | SYMLINK | TREE
+        FILE ::= "file: " COMMON NULL SHA NULL SIZE NULL EXECUTABLE
+        DIR ::= "dir: " COMMON
+        SYMLINK ::= "symlink: " COMMON NULL TARGET_UTF8
+        TREE ::= "tree: " COMMON REFERENCE_REVISION
+        COMMON ::= FILE_ID NULL PARENT_ID NULL NAME_UTF8 NULL REVISION
+        """
+        if entry.parent_id is not None:
+            parent_str = entry.parent_id
+        else:
+            parent_str = ''
+        name_str = entry.name.encode("utf8")
+        if entry.kind == 'file':
+            if entry.executable:
+                exec_str = "Y"
+            else:
+                exec_str = "N"
+            return "file: %s\x00%s\x00%s\x00%s\x00%s\x00%d\x00%s" % (
+                entry.file_id, parent_str, name_str, entry.revision,
+                entry.text_sha1, entry.text_size, exec_str)
+        elif entry.kind == 'directory':
+            return "dir: %s\x00%s\x00%s\x00%s" % (
+                entry.file_id, parent_str, name_str, entry.revision)
+        elif entry.kind == 'symlink':
+            return "symlink: %s\x00%s\x00%s\x00%s\x00%s" % (
+                entry.file_id, parent_str, name_str, entry.revision,
+                entry.symlink_target.encode("utf8"))
+        elif entry.kind == 'tree-reference':
+            return "tree: %s\x00%s\x00%s\x00%s\x00%s" % (
+                entry.file_id, parent_str, name_str, entry.revision,
+                entry.reference_revision)
+        else:
+            raise ValueError("unknown kind %r" % entry.kind)
+
+    def _bytes_to_entry(self, bytes):
+        """Deserialise a serialised entry."""
+        sections = bytes.split('\x00')
+        if sections[0].startswith("file: "):
+            result = InventoryFile(sections[0][6:],
+                sections[2].decode('utf8'),
+                sections[1])
+            result.text_sha1 = sections[4]
+            result.text_size = int(sections[5])
+            result.executable = sections[6] == "Y"
+        elif sections[0].startswith("dir: "):
+            result = CHKInventoryDirectory(sections[0][5:],
+                sections[2].decode('utf8'),
+                sections[1], self)
+        elif sections[0].startswith("symlink: "):
+            result = InventoryLink(sections[0][9:],
+                sections[2].decode('utf8'),
+                sections[1])
+            result.symlink_target = sections[4]
+        elif sections[0].startswith("tree: "):
+            result = TreeReference(sections[0][6:],
+                sections[2].decode('utf8'),
+                sections[1])
+            result.reference_revision = sections[4]
+        else:
+            raise ValueError("Not a serialised entry %r" % bytes)
+        result.revision = sections[3]
+        if result.parent_id == '':
+            result.parent_id = None
+        return result
+
+    @classmethod
+    def deserialise(klass, chk_store, bytes, expected_revision_id):
+        """Deserialise a CHKInventory.
+
+        :param chk_store: A CHK capable VersionedFiles instance.
+        :param bytes: The serialised bytes.
+        :param expected_revision_id: The revision ID we think this inventory is
+            for.
+        :return: A CHKInventory
+        """
+        result = CHKInventory()
+        lines = bytes.splitlines()
+        if lines[0] != 'chkinventory:':
+            raise ValueError("not a serialised CHKInventory: %r" % bytes)
+        result.revision_id = lines[1][13:]
+        result.root_id = lines[2][9:]
+        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[3][13:],))
+        if (result.revision_id,) != expected_revision_id:
+            raise ValueError("Mismatched revision id and expected: %r, %r" %
+                (result.revision_id, expected_revision_id))
+        return result
+
+    @classmethod
+    def from_inventory(klass, chk_store, inventory):
+        """Create a CHKInventory from an existing inventory.
+
+        The content of inventory is copied into the chk_store, and a
+        CHKInventory referencing that is returned.
+
+        :param chk_store: A CHK capable VersionedFiles instance.
+        :param inventory: The inventory to copy.
+        """
+        result = CHKInventory()
+        result.revision_id = inventory.revision_id
+        result.root_id = inventory.root.file_id
+        result.id_to_entry = chk_map.CHKMap(chk_store, None)
+        for path, entry in inventory.iter_entries():
+            result.id_to_entry._map(entry.file_id,
+                result._entry_to_bytes(entry))
+        result.id_to_entry._save()
+        return result
+
+    def __getitem__(self, file_id):
+        """map a single file_id -> InventoryEntry."""
+        try:
+            return self._bytes_to_entry(
+                self.id_to_entry.iteritems([file_id]).next()[1])
+        except StopIteration:
+            raise KeyError(file_id)
+
+    def has_id(self, file_id):
+        # Perhaps have an explicit 'contains' method on CHKMap ?
+        return len(list(self.id_to_entry.iteritems([file_id]))) == 1
+
+    def __iter__(self):
+        """Iterate over the entire inventory contents; size-of-tree - beware!."""
+        for file_id, _ in self.id_to_entry.iteritems():
+            yield file_id
+
+    def __len__(self):
+        """Return the number of entries in the inventory."""
+        # Might want to cache the length in the meta node.
+        return len([item for item in self])
+
+    def to_lines(self):
+        """Serialise the inventory to lines."""
+        lines = ["chkinventory:\n"]
+        lines.append("revision_id: %s\n" % self.revision_id)
+        lines.append("root_id: %s\n" % self.root_id)
+        lines.append("id_to_entry: %s\n" % self.id_to_entry._root_node._key)
+        return lines
+
+    @property
+    def root(self):
+        """Get the root entry."""
+        return self[self.root_id]
+
+
+class CHKInventoryDirectory(InventoryDirectory):
+    """A directory in an inventory."""
+
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', '_children', 'executable',
+                 'revision', 'symlink_target', 'reference_revision',
+                 '_chk_inventory']
+
+    def __init__(self, file_id, name, parent_id, chk_inventory):
+        # Don't call InventoryDirectory.__init__ - it isn't right for this
+        # class.
+        InventoryEntry.__init__(self, file_id, name, parent_id)
+        self._children = None
+        self.kind = 'directory'
+        self._chk_inventory = chk_inventory
+
+    @property
+    def children(self):
+        """Access the list of children of this inventory.
+
+        Currently causes a full-load of all the children; a more sophisticated
+        proxy object is planned.
+        """
+        if self._children is not None:
+            return self._children
+        result = {}
+        # populate; todo: do by name
+        for file_id, bytes in self._chk_inventory.id_to_entry.iteritems():
+            entry = self._chk_inventory._bytes_to_entry(bytes)
+            if entry.parent_id == self.file_id:
+                result[entry.name] = entry
+        self._children = result
+        return result
 
 
 entry_factory = {
