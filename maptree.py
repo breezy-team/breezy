@@ -118,7 +118,7 @@ class MapTree:
 
     def get_file_with_stat(self, file_id, path=None):
         return self.oldtree.get_file_with_stat(file_id=self.old_id(file_id),
-                                               path)
+                                               path=path)
 
     def get_file(self, file_id, path=None):
         if path is None:
