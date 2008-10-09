@@ -91,8 +91,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo', 'bar'], ['foo-id', 'bar-id'])
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', 'bar-id', 'directory'),
-                          ('add file', 'foo-id', 'file')],
+        self.assertEqual([('add file', 'bar-id', 'directory', 'bar'),
+                          ('add file', 'foo-id', 'file', 'foo')],
                           sorted(list(creator)))
         creator.shelve_creation('foo-id')
         creator.shelve_creation('bar-id')
@@ -119,7 +119,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', 'foo-id', 'symlink')], list(creator))
+        self.assertEqual([('add file', 'foo-id', 'symlink', 'foo')],
+                         list(creator))
         creator.shelve_creation('foo-id')
         creator.transform()
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
@@ -137,7 +138,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         os.unlink('foo')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', 'foo-id', None)],
+        self.assertEqual([('add file', 'foo-id', None, 'foo')],
                          sorted(list(creator)))
         creator.shelve_creation('foo-id')
         creator.transform()
@@ -161,8 +162,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         os.rmdir('tree/foo')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('delete file', 'bar-id'),
-                          ('delete file', 'foo-id')],
+        self.assertEqual([('delete file', 'bar-id', 'file', 'foo/bar'),
+                          ('delete file', 'foo-id', 'directory', 'foo')],
                           sorted(list(creator)))
         creator.shelve_deletion('foo-id')
         creator.shelve_deletion('bar-id')
@@ -179,7 +180,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         os.unlink('tree/foo')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('delete file', 'foo-id')], sorted(list(creator)))
+        self.assertEqual([('delete file', 'foo-id', 'file', 'foo')],
+                         sorted(list(creator)))
         creator.shelve_deletion('foo-id')
         creator.transform()
         self.failUnlessExists('tree/foo')
@@ -192,7 +194,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.unversion(['foo-id'])
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('delete file', 'foo-id')], sorted(list(creator)))
+        self.assertEqual([('delete file', 'foo-id', 'file', 'foo')],
+                         sorted(list(creator)))
         creator.shelve_deletion('foo-id')
         creator.transform()
         self.failUnlessExists('tree/foo')

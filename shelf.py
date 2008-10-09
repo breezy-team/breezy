@@ -40,11 +40,11 @@ class ShelfCreator(object):
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)
-                yield ('add file', file_id, kind[1])
+                yield ('add file', file_id, kind[1], paths[1])
             elif kind[1] is None or versioned[0] == False:
                 self.deletion[file_id] = (kind[0], names[0], parents[0],
                                           versioned)
-                yield ('delete file', file_id)
+                yield ('delete file', file_id, kind[0], paths[0])
             else:
                 if names[0] != names[1] or parents[0] != parents[1]:
                     self.renames[file_id] = (names, parents)
