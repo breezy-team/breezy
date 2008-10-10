@@ -2,7 +2,7 @@ bzr-svn 0.4.14	UNRELEASED
 
   BUG FIXES
 
-   * Fix compatibility with Bazaar 1.9.
+   * Fix compatibility with Bazaar 1.9. (#279444)
 
    * Cope with pushing files changed into directories. (#277369)
 
