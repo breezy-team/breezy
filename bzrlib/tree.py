@@ -174,14 +174,6 @@ class Tree(object):
         """
         return self.bzrdir.is_control_filename(filename)
 
-    def get_inventory_entry(self, file_id):
-        iterator = self.iter_entries_by_dir(specific_file_ids=[file_id])
-        try:
-            path, entry = iterator.next()
-        except StopIteration:
-            return None
-        return entry
-
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None):
         """Walk the tree in 'by_dir' order.

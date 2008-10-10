@@ -55,7 +55,7 @@ from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note, is_quiet
 from bzrlib.transform import (TransformPreview, TreeTransform,
                               resolve_conflicts, cook_conflicts,
-                              conflict_pass, FinalPaths, create_by_entry,
+                              conflict_pass, FinalPaths, create_from_tree,
                               unique_add, ROOT_PARENT)
 from bzrlib.versionedfile import PlanWeaveMerge
 from bzrlib import ui
@@ -1136,9 +1136,8 @@ class Merge3Merger(object):
                     self.tt.delete_contents(trans_id)
                 if file_id in self.other_tree:
                     # OTHER changed the file
-                    create_by_entry(self.tt,
-                        self.other_tree.get_inventory_entry(file_id),
-                        self.other_tree, trans_id)
+                    create_from_tree(self.tt, trans_id,
+                                     self.other_tree, file_id)
                     if file_id not in self.this_tree:
                         self.tt.version_file(file_id, trans_id)
                     return "modified"
@@ -1247,8 +1246,7 @@ class Merge3Merger(object):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        entry = tree.get_inventory_entry(file_id)
-        create_by_entry(self.tt, entry, tree, trans_id, lines)
+        create_from_tree(self.tt, trans_id, tree, file_id, lines)
         return trans_id
 
     def merge_executable(self, file_id, file_status):

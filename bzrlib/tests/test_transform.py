@@ -1327,7 +1327,19 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual('directory', osutils.file_kind('tree2/foo'))
         self.assertFileEqual('baz', 'tree2/bar')
 
-    def test_create_symlink_from_tree(self):
+    def test_create_from_tree_bytes(self):
+        """Provided lines are used instead of tree content."""
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/foo', 'bar'),])
+        tree1.add('foo', 'foo-id')
+        tree2 = self.make_branch_and_tree('tree2')
+        tt = TreeTransform(tree2)
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id', bytes='qux')
+        tt.apply()
+        self.assertFileEqual('qux', 'tree2/foo')
+
+    def test_create_from_tree_symlink(self):
         self.requireFeature(SymlinkFeature)
         tree1 = self.make_branch_and_tree('tree1')
         os.symlink('bar', 'tree1/foo')

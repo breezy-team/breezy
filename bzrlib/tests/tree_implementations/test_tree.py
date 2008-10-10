@@ -262,17 +262,3 @@ class TestGetFileSha1(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         expected = osutils.sha_strings('file content')
         self.assertEqual(expected, tree.get_file_sha1('file-id'))
-
-
-class TestGetInventoryEntry(TestCaseWithTree):
-
-    def test_get_inventory_entry(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo'])
-        work_tree.add('foo', 'foo-id')
-        tree = self._convert_tree(work_tree)
-        entry = tree.get_inventory_entry('foo-id')
-        self.assertEqual('foo', entry.name)
-        self.assertEqual(tree.get_root_id(), entry.parent_id)
-        self.assertEqual('file', entry.kind)
-        self.assertIs(None, tree.get_inventory_entry('missing-id'))

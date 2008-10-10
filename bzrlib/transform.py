@@ -2176,18 +2176,19 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 
-def create_from_tree(tt, trans_id, tree, file_id):
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
     """Create new file contents according to tree contents."""
     kind = tree.kind(file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
     elif kind == "file":
-        tree_file = tree.get_file(file_id)
-        try:
-            lines = tree_file.readlines()
-        finally:
-            tree_file.close()
-        tt.create_file(lines, trans_id)
+        if bytes is None:
+            tree_file = tree.get_file(file_id)
+            try:
+                bytes = tree_file.readlines()
+            finally:
+                tree_file.close()
+        tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
 
