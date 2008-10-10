@@ -62,11 +62,7 @@ class ShelfCreator(object):
         shelf_parent = self.shelf_transform.trans_id_file_id(parents[1])
         self.shelf_transform.adjust_path(names[1], shelf_parent, s_trans_id)
 
-    def shelve_text(self, file_id, new_text):
-        s = StringIO()
-        s.writelines(new_text)
-        s.seek(0)
-        new_lines = s.readlines()
+    def shelve_lines(self, file_id, new_lines):
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
         self.work_transform.create_file(new_lines, w_trans_id)
