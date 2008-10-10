@@ -340,3 +340,15 @@ class TestShelfManager(tests.TestCaseWithTransport):
             self.assertEqual('bar', shelf_file.read())
         finally:
             shelf_file.close()
+
+    def test_shelve_changes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        list(creator)
+        creator.shelve_creation('foo-id')
+        shelf_manager = tree.get_shelf_manager()
+        shelf_id = shelf_manager.shelve_changes(creator)
+        unshelver = shelf_manager.get_unshelver(shelf_id)
