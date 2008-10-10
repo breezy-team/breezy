@@ -48,6 +48,7 @@ from bzrlib.osutils import (
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
+        deprecated_in,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
@@ -2164,8 +2165,12 @@ def new_by_entry(tt, entry, parent_id, tree):
         raise errors.BadFileKindError(name, kind)
 
 
+@deprecated_function(deprecated_in((1, 9, 0)))
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
-    """Create new file contents according to an inventory entry."""
+    """Create new file contents according to an inventory entry.
+
+    DEPRECATED.  Use create_from_tree instead.
+    """
     if entry.kind == "file":
         if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
