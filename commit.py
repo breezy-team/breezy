@@ -605,7 +605,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         while fid is not None and fid not in self.visit_dirs:
             self.visit_dirs.add(fid)
             fid = self.new_inventory[fid].parent_id
-        return self._get_delta(ie, self.old_inv, self.new_inventory.id2path(ie.file_id)), version_recorded
+        return self._get_delta(ie, self.old_inv, self.new_inventory.id2path(ie.file_id)), version_recorded, None
 
 
 def replay_delta(builder, old_tree, new_tree):
