@@ -343,7 +343,11 @@ class TestShelfManager(tests.TestCaseWithTransport):
 
     def test_shelve_changes(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo'])
+        tree.commit('no-change commit')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('tree/foo', 'bar')])
+        self.assertFileEqual('bar', 'tree/foo')
         tree.add('foo', 'foo-id')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
@@ -351,4 +355,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         creator.shelve_creation('foo-id')
         shelf_manager = tree.get_shelf_manager()
         shelf_id = shelf_manager.shelve_changes(creator)
+        self.failIfExists('tree/foo')
         unshelver = shelf_manager.get_unshelver(shelf_id)
+        unshelver.unshelve()
+        self.assertFileEqual('bar', 'tree/foo')
