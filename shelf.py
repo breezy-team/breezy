@@ -216,6 +216,7 @@ class ShelfManager(object):
             creator.write_shelf(shelf_file)
         finally:
             shelf_file.close()
+        creator.transform()
         return next_shelf
 
     def read_shelf(self, shelf_id):
