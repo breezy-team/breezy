@@ -330,3 +330,25 @@ class TestCHKInventory(TestCaseWithTransport):
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         self.assertFalse(chk_inv.has_id('fileid'))
+
+    def test_create_by_apply_delta_empty_add_child(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        a_entry = InventoryFile("A-id", "A", inv.root.file_id)
+        a_entry.revision = "filerev"
+        a_entry.executable = True
+        a_entry.text_sha1 = "ffff"
+        a_entry.text_size = 1
+        inv.add(a_entry)
+        inv.revision_id = "expectedid"
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        delta = [(None, "A",  "A-id", a_entry)]
+        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        # new_inv should be the same as reference_inv.
+        self.assertEqual(reference_inv.revision_id, new_inv.revision_id)
+        self.assertEqual(reference_inv.root_id, new_inv.root_id)
+        self.assertEqual(reference_inv.id_to_entry._root_node._key,
+            new_inv.id_to_entry._root_node._key)

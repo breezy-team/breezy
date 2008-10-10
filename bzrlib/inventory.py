@@ -917,7 +917,7 @@ class Inventory(CommonInventory):
             
             When neither new_path nor old_path are None, the change is a
             modification to an entry, such as a rename, reparent, kind change
-            etc. 
+            etc.
 
             The children attribute of new_entry is ignored. This is because
             this method preserves children automatically across alterations to
@@ -1372,6 +1372,38 @@ class CHKInventory(CommonInventory):
         result.revision = sections[3]
         if result.parent_id == '':
             result.parent_id = None
+        return result
+
+    def create_by_apply_delta(self, inventory_delta, new_revision_id):
+        """Create a new CHKInventory by applying inventory_delta to this one.
+
+        :param inventory_delta: The inventory delta to apply. See
+            Inventory.apply_delta for details.
+        :param new_revision_id: The revision id of the resulting CHKInventory.
+        :return: The new CHKInventory.
+        """
+        result = CHKInventory()
+        result.revision_id = new_revision_id
+        result.id_to_entry = chk_map.CHKMap(self.id_to_entry._store,
+            self.id_to_entry._root_node)
+        result.root_id = self.root_id
+        id_to_entry_delta = []
+        for old_path, new_path, file_id, entry in inventory_delta:
+            if new_path == '':
+                result.root_id = file_id
+            if new_path is None:
+                # Make a delete:
+                new_key = None
+                new_value = None
+            else:
+                new_key = file_id
+                new_value = result._entry_to_bytes(entry)
+            if old_path is None:
+                old_key = None
+            else:
+                old_key = file_id
+            id_to_entry_delta.append((old_key, new_key, new_value))
+        result.id_to_entry.apply_delta(id_to_entry_delta)
         return result
 
     @classmethod

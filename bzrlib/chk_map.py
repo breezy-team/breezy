@@ -130,6 +130,7 @@ class RootNode(object):
 
     def __init__(self):
         self._nodes = {}
+        self._key = None
 
     def add_child(self, name, child):
         """Add a child to the node.
