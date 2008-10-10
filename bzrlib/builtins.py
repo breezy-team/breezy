@@ -277,7 +277,7 @@ class cmd_dump_btree(Command):
     encoding_type = 'exact'
     takes_args = ['path']
     takes_options = [Option('raw', help='Write the uncompressed bytes out,'
-                                        ' rather than the parsed tuples'),
+                                        ' rather than the parsed tuples.'),
                     ]
 
     def run(self, path, raw=False):
