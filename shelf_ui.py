@@ -126,29 +126,22 @@ class Shelver(object):
         else:
             return False
 
-    def get_patched_text(self, file_id, patch):
-        target_lines = self.target_tree.get_file_lines(file_id)
-        patch_lines = osutils.split_lines(str(patch))
-        return ''.join(patches.iter_patched(target_lines, patch_lines))
-
     def handle_modify_text(self, creator, file_id):
-        shelved_hunks = 0
         parsed = self.get_parsed_patch(file_id)
-        selected_hunks = []
-        final_patch = copy.copy(parsed)
-        final_patch.hunks = []
+        final_hunks = []
         if not self.auto:
             offset = 0
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
                 if not self.prompt_bool('Shelve?'):
                     hunk.mod_pos += offset
-                    final_patch.hunks.append(hunk)
+                    final_hunks.append(hunk)
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
-        patched_text = self.get_patched_text(file_id, final_patch)
-        creator.shelve_text(file_id, patched_text)
-        return len(parsed.hunks) - len(final_patch.hunks)
+        target_lines = self.target_tree.get_file_lines(file_id)
+        patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
+        creator.shelve_text(file_id, list(patched))
+        return len(parsed.hunks) - len(final_hunks)
 
 
 class Unshelver(object):
