@@ -47,7 +47,7 @@ class Shelver(object):
         self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
                                          self.diff_file)
         self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
-        self.manager = shelf.ShelfManager.for_tree(work_tree)
+        self.manager = work_tree.get_shelf_manager()
         self.auto = auto
         self.auto_apply = auto_apply
 
@@ -89,12 +89,7 @@ class Shelver(object):
                 delta.report_changes(changes, reporter)
                 if (self.prompt_bool('Shelve %d change(s)?' %
                     changes_shelved, auto=self.auto_apply)):
-                    shelf_id, shelf_file = self.manager.new_shelf()
-                    try:
-                        creator.write_shelf(shelf_file)
-                    finally:
-                        shelf_file.close()
-                    creator.transform()
+                    self.manager.shelve_changes(creator)
             else:
                 print 'No changes to shelve.'
         finally:
@@ -172,7 +167,7 @@ class Unshelver(object):
     @classmethod
     def from_args(klass):
         tree, path = workingtree.WorkingTree.open_containing('.')
-        manager = shelf.ShelfManager.for_tree(tree)
+        manager = tree.get_shelf_manager()
         shelf_id = manager.last_shelf()
         if shelf_id is None:
             raise errors.BzrCommandError('No changes are shelved.')
@@ -187,10 +182,7 @@ class Unshelver(object):
         self.tree.lock_write()
         cleanups = [self.tree.unlock]
         try:
-            shelf_file = self.manager.read_shelf(self.shelf_id)
-            cleanups.append(shelf_file.close)
-            unshelver = shelf.Unshelver.from_tree_and_shelf(
-                self.tree, shelf_file)
+            unshelver = self.manager.get_unshelver(self.shelf_id)
             cleanups.append(unshelver.finalize)
             unshelver.unshelve()
             self.manager.delete_shelf(self.shelf_id)
