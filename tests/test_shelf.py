@@ -257,7 +257,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         tree.commit('rev1', rev_id='rev1')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
-        manager = shelf.ShelfManager.for_tree(tree)
+        manager = tree.get_shelf_manager()
         shelf_id, shelf_file = manager.new_shelf()
         try:
             filename = creator.write_shelf(shelf_file)
@@ -274,15 +274,14 @@ class TestUnshelver(tests.TestCaseWithTransport):
 
 class TestShelfManager(tests.TestCaseWithTransport):
 
-    def test_for_tree(self):
+    def test_get_shelf_manager(self):
         tree = self.make_branch_and_tree('.')
-        manager = shelf.ShelfManager.for_tree(tree)
-        self.assertEqual(tree.bzrdir.root_transport.base + '.shelf2/',
+        manager = tree.get_shelf_manager()
+        self.assertEqual(tree._transport.base + 'shelf/',
                          manager.transport.base)
 
     def get_manager(self):
-        tree = self.make_branch_and_tree('.')
-        return shelf.ShelfManager.for_tree(tree)
+        return self.make_branch_and_tree('.').get_shelf_manager()
 
     def test_new_shelf(self):
         manager = self.get_manager()
@@ -341,3 +340,15 @@ class TestShelfManager(tests.TestCaseWithTransport):
             self.assertEqual('bar', shelf_file.read())
         finally:
             shelf_file.close()
+
+    def test_shelve_changes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        list(creator)
+        creator.shelve_creation('foo-id')
+        shelf_manager = tree.get_shelf_manager()
+        shelf_id = shelf_manager.shelve_changes(creator)
+        unshelver = shelf_manager.get_unshelver(shelf_id)

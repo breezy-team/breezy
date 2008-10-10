@@ -17,7 +17,7 @@
 
 from cStringIO import StringIO
 
-from bzrlib import errors, merge, merge3, pack, transform, ui
+from bzrlib import errors, merge, merge3, pack, transform, ui, workingtree
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
@@ -196,13 +196,10 @@ class Unshelver(object):
 
 class ShelfManager(object):
 
-    def __init__(self, transport):
-        self.transport = transport.clone('.shelf2')
+    def __init__(self, tree, transport):
+        self.tree = tree
+        self.transport = transport.clone('shelf')
         self.transport.ensure_base()
-
-    @classmethod
-    def for_tree(klass, tree):
-        return klass(tree.bzrdir.root_transport)
 
     def new_shelf(self):
         last_shelf = self.last_shelf()
@@ -213,8 +210,23 @@ class ShelfManager(object):
         shelf_file = open(self.transport.local_abspath(str(next_shelf)), 'wb')
         return next_shelf, shelf_file
 
+    def shelve_changes(self, creator):
+        next_shelf, shelf_file = self.new_shelf()
+        try:
+            creator.write_shelf(shelf_file)
+        finally:
+            shelf_file.close()
+        return next_shelf
+
     def read_shelf(self, shelf_id):
         return open(self.transport.local_abspath(str(shelf_id)), 'rb')
+
+    def get_unshelver(self, shelf_id):
+        shelf_file = self.read_shelf(shelf_id)
+        try:
+            return Unshelver.from_tree_and_shelf(self.tree, shelf_file)
+        finally:
+            shelf_file.close()
 
     def delete_shelf(self, shelf_id):
         self.transport.delete(str(shelf_id))
@@ -228,3 +240,10 @@ class ShelfManager(object):
             return max(active)
         else:
             return None
+
+
+def get_shelf_manager(self):
+    return ShelfManager(self, self._transport)
+
+
+workingtree.WorkingTree.get_shelf_manager = get_shelf_manager
