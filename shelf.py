@@ -197,12 +197,12 @@ class Unshelver(object):
 class ShelfManager(object):
 
     def __init__(self, transport):
-        self.transport = transport.clone('.shelf2')
+        self.transport = transport.clone('shelf')
         self.transport.ensure_base()
 
     @classmethod
     def for_tree(klass, tree):
-        return klass(tree.bzrdir.root_transport)
+        return klass(tree._transport)
 
     def new_shelf(self):
         last_shelf = self.last_shelf()

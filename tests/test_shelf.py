@@ -277,7 +277,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
     def test_for_tree(self):
         tree = self.make_branch_and_tree('.')
         manager = shelf.ShelfManager.for_tree(tree)
-        self.assertEqual(tree.bzrdir.root_transport.base + '.shelf2/',
+        self.assertEqual(tree._transport.base + 'shelf/',
                          manager.transport.base)
 
     def get_manager(self):
