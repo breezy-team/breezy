@@ -53,7 +53,7 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               resolve_conflicts, cook_conflicts, 
                               build_tree, get_backup_name,
                               _FileMover, resolve_checkout,
-                              TransformPreview)
+                              TransformPreview, create_from_tree)
 
 class TestTreeTransform(tests.TestCaseWithTransport):
 
@@ -1312,6 +1312,31 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.create_file('bar', trans_id)
         transform.cancel_creation(trans_id)
         transform.apply()
+
+    def test_create_from_tree(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/foo/',), ('tree1/bar', 'baz')])
+        tree1.add(['foo', 'bar'], ['foo-id', 'bar-id'])
+        tree2 = self.make_branch_and_tree('tree2')
+        tt = TreeTransform(tree2)
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        bar_trans_id = tt.create_path('bar', tt.root)
+        create_from_tree(tt, bar_trans_id, tree1, 'bar-id')
+        tt.apply()
+        self.assertEqual('directory', osutils.file_kind('tree2/foo'))
+        self.assertFileEqual('baz', 'tree2/bar')
+
+    def test_create_symlink_from_tree(self):
+        self.requireFeature(SymlinkFeature)
+        tree1 = self.make_branch_and_tree('tree1')
+        os.symlink('bar', 'tree1/foo')
+        tree1.add('foo', 'foo-id')
+        tt = TreeTransform(self.make_branch_and_tree('tree2'))
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        tt.apply()
+        self.assertEqual('bar', os.readlink('tree2/foo'))
 
 
 class TransformGroup(object):
