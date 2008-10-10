@@ -259,10 +259,14 @@ class cmd_cat_revision(Command):
 
 
 class cmd_dump_btree(Command):
-    """Dump the contents of a btree index file to disk.
+    """Dump the contents of a btree index file to stdout.
 
-    This is useful because the pages are compressed, so they cannot be read
-    directly anymore.
+    PATH is a btree index file, it can be any URL. This includes things like
+    .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
+
+    By default, the tuples stored in the index file will be displayed. With
+    --raw, we will uncompress the pages, but otherwise display the raw bytes
+    stored in the index.
     """
 
     # TODO: Do we want to dump the internal nodes as well?
