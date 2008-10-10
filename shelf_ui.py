@@ -108,7 +108,7 @@ class Shelver(object):
             self.diff_file.truncate(0)
 
     def prompt_bool(self, question, auto=None):
-        if auto == None:
+        if auto is None:
             auto = self.auto
         if auto:
             return True
