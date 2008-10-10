@@ -352,10 +352,6 @@ class CachingLogWalker(CacheTable):
         assert revnum >= 0
         self.fetch_revisions(revnum)
         self.mutter("get previous %r:%r", path, revnum)
-        if path == "":
-            if revnum == 0:
-                return (None, -1)
-            return (path, revnum - 1)
         row = self.cache.get_previous(path, revnum)
         if row is None:
             return (path, revnum-1)

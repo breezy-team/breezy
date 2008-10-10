@@ -6,6 +6,9 @@ bzr-svn 0.4.14	UNRELEASED
 
    * Cope with pushing files changed into directories. (#277369)
 
+   * Don't assume root path can't change; Microsoft's CodePlex site 
+     does this. (#278930)
+
 bzr-svn 0.4.13	2008-09-24
 
   BUG FIXES
