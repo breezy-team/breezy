@@ -393,13 +393,16 @@ def iter_patched(orig_lines, patch_lines):
     """Iterate through a series of lines with a patch applied.
     This handles a single file, and does exact, not fuzzy patching.
     """
-    if orig_lines is not None:
-        orig_lines = orig_lines.__iter__()
-    seen_patch = []
     patch_lines = iter_lines_handle_nl(patch_lines.__iter__())
     get_patch_names(patch_lines)
+    return iter_patched_from_hunks(orig_lines, iter_hunks(patch_lines))
+
+def iter_patched_from_hunks(orig_lines, hunks):
+    seen_patch = []
     line_no = 1
-    for hunk in iter_hunks(patch_lines):
+    if orig_lines is not None:
+        orig_lines = orig_lines.__iter__()
+    for hunk in hunks:
         while line_no < hunk.orig_pos:
             orig_line = orig_lines.next()
             yield orig_line
