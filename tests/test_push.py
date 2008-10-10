@@ -695,6 +695,20 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals(u"Do á commït",
                 Repository.open(repos_url).get_revision(revid1).message)
 
+    def test_kind_change_file_to_directory(self):
+        repos_url = self.make_repository("a")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/foo.txt': "foo"})
+        bzrwt.add("foo.txt")
+        revid1 = bzrwt.commit(u"somecommit")
+        os.remove("c/foo.txt")
+        self.build_tree({"c/foo.txt/bar": "contents"})
+        bzrwt.add("foo.txt")
+        revid2 = bzrwt.commit(u"somecommit")
+        newdir = BzrDir.open(repos_url+"/trunk")
+        newdir.import_branch(bzrwt.branch)
+
     def test_multiple_part_exists(self):
         repos_url = self.make_repository("a")
 

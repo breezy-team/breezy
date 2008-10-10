@@ -240,7 +240,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist with the same name
         # or parents
-        if file_id in self.old_inv:
+        if (file_id in self.old_inv and 
+            self.old_inv[file_id].kind == 'directory'):
             for child_name in self.old_inv[file_id].children:
                 child_ie = self.old_inv.get_child(file_id, child_name)
                 # remove if...
