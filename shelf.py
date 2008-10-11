@@ -28,6 +28,7 @@ from bzrlib import (
     ui,
     workingtree
 )
+from bzrlib.util import bencode
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
@@ -144,12 +145,17 @@ class ShelfCreator(object):
         transport.ensure_base()
         return transport.local_abspath('01')
 
-    def write_shelf(self, shelf_file):
+    def write_shelf(self, shelf_file, message=None):
         transform.resolve_conflicts(self.shelf_transform)
         serializer = pack.ContainerSerialiser()
         shelf_file.write(serializer.begin())
+        metadata = {
+            'revision_id': self.target_tree.get_revision_id(),
+        }
+        if message is not None:
+            metadata['message'] = message.encode('utf-8'),
         shelf_file.write(serializer.bytes_record(
-            self.target_tree.get_revision_id(), (('revision-id',),)))
+            bencode.bencode(metadata), (('metadata',),)))
         for bytes in serialize_transform.serialize(
             self.shelf_transform, serializer):
             shelf_file.write(bytes)
@@ -158,10 +164,11 @@ class ShelfCreator(object):
 
 class Unshelver(object):
 
-    def __init__(self, tree, base_tree, transform):
+    def __init__(self, tree, base_tree, transform, message):
         self.tree = tree
         self.base_tree = base_tree
         self.transform = transform
+        self.message = message
 
     @classmethod
     def from_tree_and_shelf(klass, tree, shelf_file):
@@ -169,13 +176,19 @@ class Unshelver(object):
         parser.accept_bytes(shelf_file.read())
         tt = transform.TransformPreview(tree)
         records = iter(parser.read_pending_records())
-        names, base_revision_id = records.next()
+        names, metadata_bytes = records.next()
+        assert names[0] == ('metadata',)
         serialize_transform.deserialize(tt, records)
+        metadata = bencode.bdecode(metadata_bytes)
+        base_revision_id = metadata['revision_id']
+        message = metadata.get('message')
+        if message is not None:
+            message = message.decode('utf-8')
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
-        return klass(tree, base_tree, tt)
+        return klass(tree, base_tree, tt, message)
 
     def unshelve(self, change_reporter=None):
         pb = ui.ui_factory.nested_progress_bar()
