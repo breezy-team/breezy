@@ -15,9 +15,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import copy
 from cStringIO import StringIO
-import os.path
 import shutil
 import sys
 import tempfile
@@ -27,12 +25,10 @@ from bzrlib import (
     delta,
     diff,
     errors,
-    osutils,
     patches,
     trace,
     workingtree)
-from bzrlib.plugins.bzrtools import colordiff, hunk_selector
-from bzrlib.plugins.bzrtools.patch import run_patch
+from bzrlib.plugins.bzrtools import colordiff
 from bzrlib.plugins.bzrtools.userinteractor import getchar
 from bzrlib.plugins.shelf2 import shelf
 
