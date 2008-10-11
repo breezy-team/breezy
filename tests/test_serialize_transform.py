@@ -109,3 +109,27 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt.create_file(LINES_TWO, trans_id)
         self.reserialize(tt, tt2)
         self.assertFileEqual(LINES_TWO, tt2._limbo_name(trans_id))
+
+    def test_roundtrip_kind_change(self):
+        LINES_ONE = 'a\nb\nc\nd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo/'])
+        tree.add('foo', 'foo-id')
+        tt, tt2 = self.get_two_previews(tree)
+        trans_id = tt.trans_id_file_id('foo-id')
+        tt.delete_contents(trans_id)
+        tt.create_file(LINES_ONE, trans_id)
+        self.reserialize(tt, tt2)
+        self.assertFileEqual(LINES_ONE, tt2._limbo_name(trans_id))
+
+    def test_roundtrip_add_contents(self):
+        LINES_ONE = 'a\nb\nc\nd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo')
+        os.unlink('tree/foo')
+        tt, tt2 = self.get_two_previews(tree)
+        trans_id = tt.trans_id_tree_path('foo')
+        tt.create_file(LINES_ONE, trans_id)
+        self.reserialize(tt, tt2)
+        self.assertFileEqual(LINES_ONE, tt2._limbo_name(trans_id))
