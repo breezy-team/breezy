@@ -22,13 +22,16 @@ from bzrlib import commands
 class cmd_shelve2(commands.Command):
     """Put some changes to the side for a while."""
 
+    takes_args = ['file*']
+
     takes_options = [
         'revision',
         commands.Option('all', help='Shelve all changes.')]
 
-    def run(self, revision=None, all=False):
+    def run(self, revision=None, all=False, file_list=None):
         from bzrlib.plugins.shelf2.shelf_ui import Shelver
-        Shelver.from_args(revision, all).run()
+        Shelver.from_args(revision, all, file_list).run()
+
 
 class cmd_unshelve2(commands.Command):
     """Restore shelved changes."""

@@ -39,7 +39,7 @@ from bzrlib.plugins.shelf2 import shelf
 class Shelver(object):
 
     def __init__(self, work_tree, target_tree, path, auto=False,
-                 auto_apply=False):
+                 auto_apply=False, file_list=None):
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.path = path
@@ -50,16 +50,18 @@ class Shelver(object):
         self.manager = work_tree.get_shelf_manager()
         self.auto = auto
         self.auto_apply = auto_apply
+        self.file_list = file_list
 
     @classmethod
-    def from_args(klass, revision=None, all=False):
+    def from_args(klass, revision=None, all=False, file_list=None):
         tree, path = workingtree.WorkingTree.open_containing('.')
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, path, all, all)
+        return klass(tree, target_tree, path, all, all, file_list)
 
     def run(self):
-        creator = shelf.ShelfCreator(self.work_tree, self.target_tree)
+        creator = shelf.ShelfCreator(self.work_tree, self.target_tree,
+                                     self.file_list)
         self.tempdir = tempfile.mkdtemp()
         changes_shelved = 0
         try:
