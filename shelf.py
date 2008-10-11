@@ -16,6 +16,7 @@
 
 
 from cStringIO import StringIO
+import errno
 
 from bzrlib import (
     errors,
@@ -192,6 +193,13 @@ class Unshelver(object):
         self.transform.finalize()
 
 
+class NoSuchShelfId(errors.BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        errors.BzrError.__init__(self, shelf_id=shelf_id)
+
 class ShelfManager(object):
 
     def __init__(self, tree, transport):
@@ -218,7 +226,12 @@ class ShelfManager(object):
         return next_shelf
 
     def read_shelf(self, shelf_id):
-        return open(self.transport.local_abspath(str(shelf_id)), 'rb')
+        try:
+            return open(self.transport.local_abspath(str(shelf_id)), 'rb')
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            raise NoSuchShelfId(shelf_id)
 
     def get_unshelver(self, shelf_id):
         shelf_file = self.read_shelf(shelf_id)

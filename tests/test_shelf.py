@@ -341,6 +341,11 @@ class TestShelfManager(tests.TestCaseWithTransport):
         finally:
             shelf_file.close()
 
+    def test_read_non_existant(self):
+        manager = self.get_manager()
+        e = self.assertRaises(shelf.NoSuchShelfId, manager.read_shelf, 1)
+        self.assertEqual('No changes are shelved with id "1".', str(e))
+
     def test_shelve_changes(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('no-change commit')
