@@ -199,12 +199,20 @@ class Unshelver(object):
     def unshelve(self, change_reporter=None):
         pb = ui.ui_factory.nested_progress_bar()
         try:
+            merger = self.get_merger()
+            merger.change_reporter = change_reporter
+            merger.do_merge()
+        finally:
+            pb.finished()
+
+    def get_merger(self):
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
             target_tree = self.transform.get_preview_tree()
             merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
                                                    self.base_tree)
             merger.merge_type = merge.Merge3Merger
-            merger.change_reporter = change_reporter
-            merger.do_merge()
+            return merger
         finally:
             pb.finished()
 
