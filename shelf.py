@@ -33,7 +33,7 @@ from bzrlib.plugins.shelf2 import serialize_transform
 
 class ShelfCreator(object):
 
-    def __init__(self, work_tree, target_tree, file_list):
+    def __init__(self, work_tree, target_tree, file_list=None):
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
         self.target_tree = target_tree
