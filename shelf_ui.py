@@ -140,7 +140,7 @@ class Shelver(object):
                     offset -= (hunk.mod_range - hunk.orig_range)
         target_lines = self.target_tree.get_file_lines(file_id)
         patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
-        creator.shelve_text(file_id, list(patched))
+        creator.shelve_lines(file_id, list(patched))
         return len(parsed.hunks) - len(final_hunks)
 
 
