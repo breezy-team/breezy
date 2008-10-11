@@ -1,6 +1,6 @@
 import os
 
-from bzrlib import multiparent
+from bzrlib import errors, multiparent
 from bzrlib.util import bencode
 
 
@@ -10,10 +10,12 @@ def get_parents_texts(tt, trans_id):
 
 def get_parents_lines(tt, trans_id):
     file_id = tt.tree_file_id(trans_id)
-    if file_id is None:
+    try:
+        if file_id is None or tt._tree.kind(file_id) != 'file':
+            return ()
+    except errors.NoSuchFile:
         return ()
-    else:
-        return (tt._tree.get_file(file_id).readlines(),)
+    return (tt._tree.get_file(file_id).readlines(),)
 
 
 def serialize(tt, serializer):
