@@ -176,13 +176,14 @@ class Unshelver(object):
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         return klass(tree, base_tree, tt)
 
-    def unshelve(self):
+    def unshelve(self, change_reporter=None):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             target_tree = self.transform.get_preview_tree()
             merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
                                                    self.base_tree)
             merger.merge_type = merge.Merge3Merger
+            merger.change_reporter = change_reporter
             merger.do_merge()
         finally:
             pb.finished()

@@ -168,7 +168,7 @@ class Unshelver(object):
         try:
             unshelver = self.manager.get_unshelver(self.shelf_id)
             cleanups.append(unshelver.finalize)
-            unshelver.unshelve()
+            unshelver.unshelve(delta._ChangeReporter())
             self.manager.delete_shelf(self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
