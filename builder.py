@@ -195,25 +195,15 @@ class DebBuild(object):
     info("Using uscan to look for the upstream tarball")
     try:
       r = os.system("uscan --upstream-version %s --force-download --rename "
-                    "--package %s --watchfile %s --check-dirname-level 0" % \
+                    "--package %s --watchfile %s --check-dirname-level 0 " 
+                    "--download --repack --destdir %s" %
                     (self._properties.upstream_version(),
-                     self._properties.package(), tempfilename))
+                     self._properties.package(), tempfilename,
+                     self._properties.target_dir()))
       if r != 0:
         raise DebianError("uscan failed to retrieve the upstream tarball")
     finally:
       os.unlink(tempfilename)
-    # Tarball is now renamed in the parent dir, either as .tar.gz or .tar.bz2
-    from repack_tarball import repack_tarball
-    fetched_tarball = os.path.join('..', self._tarball_name())
-    desired_tarball = self._tarball_name()
-    if not os.path.exists(fetched_tarball):
-      fetched_tarball = fetched_tarball[:-2] + 'bz2'
-      if not os.path.exists(fetched_tarball):
-        raise DebianError("Could not find the upstream tarball after uscan "
-                          "downloaded it.")
-    repack_tarball(fetched_tarball, desired_tarball,
-                   target_dir=self._properties.tarball_dir())
-    os.unlink(fetched_tarball)
 
   def _get_upstream_from_archive(self):
     import apt_pkg
