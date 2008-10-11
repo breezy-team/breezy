@@ -40,7 +40,7 @@ from bzrlib.plugins.shelf2 import shelf
 class Shelver(object):
 
     def __init__(self, work_tree, target_tree, path, auto=False,
-                 auto_apply=False, file_list=None):
+                 auto_apply=False, file_list=None, message=None):
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.path = path
@@ -52,13 +52,15 @@ class Shelver(object):
         self.auto = auto
         self.auto_apply = auto_apply
         self.file_list = file_list
+        self.message = message
 
     @classmethod
-    def from_args(klass, revision=None, all=False, file_list=None):
+    def from_args(klass, revision=None, all=False, file_list=None,
+                  message=None):
         tree, path = workingtree.WorkingTree.open_containing('.')
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, path, all, all, file_list)
+        return klass(tree, target_tree, path, all, all, file_list, message)
 
     def run(self):
         creator = shelf.ShelfCreator(self.work_tree, self.target_tree,
@@ -92,7 +94,8 @@ class Shelver(object):
                 delta.report_changes(changes, reporter)
                 if (self.prompt_bool('Shelve %d change(s)?' %
                     changes_shelved, auto=self.auto_apply)):
-                    shelf_id = self.manager.shelve_changes(creator)
+                    shelf_id = self.manager.shelve_changes(creator,
+                                                           self.message)
                     trace.note('Changes shelved with id "%d".' % shelf_id)
             else:
                 print 'No changes to shelve.'
@@ -174,6 +177,8 @@ class Unshelver(object):
         try:
             unshelver = self.manager.get_unshelver(self.shelf_id)
             cleanups.append(unshelver.finalize)
+            if unshelver.message is not None:
+                trace.note('Message: %s' % unshelver.message)
             unshelver.unshelve(delta._ChangeReporter())
             self.manager.delete_shelf(self.shelf_id)
         finally:
