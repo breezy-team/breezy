@@ -1,19 +1,22 @@
 import os
 
-from bzrlib import multiparent
+from bzrlib import errors, multiparent, osutils
 from bzrlib.util import bencode
 
 
 def get_parents_texts(tt, trans_id):
-    return tuple(''.join(p) for p in get_parents_lines(tt, trans_id))
+    file_id = tt.tree_file_id(trans_id)
+    try:
+        if file_id is None or tt._tree.kind(file_id) != 'file':
+            return ()
+    except errors.NoSuchFile:
+        return ()
+    return tt._tree.get_file_text(file_id)
 
 
 def get_parents_lines(tt, trans_id):
-    file_id = tt.tree_file_id(trans_id)
-    if file_id is None:
-        return ()
-    else:
-        return (tt._tree.get_file(file_id).readlines(),)
+    return tuple(osutils.split_lines(p) for p
+                 in get_parents_texts(tt, trans_id))
 
 
 def serialize(tt, serializer):
@@ -38,7 +41,7 @@ def serialize(tt, serializer):
         if kind == 'file':
             cur_file = open(tt._limbo_name(trans_id), 'rb')
             try:
-                lines = cur_file.readlines()
+                lines = osutils.split_lines(cur_file.read())
             finally:
                 cur_file.close()
             parents = get_parents_lines(tt, trans_id)
