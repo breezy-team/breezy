@@ -153,7 +153,7 @@ class ShelfCreator(object):
             'revision_id': self.target_tree.get_revision_id(),
         }
         if message is not None:
-            metadata['message'] = message.encode('utf-8'),
+            metadata['message'] = message.encode('utf-8')
         shelf_file.write(serializer.bytes_record(
             bencode.bencode(metadata), (('metadata',),)))
         for bytes in serialize_transform.serialize(
