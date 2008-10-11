@@ -84,9 +84,9 @@ class Shelver(object):
                         creator.shelve_rename(change[1])
                         changes_shelved += 1
             if changes_shelved > 0:
-                print "Selected changes:"
+                trace.note("Selected changes:")
                 changes = creator.work_transform.iter_changes()
-                reporter = delta._ChangeReporter(output_file=sys.stdout)
+                reporter = delta._ChangeReporter()
                 delta.report_changes(changes, reporter)
                 if (self.prompt_bool('Shelve %d change(s)?' %
                     changes_shelved, auto=self.auto_apply)):
@@ -94,7 +94,7 @@ class Shelver(object):
                                                            self.message)
                     trace.note('Changes shelved with id "%d".' % shelf_id)
             else:
-                print 'No changes to shelve.'
+                trace.warning('No changes to shelve.')
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()
@@ -116,9 +116,10 @@ class Shelver(object):
         if auto:
             return True
         message = question + ' [yNfq]'
-        print message,
+        sys.stdout.write(message)
         char = getchar()
-        print "\r" + ' ' * len(message) + '\r',
+        sys.stdout.write("\r" + ' ' * len(message) + '\r')
+        sys.stdout.flush()
         if char == 'y':
             return True
         elif char == 'f':
