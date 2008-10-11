@@ -33,7 +33,7 @@ from bzrlib.plugins.shelf2 import serialize_transform
 
 class ShelfCreator(object):
 
-    def __init__(self, work_tree, target_tree):
+    def __init__(self, work_tree, target_tree, file_list=None):
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
         self.target_tree = target_tree
@@ -41,7 +41,8 @@ class ShelfCreator(object):
         self.renames = {}
         self.creation = {}
         self.deletion = {}
-        self.iter_changes = work_tree.iter_changes(self.target_tree)
+        self.iter_changes = work_tree.iter_changes(self.target_tree,
+                                                   specific_files=file_list)
 
     def __iter__(self):
         for (file_id, paths, changed, versioned, parents, names, kind,
@@ -175,13 +176,14 @@ class Unshelver(object):
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         return klass(tree, base_tree, tt)
 
-    def unshelve(self):
+    def unshelve(self, change_reporter=None):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             target_tree = self.transform.get_preview_tree()
             merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
                                                    self.base_tree)
             merger.merge_type = merge.Merge3Merger
+            merger.change_reporter = change_reporter
             merger.do_merge()
         finally:
             pb.finished()
