@@ -17,7 +17,12 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge3, osutils, pack, transform
+from bzrlib import (
+    merge3,
+    osutils,
+    pack,
+    transform,
+)
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
