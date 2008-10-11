@@ -1,6 +1,19 @@
 import os
 
+from bzrlib import multiparent
 from bzrlib.util import bencode
+
+
+def get_parents_texts(tt, trans_id):
+    return tuple(''.join(p) for p in get_parents_lines(tt, trans_id))
+
+
+def get_parents_lines(tt, trans_id):
+    file_id = tt.tree_file_id(trans_id)
+    if file_id is None:
+        return ()
+    else:
+        return (tt._tree.get_file(file_id).readlines(),)
 
 
 def serialize(tt, serializer):
@@ -25,9 +38,12 @@ def serialize(tt, serializer):
         if kind == 'file':
             cur_file = open(tt._limbo_name(trans_id), 'rb')
             try:
-                content = cur_file.read()
+                lines = cur_file.readlines()
             finally:
                 cur_file.close()
+            parents = get_parents_lines(tt, trans_id)
+            mpdiff = multiparent.MultiParent.from_lines(lines, parents)
+            content = ''.join(mpdiff.to_patch())
         if kind == 'directory':
             content = ''
         if kind == 'symlink':
@@ -57,7 +73,9 @@ def deserialize(tt, records):
     tt._non_present_ids = attribs['_non_present_ids']
     for ((trans_id, kind),), content in records:
         if kind == 'file':
-            tt.create_file(content, trans_id)
+            mpdiff = multiparent.MultiParent.from_patch(content)
+            lines = mpdiff.to_lines(get_parents_texts(tt, trans_id))
+            tt.create_file(lines, trans_id)
         if kind == 'directory':
             tt.create_directory(trans_id)
         if kind == 'symlink':
