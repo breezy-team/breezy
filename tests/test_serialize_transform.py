@@ -96,3 +96,16 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         boo_trans_id = tt.trans_id_file_id('boo')
         self.reserialize(tt, tt2)
         self.assertEqual({'boo': boo_trans_id}, tt2._non_present_ids)
+
+    def test_roundtrip_modification(self):
+        LINES_ONE = 'a\nb\nc\nd\n'
+        LINES_TWO = 'z\nb\nx\nd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', LINES_ONE)])
+        tree.add('file', 'file-id')
+        tt, tt2 = self.get_two_previews(tree)
+        trans_id = tt.trans_id_file_id('file-id')
+        tt.delete_contents(trans_id)
+        tt.create_file(LINES_TWO, trans_id)
+        self.reserialize(tt, tt2)
+        self.assertFileEqual(LINES_TWO, tt2._limbo_name(trans_id))
