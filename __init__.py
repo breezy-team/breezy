@@ -39,10 +39,13 @@ class cmd_unshelve2(commands.Command):
     """Restore shelved changes."""
 
     takes_args = ['shelf_id?']
+    takes_options = [
+        commands.Option('dry-run', help='Show the actions that would be'
+        ' performed, without performing them')]
 
-    def run(self, shelf_id=None):
+    def run(self, shelf_id=None, dry_run=False):
         from bzrlib.plugins.shelf2.shelf_ui import Unshelver
-        Unshelver.from_args(shelf_id).run()
+        Unshelver.from_args(shelf_id, dry_run).run()
 
 
 commands.register_command(cmd_shelve2)

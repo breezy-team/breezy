@@ -27,6 +27,7 @@ from bzrlib import (
     errors,
     patches,
     trace,
+    ui,
     workingtree)
 from bzrlib.plugins.bzrtools import colordiff
 from bzrlib.plugins.bzrtools.userinteractor import getchar
@@ -154,7 +155,7 @@ class Shelver(object):
 class Unshelver(object):
 
     @classmethod
-    def from_args(klass, shelf_id):
+    def from_args(klass, shelf_id=None, dry_run=False):
         tree, path = workingtree.WorkingTree.open_containing('.')
         manager = tree.get_shelf_manager()
         if shelf_id is not None:
@@ -164,12 +165,19 @@ class Unshelver(object):
             if shelf_id is None:
                 raise errors.BzrCommandError('No changes are shelved.')
             trace.note('Unshelving changes with id "%d".' % shelf_id)
-        return klass(tree, manager, shelf_id)
+        apply_changes = True
+        delete_shelf = True
+        if dry_run:
+            apply_changes = False
+            delete_shelf = False
+        return klass(tree, manager, shelf_id, apply_changes, delete_shelf)
 
-    def __init__(self, tree, manager, shelf_id):
+    def __init__(self, tree, manager, shelf_id, apply_changes, delete_shelf):
         self.tree = tree
         self.manager = manager
         self.shelf_id = shelf_id
+        self.apply_changes = apply_changes
+        self.delete_shelf = delete_shelf
 
     def run(self):
         self.tree.lock_write()
@@ -179,8 +187,25 @@ class Unshelver(object):
             cleanups.append(unshelver.finalize)
             if unshelver.message is not None:
                 trace.note('Message: %s' % unshelver.message)
-            unshelver.unshelve(delta._ChangeReporter())
-            self.manager.delete_shelf(self.shelf_id)
+            change_reporter = delta._ChangeReporter()
+            merger = unshelver.get_merger()
+            merger.change_reporter = change_reporter
+            if self.apply_changes:
+                pb = ui.ui_factory.nested_progress_bar()
+                try:
+                    merger.do_merge()
+                finally:
+                    pb.finished()
+            else:
+                self.show_changes(merger)
+            if self.delete_shelf:
+                self.manager.delete_shelf(self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
+
+    def show_changes(self, merger):
+        tree_merger = merger.make_merger()
+        # This implicitly shows the changes via the reporter, so we're done...
+        tt = tree_merger.make_preview_transform()
+        tt.finalize()
