@@ -17,7 +17,7 @@
 
 from cStringIO import StringIO
 
-from bzrlib import merge3, pack, transform
+from bzrlib import merge3, osutils, pack, transform
 
 from bzrlib.plugins.shelf2 import serialize_transform
 
@@ -118,11 +118,7 @@ class ShelfCreator(object):
             to_transform.version_file(file_id, s_trans_id)
 
     def read_tree_lines(self, tree, file_id):
-        tree_file = tree.get_file(file_id)
-        try:
-            return tree_file.readlines()
-        finally:
-            tree_file.close()
+        return osutils.split_lines(tree.get_file_text(file_id))
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
