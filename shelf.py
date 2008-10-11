@@ -32,7 +32,7 @@ from bzrlib.plugins.shelf2 import serialize_transform
 
 class ShelfCreator(object):
 
-    def __init__(self, work_tree, target_tree):
+    def __init__(self, work_tree, target_tree, file_list=None):
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
         self.target_tree = target_tree
@@ -40,7 +40,8 @@ class ShelfCreator(object):
         self.renames = {}
         self.creation = {}
         self.deletion = {}
-        self.iter_changes = work_tree.iter_changes(self.target_tree)
+        self.iter_changes = work_tree.iter_changes(self.target_tree,
+                                                   specific_files=file_list)
 
     def __iter__(self):
         for (file_id, paths, changed, versioned, parents, names, kind,
