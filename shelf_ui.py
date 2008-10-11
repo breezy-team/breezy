@@ -149,12 +149,15 @@ class Shelver(object):
 class Unshelver(object):
 
     @classmethod
-    def from_args(klass):
+    def from_args(klass, shelf_id):
         tree, path = workingtree.WorkingTree.open_containing('.')
         manager = tree.get_shelf_manager()
-        shelf_id = manager.last_shelf()
-        if shelf_id is None:
-            raise errors.BzrCommandError('No changes are shelved.')
+        if shelf_id is not None:
+            shelf_id = int(shelf_id)
+        else:
+            shelf_id = manager.last_shelf()
+            if shelf_id is None:
+                raise errors.BzrCommandError('No changes are shelved.')
         return klass(tree, manager, shelf_id)
 
     def __init__(self, tree, manager, shelf_id):
