@@ -16,7 +16,7 @@
 
 """Reimplementation of shelf commands."""
 
-from bzrlib import commands
+from bzrlib import commands, option
 
 
 class cmd_shelve2(commands.Command):
@@ -26,7 +26,7 @@ class cmd_shelve2(commands.Command):
 
     takes_options = [
         'revision',
-        commands.Option('all', help='Shelve all changes.'),
+        option.Option('all', help='Shelve all changes.'),
         'message',
     ]
 
@@ -40,12 +40,17 @@ class cmd_unshelve2(commands.Command):
 
     takes_args = ['shelf_id?']
     takes_options = [
-        commands.Option('dry-run', help='Show the actions that would be'
-        ' performed, without performing them')]
+        option.RegistryOption.from_kwargs(
+            'action', enum_switch=False, value_switches=True,
+            apply="Apply changes and remove from the shelf.",
+            dry_run="Show changes, but do not apply or remove them.",
+            delete_only="Delete changes without applying them."
+        )
+    ]
 
-    def run(self, shelf_id=None, dry_run=False):
+    def run(self, shelf_id=None, action='apply'):
         from bzrlib.plugins.shelf2.shelf_ui import Unshelver
-        Unshelver.from_args(shelf_id, dry_run).run()
+        Unshelver.from_args(shelf_id, action).run()
 
 
 commands.register_command(cmd_shelve2)
