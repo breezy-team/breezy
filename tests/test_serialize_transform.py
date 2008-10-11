@@ -17,7 +17,12 @@
 import os
 
 from bzrlib import pack, transform
-from bzrlib.plugins.shelf2.serialize_transform import (serialize, deserialize)
+from bzrlib.plugins.shelf2.serialize_transform import (
+    get_parents_lines,
+    get_parents_texts,
+    deserialize,
+    serialize,
+)
 from bzrlib import tests
 
 
@@ -98,8 +103,8 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertEqual({'boo': boo_trans_id}, tt2._non_present_ids)
 
     def test_roundtrip_modification(self):
-        LINES_ONE = 'a\nb\nc\nd\n'
-        LINES_TWO = 'z\nb\nx\nd\n'
+        LINES_ONE = 'aa\nbb\ncc\ndd\n'
+        LINES_TWO = 'z\nbb\nx\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
         tree.add('file', 'file-id')
@@ -133,3 +138,25 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt.create_file(LINES_ONE, trans_id)
         self.reserialize(tt, tt2)
         self.assertFileEqual(LINES_ONE, tt2._limbo_name(trans_id))
+
+    def test_get_parents_lines(self):
+        LINES_ONE = 'aa\nbb\ncc\ndd\n'
+        LINES_TWO = 'z\nbb\nx\ndd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', LINES_ONE)])
+        tree.add('file', 'file-id')
+        tt, tt2 = self.get_two_previews(tree)
+        trans_id = tt.trans_id_tree_path('file')
+        self.assertEqual((['aa\n', 'bb\n', 'cc\n', 'dd\n'],),
+            get_parents_lines(tt, trans_id))
+
+    def test_get_parents_texts(self):
+        LINES_ONE = 'aa\nbb\ncc\ndd\n'
+        LINES_TWO = 'z\nbb\nx\ndd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', LINES_ONE)])
+        tree.add('file', 'file-id')
+        tt, tt2 = self.get_two_previews(tree)
+        trans_id = tt.trans_id_tree_path('file')
+        self.assertEqual((LINES_ONE,),
+            get_parents_texts(tt, trans_id))
