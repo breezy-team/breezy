@@ -29,6 +29,7 @@ from bzrlib import (
     errors,
     osutils,
     patches,
+    trace,
     workingtree)
 from bzrlib.plugins.bzrtools import colordiff, hunk_selector
 from bzrlib.plugins.bzrtools.patch import run_patch
@@ -91,7 +92,8 @@ class Shelver(object):
                 delta.report_changes(changes, reporter)
                 if (self.prompt_bool('Shelve %d change(s)?' %
                     changes_shelved, auto=self.auto_apply)):
-                    self.manager.shelve_changes(creator)
+                    shelf_id = self.manager.shelve_changes(creator)
+                    trace.note('Changes shelved with id "%d".' % shelf_id)
             else:
                 print 'No changes to shelve.'
         finally:
@@ -158,6 +160,7 @@ class Unshelver(object):
             shelf_id = manager.last_shelf()
             if shelf_id is None:
                 raise errors.BzrCommandError('No changes are shelved.')
+            trace.note('Unshelving changes with id "%d".' % shelf_id)
         return klass(tree, manager, shelf_id)
 
     def __init__(self, tree, manager, shelf_id):

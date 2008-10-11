@@ -36,7 +36,7 @@ class cmd_shelve2(commands.Command):
 class cmd_unshelve2(commands.Command):
     """Restore shelved changes."""
 
-    takes_args = ['shelf_id']
+    takes_args = ['shelf_id?']
 
     def run(self, shelf_id=None):
         from bzrlib.plugins.shelf2.shelf_ui import Unshelver
