@@ -135,6 +135,7 @@ class Shelver(object):
         final_hunks = []
         if not self.auto:
             offset = 0
+            self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
                 if not self.prompt_bool('Shelve?'):
