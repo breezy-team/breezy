@@ -229,10 +229,10 @@ class ShelfManager(object):
         shelf_file = open(self.transport.local_abspath(str(next_shelf)), 'wb')
         return next_shelf, shelf_file
 
-    def shelve_changes(self, creator):
+    def shelve_changes(self, creator, message=None):
         next_shelf, shelf_file = self.new_shelf()
         try:
-            creator.write_shelf(shelf_file)
+            creator.write_shelf(shelf_file, message)
         finally:
             shelf_file.close()
         creator.transform()
