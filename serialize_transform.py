@@ -11,7 +11,7 @@ def get_parents_texts(tt, trans_id):
             return ()
     except errors.NoSuchFile:
         return ()
-    return tt._tree.get_file_text(file_id)
+    return (tt._tree.get_file_text(file_id),)
 
 
 def get_parents_lines(tt, trans_id):
