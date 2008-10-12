@@ -36,7 +36,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.config import BranchConfig
-from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment1Subtree
+from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -91,6 +91,9 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._open_hook()
+        hooks = Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
 
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
@@ -1068,6 +1071,8 @@ class BranchHooks(Hooks):
         # (branch, revision_history), and the branch will
         # be write-locked.
         self['set_rh'] = []
+        # Invoked after a branch is opened. The api signature is (branch).
+        self['open'] = []
         # invoked after a push operation completes.
         # the api signature is
         # (push_result)
@@ -1341,7 +1346,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def __init__(self):
         super(BzrBranchFormat7, self).__init__()
         self._matchingbzrdir.repository_format = \
-            RepositoryFormatPackDevelopment1Subtree()
+            RepositoryFormatKnitPack5RichRoot()
 
     def supports_stacking(self):
         return True
@@ -1802,15 +1807,24 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
-
-        # We assume that during 'push' this repository is closer than
-        # the target.
-        graph = self.repository.get_graph(target.repository)
-        target.update_revisions(self, stop_revision, overwrite=overwrite,
-                                graph=graph)
-        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+        if result.old_revid != self.last_revision():
+            # We assume that during 'push' this repository is closer than
+            # the target.
+            graph = self.repository.get_graph(target.repository)
+            target.update_revisions(self, stop_revision, overwrite=overwrite,
+                                    graph=graph)
+        if self._push_should_merge_tags():
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
+
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+        
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_parent(self):
         """See Branch.get_parent."""

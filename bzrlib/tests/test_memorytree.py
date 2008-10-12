@@ -182,3 +182,42 @@ class TestMemoryTree(TestCaseWithTransport):
         rev_id = tree.commit('first post')
         tree.unlock()
         self.assertEqual(rev_id, tree.last_revision())
+
+    def test_rename_file(self):
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add(['', 'foo'], ['root-id', 'foo-id'], ['directory', 'file'])
+        tree.put_file_bytes_non_atomic('foo-id', 'content\n')
+        tree.commit('one', rev_id='rev-one')
+        tree.rename_one('foo', 'bar')
+        self.assertEqual('bar', tree.id2path('foo-id'))
+        self.assertEqual('content\n', tree._file_transport.get_bytes('bar'))
+        self.assertRaises(errors.NoSuchFile,
+                          tree._file_transport.get_bytes, 'foo')
+        tree.commit('two', rev_id='rev-two')
+        self.assertEqual('content\n', tree._file_transport.get_bytes('bar'))
+        self.assertRaises(errors.NoSuchFile,
+                          tree._file_transport.get_bytes, 'foo')
+
+        rev_tree2 = tree.branch.repository.revision_tree('rev-two')
+        self.assertEqual('bar', rev_tree2.id2path('foo-id'))
+        self.assertEqual('content\n', rev_tree2.get_file_text('foo-id'))
+
+    def test_rename_file_to_subdir(self):
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add('')
+        tree.mkdir('subdir', 'subdir-id')
+        tree.add('foo', 'foo-id', 'file')
+        tree.put_file_bytes_non_atomic('foo-id', 'content\n')
+        tree.commit('one', rev_id='rev-one')
+
+        tree.rename_one('foo', 'subdir/bar')
+        self.assertEqual('subdir/bar', tree.id2path('foo-id'))
+        self.assertEqual('content\n',
+                         tree._file_transport.get_bytes('subdir/bar'))
+        tree.commit('two', rev_id='rev-two')
+        rev_tree2 = tree.branch.repository.revision_tree('rev-two')
+        self.assertEqual('subdir/bar', rev_tree2.id2path('foo-id'))

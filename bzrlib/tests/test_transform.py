@@ -40,7 +40,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingPendingDeletion, ImmortalLimbo,
                            ImmortalPendingDeletion, LockError)
 from bzrlib.osutils import file_kind, pathjoin
-from bzrlib.merge import Merge3Merger
+from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     CaseInsensitiveFilesystemFeature,
     HardlinkFeature,
@@ -2053,12 +2053,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                           (False, False))],
                           list(preview_tree.iter_changes(revision_tree)))
 
-    def test_wrong_tree_value_error(self):
-        revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              preview_tree)
-        self.assertEqual('from_tree must be transform source tree.', str(e))
-
     def test_include_unchanged_value_error(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         e = self.assertRaises(ValueError, preview_tree.iter_changes,
@@ -2459,3 +2453,47 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         expected = [(('', 'tree-root'),
                     [('a', 'a', 'file', None, 'a-id', 'file')])]
         self.assertEqual(expected, list(preview_tree.walkdirs()))
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/removed-file', 'tree/existing-file',
+                         'tree/not-removed-file'])
+        work_tree.add(['removed-file', 'not-removed-file'])
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('new-file', preview.root, 'contents')
+        preview.new_file('new-versioned-file', preview.root, 'contents',
+                         'new-versioned-id')
+        tree = preview.get_preview_tree()
+        preview.unversion_file(preview.trans_id_tree_path('removed-file'))
+        self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
+                         set(tree.extras()))
+
+    def test_merge_into_preview(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file','b\n')])
+        work_tree.add('file', 'file-id')
+        work_tree.commit('first commit')
+        child_tree = work_tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file','b\nc\n')])
+        child_tree.commit('child commit')
+        child_tree.lock_write()
+        self.addCleanup(child_tree.unlock)
+        work_tree.lock_write()
+        self.addCleanup(work_tree.unlock)
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        preview_tree = preview.get_preview_tree()
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(file_trans_id)
+        preview.create_file('a\nb\n', file_trans_id)
+        pb = progress.DummyProgress()
+        merger = Merger.from_revision_ids(pb, preview_tree,
+                                          child_tree.branch.last_revision(),
+                                          other_branch=child_tree.branch,
+                                          tree_branch=work_tree.branch)
+        merger.merge_type = Merge3Merger
+        tt = merger.make_merger().make_preview_transform()
+        self.addCleanup(tt.finalize)
+        final_tree = tt.get_preview_tree()
+        self.assertEqual('a\nb\nc\n', final_tree.get_file_text('file-id'))

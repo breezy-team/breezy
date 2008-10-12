@@ -47,8 +47,6 @@ DEBUG = 0
 # ensure that.
 
 import httplib
-import md5
-import sha
 import socket
 import urllib
 import urllib2
@@ -62,6 +60,7 @@ from bzrlib import (
     config,
     debug,
     errors,
+    osutils,
     trace,
     transport,
     ui,
@@ -1123,9 +1122,9 @@ def get_digest_algorithm_impls(algorithm):
     H = None
     KD = None
     if algorithm == 'MD5':
-        H = lambda x: md5.new(x).hexdigest()
+        H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: sha.new(x).hexdigest()
+        H = lambda x: osutils.sha(x).hexdigest()
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
@@ -1134,7 +1133,7 @@ def get_digest_algorithm_impls(algorithm):
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
                            urllib2.randombytes(8))
-    return sha.new(raw).hexdigest()[:16]
+    return osutils.sha(raw).hexdigest()[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):

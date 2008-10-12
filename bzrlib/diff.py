@@ -43,7 +43,7 @@ from bzrlib.symbol_versioning import (
         deprecated_function,
         one_three
         )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import warning
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -370,10 +370,7 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
                 return branch.basis_tree()
         else:
             return tree
-    if not spec.needs_branch():
-        branch = _mod_branch.Branch.open(spec.get_branch())
-    revision_id = spec.as_revision_id(branch)
-    return branch.repository.revision_tree(revision_id)
+    return spec.as_tree(branch)
 
 
 def _relative_paths_in_tree(tree, paths):
@@ -440,25 +437,6 @@ def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     mtime = tree.get_file_mtime(file_id, path)
     return timestamp.format_patch_date(mtime)
-
-
-def _raise_if_nonexistent(paths, old_tree, new_tree):
-    """Complain if paths are not in either inventory or tree.
-
-    It's OK with the files exist in either tree's inventory, or 
-    if they exist in the tree but are not versioned.
-    
-    This can be used by operations such as bzr status that can accept
-    unknown or ignored files.
-    """
-    mutter("check paths: %r", paths)
-    if not paths:
-        return
-    s = old_tree.filter_unversioned_files(paths)
-    s = new_tree.filter_unversioned_files(s)
-    s = [path for path in s if not new_tree.has_filename(path)]
-    if s:
-        raise errors.PathsDoNotExist(sorted(s))
 
 
 @deprecated_function(one_three)

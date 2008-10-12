@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -105,11 +105,11 @@ Example usage:
 
 import os
 import time
-from cStringIO import StringIO
 
 from bzrlib import (
     debug,
     errors,
+    lock,
     )
 import bzrlib.config
 from bzrlib.errors import (
@@ -124,14 +124,16 @@ from bzrlib.errors import (
         PathError,
         ResourceBusy,
         TransportError,
-        UnlockableTransport,
         )
+from bzrlib.hooks import Hooks
 from bzrlib.trace import mutter, note
-from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars, format_delta, get_host_name
-from bzrlib.rio import read_stanza, Stanza
+from bzrlib.osutils import format_delta, rand_chars, get_host_name
 import bzrlib.ui
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import rio
+""")
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -152,8 +154,9 @@ _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 1.0
 
 
-class LockDir(object):
-    """Write-lock guarding access to data."""
+class LockDir(lock.Lock):
+    """Write-lock guarding access to data.
+    """
 
     __INFO_NAME = '/info'
 
@@ -296,6 +299,7 @@ class LockDir(object):
             self._locked_via_token = False
             self._lock_held = False
         else:
+            old_nonce = self.nonce
             # rename before deleting, because we can't atomically remove the
             # whole tree
             start_time = time.time()
@@ -321,6 +325,10 @@ class LockDir(object):
                 self.transport.delete_tree(tmpname)
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
+            result = lock.LockResult(self.transport.abspath(self.path),
+                old_nonce)
+            for hook in self.hooks['lock_released']:
+                hook(result)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -428,7 +436,7 @@ class LockDir(object):
             user = config.user_email()
         except errors.NoEmailInUsername:
             user = config.username()
-        s = Stanza(hostname=get_host_name(),
+        s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
@@ -437,7 +445,7 @@ class LockDir(object):
         return s.to_string()
 
     def _parse_info(self, info_file):
-        return read_stanza(info_file.readlines()).as_dict()
+        return rio.read_stanza(info_file.readlines()).as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -450,7 +458,12 @@ class LockDir(object):
         """
         if self._fake_read_lock:
             raise LockContention(self)
-        return self._attempt_lock()
+        result = self._attempt_lock()
+        hook_result = lock.LockResult(self.transport.abspath(self.path),
+                self.nonce)
+        for hook in self.hooks['lock_acquired']:
+            hook(hook_result)
+        return result
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.

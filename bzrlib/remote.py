@@ -1296,6 +1296,10 @@ class RemoteBranch(branch.Branch):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # The base class init is not called, so we duplicate this:
+        hooks = branch.Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
         self._setup_stacking()
 
     def _setup_stacking(self):

@@ -32,6 +32,7 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    osutils,
     )
 import bzrlib.branch
 from bzrlib.osutils import pathjoin
@@ -298,6 +299,21 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqual("working tree is out of date, run 'bzr update'\n",
                          err)
 
+    def test_status_write_lock(self):
+        """Test that status works without fetching history and
+        having a write lock.
+
+        See https://bugs.launchpad.net/bzr/+bug/149270
+        """
+        mkdir('branch1')
+        wt = self.make_branch_and_tree('branch1')
+        b = wt.branch
+        wt.commit('Empty commit 1')
+        wt2 = b.bzrdir.sprout('branch2').open_workingtree()
+        wt2.commit('Empty commit 2')
+        out, err = self.run_bzr('status branch1 -rbranch:branch2')
+        self.assertEqual('', out)
+
 
 class CheckoutStatus(BranchStatus):
 
@@ -463,7 +479,7 @@ class TestStatusEncodings(TestCaseWithTransport):
     
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self.user_encoding = bzrlib.user_encoding
+        self.user_encoding = osutils._cached_user_encoding
         self.stdout = sys.stdout
 
     def tearDown(self):
@@ -485,7 +501,7 @@ class TestStatusEncodings(TestCaseWithTransport):
 
     def test_stdout_ascii(self):
         sys.stdout = StringIO()
-        bzrlib.user_encoding = 'ascii'
+        osutils._cached_user_encoding = 'ascii'
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -496,7 +512,7 @@ added:
 
     def test_stdout_latin1(self):
         sys.stdout = StringIO()
-        bzrlib.user_encoding = 'latin-1'
+        osutils._cached_user_encoding = 'latin-1'
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 

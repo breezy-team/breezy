@@ -17,11 +17,11 @@
 """builtin bzr commands"""
 
 import os
-from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
+import cStringIO
 import sys
 import time
 
@@ -29,12 +29,12 @@ import bzrlib
 from bzrlib import (
     bugtracker,
     bundle,
+    btree_index,
     bzrdir,
     delta,
     config,
     errors,
     globbing,
-    ignores,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -56,7 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet, info
+from bzrlib.trace import mutter, note, warning, is_quiet
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -65,6 +65,23 @@ def tree_files(file_list, default_branch=u'.'):
     except errors.FileInWrongBranch, e:
         raise errors.BzrCommandError("%s is not in the same branch as %s" %
                                      (e.path, file_list[0]))
+
+
+def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
+    if branch is None:
+        branch = tree.branch
+    if revisions is None:
+        if tree is not None:
+            rev_tree = tree.basis_tree()
+        else:
+            rev_tree = branch.basis_tree()
+    else:
+        if len(revisions) != 1:
+            raise errors.BzrCommandError(
+                'bzr %s --revision takes exactly one revision identifier' % (
+                    command_name,))
+        rev_tree = revisions[0].as_tree(branch)
+    return rev_tree
 
 
 # XXX: Bad function name; should possibly also be a class method of
@@ -239,7 +256,81 @@ class cmd_cat_revision(Command):
                                                  ' revision.')
                 rev_id = rev.as_revision_id(b)
                 self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
-    
+
+
+class cmd_dump_btree(Command):
+    """Dump the contents of a btree index file to stdout.
+
+    PATH is a btree index file, it can be any URL. This includes things like
+    .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
+
+    By default, the tuples stored in the index file will be displayed. With
+    --raw, we will uncompress the pages, but otherwise display the raw bytes
+    stored in the index.
+    """
+
+    # TODO: Do we want to dump the internal nodes as well?
+    # TODO: It would be nice to be able to dump the un-parsed information,
+    #       rather than only going through iter_all_entries. However, this is
+    #       good enough for a start
+    hidden = True
+    encoding_type = 'exact'
+    takes_args = ['path']
+    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
+                                        ' rather than the parsed tuples.'),
+                    ]
+
+    def run(self, path, raw=False):
+        dirname, basename = osutils.split(path)
+        t = transport.get_transport(dirname)
+        if raw:
+            self._dump_raw_bytes(t, basename)
+        else:
+            self._dump_entries(t, basename)
+
+    def _get_index_and_bytes(self, trans, basename):
+        """Create a BTreeGraphIndex and raw bytes."""
+        bt = btree_index.BTreeGraphIndex(trans, basename, None)
+        bytes = trans.get_bytes(basename)
+        bt._file = cStringIO.StringIO(bytes)
+        bt._size = len(bytes)
+        return bt, bytes
+
+    def _dump_raw_bytes(self, trans, basename):
+        import zlib
+
+        # We need to parse at least the root node.
+        # This is because the first page of every row starts with an
+        # uncompressed header.
+        bt, bytes = self._get_index_and_bytes(trans, basename)
+        for page_idx, page_start in enumerate(xrange(0, len(bytes),
+                                                     btree_index._PAGE_SIZE)):
+            page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
+            page_bytes = bytes[page_start:page_end]
+            if page_idx == 0:
+                self.outf.write('Root node:\n')
+                header_end, data = bt._parse_header_from_bytes(page_bytes)
+                self.outf.write(page_bytes[:header_end])
+                page_bytes = data
+            self.outf.write('\nPage %d\n' % (page_idx,))
+            decomp_bytes = zlib.decompress(page_bytes)
+            self.outf.write(decomp_bytes)
+            self.outf.write('\n')
+
+    def _dump_entries(self, trans, basename):
+        try:
+            st = trans.stat(basename)
+        except errors.TransportNotPossible:
+            # We can't stat, so we'll fake it because we have to do the 'get()'
+            # anyway.
+            bt, _ = self._get_index_and_bytes(trans, basename)
+        else:
+            bt = btree_index.BTreeGraphIndex(trans, basename, st.st_size)
+        for node in bt.iter_all_entries():
+            # Node is made up of:
+            # (index, key, value, [references])
+            self.outf.write('%s\n' % (node[1:],))
+
 
 class cmd_remove_tree(Command):
     """Remove the working tree from a given branch/checkout.
@@ -250,10 +341,14 @@ class cmd_remove_tree(Command):
     To re-create the working tree, use "bzr checkout".
     """
     _see_also = ['checkout', 'working-trees']
-
     takes_args = ['location?']
+    takes_options = [
+        Option('force',
+               help='Remove the working tree even if it has '
+                    'uncommitted changes.'),
+        ]
 
-    def run(self, location='.'):
+    def run(self, location='.', force=False):
         d = bzrdir.BzrDir.open(location)
         
         try:
@@ -263,7 +358,11 @@ class cmd_remove_tree(Command):
         except errors.NotLocalUrl:
             raise errors.BzrCommandError("You cannot remove the working tree of a "
                                          "remote path")
-        
+        if not force:
+            changes = working.changes_from(working.basis_tree())
+            if changes.has_changed():
+                raise errors.UncommittedChanges(working)
+
         working_path = working.bzrdir.root_transport.base
         branch_path = working.branch.bzrdir.root_transport.base
         if working_path != branch_path:
@@ -482,8 +581,7 @@ class cmd_inventory(Command):
                     raise errors.BzrCommandError(
                         'bzr inventory --revision takes exactly one revision'
                         ' identifier')
-                revision_id = revision[0].as_revision_id(work_tree.branch)
-                tree = work_tree.branch.repository.revision_tree(revision_id)
+                tree = revision[0].as_tree(work_tree.branch)
 
                 extra_trees = [work_tree]
                 tree.lock_read()
@@ -837,11 +935,13 @@ class cmd_branch(Command):
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
                 'branch for all operations.'),
+        Option('standalone',
+               help='Do not use a shared repository, even if available.'),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, stacked=False):
+            hardlink=False, stacked=False, standalone=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -876,7 +976,8 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, stacked=stacked)
+                                            hardlink=hardlink, stacked=stacked,
+                                            force_new_repo=standalone)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -1284,8 +1385,8 @@ class cmd_init(Command):
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
-                registry=bzrdir.format_registry,
-                converter=bzrdir.format_registry.make_bzrdir,
+                lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
                 title="Branch Format",
                 ),
@@ -1373,8 +1474,8 @@ class cmd_init_repository(Command):
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "bzr help formats" for details.',
-                            registry=bzrdir.format_registry,
-                            converter=bzrdir.format_registry.make_bzrdir,
+                            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
@@ -1662,13 +1763,16 @@ class cmd_log(Command):
     takes_options = [
             Option('forward',
                    help='Show from oldest to newest.'),
-            Option('timezone',
-                   type=str,
-                   help='Display timezone as local, original, or utc.'),
+            'timezone',
             custom_help('verbose',
                    help='Show files changed in each revision.'),
             'show-ids',
             'revision',
+            Option('change',
+                   type=bzrlib.option._parse_revision_str,
+                   short_name='c',
+                   help='Show just the specified revision.'
+                   ' See also "help revisionspec".'),
             'log-format',
             Option('message',
                    short_name='m',
@@ -1689,12 +1793,22 @@ class cmd_log(Command):
             show_ids=False,
             forward=False,
             revision=None,
+            change=None,
             log_format=None,
             message=None,
             limit=None):
         from bzrlib.log import show_log
         direction = (forward and 'forward') or 'reverse'
-        
+
+        if change is not None:
+            if len(change) > 1:
+                raise errors.RangeInChangeOption()
+            if revision is not None:
+                raise errors.BzrCommandError(
+                    '--revision and --change are mutually exclusive')
+            else:
+                revision = change
+
         # log everything
         file_id = None
         if location:
@@ -1846,11 +1960,8 @@ class cmd_ls(Command):
             relpath = u''
         elif relpath:
             relpath += '/'
-        if revision is not None:
-            tree = branch.repository.revision_tree(
-                revision[0].as_revision_id(branch))
-        elif tree is None:
-            tree = branch.basis_tree()
+        if revision is not None or tree is None:
+            tree = _get_one_revision_tree('ls', revision, branch=branch)
 
         tree.lock_read()
         try:
@@ -2074,17 +2185,11 @@ class cmd_export(Command):
             subdir = None
         else:
             b, subdir = Branch.open_containing(branch_or_subdir)
-            
-        if revision is None:
-            # should be tree.last_revision  FIXME
-            rev_id = b.last_revision()
-        else:
-            if len(revision) != 1:
-                raise errors.BzrCommandError('bzr export --revision takes exactly 1 argument')
-            rev_id = revision[0].as_revision_id(b)
-        t = b.repository.revision_tree(rev_id)
+            tree = None
+
+        rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(t, dest, format, root, subdir)
+            export(rev_tree, dest, format, root, subdir)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
@@ -2123,19 +2228,16 @@ class cmd_cat(Command):
     def _run(self, tree, b, relpath, filename, revision, name_from_revision):
         if tree is None:
             tree = b.basis_tree()
-        if revision is None:
-            revision_id = b.last_revision()
-        else:
-            revision_id = revision[0].as_revision_id(b)
+        rev_tree = _get_one_revision_tree('cat', revision, branch=b)
 
         cur_file_id = tree.path2id(relpath)
-        rev_tree = b.repository.revision_tree(revision_id)
         old_file_id = rev_tree.path2id(relpath)
-        
+
         if name_from_revision:
             if old_file_id is None:
-                raise errors.BzrCommandError("%r is not present in revision %s"
-                                                % (filename, revision_id))
+                raise errors.BzrCommandError(
+                    "%r is not present in revision %s" % (
+                        filename, rev_tree.get_revision_id()))
             else:
                 content = rev_tree.get_file_text(old_file_id)
         elif cur_file_id is not None:
@@ -2143,8 +2245,9 @@ class cmd_cat(Command):
         elif old_file_id is not None:
             content = rev_tree.get_file_text(old_file_id)
         else:
-            raise errors.BzrCommandError("%r is not present in revision %s" %
-                                         (filename, revision_id))
+            raise errors.BzrCommandError(
+                "%r is not present in revision %s" % (
+                    filename, rev_tree.get_revision_id()))
         self.outf.write(content)
 
 
@@ -2304,7 +2407,7 @@ class cmd_commit(Command):
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
-                        output_encoding=bzrlib.user_encoding)
+                        output_encoding=osutils.get_user_encoding())
                 my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
@@ -2314,7 +2417,7 @@ class cmd_commit(Command):
                     "please specify either --message or --file")
             if file:
                 my_message = codecs.open(file, 'rt',
-                                         bzrlib.user_encoding).read()
+                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
@@ -2420,8 +2523,8 @@ class cmd_upgrade(Command):
                     RegistryOption('format',
                         help='Upgrade to a specific format.  See "bzr help'
                              ' formats" for details.',
-                        registry=bzrdir.format_registry,
-                        converter=bzrdir.format_registry.make_bzrdir,
+                        lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                        converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                         value_switches=True, title='Branch format'),
                     ]
 
@@ -2684,7 +2787,6 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None):
-        import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -2884,7 +2986,7 @@ class cmd_merge(Command):
     ]
 
     def run(self, location=None, revision=None, force=False,
-            merge_type=None, show_base=False, reprocess=False, remember=False,
+            merge_type=None, show_base=False, reprocess=None, remember=False,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
@@ -2993,6 +3095,12 @@ class cmd_merge(Command):
             not merger.merge_type is _mod_merge.Merge3Merger):
             raise errors.BzrCommandError("Show-base is not supported for this"
                                          " merge type. %s" % merger.merge_type)
+        if merger.reprocess is None:
+            if merger.show_base:
+                merger.reprocess = False
+            else:
+                # Use reprocess if the merger supports it
+                merger.reprocess = merger.merge_type.supports_reprocess
         if merger.reprocess and not merger.merge_type.supports_reprocess:
             raise errors.BzrCommandError("Conflict reduction is not supported"
                                          " for merge type %s." %
@@ -3239,24 +3347,22 @@ class cmd_revert(Command):
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
         tree, file_list = tree_files(file_list)
-        if forget_merges:
-            tree.set_parent_ids(tree.get_parent_ids()[:1])
-        else:
-            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+        tree.lock_write()
+        try:
+            if forget_merges:
+                tree.set_parent_ids(tree.get_parent_ids()[:1])
+            else:
+                self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+        finally:
+            tree.unlock()
 
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
-        if revision is None:
-            rev_id = tree.last_revision()
-        elif len(revision) != 1:
-            raise errors.BzrCommandError('bzr revert --revision takes exactly 1 argument')
-        else:
-            rev_id = revision[0].as_revision_id(tree.branch)
+        rev_tree = _get_one_revision_tree('revert', revision, tree=tree)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            tree.revert(file_list,
-                        tree.branch.repository.revision_tree(rev_id),
-                        not no_backup, pb, report_changes=True)
+            tree.revert(file_list, rev_tree, not no_backup, pb,
+                report_changes=True)
         finally:
             pb.finished()
 
@@ -3549,7 +3655,7 @@ class cmd_annotate(Command):
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False):
-        from bzrlib.annotate import annotate_file
+        from bzrlib.annotate import annotate_file, annotate_file_tree
         wt, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(filename)
         if wt is not None:
@@ -3557,13 +3663,7 @@ class cmd_annotate(Command):
         else:
             branch.lock_read()
         try:
-            if revision is None:
-                revision_id = branch.last_revision()
-            elif len(revision) != 1:
-                raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
-            else:
-                revision_id = revision[0].as_revision_id(branch)
-            tree = branch.repository.revision_tree(revision_id)
+            tree = _get_one_revision_tree('annotate', revision, branch=branch)
             if wt is not None:
                 file_id = wt.path2id(relpath)
             else:
@@ -3571,8 +3671,14 @@ class cmd_annotate(Command):
             if file_id is None:
                 raise errors.NotVersionedError(filename)
             file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, self.outf,
-                          show_ids=show_ids)
+            if wt is not None and revision is None:
+                # If there is a tree and we're not annotating historical
+                # versions, annotate the working tree's content.
+                annotate_file_tree(wt, file_id, self.outf, long, all,
+                    show_ids=show_ids)
+            else:
+                annotate_file(branch, file_version, file_id, long, all, self.outf,
+                              show_ids=show_ids)
         finally:
             if wt is not None:
                 wt.unlock()
@@ -4187,7 +4293,7 @@ class cmd_send(Command):
         from bzrlib.revision import NULL_REVISION
         branch = Branch.open_containing(from_)[0]
         if output is None:
-            outfile = StringIO()
+            outfile = cStringIO.StringIO()
         elif output == '-':
             outfile = self.outf
         else:

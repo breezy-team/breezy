@@ -18,6 +18,7 @@
 """Tests for WorkingTreeFormat4"""
 
 import os
+import time
 
 from bzrlib import (
     bzrdir,
@@ -576,6 +577,71 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         changes = [c[1] for c in tree.iter_changes(basis)]
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
+
+    def get_tree_with_cachable_file_foo(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        # a 4 second old timestamp is always hashable - sucks to delay 
+        # the test suite, but not testing this is worse.
+        time.sleep(4)
+        return tree
+
+    def test_commit_updates_hash_cache(self):
+        tree = self.get_tree_with_cachable_file_foo()
+        revid = tree.commit('a commit')
+        # tree's dirstate should now have a valid stat entry for foo.
+        tree.lock_read()
+        entry = tree._get_entry(path='foo')
+        expected_sha1 = osutils.sha_file_by_name('foo')
+        self.assertEqual(expected_sha1, entry[1][0][1])
+
+    def test_observed_sha1_cachable(self):
+        tree = self.get_tree_with_cachable_file_foo()
+        expected_sha1 = osutils.sha_file_by_name('foo')
+        statvalue = os.lstat("foo")
+        tree.lock_write()
+        try:
+            tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
+            self.assertEqual(expected_sha1,
+                tree._get_entry(path="foo")[1][0][1])
+        finally:
+            tree.unlock()
+        tree = tree.bzrdir.open_workingtree()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(expected_sha1, tree._get_entry(path="foo")[1][0][1])
+
+    def test_observed_sha1_new_file(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        tree.lock_read()
+        try:
+            current_sha1 = tree._get_entry(path="foo")[1][0][1]
+        finally:
+            tree.unlock()
+        tree.lock_write()
+        try:
+            tree._observed_sha1("foo-id", "foo",
+                (osutils.sha_file_by_name('foo'), os.lstat("foo")))
+            # Must not have changed
+            self.assertEqual(current_sha1,
+                tree._get_entry(path="foo")[1][0][1])
+        finally:
+            tree.unlock()
+
+    def test_get_file_with_stat_id_only(self):
+        # Explicit test to ensure we get a lstat value from WT4 trees.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        file_obj, statvalue = tree.get_file_with_stat('foo-id')
+        expected = os.lstat('foo')
+        self.assertEqualStat(expected, statvalue)
+        self.assertEqual(["contents of foo\n"], file_obj.readlines())
 
 
 class TestCorruptDirstate(TestCaseWithTransport):
