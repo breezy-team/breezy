@@ -109,7 +109,7 @@ class TestSprout(TestCaseWithBranch):
         tree = self.make_branch_and_tree('tree1')
 
         # 'adiós' ('goodbye' in Spanish) in utf-8
-        os.symlink(u'adi\xc3\xb3s','tree1/link_name')
+        os.symlink('adi\xc3\xb3s','tree1/link_name')
         tree.add(['link_name'],['link-id'])
         revision = tree.commit('added a link to an utf-8 target')
 
