@@ -650,8 +650,7 @@ def file_status(filename, old_tree, new_tree):
     return 'wtf?'
 
     
-
-@deprecated_function(deprecated_in((1, 8, 0)))
+@deprecated_function(deprecated_in((1, 9, 0)))
 def find_renames(old_inv, new_inv):
     for file_id in old_inv:
         if file_id not in new_inv:
