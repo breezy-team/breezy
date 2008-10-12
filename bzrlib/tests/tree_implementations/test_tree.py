@@ -173,6 +173,15 @@ class TestFileContent(TestCaseWithTree):
         # test read by path
         self.assertEqual('foobar\n', tree.get_file_text('a-id', path='a'))
 
+    def test_get_file_lines(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # test read by file-id
+        self.assertEqual(['foobar\n'], tree.get_file_lines('a-id'))
+        # test read by path
+        self.assertEqual(['foobar\n'], tree.get_file_lines('a-id', path='a'))
 
 class TestExtractFilesBytes(TestCaseWithTree):
 

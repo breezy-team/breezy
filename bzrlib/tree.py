@@ -277,6 +277,19 @@ class Tree(object):
         finally:
             my_file.close()
 
+    def get_file_lines(self, file_id, path=None):
+        """Return the content of a file, as lines.
+
+        :param file_id: The file_id of the file.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
+
+        osutils.split_lines is always used, rather than calling file.readlines,
+        because the behavior of file.readlines may differ by platform.
+        """
+        return osutils.split_lines(self.get_file_text(file_id, path))
+
     def get_file_mtime(self, file_id, path=None):
         """Return the modification time for a file.
 
