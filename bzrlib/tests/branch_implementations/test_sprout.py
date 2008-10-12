@@ -116,5 +116,5 @@ class TestSprout(TestCaseWithBranch):
         try:
             tree.bzrdir.sprout('target')
         except UnicodeEncodeError, e:
-            raise KnownFailure('there is no support for symlinks to non-ASCII targets')
+            raise KnownFailure('there is no support for symlinks to non-ASCII targets (bug 272444)')
 
