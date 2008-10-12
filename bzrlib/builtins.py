@@ -1090,7 +1090,14 @@ class cmd_renames(Command):
             old_tree.lock_read()
             try:
                 old_inv = old_tree.inventory
-                renames = list(_mod_tree.find_renames(old_inv, new_inv))
+                renames = []
+                iterator = tree.iter_changes(old_tree, include_unchanged=True)
+                for f, paths, c, v, p, n, k, e in iterator:
+                    if paths[0] == paths[1]:
+                        continue
+                    if None in (paths):
+                        continue
+                    renames.append(paths)
                 renames.sort()
                 for old_name, new_name in renames:
                     self.outf.write("%s => %s\n" % (old_name, new_name))
