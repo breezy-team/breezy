@@ -433,9 +433,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         file_obj = self.get_file_byname(path)
         return (file_obj, _fstat(file_obj.fileno()))
 
-    def get_file_text(self, file_id):
-        return self.get_file(file_id).read()
-
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 

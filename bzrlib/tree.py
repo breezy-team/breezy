@@ -263,6 +263,20 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file)
 
+    def get_file_text(self, file_id, path=None):
+        """Return the byte content of a file.
+
+        :param file_id: The file_id of the file.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
+        """
+        my_file = self.get_file(file_id, path)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
+
     def get_file_mtime(self, file_id, path=None):
         """Return the modification time for a file.
 
