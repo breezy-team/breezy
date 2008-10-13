@@ -144,6 +144,7 @@ class Shelver(object):
                     final_hunks.append(hunk)
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
+        sys.stdout.flush()
         if len(parsed.hunks) == len(final_hunks):
             return 0
         target_lines = self.target_tree.get_file_lines(file_id)
