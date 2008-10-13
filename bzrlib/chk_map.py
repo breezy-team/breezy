@@ -94,6 +94,13 @@ class CHKMap(object):
                 bytes = self._read_bytes(key)
                 yield name, ValueNode.deserialise(bytes).value
 
+    def key(self):
+        """Return the key for this map."""
+        if isinstance(self._root_node, tuple):
+            return self._root_node
+        else:
+            return self._root_node._key
+
     def _map(self, key, value):
         """Map key to value."""
         self._ensure_root()

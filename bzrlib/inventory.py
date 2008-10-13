@@ -714,6 +714,20 @@ class TreeReference(InventoryEntry):
 class CommonInventory(object):
     """Basic inventory logic, defined in terms of primitives like has_id."""
 
+    def id2path(self, file_id):
+        """Return as a string the path to file_id.
+        
+        >>> i = Inventory()
+        >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
+        >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
+        >>> print i.id2path('foo-id')
+        src/foo.c
+        """
+        # get all names, skipping root
+        return '/'.join(reversed(
+            [parent.name for parent in 
+             self._iter_file_id_parents(file_id)][:-1]))
+            
     def iter_entries(self, from_dir=None):
         """Return (path, entry) pairs, in order by name."""
         if from_dir is None:
@@ -1187,20 +1201,6 @@ class Inventory(CommonInventory):
             p.insert(0, parent.file_id)
         return p
 
-    def id2path(self, file_id):
-        """Return as a string the path to file_id.
-        
-        >>> i = Inventory()
-        >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
-        >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
-        >>> print i.id2path('foo-id')
-        src/foo.c
-        """
-        # get all names, skipping root
-        return '/'.join(reversed(
-            [parent.name for parent in 
-             self._iter_file_id_parents(file_id)][:-1]))
-            
     def path2id(self, name):
         """Walk down through directories to return entry of last component.
 
@@ -1460,6 +1460,16 @@ class CHKInventory(CommonInventory):
         # Perhaps have an explicit 'contains' method on CHKMap ?
         return len(list(self.id_to_entry.iteritems([file_id]))) == 1
 
+    def _iter_file_id_parents(self, file_id):
+        """Yield the parents of file_id up to the root."""
+        while file_id is not None:
+            try:
+                ie = self[file_id]
+            except KeyError:
+                raise errors.NoSuchId(tree=None, file_id=file_id)
+            yield ie
+            file_id = ie.parent_id
+
     def __iter__(self):
         """Iterate over the entire inventory contents; size-of-tree - beware!."""
         for file_id, _ in self.id_to_entry.iteritems():
@@ -1470,12 +1480,43 @@ class CHKInventory(CommonInventory):
         # Might want to cache the length in the meta node.
         return len([item for item in self])
 
+    def path2id(self, name):
+        """Walk down through directories to return entry of last component.
+
+        names may be either a list of path components, or a single
+        string, in which case it is automatically split.
+
+        This returns the entry of the last component in the path,
+        which may be either a file or a directory.
+
+        Returns None IFF the path is not found.
+        """
+        if isinstance(name, basestring):
+            name = osutils.splitpath(name)
+
+        # mutter("lookup path %r" % name)
+
+        parent = self.root
+        if parent is None:
+            return None
+        for f in name:
+            try:
+                children = getattr(parent, 'children', None)
+                if children is None:
+                    return None
+                cie = children[f]
+                parent = cie
+            except KeyError:
+                # or raise an error?
+                return None
+        return parent.file_id
+
     def to_lines(self):
         """Serialise the inventory to lines."""
         lines = ["chkinventory:\n"]
         lines.append("revision_id: %s\n" % self.revision_id)
         lines.append("root_id: %s\n" % self.root_id)
-        lines.append("id_to_entry: %s\n" % self.id_to_entry._root_node._key)
+        lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
         return lines
 
     @property

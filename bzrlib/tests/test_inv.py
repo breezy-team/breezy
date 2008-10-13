@@ -331,6 +331,48 @@ class TestCHKInventory(TestCaseWithTransport):
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         self.assertFalse(chk_inv.has_id('fileid'))
 
+    def test_id2path(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        direntry = InventoryDirectory("dirid", "dir", inv.root.file_id)
+        fileentry = InventoryFile("fileid", "file", "dirid")
+        inv.add(direntry)
+        inv.add(fileentry)
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv["dirid"].revision = "filerev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual('', new_inv.id2path(inv.root.file_id))
+        self.assertEqual('dir', new_inv.id2path('dirid'))
+        self.assertEqual('dir/file', new_inv.id2path('fileid'))
+
+    def test_path2id(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        direntry = InventoryDirectory("dirid", "dir", inv.root.file_id)
+        fileentry = InventoryFile("fileid", "file", "dirid")
+        inv.add(direntry)
+        inv.add(fileentry)
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv["dirid"].revision = "filerev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual(inv.root.file_id, new_inv.path2id(''))
+        self.assertEqual('dirid', new_inv.path2id('dir'))
+        self.assertEqual('fileid', new_inv.path2id('dir/file'))
+
     def test_create_by_apply_delta_empty_add_child(self):
         inv = Inventory()
         inv.revision_id = "revid"

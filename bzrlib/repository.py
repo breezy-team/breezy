@@ -152,8 +152,13 @@ class CommitBuilder(object):
         deserializing the inventory, while we already have a copy in
         memory.
         """
-        return RevisionTree(self.repository, self.new_inventory,
-                            self._new_revision_id)
+        if self.repository._format._commit_inv_deltas:
+            # incremental access repositories may not have a full cached
+            # inventory.
+            return self.repository.revision_tree(self._new_revision_id)
+        else:
+            return RevisionTree(self.repository, self.new_inventory,
+                                self._new_revision_id)
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
@@ -162,11 +167,21 @@ class CommitBuilder(object):
                 ' record_entry_contents, as of bzr 0.10.')
             self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
         self.new_inventory.revision_id = self._new_revision_id
-        self.inv_sha1 = self.repository.add_inventory(
-            self._new_revision_id,
-            self.new_inventory,
-            self.parents
-            )
+        if (self.repository._format._commit_inv_deltas and
+            self._recording_deletes):
+            try:
+                basis_id = self.parents[0]
+            except IndexError:
+                basis_id = _mod_revision.NULL_REVISION
+            self.inv_sha1 = self.repository.add_inventory_delta(
+                basis_id, self.basis_delta, self._new_revision_id,
+                self.parents)
+        else:
+            self.inv_sha1 = self.repository.add_inventory(
+                self._new_revision_id,
+                self.new_inventory,
+                self.parents
+                )
 
     def _gen_revision_id(self):
         """Return new revision-id."""
@@ -1762,7 +1777,7 @@ class Repository(object):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == _mod_revision.NULL_REVISION:
-            return RevisionTree(self, Inventory(root_id=None), 
+            return RevisionTree(self, Inventory(root_id=None),
                                 _mod_revision.NULL_REVISION)
         else:
             inv = self.get_revision_inventory(revision_id)
@@ -2206,6 +2221,8 @@ class RepositoryFormat(object):
     # Does this format support CHK bytestring lookups. Set to True or False in
     # derived classes.
     supports_chks = None
+    # Should commit add an inventory, or an inventory delta to the repository.
+    _commit_inv_deltas = True
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__

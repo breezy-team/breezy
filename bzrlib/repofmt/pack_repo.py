@@ -2037,6 +2037,42 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
+    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
+        parents):
+        """Add a new inventory expressed as a delta against another revision.
+        
+        :param basis_revision_id: The inventory id the delta was created
+            against.
+        :param delta: The inventory delta (see Inventory.apply_delta for
+            details).
+        :param new_revision_id: The revision id that the inventory is being
+            added for.
+        :param parents: The revision ids of the parents that revision_id is
+            known to have and are in the repository already. These are supplied
+            for repositories that depend on the inventory graph for revision
+            graph access, as well as for those that pun ancestry with delta
+            compression.
+
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
+        """
+        if basis_revision_id == _mod_revision.NULL_REVISION:
+            return KnitPackRepository.add_inventory_delta(self,
+                basis_revision_id, delta, new_revision_id, parents)
+        if not self.is_in_write_group():
+            raise AssertionError("%r not in write group" % (self,))
+        _mod_revision.check_not_reserved_id(new_revision_id)
+        basis_tree = self.revision_tree(basis_revision_id)
+        basis_tree.lock_read()
+        try:
+            basis_inv = basis_tree.inventory
+            result = basis_inv.create_by_apply_delta(delta, new_revision_id)
+            inv_lines = result.to_lines()
+            return self._inventory_add_lines(new_revision_id, parents,
+                inv_lines, check_content=False)
+        finally:
+            basis_tree.unlock()
+
     def _iter_inventories(self, revision_ids):
         """Iterate over many inventory objects."""
         keys = [(revision_id,) for revision_id in revision_ids]
@@ -2583,6 +2619,7 @@ class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
     index_builder_class = BTreeBuilder
     index_class = BTreeGraphIndex
     supports_chks = True
+    _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development3')
@@ -2623,6 +2660,7 @@ class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
     index_builder_class = BTreeBuilder
     index_class = BTreeGraphIndex
     supports_chks = True
+    _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
