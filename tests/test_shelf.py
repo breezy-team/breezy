@@ -251,6 +251,25 @@ class TestUnshelver(tests.TestCaseWithTransport):
         finally:
             shelf_file.close()
 
+    def test_unshelve_changed(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('tree/foo', 'a\nb\nc\n')])
+        tree.add('foo', 'foo-id')
+        tree.commit('first commit')
+        self.build_tree_contents([('tree/foo', 'a\nb\nd\n')])
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        list(creator)
+        creator.shelve_lines('foo-id', ['a\n', 'b\n', 'c\n'])
+        filename = creator.write_shelf()
+        creator.transform()
+        self.build_tree_contents([('tree/foo', 'z\na\nb\nc\n')])
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, filename)
+        unshelver.unshelve()
+        self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
+
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
