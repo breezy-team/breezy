@@ -273,4 +273,5 @@ class TestUnshelver(tests.TestCaseWithTransport):
         filename = creator.write_shelf()
         tree.commit('rev2', rev_id='rev2')
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, filename)
+        self.addCleanup(unshelver.finalize)
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
