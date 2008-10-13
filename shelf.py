@@ -180,11 +180,9 @@ class Unshelver(object):
             parser.accept_bytes(shelf_file.read())
         finally:
             shelf_file.close()
-        tt = transform.TransformPreview(tree)
         records = iter(parser.read_pending_records())
         names, metadata_bytes = records.next()
         assert names[0] == ('metadata',)
-        serialize_transform.deserialize(tt, records)
         metadata = bencode.bdecode(metadata_bytes)
         base_revision_id = metadata['revision_id']
         message = metadata.get('message')
@@ -194,6 +192,8 @@ class Unshelver(object):
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
+        tt = transform.TransformPreview(base_tree)
+        serialize_transform.deserialize(tt, records)
         return klass(tree, base_tree, tt, message)
 
     def unshelve(self, change_reporter=None):
