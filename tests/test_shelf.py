@@ -279,6 +279,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         tree.commit('rev1', rev_id='rev1')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
         manager = tree.get_shelf_manager()
         shelf_id, shelf_file = manager.new_shelf()
         try:
@@ -287,11 +288,9 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.close()
         tree.commit('rev2', rev_id='rev2')
         shelf_file = manager.read_shelf(1)
-        try:
-            unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
-            self.addCleanup(unshelver.finalize)
-        finally:
-            shelf_file.close()
+        self.addCleanup(shelf_file.close)
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        self.addCleanup(unshelver.finalize)
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
 
 
