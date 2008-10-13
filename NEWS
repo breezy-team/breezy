@@ -7,10 +7,24 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  USER-VISIBLE CHANGES:
+
+  NEW FEATURES:
+
   IMPROVEMENTS:
 
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
 
 
 bzr 1.8rc1 2008-10-07
@@ -44,7 +58,7 @@ server.
       pyrex >= 0.9.6 so it doesn't effect releases, only users running
       from the source tree. (John Arbash Meinel, #276868)
 
-  FEATURES
+  FEATURES:
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
