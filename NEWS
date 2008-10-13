@@ -18,6 +18,11 @@ IN DEVELOPMENT
       allows adding an inventory via an inventory delta, which can be
       more efficient for some repository types. (Robert Collins)
 
+    * Repository ``CommitBuilder`` objects can now accumulate an inventory
+      delta. To enable this functionality call ``builder.recording_deletes``
+      and additionally call ``builder.record_delete`` when a delete
+      against the basis occurs. (Robert Collins)
+
 
 bzr 1.8rc1 2008-10-07
 ---------------------
