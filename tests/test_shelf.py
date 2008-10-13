@@ -289,6 +289,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         shelf_file = manager.read_shelf(1)
         try:
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+            self.addCleanup(unshelver.finalize)
         finally:
             shelf_file.close()
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
