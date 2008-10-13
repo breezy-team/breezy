@@ -14,10 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import cStringIO
 import re
 import time
 
@@ -34,22 +33,19 @@ from bzrlib import (
     lockdir,
     lru_cache,
     osutils,
-    registry,
     remote,
     revision as _mod_revision,
     symbol_versioning,
-    transactions,
     tsort,
     ui,
     )
 from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
-from bzrlib.util import bencode
 """)
 
+from bzrlib import registry
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
@@ -57,10 +53,9 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         one_one,
         one_two,
-        one_three,
         one_six,
         )
-from bzrlib.trace import mutter, mutter_callsite, note, warning
+from bzrlib.trace import mutter, mutter_callsite, warning
 
 
 # Old formats display a warning, but only once
@@ -121,6 +116,8 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
+        self.basis_delta = []
+        self._recording_deletes = False
 
     def commit(self, message):
         """Make the actual commit.
@@ -216,14 +213,42 @@ class CommitBuilder(object):
         """Get a delta against the basis inventory for ie."""
         if ie.file_id not in basis_inv:
             # add
-            return (None, path, ie.file_id, ie)
+            result = (None, path, ie.file_id, ie)
+            self.basis_delta.append(result)
+            return result
         elif ie != basis_inv[ie.file_id]:
             # common but altered
             # TODO: avoid tis id2path call.
-            return (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+            result = (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+            self.basis_delta.append(result)
+            return result
         else:
             # common, unaltered
             return None
+
+    def record_delete(self, path, file_id):
+        """Record that a delete occured against a basis tree.
+
+        This is an optional API - when used it adds items to the basis_delta
+        being accumulated by the commit builder. It cannot be called unless the
+        method recording_deletes() has been called to inform the builder that a
+        delta is being supplied.
+
+        :param path: The path of the thing deleted.
+        :param file_id: The file id that was deleted.
+        """
+        if not self._recording_deletes:
+            raise AssertionError("recording deletes not activated.")
+        self.basis_delta.append((path, None, file_id, None))
+
+    def recording_deletes(self):
+        """Tell the commit builder that deletes are being notified.
+
+        This enables the accumulation of an inventory delta; for the resulting
+        commit to be valid deletes against the basis MUST be recorded via
+        builder.record_delete().
+        """
+        self._recording_deletes = True
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -241,12 +266,16 @@ class CommitBuilder(object):
             content - stat, length, exec, sha/link target. This is only
             accessed when the entry has a revision of None - that is when it is
             a candidate to commit.
-        :return: A tuple (change_delta, version_recorded). change_delta is 
-            an inventory_delta change for this entry against the basis tree of
-            the commit, or None if no change occured against the basis tree.
+        :return: A tuple (change_delta, version_recorded, fs_hash).
+            change_delta is an inventory_delta change for this entry against
+            the basis tree of the commit, or None if no change occured against
+            the basis tree.
             version_recorded is True if a new version of the entry has been
             recorded. For instance, committing a merge where a file was only
             changed on the other side will return (delta, False).
+            fs_hash is either None, or the hash details for the path (currently
+            a tuple of the contents sha1 and the statvalue returned by
+            tree.get_file_with_stat()).
         """
         if self.new_inventory.root is None:
             if ie.parent_id is not None:
@@ -278,16 +307,20 @@ class CommitBuilder(object):
         if ie.revision is not None:
             if not self._versioned_root and path == '':
                 # repositories that do not version the root set the root's
-                # revision to the new commit even when no change occurs, and
-                # this masks when a change may have occurred against the basis,
-                # so calculate if one happened.
+                # revision to the new commit even when no change occurs (more
+                # specifically, they do not record a revision on the root; and
+                # the rev id is assigned to the root during deserialisation -
+                # this masks when a change may have occurred against the basis.
+                # To match this we always issue a delta, because the revision
+                # of the root will always be changing.
                 if ie.file_id in basis_inv:
                     delta = (basis_inv.id2path(ie.file_id), path,
                         ie.file_id, ie)
                 else:
                     # add
                     delta = (None, path, ie.file_id, ie)
-                return delta, False
+                self.basis_delta.append(delta)
+                return delta, False, None
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
@@ -298,7 +331,7 @@ class CommitBuilder(object):
                     raise AssertionError("Impossible situation, a skipped "
                         "inventory entry (%r) claims to be modified in this "
                         "commit (%r).", (ie, self._new_revision_id))
-                return None, False
+                return None, False, None
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
@@ -334,6 +367,9 @@ class CommitBuilder(object):
             # if the kind changed the content obviously has
             if kind != parent_entry.kind:
                 store = True
+        # Stat cache fingerprint feedback for the caller - None as we usually
+        # don't generate one.
+        fingerprint = None
         if kind == 'file':
             if content_summary[2] is None:
                 raise ValueError("Files must not have executable = None")
@@ -350,7 +386,7 @@ class CommitBuilder(object):
                     ie.text_size = parent_entry.text_size
                     ie.text_sha1 = parent_entry.text_sha1
                     ie.executable = parent_entry.executable
-                    return self._get_delta(ie, basis_inv, path), False
+                    return self._get_delta(ie, basis_inv, path), False, None
                 else:
                     # Either there is only a hash change(no hash cache entry,
                     # or same size content change), or there is no change on
@@ -363,10 +399,16 @@ class CommitBuilder(object):
                 # absence of a content change in the file.
                 nostore_sha = None
             ie.executable = content_summary[2]
-            lines = tree.get_file(ie.file_id, path).readlines()
+            file_obj, stat_value = tree.get_file_with_stat(ie.file_id, path)
+            try:
+                lines = file_obj.readlines()
+            finally:
+                file_obj.close()
             try:
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
                     ie.file_id, lines, heads, nostore_sha)
+                # Let the caller know we generated a stat fingerprint.
+                fingerprint = (ie.text_sha1, stat_value)
             except errors.ExistingContent:
                 # Turns out that the file content was unchanged, and we were
                 # only going to store a new node if it was changed. Carry over
@@ -375,13 +417,13 @@ class CommitBuilder(object):
                 ie.text_size = parent_entry.text_size
                 ie.text_sha1 = parent_entry.text_sha1
                 ie.executable = parent_entry.executable
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
         elif kind == 'directory':
             if not store:
                 # all data is meta here, nothing specific to directory, so
                 # carry over:
                 ie.revision = parent_entry.revision
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         elif kind == 'symlink':
@@ -395,7 +437,7 @@ class CommitBuilder(object):
                 # unchanged, carry over.
                 ie.revision = parent_entry.revision
                 ie.symlink_target = parent_entry.symlink_target
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
             ie.symlink_target = current_link_target
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
@@ -407,14 +449,14 @@ class CommitBuilder(object):
                 # unchanged, carry over.
                 ie.reference_revision = parent_entry.reference_revision
                 ie.revision = parent_entry.revision
-                return self._get_delta(ie, basis_inv, path), False
+                return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
             lines = []
             self._add_text_to_weave(ie.file_id, lines, heads, None)
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
-        return self._get_delta(ie, basis_inv, path), True
+        return self._get_delta(ie, basis_inv, path), True, fingerprint
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
@@ -594,6 +636,42 @@ class Repository(object):
         inv_lines = self._serialise_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
+
+    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
+        parents):
+        """Add a new inventory expressed as a delta against another revision.
+        
+        :param basis_revision_id: The inventory id the delta was created
+            against.
+        :param delta: The inventory delta (see Inventory.apply_delta for
+            details).
+        :param new_revision_id: The revision id that the inventory is being
+            added for.
+        :param parents: The revision ids of the parents that revision_id is
+            known to have and are in the repository already. These are supplied
+            for repositories that depend on the inventory graph for revision
+            graph access, as well as for those that pun ancestry with delta
+            compression.
+
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
+        """
+        if not self.is_in_write_group():
+            raise AssertionError("%r not in write group" % (self,))
+        _mod_revision.check_not_reserved_id(new_revision_id)
+        basis_tree = self.revision_tree(basis_revision_id)
+        basis_tree.lock_read()
+        try:
+            # Note that this mutates the inventory of basis_tree, which not all
+            # inventory implementations may support: A better idiom would be to
+            # return a new inventory, but as there is no revision tree cache in
+            # repository this is safe for now - RBC 20081013
+            basis_inv = basis_tree.inventory
+            basis_inv.apply_delta(delta)
+            basis_inv.revision_id = new_revision_id
+            return self.add_inventory(new_revision_id, basis_inv, parents)
+        finally:
+            basis_tree.unlock()
 
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):
@@ -1165,7 +1243,7 @@ class Repository(object):
         #       would have already do it.
         # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
         rev = self.get_revision(revision_id)
-        rev_tmp = StringIO()
+        rev_tmp = cStringIO.StringIO()
         # the current serializer..
         self._serializer.write_revision(rev, rev_tmp)
         rev_tmp.seek(0)

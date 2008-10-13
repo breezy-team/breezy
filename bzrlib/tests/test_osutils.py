@@ -24,7 +24,6 @@ import stat
 import sys
 import time
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -292,6 +291,12 @@ class TestOSUtils(TestCaseInTempDir):
     def test_format_date(self):
         self.assertRaises(errors.UnsupportedTimezoneFormat,
             osutils.format_date, 0, timezone='foo')
+        self.assertIsInstance(osutils.format_date(0), str)
+        self.assertIsInstance(osutils.format_local_date(0), unicode)
+        # Testing for the actual value of the local weekday without
+        # duplicating the code from format_date is difficult.
+        # Instead blackbox.test_locale should check for localized
+        # dates once they do occur in output strings.
 
     def test_dereference_path(self):
         self.requireFeature(SymlinkFeature)
@@ -1351,7 +1356,7 @@ class TestSetUnsetEnv(TestCase):
         uni_val, env_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (bzrlib.user_encoding,))
+                              ' encoding %s' % (osutils.get_user_encoding(),))
 
         old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', uni_val)
         self.assertEqual(env_val, os.environ.get('BZR_TEST_ENV_VAR'))

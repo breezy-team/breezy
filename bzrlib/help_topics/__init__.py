@@ -711,7 +711,8 @@ topic_registry.register('working-trees', _working_trees,
 topic_registry.register('criss-cross', _criss_cross,
                         'Information on criss-cross merging', SECT_CONCEPT)
 topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
-                        'Information on criss-cross merging', SECT_CONCEPT)
+                        'Steps to resolve "out-of-sync" when reconfiguring',
+                        SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):

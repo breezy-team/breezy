@@ -20,7 +20,7 @@
 
 import os
 
-import bzrlib
+from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.tests.test_log import (
@@ -138,7 +138,25 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' not in log)
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
-        
+
+    def test_log_change_revno(self):
+        self._prepare()
+        expected_log = self.run_bzr("log -r 1")[0]
+        log = self.run_bzr("log -c 1")[0]
+        self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_single_revno(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Option --change does not'
+                           ' accept revision ranges',
+                           ['log', '--change', '2..3'])
+
+    def test_log_change_incompatible_with_revision(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: --revision and --change'
+                           ' are mutually exclusive',
+                           ['log', '--change', '2', '--revision', '3'])
+
     def test_log_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error
@@ -345,10 +363,10 @@ class TestLogEncodings(TestCaseInTempDir):
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        self.user_encoding = bzrlib.user_encoding
+        self.user_encoding = osutils._cached_user_encoding
 
     def tearDown(self):
-        bzrlib.user_encoding = self.user_encoding
+        osutils._cached_user_encoding = self.user_encoding
         TestCaseInTempDir.tearDown(self)
 
     def create_branch(self):
@@ -367,12 +385,12 @@ class TestLogEncodings(TestCaseInTempDir):
         else:
             encoded_msg = self._message.encode(encoding)
 
-        old_encoding = bzrlib.user_encoding
+        old_encoding = osutils._cached_user_encoding
         # This test requires that 'run_bzr' uses the current
         # bzrlib, because we override user_encoding, and expect
         # it to be used
         try:
-            bzrlib.user_encoding = 'ascii'
+            osutils._cached_user_encoding = 'ascii'
             # We should be able to handle any encoding
             out, err = bzr('log', encoding=encoding)
             if not fail:
@@ -383,7 +401,7 @@ class TestLogEncodings(TestCaseInTempDir):
             else:
                 self.assertNotEqual(-1, out.find('Message with ?'))
         finally:
-            bzrlib.user_encoding = old_encoding
+            osutils._cached_user_encoding = old_encoding
 
     def test_log_handles_encoding(self):
         self.create_branch()
@@ -399,7 +417,7 @@ class TestLogEncodings(TestCaseInTempDir):
 
     def test_stdout_encoding(self):
         bzr = self.run_bzr
-        bzrlib.user_encoding = "cp1251"
+        osutils._cached_user_encoding = "cp1251"
 
         bzr('init')
         self.build_tree(['a'])

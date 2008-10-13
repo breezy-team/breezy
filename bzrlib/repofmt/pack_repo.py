@@ -17,20 +17,26 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from itertools import izip
-import md5
 import time
 
 from bzrlib import (
     chk_map,
     debug,
     graph,
+    osutils,
     pack,
     transactions,
     ui,
+    xml5,
+    xml6,
+    xml7,
     )
 from bzrlib.index import (
     CombinedGraphIndex,
+    GraphIndex,
+    GraphIndexBuilder,
     GraphIndexPrefixAdapter,
+    InMemoryGraphIndex,
     )
 from bzrlib.inventory import CHKInventory
 from bzrlib.knit import (
@@ -39,7 +45,6 @@ from bzrlib.knit import (
     _KnitGraphIndex,
     _DirectPackAccess,
     )
-from bzrlib.osutils import rand_chars, split_lines
 from bzrlib import tsort
 """)
 from bzrlib import (
@@ -49,9 +54,6 @@ from bzrlib import (
     lockable_files,
     lockdir,
     symbol_versioning,
-    xml5,
-    xml6,
-    xml7,
     )
 
 from bzrlib.decorators import needs_write_lock
@@ -286,7 +288,7 @@ class NewPack(Pack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = md5.new()
+        self._hash = osutils.md5()
         # a tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None
@@ -296,7 +298,7 @@ class NewPack(Pack):
         # under creation.
         self._cache_limit = 0
         # the temporary pack file name.
-        self.random_name = rand_chars(20) + upload_suffix
+        self.random_name = osutils.rand_chars(20) + upload_suffix
         # when was this pack started ?
         self.start_time = time.time()
         # open an output stream for the data added to the pack.
@@ -1151,7 +1153,7 @@ class ReconcilePacker(Packer):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                         (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = split_lines(repo.texts.get_record_stream(
+            text_lines = osutils.split_lines(repo.texts.get_record_stream(
                 [key], 'unordered', True).next().get_bytes_as('fulltext'))
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
@@ -1369,8 +1371,8 @@ class RepositoryPackCollection(object):
         # plan out what packs to keep, and what to reorganise
         while len(existing_packs):
             # take the largest pack, and if its less than the head of the
-            # distribution chart we will include its contents in the new pack for
-            # that position. If its larger, we remove its size from the
+            # distribution chart we will include its contents in the new pack
+            # for that position. If its larger, we remove its size from the
             # distribution chart
             next_pack_rev_count, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
@@ -1393,8 +1395,18 @@ class RepositoryPackCollection(object):
                     # this pack is used up, shift left.
                     del pack_distribution[0]
                     pack_operations.append([0, []])
-        
-        return pack_operations
+        # Now that we know which pack files we want to move, shove them all
+        # into a single pack file.
+        final_rev_count = 0
+        final_pack_list = []
+        for num_revs, pack_files in pack_operations:
+            final_rev_count += num_revs
+            final_pack_list.extend(pack_files)
+        if len(final_pack_list) == 1:
+            raise AssertionError('We somehow generated an autopack with a'
+                ' single pack file being moved.')
+            return []
+        return [[final_rev_count, final_pack_list]]
 
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
@@ -2214,7 +2226,9 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -2253,7 +2267,9 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -2297,7 +2313,9 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
-    _serializer = xml6.serializer_v6
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -2337,11 +2355,14 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
+
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('1.6')
@@ -2376,11 +2397,14 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
-    _serializer = xml6.serializer_v6
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
+
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
@@ -2421,12 +2445,15 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
-    _serializer = xml7.serializer_v7
 
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
+
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
@@ -2461,11 +2488,14 @@ class RepositoryFormatPackDevelopment2(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = BTreeBuilder
     index_class = BTreeGraphIndex
+
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development2')
@@ -2500,11 +2530,14 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
     supports_external_lookups = True
     # What index classes to use
     index_builder_class = BTreeBuilder
     index_class = BTreeGraphIndex
+
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(

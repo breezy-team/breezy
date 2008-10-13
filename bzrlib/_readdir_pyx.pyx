@@ -25,13 +25,14 @@ cdef extern from "python-compat.h":
     pass
 
 
-# the opaque C library DIR type.
 cdef extern from 'errno.h':
     int ENOENT
     int ENOTDIR
     int EAGAIN
-    int errno
+    int EINTR
     char *strerror(int errno)
+    # not necessarily a real variable, but this should be close enough
+    int errno
 
 cdef extern from 'unistd.h':
     int chdir(char *path)
@@ -89,6 +90,7 @@ cdef extern from 'dirent.h':
     ctypedef struct dirent:
         char d_name[256]
         ino_t d_ino
+    # the opaque C library DIR type.
     ctypedef struct DIR
     # should be DIR *, pyrex barfs.
     DIR * opendir(char * name)
@@ -278,6 +280,7 @@ cdef _read_dir(path):
     cdef int stat_result
     cdef _Stat statvalue
     cdef char *cwd
+    global errno
 
     cwd = getcwd(NULL, 0)
     if -1 == chdir(path):
@@ -289,21 +292,25 @@ cdef _read_dir(path):
     try:
         entry = &sentinel
         while entry != NULL:
-            entry = readdir(the_dir)
-            if entry == NULL:
-                if errno == EAGAIN:
+            # Unlike most libc functions, readdir needs errno set to 0
+            # beforehand so that eof can be distinguished from errors.  See
+            # <https://bugs.launchpad.net/bzr/+bug/279381>
+            while True:
+                errno = 0;
+                entry = readdir(the_dir)
+                if entry == NULL and (errno == EAGAIN or errno == EINTR):
                     # try again
                     continue
-                elif errno != ENOTDIR and errno != ENOENT and errno != 0:
+                else:
+                    break
+            if entry == NULL:
+                if errno == ENOTDIR or errno == 0:
                     # We see ENOTDIR at the end of a normal directory.
                     # As ENOTDIR for read_dir(file) is triggered on opendir,
                     # we consider ENOTDIR to be 'no error'.
-                    # ENOENT is listed as 'invalid position in the dir stream' for
-                    # readdir. We swallow this for now and just keep reading.
-                    raise OSError(errno, strerror(errno))
-                else:
-                    # done
                     continue
+                else:
+                    raise OSError(errno, strerror(errno))
             name = entry.d_name
             if not (name[0] == c"." and (
                 (name[1] == 0) or 

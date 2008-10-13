@@ -24,6 +24,12 @@ import os
 from cStringIO import StringIO
 import urllib
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    xml5,
+    )
+""")
 from bzrlib import (
     bzrdir,
     debug,
@@ -35,7 +41,6 @@ from bzrlib import (
     versionedfile,
     weave,
     weavefile,
-    xml5,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
@@ -58,7 +63,9 @@ from bzrlib.versionedfile import (
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir):
         # we reuse one control files instance.
@@ -177,7 +184,9 @@ class AllInOneRepository(Repository):
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir, control_files):
         super(WeaveMetaDirRepository, self).__init__(_format, a_bzrdir, control_files)

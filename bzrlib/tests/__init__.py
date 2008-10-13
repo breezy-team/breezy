@@ -793,10 +793,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
+        self._preserved_debug_flags = set(debug.debug_flags)
         if 'allow_debug' not in selftest_debug_flags:
-            self._preserved_debug_flags = set(debug.debug_flags)
             debug.debug_flags.clear()
-            self.addCleanup(self._restore_debug_flags)
+        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -876,6 +876,21 @@ class TestCase(unittest.TestCase):
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
+
+    def assertEqualStat(self, expected, actual):
+        """assert that expected and actual are the same stat result.
+
+        :param expected: A stat result.
+        :param actual: A stat result.
+        :raises AssertionError: If the expected and actual stat values differ
+            other than by atime.
+        """
+        self.assertEqual(expected.st_size, actual.st_size)
+        self.assertEqual(expected.st_mtime, actual.st_mtime)
+        self.assertEqual(expected.st_ctime, actual.st_ctime)
+        self.assertEqual(expected.st_dev, actual.st_dev)
+        self.assertEqual(expected.st_ino, actual.st_ino)
+        self.assertEqual(expected.st_mode, actual.st_mode)
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
@@ -1134,7 +1149,7 @@ class TestCase(unittest.TestCase):
         # warnings.  It's the easiest way to insulate ourselves from -Werror,
         # though.  -- Andrew, 20071062
         wlist = []
-        def _catcher(message, category, filename, lineno, file=None):
+        def _catcher(message, category, filename, lineno, file=None, line=None):
             # despite the name, 'message' is normally(?) a Warning subclass
             # instance
             wlist.append(message)
@@ -1386,7 +1401,7 @@ class TestCase(unittest.TestCase):
     def _run_bzr_core(self, args, retcode, encoding, stdin,
             working_dir):
         if encoding is None:
-            encoding = bzrlib.user_encoding
+            encoding = osutils.get_user_encoding()
         stdout = StringIOWrapper()
         stderr = StringIOWrapper()
         stdout.encoding = encoding
@@ -2745,19 +2760,19 @@ def test_suite(keep_only=None, starting_with=None):
     """
     testmod_names = [
                    'bzrlib.doc',
-                   'bzrlib.util.tests.test_bencode',
                    'bzrlib.tests.blackbox',
                    'bzrlib.tests.branch_implementations',
                    'bzrlib.tests.bzrdir_implementations',
                    'bzrlib.tests.commands',
-                   'bzrlib.tests.inventory_implementations',
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
+                   'bzrlib.tests.inventory_implementations',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
                    'bzrlib.tests.test__dirstate_helpers',
+                   'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
@@ -2783,8 +2798,8 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
-                   'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_directory_service',
+                   'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_extract',
@@ -2810,11 +2825,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
-                   'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
+                   'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_log',
-                   'bzrlib.tests.test_lsprof',
                    'bzrlib.tests.test_lru_cache',
+                   'bzrlib.tests.test_lsprof',
                    'bzrlib.tests.test_mail_client',
                    'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
@@ -2837,8 +2852,8 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_read_bundle',
-                   'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_reconcile',
+                   'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
@@ -2884,10 +2899,9 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_upgrade_stacked',
                    'bzrlib.tests.test_urlutils',
-                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
                    'bzrlib.tests.test_version_info',
-                   'bzrlib.tests.test__walkdirs_win32',
+                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_win32utils',
@@ -2897,6 +2911,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_xml',
                    'bzrlib.tests.tree_implementations',
                    'bzrlib.tests.workingtree_implementations',
+                   'bzrlib.util.tests.test_bencode',
                    ]
 
     loader = TestUtil.TestLoader()
@@ -3227,7 +3242,7 @@ def probe_unicode_in_user_encoding():
     possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
     for uni_val in possible_vals:
         try:
-            str_val = uni_val.encode(bzrlib.user_encoding)
+            str_val = uni_val.encode(osutils.get_user_encoding())
         except UnicodeEncodeError:
             # Try a different character
             pass

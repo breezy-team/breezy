@@ -17,11 +17,11 @@
 """builtin bzr commands"""
 
 import os
-from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
+import cStringIO
 import sys
 import time
 
@@ -29,12 +29,12 @@ import bzrlib
 from bzrlib import (
     bugtracker,
     bundle,
+    btree_index,
     bzrdir,
     delta,
     config,
     errors,
     globbing,
-    ignores,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -56,7 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet, info
+from bzrlib.trace import mutter, note, warning, is_quiet
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -256,7 +256,81 @@ class cmd_cat_revision(Command):
                                                  ' revision.')
                 rev_id = rev.as_revision_id(b)
                 self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
-    
+
+
+class cmd_dump_btree(Command):
+    """Dump the contents of a btree index file to stdout.
+
+    PATH is a btree index file, it can be any URL. This includes things like
+    .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
+
+    By default, the tuples stored in the index file will be displayed. With
+    --raw, we will uncompress the pages, but otherwise display the raw bytes
+    stored in the index.
+    """
+
+    # TODO: Do we want to dump the internal nodes as well?
+    # TODO: It would be nice to be able to dump the un-parsed information,
+    #       rather than only going through iter_all_entries. However, this is
+    #       good enough for a start
+    hidden = True
+    encoding_type = 'exact'
+    takes_args = ['path']
+    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
+                                        ' rather than the parsed tuples.'),
+                    ]
+
+    def run(self, path, raw=False):
+        dirname, basename = osutils.split(path)
+        t = transport.get_transport(dirname)
+        if raw:
+            self._dump_raw_bytes(t, basename)
+        else:
+            self._dump_entries(t, basename)
+
+    def _get_index_and_bytes(self, trans, basename):
+        """Create a BTreeGraphIndex and raw bytes."""
+        bt = btree_index.BTreeGraphIndex(trans, basename, None)
+        bytes = trans.get_bytes(basename)
+        bt._file = cStringIO.StringIO(bytes)
+        bt._size = len(bytes)
+        return bt, bytes
+
+    def _dump_raw_bytes(self, trans, basename):
+        import zlib
+
+        # We need to parse at least the root node.
+        # This is because the first page of every row starts with an
+        # uncompressed header.
+        bt, bytes = self._get_index_and_bytes(trans, basename)
+        for page_idx, page_start in enumerate(xrange(0, len(bytes),
+                                                     btree_index._PAGE_SIZE)):
+            page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
+            page_bytes = bytes[page_start:page_end]
+            if page_idx == 0:
+                self.outf.write('Root node:\n')
+                header_end, data = bt._parse_header_from_bytes(page_bytes)
+                self.outf.write(page_bytes[:header_end])
+                page_bytes = data
+            self.outf.write('\nPage %d\n' % (page_idx,))
+            decomp_bytes = zlib.decompress(page_bytes)
+            self.outf.write(decomp_bytes)
+            self.outf.write('\n')
+
+    def _dump_entries(self, trans, basename):
+        try:
+            st = trans.stat(basename)
+        except errors.TransportNotPossible:
+            # We can't stat, so we'll fake it because we have to do the 'get()'
+            # anyway.
+            bt, _ = self._get_index_and_bytes(trans, basename)
+        else:
+            bt = btree_index.BTreeGraphIndex(trans, basename, st.st_size)
+        for node in bt.iter_all_entries():
+            # Node is made up of:
+            # (index, key, value, [references])
+            self.outf.write('%s\n' % (node[1:],))
+
 
 class cmd_remove_tree(Command):
     """Remove the working tree from a given branch/checkout.
@@ -1016,7 +1090,14 @@ class cmd_renames(Command):
             old_tree.lock_read()
             try:
                 old_inv = old_tree.inventory
-                renames = list(_mod_tree.find_renames(old_inv, new_inv))
+                renames = []
+                iterator = tree.iter_changes(old_tree, include_unchanged=True)
+                for f, paths, c, v, p, n, k, e in iterator:
+                    if paths[0] == paths[1]:
+                        continue
+                    if None in (paths):
+                        continue
+                    renames.append(paths)
                 renames.sort()
                 for old_name, new_name in renames:
                     self.outf.write("%s => %s\n" % (old_name, new_name))
@@ -1304,8 +1385,8 @@ class cmd_init(Command):
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
-                registry=bzrdir.format_registry,
-                converter=bzrdir.format_registry.make_bzrdir,
+                lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
                 title="Branch Format",
                 ),
@@ -1393,8 +1474,8 @@ class cmd_init_repository(Command):
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "bzr help formats" for details.',
-                            registry=bzrdir.format_registry,
-                            converter=bzrdir.format_registry.make_bzrdir,
+                            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
@@ -1682,13 +1763,16 @@ class cmd_log(Command):
     takes_options = [
             Option('forward',
                    help='Show from oldest to newest.'),
-            Option('timezone',
-                   type=str,
-                   help='Display timezone as local, original, or utc.'),
+            'timezone',
             custom_help('verbose',
                    help='Show files changed in each revision.'),
             'show-ids',
             'revision',
+            Option('change',
+                   type=bzrlib.option._parse_revision_str,
+                   short_name='c',
+                   help='Show just the specified revision.'
+                   ' See also "help revisionspec".'),
             'log-format',
             Option('message',
                    short_name='m',
@@ -1709,12 +1793,22 @@ class cmd_log(Command):
             show_ids=False,
             forward=False,
             revision=None,
+            change=None,
             log_format=None,
             message=None,
             limit=None):
         from bzrlib.log import show_log
         direction = (forward and 'forward') or 'reverse'
-        
+
+        if change is not None:
+            if len(change) > 1:
+                raise errors.RangeInChangeOption()
+            if revision is not None:
+                raise errors.BzrCommandError(
+                    '--revision and --change are mutually exclusive')
+            else:
+                revision = change
+
         # log everything
         file_id = None
         if location:
@@ -2313,7 +2407,7 @@ class cmd_commit(Command):
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
-                        output_encoding=bzrlib.user_encoding)
+                        output_encoding=osutils.get_user_encoding())
                 my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
@@ -2323,7 +2417,7 @@ class cmd_commit(Command):
                     "please specify either --message or --file")
             if file:
                 my_message = codecs.open(file, 'rt',
-                                         bzrlib.user_encoding).read()
+                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
@@ -2429,8 +2523,8 @@ class cmd_upgrade(Command):
                     RegistryOption('format',
                         help='Upgrade to a specific format.  See "bzr help'
                              ' formats" for details.',
-                        registry=bzrdir.format_registry,
-                        converter=bzrdir.format_registry.make_bzrdir,
+                        lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                        converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                         value_switches=True, title='Branch format'),
                     ]
 
@@ -2693,7 +2787,6 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None):
-        import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -2893,7 +2986,7 @@ class cmd_merge(Command):
     ]
 
     def run(self, location=None, revision=None, force=False,
-            merge_type=None, show_base=False, reprocess=False, remember=False,
+            merge_type=None, show_base=False, reprocess=None, remember=False,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
@@ -3002,6 +3095,12 @@ class cmd_merge(Command):
             not merger.merge_type is _mod_merge.Merge3Merger):
             raise errors.BzrCommandError("Show-base is not supported for this"
                                          " merge type. %s" % merger.merge_type)
+        if merger.reprocess is None:
+            if merger.show_base:
+                merger.reprocess = False
+            else:
+                # Use reprocess if the merger supports it
+                merger.reprocess = merger.merge_type.supports_reprocess
         if merger.reprocess and not merger.merge_type.supports_reprocess:
             raise errors.BzrCommandError("Conflict reduction is not supported"
                                          " for merge type %s." %
@@ -3248,10 +3347,14 @@ class cmd_revert(Command):
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
         tree, file_list = tree_files(file_list)
-        if forget_merges:
-            tree.set_parent_ids(tree.get_parent_ids()[:1])
-        else:
-            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+        tree.lock_write()
+        try:
+            if forget_merges:
+                tree.set_parent_ids(tree.get_parent_ids()[:1])
+            else:
+                self._revert_tree_to_revision(tree, revision, file_list, no_backup)
+        finally:
+            tree.unlock()
 
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
@@ -4190,7 +4293,7 @@ class cmd_send(Command):
         from bzrlib.revision import NULL_REVISION
         branch = Branch.open_containing(from_)[0]
         if output is None:
-            outfile = StringIO()
+            outfile = cStringIO.StringIO()
         elif output == '-':
             outfile = self.outf
         else:

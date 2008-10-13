@@ -41,6 +41,7 @@ from bzrlib.osutils import (
     has_symlinks,
     lexists,
     pathjoin,
+    sha_file,
     splitpath,
     supports_executable,
 )
@@ -280,14 +281,18 @@ class TreeTransformBase(object):
             raise ValueError('None is not a valid file id')
         if file_id in self._r_new_id and self._r_new_id[file_id] is not None:
             return self._r_new_id[file_id]
-        elif file_id in self._tree.inventory:
-            return self.trans_id_tree_file_id(file_id)
-        elif file_id in self._non_present_ids:
-            return self._non_present_ids[file_id]
         else:
-            trans_id = self._assign_id()
-            self._non_present_ids[file_id] = trans_id
-            return trans_id
+            try:
+                self._tree.iter_entries_by_dir([file_id]).next()
+            except StopIteration:
+                if file_id in self._non_present_ids:
+                    return self._non_present_ids[file_id]
+                else:
+                    trans_id = self._assign_id()
+                    self._non_present_ids[file_id] = trans_id
+                    return trans_id
+            else:
+                return self.trans_id_tree_file_id(file_id)
 
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
@@ -549,7 +554,7 @@ class TreeTransformBase(object):
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
             return self._tree.get_root_id()
-        return self._tree.inventory.path2id(path)
+        return self._tree.path2id(path)
 
     def final_file_id(self, trans_id):
         """Determine the file id after any changes are applied, or None.
@@ -1006,7 +1011,7 @@ class TreeTransformBase(object):
         from_path = self._tree_id_paths.get(from_trans_id)
         if from_versioned:
             # get data from working tree if versioned
-            from_entry = self._tree.inventory[file_id]
+            from_entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
             from_name = from_entry.name
             from_parent = from_entry.parent_id
         else:
@@ -1438,7 +1443,8 @@ class TransformPreview(TreeTransformBase):
         file_id = self.tree_file_id(parent_id)
         if file_id is None:
             return
-        children = getattr(self._tree.inventory[file_id], 'children', {})
+        entry = self._tree.iter_entries_by_dir([file_id]).next()[1]
+        children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
@@ -1666,7 +1672,16 @@ class _PreviewTree(tree.Tree):
             return None
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        return self._transform._tree.get_file_sha1(file_id)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        kind = self._transform._new_contents.get(trans_id)
+        if kind is None:
+            return self._transform._tree.get_file_sha1(file_id)
+        if kind == 'file':
+            fileobj = self.get_file(file_id)
+            try:
+                return sha_file(fileobj)
+            finally:
+                fileobj.close()
 
     def is_executable(self, file_id, path=None):
         if file_id is None:

@@ -1129,6 +1129,26 @@ class KnitVersionedFiles(VersionedFiles):
             record_map[key] = record, record_details, digest, next
         return record_map
 
+    def _split_by_prefix(self, keys):
+        """For the given keys, split them up based on their prefix.
+
+        To keep memory pressure somewhat under control, split the
+        requests back into per-file-id requests, otherwise "bzr co"
+        extracts the full tree into memory before writing it to disk.
+        This should be revisited if _get_content_maps() can ever cross
+        file-id boundaries.
+
+        :param keys: An iterable of key tuples
+        :return: A dict of {prefix: [key_list]}
+        """
+        split_by_prefix = {}
+        for key in keys:
+            if len(key) == 1:
+                split_by_prefix.setdefault('', []).append(key)
+            else:
+                split_by_prefix.setdefault(key[0], []).append(key)
+        return split_by_prefix
+
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
 
@@ -1228,11 +1248,18 @@ class KnitVersionedFiles(VersionedFiles):
         if include_delta_closure:
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
-            text_map, _ = self._get_content_maps(present_keys,
-                needed_from_fallback - absent_keys)
-            for key in present_keys:
-                yield FulltextContentFactory(key, global_map[key], None,
-                    ''.join(text_map[key]))
+            non_local_keys = needed_from_fallback - absent_keys
+            prefix_split_keys = self._split_by_prefix(present_keys)
+            prefix_split_non_local_keys = self._split_by_prefix(non_local_keys)
+            for prefix, keys in prefix_split_keys.iteritems():
+                non_local = prefix_split_non_local_keys.get(prefix, [])
+                non_local = set(non_local)
+                text_map, _ = self._get_content_maps(keys, non_local)
+                for key in keys:
+                    lines = text_map.pop(key)
+                    text = ''.join(lines)
+                    yield FulltextContentFactory(key, global_map[key], None,
+                                                 text)
         else:
             for source, keys in source_keys:
                 if source is parent_maps[0]:
@@ -1438,7 +1465,9 @@ class KnitVersionedFiles(VersionedFiles):
                 yield line, key
             keys.difference_update(source_keys)
         if keys:
-            raise RevisionNotPresent(keys, self.filename)
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):

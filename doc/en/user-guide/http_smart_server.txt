@@ -135,7 +135,9 @@ Here's what it looks like::
         root='/srv/example.com/www/code',
         prefix='/code/',
         path_var='REQUEST_URI',
-        readonly=True)
+        readonly=True,
+        load_plugins=True, 
+        enable_logging=True)
 
     fcgi.WSGIServer(smart_server_app).run()
         
@@ -159,7 +161,9 @@ Here's what it looks like::
         root='/srv/example.com/www/code',
         prefix='/code/',
         path_var='REQUEST_URI',
-        readonly=True)
+        readonly=True,
+        load_plugins=True, 
+        enable_logging=True)
 
     def handler(request):
         """Handle a single request."""

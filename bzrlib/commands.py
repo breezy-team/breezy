@@ -43,16 +43,12 @@ from bzrlib import (
     errors,
     option,
     osutils,
-    registry,
     trace,
     win32utils,
     )
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_method,
-    )
+from bzrlib import registry
 # Compatibility
 from bzrlib.option import Option
 
@@ -675,9 +671,6 @@ def get_alias(cmd, config=None):
 def run_bzr(argv):
     """Execute a command.
 
-    This is similar to main(), but without all the trappings for
-    logging and error handling.  
-    
     argv
        The command-line arguments, without the program name from argv[0]
        These should already be decoded. All library/test code calling
@@ -755,7 +748,7 @@ def run_bzr(argv):
         from bzrlib.builtins import cmd_version
         cmd_version().run_argv_aliases([])
         return 0
-        
+
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
@@ -768,7 +761,8 @@ def run_bzr(argv):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            alias_argv = [a.decode(bzrlib.user_encoding) for a in alias_argv]
+            user_encoding = osutils.get_user_encoding()
+            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
@@ -781,6 +775,10 @@ def run_bzr(argv):
     run_argv = [argv, alias_argv]
 
     try:
+        # We can be called recursively (tests for example), but we don't want
+        # the verbosity level to propagate.
+        saved_verbosity_level = option._verbosity_level
+        option._verbosity_level = 0
         if opt_lsprof:
             if opt_coverage_dir:
                 trace.warning(
@@ -796,20 +794,13 @@ def run_bzr(argv):
         else:
             ret = run(*run_argv)
         if 'memory' in debug.debug_flags:
-            try:
-                status_file = file('/proc/%s/status' % os.getpid(), 'rb')
-            except IOError:
-                pass
-            else:
-                status = status_file.read()
-                status_file.close()
-                trace.note("Process status after command:")
-                for line in status.splitlines():
-                    trace.note(line)
+            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
-        # reset, in case we may do other commands later within the same process
-        option._verbosity_level = 0
+        # reset, in case we may do other commands later within the same
+        # process. Commands that want to execute sub-commands must propagate
+        # --verbose in their own way.
+        option._verbosity_level = saved_verbosity_level
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -835,13 +826,14 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
-     
+
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
         from bzrlib import symbol_versioning
         symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
-        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+        user_encoding = osutils.get_user_encoding()
+        argv = [a.decode(user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
         raise errors.BzrError(("Parameter '%r' is unsupported by the current "
                                                             "encoding." % a))

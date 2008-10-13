@@ -7,6 +7,51 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  IMPROVEMENTS:
+
+    * ``bzr dump-btree`` is a hidden command introduced to allow dumping
+      the contents of a compressed btree file.  (John Arbash Meinel)
+
+  INTERNALS:
+
+    * New method ``bzrlib.repository.Repository.add_inventory_delta``
+      allows adding an inventory via an inventory delta, which can be
+      more efficient for some repository types. (Robert Collins)
+
+    * New module ``chk_map`` providing a persistent CHK store backed map.
+      (Robert Collins)
+
+    * Passing None in as the last element of a key tuple to
+      ``VersionedFiles.add`` will now cause a content-hash-key to be
+      allocated. (Robert Collins)
+
+    * Repository ``CommitBuilder`` objects can now accumulate an inventory
+      delta. To enable this functionality call ``builder.recording_deletes``
+      and additionally call ``builder.record_delete`` when a delete
+      against the basis occurs. (Robert Collins)
+
+    * The Repository model has been extended to allow some formats to
+      expose data via CHK based lookups (Though no formats support this as
+      yet). (Robert Collins)
+
+  API CHANGES:
+
+    * The logic in commit now delegates inventory basis calculations to
+      the ``CommitBuilder`` object; this requires that the commit builder
+      in use has been updated to support the new ``recording_deletes`` and
+      ``record_delete`` methods. (Robert Collins)
+
+
+bzr 1.8rc1 2008-10-07
+---------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  We've also fixed, and the bzr
+testsuite now passes on OS X and Python 2.6, and almost completely passes
+on Windows.  The smartserver code has gained several bug fixes and
+performance improvements, and can now run server-side hooks within an http
+server.
+
   CHANGES:
 
     * ``bzr log file`` has been changed. It now uses a different method
@@ -15,7 +60,26 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr merge`` now defaults to having ``--reprocess`` set, whenever
+      ``--show-base`` is not supplied.  (John Arbash Meinel)
+
+    * ``bzr+http//`` will now optionally load plugins and write logs on the
+      server. (Marius Kruger)
+
+    * ``bzrlib._dirstate_helpers_c.pyx`` does not compile correctly with
+      Pyrex 0.9.4.1 (it generates C code which causes segfaults). We
+      explicitly blacklist that version of the compiler for that
+      extension. Packaged versions will include .c files created with
+      pyrex >= 0.9.6 so it doesn't effect releases, only users running
+      from the source tree. (John Arbash Meinel, #276868)
+
   FEATURES
+
+    * bzr is now compatible with python-2.6. python-2.6 is not yet officially
+      supported (nor released, tests were conducted with the dev version of
+      python-2.6rc2), but all known problems have been fixed.  Feedback
+      welcome.
+      (Vincent Ladeuil, #269535)
 
   IMPROVEMENTS:
 
@@ -31,6 +95,9 @@ IN DEVELOPMENT
     * ``bzr push`` is faster in the case there are no new revisions to
       push.  It is also faster if there are no tags in the local branch.
       (Andrew Bennetts)
+
+    * File changes during a commit will update the tree stat cache.
+      (Robert Collins)
 
     * Location aliases can now accept a trailing path.  (Micheal Hudson)
 
@@ -51,11 +118,32 @@ IN DEVELOPMENT
 
     * The C extensions now build on python 2.4 (Robert Collins, #271939)
 
+    * The ``-Dhpss`` debug flag now reports the number of smart server
+      calls per medium to stderr.  This is in addition to the existing
+      detailed logging to the .bzr.log trace file.  (Andrew Bennetts)
+
   BUG FIXES:
+
+    * API versioning support now has a multiple-version checking api
+      ``require_any_api``. (Robert Collins, #279447)
+
+    * Avoid random failures arising from misinterpreted ``errno`` values
+      in ``_readdir_pyx.read_dir``.
+      (Martin Pool, #279381)
+
+    * A failure to load a plugin due to an IncompatibleAPI exception is
+      now correctly reported. (Robert Collins, #279451)
 
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
+
+    * ``bzr co`` uses less memory. It used to unpack the entire WT into
+      memory before writing it to disk. This was a little bit faster, but
+      consumed lots of memory. (John Arbash Meinel, #269456)
+
+    * ``bzr log`` now accepts a ``--change`` option.
+      (Vincent Ladeuil, #248427)
 
     * ``bzr missing`` now accepts an ``--include-merges`` option.
       (Vincent Ladeuil, #233817)
@@ -78,11 +166,30 @@ IN DEVELOPMENT
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
 
+    * Remove use of optional parameter in GSSAPI FTP support, since 
+      it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
+
+    * The autopacking logic will now always create a single new pack from
+      all of the content which it deems is worth moving. This avoids the
+      'repack a single pack' bug and should result in better packing
+      overall.  (John Arbash Meinel, #242510, #172644)
+
+    * Trivial documentation fix.
+      (John Arbash Meinel, #270471)
+
   DOCUMENTATION:
 
     * Explain revision/range identifiers. (Daniel Clemente)
 
   API CHANGES:
+
+    * ``CommitBuilder.record_entry_contents`` returns one more element in
+      its result tuple - an optional file system hash for the hash cache
+      to use. (Robert Collins)
+
+    * ``dirstate.DirState.update_entry`` will now only calculate the sha1
+      of a file if it is likely to be needed in determining the output
+      of iter_changes. (Robert Collins)
 
     * The PackRepository, RepositoryPackCollection, NewPack classes have a
       slightly changed interface to support different index types; as a
@@ -99,11 +206,14 @@ IN DEVELOPMENT
       transport has one, fixing numerous tests on Windows.
       (Mark Hammond)
 
+    * PreviewTree is now tested via intertree_implementations.
+      (Aaron Bentley)
+
     * The full test suite is passing again on OSX.
       (Guillermo Gonzalez, Vincent Ladeuil)
 
-    * PreviewTree is now tested via intertree_implementations.
-      (Aaron Bentley)
+    * The full test suite passes when run with ``-Eallow_debug``.
+      (Andrew Bennetts)
 
   INTERNALS:
 
@@ -114,22 +224,46 @@ IN DEVELOPMENT
       tree walking, and modular directory listing code to aid future
       performance optimisations and refactoring. (Robert Collins)
 
+    * ``bzrlib.trace.debug_memory`` can be used to get a quick memory dump
+      in the middle of processing. It only reports memory if
+      ``/proc/PID/status`` is available. (John Arbash Meinel)
+
     * New method ``RevisionSpec.as_tree`` for representing the revision
       specifier as a revision tree object. (Lukáš Lalinský)
 
-    * New module ``chk_map`` providing a persistent CHK store backed map.
-      (Robert Collins)
+    * New race-free method on MutableTree ``get_file_with_stat`` for use
+      when generating stat cache results. (Robert Collins)
 
     * New win32utils.get_local_appdata_location() provides access to a local
       directory for storing data.  (Mark Hammond)
 
-    * Passing None in as the last element of a key tuple to
-      ``VersionedFiles.add`` will now cause a content-hash-key to be
-      allocated. (Robert Collins)
+    * To be compatible with python-2.6 a few new rules should be
+      observed. 'message' attribute can't be used anymore in exception
+      classes, 'sha' and 'md5' modules have been deprecated (use
+      osutils.[md5|sha]), object__init__ and object.__new__ don't accept
+      parameters anymore.
+      (Vincent Ladeuil)
 
-    * The Repository model has been extended to allow some formats to
-      expose data via CHK based lookups (Though no formats support this as
-      yet). (Robert Collins)
+
+bzr 1.7.1 2008-10-01
+--------------------
+
+  No changes from 1.7.1rc1.
+
+
+bzr 1.7.1rc1 2008-09-24
+-----------------------
+
+This release just includes an update to how the merge algorithm handles
+file paths when we encounter complex history.
+
+  FEATURES:
+
+    * If we encounter a criss-cross in history, use information from
+      direct Least Common Ancestors to resolve inventory shape (locations
+      of files, adds, deletes, etc). This is similar in concept to using
+      ``--lca`` for merging file texts, only applied to paths.
+      (John Arbash Meinel)
 
 
 bzr 1.7 2008-09-23

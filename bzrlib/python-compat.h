@@ -25,12 +25,33 @@
 #ifndef _BZR_PYTHON_COMPAT_H
 #define _BZR_PYTHON_COMPAT_H
 
-#if PY_VERSION_HEX < 0x02050000
-  typedef int Py_ssize_t;
+/* http://www.python.org/dev/peps/pep-0353/ */
+#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
+    typedef int Py_ssize_t;
     #define PY_SSIZE_T_MAX INT_MAX
     #define PY_SSIZE_T_MIN INT_MIN
     #define PyInt_FromSsize_t(z) PyInt_FromLong(z)
     #define PyInt_AsSsize_t(o) PyInt_AsLong(o)
 #endif
 
+#if defined(_WIN32) || defined(WIN32)
+    /* Needed for htonl */
+    #include "Winsock.h"
+
+    /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit
+     * lighter weight.
+     */
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+
+    /* sys/stat.h doesn't have S_ISLNK on win32, so we fake it by just always
+     * returning False
+     */
+    #define S_ISLNK(mode) (0)
+#else /* Not win32 */
+    /* For htonl */
+    #include "arpa/inet.h"
 #endif
+
+
+#endif /* _BZR_PYTHON_COMPAT_H */

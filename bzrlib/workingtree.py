@@ -303,14 +303,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         """
         if path is None:
-            path = os.path.getcwdu()
+            path = osutils.getcwd()
         control = bzrdir.BzrDir.open(path, _unsupported)
         return control.open_workingtree(_unsupported)
-        
+
     @staticmethod
     def open_containing(path=None):
         """Open an existing working tree which has its root about path.
-        
+
         This probes for a working tree at path and searches upwards from there.
 
         Basically we keep looking up until we find the control directory or
@@ -424,9 +424,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id, path=None):
+        return self.get_file_with_stat(file_id, path)[0]
+
+    def get_file_with_stat(self, file_id, path=None, _fstat=os.fstat):
+        """See MutableTree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)
-        return self.get_file_byname(path)
+        file_obj = self.get_file_byname(path)
+        return (file_obj, _fstat(file_obj.fileno()))
 
     def get_file_text(self, file_id):
         return self.get_file(file_id).read()

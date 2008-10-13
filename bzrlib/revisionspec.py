@@ -15,9 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import bisect
 import datetime
-import re
+""")
 
 from bzrlib import (
     errors,
@@ -25,7 +29,6 @@ from bzrlib import (
     revision,
     symbol_versioning,
     trace,
-    tsort,
     )
 
 
@@ -136,17 +139,6 @@ class RevisionSpec(object):
 
     prefix = None
     wants_revision_history = True
-
-    def __new__(cls, spec, _internal=False):
-        if _internal:
-            return object.__new__(cls, spec, _internal=_internal)
-
-        symbol_versioning.warn('Creating a RevisionSpec directly has'
-                               ' been deprecated in version 0.11. Use'
-                               ' RevisionSpec.from_string()'
-                               ' instead.',
-                               DeprecationWarning, stacklevel=2)
-        return RevisionSpec.from_string(spec)
 
     @staticmethod
     def from_string(spec):

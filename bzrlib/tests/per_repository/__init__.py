@@ -858,6 +858,7 @@ def load_tests(basic_tests, module, loader):
     result.addTests(basic_tests)
     prefix = 'bzrlib.tests.per_repository.'
     test_repository_modules = [
+        'test_add_inventory_delta',
         'test_add_fallback_repository',
         'test_break_lock',
         'test_check',
