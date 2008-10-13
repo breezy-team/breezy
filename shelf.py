@@ -57,7 +57,10 @@ class ShelfCreator(object):
                 if names[0] != names[1] or parents[0] != parents[1]:
                     self.renames[file_id] = (names, parents)
                     yield ('rename', file_id) + paths
-                if changed:
+
+                if kind[0] != kind [1]:
+                    yield ('change kind', file_id, kind[0], kind[1], paths[0])
+                elif changed:
                     yield ('modify text', file_id)
 
     def shelve_rename(self, file_id):
@@ -79,6 +82,16 @@ class ShelfCreator(object):
         self.shelf_transform.delete_contents(s_trans_id)
         inverse_lines = self._inverse_lines(new_lines, file_id)
         self.shelf_transform.create_file(inverse_lines, s_trans_id)
+
+    @staticmethod
+    def _content_from_tree(tt, tree, file_id):
+        trans_id = tt.trans_id_file_id(file_id)
+        tt.delete_contents(trans_id)
+        transform.create_from_tree(tt, trans_id, tree, file_id)
+
+    def shelve_content_change(self, file_id):
+        self._content_from_tree(self.work_transform, self.target_tree, file_id)
+        self._content_from_tree(self.shelf_transform, self.work_tree, file_id)
 
     def shelve_creation(self, file_id):
         kind, name, parent, versioned = self.creation[file_id]

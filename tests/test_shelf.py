@@ -186,6 +186,24 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.transform()
         self.failUnlessExists('tree/foo')
 
+    def test_shelve_change_kind(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo', 'bar')])
+        tree.add('foo', 'foo-id')
+        tree.commit('Added file and directory')
+        os.unlink('tree/foo')
+        os.mkdir('tree/foo')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('change kind', 'foo-id', 'file', 'directory',
+                           'foo')], sorted(list(creator)))
+        creator.shelve_content_change('foo-id')
+        creator.transform()
+        self.assertFileEqual('bar', 'tree/foo')
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        self.assertEqual('directory',
+                         creator.shelf_transform._new_contents[s_trans_id])
+
     def test_shelve_unversion(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo',])
