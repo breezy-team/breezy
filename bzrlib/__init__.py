@@ -54,7 +54,7 @@ version_info = (1, 9, 0, 'dev', 0)
 
 
 # API compatibility version: bzrlib is currently API compatible with 1.7.
-api_minimum_version = (1, 7, 0)
+api_minimum_version = (1, 9, 0)
 
 
 def _format_version_tuple(version_info):

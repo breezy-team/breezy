@@ -283,9 +283,6 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
-        # accumulates an inventory delta to the basis entry, so we can make
-        # just the necessary updates to the workingtree's cached basis.
-        self._basis_delta = []
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -355,6 +352,7 @@ class Commit(object):
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             
             try:
+                self.builder.recording_deletes()
                 # find the location being committed to
                 if self.bound_branch:
                     master_location = self.master_branch.base
@@ -409,7 +407,7 @@ class Commit(object):
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
             self.work_tree.update_basis_by_delta(self.rev_id,
-                 self._basis_delta)
+                 self.builder.basis_delta)
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -428,7 +426,7 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # TODO: we could simplify this by using self._basis_delta.
+        # TODO: we could simplify this by using self.builder.basis_delta.
 
         # The initial commit adds a root directory, but this in itself is not
         # a worthwhile commit.
@@ -690,12 +688,10 @@ class Commit(object):
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                delta, version_recorded, _ = self.builder.record_entry_contents(
+                _, version_recorded, _ = self.builder.record_entry_contents(
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
-                if delta:
-                    self._basis_delta.append(delta)
 
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
@@ -709,7 +705,7 @@ class Commit(object):
             deleted.sort()
             # XXX: this is not quite directory-order sorting
             for path, file_id in deleted:
-                self._basis_delta.append((path, None, file_id, None))
+                self.builder.record_delete(path, file_id)
                 self.reporter.deleted(path)
 
     def _populate_from_inventory(self):
@@ -846,10 +842,8 @@ class Commit(object):
             ie.revision = None
         # For carried over entries we don't care about the fs hash - the repo
         # isn't generating a sha, so we're not saving computation time.
-        delta, version_recorded, fs_hash = self.builder.record_entry_contents(
+        _, version_recorded, fs_hash = self.builder.record_entry_contents(
             ie, self.parent_invs, path, self.work_tree, content_summary)
-        if delta:
-            self._basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:

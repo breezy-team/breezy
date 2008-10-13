@@ -23,6 +23,13 @@ IN DEVELOPMENT
       and additionally call ``builder.record_delete`` when a delete
       against the basis occurs. (Robert Collins)
 
+  API CHANGES:
+
+    * The logic in commit now delegates inventory basis calculations to
+      the ``CommitBuilder`` object; this requires that the commit builder
+      in use has been updated to support the new ``recording_deletes`` and
+      ``record_delete`` methods. (Robert Collins)
+
 
 bzr 1.8rc1 2008-10-07
 ---------------------
