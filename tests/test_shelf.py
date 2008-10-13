@@ -210,7 +210,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_creation('foo-id')
         shelf_file = open('shelf', 'wb')
         try:
-            filename = creator.write_shelf(shelf_file)
+            creator.write_shelf(shelf_file)
         finally:
             shelf_file.close()
         parser = pack.ContainerPushParser()
@@ -242,7 +242,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator.shelve_creation('foo-id')
         shelf_file = open('shelf-file', 'w+b')
         try:
-            filename = creator.write_shelf(shelf_file)
+            creator.write_shelf(shelf_file)
             creator.transform()
             shelf_file.seek(0)
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
@@ -283,7 +283,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         manager = tree.get_shelf_manager()
         shelf_id, shelf_file = manager.new_shelf()
         try:
-            filename = creator.write_shelf(shelf_file)
+            creator.write_shelf(shelf_file)
         finally:
             shelf_file.close()
         tree.commit('rev2', rev_id='rev2')

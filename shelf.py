@@ -139,11 +139,6 @@ class ShelfCreator(object):
     def transform(self):
         self.work_transform.apply()
 
-    def make_shelf_filename(self):
-        transport = self.work_tree.bzrdir.root_transport.clone('.shelf2')
-        transport.ensure_base()
-        return transport.local_abspath('01')
-
     def write_shelf(self, shelf_file, message=None):
         transform.resolve_conflicts(self.shelf_transform)
         serializer = pack.ContainerSerialiser()
