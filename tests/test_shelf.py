@@ -251,12 +251,35 @@ class TestUnshelver(tests.TestCaseWithTransport):
         finally:
             shelf_file.close()
 
+    def test_unshelve_changed(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('tree/foo', 'a\nb\nc\n')])
+        tree.add('foo', 'foo-id')
+        tree.commit('first commit')
+        self.build_tree_contents([('tree/foo', 'a\nb\nd\n')])
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        list(creator)
+        creator.shelve_lines('foo-id', ['a\n', 'b\n', 'c\n'])
+        shelf_file = open('shelf', 'w+b')
+        self.addCleanup(shelf_file.close)
+        creator.write_shelf(shelf_file)
+        creator.transform()
+        self.build_tree_contents([('tree/foo', 'z\na\nb\nc\n')])
+        shelf_file.seek(0)
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        unshelver.unshelve()
+        self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
+
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.commit('rev1', rev_id='rev1')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
         manager = tree.get_shelf_manager()
         shelf_id, shelf_file = manager.new_shelf()
         try:
@@ -265,10 +288,9 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.close()
         tree.commit('rev2', rev_id='rev2')
         shelf_file = manager.read_shelf(1)
-        try:
-            unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
-        finally:
-            shelf_file.close()
+        self.addCleanup(shelf_file.close)
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        self.addCleanup(unshelver.finalize)
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
 
 
