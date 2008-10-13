@@ -12,6 +12,12 @@ IN DEVELOPMENT
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
 
+  INTERNALS:
+
+    * New method ``bzrlib.repository.Repository.add_inventory_delta``
+      allows adding an inventory via an inventory delta, which can be
+      more efficient for some repository types. (Robert Collins)
+
 
 bzr 1.8rc1 2008-10-07
 ---------------------
