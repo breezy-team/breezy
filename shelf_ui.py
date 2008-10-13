@@ -26,6 +26,7 @@ from bzrlib import (
     diff,
     errors,
     patches,
+    textfile,
     trace,
     ui,
     workingtree)
@@ -67,8 +68,13 @@ class Shelver(object):
         try:
             for change in creator:
                 if change[0] == 'modify text':
-                    changes_shelved += self.handle_modify_text(creator,
-                                                               change[1])
+                    try:
+                        changes_shelved += self.handle_modify_text(creator,
+                                                                   change[1])
+                    except errors.BinaryFile:
+                        if self.prompt_bool('Shelve binary changes?'):
+                            changes_shelved += 1
+                            creator.shelve_content_change(change[1])
                 if change[0] == 'add file':
                     if self.prompt_bool('Shelve adding file "%s"?'
                                         % change[3]):
@@ -78,6 +84,11 @@ class Shelver(object):
                     if self.prompt_bool('Shelve removing file "%s"? '
                                         % change[3]):
                         creator.shelve_deletion(change[1])
+                        changes_shelved += 1
+                if change[0] == 'change kind':
+                    if self.prompt_bool('Shelve changing "%s" from %s to %s? '
+                                        % (change[4], change[2], change[3])):
+                        creator.shelve_content_change(change[1])
                         changes_shelved += 1
                 if change[0] == 'rename':
                     if self.prompt_bool('Shelve renaming %s => %s?' %
@@ -132,6 +143,13 @@ class Shelver(object):
             return False
 
     def handle_modify_text(self, creator, file_id):
+        target_lines = self.target_tree.get_file_lines(file_id)
+        work_file = self.work_tree.get_file(file_id)
+        try:
+            textfile.text_file(work_file)
+        finally:
+            work_file.close()
+        textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id)
         final_hunks = []
         if not self.auto:
@@ -147,7 +165,6 @@ class Shelver(object):
         sys.stdout.flush()
         if len(parsed.hunks) == len(final_hunks):
             return 0
-        target_lines = self.target_tree.get_file_lines(file_id)
         patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
         creator.shelve_lines(file_id, list(patched))
         return len(parsed.hunks) - len(final_hunks)
