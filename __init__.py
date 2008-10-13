@@ -26,24 +26,18 @@ class cmd_shelve2(commands.Command):
     ie. out of the way, until a later time when you can bring them back from
     the shelf with the 'unshelve' command.
 
-    Shelve is intended to help separate several sets of text changes that have
+    Shelve is intended to help separate several sets of changes that have
     been inappropriately mingled.  If you just want to get rid of all changes
-    (text and otherwise) and you don't need to restore them later, use revert.
-    If you want to shelve all text changes at once, use shelve --all.
-
-    By default shelve asks you what you want to shelve, press '?' at the
-    prompt to get help. To shelve everything run shelve --all.
+    and you don't need to restore them later, use revert.  If you want to
+    shelve all text changes at once, use shelve --all.
 
     If filenames are specified, only the changes to those files will be
-    shelved, other files will be left untouched.
+    shelved. Other files will be left untouched.
 
     If a revision is specified, changes since that revision will be shelved.
 
-    You can put multiple items on the shelf. Normally each time you run
-    unshelve the most recently shelved changes will be reinstated. However,
-    you can also unshelve changes in a different order by explicitly
-    specifiying which changes to unshelve. This works best when the changes
-    don't depend on each other.
+    You can put multiple items on the shelf, and by default, 'unshelve' will
+    restore the most recently shelved changes.
 
     While you have patches on the shelf you can view and manipulate them with
     the 'shelf' command. Run 'bzr shelf -h' for more info.
@@ -65,10 +59,9 @@ class cmd_shelve2(commands.Command):
 class cmd_unshelve2(commands.Command):
     """Restore shelved changes.
 
-    By default the most recently shelved changes are restored. However if you
-    specify a patch by name those changes will be restored instead.
-
-    See 'shelve' for more information.
+    By default, the most recently shelved changes are restored. However if you
+    specify a patch by name those changes will be restored instead.  This
+    works best when the changes don't depend on each other.
     """
 
     takes_args = ['shelf_id?']
@@ -80,6 +73,7 @@ class cmd_unshelve2(commands.Command):
             delete_only="Delete changes without applying them."
         )
     ]
+    _see_also = ['shelve2']
 
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.plugins.shelf2.shelf_ui import Unshelver
