@@ -1103,7 +1103,7 @@ class TestExpandNodes(tests.TestCase):
         self.assertExpandNodes([1, 2, 3, 9, 10, 11, 80, 81, 82], index,
                                [2, 10, 81])
 
-    def test_expand_to_cached(self):
+    def test_stop_at_cached(self):
         index = self.make_100_node_index()
         self.set_cached_nodes(index, [0, 10, 19])
         self.assertExpandNodes([11, 12, 13, 14, 15, 16], index, [11])
@@ -1113,8 +1113,13 @@ class TestExpandNodes(tests.TestCase):
         self.assertExpandNodes([13, 14, 15, 16, 17, 18], index, [17])
         self.assertExpandNodes([13, 14, 15, 16, 17, 18], index, [18])
 
-    def test_expand_limited(self):
+    def test_cannot_fully_expand(self):
         index = self.make_100_node_index()
         self.set_cached_nodes(index, [0, 10, 12])
         # We don't go into an endless loop if we are bound by cached nodes
         self.assertExpandNodes([11], index, [11])
+
+    def test_overlap(self):
+        index = self.make_100_node_index()
+        self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [12, 13])
+        self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [11, 14])
