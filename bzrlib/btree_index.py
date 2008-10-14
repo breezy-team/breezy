@@ -688,9 +688,8 @@ class BTreeGraphIndex(object):
 
     def _get_cached_nodes(self):
         """Determine what nodes we already have cached."""
-        # XXX: Update the LRUCache interface to have a .keys() attribute
-        cached_nodes = set(self._internal_node_cache._cache.keys())
-        cached_nodes.update(self._leaf_node_cache._cache.keys())
+        cached_nodes = set(self._internal_node_cache.keys())
+        cached_nodes.update(self._leaf_node_cache.keys())
         if self._root_node is not None:
             cached_nodes.add(0)
         return cached_nodes
