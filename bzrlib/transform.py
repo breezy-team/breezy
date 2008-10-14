@@ -2196,6 +2196,8 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
+    else:
+        raise AssertionError('Unknown kind %r' % kind)
 
 
 def create_entry_executability(tt, entry, trans_id):
