@@ -173,15 +173,20 @@ class CommitBuilder(object):
                 basis_id = self.parents[0]
             except IndexError:
                 basis_id = _mod_revision.NULL_REVISION
-            self.inv_sha1 = self.repository.add_inventory_delta(
-                basis_id, self.basis_delta, self._new_revision_id,
-                self.parents)
-        else:
-            self.inv_sha1 = self.repository.add_inventory(
-                self._new_revision_id,
-                self.new_inventory,
-                self.parents
-                )
+            try:
+                self.inv_sha1 = self.repository.add_inventory_delta(
+                    basis_id, self.basis_delta, self._new_revision_id,
+                    self.parents)
+                return
+            except errors.NoSuchRevision:
+                # The basis inventory wasn't actually available; fall back to
+                # add_inventory.
+                pass
+        self.inv_sha1 = self.repository.add_inventory(
+            self._new_revision_id,
+            self.new_inventory,
+            self.parents
+            )
 
     def _gen_revision_id(self):
         """Return new revision-id."""
@@ -2053,8 +2058,10 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
     """
     repository.start_write_group()
     try:
+        inventory_cache = lru_cache.LRUCache(10)
         for n, (revision, revision_tree, signature) in enumerate(iterable):
-            _install_revision(repository, revision, revision_tree, signature)
+            _install_revision(repository, revision, revision_tree, signature,
+                inventory_cache)
             if pb is not None:
                 pb.update('Transferring revisions', n + 1, num_revisions)
     except:
@@ -2064,7 +2071,8 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
         repository.commit_write_group()
 
 
-def _install_revision(repository, rev, revision_tree, signature):
+def _install_revision(repository, rev, revision_tree, signature,
+    inventory_cache):
     """Install all revision data into a repository."""
     present_parents = []
     parent_trees = {}
@@ -2107,13 +2115,43 @@ def _install_revision(repository, rev, revision_tree, signature):
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory
-        repository.add_inventory(rev.revision_id, inv, present_parents)
+        if repository._format._commit_inv_deltas and len(rev.parent_ids):
+            # Cache this inventory
+            inventory_cache[rev.revision_id] = inv
+            try:
+                basis_inv = inventory_cache[rev.parent_ids[0]]
+            except KeyError:
+                repository.add_inventory(rev.revision_id, inv, present_parents)
+            else:
+                delta = _make_inv_delta(basis_inv, inv)
+                repository.add_inventory_delta(rev.parent_ids[0], delta,
+                    rev.revision_id, present_parents)
+        else:
+            repository.add_inventory(rev.revision_id, inv, present_parents)
     except errors.RevisionAlreadyPresent:
         pass
     if signature is not None:
         repository.add_signature_text(rev.revision_id, signature)
     repository.add_revision(rev.revision_id, rev, inv)
 
+
+def _make_inv_delta(old, new):
+    """Make an inventory delta from two inventories."""
+    old_ids = set(old._byid.iterkeys())
+    new_ids = set(new._byid.iterkeys())
+    adds = new_ids - old_ids
+    deletes = old_ids - new_ids
+    common = old_ids.intersection(new_ids)
+    delta = []
+    for file_id in deletes:
+        delta.append((old.id2path(file_id), None, file_id, None))
+    for file_id in adds:
+        delta.append((None, new.id2path(file_id), file_id, new[file_id]))
+    for file_id in common:
+        if old[file_id] != new[file_id]:
+            delta.append((old.id2path(file_id), new.id2path(file_id),
+                file_id, new[file_id]))
+    return delta
 
 class MetaDirRepository(Repository):
     """Repositories in the new meta-dir layout.

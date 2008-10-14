@@ -242,7 +242,8 @@ class RepoFetcher(object):
             # know for unselected inventories whether all their required
             # texts are present in the other repository - it could be
             # corrupt.
-            if self.to_repository._format.supports_chks:
+            if (self.from_repository._format.supports_chks or
+                self.to_repository._format.supports_chks):
                 # Hack to make chk->chk fetch: copy the inventories as
                 # inventories.
                 total = len(revs)
