@@ -241,10 +241,10 @@ This is just a bullet list of things to consider when expanding a request.
   very often, though.
 
 
-Suggested Algorithm
-===================
+Algorithm
+=========
 
-This is the basic outline of my suggested algorithm.
+This is the basic outline of the algorithm.
 
 1. Expand requests by requesting neighboring pages. (So if we read page 10, we
    can expand to also read page 9 and 11.)
