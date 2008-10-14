@@ -1037,6 +1037,13 @@ class TestExpandNodes(tests.TestCase):
                            cached_nodes=[0])
         return index
 
+    def make_1000_node_index(self):
+        index = self.make_index(4096*1000, 6)
+        self.prepare_index(index, node_ref_lists=0, key_length=1,
+                           key_count=90000, row_lengths=[1, 9, 990],
+                           cached_nodes=[0])
+        return index
+
     def assertNumPages(self, expected_pages, index, size):
         index._size = size
         self.assertEqual(expected_pages, index._compute_num_pages())
@@ -1057,6 +1064,15 @@ class TestExpandNodes(tests.TestCase):
         self.assertNumPages(2, index, 4097)
         self.assertNumPages(2, index, 8192)
         self.assertNumPages(76, index, 4096*75 + 10)
+
+    def test__find_layer_start_and_stop(self):
+        index = self.make_1000_node_index()
+        self.assertEqual((0, 1), index._find_layer_first_and_end(0))
+        self.assertEqual((1, 10), index._find_layer_first_and_end(1))
+        self.assertEqual((1, 10), index._find_layer_first_and_end(9))
+        self.assertEqual((10, 1000), index._find_layer_first_and_end(10))
+        self.assertEqual((10, 1000), index._find_layer_first_and_end(99))
+        self.assertEqual((10, 1000), index._find_layer_first_and_end(999))
 
     def test_unknown_size(self):
         # We should not expand if we don't know the file size
@@ -1123,3 +1139,16 @@ class TestExpandNodes(tests.TestCase):
         index = self.make_100_node_index()
         self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [12, 13])
         self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [11, 14])
+
+    def test_stay_within_layer(self):
+        index = self.make_1000_node_index()
+        # When expanding a request, we won't read nodes from the next layer
+        self.assertExpandNodes([1, 2, 3, 4, 5, 6], index, [2])
+        self.assertExpandNodes([3, 4, 5, 6, 7, 8, 9], index, [6])
+        self.assertExpandNodes([4, 5, 6, 7, 8, 9], index, [9])
+        self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [10])
+        self.assertExpandNodes([10, 11, 12, 13, 14, 15, 16], index, [13])
+
+        self.set_cached_nodes(index, [0, 4, 12])
+        self.assertExpandNodes([5, 6, 7, 8, 9], index, [7])
+        self.assertExpandNodes([10, 11], index, [11])

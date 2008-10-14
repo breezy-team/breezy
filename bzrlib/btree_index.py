@@ -695,6 +695,21 @@ class BTreeGraphIndex(object):
             cached_nodes.add(0)
         return cached_nodes
 
+    def _find_layer_first_and_end(self, offset):
+        """Find the start/stop nodes for the layer corresponding to offset.
+
+        :return: (first, end)
+            first is the first node in this layer
+            end is the first node of the next layer
+        """
+        first = end = 0
+        for roffset in self._row_offsets:
+            first = end
+            end = roffset
+            if offset < roffset:
+                break
+        return first, end
+
     def _expand_nodes(self, node_indexes):
         """Find extra nodes to download.
 
@@ -756,21 +771,29 @@ class BTreeGraphIndex(object):
         else:
             # Expand requests to neighbors until we have at least
             # recommended_pages to request. We only want to expand requests
-            # within a given layer.
+            # within a given layer. We cheat a little bit and assume all
+            # requests will be in the same layer. This is true given the
+            # current design, but if it changes this algorithm may perform
+            # oddly.
+            first = end = None
             new_tips = set(final_nodes)
             while len(final_nodes) < self._recommended_pages and new_tips:
                 next_tips = set()
                 for pos in new_tips:
-                    if pos > 0:
-                        previous = pos - 1
-                        if (previous not in cached_nodes
-                            and previous not in final_nodes):
-                            next_tips.add(previous)
+                    if first is None:
+                        first, end = self._find_layer_first_and_end(pos)
+                    previous = pos - 1
+                    if (previous > 0
+                        and previous not in cached_nodes
+                        and previous not in final_nodes
+                        and previous >= first):
+                        next_tips.add(previous)
                     after = pos + 1
-                    if after < num_pages:
-                        if (after not in cached_nodes
-                            and after not in final_nodes):
-                            next_tips.add(after)
+                    if (after < num_pages
+                        and after not in cached_nodes
+                        and after not in final_nodes
+                        and after < end):
+                        next_tips.add(after)
                     # This would keep us from going bigger than
                     # recommended_pages by only expanding the first nodes.
                     # However, if we are making a 'wide' request, it is
