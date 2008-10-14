@@ -240,30 +240,55 @@ This is just a bullet list of things to consider when expanding a request.
   layer will often not have a full 100-way fan out. Probably not worthwhile
   very often, though.
 
+* Sometimes we will be making a very small request for a very small number of
+  keys, we don't really want to bloat tiny requests. Hopefully we can find a
+  decent heuristic to determine when we will be wanting extra nodes later,
+  versus when we expect to find all we want right now.
+
 
 Algorithm
 =========
 
 This is the basic outline of the algorithm.
 
-1. Expand requests by requesting neighboring pages. (So if we read page 10, we
-   can expand to also read page 9 and 11.)
+1. If we don't know the size of the index, don't expand as we don't know what
+   is available. (This only really applies to the pack-names file, which is
+   unlikely to ever become larger than 1 page anyway.)
 
-2. Only expand within a layer. The problem is that with a 100:1 fan-out, but
-   only a 10:1 expansion policy, it is unlikely that we will happen to read the
-   next layer pages that we are interested in. Note that this doesn't hold true
-   when a layer has "recently split", so we may want to revisit this.
+2. If a request is already wide enough to be greater than the number of
+   recommended pages, don't bother trying to expand. This only really happens
+   with LocalTransport which recommends a single page.
 
-3. Part (2) hints that when reading the root node, we never request any other
-   nodes, as the root is always a layer-unto-itself. The only exception is when
-   all pages could fit in a single width request.
+3. Determine what pages have already been read (if any). If the pages left to
+   read can fit in a single request, just request them. This tends to happen on
+   medium sized indexes (ones with low hundreds of revisions), and near the end
+   when we've read most of the whole index already.
 
-4. When expanding, add nodes that are "next" to the node in question, which
-   have not been read yet. This also has another interesting property. When
-   searching in a given direction, on the first request, we will pre-read both
-   directions. Future requests will only pre-read in one direction, as the
-   other direction is cached.
+4. If we haven't read the root node yet, and we can't fit the whole index into
+   a single request, only read the root node. We don't know where the layer
+   boundaries are anyway.
 
+5. If we haven't read "tree depth" pages yet, and are only requesting a single
+   new page don't expand. This is meant to handle the 'lookup 1 item in the
+   index' case. In a large pack file, you'll read only a single page at each
+   layer and then be done. When spidering out in a search, this will cause us
+   to take a little bit longer to start expanding, but once we've started we'll
+   be expanding at full velocity. This could be improved by having indexes
+   inform each other that they have already entered the 'search' phase, or by
+   having a hint from above to indicate the same.
+
+   However, remember the 'bi-modal' distribution. Most indexes will either be
+   very small, or very large. So either we'll read the whole thing quickly, or
+   we'll end up spending a lot of time in the index. Which makes a small number
+   of extra round trips to large indexes a small overhead. For 2-layer nodes,
+   this only 'wastes' one round trip.
+
+6. Now we are ready to expand the requests. Expand by looking for more pages
+   next to the ones requested that fit within the current layer. If you run
+   into a cached page, or a layer boundary, search further only in the opposite
+   direction. This gives us proper locality of reference, and also helps
+   because when a search goes in a single direction, we will continue to
+   prefetch pages in that direction.
 
 ..
    vim: ft=rst tw=79 ai

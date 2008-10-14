@@ -1032,16 +1032,18 @@ class TestExpandNodes(tests.TestCase):
 
     def make_100_node_index(self):
         index = self.make_index(4096*100, 6)
+        # Consider we've already made a single request at the middle
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=1000, row_lengths=[1, 99],
-                           cached_keys=[0])
+                           cached_keys=[0, 50])
         return index
 
     def make_1000_node_index(self):
         index = self.make_index(4096*1000, 6)
+        # Pretend we've already made a single request in the middle
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=90000, row_lengths=[1, 9, 990],
-                           cached_keys=[0])
+                           cached_keys=[0, 5, 500])
         return index
 
     def assertNumPages(self, expected_pages, index, size):
@@ -1143,12 +1145,34 @@ class TestExpandNodes(tests.TestCase):
     def test_stay_within_layer(self):
         index = self.make_1000_node_index()
         # When expanding a request, we won't read nodes from the next layer
-        self.assertExpandNodes([1, 2, 3, 4, 5, 6], index, [2])
-        self.assertExpandNodes([3, 4, 5, 6, 7, 8, 9], index, [6])
-        self.assertExpandNodes([4, 5, 6, 7, 8, 9], index, [9])
+        self.assertExpandNodes([1, 2, 3, 4], index, [2])
+        self.assertExpandNodes([6, 7, 8, 9], index, [6])
+        self.assertExpandNodes([6, 7, 8, 9], index, [9])
         self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [10])
         self.assertExpandNodes([10, 11, 12, 13, 14, 15, 16], index, [13])
 
         self.set_cached_keys(index, [0, 4, 12])
         self.assertExpandNodes([5, 6, 7, 8, 9], index, [7])
         self.assertExpandNodes([10, 11], index, [11])
+
+    def test_small_requests_unexpanded(self):
+        index = self.make_100_node_index()
+        self.set_cached_keys(index, [0])
+        self.assertExpandNodes([1], index, [1])
+        self.assertExpandNodes([50], index, [50])
+        # If we request more than one node, then we'll expand
+        self.assertExpandNodes([49, 50, 51, 59, 60, 61], index, [50, 60])
+
+        # The first pass does not expand
+        index = self.make_1000_node_index()
+        self.set_cached_keys(index, [0])
+        self.assertExpandNodes([1], index, [1])
+        self.set_cached_keys(index, [0, 1])
+        self.assertExpandNodes([100], index, [100])
+        self.set_cached_keys(index, [0, 1, 100])
+        # But after the first depth, we will expand
+        self.assertExpandNodes([2, 3, 4, 5, 6, 7], index, [2])
+        self.assertExpandNodes([2, 3, 4, 5, 6, 7], index, [4])
+        self.set_cached_keys(index, [0, 1, 2, 3, 4, 5, 6, 7, 100])
+        self.assertExpandNodes([102, 103, 104, 105, 106, 107, 108], index,
+                               [105])

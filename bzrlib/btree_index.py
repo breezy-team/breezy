@@ -700,10 +700,6 @@ class BTreeGraphIndex(object):
         # getting.
         cached_keys = self._get_cached_keys()
 
-        # if len(cached_keys) < 2:
-        #     # We haven't read enough to justify expansion
-        #     return node_indexes
-
         # If reading recommended_pages would read the rest of the index, just
         # do so.
         if num_pages - len(cached_keys) <= self._recommended_pages:
@@ -717,8 +713,6 @@ class BTreeGraphIndex(object):
                 trace.mutter('  reading all unread pages: %s', expanded)
             return expanded
 
-        needed_nodes = self._recommended_pages - len(node_indexes)
-        final_nodes = set(node_indexes)
         if self._root_node is None:
             # ATM on the first read of the root node of a large index, we don't
             # bother pre-reading any other pages. This is because the
@@ -728,12 +722,24 @@ class BTreeGraphIndex(object):
             # layer index is small
             final_nodes = node_indexes
         else:
+            tree_depth = len(self._row_lengths)
+            if len(cached_keys) < tree_depth and len(node_indexes) == 1:
+                # We haven't read enough to justify expansion
+                # If we are only going to read the root node, and 1 leaf node,
+                # then it isn't worth expanding our request. Once we've read at
+                # least 2 nodes, then we are probably doing a search, and we
+                # start expanding our requests.
+                if 'index' in debug.debug_flags:
+                    trace.mutter('  not expanding on first reads')
+                return node_indexes
+
             # Expand requests to neighbors until we have at least
             # recommended_pages to request. We only want to expand requests
             # within a given layer. We cheat a little bit and assume all
             # requests will be in the same layer. This is true given the
             # current design, but if it changes this algorithm may perform
             # oddly.
+            final_nodes = set(node_indexes)
             first = end = None
             new_tips = set(final_nodes)
             while len(final_nodes) < self._recommended_pages and new_tips:
